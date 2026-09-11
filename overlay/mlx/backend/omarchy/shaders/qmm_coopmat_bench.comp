@@ -179,6 +179,88 @@ void qmm_stage_step(
   w_s[w_base + 7u * TILE_N] = scale * float(packed >> 28u) + bias;
 }
 #endif
+#if QMM_COOP_BENCH_PATH >= 11
+// Register prefetch for one 16-k step: the global loads (four x words,
+// the packed weight word, scale, bias) issue while the previous step's
+// MulAdd burst and barrier drain run; unpack, dequant, and the shared
+// stores happen after the barrier. Values and the shared layout are
+// exactly the shipped kernel's (slot-0, x row pitch 16, w row pitch
+// TILE_N), so the outputs are bit-identical.
+struct QmmPrefetch {
+  uint xw[4];
+  uint packed;
+  float scale;
+  float bias;
+};
+
+QmmPrefetch qmm_prefetch(uint b, uint tile_row, uint tile_col, uint k_base) {
+  uint lid = gl_LocalInvocationID.x;
+  uint w_part = lid / 32u;
+  uint w_column_local = lid % 32u;
+  uint words_per_row = params.matrix_k / 8u;
+  uint groups_per_row = params.matrix_k / 64u;
+  uint x_words_per_row = params.matrix_k / 2u;
+  uint w_slice = params.rhs_offset + b * params.shape[1];
+  uint scale_slice = params.aux_offset + b * params.shape[2];
+  uint bias_slice = params.aux_size + b * params.shape[2];
+  uint x_slice = (params.lhs_offset +
+                     b * params.matrix_m * params.matrix_k) / 2u;
+  uint row_base = tile_row * TILE_M;
+  uint column = tile_col * TILE_N + w_column_local;
+  bool column_ok = column < params.matrix_n;
+  uint w_row = w_slice + column * words_per_row;
+  uint scale_row = scale_slice + column * groups_per_row;
+  uint bias_row = bias_slice + column * groups_per_row;
+  QmmPrefetch pf;
+  for (uint j = 0u; j < 4u; ++j) {
+    uint i = lid + 64u * j;
+    uint local_row = i / 8u;
+    uint row = row_base + local_row;
+    pf.xw[j] = row < params.matrix_m
+        ? input_x.values[x_slice + row * x_words_per_row +
+              k_base / 2u + (i % 8u)]
+        : 0u;
+  }
+  pf.packed = column_ok
+      ? input_w.values[w_row + k_base / 8u + w_part] : 0u;
+  pf.scale = 0.0;
+  pf.bias = 0.0;
+  if (column_ok) {
+    pf.scale = float(scales.values[scale_row + k_base / 64u]);
+    pf.bias = float(biases.values[bias_row + k_base / 64u]);
+  }
+  return pf;
+}
+
+void qmm_stage_from(QmmPrefetch pf) {
+  uint lid = gl_LocalInvocationID.x;
+  uint w_part = lid / 32u;
+  uint w_column_local = lid % 32u;
+  for (uint j = 0u; j < 4u; ++j) {
+    uint i = lid + 64u * j;
+    uint local_row = i / 8u;
+    vec2 pair = unpackHalf2x16(pf.xw[j]);
+    x_s[local_row * 16u + 2u * (i % 8u)] = pair.x;
+    x_s[local_row * 16u + 2u * (i % 8u) + 1u] = pair.y;
+  }
+  uint w_base = 8u * w_part * TILE_N + w_column_local;
+  w_s[w_base] = pf.scale * float(pf.packed & 0xFu) + pf.bias;
+  w_s[w_base + 1u * TILE_N] =
+      pf.scale * float((pf.packed >> 4u) & 0xFu) + pf.bias;
+  w_s[w_base + 2u * TILE_N] =
+      pf.scale * float((pf.packed >> 8u) & 0xFu) + pf.bias;
+  w_s[w_base + 3u * TILE_N] =
+      pf.scale * float((pf.packed >> 12u) & 0xFu) + pf.bias;
+  w_s[w_base + 4u * TILE_N] =
+      pf.scale * float((pf.packed >> 16u) & 0xFu) + pf.bias;
+  w_s[w_base + 5u * TILE_N] =
+      pf.scale * float((pf.packed >> 20u) & 0xFu) + pf.bias;
+  w_s[w_base + 6u * TILE_N] =
+      pf.scale * float((pf.packed >> 24u) & 0xFu) + pf.bias;
+  w_s[w_base + 7u * TILE_N] =
+      pf.scale * float(pf.packed >> 28u) + pf.bias;
+}
+#endif
 
 void main() {
   uint lid = gl_LocalInvocationID.x;
@@ -252,6 +334,11 @@ void main() {
               gl_MatrixUseAccumulator>(0.0);
         }
       }
+#if QMM_COOP_BENCH_PATH >= 11
+      // Prefetch covers the chunk boundary: step 3 prefetches the next
+      // chunk's step 0, so the initial pf here starts absolute k 0.
+      QmmPrefetch pf = qmm_prefetch(b, tile_row, tile_col, 0u);
+#endif
       for (uint chunk = 0u; chunk < k_chunks; ++chunk) {
 #if QMM_COOP_BENCH_PATH == 8
         // Double-buffered step staging: the next step's operands are
@@ -354,6 +441,88 @@ void main() {
             }
           }
 #endif
+          barrier();
+        }
+#elif QMM_COOP_BENCH_PATH >= 11
+        // Register-prefetch schedule at the shipped 4 KiB shared: the
+        // next step's global loads issue after the MulAdd bursts and
+        // before the end-of-step barrier, so their latency hides behind
+        // the burst instead of sitting in the post-barrier staging
+        // segment. Arm 12 additionally hoists the shared operand loads
+        // above the MulAdd bursts (arm 9's schedule).
+        for (uint step = 0u; step < CHUNK_K / 16u; ++step) {
+          qmm_stage_from(pf);
+          barrier();
+#if QMM_COOP_BENCH_PATH == 12
+          coopmat<float, gl_ScopeSubgroup, MAT, MAT, gl_MatrixUseA>
+              mat_a0[2];
+          coopmat<float, gl_ScopeSubgroup, MAT, MAT, gl_MatrixUseA>
+              mat_a1[2];
+          coopmat<float, gl_ScopeSubgroup, MAT, MAT, gl_MatrixUseB>
+              mat_b0[4];
+          coopmat<float, gl_ScopeSubgroup, MAT, MAT, gl_MatrixUseB>
+              mat_b1[4];
+          for (uint rb = 0u; rb < 2u; ++rb) {
+            coopMatLoad(
+                mat_a0[rb], x_s, (sub_rb + rb) * MAT * 16u, 16u,
+                gl_CooperativeMatrixLayoutRowMajor);
+            coopMatLoad(
+                mat_a1[rb], x_s, (sub_rb + rb) * MAT * 16u + MAT, 16u,
+                gl_CooperativeMatrixLayoutRowMajor);
+          }
+          for (uint cb = 0u; cb < 4u; ++cb) {
+            coopMatLoad(
+                mat_b0[cb], w_s, cb * MAT, TILE_N,
+                gl_CooperativeMatrixLayoutRowMajor);
+            coopMatLoad(
+                mat_b1[cb], w_s, MAT * TILE_N + cb * MAT, TILE_N,
+                gl_CooperativeMatrixLayoutRowMajor);
+          }
+          for (uint rb = 0u; rb < 2u; ++rb) {
+            for (uint cb = 0u; cb < 4u; ++cb) {
+              acc[rb][cb] =
+                  coopMatMulAdd(mat_a0[rb], mat_b0[cb], acc[rb][cb]);
+            }
+          }
+          for (uint rb = 0u; rb < 2u; ++rb) {
+            for (uint cb = 0u; cb < 4u; ++cb) {
+              acc[rb][cb] =
+                  coopMatMulAdd(mat_a1[rb], mat_b1[cb], acc[rb][cb]);
+            }
+          }
+#else
+          for (uint ks = 0u; ks < 2u; ++ks) {
+            coopmat<float, gl_ScopeSubgroup, MAT, MAT, gl_MatrixUseA>
+                mat_a[2];
+            coopmat<float, gl_ScopeSubgroup, MAT, MAT, gl_MatrixUseB>
+                mat_b[4];
+            for (uint rb = 0u; rb < 2u; ++rb) {
+              coopMatLoad(
+                  mat_a[rb], x_s,
+                  (sub_rb + rb) * (MAT * 16u) + ks * MAT, 16u,
+                  gl_CooperativeMatrixLayoutRowMajor);
+            }
+            for (uint cb = 0u; cb < 4u; ++cb) {
+              coopMatLoad(
+                  mat_b[cb], w_s,
+                  ks * (MAT * TILE_N) + cb * MAT, TILE_N,
+                  gl_CooperativeMatrixLayoutRowMajor);
+            }
+            for (uint rb = 0u; rb < 2u; ++rb) {
+              for (uint cb = 0u; cb < 4u; ++cb) {
+                acc[rb][cb] =
+                    coopMatMulAdd(mat_a[rb], mat_b[cb], acc[rb][cb]);
+              }
+            }
+          }
+#endif
+          uint prefetch_k = chunk * CHUNK_K + (step + 1u) * 16u;
+          if (step + 1u < CHUNK_K / 16u) {
+            pf = qmm_prefetch(b, tile_row, tile_col, prefetch_k);
+          } else if (chunk + 1u < k_chunks) {
+            pf = qmm_prefetch(b, tile_row, tile_col,
+                (chunk + 1u) * CHUNK_K);
+          }
           barrier();
         }
 #elif QMM_COOP_BENCH_PATH >= 5

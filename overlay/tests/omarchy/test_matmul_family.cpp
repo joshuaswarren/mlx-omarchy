@@ -4095,7 +4095,7 @@ TEST_CASE("qmm coopmat ILP schedule arms reproduce the shipped kernel bitwise") 
     }
     CHECK(shipped_diff <= bound);
 
-    for (const char* arm : {"8", "9", "10"}) {
+    for (const char* arm : {"8", "9", "10", "11", "12"}) {
       const auto candidate = run(arm);
       REQUIRE_EQ(candidate.size(), shipped.size());
       size_t mismatched = 0;

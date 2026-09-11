@@ -287,6 +287,8 @@ omarchy_shader(qmm_coop_bench_ilp4_f16 shaders/qmm_coopmat_bench.comp -DQMM_COOP
 omarchy_shader(qmm_coop_bench_double_buf_f16 shaders/qmm_coopmat_bench.comp -DQMM_COOP_BENCH_PATH=8)
 omarchy_shader(qmm_coop_bench_load_hoist_f16 shaders/qmm_coopmat_bench.comp -DQMM_COOP_BENCH_PATH=9)
 omarchy_shader(qmm_coop_bench_pair_order_f16 shaders/qmm_coopmat_bench.comp -DQMM_COOP_BENCH_PATH=10)
+omarchy_shader(qmm_coop_bench_prefetch_f16 shaders/qmm_coopmat_bench.comp -DQMM_COOP_BENCH_PATH=11)
+omarchy_shader(qmm_coop_bench_prefetch_hoist_f16 shaders/qmm_coopmat_bench.comp -DQMM_COOP_BENCH_PATH=12)
 omarchy_shader(binary_vec_f16 shaders/binary_vec.comp -DUSE_FP16=1)
 omarchy_shader(binary_vec_bf16 shaders/binary_vec.comp -DUSE_BF16=1)
 omarchy_shader(matmul_rb_f16 shaders/matmul_rb.comp)

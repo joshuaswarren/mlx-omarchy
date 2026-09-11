@@ -6570,7 +6570,7 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
   bool rb_enabled = rb_env == nullptr || std::strcmp(rb_env, "0") != 0;
   constexpr uint32_t kQmmCoopmatSharedBytes =
       (32u * 16u + 16u * 32u) * sizeof(float);
-  // Bench arms: MLX_OMARCHY_QMM_COOP_BENCH=1..10 reroutes the qmm
+  // Bench arms: MLX_OMARCHY_QMM_COOP_BENCH=1..12 reroutes the qmm
   // cooperative-matrix prefill to a shaders/qmm_coopmat_bench.comp
   // arm for data-path and chains-in-flight measurement at the prefill
   // shapes. 0/unset keeps the shipped kernel; nothing here changes
@@ -6581,7 +6581,7 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
   {
     const char* arm = std::getenv("MLX_OMARCHY_QMM_COOP_BENCH");
     long value = arm == nullptr ? 0L : std::strtol(arm, nullptr, 10);
-    if (value >= 0 && value <= 10) {
+    if (value >= 0 && value <= 12) {
       qmm_coop_bench_arm = static_cast<int>(value);
     }
   }
@@ -6591,7 +6591,8 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
       ? (32u * 66u + 64u * 34u) * sizeof(float)
       : qmm_coop_bench_arm == 8
       ? (2u * 32u * 16u + 2u * 16u * 32u) * sizeof(float)
-      : qmm_coop_bench_arm == 9 || qmm_coop_bench_arm == 10
+      : qmm_coop_bench_arm == 9 || qmm_coop_bench_arm == 10 ||
+            qmm_coop_bench_arm == 11 || qmm_coop_bench_arm == 12
       ? kQmmCoopmatSharedBytes
       : (32u * 64u + 64u * 32u) * sizeof(float);
   const auto& coopmat_caps = encoder.device().capabilities();
@@ -6781,6 +6782,10 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
           ? omarchy::ComputeKernel::QmmCoopBenchLoadHoistF16
           : qmm_coop_bench_arm == 10
           ? omarchy::ComputeKernel::QmmCoopBenchPairOrderF16
+          : qmm_coop_bench_arm == 11
+          ? omarchy::ComputeKernel::QmmCoopBenchPrefetchF16
+          : qmm_coop_bench_arm == 12
+          ? omarchy::ComputeKernel::QmmCoopBenchPrefetchHoistF16
           : omarchy::ComputeKernel::QmmPrefillCoopmatF16;
       encoder.dispatch_compute(
           qmm_kernel,
