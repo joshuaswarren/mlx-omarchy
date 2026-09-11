@@ -501,6 +501,13 @@ bool CommandEncoder::replay_dispatch(
     uint32_t group_count_z) {
   auto& compute = device_.compute();
   auto& dt = vk::device_table();
+  if (bindings.empty() || bindings.size() > compute.binding_limit()) {
+    throw std::invalid_argument(
+        "[omarchy] compute dispatch needs " +
+        std::to_string(bindings.size()) +
+        " storage-buffer bindings; this device allows " +
+        std::to_string(compute.binding_limit()) + ".");
+  }
   ReplayEntry* entry =
       replay_cursor_ < replay_entries_.size()
           ? &replay_entries_[replay_cursor_]
@@ -521,6 +528,7 @@ bool CommandEncoder::replay_dispatch(
     for (const auto& item : bindings) {
       note_binding_owner(item.owner);
     }
+    replay_order_.push_back(entry->cmd);
     htrace::add(htrace::replay_hits, 1);
     replay_cursor_++;
     return true;
