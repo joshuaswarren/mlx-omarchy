@@ -1,0 +1,65 @@
+{
+  "schema": "mlx-omarchy/decode-gap/1",
+  "date_utc": "2026-09-11",
+  "agent": "DecodeInModelGap",
+  "topic": "The 2.4x gap between in-model (~236 us/layer) and isolated (~98 us/layer) cost of the same Q4 decode GEMV kernels: between-dispatch state candidates tested one at a time in isolation",
+  "decision": "RECEIPT-ONLY. The 138 us/layer gap is not a between-dispatch state problem and not recoverable decode time. It is an instrument mismatch: the isolated 98 us/layer was summed from per-dispatch honeykrisp device-timestamp intervals, whose absolute scale is not trustworthy (documented in receipts/2026-09-10-dispatch-floor and receipts/2026-09-10-q4-gemv-bandwidth; re-demonstrated inside this run). Wall-clock-anchored, the SAME four dispatches cost 203 us/layer isolated and the in-model interleaved analog costs 207 us/layer - interleaving costs +1.8%, and the residual difference from the 236 us/layer production number is the lm_head dispatch amortized into the per-layer figure. No source change is supported; the six canonical digests were not exercised (nothing landed).",
+  "host": "jwm1-linux (100.84.184.102), Apple M1 (G13G B1), Honeykrisp installed package mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1, linux-asahi 7.1.6, glslc 2026.3",
+  "provenance": {
+    "branch": "wave/DecodeInModelGap (off main 26b746e0; never merged)",
+    "commits": {
+      "bench": "1364d077 (tools/q4-bw-bench --gap mode + run-gap-m1.sh; default bench behavior and all prior-pinned shaders unchanged)",
+      "shader_refresh": "373f63da (frozen qmm_vec_base.comp refreshed 7e57b15d -> 56aff1d3: the only delta is the producer-direct KV sum-store epilogue of commit a06bf49a, flags bit 12+i, which the bench's flags=0 dispatches never touch; the GEMV body is byte-identical, so measurements remain about the shipped kernel)"
+    },
+    "window": "ONE top-level flock /tmp/m1-gpu.lock on jwm1, 2026-09-11 08:02Z, ~30 s GPU, quiet gate passed, no driver swap, fork driver verified untouched",
+    "instrument_rules": "whole-submit host CLOCK_MONOTONIC brackets only (64-256 dispatches per bracket); per-dispatch timestamp brackets forbidden per receipts/2026-09-10-dispatch-floor; two independent runs (gap-a, gap-b), two passes each, 7 rounds each, medians over rounds"
+  },
+  "method": "New --gap mode in tools/q4-bw-bench reproduces the in-model decode interleaving in isolation and moves ONE factor at a time: 24 independent per-layer weight sets (8,427,008 bytes/layer x 24 = 202 MB, the exact four Qwen2.5-0.5B decode dispatch shapes through the production shader), RAW-chained or independent descriptor variants, a peak_read streaming filler between GEMV dispatches, fresh-allocation churn, and two-submission splits.",
+  "numbers": {
+    "us_per_layer_medians": {
+      "iso4_isolated_calibration": {"run_a": 201.1, "run_b": 204.6, "note": "one weight set, four dispatches, no chaining - the honest isolated cost"},
+      "iso4dep_raw_chain": {"run_a": 200.3, "run_b": 204.6, "delta_vs_iso4_us": -0.4},
+      "churn_fresh_buffers": {"run_a": 200.4, "run_b": 203.6, "delta_vs_iso4_us": -0.9},
+      "fill2_interstitial_2MB": {"run_a": 248.6, "run_b": 252.1, "note": "+47 us is the filler's own streaming work; GEMV time unchanged - no eviction penalty"},
+      "fill24_forced_24MB": {"run_a": 654.1, "run_b": 649.4, "note": "filler dominates by design; GEMV portion unchanged"},
+      "sweep_residency": {"1set": 203, "2sets": 209, "4sets": 209, "6sets": 209, "8sets": 209, "12sets": 207, "16sets": 207, "24sets": 207, "reading": "FLAT from an 8.4 MB cache-fitting footprint to the full 202 MB token working set - the kernels get zero benefit from weight residency at any cache level"},
+      "wideind_24sets": {"run_a": 206.6, "run_b": 206.8},
+      "widedep_in_model_analog": {"run_a": 206.5, "run_b": 206.7, "delta_vs_iso4_us": 3.7, "delta_pct": 1.8},
+      "sub2async_two_submits": {"run_a": 220.3, "run_b": 220.7, "delta_vs_widedep_us_per_layer": 13.9, "per_token_ms": 0.33},
+      "sub2sync_fence_between": {"run_a": 230.5, "run_b": 231.2}
+    },
+    "instrument_artifact_two_independent_measurements": {
+      "measurement_1_wall_vs_timestamp_same_kernel": "wall-anchored isolated iso4 = 202.9 us/layer (median of both runs, pass 2) vs the timestamp-based 98.0 us/layer sum (bench-a, receipts/2026-09-10-q4-gemv-native-map) for the SAME four dispatches, SAME shader body, SAME machine, SAME defines: the device-timestamp instrument undercounted by 2.07x",
+      "measurement_2_physical_impossibility": "the old number implies 86.0 GB/s of weight streaming against a 68.25 GB/s DRAM part - impossible for a workload that reads 202 MB of weights per token from memory; the wall-anchored rate is 41.5 GB/s",
+      "supporting": "this same run's timestamp-based peak probe reports a 512 MB copy in 41,833 device ns = 12.8 TB/s - the documented device-clock nonsense, re-demonstrated on the same boot as the gap arms"
+    },
+    "composition_artifact": {
+      "what": "the in-model 236 us/layer (b6d662a ablation marginal 5.68 ms/token over 97 dispatches) includes the lm_head GEMV (151,936x896 q4 = 72.3 MB, one dispatch) amortized over 24 layers",
+      "correction": "at 55-70 GB/s for its 18,992-workgroup grid, lm_head costs ~1.0-1.3 ms/token, so the true per-layer projection cost in-model is ~180-195 us/layer - equal to or FASTER than the wall-anchored isolated 203 us/layer within instrument bound",
+      "conclusion": "in-model interleaving imposes no measurable penalty on the GEMV dispatches"
+    },
+    "prior_receipt_corrections_for_policy_owners": [
+      "receipts/2026-09-10-q4-gemv-bandwidth: 'achieved 1.1-1.20 GB/s' divided one layer's traffic (9.36 MB) by a full token of GPU time; per-token q4 weight traffic is ~202 MB + 72 MB lm_head, giving ~48 GB/s in-model - and its 'bench_isolated_kernel_ticks' absolute values rest on the same untrustworthy device clock as everything else",
+      "the 'warm 9.3 MB working set (SLC-resident)' interpretation of isolated results is superseded by this run's sweep: residency produces NO measurable effect (flat 203-209 us/layer from 1 to 24 sets), so SLC residency explains neither the old isolated numbers (clock artifacts do) nor anything else",
+      "receipts/2026-09-10-decode-attribution-finish microbench row 'gemv_layer 72.7 us/disp' is the eager harness floor, not a kernel number; its ablation marginals remain valid (wall-anchored)"
+    ]
+  },
+  "factor_attribution_of_the_former_138_us_per_layer": {
+    "instrument_artifact_timestamp_undercount_us_per_layer": 105,
+    "composition_lm_head_amortized_us_per_layer": "33-55 (0.9-1.3 ms/token lm_head over 24 layers, bounded by its grid's plausible rates)",
+    "residency_eviction": 0,
+    "dependency_stalls": 0,
+    "allocator_churn": 0,
+    "pipeline_switching": 0,
+    "interstitial_attention_norm_rope_kv_kernels": "no eviction effect; their cost is their own streaming work",
+    "submission_structure_async": "+13.9 us/layer = +0.33 ms/token (+3.7% at the short leg), an upper bound - the bench records submit B after submitting A while production records the sampler batch while the forward batch executes; not actionable at this size without an eval-deferral redesign"
+  },
+  "why_no_landing": "The evidence supports no digest-preserving source change: in-model dispatch cost is at parity with isolated (isolated is if anything the slower side), the kernel chain runs at its intrinsic ~41.5 GB/s (61% of the 68.25 GB/s part) in EVERY context, and the only real between-dispatch term (submission boundary, <= 0.33 ms/token upper bound) is within reach of no small change - closing it requires merging mlx-lm's two per-token graph evals or adding speculative commit deferral, both behavior-risky for a bound, not a measured in-model win. Per the assignment's own bar: receipt-only. Digest legs not exercised (nothing landed). The remaining kernel headroom (203 us/layer vs the 123 us/layer full-DRAM-peak floor) is inside the kernel and already shown unreachable by bit-pinned candidates in receipts/2026-09-10-q4-gemv-bandwidth and receipts/2026-09-10-q4-gemv-native-map.",
+  "artifacts": {
+    "verdict": "receipts/2026-09-11-decode-gap/verdict.json + verdict.md",
+    "bench_legs": ["receipts/2026-09-11-decode-gap/gap-a-20260911T080220Z.ndjson", "receipts/2026-09-11-decode-gap/gap-b-20260911T080220Z.ndjson"],
+    "session_provenance": "receipts/2026-09-11-decode-gap/gap-session-20260911T080220Z.txt (shader sha256s incl. refreshed base 56aff1d3; commit 1364d077)",
+    "bench_source": "tools/q4-bw-bench/bench.cpp run_gap_mode (--gap), tools/q4-bw-bench/run-gap-m1.sh",
+    "analysis_reproduction": "python3 over the two ndjson legs: per-arm medians as tabulated above"
+  }
+}
