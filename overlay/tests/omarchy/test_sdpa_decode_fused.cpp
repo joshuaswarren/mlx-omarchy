@@ -15,6 +15,7 @@
 #include "doctest/doctest.h"
 
 #include <cmath>
+#include <cstring>
 #include <cstdint>
 #include <cstdio>
 #include <functional>
@@ -290,4 +291,126 @@ TEST_CASE("decode shapes the fused route must refuse fall through to the composi
       flat(reshape(masked_out, Shape{1, kHeads, 1, kWidth}, stream), stream),
       0.01,
       "refused additive-mask decode falls through to the composition");
+}
+
+namespace {
+
+// Variable-context cache builder for the bit-identity gate: same decode
+// layout as make_cache, any key count up to the capacity.
+// composition_reference with the key count explicit: the fixed-shape
+// helper above bakes kKeys into its reshapes.
+array composition_reference_len(
+    const CacheInputs& in,
+    int keys,
+    Stream stream) {
+  int q_len = in.q.shape(2);
+  array q32 = multiply(astype(in.q, float32, stream), array(kScale), stream);
+  array k32 = astype(in.k, float32, stream);
+  array v32 = astype(in.v, float32, stream);
+  array qs = reshape(
+      q32, Shape{1, kKvHeads, kHeads / kKvHeads, q_len, kWidth}, stream);
+  array kt = swapaxes(
+      reshape(k32, Shape{1, kKvHeads, 1, keys, kWidth}, stream), -1, -2,
+      stream);
+  array vs = reshape(v32, Shape{1, kKvHeads, 1, keys, kWidth}, stream);
+  array scores = matmul(qs, kt, stream);
+  array probs = softmax(scores, std::vector<int>{-1}, false, stream);
+  array result = matmul(probs, vs, stream);
+  return reshape(result, Shape{1, kHeads, q_len, kWidth}, stream);
+}
+
+CacheInputs make_cache_len(
+    Dtype dtype,
+    int keys,
+    int capacity,
+    Stream stream) {
+  auto q_values = pattern(kHeads * kWidth, 11);
+  auto k_values = pattern(kKvHeads * capacity * kWidth, 22);
+  auto v_values = pattern(kKvHeads * capacity * kWidth, 33);
+  array q = astype(
+      array(q_values.begin(), Shape{1, kHeads, 1, kWidth}, float32),
+      dtype,
+      stream);
+  array k_cache = astype(
+      array(k_values.begin(), Shape{1, kKvHeads, capacity, kWidth}, float32),
+      dtype,
+      stream);
+  array v_cache = astype(
+      array(v_values.begin(), Shape{1, kKvHeads, capacity, kWidth}, float32),
+      dtype,
+      stream);
+  array k = slice(
+      k_cache, {0, 0, 0, 0}, {1, kKvHeads, keys, kWidth}, stream);
+  array v = slice(
+      v_cache, {0, 0, 0, 0}, {1, kKvHeads, keys, kWidth}, stream);
+  q.eval();
+  k.eval();
+  v.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  return CacheInputs(std::move(q), std::move(k), std::move(v));
+}
+
+// The composition-exact contract is bit equality: the fused bf16 route and
+// the f32-score composition must store the same bf16 words. Both sides are
+// exact bf16 values widened to f32, so comparing the uint32 patterns is
+// exact and catches sign-of-zero differences a numeric compare would miss.
+void require_bit_identical(
+    const array& got,
+    const array& want,
+    Stream stream) {
+  auto got_bits = flat(got, stream);
+  auto want_bits = flat(want, stream);
+  REQUIRE_EQ(got_bits.size(), want_bits.size());
+  for (size_t index = 0; index < want_bits.size(); ++index) {
+    uint32_t a;
+    uint32_t b;
+    std::memcpy(&a, &got_bits[index], 4);
+    std::memcpy(&b, &want_bits[index], 4);
+    REQUIRE_MESSAGE(
+        a == b,
+        "bit mismatch at ",
+        index,
+        ": got ",
+        got_bits[index],
+        " want ",
+        want_bits[index]);
+  }
+}
+
+} // namespace
+
+// The composition-exact bf16 arm must store the same words as the f32-score
+// composition on every covered key count - one dispatch per call, bit-equal
+// output - and must refuse past the shared-memory key bound by falling
+// through to the composition it reproduces.
+TEST_CASE("fused bf16 decode is bit-identical to the f32 composition") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  for (int keys : {1, 5, 16, 17, 64, 263, 320}) {
+    CAPTURE(keys);
+    CacheInputs in = make_cache_len(bfloat16, keys, 320, stream);
+    if (decode_route_ready(stream)) {
+      uint64_t dispatches = dispatches_for(
+          [&] { return sdpa_call(in, stream); }, stream);
+      CHECK_EQ(dispatches, 1);
+    }
+    require_bit_identical(
+        sdpa_call(in, stream), composition_reference_len(in, keys, stream), stream);
+  }
+
+  // Past the bf16 arm's shared-memory key bound the route must refuse and
+  // the composition answers - the words are identical either way.
+  CAPTURE(2100);
+  CacheInputs long_cache = make_cache_len(bfloat16, 2100, 2100, stream);
+  if (decode_route_ready(stream)) {
+    uint64_t dispatches = dispatches_for(
+        [&] { return sdpa_call(long_cache, stream); }, stream);
+    CHECK(dispatches > 1);
+  }
+  require_bit_identical(
+      sdpa_call(long_cache, stream),
+      composition_reference_len(long_cache, 2100, stream),
+      stream);
 }
