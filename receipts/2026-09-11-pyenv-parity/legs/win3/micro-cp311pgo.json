@@ -1,0 +1,1 @@
+{"python": "3.11.16", "ops": 2000, "ctor_ns_per_op": 34011.3, "eval_ns_per_op": 476.1, "pyloop_ns_per_op": 24.9}

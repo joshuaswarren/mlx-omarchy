@@ -1,0 +1,11 @@
+done cp312-install
+done win2
+done py311-pgo
+done wheel-cp311
+done venv-cp311pgo
+done win3
+done wheel-lto
+done wheel-mcpu
+done win4
+done win5
+done win6

@@ -1,0 +1,112 @@
+{
+  "schema": "mlx-omarchy/pyenv-parity/1",
+  "date_utc": "2026-09-11",
+  "topic": "How much of the Linux decode token is environment (interpreter version, interpreter build, wheel compile flags) rather than backend, measured with the host-path instrument",
+  "host": "jwm1-linux, Apple M1 (G13G B1), Honeykrisp, linux-asahi 7.1.6, 8 cores, 15 GB",
+  "base": "wave/HostPathOverhead tip 3dd1b880 (wheel code identical to 12012beb: git diff 12012beb..3dd1b880 -- overlay patches scripts mlx.lock is empty); anchor wheels b6d662a (main release) and 12012beb (instrument); mlx-lm pinned 0.31.3 everywhere",
+  "instrument": "receipts/2026-09-10-hostpath/hostphases.py unchanged: per-token wall gaps + monkeypatched mx.eval (C++ inside eval); python_outside_eval = wall - eval_inside. MLX_OMARCHY_HOST_TRACE C++ phase counters ON for all legs (every wheel from this branch carries the trace ABI). Same math as the 2026-09-10-hostpath receipt, so numbers are directly comparable.",
+  "gates": "canonical Q4 digests asserted per leg on every window: 7fd25a869ff21678 / 4cc08910 089477fd / 7da83f06ec9f001d; model pin a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3; windows flock /tmp/m1-gpu.lock FIFO, quiet-gated (1-min loadavg < 1.0), loadavg sampled every 10 s; 5 paired reps per config unless noted; micro = eager microbench (ctor/eval/pycall)",
+  "compile_flag_audit": {
+    "our_dev_release_wheel": {
+      "build": "scripts/build-wheel.sh -> mlx setup.py -> CMAKE_BUILD_TYPE=Release unless DEBUG; CMAKE_ARGS carries backend switches only",
+      "flags": "-O3 -DNDEBUG -std=gnu++20 -fPIC -fvisibility=hidden -fvisibility-inlines-hidden -Wno-psabi (flags.make)",
+      "elf": "no .debug sections; runtime asserts compiled out (only static_assert template text in strings); .comment GCC 16.1.1; generic armv8-a (no -mcpu/-march override)",
+      "nanobind": "v2.15.0 via FetchContent; nanobind_add_module(core NB_STATIC STABLE_ABI FREE_THREADED LTO NOMINSIZE) - bindings LTO'd, libmlx NOT LTO'd",
+      "dev_release_vs_release": "DEV_RELEASE=1 changes only the version stamp (patches/mlx-version-time.patch); flags.make byte-identical release-vs-local (receipts/2026-09-03-wheel-delta-v0.3.2-vs-local.md), re-verified by patch audit: no patch touches compile flags"
+    },
+    "upstream_pypi_mlx_0.32.2": {
+      "linux_aarch64_manylinux_2_35_cp314": "GCC 11.4.0 (ubuntu-22.04-arm runner, .comment), no .debug sections, zero runtime-assert strings, same Release defaults; release workflow CMAKE_ARGS = only '-G Ninja -DCMAKE_COMPILE_WARNING_AS_ERROR=ON -DMLX_BUILD_CUDA=OFF'; same nanobind v2.15.0 module settings; core.so exported-dynsym 99 vs ours 50 (compiler-version inlining delta, not a visibility policy difference)",
+      "macos": "same harness on macos-26 runners (Apple clang) - the native-baseline environment",
+      "conclusion": "our wheel's optimisation level, NDEBUG, symbol visibility and nanobind layer match the published wheels; the deltas are compiler brand/version (gcc-16 vs gcc-11 vs Apple clang), the backend (Vulkan vs Metal), and our patch set - not compile flags"
+    }
+  },
+  "interpreter_matrix": {
+    "note": "paired medians vs same-window cp314hpo baseline (deployed: Arch python 3.14.7, CONFIG_ARGS '--without-lto', NO --enable-optimizations => no PGO, no LTO)",
+    "rows": [
+      {
+        "config": "cp314hpo",
+        "py": "3.14.7 Arch (deployed)",
+        "wheel": "instrument 12012beb cp314",
+        "short_paired": null,
+        "py_out_ms": "6.394 (win2) / 6.366 (win3) / 6.490 (win6)"
+      },
+      {
+        "config": "cp312base",
+        "py": "3.12.14 plain -O3 (own build)",
+        "wheel": "cp312 @ 3dd1b88",
+        "short_paired": -0.0004,
+        "long_paired": 0.002,
+        "ctx_paired": 0.0039,
+        "py_out_ms": 6.44
+      },
+      {
+        "config": "cp312pgo",
+        "py": "3.12.14 --enable-optimizations --with-lto",
+        "wheel": "cp312 @ 3dd1b88",
+        "short_paired": 0.0038,
+        "long_paired": -0.0015,
+        "ctx_paired": -0.0027,
+        "py_out_ms": 6.38
+      },
+      {
+        "config": "cp314pgo",
+        "py": "3.14.7 --enable-optimizations --with-lto",
+        "wheel": "instrument 12012beb cp314",
+        "short_paired": -0.0088,
+        "long_paired": -0.0019,
+        "ctx_paired": -0.0019,
+        "py_out_ms": 6.365
+      },
+      {
+        "config": "cp311pgo",
+        "py": "3.11.16 --enable-optimizations --with-lto (native-baseline version)",
+        "wheel": "cp311 @ 3dd1b88",
+        "short_paired": -0.0014,
+        "long_paired": 0.0006,
+        "ctx_paired": 0.0003,
+        "py_out_ms": 6.454
+      }
+    ],
+    "verdict": "INTERPRETER IS NOT THE LEVER: every version/build lands within +/-0.9% tok/s on all three workloads; python-outside-eval band 6.365-6.490 ms (+/-1.0%) with no monotone version or PGO effect. Even the exact native-macOS interpreter (3.11.16 PGO+LTO) shows 6.45 ms Python per token on Linux."
+  },
+  "binding_cost_decomposition": {
+    "microbench": "eager per-op costs (ns/op, 2000 ops, (1,128) f32): ctor(x=x+1 lazy node) 31926-37867, eval(one-node) 322-476, pure-python dispatch loop 17.9-24.9",
+    "reading": "the Python-outside-eval term is ~99.9% C++ binding + array-node creation work (nanobind marshaling, mx::array allocation, graph wiring), not interpreter dispatch: pure-Python loop cost is 3 orders of magnitude below the per-op ctor cost, and ctor is invariant (within run noise) across interpreter version and PGO/LTO",
+    "native_comparison": "native macOS total token = 6.64 ms (150.57 tok/s) INCLUDING its C++ eval; Linux python-out alone = 6.4 ms. Swapping Linux onto the native interpreter environment (cp311pgo leg) moves nothing. The Linux-vs-native gap is therefore NOT interpreter artefact; it lives in the per-op binding/array-creation path and the backend eval share"
+  },
+  "wheel_flag_matrix": {
+    "method": "whole-lib LTO via CXXFLAGS/CFLAGS/LDFLAGS=-flto (verified: '-flto -O3 -DNDEBUG ...' in mlx.dir/flags.make); -mcpu=native via CXXFLAGS/CFLAGS (verified in flags.make); 5 paired reps each vs same-window cp314hpo, digests canonical on every leg",
+    "rows": [
+      {
+        "config": "cp314lto",
+        "short_paired": 0.0341,
+        "long_paired": 0.0047,
+        "ctx_paired": 0.0014,
+        "py_out_ms": "6.416 vs 6.378 baseline",
+        "note": "win4b ran under concurrent peer load (its own cp314hpo baseline 108.2 tok/s vs 111.4 in quiet win2/win6 = ~3% depressed); the +3.4% short is not reproducible in the split legs, which show wall and python-out flat-to-worse"
+      },
+      {
+        "config": "cp314mcpu",
+        "short_paired": -0.0043,
+        "long_paired": 0.0043,
+        "ctx_paired": 0.0013,
+        "py_out_ms": "6.380 vs 6.491 baseline",
+        "note": "all deltas inside the cross-window noise band"
+      }
+    ],
+    "verdict": "NO WHEEL-FLAG LEVER: whole-lib LTO and -mcpu=native both land within the +/-1% noise floor on tok/s and within the 6.37-6.49 ms python-out band; digests canonical everywhere. Nothing repeatably faster -> receipt-only, no source change lands."
+  },
+  "policy": {
+    "never_merged": "no source change landed; receipt-only unless a wheel-flag change proves repeatably faster",
+    "windows": "single top-level flock /tmp/m1-gpu.lock per window, FIFO with peers, quiet gate, loadavg sampled; builds reniced 19, gap-gated (lock free AND 1-min loadavg < 1.5), CPython -j6 / mlx -j4",
+    "digest_failures": "win4/win5 (2026-09-11 05:47-05:49) are VOID operator error (invalid wheel filename broke pip install; legs never ran), not digest mismatches; superseded by win4b/win5b"
+  },
+  "artifacts": [
+    "legs/anchor, win2, win3, win4(void), win5(void), win6, win4b, win5b: per-leg JSON + logs + loadavg",
+    "wheels/: b6d662a cp314, 12012beb cp314, 3dd1b88 cp311/cp312/cp314-lto/cp314-mcpu + SHA256SUMS",
+    "opt/: CPython 3.11.16-pgo, 3.12.14-base, 3.12.14-pgo, 3.14.7-pgo builds + logs",
+    "scripts: build_python.sh, build_wheel.sh, run_window.sh, make_venv.sh, microbench_binding.py, analyze.py, phase2.sh, phase3.sh",
+    "venvs: one per config, mlx-lm 0.31.3 + exact wheel"
+  ],
+  "status": "COMPLETE - interpreter matrix, wheel-flag matrix, compile-flag audit, binding decomposition; all measured legs digest-gated; receipt-only result"
+}

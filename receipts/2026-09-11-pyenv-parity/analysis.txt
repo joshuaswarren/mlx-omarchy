@@ -1,0 +1,99 @@
+=== anchor ===
+window=anchor baseline=cp314hpo
+config                        short-decode-32             long-decode-128      longctx-1024-decode-32 | split(short): wall / py-out / cpp-in / eval-calls
+anchor-main             112.43t   8.900ms n=9       109.26t   9.200ms n=9        96.93t  10.300ms n=9 |   8.814   6.334   2.475     0.1
+cp314hpo                111.42t   9.000ms n=9       107.78t   9.300ms n=9        95.90t  10.400ms n=9 |   8.928   6.394   2.509     0.1
+
+paired medians vs baseline:
+  anchor-main    short-decode-32          x1.0121 (+1.2%)
+  anchor-main    long-decode-128          x1.0127 (+1.3%)
+  anchor-main    longctx-1024-decode-32   x1.0083 (+0.8%)
+  anchor-main    python-out ms/token -0.050 (6.334 vs 6.394)
+
+digests: all canonical
+
+=== win2 ===
+window=win2 baseline=cp314hpo
+config                        short-decode-32             long-decode-128      longctx-1024-decode-32 | split(short): wall / py-out / cpp-in / eval-calls
+cp312base               110.90t   9.000ms n=5       107.63t   9.300ms n=5        96.62t  10.300ms n=5 |   8.943   6.440   2.509     0.1
+cp314hpo                111.40t   9.000ms n=5       107.74t   9.300ms n=5        96.59t  10.400ms n=5 |   8.930   6.441   2.479     0.1
+cp314pgo                110.42t   9.100ms n=5       107.75t   9.300ms n=5        96.20t  10.400ms n=5 |   8.950   6.365   2.581     0.1
+
+paired medians vs baseline:
+  cp312base      short-decode-32          x0.9996 (-0.0%)
+  cp312base      long-decode-128          x1.0020 (+0.2%)
+  cp312base      longctx-1024-decode-32   x1.0039 (+0.4%)
+  cp312base      python-out ms/token -0.020 (6.440 vs 6.441)
+  cp314pgo       short-decode-32          x0.9912 (-0.9%)
+  cp314pgo       long-decode-128          x0.9981 (-0.2%)
+  cp314pgo       longctx-1024-decode-32   x0.9981 (-0.2%)
+  cp314pgo       python-out ms/token -0.074 (6.365 vs 6.441)
+micro cp312base      ctor=31926.0ns eval=407.6ns pycall=22.0ns
+micro cp314hpo       ctor=33598.9ns eval=321.6ns pycall=17.9ns
+micro cp314pgo       ctor=32103.1ns eval=399.1ns pycall=19.1ns
+
+digests: all canonical
+
+=== win3 ===
+window=win3 baseline=cp314hpo
+config                        short-decode-32             long-decode-128      longctx-1024-decode-32 | split(short): wall / py-out / cpp-in / eval-calls
+cp311pgo                109.83t   9.100ms n=5       108.04t   9.300ms n=5        96.58t  10.400ms n=5 |   9.013   6.454   2.533     0.1
+cp314hpo                110.28t   9.100ms n=5       108.09t   9.300ms n=5        96.33t  10.400ms n=5 |   8.946   6.366   2.554     0.1
+
+paired medians vs baseline:
+  cp311pgo       short-decode-32          x0.9986 (-0.1%)
+  cp311pgo       long-decode-128          x1.0006 (+0.1%)
+  cp311pgo       longctx-1024-decode-32   x1.0003 (+0.0%)
+  cp311pgo       python-out ms/token +0.087 (6.454 vs 6.366)
+micro cp311pgo       ctor=34011.3ns eval=476.1ns pycall=24.9ns
+micro cp314hpo       ctor=37867.1ns eval=355.9ns pycall=20.5ns
+
+digests: all canonical
+
+=== win6 ===
+window=win6 baseline=cp314hpo
+config                        short-decode-32             long-decode-128      longctx-1024-decode-32 | split(short): wall / py-out / cpp-in / eval-calls
+cp312pgo                111.87t   8.900ms n=5       107.84t   9.300ms n=5        96.26t  10.400ms n=5 |   8.922   6.380   2.541     0.1
+cp314hpo                111.40t   9.000ms n=5       107.97t   9.300ms n=5        96.77t  10.300ms n=5 |   8.975   6.490   2.485     0.1
+
+paired medians vs baseline:
+  cp312pgo       short-decode-32          x1.0038 (+0.4%)
+  cp312pgo       long-decode-128          x0.9985 (-0.1%)
+  cp312pgo       longctx-1024-decode-32   x0.9973 (-0.3%)
+  cp312pgo       python-out ms/token -0.079 (6.380 vs 6.490)
+micro cp312pgo       ctor=33448.4ns eval=394.3ns pycall=17.9ns
+micro cp314hpo       ctor=37754.6ns eval=450.0ns pycall=22.5ns
+
+digests: all canonical
+
+=== win4b ===
+window=win4b baseline=cp314hpo
+config                        short-decode-32             long-decode-128      longctx-1024-decode-32 | split(short): wall / py-out / cpp-in / eval-calls
+cp314hpo                108.16t   9.200ms n=5       107.81t   9.300ms n=5        96.57t  10.400ms n=5 |   8.964   6.378   2.560     0.1
+cp314lto                111.80t   8.900ms n=5       108.20t   9.200ms n=5        96.63t  10.300ms n=5 |   9.001   6.416   2.510     0.1
+
+paired medians vs baseline:
+  cp314lto       short-decode-32          x1.0341 (+3.4%)
+  cp314lto       long-decode-128          x1.0047 (+0.5%)
+  cp314lto       longctx-1024-decode-32   x1.0014 (+0.1%)
+  cp314lto       python-out ms/token -0.047 (6.416 vs 6.378)
+micro cp314hpo       ctor=36350.1ns eval=437.6ns pycall=30.9ns
+micro cp314lto       ctor=39218.7ns eval=502.4ns pycall=35.7ns
+
+digests: all canonical
+
+=== win5b ===
+window=win5b baseline=cp314hpo
+config                        short-decode-32             long-decode-128      longctx-1024-decode-32 | split(short): wall / py-out / cpp-in / eval-calls
+cp314hpo                111.35t   9.000ms n=5       107.82t   9.300ms n=5        96.41t  10.400ms n=5 |   8.954   6.491   2.482     0.1
+cp314mcpu               110.87t   9.000ms n=5       108.01t   9.300ms n=5        96.54t  10.400ms n=5 |   8.920   6.380   2.556     0.1
+
+paired medians vs baseline:
+  cp314mcpu      short-decode-32          x0.9957 (-0.4%)
+  cp314mcpu      long-decode-128          x1.0043 (+0.4%)
+  cp314mcpu      longctx-1024-decode-32   x1.0013 (+0.1%)
+  cp314mcpu      python-out ms/token -0.067 (6.380 vs 6.491)
+micro cp314hpo       ctor=32986.6ns eval=280.7ns pycall=17.9ns
+micro cp314mcpu      ctor=41788.7ns eval=441.8ns pycall=29.6ns
+
+digests: all canonical

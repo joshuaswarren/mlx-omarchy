@@ -1,0 +1,199 @@
+[phase2 2026-09-11T05:11:12Z] phase2 start pid 2179741
+
+[notice] A new release of pip is available: 25.0.1 -> 26.2.1
+[notice] To update, run: /home/joshuawarren/src/mlx-HostPathOverhead/receipts/2026-09-11-pyenv-parity/venv-cp312base/bin/python3.12 -m pip install --upgrade pip
+venv venv-cp312base ok 3.12.14
+
+[notice] A new release of pip is available: 25.0.1 -> 26.2.1
+[notice] To update, run: /home/joshuawarren/src/mlx-HostPathOverhead/receipts/2026-09-11-pyenv-parity/venv-cp312pgo/bin/python3.12 -m pip install --upgrade pip
+venv venv-cp312pgo ok 3.12.14
+[phase2 2026-09-11T05:12:15Z] cp312 wheel installed into cp312 venvs
+[phase2 2026-09-11T05:16:37Z] win2 rc=0
+[build_python] start 3.11.16-pgo 2026-09-11T05:17:22Z pid 2183940
+Python 3.11.16 (main, Sep 11 2026, 00:25:50) [GCC 16.1.1 20260430]
+[build_python] done 3.11.16-pgo 2026-09-11T05:29:37Z
+[build_wheel] tag=cp311-311 python=Python 3.11.16 extra='' start 2026-09-11T05:31:52Z pid 2210402
+== prepare upstream tree ==
+patching file CMakeLists.txt
+patching file mlx/CMakeLists.txt
+patching file tests/CMakeLists.txt
+patching file mlx/transforms.cpp
+patching file setup.py
+patching file mlx/io/safetensors.cpp
+patching file mlx/io/load.cpp
+patching file mlx/export.cpp
+patching file mlx/linalg.cpp
+patching file python/src/buffer.h
+patching file mlx/ops.cpp
+Hunk #2 succeeded at 5051 (offset 1 line).
+patching file mlx/backend/cpu/distributed.cpp
+patching file mlx/fast.cpp
+patching file mlx/backend/common/metal_kernel.cpp
+patching file setup.py
+/home/joshuawarren/src/mlx-HostPathOverhead/.work-cp311-311/mlx
+== build venv (/home/joshuawarren/src/mlx-HostPathOverhead/.work-cp311-311/venv-build) ==
+Traceback (most recent call last):
+  File "<stdin>", line 2, in <module>
+AssertionError
+Collecting setuptools>=80
+  Using cached setuptools-84.0.0-py3-none-any.whl.metadata (6.6 kB)
+Collecting typing_extensions
+  Using cached typing_extensions-4.16.0-py3-none-any.whl.metadata (3.3 kB)
+Using cached setuptools-84.0.0-py3-none-any.whl (818 kB)
+Using cached typing_extensions-4.16.0-py3-none-any.whl (45 kB)
+Installing collected packages: typing_extensions, setuptools
+  Attempting uninstall: setuptools
+    Found existing installation: setuptools 79.0.1
+    Uninstalling setuptools-79.0.1:
+      Successfully uninstalled setuptools-79.0.1
+Successfully installed setuptools-84.0.0 typing_extensions-4.16.0
+
+[notice] A new release of pip is available: 24.0 -> 26.2.1
+[notice] To update, run: /home/joshuawarren/src/mlx-HostPathOverhead/.work-cp311-311/venv-build/bin/python -m pip install --upgrade pip
+== wheel build ==
+Processing ./src/mlx-HostPathOverhead/.work-cp311-311/mlx
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Building wheels for collected packages: mlx-omarchy
+  Building wheel for mlx-omarchy (pyproject.toml): started
+  Building wheel for mlx-omarchy (pyproject.toml): still running...
+  Building wheel for mlx-omarchy (pyproject.toml): still running...
+  Building wheel for mlx-omarchy (pyproject.toml): finished with status 'done'
+  Created wheel for mlx-omarchy: filename=mlx_omarchy-0.32.2.dev202609110531+3dd1b88-cp311-cp311-linux_aarch64.whl size=7602916 sha256=2791098f990a1df50d2bb77df23c4456b0f874788419ee0cf53a57378556282c
+  Stored in directory: /tmp/pip-ephem-wheel-cache-hbrv4oc7/wheels/a1/34/e9/3697914ca6a550494c980eedb06a03b13c9595e3a75fc3e8c8
+Successfully built mlx-omarchy
+
+[notice] A new release of pip is available: 24.0 -> 26.2.1
+[notice] To update, run: pip install --upgrade pip
+== receipt ==
+[receipt] wheel: /home/joshuawarren/src/mlx-HostPathOverhead/dist/mlx_omarchy-0.32.2.dev202609110531+3dd1b88-cp311-cp311-linux_aarch64.whl
+[receipt] size: 7602916 bytes
+[receipt] sha256: 2791098f990a1df50d2bb77df23c4456b0f874788419ee0cf53a57378556282c
+[receipt] source commit: 3dd1b88
+[receipt] NEXT STEP - do not skip: after you upload this wheel to a
+[receipt] release, verify the UPLOADED asset with
+[receipt]   python3 scripts/verify-release-assets.py <tag>
+[receipt] It must print VERIFIED before the release is announced as
+[receipt] usable. See docs/release.md. A local build check does not
+[receipt] verify what users download.
+[build_wheel] tag=cp311-311 done 2026-09-11T05:34:47Z
+
+[notice] A new release of pip is available: 24.0 -> 26.2.1
+[notice] To update, run: /home/joshuawarren/src/mlx-HostPathOverhead/receipts/2026-09-11-pyenv-parity/venv-cp311pgo/bin/python3.11 -m pip install --upgrade pip
+
+[notice] A new release of pip is available: 24.0 -> 26.2.1
+[notice] To update, run: /home/joshuawarren/src/mlx-HostPathOverhead/receipts/2026-09-11-pyenv-parity/venv-cp311pgo/bin/python3.11 -m pip install --upgrade pip
+venv-ok 3.11.16 0.31.3
+[phase2 2026-09-11T05:38:20Z] win3 rc=0
+[build_wheel] tag=cp314lto-314 python=Python 3.14.7 extra='-DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON' start 2026-09-11T05:39:05Z pid 2216755
+== prepare upstream tree ==
+patching file CMakeLists.txt
+patching file mlx/CMakeLists.txt
+patching file tests/CMakeLists.txt
+patching file mlx/transforms.cpp
+patching file setup.py
+patching file mlx/io/safetensors.cpp
+patching file mlx/io/load.cpp
+patching file mlx/export.cpp
+patching file mlx/linalg.cpp
+patching file python/src/buffer.h
+patching file mlx/ops.cpp
+Hunk #2 succeeded at 5051 (offset 1 line).
+patching file mlx/backend/cpu/distributed.cpp
+patching file mlx/fast.cpp
+patching file mlx/backend/common/metal_kernel.cpp
+patching file setup.py
+/home/joshuawarren/src/mlx-HostPathOverhead/.work-cp314lto-314/mlx
+== build venv (/home/joshuawarren/src/mlx-HostPathOverhead/.work-cp314lto-314/venv-build) ==
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+ModuleNotFoundError: No module named 'setuptools'
+Collecting setuptools>=80
+  Using cached setuptools-84.0.0-py3-none-any.whl.metadata (6.6 kB)
+Requirement already satisfied: typing_extensions in /usr/lib/python3.14/site-packages (4.16.0)
+Using cached setuptools-84.0.0-py3-none-any.whl (818 kB)
+Installing collected packages: setuptools
+Successfully installed setuptools-84.0.0
+== wheel build ==
+Processing ./src/mlx-HostPathOverhead/.work-cp314lto-314/mlx
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Building wheels for collected packages: mlx-omarchy
+  Building wheel for mlx-omarchy (pyproject.toml): started
+  Building wheel for mlx-omarchy (pyproject.toml): still running...
+  Building wheel for mlx-omarchy (pyproject.toml): still running...
+  Building wheel for mlx-omarchy (pyproject.toml): finished with status 'done'
+  Created wheel for mlx-omarchy: filename=mlx_omarchy-0.32.2.dev202609110539+3dd1b88-cp314-cp314-linux_aarch64.whl size=7588350 sha256=52eb773dada61ddc989ac50905a09f46ed94d3930350b5ef09c2dbc947629e2a
+  Stored in directory: /tmp/pip-ephem-wheel-cache-zu8dnpv6/wheels/8a/77/92/c1e25eb0889040ce852c6fd68ade071ed5a9b73aaa027f4b6e
+Successfully built mlx-omarchy
+== receipt ==
+[receipt] wheel: /home/joshuawarren/src/mlx-HostPathOverhead/dist/mlx_omarchy-0.32.2.dev202609110539+3dd1b88-cp314-cp314-linux_aarch64.whl
+[receipt] size: 7588350 bytes
+[receipt] sha256: 52eb773dada61ddc989ac50905a09f46ed94d3930350b5ef09c2dbc947629e2a
+[receipt] source commit: 3dd1b88
+[receipt] NEXT STEP - do not skip: after you upload this wheel to a
+[receipt] release, verify the UPLOADED asset with
+[receipt]   python3 scripts/verify-release-assets.py <tag>
+[receipt] It must print VERIFIED before the release is announced as
+[receipt] usable. See docs/release.md. A local build check does not
+[receipt] verify what users download.
+[build_wheel] tag=cp314lto-314 done 2026-09-11T05:41:59Z
+[build_wheel] tag=cp314mcpu-314 python=Python 3.14.7 extra='-DCMAKE_CXX_FLAGS=-mcpu=native -DCMAKE_C_FLAGS=-mcpu=native' start 2026-09-11T05:42:45Z pid 2220532
+== prepare upstream tree ==
+patching file CMakeLists.txt
+patching file mlx/CMakeLists.txt
+patching file tests/CMakeLists.txt
+patching file mlx/transforms.cpp
+patching file setup.py
+patching file mlx/io/safetensors.cpp
+patching file mlx/io/load.cpp
+patching file mlx/export.cpp
+patching file mlx/linalg.cpp
+patching file python/src/buffer.h
+patching file mlx/ops.cpp
+Hunk #2 succeeded at 5051 (offset 1 line).
+patching file mlx/backend/cpu/distributed.cpp
+patching file mlx/fast.cpp
+patching file mlx/backend/common/metal_kernel.cpp
+patching file setup.py
+/home/joshuawarren/src/mlx-HostPathOverhead/.work-cp314mcpu-314/mlx
+== build venv (/home/joshuawarren/src/mlx-HostPathOverhead/.work-cp314mcpu-314/venv-build) ==
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+ModuleNotFoundError: No module named 'setuptools'
+Collecting setuptools>=80
+  Using cached setuptools-84.0.0-py3-none-any.whl.metadata (6.6 kB)
+Requirement already satisfied: typing_extensions in /usr/lib/python3.14/site-packages (4.16.0)
+Using cached setuptools-84.0.0-py3-none-any.whl (818 kB)
+Installing collected packages: setuptools
+Successfully installed setuptools-84.0.0
+== wheel build ==
+Processing ./src/mlx-HostPathOverhead/.work-cp314mcpu-314/mlx
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Building wheels for collected packages: mlx-omarchy
+  Building wheel for mlx-omarchy (pyproject.toml): started
+  Building wheel for mlx-omarchy (pyproject.toml): still running...
+  Building wheel for mlx-omarchy (pyproject.toml): still running...
+  Building wheel for mlx-omarchy (pyproject.toml): finished with status 'done'
+  Created wheel for mlx-omarchy: filename=mlx_omarchy-0.32.2.dev202609110542+3dd1b88-cp314-cp314-linux_aarch64.whl size=7588353 sha256=ed4ac4e7334ac3f1679126365181f206dc7e212a0e55f40fe622a2cc0e6a7df8
+  Stored in directory: /tmp/pip-ephem-wheel-cache-11h48rfm/wheels/b3/d8/c0/a6d0798d2f1b933e11521eedf4754e5ceb18db08678d574a04
+Successfully built mlx-omarchy
+== receipt ==
+[receipt] wheel: /home/joshuawarren/src/mlx-HostPathOverhead/dist/mlx_omarchy-0.32.2.dev202609110542+3dd1b88-cp314-cp314-linux_aarch64.whl
+[receipt] size: 7588353 bytes
+[receipt] sha256: ed4ac4e7334ac3f1679126365181f206dc7e212a0e55f40fe622a2cc0e6a7df8
+[receipt] source commit: 3dd1b88
+[receipt] NEXT STEP - do not skip: after you upload this wheel to a
+[receipt] release, verify the UPLOADED asset with
+[receipt]   python3 scripts/verify-release-assets.py <tag>
+[receipt] It must print VERIFIED before the release is announced as
+[receipt] usable. See docs/release.md. A local build check does not
+[receipt] verify what users download.
+[build_wheel] tag=cp314mcpu-314 done 2026-09-11T05:45:39Z
+ERROR: Invalid wheel filename (wrong number of parts): 'lto-cp314'
+ERROR: Invalid wheel filename (wrong number of parts): 'mcpu-cp314'
+[phase2 2026-09-11T05:48:08Z] win4 rc=4
+[phase2 2026-09-11T05:49:18Z] win5 rc=4
+[phase2 2026-09-11T05:51:26Z] win6 rc=0
+[phase2 2026-09-11T05:51:26Z] phase2 complete

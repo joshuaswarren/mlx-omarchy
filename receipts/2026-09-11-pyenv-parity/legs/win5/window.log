@@ -1,0 +1,57 @@
+=== window win5 start 2026-09-11T05:48:08Z pid 2225909 configs: cp314hpo=/home/joshuawarren/src/mlx-HostPathOverhead/.work/venv-hpo/bin/python:/home/joshuawarren/src/mlx-HostPathOverhead/receipts/2026-09-11-pyenv-parity/wheels/mlx_omarchy-0.32.2.dev202609110320+12012beb-cp314-cp314-linux_aarch64.whl:1 cp314mcpu=/home/joshuawarren/src/mlx-HostPathOverhead/receipts/2026-09-11-pyenv-parity/venv-cp314mcpu/bin/python:/home/joshuawarren/src/mlx-HostPathOverhead/receipts/2026-09-11-pyenv-parity/wheels/mcpu-cp314.whl:1
+[lock] acquired 2026-09-11T05:48:15Z
+[gate] quiet at loadavg=0.83 2026-09-11T05:48:15Z
+[matrix] cp314hpo-r1 rc=0 2026-09-11T05:48:25Z
+[DIGEST] ok short-decode-32 7fd25a869ff21678
+[DIGEST] ok long-decode-128 4cc08910089477fd
+[DIGEST] ok longctx-1024-decode-32 7da83f06ec9f001d
+[split] split-cp314hpo-r1 rc=0 2026-09-11T05:48:27Z
+[matrix] cp314mcpu-r1 rc=3 2026-09-11T05:48:27Z
+[DIGEST] FAIL short-decode-32 got=None want=7fd25a869ff21678
+[DIGEST] FAIL long-decode-128 got=None want=4cc08910089477fd
+[DIGEST] FAIL longctx-1024-decode-32 got=None want=7da83f06ec9f001d
+[split] split-cp314mcpu-r1 rc=1 2026-09-11T05:48:28Z
+[matrix] cp314hpo-r2 rc=0 2026-09-11T05:48:38Z
+[DIGEST] ok short-decode-32 7fd25a869ff21678
+[DIGEST] ok long-decode-128 4cc08910089477fd
+[DIGEST] ok longctx-1024-decode-32 7da83f06ec9f001d
+[split] split-cp314hpo-r2 rc=0 2026-09-11T05:48:40Z
+[matrix] cp314mcpu-r2 rc=3 2026-09-11T05:48:40Z
+[DIGEST] FAIL short-decode-32 got=None want=7fd25a869ff21678
+[DIGEST] FAIL long-decode-128 got=None want=4cc08910089477fd
+[DIGEST] FAIL longctx-1024-decode-32 got=None want=7da83f06ec9f001d
+[split] split-cp314mcpu-r2 rc=1 2026-09-11T05:48:40Z
+[matrix] cp314hpo-r3 rc=0 2026-09-11T05:48:50Z
+[DIGEST] ok short-decode-32 7fd25a869ff21678
+[DIGEST] ok long-decode-128 4cc08910089477fd
+[DIGEST] ok longctx-1024-decode-32 7da83f06ec9f001d
+[split] split-cp314hpo-r3 rc=0 2026-09-11T05:48:52Z
+[matrix] cp314mcpu-r3 rc=3 2026-09-11T05:48:53Z
+[DIGEST] FAIL short-decode-32 got=None want=7fd25a869ff21678
+[DIGEST] FAIL long-decode-128 got=None want=4cc08910089477fd
+[DIGEST] FAIL longctx-1024-decode-32 got=None want=7da83f06ec9f001d
+[split] split-cp314mcpu-r3 rc=1 2026-09-11T05:48:53Z
+[matrix] cp314hpo-r4 rc=0 2026-09-11T05:49:03Z
+[DIGEST] ok short-decode-32 7fd25a869ff21678
+[DIGEST] ok long-decode-128 4cc08910089477fd
+[DIGEST] ok longctx-1024-decode-32 7da83f06ec9f001d
+[split] split-cp314hpo-r4 rc=0 2026-09-11T05:49:05Z
+[matrix] cp314mcpu-r4 rc=3 2026-09-11T05:49:05Z
+[DIGEST] FAIL short-decode-32 got=None want=7fd25a869ff21678
+[DIGEST] FAIL long-decode-128 got=None want=4cc08910089477fd
+[DIGEST] FAIL longctx-1024-decode-32 got=None want=7da83f06ec9f001d
+[split] split-cp314mcpu-r4 rc=1 2026-09-11T05:49:05Z
+[matrix] cp314hpo-r5 rc=0 2026-09-11T05:49:16Z
+[DIGEST] ok short-decode-32 7fd25a869ff21678
+[DIGEST] ok long-decode-128 4cc08910089477fd
+[DIGEST] ok longctx-1024-decode-32 7da83f06ec9f001d
+[split] split-cp314hpo-r5 rc=0 2026-09-11T05:49:17Z
+[matrix] cp314mcpu-r5 rc=3 2026-09-11T05:49:18Z
+[DIGEST] FAIL short-decode-32 got=None want=7fd25a869ff21678
+[DIGEST] FAIL long-decode-128 got=None want=4cc08910089477fd
+[DIGEST] FAIL longctx-1024-decode-32 got=None want=7da83f06ec9f001d
+[split] split-cp314mcpu-r5 rc=1 2026-09-11T05:49:18Z
+[micro] binding microbench per config
+[micro] cp314hpo rc=0
+[micro] cp314mcpu rc=1
+=== window win5 END: DIGEST FAILURE 2026-09-11T05:49:18Z

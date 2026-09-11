@@ -1,0 +1,119 @@
+[phase3 2026-09-11T05:54:56Z] start pid 2230430
+[build_wheel] tag=cp314lto2-314 python=Python 3.14.7 extra='' start 2026-09-11T05:54:56Z pid 2230438
+== prepare upstream tree ==
+patching file CMakeLists.txt
+patching file mlx/CMakeLists.txt
+patching file tests/CMakeLists.txt
+patching file mlx/transforms.cpp
+patching file setup.py
+patching file mlx/io/safetensors.cpp
+patching file mlx/io/load.cpp
+patching file mlx/export.cpp
+patching file mlx/linalg.cpp
+patching file python/src/buffer.h
+patching file mlx/ops.cpp
+Hunk #2 succeeded at 5051 (offset 1 line).
+patching file mlx/backend/cpu/distributed.cpp
+patching file mlx/fast.cpp
+patching file mlx/backend/common/metal_kernel.cpp
+patching file setup.py
+/home/joshuawarren/src/mlx-HostPathOverhead/.work-cp314lto2-314/mlx
+== build venv (/home/joshuawarren/src/mlx-HostPathOverhead/.work-cp314lto2-314/venv-build) ==
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+ModuleNotFoundError: No module named 'setuptools'
+Collecting setuptools>=80
+  Using cached setuptools-84.0.0-py3-none-any.whl.metadata (6.6 kB)
+Requirement already satisfied: typing_extensions in /usr/lib/python3.14/site-packages (4.16.0)
+Using cached setuptools-84.0.0-py3-none-any.whl (818 kB)
+Installing collected packages: setuptools
+Successfully installed setuptools-84.0.0
+== wheel build ==
+Processing ./src/mlx-HostPathOverhead/.work-cp314lto2-314/mlx
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Building wheels for collected packages: mlx-omarchy
+  Building wheel for mlx-omarchy (pyproject.toml): started
+  Building wheel for mlx-omarchy (pyproject.toml): still running...
+  Building wheel for mlx-omarchy (pyproject.toml): still running...
+  Building wheel for mlx-omarchy (pyproject.toml): still running...
+  Building wheel for mlx-omarchy (pyproject.toml): still running...
+  Building wheel for mlx-omarchy (pyproject.toml): finished with status 'done'
+  Created wheel for mlx-omarchy: filename=mlx_omarchy-0.32.2.dev202609110554+3dd1b88-cp314-cp314-linux_aarch64.whl size=7850068 sha256=343ea20c185ef70edf4dfc9068a67164442244d984c4bc13ad7775ba9fa034cb
+  Stored in directory: /tmp/pip-ephem-wheel-cache-eawd7r32/wheels/ca/19/17/a2d3bb57d8b59e290fd8d46a32036bcde5c2f7c7a9da7fc5ae
+Successfully built mlx-omarchy
+== receipt ==
+[receipt] wheel: /home/joshuawarren/src/mlx-HostPathOverhead/dist/mlx_omarchy-0.32.2.dev202609110554+3dd1b88-cp314-cp314-linux_aarch64.whl
+[receipt] size: 7850068 bytes
+[receipt] sha256: 343ea20c185ef70edf4dfc9068a67164442244d984c4bc13ad7775ba9fa034cb
+[receipt] source commit: 3dd1b88
+[receipt] NEXT STEP - do not skip: after you upload this wheel to a
+[receipt] release, verify the UPLOADED asset with
+[receipt]   python3 scripts/verify-release-assets.py <tag>
+[receipt] It must print VERIFIED before the release is announced as
+[receipt] usable. See docs/release.md. A local build check does not
+[receipt] verify what users download.
+[build_wheel] tag=cp314lto2-314 done 2026-09-11T06:00:35Z
+[phase3] FATAL LTO flag absent
+[phase3b 2026-09-11T06:13:03Z] start pid 2251104
+[build_wheel] tag=cp314mcpu2-314 python=Python 3.14.7 extra='' start 2026-09-11T06:16:03Z pid 2252154
+== prepare upstream tree ==
+patching file CMakeLists.txt
+patching file mlx/CMakeLists.txt
+patching file tests/CMakeLists.txt
+patching file mlx/transforms.cpp
+patching file setup.py
+patching file mlx/io/safetensors.cpp
+patching file mlx/io/load.cpp
+patching file mlx/export.cpp
+patching file mlx/linalg.cpp
+patching file python/src/buffer.h
+patching file mlx/ops.cpp
+Hunk #2 succeeded at 5051 (offset 1 line).
+patching file mlx/backend/cpu/distributed.cpp
+patching file mlx/fast.cpp
+patching file mlx/backend/common/metal_kernel.cpp
+patching file setup.py
+/home/joshuawarren/src/mlx-HostPathOverhead/.work-cp314mcpu2-314/mlx
+== build venv (/home/joshuawarren/src/mlx-HostPathOverhead/.work-cp314mcpu2-314/venv-build) ==
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+ModuleNotFoundError: No module named 'setuptools'
+Collecting setuptools>=80
+  Using cached setuptools-84.0.0-py3-none-any.whl.metadata (6.6 kB)
+Requirement already satisfied: typing_extensions in /usr/lib/python3.14/site-packages (4.16.0)
+Using cached setuptools-84.0.0-py3-none-any.whl (818 kB)
+Installing collected packages: setuptools
+Successfully installed setuptools-84.0.0
+== wheel build ==
+Processing ./src/mlx-HostPathOverhead/.work-cp314mcpu2-314/mlx
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Building wheels for collected packages: mlx-omarchy
+  Building wheel for mlx-omarchy (pyproject.toml): started
+  Building wheel for mlx-omarchy (pyproject.toml): still running...
+  Building wheel for mlx-omarchy (pyproject.toml): still running...
+  Building wheel for mlx-omarchy (pyproject.toml): still running...
+  Building wheel for mlx-omarchy (pyproject.toml): finished with status 'done'
+  Created wheel for mlx-omarchy: filename=mlx_omarchy-0.32.2.dev202609110616+3dd1b88-cp314-cp314-linux_aarch64.whl size=7478409 sha256=c0ae9029a3f0edaa11e2dc7aa14418c51eff5f2d5dad69475c6c88e08c5bfced
+  Stored in directory: /tmp/pip-ephem-wheel-cache-jifs0qr8/wheels/a2/c5/bf/5d51005b6ca0078d65fd6dda581de2135aebae5a691dcbc08a
+Successfully built mlx-omarchy
+== receipt ==
+[receipt] wheel: /home/joshuawarren/src/mlx-HostPathOverhead/dist/mlx_omarchy-0.32.2.dev202609110616+3dd1b88-cp314-cp314-linux_aarch64.whl
+[receipt] size: 7478409 bytes
+[receipt] sha256: c0ae9029a3f0edaa11e2dc7aa14418c51eff5f2d5dad69475c6c88e08c5bfced
+[receipt] source commit: 3dd1b88
+[receipt] NEXT STEP - do not skip: after you upload this wheel to a
+[receipt] release, verify the UPLOADED asset with
+[receipt]   python3 scripts/verify-release-assets.py <tag>
+[receipt] It must print VERIFIED before the release is announced as
+[receipt] usable. See docs/release.md. A local build check does not
+[receipt] verify what users download.
+[build_wheel] tag=cp314mcpu2-314 done 2026-09-11T06:20:19Z
+[phase3b] mlx flags: CXX_FLAGS = -mcpu=native -O3 -DNDEBUG -std=gnu++20 -fPIC -fvisibility=hidden -fvisibility-inlines-hidden -Wno-psabi
+[phase3b] mcpu verified
+venv-ok 3.14.7 0.31.3
+venv-ok 3.14.7 0.31.3
+[phase3b] win4b rc=0
+[phase3b] win5b rc=0
+[phase3b 2026-09-11T06:36:13Z] complete
