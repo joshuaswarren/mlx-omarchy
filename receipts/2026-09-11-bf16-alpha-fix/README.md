@@ -266,3 +266,142 @@ window (~13:45); digest arithmetic is deterministic so no gate was
 affected, but wall-clock arm metrics in those seconds may be
 perturbed. And the first probe run used the invalid trap-shader
 binary (Proof 2 incident note); the invalid log is preserved.
+
+---
+
+## D2 decision window (2026-09-11) - the alpha question answered, fix LANDED
+
+The owner decision returned as: decide on evidence, and leave the
+instrument correct. The S1 probe's max-ULP leg stands as published (the
+rerun below reproduces it bit-for-bit); the question it could not answer
+got its own instrument, run the same evening in a second window on the
+same pinned driver (M1-class aarch64, fork driver
+`mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1` verified in-window,
+placeholder host per the public-repo rule).
+
+### Why the S1 probe's max leg measured storage, not alpha
+
+Read from `matmul_alpha_f64_probe.cpp`, not assumed: its oracle computes
+the whole attention in float64 - scores dot, scale, softmax, PV
+accumulation - and rounds once to bf16 at the output. The fast route it
+measures does not implement that object: it stores scores bf16 after the
+scaled scores matmul and stores softmax probs bf16 (see the sdpa
+primitive's "Scores store bf16 (2^-8 relative rounding per stored
+score)" note; upstream Metal keeps attention intermediates in f32,
+`typedef float U`). Each stored score/prob carries up to 2^-8 relative
+rounding, and sharp softmax at kL=128 amplifies it into the output - so
+the leg measures distance to an unimplemented f64 attention, and any
+alpha-mechanism error smaller than that storage noise is invisible to
+it. The bound of 32 was pre-registered against the f64 object; the route
+never claimed to be that object.
+
+### The differential instrument
+
+`matmul_alpha_differential_probe.cpp` (receipt tooling, not shipped),
+built twice from the same fixed tree: the FIXED link, and a TRAP link
+with only the shader reverted to the pre-fix version (the fix's relaxed
+gate, pre-fix drain) - the same fail-proof construction as S1. Two
+decisions, separated:
+
+- **Leg A, alpha == 1 identity** (the only shape any shipped path
+  dispatched pre-landing): four direct bf16 matmuls at coopmat-gated
+  shapes plus sdpa fast at scale == 1.0, every output bit digested
+  (FNV-1a-64) and dumped raw; the dumps are compared BYTE-FOR-BYTE
+  across the two binaries. No tolerance anywhere on this leg - per the
+  owner note, a one-ULP move here is a landing blocker, not a rounding
+  detail.
+- **Leg B, alpha != 1** (the shape the fix exists to make correct): sdpa
+  fast at the S1 probe's exact shape and seeds (B=1 H=2 KV=1 qL=64
+  kL=128 D=8, seeds 401/409/419, scale 0.25), measured against TWO
+  oracles side by side: `plain` (the S1 f64-everywhere oracle) and
+  `storage` (the same f64 reference modelling the route's documented
+  narrow storage: scores bf16 after the scaled matmul, f64 softmax over
+  the stored scores, probs bf16, f64 PV over the stored probs). The
+  f32-composition route runs as a control on both builds.
+
+Pre-registered gates (in `scripts-d2/m1_window_d2.sh`, written before
+the window): GATE-A alpha==1 byte-identity (blocker); GATE-B fixed vs
+storage oracle mean <= 4.0 and max <= 32; GATE-B2 trap vs the same
+oracle violates those bounds; GATE-C trap mean >= 100x fixed mean;
+GATE-D digest gates 36/36.
+
+### Results (D2 window)
+
+| Kernel | vs plain f64 oracle | vs storage-modelling f64 oracle |
+|---|---|---|
+| FIXED (drain scale) | mean 2.6123 / max 242 / exact 0.408 | **mean 0.0000 / max 0 / exact 1.000** |
+| TRAP (pre-fix drain, alpha dropped) | mean 9668.6377 / max 34046 | mean 9669.3633 / max 34226 / exact 0.000 |
+| f32 composition control (both builds) | mean 0.0000 / max 0 | mean 2.6123 / max 242 |
+
+- GATE-A **PASS**: every alpha==1 leg byte-identical across the two
+  binaries - mat 32x16x32 `0xb2f727a0b237bd3c`, 64x32x64
+  `0x0810652b84898613`, 96x64x96 `0xa0fe9153f643412f`, 128x8x64
+  `0x72c6181aaaa64c3f`, sdpa scale=1.0 `0xf1f70dbd2f2be747`, f32comp
+  control and both host references identical; raw dumps cmp-clean
+  (`window_d2.log` phase 3, sha256 lines).
+- GATE-B **PASS** with margin: the fixed kernel is BIT-IDENTICAL to the
+  storage-modelling oracle on all 1024 outputs - the dumped
+  `fast-scale025` bytes equal the oracle's bytes (sha256
+  `1ed3e4c9...` both). The fixed kernel is exactly the modelled route
+  semantics at this shape.
+- GATE-B2 **PASS**: the trap violates the same bounds by three orders.
+  Bonus mechanism evidence: the trap's scale-0.25 output digest equals
+  its scale-1.0 digest (`0xf1f70dbd2f2be747` for both) - the pre-fix
+  kernel at scale 0.25 literally produced the scale-1.0 result, because
+  its drain ignores alpha.
+- GATE-C **PASS**: 0.0000 vs 9669.3633 - the fixed kernel is not just
+  closer, it is exact against the storage oracle.
+- GATE-D **PASS**: verifier rc=0, all_held=true, 36/36 measured legs
+  across fork+stock x r1-r3 (`m2-logs/digest-gates-d2.json`, S1 wheel
+  unchanged).
+- Suites re-run on the same tree, all rc=0: family, fastops 34/34,
+  runtime (`m2-logs/d2-*.log`).
+- **Original probe rerun, unchanged**: the S1 binary (sha256
+  `30e2db7b...` verified before the run) re-run on the same fixed build:
+  `fast={"exact_frac":0.408203,"mean_ulp":2.6123,"max_ulp":242}` - the
+  published 242 reproduced exactly, bound untouched, CHECK still fails
+  as pre-registered (`m2-logs/probe-d2.log`). The instrument's fixed
+  kernel vs the plain oracle (2.6123/242) matches it number for number,
+  and the f32comp control shows the SAME 242 signature against the
+  storage oracle - a route with no coopmat involvement at all exhibits
+  the plain-vs-storage gap identically. The 242 is the documented
+  storage rounding, not the alpha mechanism; the alpha mechanism
+  measures 0.
+
+Disclosure (window bookkeeping, not a gate result): the window script's
+phase-3 loop compared EVERY dump including the alpha != 1 leg and
+printed `GATE-A raw-bytes verdict: FAIL`; that DIFFER is the fixed vs
+trap alpha != 1 output differing by design (it is the fix working). The
+alpha==1 legs are all IDENTICAL in the same log; GATE-A passes on
+those. The script is committed as run; the verdict line is corrected
+here rather than by re-running the window.
+
+### Decision
+
+**LANDABLE, and landed.** (a) alpha==1 traffic is bit-identical to the
+pre-fix kernel byte-for-byte; (b) the fixed kernel matches the
+storage-modelling reference exactly where the pre-fix kernel fails it by
+three orders; digest gates 36/36; suites pass; the failed S1 max gate
+stands published and is now attributed by direct measurement, not
+simulation alone. Landed as the cherry-pick of `08cdfc49` onto
+origin/main `6e7355a3` on branch `alphaprobe/decide` (the fix commit's
+parent is `b4271903`, an ancestor of `6e7355a3`, and `overlay/` is
+byte-identical between `b4271903` and `6e7355a3`, so the landed library
+source is byte-identical to the tree every D2 gate ran on).
+
+Regression pins so the alpha==1 bit-identity cannot regress silently
+(both skip on non-coopmat devices, where the untouched non-coopmat
+kernel serves and the pin would not bind the coopmat route):
+`overlay/tests/omarchy/test_matmul_family.cpp` "MatmulBF16Coopmat
+alpha==1 stays bit-identical to the pre-fix drain" (the four matmul
+digests) and `overlay/tests/omarchy/test_fast_ops.cpp` "sdpa bf16 fast
+scale==1.0 stays bit-identical to the pre-fix alpha==1 route" (the
+sdpa digest). Pins are 64-bit FNV-1a-64 over raw bf16 output bits,
+captured from the pre-fix kernel in this window; a one-bit move fails.
+Verified on the M1 against the landed tree (see
+`m2-logs/landed-pins.log`).
+
+D2 window wall-anchor: one flock acquisition on the GPU lock
+15:17-15:30 local (-05:00) 2026-09-11, machine otherwise idle (load
+0.00 at launch), driver pinned and verified in-window, warmup matrix
+run discarded, fork+stock x r1-r3 measured.

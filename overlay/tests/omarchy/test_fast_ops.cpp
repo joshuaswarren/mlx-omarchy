@@ -16,6 +16,7 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "doctest/doctest.h"
 
+#include <cstdint>
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
@@ -2707,4 +2708,95 @@ TEST_CASE("fused rope refuses beyond the trig argument limit by name") {
   CHECK(
       freqs_message.find("exceeds the built-in accuracy limit") !=
       std::string::npos);
+}
+
+namespace {
+
+uint64_t alpha1_fnv1a64(const void* data, size_t bytes) {
+  const uint8_t* p = (const uint8_t*)data;
+  uint64_t h = 0xcbf29ce484222325ull;
+  for (size_t i = 0; i < bytes; ++i) {
+    h ^= p[i];
+    h *= 0x100000001b3ull;
+  }
+  return h;
+}
+
+// The bf16-alpha-fix D2 instrument's exact input generator; the pinned
+// digest below is only meaningful against these bytes.
+std::vector<float> alpha1_pattern(size_t count, uint32_t seed) {
+  std::vector<float> data(count);
+  uint32_t state = seed;
+  for (size_t i = 0; i < count; ++i) {
+    state = state * 1664525u + 1013904223u;
+    data[i] = ((state >> 8) & 0xFFFF) / 16384.0f - 2.0f;
+  }
+  return data;
+}
+
+struct Bf16FastGuard {
+  Bf16FastGuard() {
+    if (const char* value = std::getenv("MLX_OMARCHY_SDPA_BF16_FAST")) {
+      original = value;
+    }
+    setenv("MLX_OMARCHY_SDPA_BF16_FAST", "1", 1);
+  }
+  ~Bf16FastGuard() {
+    if (original.empty()) {
+      unsetenv("MLX_OMARCHY_SDPA_BF16_FAST");
+    } else {
+      setenv("MLX_OMARCHY_SDPA_BF16_FAST", original.c_str(), 1);
+    }
+  }
+  std::string original;
+};
+
+}  // namespace
+
+TEST_CASE("sdpa bf16 fast scale==1.0 stays bit-identical to the pre-fix alpha==1 route") {
+  if (!compute_available()) {
+    return;
+  }
+  const auto& caps = omarchy::device(0).capabilities();
+  const bool coopmat_device =
+      caps.cooperative_matrix_f32_8 && caps.subgroup_size == 32;
+  if (!coopmat_device || std::getenv("MLX_OMARCHY_NO_COOPMAT") != nullptr) {
+    skip(
+        "scale==1.0 bit pin exercises the MatmulBF16Coopmat scores"
+        " route (subgroup 32 + cooperative_matrix_f32_8); other devices"
+        " run the untouched non-coopmat kernel.");
+    return;
+  }
+  Bf16FastGuard bf16_guard;
+  Stream stream = gpu_stream();
+  // The alpha==1 scores dispatch: scale == 1.0 passes alpha = 1.0f to
+  // MatmulBF16Coopmat, which both the pre-fix gate (alpha == 1 required)
+  // and the fixed gate (any alpha) admit, so both kernel versions served
+  // this exact traffic before and after the fix. The digest was captured
+  // in the bf16-alpha-fix D2 window, where the pre-fix kernel (relaxed
+  // gate, pre-fix shader) and the fixed kernel produced byte-identical
+  // dumps for this workload. A one-bit move fails the test - the drain
+  // multiply by 1.0f must stay exact.
+  const int B = 1, H = 2, KV = 1, qL = 64, kL = 128, D = 8;
+  const float scale = 1.0f;
+  auto q_data = alpha1_pattern(B * H * qL * D, 401);
+  auto k_data = alpha1_pattern(B * KV * kL * D, 409);
+  auto v_data = alpha1_pattern(B * KV * kL * D, 419);
+  array q = astype(
+      array(q_data.begin(), Shape{B, H, qL, D}, float32), bfloat16, stream);
+  array k = astype(
+      array(k_data.begin(), Shape{B, KV, kL, D}, float32), bfloat16, stream);
+  array v = astype(
+      array(v_data.begin(), Shape{B, KV, kL, D}, float32), bfloat16, stream);
+  auto out = fast::scaled_dot_product_attention(
+      q, k, v, scale, "", {}, std::nullopt, false, stream);
+  out.eval();
+  synchronize(stream);
+  const uint16_t* bits = out.data<uint16_t>();
+  uint64_t digest = alpha1_fnv1a64(bits, out.size() * 2);
+  if (digest != 0xf1f70dbd2f2be747ull) {
+    std::cout << "  [alpha1-pin] sdpa scale1 got=0x" << std::hex << digest
+              << " want=0xf1f70dbd2f2be747" << std::dec << "\n";
+  }
+  CHECK_EQ(digest, 0xf1f70dbd2f2be747ull);
 }

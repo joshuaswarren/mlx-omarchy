@@ -1,0 +1,20 @@
+[doctest] doctest version is "2.4.12"
+[doctest] run with "--help" for options
+META {"label":"fixed","coopmat_device":1,"subgroup_size":32}
+IDENT {"leg":"mat-32x16x32","n":1024,"fnv1a64":"0xb2f727a0b237bd3c"}
+IDENT {"leg":"mat-64x32x64","n":4096,"fnv1a64":"0x0810652b84898613"}
+IDENT {"leg":"mat-96x64x96","n":9216,"fnv1a64":"0xa0fe9153f643412f"}
+IDENT {"leg":"mat-128x8x64","n":8192,"fnv1a64":"0x72c6181aaaa64c3f"}
+IDENT {"leg":"sdpa-scale1","n":1024,"fnv1a64":"0xf1f70dbd2f2be747"}
+IDENT {"leg":"ref-plain","n":1024,"fnv1a64":"0xec36c626cd973395"}
+IDENT {"leg":"ref-storage","n":1024,"fnv1a64":"0x26b86e9515e616b7"}
+IDENT {"leg":"fast-scale025","n":1024,"fnv1a64":"0x26b86e9515e616b7"}
+IDENT {"leg":"f32comp-scale025","n":1024,"fnv1a64":"0xec36c626cd973395"}
+DIFF {"leg":"fast","scale":0.2500,"vs":"plain","n":1024,"exact_frac":0.408203,"mean_ulp":2.6123,"max_ulp":242}
+DIFF {"leg":"fast","scale":0.2500,"vs":"storage","n":1024,"exact_frac":1.000000,"mean_ulp":0.0000,"max_ulp":0}
+DIFF {"leg":"f32comp","scale":0.2500,"vs":"plain","n":1024,"exact_frac":1.000000,"mean_ulp":0.0000,"max_ulp":0}
+DIFF {"leg":"f32comp","scale":0.2500,"vs":"storage","n":1024,"exact_frac":0.408203,"mean_ulp":2.6123,"max_ulp":242}
+===============================================================================
+[doctest] test cases: 1 | 1 passed | 0 failed | 0 skipped
+[doctest] assertions: 0 | 0 passed | 0 failed |
+[doctest] Status: SUCCESS!
