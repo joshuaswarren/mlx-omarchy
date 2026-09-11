@@ -18,6 +18,7 @@ PY=.venv-attn-base/bin/python
 WHEEL=dist/mlx_omarchy-0.32.2.dev202609111512+a5b8c4a-cp314-cp314-linux_aarch64.whl
 [[ -x $PY ]] || { echo "FATAL: base venv missing"; exit 3; }
 [[ -f $WHEEL ]] || { echo "FATAL: base wheel missing"; exit 3; }
+mkdir -p "$R/m1-logs" "$R/matrix/attn-gate-off-fork" "$R/matrix/attn-gate-on-fork"
 
 exec 9>/tmp/m1-gpu.lock
 echo "$(date -Is) waiting for /tmp/m1-gpu.lock (cap 7200s)"
