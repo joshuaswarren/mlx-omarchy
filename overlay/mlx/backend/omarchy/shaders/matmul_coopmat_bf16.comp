@@ -12,17 +12,17 @@
 // shift - exact, no numerics change), then issues two rounds of
 // ascending 8-wide coopMatMulAdd. Per output the accumulator sequence
 // is the same ascending-k 8-wide MMA chain the previous 8-wide-step
-// kernel issued, so stored bits are identical for the same tile values;
-// the staging instruction count drops about 3x (one word load covers
+// kernel issued, so stored bits are identical for the same tile
+// values; the staging instruction count drops (one word load covers
 // two elements), the barrier cadence halves (one per 16 k instead of
 // per 8), and each lane holds 8 accumulators instead of 16.
 //
 // k-adjacent word loads need the row-major lhs (flags bit 2 clear) or
 // the column-major rhs (flags bit 0 set); the other two orientations
-// keep scalar element loads. The k tail (k % 16 == 8; the dispatch gate
-// allows any multiple of 8) is one final 8-wide step with the high
-// halves of the staging words masked. Tails in m and n are masked at
-// staging and at the drain. The drain packs bf16 output pairs into
+// pack each k pair from two scalar element loads. The k tail (k % 16
+// == 8; the dispatch gate allows any multiple of 8) is one final
+// 8-wide step with the high words masked. Tails in m and n are masked
+// at staging and at the drain. The drain packs bf16 output pairs into
 // 32-bit words with the same round-to-nearest-even bf16_store as
 // matmul.comp (NaN quiet bit included), so the output contract is
 // unchanged. K must be a multiple of 8; matrix_n and the output
@@ -86,15 +86,18 @@ uint bf16_store(float value) {
   return (bits + 0x7fffu + ((bits >> 16) & 1u)) >> 16;
 }
 
-// bf16 element load for the orientations without k-adjacent words:
-// the same scalar element addressing the previous kernel used.
-float bf16_load(uint buffer_select, uint element) {
-  uint word = buffer_select != 0u
-      ? input_b.values[element >> 1u]
-      : input_a.values[element >> 1u];
-  return uintBitsToFloat(((element & 1u) != 0u)
-      ? (word & 0xFFFF0000u)
-      : (word << 16u));
+// Scalar orientations: the k pair is not word-adjacent, so fetch both
+// elements and pack them low-half-first, matching the word-path layout.
+uint pack_pair(uint buffer_select, uint element, uint stride) {
+  uint w0 = buffer_select != 0u ? input_b.values[element >> 1u]
+                                : input_a.values[element >> 1u];
+  uint w1 = buffer_select != 0u
+      ? input_b.values[(element + stride) >> 1u]
+      : input_a.values[(element + stride) >> 1u];
+  uint lo = ((element & 1u) != 0u) ? (w0 & 0xFFFF0000u) : (w0 << 16u);
+  uint hi = (((element + stride) & 1u) != 0u) ? (w1 & 0xFFFF0000u)
+                                              : (w1 << 16u);
+  return (lo >> 16u) | (hi & 0xFFFF0000u);
 }
 
 // 4 KiB shared: one 32x16 A patch and one 16x32 B patch, both f32.
@@ -149,76 +152,70 @@ void main() {
         uint k_base = step * STEP_K;
         uint width = (tail8 && step == full_steps) ? 8u : STEP_K;
 
-        // Stage A (32 rows x width k). Word path: row-major A puts the
-        // k pair of row r at word r * (lhs_gap / 2) + k_base / 2 + pair;
-        // i = lid + 64 j covers row i / 8 and pair i % 8. Scalar path:
-        // the column-major element address k * lhs_gap + row.
+        // Stage A (32 rows x width k): load words first, then unpack
+        // and store unconditionally - the qmm_coopmat shape.
+        uint a_words[4];
+        for (uint j = 0u; j < 4u; ++j) {
+          uint i = lid + 64u * j;
+          uint row = row_base + i / 8u;
+          uint pair = i % 8u;
+          a_words[j] = row < params.matrix_m && 2u * pair < width
+              ? (a_colmaj
+                    ? pack_pair(
+                        0u, a_slice * 2u + 2u * pair * params.lhs_gap + row,
+                        params.lhs_gap)
+                    : input_a.values[a_slice +
+                                     row * (params.lhs_gap / 2u) +
+                                     k_base / 2u + pair])
+              : 0u;
+        }
         for (uint j = 0u; j < 4u; ++j) {
           uint i = lid + 64u * j;
           uint row_local = i / 8u;
-          uint row = row_base + row_local;
-          uint pair = i % 8u;
-          uint kk = 2u * pair;
-          float v_lo = 0.0;
-          float v_hi = 0.0;
-          if (row < params.matrix_m && kk < width) {
-            if (a_colmaj) {
-              v_lo = bf16_load(0u, a_slice * 2u + kk * params.lhs_gap + row);
-              if (kk + 1u < width) {
-                v_hi = bf16_load(
-                    0u, a_slice * 2u + (kk + 1u) * params.lhs_gap + row);
-              }
-            } else {
-              uint word = input_a.values[
-                  a_slice + row * (params.lhs_gap / 2u) + k_base / 2u + pair];
-              v_lo = uintBitsToFloat(word << 16u);
-              if (kk + 1u < width) {
-                v_hi = uintBitsToFloat(word & 0xFFFF0000u);
-              }
-            }
-          }
-          if (kk < width) {
-            a_s[row_local * STEP_K + kk] = v_lo;
-            if (kk + 1u < width) {
-              a_s[row_local * STEP_K + kk + 1u] = v_hi;
-            }
-          }
+          uint kk = 2u * (i % 8u);
+          a_s[row_local * STEP_K + kk] =
+              uintBitsToFloat(a_words[j] << 16u);
+          a_s[row_local * STEP_K + kk + 1u] =
+              uintBitsToFloat(a_words[j] & 0xFFFF0000u);
         }
-        // Stage B (width k x 32 columns). Word path: column-major B
-        // puts the k pair of column c at word c * (rhs_gap / 2) +
-        // k_base / 2 + pair; i covers column i / 8 and pair i % 8.
+        // Stage B (width k x 32 columns), same shape.
+        uint b_words[4];
+        for (uint j = 0u; j < 4u; ++j) {
+          uint i = lid + 64u * j;
+          uint col = col_base + i / 8u;
+          uint pair = i % 8u;
+          b_words[j] = col < params.matrix_n && 2u * pair < width
+              ? (b_colmaj
+                    ? input_b.values[b_slice +
+                                     col * (params.rhs_gap / 2u) +
+                                     k_base / 2u + pair]
+                    : pack_pair(
+                        1u, b_slice * 2u + col + 2u * pair * params.rhs_gap,
+                        params.rhs_gap))
+              : 0u;
+        }
         for (uint j = 0u; j < 4u; ++j) {
           uint i = lid + 64u * j;
           uint col_local = i / 8u;
-          uint col = col_base + col_local;
-          uint pair = i % 8u;
-          uint kk = 2u * pair;
-          float v_lo = 0.0;
-          float v_hi = 0.0;
-          if (col < params.matrix_n && kk < width) {
-            if (b_colmaj) {
-              v_lo = bf16_load(1u, b_slice * 2u + col * params.rhs_gap + kk);
-              if (kk + 1u < width) {
-                v_hi = bf16_load(
-                    1u, b_slice * 2u + col * params.rhs_gap + kk + 1u);
-              }
-            } else {
-              uint word = input_b.values[
-                  b_slice + col * (params.rhs_gap / 2u) + k_base / 2u + pair];
-              v_lo = uintBitsToFloat(word << 16u);
-              if (kk + 1u < width) {
-                v_hi = uintBitsToFloat(word & 0xFFFF0000u);
-              }
-            }
-          }
-          if (kk < width) {
-            b_s[kk * TILE_N + col_local] = v_lo;
-            if (kk + 1u < width) {
-              b_s[(kk + 1u) * TILE_N + col_local] = v_hi;
-            }
-          }
+          uint kk = 2u * (i % 8u);
+          b_s[kk * TILE_N + col_local] =
+              uintBitsToFloat(b_words[j] << 16u);
+          b_s[(kk + 1u) * TILE_N + col_local] =
+              uintBitsToFloat(b_words[j] & 0xFFFF0000u);
         }
         barrier();
+
+        // DEBUGSTEP: flags==32 dumps the staged shared tiles into the
+        // output buffer, 1024 words per k step (a_s first, then b_s).
+        if (params.flags == 32u) {
+          for (uint j = 0u; j < 8u; ++j) {
+            uint idx = lid + 64u * j;
+            output_data.values[step * 1024u + idx] =
+                floatBitsToUint(a_s[idx]);
+            output_data.values[step * 1024u + 512u + idx] =
+                floatBitsToUint(b_s[idx]);
+          }
+        }
 
         for (uint ks = 0u; ks < width / MAT; ++ks) {
           coopmat<float, gl_ScopeSubgroup, MAT, MAT, gl_MatrixUseA> mat_a[2];
