@@ -1,0 +1,95 @@
+{
+  "schema": "q4-gemv-native-map/1",
+  "date": "2026-09-11",
+  "agent": "Q4GemvWindowRun",
+  "decision": "RECEIPT-ONLY NEGATIVE: the candidate is bit-identical (36/36 canonical digest legs across fork and stock Mesa under the corrected per-driver pins) but speed-neutral on the M1 - the llvmpipe per-dispatch gain (0.64-0.92x) does not repeat. Do not land. Candidate commit 9a66501 remains on wave/Q4GemvNativeMapping as the tested artifact; never merged.",
+  "provenance": {
+    "branch": "wave/Q4GemvNativeMapping",
+    "commits": {
+      "candidate_under_test": "9a66501585f1fcf84aac4d4af403c41811a36ad1 (perf: port native qmv thread mapping to the Q4 decode GEMV multi kernel; production diff = overlay/mlx/backend/omarchy/shaders/qmm_vec.comp + overlay/tests/omarchy/test_matmul_family.cpp)",
+      "harness_fix": "328218c (fix: grade digest legs against per-driver pins, see digest_gate_incident)"
+    },
+    "host": "jwm1-linux (100.84.184.102), Apple M1 (G13G B1), kernel 7.1.6-1-ARCH, Omarchy",
+    "wheel": {
+      "file": "mlx_omarchy-0.32.2.dev202609110603+9a66501-cp314-cp314-linux_aarch64.whl",
+      "sha256": "1277b3bddad99aaa2034d67ec8a900322eced0ce9bef74b3c9073fd680b272c6",
+      "leg_provenance": "verified=match harness=9a66501 on every leg; wheel libmlx.so contains qmm_vec_q4_multi and no dense-BF16-GEMV instrumentation strings (wheel is a faithful pre-land build)"
+    },
+    "venv": "fresh venv per window stage B: wheel + mlx-lm==0.31.3, MLX_DISABLE_COMPILE=1 (committed matrix protocol), model snapshots pinned (4bit a5339a41..., bf16 56d07e76...)",
+    "drivers": {
+      "fork": "mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1 (restored after the window; vulkaninfo Mesa 26.3.0-devel git-6f6afc8968)",
+      "stock": "mesa 26.1.7-1 (pacman swap inside the window; vulkaninfo Mesa 26.1.7 verified mid-window)"
+    },
+    "lock": "one top-level flock /tmp/m1-gpu.lock per window (window.sh -w 14400; window2-timing.sh -w 7200); announced in hub; never nested; fork driver verified restored post-window",
+    "windows": {
+      "run1_full_window": "2026-09-11 06:01-06:36Z window.sh: stages A-C complete (wheel, venv, bench-a/bench-b), stage D fork legs complete, aborted at the digest gate before the driver swap",
+      "run2_timing_continuation": "2026-09-11 07:15-07:19Z window2-timing.sh: stage D fork legs + stage E stock swap/legs/restore with the corrected pins"
+    }
+  },
+  "digest_gate_incident": {
+    "what": "run1 fork legs hard-failed 3 GATE lines: bf16 long-decode-128 produced 8690dc83246b39f8 vs the packaged pin ad964232ee67fecd; window.sh (set -e) aborted before the stock swap - by design, fork driver stayed installed",
+    "root_cause": "stale expectation in the packaged q4nm_driver.py: ad96... is the pre-re-pin value. docs/parity-id-policy.md amendment 2026-09-10 (dense BF16 decode GEMV land, receipts/2026-09-10-bf16-decode-gemv-land matrix r1-r3) re-pinned BF16 short/262 per driver: fork short f26175202f3dabe9, long 8690dc83246b39f8, 1K-ctx ff502900d2a179a5; stock short 7fc0f968789b1882, long 46108ad71157cb4d, 1K-ctx ff502900d2a179a5. Q4 pins unchanged and driver-independent (re-verified on stock in the same land matrix). Fixed in commit 328218c; gate hard-fail behavior re-proven both directions with a stub engine (mismatch -> exit 1, 18 GATE lines; match -> exit 0)",
+    "observation_for_policy_owners": "the candidate wheel predates the dense BF16 GEMV (no decode_gemv_path/subgroup-shuffle strings in its libmlx.so) yet reproduced the post-land fork pin 8690... on fork and the post-land stock pin 4610... on stock, while the land's own fork-base cell produced the pre-land ad96... on the same driver package hours earlier. The BF16 control cells are environment-coupled on this stack and have limited power as change detectors; the Q4 cells are the reliable ones.",
+    "outcome": "rerun under the corrected pins: 36/36 canonical (18 fork + 18 stock, 3 reps x 6 legs, zero gate failures)"
+  },
+  "numbers": {
+    "protocol": "paired decode medians, 3 reps per cell, loadavg 0.12-0.51 during all legs (clean); engine tok/s from scripts/bench_decode.py",
+    "q4_candidate_fork": {
+      "short-decode-32": {"reps": [107.09, 107.64, 107.43], "median": 107.43},
+      "long-decode-128": {"reps": [103.79, 103.92, 103.53], "median": 103.79},
+      "longctx-1024-decode-32": {"reps": [93.93, 91.78, 93.14], "median": 93.14}
+    },
+    "q4_candidate_stock": {
+      "short-decode-32": {"reps": [96.07, 98.34, 98.21], "median": 98.21},
+      "long-decode-128": {"reps": [79.02, 78.97, 78.79], "median": 78.97},
+      "longctx-1024-decode-32": {"reps": [51.69, 49.68, 51.95], "median": 51.69}
+    },
+    "fraction_of_committed_base_m1_native_baseline_fork": {
+      "comment": "baseline 150.57 / 146.77 / 140.38 tok/s at the 30 / 262 / 1053 legs (committed); candidate fractions below 1.0 are an end-to-end environment property, not a candidate regression - see per_dispatch: the isolated instrument shows the mapping change itself is speed-neutral, and run1 fork legs taken under loadavg 1.1-1.34 (106.93 / 104.33 / 92.47) match the clean-condition window2 legs within 1.5%",
+      "short-decode-32": 0.713,
+      "long-decode-128": 0.707,
+      "longctx-1024-decode-32": 0.663
+    },
+    "stock_over_fork_q4": {"short-decode-32": 0.914, "long-decode-128": 0.761, "longctx-1024-decode-32": 0.555},
+    "bf16_control_cells": {
+      "fork": {"short-decode-32": 31.90, "long-decode-128": 28.82, "longctx-1024-decode-32": 23.17, "canon": "9/9"},
+      "stock": {"short-decode-32": 32.12, "long-decode-128": 29.20, "longctx-1024-decode-32": 23.04, "canon": "9/9"}
+    }
+  },
+  "per_dispatch": {
+    "instrument": "tools/q4-bw-bench (subgroup flavor), isolated kernel timing, 21 reps, M1; bit-equality 18/18 compares 0 mismatches vs the frozen ccc25c0f production shader on the four production shapes plus fasttile and oddn coverage shapes (bench-a.ndjson; --quick bench-b.ndjson agrees)",
+    "shape_med_ns_bench_a": {
+      "qkv":     {"base": 16459, "nativemap": 16500, "ratio": 1.0025},
+      "o":       {"base": 16042, "nativemap": 16833, "ratio": 1.0493},
+      "gate_up": {"base": 34583, "nativemap": 34875, "ratio": 1.0084},
+      "down":    {"base": 30958, "nativemap": 30292, "ratio": 0.9785}
+    },
+    "shape_med_ns_bench_b_quick": {
+      "qkv": 0.9931, "o": 1.0128, "gate_up": 1.0037, "down": 1.0069,
+      "comment": "nativemap/base ratios, --quick pass; all within +-1.3%"
+    },
+    "occupancy_sweep": {
+      "comment": "per-grid time is flat as the grid multiplies x1 -> x16 on every production shape and every side; the dispatches are not occupancy-starved and adding concurrency buys nothing",
+      "examples_med_ns": {
+        "qkv_base": {"mult1": 29958, "mult16": 30625},
+        "qkv_nativemap": {"mult1": 30292, "mult16": 30292},
+        "gate_up_base": {"mult1": 33666, "mult16": 32042},
+        "gate_up_nativemap": {"mult1": 35250, "mult16": 31167}
+      },
+      "floor": "isolated measurements sit at a ~30 us dispatch/timestamp floor (min_ns 12-16 us on small shapes); oddn coverage shape shows ratio 0.61-0.67 (small-N quirk, not a production shape)"
+    }
+  },
+  "limiter": "What still limits the kernel: it is latency-bound, not bandwidth-bound (~1.1-1.65 GB/s against a 68 GB/s part per the candidate commit's own analysis) and not occupancy-bound (flat x1->x16 sweep). The native mapping's x-register reuse - the thing worth 0.64-0.92x on llvmpipe - buys nothing here: the M1 dispatch chain already hides the x-load traffic, and in-model context dominates (236 us/layer of Q4 GEMV in-model vs ~98 us/layer isolated sum of qkv+o+gate_up+down). The next lever for the 5.6 ms Q4 decode term is not thread mapping; it is whatever makes in-model dispatches 2.4x slower than isolated ones (cache/power state between dispatches).",
+  "artifacts": {
+    "verdict": "receipts/2026-09-10-q4-gemv-native-map/verdict.json",
+    "analysis_md": "receipts/2026-09-10-q4-gemv-native-map/verdict.md",
+    "bench_bit_eq_timing_occupancy": ["receipts/2026-09-10-q4-gemv-native-map/results/bench-a.ndjson", "receipts/2026-09-10-q4-gemv-native-map/results/bench-b.ndjson"],
+    "legs_run1_fork": "receipts/2026-09-10-q4-gemv-native-map/results/legs-fork/legs.ndjson",
+    "legs_run2_fork": "receipts/2026-09-10-q4-gemv-native-map/results/legs2-fork/legs.ndjson",
+    "legs_run2_stock": "receipts/2026-09-10-q4-gemv-native-map/results/legs2-stock/legs.ndjson",
+    "window_logs": ["receipts/2026-09-10-q4-gemv-native-map/results/window.log", "receipts/2026-09-10-q4-gemv-native-map/results/window2.log"],
+    "wheel_sha": "receipts/2026-09-10-q4-gemv-native-map/results/wheel.sha256",
+    "continuation_script": "receipts/2026-09-10-q4-gemv-native-map/window2-timing.sh",
+    "regression_test": "overlay/tests/omarchy/test_matmul_family.cpp q4 decode gemv fused multi dispatch matches per-node bits (224/224 llvmpipe, committed in 9a66501)"
+  }
+}
