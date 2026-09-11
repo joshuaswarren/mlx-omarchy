@@ -789,7 +789,12 @@ static void run_peak(const DeviceCtx& ctx, const char* src_path,
   g_vk.UpdateDescriptorSets(g_vk.dev, 2, w, 0, nullptr);
 
   CmdRes cmd = make_cmd(ctx, 2);
+  // The M1 maxWorkGroupCount is 65535: a 1<<24 uvec4 probe over 256-wide
+  // workgroups needs 65536, which is an invalid dispatch (honeykrisp
+  // silently mis-executes it; that is where the historic 9-13 TB/s
+  // "copy peak" came from). Clamp and account the real coverage.
   uint32_t groups = uvec4_count / 256u;
+  if (groups > 65535u) groups = 65535u;
   std::vector<uint64_t> samples;
   std::vector<uint64_t> wall_samples;
   if (!skip) {
@@ -824,7 +829,7 @@ static void run_peak(const DeviceCtx& ctx, const char* src_path,
       wall_samples.push_back(g_wall_ns);
     }
   }
-  double bytes = (double)uvec4_count * 16.0 *
+  double bytes = (double)groups * 256.0 * 16.0 *
       (std::string(tag) == "copy" ? 2.0 : 1.0);
   if (samples.empty()) {
     std::printf("{\"k\":\"peak\",\"tag\":\"%s\",\"skipped\":true}\n", tag);
@@ -1124,6 +1129,13 @@ static void run_gap_mode(const DeviceCtx& ctx, bool quick) {
     g_vk.UpdateDescriptorSets(g_vk.dev, 2, w, 0, nullptr);
   }
 
+  // The arm recorders are parameterized over the producing side so the
+  // candidate screen at the bottom can reuse the exact base descriptor
+  // sets and arm machinery; defaults keep every pre-existing arm
+  // byte-identical in behavior.
+  Side* arm_side = &side;
+  uint32_t* arm_groups = sgroups;
+  Params* arm_params = sparams;
   CmdRes cmd = make_cmd(ctx, 2);
 
   auto record_filler = [&](VkCommandBuffer c, uint32_t groups) {
@@ -1131,17 +1143,17 @@ static void run_gap_mode(const DeviceCtx& ctx, bool quick) {
     g_vk.CmdBindDescriptorSets(c, VK_PIPELINE_BIND_POINT_COMPUTE,
         fill.layout, 0, 1, &fill_set, 0, nullptr);
     g_vk.CmdDispatch(c, groups, 1, 1);
-    g_vk.CmdBindPipeline(c, VK_PIPELINE_BIND_POINT_COMPUTE, side.pipe);
+    g_vk.CmdBindPipeline(c, VK_PIPELINE_BIND_POINT_COMPUTE, arm_side->pipe);
   };
   auto record_layer = [&](VkCommandBuffer c, const VkDescriptorSet* d4,
                             bool with_filler, uint32_t fill_per) {
     for (uint32_t s = 0; s < kNumShapes; ++s) {
       if (with_filler) record_filler(c, fill_per);
       g_vk.CmdBindDescriptorSets(c, VK_PIPELINE_BIND_POINT_COMPUTE,
-          side.layout, 0, 1, &d4[s], 0, nullptr);
-      g_vk.CmdPushConstants(c, side.layout, VK_SHADER_STAGE_COMPUTE_BIT, 0,
-          sizeof(Params), &sparams[s]);
-      g_vk.CmdDispatch(c, sgroups[s], 1, 1);
+          arm_side->layout, 0, 1, &d4[s], 0, nullptr);
+      g_vk.CmdPushConstants(c, arm_side->layout,
+          VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(Params), &arm_params[s]);
+      g_vk.CmdDispatch(c, arm_groups[s], 1, 1);
     }
     if (with_filler) record_filler(c, fill_per);
   };
@@ -1169,7 +1181,7 @@ static void run_gap_mode(const DeviceCtx& ctx, bool quick) {
     for (int r = -1; r < rounds; ++r) {
       begin(cmd);
       g_vk.CmdBindPipeline(
-          cmd.cmd, VK_PIPELINE_BIND_POINT_COMPUTE, side.pipe);
+          cmd.cmd, VK_PIPELINE_BIND_POINT_COMPUTE, arm_side->pipe);
       for (uint32_t t = 0; t < tokens; ++t) {
         uint32_t parity = t & 1u;
         for (uint32_t j = 0; j < nsets; ++j) {
@@ -1296,6 +1308,57 @@ static void run_gap_mode(const DeviceCtx& ctx, bool quick) {
     run_arm("widedep", Lmax, tokens_wide, true, false, 0, pass);
     run_sub2(false, tokens_wide / 2, pass);
     run_sub2(true, tokens_wide / 2, pass);
+  }
+
+  // Candidate screen, wall-anchored, in the in-model-style widedep
+  // environment (24 independent sets, RAW chain) plus the iso4
+  // calibration arm. The candidates keep the production lane->word map
+  // and arithmetic order (receipts/2026-09-10-q4-gemv-bandwidth); they
+  // vary instruction scheduling and workgroup mapping only. Descriptor
+  // sets stay the base ones: every side's layout is identically defined,
+  // which is exactly Vulkan layout compatibility.
+  {
+    struct CandSpec {
+      const char* tag;
+      const char* src;
+      const char* spv;
+      uint32_t columns;
+    };
+    const CandSpec cands[] = {
+        {"unroll", "tools/q4-bw-bench/shaders/qmm_vec_cand_unroll.comp",
+            "/tmp/q4gap_cand_u.spv", 8u},
+        {"loadfirst",
+            "tools/q4-bw-bench/shaders/qmm_vec_cand_loadfirst.comp",
+            "/tmp/q4gap_cand_l.spv", 8u},
+        {"wg128", "tools/q4-bw-bench/shaders/qmm_vec_cand_wg128.comp",
+            "/tmp/q4gap_cand_w.spv", 4u},
+    };
+    for (const CandSpec& c : cands) {
+      if (compile_shader(c.src, q4_defines, c.spv) != 0)
+        die("compile gap cand %s", c.tag);
+      Side cs;
+      cs.tag = c.tag;
+      cs.mod = make_module(read_file(c.spv));
+      make_pipeline(cs);
+      uint32_t cgroups[kNumShapes];
+      Params cparams[kNumShapes];
+      for (uint32_t s = 0; s < kNumShapes; ++s) {
+        cgroups[s] = shape_groups(kShapes[s], c.columns);
+        fill_params(cparams[s], kShapes[s], cgroups[s]);
+      }
+      arm_side = &cs;
+      arm_groups = cgroups;
+      arm_params = cparams;
+      for (int pass = 1; pass <= 2; ++pass) {
+        std::string i4 = std::string("iso4_") + c.tag;
+        std::string wd = std::string("widedep_") + c.tag;
+        run_arm(i4.c_str(), 1, tokens_iso, false, false, 0, pass);
+        run_arm(wd.c_str(), Lmax, tokens_wide, true, false, 0, pass);
+      }
+    }
+    arm_side = &side;
+    arm_groups = sgroups;
+    arm_params = sparams;
   }
 
   // Cleanup (process exits anyway; keep the driver happy on the way out).
