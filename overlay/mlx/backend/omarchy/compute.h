@@ -597,6 +597,10 @@ enum class ComputeKernel : uint16_t {
   QmmTileRbPreciseF16,
   // Native-order single-query f16 attention; append-only profile id.
   SdpaDecodeNativeF16,
+  // Same shader compiled with -DBF16_IO=1 (uint16 word view, exact
+  // widening, RNE stores, f32 internals, one-pass arm only); appended
+  // to keep profile kernel ids stable.
+  SdpaDecodeNativeBF16,
   Custom,
   Count,
 };

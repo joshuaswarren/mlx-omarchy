@@ -281,6 +281,18 @@ target_link_options(omarchy_decode_dispatch_count
 add_test(NAME omarchy_decode_dispatch_count
          COMMAND omarchy_decode_dispatch_count)
 
+# Bf16FusedDecode: the fused single-query decode SDPA stays one dispatch,
+# agrees with the f32-score composition it replaced, and refuses uncovered
+# decode shapes by falling through to that composition.
+add_executable(omarchy_sdpa_decode_fused_tests
+               ${CMAKE_CURRENT_SOURCE_DIR}/test_sdpa_decode_fused.cpp)
+target_link_libraries(omarchy_sdpa_decode_fused_tests PRIVATE mlx doctest)
+target_compile_options(omarchy_sdpa_decode_fused_tests
+                       PRIVATE ${SANITIZER_COMPILE_FLAGS})
+target_link_options(omarchy_sdpa_decode_fused_tests
+                    PRIVATE ${SANITIZER_LINK_FLAGS})
+add_test(NAME omarchy_sdpa_decode_fused_tests
+         COMMAND omarchy_sdpa_decode_fused_tests)
 # FuseDecodeChains: fused elementwise-chain compiled-versus-eager
 # equivalence tests plus dispatch-collapse and bf16-refusal guards.
 add_executable(omarchy_fused_chain_tests
