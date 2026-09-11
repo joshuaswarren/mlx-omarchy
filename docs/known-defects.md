@@ -115,7 +115,10 @@ dominates the BF16 decode token (58% of it at short context per
 so it is a measurement, not an obvious win. And an f64 max-ULP bound applied
 to this route measures this storage rather than whatever change is under
 test — which is why the bf16 coopmat alpha fix stalled against a 32 ULP
-bound it was never the cause of. Receipt:
+bound it was never the cause of: a differential instrument on 2026-09-11
+showed that same 242 signature on the pure f32 composition route with no
+cooperative-matrix kernel involved, while the fixed kernel is bit-exact
+against an oracle that models this storage. Receipt:
 [`receipts/2026-09-11-bf16-alpha-fix/README.md`](../receipts/2026-09-11-bf16-alpha-fix/README.md).
 
 ## Fixed in development
