@@ -266,8 +266,15 @@ void main() {
             uint row = row_base + rb * MAT + r;
             uint col = col_base + c0;
             if (row < params.matrix_m && col + 1u < params.matrix_n) {
-              float v0 = a_s[cb * MAT * MAT + r * MAT + cc];
-              float v1 = a_s[cb * MAT * MAT + r * MAT + cc + 1u];
+              // Same scale point as the 16x16 tile: the f32 accumulator
+              // is scaled by alpha, then the product rounds once to
+              // bf16 storage. alpha==1 multiplies exactly, so the
+              // projection traffic that always rode this kernel is
+              // bit-identical.
+              float v0 = params.alpha *
+                  a_s[cb * MAT * MAT + r * MAT + cc];
+              float v1 = params.alpha *
+                  a_s[cb * MAT * MAT + r * MAT + cc + 1u];
               output_data.values[out_slice +
                                  (row * params.matrix_n + col) / 2u] =
                   bf16_store(v0) | (bf16_store(v1) << 16u);

@@ -560,8 +560,13 @@ void dispatch_matmul(
   const auto& caps = encoder.device().capabilities();
   const bool coopmat_base = caps.cooperative_matrix_f32_8 &&
       caps.subgroup_size == 32 && !coopmat_disabled &&
-      params.matrix_m > 1u && (params.matrix_k % 8u) == 0u &&
-      alpha == 1.0f && !use_c;
+      params.matrix_m > 1u && (params.matrix_k % 8u) == 0u && !use_c;
+  // matmul_coopmat.comp never reads alpha (MatmulF32Coopmat stays gated
+  // on alpha == 1); matmul_coopmat_bf16.comp scales its f32 accumulator
+  // by alpha at the drain, so MatmulBF16Coopmat may take any alpha -
+  // that is the attention-scores shape (alpha = 1/sqrt(head_dim)).
+  const bool coopmat_alpha = alpha == 1.0f ||
+      kernel == omarchy::ComputeKernel::MatmulBF16;
   bool bf16_aligned = ((params.lhs_offset | params.rhs_offset |
       params.output_offset | a_gap | b_gap | params.matrix_n) & 1u) == 0u;
   for (uint32_t axis = 0; bf16_aligned && axis < params.dims; ++axis) {
@@ -573,7 +578,7 @@ void dispatch_matmul(
   // same way the qmm route does instead of assuming it.
   constexpr uint32_t kMatmulCoopmatBf16SharedBytes =
       (32u * 16u + 16u * 32u) * sizeof(float);
-  const bool coopmat = coopmat_base &&
+  const bool coopmat = coopmat_base && coopmat_alpha &&
       (kernel == omarchy::ComputeKernel::MatmulF32 ||
        (kernel == omarchy::ComputeKernel::MatmulBF16 && bf16_aligned &&
         params.matrix_m >= 32u &&
@@ -10320,22 +10325,27 @@ void ScaledDotProductAttention::eval_gpu(
   // runs this pattern. Deletes the three q/k/v upcasts, the scale
   // broadcast and multiply, and the output downcast per call.
   //
-  // bfloat16 rides the same shape under MLX_OMARCHY_SDPA_BF16_FAST
-  // (default off until the M1 equivalence leg passes; any value other
-  // than "0" enables): MatmulBF16, SoftmaxBF16, and ElementwiseBF16 are
-  // the proven uint16_t-typed USE_BF16 legs the projections, the
-  // residual adds, and the norm already run - float accumulation inside
-  // the shader, bf16 storage with round-to-nearest-even stores on both
-  // drivers. Scores store bf16 (2^-8 relative rounding per stored
-  // score), and the output stays bf16 end to end. Deletes the three
-  // q/k/v upcasts, the f32 scale multiply, the f32 softmax, and the
-  // output downcast per call. The causal mask is not materialized on
-  // either storage dtype (see the scores matmul below).
-  bool bf16_fast = false;
+  // bfloat16 rides the same shape by default (MLX_OMARCHY_SDPA_BF16_FAST=0
+  // opts out to the f32 composition): MatmulBF16, SoftmaxBF16, and
+  // ElementwiseBF16 are the proven uint16_t-typed USE_BF16 legs the
+  // projections, the residual adds, and the norm already run - float
+  // accumulation inside the shader, bf16 storage with round-to-nearest-even
+  // stores on both drivers. Scores store bf16 (2^-8 relative rounding per
+  // stored score), and the output stays bf16 end to end. This deletes the
+  // three q/k/v upcasts, the f32 scale multiply, the f32 softmax, and the
+  // output downcast per call, and the scores matmul now runs bf16 operands
+  // through MatmulBF16Coopmat (which scales the f32 accumulator by alpha)
+  // instead of f32 operands at the same shape. The 2026-09-04 rejection of
+  // this path was a bit-identity gate decision, superseded by
+  // docs/parity-id-policy.md; the storage-precision move is justified
+  // against the float64 oracle in
+  // receipts/2026-09-11-bf16-prefill-attention. The causal mask is not
+  // materialized on either storage dtype (see the scores matmul below).
+  bool bf16_fast = true;
   if (q.dtype() == bfloat16) {
     if (const char* env = std::getenv("MLX_OMARCHY_SDPA_BF16_FAST");
-        env != nullptr && std::strcmp(env, "0") != 0) {
-      bf16_fast = true;
+        env != nullptr && std::strcmp(env, "0") == 0) {
+      bf16_fast = false;
     }
   }
 
