@@ -179,6 +179,20 @@ Until then, update a row only when the linked receipt proves every named gate.
   `omarchy_runtime_tests` left the f16 SDPA route untested on the M1 for
   months and let a simulation-only refusal pattern be mistaken for a real
   defect (`receipts/2026-09-11-f16-sdpa-gap-analysis`).
+- This repository is public. A receipt carries the evidence a reader needs
+  to judge a measurement, and nothing about the owner's private
+  infrastructure. Never commit host addresses (LAN or VPN), service
+  inventories, ports, backup targets, keychain or credential observations,
+  hardware serials, or the names and topology of machines and model
+  endpoints that serve anything outside this project. Record the chip, OS,
+  driver build, and a placeholder for the host; `scripts/collect_common.py`
+  has a `Redactor` that shows the intended shape. Harnesses that sample
+  `ps`, `system_profiler`, or `tmutil` must record counts and verdicts, not
+  raw output: on 2026-09-11 the native-baseline harness had put process
+  command lines, a NAS backup URL and a battery serial into published
+  receipts, and a planning doc named the owner's router container, config
+  path and model aliases (scrubbed forward in
+  `receipts/2026-09-11-public-repo-scrub`).
 
 Do not lower tolerances, shorten a stability run, or remove a failing workload to make a gate pass.
 
