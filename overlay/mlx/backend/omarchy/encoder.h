@@ -339,6 +339,9 @@ class MLX_API CommandEncoder {
     std::vector<ReplayVariant> variants;
   };
   static bool replay_enabled();
+  static bool variant_matches(
+      const ReplayVariant& v,
+      std::span<const ComputeBinding> bindings);
   VkDescriptorSet acquire_replay_descriptor_set(ComputeRuntime& compute);
   VkCommandBuffer acquire_replay_cmd();
   // Records pre-barrier + bind + push + dispatch + post-barrier into an
