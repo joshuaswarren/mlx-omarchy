@@ -366,6 +366,7 @@ class MLX_API CommandEncoder {
   VkDescriptorPool replay_desc_pool_{VK_NULL_HANDLE};
   uint32_t replay_desc_remaining_{0};
 
+  Device& device_;
   VkCommandPool pool_{VK_NULL_HANDLE};
   std::array<Slot, kInFlightCommandBuffers> slots_{};
   int current_slot_{0};
