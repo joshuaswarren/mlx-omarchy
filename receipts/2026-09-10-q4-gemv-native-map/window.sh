@@ -49,7 +49,7 @@ python3 receipts/2026-09-10-q4-gemv-native-map/q4nm_driver.py \
   --bench-dir "$TREE" \
   --python "$VENV/bin/python" --wheel "$W" \
   --model-dirs "qwen25-0.5b-4bit=$Q4,qwen25-0.5b-bf16=$BF" \
-  --out-dir "$R/legs-fork"
+  --out-dir "$R/legs-fork" --pins fork
 
 # E. stock driver legs + fork restore
 echo "== installing stock driver =="
@@ -60,7 +60,7 @@ python3 receipts/2026-09-10-q4-gemv-native-map/q4nm_driver.py \
   --bench-dir "$TREE" \
   --python "$VENV/bin/python" --wheel "$W" \
   --model-dirs "qwen25-0.5b-4bit=$Q4,qwen25-0.5b-bf16=$BF" \
-  --out-dir "$R/legs-stock"
+  --out-dir "$R/legs-stock" --pins stock
 echo "== restoring fork driver =="
 sudo pacman -Rdd --noconfirm mesa
 sudo pacman -U --noconfirm ~/src/mesa-pkg-20260908/mesa-honeykrisp-omarchy-26.3.0.devel.hk6f6afc8-1-aarch64.pkg.tar.xz

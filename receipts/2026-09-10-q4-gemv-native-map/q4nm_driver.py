@@ -22,15 +22,36 @@ import time
 from pathlib import Path
 
 CANONICAL = {
-    "qwen25-0.5b-4bit": {
-        "short-decode-32": "7fd25a869ff21678",
-        "long-decode-128": "4cc08910089477fd",
-        "longctx-1024-decode-32": "7da83f06ec9f001d",
+    # Per-driver pins per docs/parity-id-policy.md amendment 2026-09-10
+    # (BF16 short/262 re-pinned with the dense decode GEMV land,
+    # receipts/2026-09-10-bf16-decode-gemv-land matrix r1-r3 cells;
+    # Q4 pins unchanged and driver-independent, re-verified on stock in
+    # the same matrix). The single pre-amendment table this file shipped
+    # with carried the stale pre-re-pin BF16 262/128 fork value
+    # ad964232ee67fecd and hard-failed a canonical run on 2026-09-11.
+    "fork": {
+        "qwen25-0.5b-4bit": {
+            "short-decode-32": "7fd25a869ff21678",
+            "long-decode-128": "4cc08910089477fd",
+            "longctx-1024-decode-32": "7da83f06ec9f001d",
+        },
+        "qwen25-0.5b-bf16": {
+            "short-decode-32": "f26175202f3dabe9",
+            "long-decode-128": "8690dc83246b39f8",
+            "longctx-1024-decode-32": "ff502900d2a179a5",
+        },
     },
-    "qwen25-0.5b-bf16": {
-        "short-decode-32": "f26175202f3dabe9",
-        "long-decode-128": "ad964232ee67fecd",
-        "longctx-1024-decode-32": "ff502900d2a179a5",
+    "stock": {
+        "qwen25-0.5b-4bit": {
+            "short-decode-32": "7fd25a869ff21678",
+            "long-decode-128": "4cc08910089477fd",
+            "longctx-1024-decode-32": "7da83f06ec9f001d",
+        },
+        "qwen25-0.5b-bf16": {
+            "short-decode-32": "7fc0f968789b1882",
+            "long-decode-128": "46108ad71157cb4d",
+            "longctx-1024-decode-32": "ff502900d2a179a5",
+        },
     },
 }
 
@@ -111,6 +132,8 @@ def main():
     ap.add_argument("--out-dir", required=True)
     ap.add_argument("--reps", type=int, default=3)
     ap.add_argument("--skip-gate", action="store_true")
+    ap.add_argument("--pins", choices=sorted(CANONICAL), default="fork",
+                    help="which driver's pin table to grade against")
     args = ap.parse_args()
     bench = str(Path(args.bench_dir) / "scripts" / "bench_decode.py")
     manifest = json.loads(
@@ -132,7 +155,7 @@ def main():
     workloads = ["short-decode-32", "long-decode-128",
                  "longctx-1024-decode-32"]
     for model_id in args.models.split(","):
-        expect_map = CANONICAL[model_id]
+        expect_map = CANONICAL[args.pins][model_id]
         model = dirs[model_id]
         for wl in workloads:
             wentry = next(w for w in manifest["workloads"]
