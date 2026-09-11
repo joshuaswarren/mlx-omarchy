@@ -600,6 +600,10 @@ enum class ComputeKernel : uint16_t {
   // Affine quantize/dequantize bfloat16; append-only profile id.
   QuantizeBF16,
   DequantBF16,
+  // Same shader compiled with -DBF16_IO=1 (uint16 word view, exact
+  // widening, RNE stores, f32 internals, composition-exact arm); appended
+  // to keep profile kernel ids stable.
+  SdpaDecodeNativeBF16,
   Custom,
   Count,
 };
