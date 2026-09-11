@@ -48,7 +48,20 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", required=True)
     ap.add_argument("--reps", type=int, default=9)
+    ap.add_argument("--tag", default="base",
+                    help="wheel identity stamped into every row")
+    ap.add_argument("--default-is-fast", action="store_true",
+                    help="wheel has the bf16 composition on by default, so "
+                    "gate off means MLX_OMARCHY_SDPA_BF16_FAST=0")
     args = ap.parse_args()
+
+    def set_gate(on):
+        if on:
+            os.environ["MLX_OMARCHY_SDPA_BF16_FAST"] = "1"
+        elif args.default_is_fast:
+            os.environ["MLX_OMARCHY_SDPA_BF16_FAST"] = "0"
+        else:
+            os.environ.pop("MLX_OMARCHY_SDPA_BF16_FAST", None)
 
     os.environ.pop("MLX_OMARCHY_SDPA_BF16_FAST", None)
     os.environ.setdefault("MLX_DISABLE_COMPILE", "1")
@@ -65,6 +78,7 @@ def main():
     out = open(args.out, "w")
 
     def emit(row):
+        row["wheel"] = args.tag
         out.write(json.dumps(row) + "\n")
         out.flush()
 
@@ -96,6 +110,7 @@ def main():
     legs = {"short": short_ids, "long": long_ids, "ctx1024": filler}
 
     # ---- whole-model prefill, f32 composition (gate off) ----
+    set_gate(False)
     evals = {}
     for name, ids in legs.items():
         x = mx.array(ids)[None]
@@ -110,7 +125,7 @@ def main():
               "tok_s": round(x.shape[1] / (us / 1e6), 1)})
 
     # ---- whole-model prefill, bf16 composition (gate on, in-process) ----
-    os.environ["MLX_OMARCHY_SDPA_BF16_FAST"] = "1"
+    set_gate(True)
     for name in ("long", "ctx1024"):
         x = evals[name]
         logits = model(x)
@@ -121,7 +136,7 @@ def main():
         emit({"k": "whole_prefill", "leg": name, "gate": "on",
               "tokens": int(x.shape[1]), "us_median": round(us, 1),
               "tok_s": round(x.shape[1] / (us / 1e6), 1)})
-    os.environ.pop("MLX_OMARCHY_SDPA_BF16_FAST", None)
+    set_gate(False)
 
     h = 896
     for m in (262, 1053):
@@ -131,18 +146,19 @@ def main():
         scale = 0.125
 
         # ---- sdpa whole, both gates ----
+        set_gate(False)
         us = timed(
             lambda: (mx.eval(mx.fast.scaled_dot_product_attention(
                 q, kk, v, scale=scale)), mx.synchronize()),
             reps=args.reps)
         emit({"k": "sdpa_whole", "leg": f"m{m}", "gate": "off",
               "us_median": round(us, 1)})
-        os.environ["MLX_OMARCHY_SDPA_BF16_FAST"] = "1"
+        set_gate(True)
         us = timed(
             lambda: (mx.eval(mx.fast.scaled_dot_product_attention(
                 q, kk, v, scale=scale)), mx.synchronize()),
             reps=args.reps)
-        os.environ.pop("MLX_OMARCHY_SDPA_BF16_FAST", None)
+        set_gate(False)
         emit({"k": "sdpa_whole", "leg": f"m{m}", "gate": "on",
               "us_median": round(us, 1)})
 

@@ -2,35 +2,50 @@
 # Window 2 on jwm1-linux: candidate wheel (default-flip + alpha coopmat)
 # suites, paired matrix, and candidate attribution. Single top-level
 # /tmp/m1-gpu.lock flock, capped wait; the wheel + suite binary builds
-# happened OUTSIDE the lock (m1_build_cand.sh).
+# happened OUTSIDE the lock (m1_build_cand.sh, and the base wheel was
+# rebuilt from a5b8c4ab after the cand build wiped dist/).
 #
 # Decision inputs this window produces:
-#   - fam/rt suite binaries from the candidate tree run clean (abort gate)
+#   - fam/fast_ops/rt suite binaries from the candidate tree run clean
+#     (abort gate; fast_ops carries the coopmat alpha regression test)
 #   - paired prefill matrix: warmup + 3 reps x {fork,stock} x {base,cand}
-#   - digest gates per cell, evaluated post-hoc by summarize_prefill.py
-#   - attribution on the cand wheel (gate default = on)
+#   - digest gates per cell, evaluated post-hoc by make_verdict.py
+#   - attribution on the base wheel (runtimes fixed) and the cand wheel
+#     (--default-is-fast so "gate off" really means f32 composition there)
+#   - f64 oracle on BOTH wheels (the cand wheel's bf16fast rows ride the
+#     fixed alpha coopmat kernel; the base wheel's ride the non-coopmat
+#     fallback, so both sides of the decision are measured where they run)
 set -uo pipefail
 cd ~/src/mlx-bf16-prefill-attn
 R=receipts/2026-09-11-bf16-prefill-attention
 PYB=.venv-attn-base/bin/python
 PYC=.venv-attn-cand/bin/python
-WHEELB=dist/mlx_omarchy-0.32.2.dev202609111512+a5b8c4a-cp314-cp314-linux_aarch64.whl
+WHEELB=$(cat "$R/m1-logs/base-wheel-path.txt" 2>/dev/null)
 WHEELC=$(cat "$R/m1-logs/cand-wheel-path.txt" 2>/dev/null)
 [[ -x $PYC ]] || { echo "FATAL: cand venv missing"; exit 3; }
 [[ -f $WHEELB && -f $WHEELC ]] || { echo "FATAL: wheels missing"; exit 3; }
-[[ -x /tmp/fam-attn && -x /tmp/rt-attn ]] || { echo "FATAL: cand suite binaries missing"; exit 3; }
+[[ -x /tmp/fam-attn && -x /tmp/fast-attn && -x /tmp/rt-attn ]] || {
+  echo "FATAL: cand suite binaries missing"; exit 3; }
 mkdir -p "$R/m1-logs" "$R/matrix"
 
 exec 9>/tmp/m1-gpu.lock
 echo "$(date -Is) waiting for /tmp/m1-gpu.lock (cap 7200s)"
 flock -w 7200 9 || { echo "FATAL: lock wait exceeded 7200s"; exit 4; }
 echo "$(date -Is) lock acquired"
+driver_pkg=$(pacman -Q mesa-honeykrisp-omarchy 2>/dev/null || echo MISSING)
+echo "driver: $driver_pkg"
+[[ $driver_pkg == "mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1" ]] || {
+  echo "FATAL: fork driver is not the pinned honeykrisp build"; exit 5; }
 {
   echo "== phase A: cand suite binaries (abort gate) =="
   timeout 1800 /tmp/fam-attn --out="$R/m1-logs/attn-fork-family-cand.log" 2>&1 | tail -2
   echo "family_cand rc=$?"
   grep -q 'row-mismatch' "$R/m1-logs/attn-fork-family-cand.log" && {
     echo "FATAL: cand family suite row mismatch"; exit 3; }
+  timeout 900 /tmp/fast-attn --out="$R/m1-logs/attn-fork-fastops-cand.log" 2>&1 | tail -2
+  echo "fastops_cand rc=$?"
+  grep -qE 'FAILED|Status: FAILED' "$R/m1-logs/attn-fork-fastops-cand.log" && {
+    echo "FATAL: cand fast_ops suite failure"; exit 3; }
   timeout 900 /tmp/rt-attn --out="$R/m1-logs/attn-fork-runtime-cand.log" 2>&1 | tail -2
   echo "runtime_cand rc=$?"
   grep -qE 'row-mismatch|FAILED' "$R/m1-logs/attn-fork-runtime-cand.log" && {
@@ -72,20 +87,25 @@ echo "$(date -Is) lock acquired"
   done
   echo MATRIX-OK
 
-  echo "== phase D: rerun base attribution (probe fixed) =="
-  timeout 1500 $PYB "$R/attribution_components.py" --reps 9 \
+  echo "== phase D: base attribution (probe fixed, lm_head included) =="
+  timeout 1500 $PYB "$R/attribution_components.py" --reps 9 --tag base \
     --out "$R/m1-logs/attribution-base.ndjson" \
     > "$R/m1-logs/attribution-base.log" 2>&1
   echo "attribution_base rc=$?"
 
-  echo "== phase E: rerun oracle (seed arg fixed) =="
-  timeout 3600 $PYB "$R/oracle_f64.py" \
-    --out "$R/m1-logs/oracle.ndjson" \
-    > "$R/m1-logs/oracle.log" 2>&1
-  echo "oracle rc=$?"
+  echo "== phase E: f64 oracle on both wheels =="
+  timeout 3600 $PYB "$R/oracle_f64.py" --tag base \
+    --out "$R/m1-logs/oracle-base.ndjson" \
+    > "$R/m1-logs/oracle-base.log" 2>&1
+  echo "oracle_base rc=$?"
+  timeout 3600 $PYC "$R/oracle_f64.py" --tag cand --default-is-fast \
+    --out "$R/m1-logs/oracle-cand.ndjson" \
+    > "$R/m1-logs/oracle-cand.log" 2>&1
+  echo "oracle_cand rc=$?"
 
-  echo "== phase F: cand attribution =="
-  timeout 1500 $PYC "$R/attribution_components.py" --reps 9 \
+  echo "== phase F: cand attribution (--default-is-fast) =="
+  timeout 1500 $PYC "$R/attribution_components.py" --reps 9 --tag cand \
+    --default-is-fast \
     --out "$R/m1-logs/attribution-cand.ndjson" \
     > "$R/m1-logs/attribution-cand.log" 2>&1
   echo "attribution_cand rc=$?"

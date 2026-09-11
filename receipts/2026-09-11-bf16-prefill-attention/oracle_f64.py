@@ -71,7 +71,16 @@ def f64_attention_truth(q_f, k_f, v_f, scale):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--seed", type=int, default=20260911)
+    ap.add_argument("--out", required=True)
+    ap.add_argument("--tag", default="base",
+                    help="wheel identity stamped into every row")
+    ap.add_argument("--default-is-fast", action="store_true",
+                    help="wheel has the bf16 composition on by default, so "
+                    "the f32 composition is MLX_OMARCHY_SDPA_BF16_FAST=0 "
+                    "and the bf16 composition is the unset default")
     args = ap.parse_args()
+    gates = (("f32comp", "0"), ("bf16fast", None)) if args.default_is_fast \
+        else (("f32comp", None), ("bf16fast", "1"))
 
     os.environ.pop("MLX_OMARCHY_SDPA_BF16_FAST", None)
     os.environ.setdefault("MLX_DISABLE_COMPILE", "1")
@@ -85,6 +94,7 @@ def main():
     out = open(args.out, "w")
 
     def emit(row):
+        row["wheel"] = args.tag
         out.write(json.dumps(row) + "\n")
         out.flush()
         print(json.dumps(row), file=sys.stderr)
@@ -115,7 +125,7 @@ def main():
         logits = model(x)
         mx.eval(logits)
         mx.synchronize()
-        for gate, env in (("f32comp", None), ("bf16fast", "1")):
+        for gate, env in gates:
             if env is None:
                 os.environ.pop("MLX_OMARCHY_SDPA_BF16_FAST", None)
             else:
@@ -143,7 +153,7 @@ def main():
         np.save(os.path.join(os.path.dirname(args.out),
                              f"attn-inputs-m{m}.npy"),
                 np.stack([q_np, k_np, v_np]))
-        for gate, env in (("f32comp", None), ("bf16fast", "1")):
+        for gate, env in gates:
             if env is None:
                 os.environ.pop("MLX_OMARCHY_SDPA_BF16_FAST", None)
             else:
