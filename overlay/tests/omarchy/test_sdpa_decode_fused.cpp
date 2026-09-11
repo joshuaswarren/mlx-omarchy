@@ -174,6 +174,14 @@ array composition_reference(const CacheInputs& in, Stream stream) {
   return reshape(result, Shape{1, kHeads, q_len, kWidth}, stream);
 }
 
+bool bf16_route_ready(Stream stream) {
+  // The composition-exact bf16 arm gates without subgroup requirements, so
+  // it engages on any qualifying device - including llvmpipe, where the
+  // bit-identity gate below is therefore exercised for real.
+  CacheInputs bf16 = make_cache(bfloat16, stream);
+  return dispatches_for([&] { return sdpa_call(bf16, stream); }, stream) == 1;
+}
+
 bool decode_route_ready(Stream stream) {
   // Sentinel: when the device qualifies, the f16 decode shape costs one
   // dispatch. Anything else means the fused route is refused here and the
@@ -391,7 +399,7 @@ TEST_CASE("fused bf16 decode is bit-identical to the f32 composition") {
   for (int keys : {1, 5, 16, 17, 64, 263, 320}) {
     CAPTURE(keys);
     CacheInputs in = make_cache_len(bfloat16, keys, 320, stream);
-    if (decode_route_ready(stream)) {
+    if (bf16_route_ready(stream)) {
       uint64_t dispatches = dispatches_for(
           [&] { return sdpa_call(in, stream); }, stream);
       CHECK_EQ(dispatches, 1);
@@ -404,7 +412,7 @@ TEST_CASE("fused bf16 decode is bit-identical to the f32 composition") {
   // the composition answers - the words are identical either way.
   CAPTURE(2100);
   CacheInputs long_cache = make_cache_len(bfloat16, 2100, 2100, stream);
-  if (decode_route_ready(stream)) {
+  if (bf16_route_ready(stream)) {
     uint64_t dispatches = dispatches_for(
         [&] { return sdpa_call(long_cache, stream); }, stream);
     CHECK(dispatches > 1);
