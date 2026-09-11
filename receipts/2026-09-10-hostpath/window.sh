@@ -16,7 +16,16 @@ echo "=== wrapper start $(date -u +%FT%TZ) pid $$"
 
 R=~/src/mlx-HostPathOverhead/receipts/2026-09-10-hostpath
 ROOT=~/src/mlx-HostPathOverhead
-VENV=$ROOT/.work/venv-hpo/bin/python
+WHEEL=$(ls $ROOT/dist/mlx_omarchy-*-cp314-cp314-linux_aarch64.whl | head -1)
+
+# q4-only manifest, same filter run_arms.py applies
+python3 - "$ROOT/scripts/bench_matrix.json" "$ROOT/receipts/2026-09-10-hostpath/manifest-q4.json" <<'PYMAN'
+import json, sys
+m = json.load(open(sys.argv[1]))
+m["models"] = [x for x in m["models"] if x["id"] == "qwen25-0.5b-4bit"]
+m["generation"]["engine_script"] = "bench_decode_identity.py"
+open(sys.argv[2], "w").write(json.dumps(m, indent=2) + "\n")
+PYMAN
 REL_VENV=~/src/mlx-main-b6d662a8/.work/venv-run/bin/python
 MODEL=~/.cache/huggingface/hub/models--mlx-community--Qwen2.5-0.5B-Instruct-4bit/snapshots/a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3
 PIN=a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3
