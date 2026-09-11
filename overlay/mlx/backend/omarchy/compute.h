@@ -597,6 +597,17 @@ enum class ComputeKernel : uint16_t {
   QmmTileRbPreciseF16,
   // Native-order single-query f16 attention; append-only profile id.
   SdpaDecodeNativeF16,
+  // Split-K decode (MLX_OMARCHY_QMM_VEC_Q4_SPLITK measurement variant):
+  // the Q4 GEMV k range is computed by SPLIT row-block sets and a
+  // separate reduction pass sums the per-split partials. Changes the
+  // accumulation order, so it is env-gated and never default.
+  // Appended to keep profile kernel ids stable.
+  QmmVecQ4SplitK2MultiSubgroupF16,
+  QmmVecQ4SplitK4MultiSubgroupF16,
+  QmmVecQ4SplitK8MultiSubgroupF16,
+  QmmVecQ4SplitKReduce2F16,
+  QmmVecQ4SplitKReduce4F16,
+  QmmVecQ4SplitKReduce8F16,
   Custom,
   Count,
 };

@@ -91,6 +91,7 @@ struct VkTable {
   VK_FN(CreateDescriptorPool);
   VK_FN(AllocateDescriptorSets);
   VK_FN(UpdateDescriptorSets);
+  VK_FN(ResetDescriptorPool);
   VK_FN(CreateCommandPool);
   VK_FN(AllocateCommandBuffers);
   VK_FN(BeginCommandBuffer);
@@ -184,7 +185,7 @@ static void vk_load_device() {
   LOAD_DEV(CreateComputePipelines);
   LOAD_DEV(CreatePipelineLayout);
   LOAD_DEV(CreateDescriptorSetLayout);
-  LOAD_DEV(CreateDescriptorPool);
+  LOAD_DEV(ResetDescriptorPool);
   LOAD_DEV(AllocateDescriptorSets);
   LOAD_DEV(UpdateDescriptorSets);
   LOAD_DEV(CreateCommandPool);
@@ -488,6 +489,45 @@ struct Side {
   VkPipeline pipe{VK_NULL_HANDLE};
 };
 
+static void make_pipeline_nb(Side& side, uint32_t nbindings) {
+  VkDescriptorSetLayoutBinding b[32]{};
+  for (uint32_t i = 0; i < nbindings; ++i) {
+    b[i].binding = i;
+    b[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    b[i].descriptorCount = 1;
+    b[i].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+  }
+  VkDescriptorSetLayoutCreateInfo dslci{};
+  dslci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+  dslci.bindingCount = nbindings;
+  dslci.pBindings = b;
+  if (g_vk.CreateDescriptorSetLayout(g_vk.dev, &dslci, nullptr,
+          &side.dsl) != VK_SUCCESS)
+    die("CreateDescriptorSetLayout nb");
+  VkPipelineLayoutCreateInfo plci{};
+  plci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+  plci.setLayoutCount = 1;
+  plci.pSetLayouts = &side.dsl;
+  VkPushConstantRange pc{};
+  pc.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+  pc.offset = 0;
+  pc.size = sizeof(Params);
+  plci.pushConstantRangeCount = 1;
+  plci.pPushConstantRanges = &pc;
+  if (g_vk.CreatePipelineLayout(g_vk.dev, &plci, nullptr, &side.layout) !=
+      VK_SUCCESS)
+    die("CreatePipelineLayout nb");
+  VkComputePipelineCreateInfo cpci{};
+  cpci.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+  cpci.stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+  cpci.stage.stage = VK_SHADER_STAGE_COMPUTE_BIT;
+  cpci.stage.module = side.mod;
+  cpci.stage.pName = "main";
+  cpci.layout = side.layout;
+  if (g_vk.CreateComputePipelines(g_vk.dev, VK_NULL_HANDLE, 1, &cpci,
+          nullptr, &side.pipe) != VK_SUCCESS)
+    die("CreateComputePipelines nb");
+}
 static void make_pipeline(Side& side) {
   VkDescriptorSetLayoutBinding b[kBindings]{};
   for (uint32_t i = 0; i < kBindings; ++i) {
@@ -581,6 +621,90 @@ static VkDescriptorSet make_set(VkDescriptorPool pool, VkDescriptorSetLayout dsl
     w[i].pBufferInfo = &dbi[i];
   }
   g_vk.UpdateDescriptorSets(g_vk.dev, kBindings, w, 0, nullptr);
+  return set;
+}
+// Split-K kernel set: the 19 production bindings plus the f32 partials
+// scratch at binding 19.
+static VkDescriptorSet make_set_split(VkDescriptorPool pool,
+    VkDescriptorSetLayout dsl, const SetBufs& bufs, uint32_t dims,
+    Buf& partials) {
+  VkDescriptorSetAllocateInfo dsai{};
+  dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+  dsai.descriptorPool = pool;
+  dsai.descriptorSetCount = 1;
+  dsai.pSetLayouts = &dsl;
+  VkDescriptorSet set;
+  if (g_vk.AllocateDescriptorSets(g_vk.dev, &dsai, &set) != VK_SUCCESS)
+    die("AllocateDescriptorSets split");
+  VkDescriptorBufferInfo dbi[20]{};
+  VkWriteDescriptorSet w[20]{};
+  auto info = [&](uint32_t i, Buf& buf) {
+    dbi[i].buffer = buf.buf;
+    dbi[i].offset = 0;
+    dbi[i].range = VK_WHOLE_SIZE;
+  };
+  info(0, const_cast<SetBufs&>(bufs).x);
+  for (uint32_t i = 0; i < kMaxDims; ++i) {
+    uint32_t base = 1 + i * 6;
+    if (i < dims) {
+      info(base, const_cast<SetBufs&>(bufs).w[i]);
+      info(base + 1, const_cast<SetBufs&>(bufs).scales[i]);
+      info(base + 2, const_cast<SetBufs&>(bufs).biases[i]);
+      info(base + 3, const_cast<SetBufs&>(bufs).out[i]);
+      info(base + 4, const_cast<SetBufs&>(bufs).out[i]);
+      info(base + 5, const_cast<SetBufs&>(bufs).out[i]);
+    } else {
+      for (uint32_t j = 0; j < 6; ++j)
+        info(base + j, const_cast<SetBufs&>(bufs).out[0]);
+    }
+  }
+  info(19, partials);
+  for (uint32_t i = 0; i < 20; ++i) {
+    w[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    w[i].dstSet = set;
+    w[i].dstBinding = i;
+    w[i].descriptorCount = 1;
+    w[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    w[i].pBufferInfo = &dbi[i];
+  }
+  g_vk.UpdateDescriptorSets(g_vk.dev, 20, w, 0, nullptr);
+  return set;
+}
+// Reduction set: 0 = partials, 1..3 outputs, 4..6 sums (unused in the
+// bench: no Add epilogue), 7..9 addends (unused).
+static VkDescriptorSet make_set_reduce(VkDescriptorPool pool,
+    VkDescriptorSetLayout dsl, const SetBufs& bufs, uint32_t dims,
+    Buf& partials) {
+  VkDescriptorSetAllocateInfo dsai{};
+  dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+  dsai.descriptorPool = pool;
+  dsai.descriptorSetCount = 1;
+  dsai.pSetLayouts = &dsl;
+  VkDescriptorSet set;
+  if (g_vk.AllocateDescriptorSets(g_vk.dev, &dsai, &set) != VK_SUCCESS)
+    die("AllocateDescriptorSets reduce");
+  VkDescriptorBufferInfo dbi[10]{};
+  VkWriteDescriptorSet w[10]{};
+  auto info = [&](uint32_t i, Buf& buf) {
+    dbi[i].buffer = buf.buf;
+    dbi[i].offset = 0;
+    dbi[i].range = VK_WHOLE_SIZE;
+  };
+  info(0, partials);
+  for (uint32_t i = 0; i < 3; ++i) {
+    info(1 + i, const_cast<SetBufs&>(bufs).out[i < dims ? i : 0]);
+    info(4 + i, const_cast<SetBufs&>(bufs).out[0]);
+    info(7 + i, const_cast<SetBufs&>(bufs).out[0]);
+  }
+  for (uint32_t i = 0; i < 10; ++i) {
+    w[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    w[i].dstSet = set;
+    w[i].dstBinding = i;
+    w[i].descriptorCount = 1;
+    w[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    w[i].pBufferInfo = &dbi[i];
+  }
+  g_vk.UpdateDescriptorSets(g_vk.dev, 10, w, 0, nullptr);
   return set;
 }
 
@@ -692,6 +816,40 @@ static uint64_t dispatch_isolated(const DeviceCtx& ctx, const Side& side,
   uint64_t ticks[2] = {0, 0};
   read_ticks(ctx, r, 2, ticks);
   return (uint64_t)((double)(ticks[1] - ticks[0]) * ctx.timestampPeriod);
+}
+// Split + reduce in ONE submit (the production shape: both dispatches
+// land in the same command buffer, so one submit bracket covers them
+// exactly as the model's encoder would); sgroups == 0 records the
+// reduction pass alone for its cost. g_wall_ns carries the wall bracket.
+static uint64_t dispatch_split_isolated(const DeviceCtx& ctx,
+    const Side& sp, const Side& sr, CmdRes& r, VkDescriptorSet sset,
+    VkDescriptorSet rset, const Params& params, const Params& rparams,
+    uint32_t sgroups, uint32_t rgroups) {
+  begin(r);
+  g_vk.CmdWriteTimestamp(r.cmd, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, r.qpool, 0);
+  if (sgroups > 0u) {
+    g_vk.CmdBindPipeline(r.cmd, VK_PIPELINE_BIND_POINT_COMPUTE, sp.pipe);
+    g_vk.CmdBindDescriptorSets(r.cmd, VK_PIPELINE_BIND_POINT_COMPUTE,
+        sp.layout, 0, 1, &sset, 0, nullptr);
+    g_vk.CmdPushConstants(r.cmd, sp.layout, VK_SHADER_STAGE_COMPUTE_BIT, 0,
+        sizeof(Params), &params);
+    g_vk.CmdDispatch(r.cmd, sgroups, 1, 1);
+  }
+  g_vk.CmdBindPipeline(r.cmd, VK_PIPELINE_BIND_POINT_COMPUTE, sr.pipe);
+  g_vk.CmdBindDescriptorSets(r.cmd, VK_PIPELINE_BIND_POINT_COMPUTE,
+      sr.layout, 0, 1, &rset, 0, nullptr);
+  g_vk.CmdPushConstants(r.cmd, sr.layout, VK_SHADER_STAGE_COMPUTE_BIT, 0,
+      sizeof(Params), &rparams);
+  g_vk.CmdDispatch(r.cmd, rgroups, 1, 1);
+  g_vk.CmdWriteTimestamp(r.cmd, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, r.qpool, 1);
+  g_vk.EndCommandBuffer(r.cmd);
+  submit_and_wait(ctx, r.cmd);
+  uint64_t ticks[2] = {0, 0};
+  read_ticks(ctx, r, 2, ticks);
+  return (uint64_t)((double)(ticks[1] - ticks[0]) * ctx.timestampPeriod);
+}
+static inline int f16_order_key(uint16_t v) {
+  return ((v >> 15) & 1) ? -(int)(v & 0x7FFF) : (int)(v & 0x7FFF);
 }
 
 
@@ -952,6 +1110,90 @@ static VkDescriptorSet gap_make_set(VkDescriptorPool pool,
     wr[i].pBufferInfo = &dbi[i];
   }
   g_vk.UpdateDescriptorSets(g_vk.dev, kBindings, wr, 0, nullptr);
+  return set;
+}
+// Gap variants: same bindings as gap_make_set plus the partials scratch
+// (split kernel, 20 slots) and the reduction view (10 slots).
+static VkDescriptorSet gap_make_set_split(VkDescriptorPool pool,
+    VkDescriptorSetLayout dsl, const GapShapeBufs& g,
+    const GapShapeBufs& wsrc, uint32_t sh_idx, const Buf* x_override,
+    Buf& partials) {
+  const Shape& sh = kShapes[sh_idx];
+  VkDescriptorSetAllocateInfo dsai{};
+  dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+  dsai.descriptorPool = pool;
+  dsai.descriptorSetCount = 1;
+  dsai.pSetLayouts = &dsl;
+  VkDescriptorSet set;
+  if (g_vk.AllocateDescriptorSets(g_vk.dev, &dsai, &set) != VK_SUCCESS)
+    die("gap AllocateDescriptorSets split");
+  VkDescriptorBufferInfo dbi[20]{};
+  auto info = [&](uint32_t i, const Buf& b) {
+    dbi[i].buffer = b.buf;
+    dbi[i].offset = 0;
+    dbi[i].range = VK_WHOLE_SIZE;
+  };
+  info(0, x_override ? *x_override : g.x);
+  for (uint32_t d = 0; d < kMaxDims; ++d) {
+    uint32_t base = 1 + d * 6;
+    if (d < sh.dims) {
+      info(base, wsrc.w[d]);
+      info(base + 1, wsrc.scales[d]);
+      info(base + 2, wsrc.biases[d]);
+      info(base + 3, g.out[d]);
+      info(base + 4, g.out[d]);
+      info(base + 5, g.out[d]);
+    } else {
+      for (uint32_t j = 0; j < 6; ++j) info(base + j, g.out[0]);
+    }
+  }
+  info(19, partials);
+  VkWriteDescriptorSet wr[20]{};
+  for (uint32_t i = 0; i < 20; ++i) {
+    wr[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    wr[i].dstSet = set;
+    wr[i].dstBinding = i;
+    wr[i].descriptorCount = 1;
+    wr[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    wr[i].pBufferInfo = &dbi[i];
+  }
+  g_vk.UpdateDescriptorSets(g_vk.dev, 20, wr, 0, nullptr);
+  return set;
+}
+static VkDescriptorSet gap_make_set_reduce(VkDescriptorPool pool,
+    VkDescriptorSetLayout dsl, const GapShapeBufs& g, uint32_t sh_idx,
+    Buf& partials) {
+  const Shape& sh = kShapes[sh_idx];
+  VkDescriptorSetAllocateInfo dsai{};
+  dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+  dsai.descriptorPool = pool;
+  dsai.descriptorSetCount = 1;
+  dsai.pSetLayouts = &dsl;
+  VkDescriptorSet set;
+  if (g_vk.AllocateDescriptorSets(g_vk.dev, &dsai, &set) != VK_SUCCESS)
+    die("gap AllocateDescriptorSets reduce");
+  VkDescriptorBufferInfo dbi[10]{};
+  auto info = [&](uint32_t i, const Buf& b) {
+    dbi[i].buffer = b.buf;
+    dbi[i].offset = 0;
+    dbi[i].range = VK_WHOLE_SIZE;
+  };
+  info(0, partials);
+  for (uint32_t i = 0; i < 3; ++i) {
+    info(1 + i, g.out[i < sh.dims ? i : 0]);
+    info(4 + i, g.out[0]);
+    info(7 + i, g.out[0]);
+  }
+  VkWriteDescriptorSet wr[10]{};
+  for (uint32_t i = 0; i < 10; ++i) {
+    wr[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    wr[i].dstSet = set;
+    wr[i].dstBinding = i;
+    wr[i].descriptorCount = 1;
+    wr[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    wr[i].pBufferInfo = &dbi[i];
+  }
+  g_vk.UpdateDescriptorSets(g_vk.dev, 10, wr, 0, nullptr);
   return set;
 }
 
@@ -1361,12 +1603,159 @@ static void run_gap_mode(const DeviceCtx& ctx, bool quick) {
     arm_params = sparams;
   }
 
-  // Cleanup (process exits anyway; keep the driver happy on the way out).
-  gap_free(fill_src);
-  gap_free(fill_sink);
-  for (auto& gs : sets)
-    for (uint32_t s = 0; s < kNumShapes; ++s)
-      gap_free_shape(gs.sh[s]);
+  // ---- Split-K candidate screen (MLX_OMARCHY_QMM_VEC_Q4_SPLITK
+  // measurement variant): split+reduce recorded per shape in the same
+  // chained in-model-style environment; the reduction dispatch is part
+  // of the measured cost, as it is in the model. wall_split_gb_s adds
+  // the partial round trip to the payload bytes.
+  {
+    uint64_t arm_layer_bytes = layer_bytes;
+    for (uint32_t s = 0; s < kNumShapes; ++s) {
+      uint32_t cols = 0;
+      for (uint32_t d = 0; d < kShapes[s].dims; ++d)
+        cols += kShapes[s].n[d];
+      arm_layer_bytes += 2ull * cols * 4ull * 8ull; // worst case S=8
+    }
+    auto run_arm_split = [&](const char* arm, const Side& sp,
+        const Side& sr, std::vector<D4>& sa, std::vector<D4>& sb,
+        std::vector<D4>& rs, const uint32_t* sgr, const uint32_t* rgr,
+        const Params* rpr, uint32_t nsets, uint32_t tokens, int pass) {
+      std::vector<uint64_t> samples;
+      for (int r = -1; r < rounds; ++r) {
+        begin(cmd);
+        g_vk.CmdBindPipeline(
+            cmd.cmd, VK_PIPELINE_BIND_POINT_COMPUTE, sp.pipe);
+        for (uint32_t t = 0; t < tokens; ++t) {
+          uint32_t parity = t & 1u;
+          for (uint32_t j = 0; j < nsets; ++j) {
+            const VkDescriptorSet* d4 =
+                parity ? (nsets == 1 ? sb[0].data() : sb[j].data())
+                       : (nsets == 1 ? sa[0].data() : sa[j].data());
+            const VkDescriptorSet* r4 =
+                nsets == 1 ? rs[0].data() : rs[j].data();
+            for (uint32_t s = 0; s < kNumShapes; ++s) {
+              g_vk.CmdBindDescriptorSets(cmd.cmd,
+                  VK_PIPELINE_BIND_POINT_COMPUTE, sp.layout, 0, 1,
+                  &d4[s], 0, nullptr);
+              g_vk.CmdPushConstants(cmd.cmd, sp.layout,
+                  VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(Params),
+                  &sparams[s]);
+              g_vk.CmdDispatch(cmd.cmd, sgr[s], 1, 1);
+              g_vk.CmdBindDescriptorSets(cmd.cmd,
+                  VK_PIPELINE_BIND_POINT_COMPUTE, sr.layout, 0, 1,
+                  &r4[s], 0, nullptr);
+              g_vk.CmdPushConstants(cmd.cmd, sr.layout,
+                  VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(Params),
+                  &rpr[s]);
+              g_vk.CmdDispatch(cmd.cmd, rgr[s], 1, 1);
+            }
+          }
+        }
+        g_vk.EndCommandBuffer(cmd.cmd);
+        auto t0 = std::chrono::steady_clock::now();
+        submit_and_wait(ctx, cmd.cmd);
+        auto t1 = std::chrono::steady_clock::now();
+        if (r >= 0)
+          samples.push_back(
+              std::chrono::duration_cast<std::chrono::nanoseconds>(t1 - t0)
+                      .count() /
+                  (tokens * nsets));
+      }
+      uint64_t med = median(samples);
+      std::printf(
+          "{\"k\":\"gap\",\"arm\":\"%s\",\"sets\":%u,\"tokens\":%u,"
+          "\"rounds\":%d,\"layer_bytes\":%llu,\"layer_ns_med\":%llu,"
+          "\"layer_ns_min\":%llu,\"token_ns_med\":%llu,"
+          "\"weight_gb_s\":%.2f,\"pass\":%d}\n",
+          arm, nsets, tokens, rounds,
+          (unsigned long long)arm_layer_bytes,
+          (unsigned long long)med,
+          (unsigned long long)min_of(samples),
+          (unsigned long long)med * nsets,
+          (double)arm_layer_bytes / ((double)med * 1e-9) / 1e9, pass);
+    };
+    struct SplitCand {
+      uint32_t splits;
+    };
+    const SplitCand scands[] = {{2u}, {4u}, {8u}};
+    for (const SplitCand& sc : scands) {
+      char defines[512];
+      std::snprintf(defines, sizeof(defines),
+          "%s -DQMM_VEC_Q4_SPLITK=%u", q4_defines, sc.splits);
+      std::string spv =
+          std::string("/tmp/q4gap_sk") + std::to_string(sc.splits) + ".spv";
+      std::string rspv = std::string("/tmp/q4gap_skr") +
+          std::to_string(sc.splits) + ".spv";
+      std::string rdefines =
+          std::string("-DUSE_FP16=1 -DQMM_VEC_Q4_SPLITK=") +
+          std::to_string(sc.splits);
+      if (compile_shader("tools/q4-bw-bench/shaders/qmm_vec_splitk.comp",
+              defines, spv.c_str()) != 0)
+        die("compile gap splitk%u", sc.splits);
+      if (compile_shader(
+              "tools/q4-bw-bench/shaders/qmm_vec_splitk_reduce.comp",
+              rdefines.c_str(), rspv.c_str()) != 0)
+        die("compile gap splitk reduce%u", sc.splits);
+      Side sp;
+      sp.tag = "splitk";
+      sp.mod = make_module(read_file(spv.c_str()));
+      make_pipeline_nb(sp, kBindings + 1);
+      Side sr;
+      sr.tag = "splitk_reduce";
+      sr.mod = make_module(read_file(rspv.c_str()));
+      make_pipeline_nb(sr, 10);
+      Buf partials = gap_alloc(ctx, 9728ull * sc.splits * 4u);
+      uint32_t sg[kNumShapes];
+      uint32_t rg[kNumShapes];
+      Params rp[kNumShapes];
+      for (uint32_t s = 0; s < kNumShapes; ++s) {
+        const Shape& sh = kShapes[s];
+        uint32_t cols = 0;
+        for (uint32_t d = 0; d < sh.dims; ++d) cols += sh.n[d];
+        sg[s] = sgroups[s] * sc.splits;
+        rg[s] = (cols + 63u) / 64u;
+        rp[s] = sparams[s];
+        rp[s].matrix_n = cols;
+      }
+      // Dedicated pool per arm: no interference with the shared pool
+      // the base arms hold their descriptor sets from.
+      VkDescriptorPool skpool;
+      VkDescriptorPoolSize sps{};
+      sps.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+      sps.descriptorCount = 40u * 300u;
+      VkDescriptorPoolCreateInfo sdpci{};
+      sdpci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+      sdpci.maxSets = 300;
+      sdpci.poolSizeCount = 1;
+      sdpci.pPoolSizes = &sps;
+      if (g_vk.CreateDescriptorPool(g_vk.dev, &sdpci, nullptr,
+              &skpool) != VK_SUCCESS)
+        die("gap split descriptor pool");
+      std::vector<D4> sa(Lmax), sb(Lmax), rs(Lmax);
+      for (uint32_t l = 0; l < Lmax; ++l) {
+        for (uint32_t s = 0; s < kNumShapes; ++s) {
+          sa[l][s] = gap_make_set_split(skpool, sp.dsl, sets[l].sh[s],
+              sets[l].sh[s], s, chain_x(l, s, false), partials);
+          sb[l][s] = gap_make_set_split(skpool, sp.dsl, sets[l].sh[s],
+              sets[l].sh[s], s, chain_x(l, s, true), partials);
+          rs[l][s] = gap_make_set_reduce(
+              skpool, sr.dsl, sets[l].sh[s], s, partials);
+        }
+      }
+      for (int pass = 1; pass <= 2; ++pass) {
+        std::string i4 =
+            std::string("iso4_splitk") + std::to_string(sc.splits);
+        std::string wd =
+            std::string("widedep_splitk") + std::to_string(sc.splits);
+        run_arm_split(i4.c_str(), sp, sr, sa, sb, rs, sg, rg, rp, 1u,
+            tokens_iso, pass);
+        run_arm_split(wd.c_str(), sp, sr, sa, sb, rs, sg, rg, rp, Lmax,
+            tokens_wide, pass);
+      }
+      g_vk.DestroyDescriptorPool(g_vk.dev, skpool, nullptr);
+      gap_free(partials);
+    }
+  }
 }
 // ---------------------------------------------------------------------------
 // Access-pattern roof mode (--roof): what GB/s the memory system delivers
@@ -1753,7 +2142,7 @@ int main(int argc, char** argv) {
   // Input buffers shared by all sides; output buffers distinct per side
   // so the bit-exactness compare sees each side's own writes.
   SetBufs inputs[kNumShapes];
-  SetBufs outs[kNumShapes][num_sides];
+  SetBufs outs[kNumShapes][num_sides + 3];
   Params shape_params[kNumShapes];
   uint32_t groups_v[kNumShapes][num_sides];
   for (uint32_t s = 0; s < kNumShapes; ++s) {
@@ -1767,23 +2156,25 @@ int main(int argc, char** argv) {
       inputs[s].biases[d] = make_buf(g_vk.dev, ctx.mp,
           (uint64_t)sh.n[d] * (sh.k / 64u) * 2u, false);
     }
-    for (int i = 0; i < num_sides; ++i) {
+    for (int i = 0; i < num_sides + 3; ++i) {
       for (uint32_t d = 0; d < kMaxDims; ++d) {
         uint32_t n = d < sh.dims ? sh.n[d] : sh.n[0];
         outs[s][i].out[d] =
             make_buf(g_vk.dev, ctx.mp, (uint64_t)n * 2u, true);
       }
-      groups_v[s][i] = shape_groups(sh, specs[i].columns);
+      if (i < num_sides) {
+        groups_v[s][i] = shape_groups(sh, specs[i].columns);
+      }
     }
     fill_params(shape_params[s], sh, groups_v[s][0]);
   }
 
   VkDescriptorPoolSize ps{};
   ps.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-  ps.descriptorCount = kBindings * kNumShapes * num_sides;
+  ps.descriptorCount = kBindings * kNumShapes * (num_sides + 3);
   VkDescriptorPoolCreateInfo dpci{};
   dpci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-  dpci.maxSets = kNumShapes * num_sides;
+  dpci.maxSets = kNumShapes * (num_sides + 3);
   dpci.poolSizeCount = 1;
   dpci.pPoolSizes = &ps;
   VkDescriptorPool pool;
@@ -1799,6 +2190,71 @@ int main(int argc, char** argv) {
       }
       sets[s][i] =
           make_set(pool, sides[i].dsl, combined, kShapes[s].dims);
+    }
+  }
+
+  // ---- Split-K sides (MLX_OMARCHY_QMM_VEC_Q4_SPLITK measurement
+  // variant): split kernels over the frozen production shader + the
+  // reduction pass, f16 subgroup, one partials scratch per split count.
+  struct SplitSides {
+    Side split;
+    Side reduce;
+    uint32_t splits;
+    uint32_t sgroups_v[kNumShapes];
+    uint32_t rgroups_v[kNumShapes];
+    Params rparams[kNumShapes];
+    VkDescriptorSet split_sets[kNumShapes];
+    VkDescriptorSet reduce_sets[kNumShapes];
+    Buf partials;
+  };
+  const int kNumSplitSides = 3;
+  SplitSides sk[3];
+  {
+    const uint32_t splits_v[3] = {2, 4, 8};
+    for (int i = 0; i < kNumSplitSides; ++i) {
+      char defines[512];
+      std::snprintf(defines, sizeof(defines), "%s -DQMM_VEC_Q4_SPLITK=%u",
+          variant_defines, splits_v[i]);
+      std::string spv =
+          std::string("/tmp/q4sk") + std::to_string(splits_v[i]) + ".spv";
+      std::string rspv =
+          std::string("/tmp/q4skr") + std::to_string(splits_v[i]) + ".spv";
+      std::string rdefines =
+          std::string("-DUSE_FP16=1 -DQMM_VEC_Q4_SPLITK=") +
+          std::to_string(splits_v[i]);
+      if (compile_shader("tools/q4-bw-bench/shaders/qmm_vec_splitk.comp",
+              defines, spv.c_str()) != 0)
+        die("compile splitk%u", splits_v[i]);
+      if (compile_shader(
+              "tools/q4-bw-bench/shaders/qmm_vec_splitk_reduce.comp",
+              rdefines.c_str(), rspv.c_str()) != 0)
+        die("compile splitk reduce%u", splits_v[i]);
+      sk[i].splits = splits_v[i];
+      sk[i].split.tag = "splitk";
+      sk[i].split.mod = make_module(read_file(spv.c_str()));
+      make_pipeline_nb(sk[i].split, kBindings + 1);
+      sk[i].reduce.tag = "splitk_reduce";
+      sk[i].reduce.mod = make_module(read_file(rspv.c_str()));
+      make_pipeline_nb(sk[i].reduce, 10);
+      sk[i].partials = make_buf(
+          g_vk.dev, ctx.mp, 9728ull * splits_v[i] * 4u, true);
+      for (uint32_t s = 0; s < kNumShapes; ++s) {
+        const Shape& sh = kShapes[s];
+        uint32_t cols = 0;
+        for (uint32_t d = 0; d < sh.dims; ++d) cols += sh.n[d];
+        sk[i].sgroups_v[s] = groups_v[s][0] * splits_v[i];
+        sk[i].rgroups_v[s] = (cols + 63u) / 64u;
+        sk[i].rparams[s] = shape_params[s];
+        sk[i].rparams[s].matrix_n = cols;
+        SetBufs combined = inputs[s];
+        for (uint32_t d = 0; d < kMaxDims; ++d) {
+          combined.out[d] = outs[s][num_sides + i].out[d];
+        }
+        sk[i].split_sets[s] = make_set_split(pool, sk[i].split.dsl,
+            combined, sh.dims, sk[i].partials);
+        sk[i].reduce_sets[s] = make_set_reduce(pool, sk[i].reduce.dsl,
+            combined, sh.dims, sk[i].partials);
+      }
     }
   }
 
@@ -1841,6 +2297,46 @@ int main(int argc, char** argv) {
     }
   }
 
+  // ---- Split-K arms: bit differences are EXPECTED (the split changes
+  // the accumulation order by design); record mismatch counts and the
+  // max f16 ulp distance vs base as engagement and accuracy evidence.
+  for (uint32_t s = 0; s < kNumShapes; ++s) {
+    const Shape& sh = kShapes[s];
+    for (int i = 0; i < kNumSplitSides; ++i) {
+      dispatch_split_isolated(ctx, sk[i].split, sk[i].reduce, iso_cmd,
+          sk[i].split_sets[s], sk[i].reduce_sets[s], shape_params[s],
+          sk[i].rparams[s], sk[i].sgroups_v[s], sk[i].rgroups_v[s]);
+    }
+    for (uint32_t d = 0; d < sh.dims; ++d) {
+      void* p;
+      g_vk.MapMemory(g_vk.dev, outs[s][0].out[d].mem, 0,
+          outs[s][0].out[d].size, 0, &p);
+      std::vector<uint16_t> snap(outs[s][0].out[d].size / 2);
+      std::memcpy(snap.data(), p, outs[s][0].out[d].size);
+      g_vk.UnmapMemory(g_vk.dev, outs[s][0].out[d].mem);
+      for (int i = 0; i < kNumSplitSides; ++i) {
+        g_vk.MapMemory(g_vk.dev, outs[s][num_sides + i].out[d].mem, 0,
+            outs[s][num_sides + i].out[d].size, 0, &p);
+        uint32_t mismatches = 0;
+        int max_ulp = 0;
+        uint16_t* got = (uint16_t*)p;
+        for (size_t e = 0; e < snap.size(); ++e) {
+          if (got[e] != snap[e]) {
+            ++mismatches;
+            int dist = std::abs(f16_order_key(got[e]) -
+                f16_order_key(snap[e]));
+            if (dist > max_ulp) max_ulp = dist;
+          }
+        }
+        g_vk.UnmapMemory(g_vk.dev, outs[s][num_sides + i].out[d].mem);
+        std::printf(
+            "{\"k\":\"eq_split\",\"shape\":\"%s\",\"dim\":%u,"
+            "\"splits\":%u,\"elements\":%zu,\"bit_mismatches\":%u,"
+            "\"max_f16_ulp\":%d}\n",
+            sh.name, d, sk[i].splits, snap.size(), mismatches, max_ulp);
+      }
+    }
+  }
   // ---- Isolated per-shape timings, sides interleaved per rep ----
   for (uint32_t s = 0; s < kNumShapes; ++s) {
     const Shape& sh = kShapes[s];
@@ -1876,6 +2372,60 @@ int main(int argc, char** argv) {
           (double)wmed[i] / (double)wmed[0]);
     }
     std::printf("}\n");
+  }
+
+  // ---- Split-K per-shape timings: base and split interleaved per rep;
+  // each split rep records split+reduce in one submit, then the reduce
+  // pass alone (sgroups = 0) for the reduction cost. wall_split_gb_s
+  // counts the partial round trip on top of the payload bytes.
+  for (uint32_t s = 0; s < kNumShapes; ++s) {
+    const Shape& sh = kShapes[s];
+    uint64_t bytes = shape_bytes(sh);
+    uint32_t cols = 0;
+    for (uint32_t d = 0; d < sh.dims; ++d) cols += sh.n[d];
+    std::vector<std::vector<uint64_t>> samples(kNumSplitSides);
+    std::vector<std::vector<uint64_t>> wall(kNumSplitSides);
+    std::vector<std::vector<uint64_t>> red_samples(kNumSplitSides);
+    std::vector<uint64_t> base_samples;
+    std::vector<uint64_t> base_wall;
+    for (int rep = 0; rep < reps; ++rep) {
+      base_samples.push_back(dispatch_isolated(ctx, sides[0], iso_cmd,
+          sets[s][0], shape_params[s], groups_v[s][0]));
+      base_wall.push_back(g_wall_ns);
+      for (int i = 0; i < kNumSplitSides; ++i) {
+        samples[i].push_back(dispatch_split_isolated(ctx, sk[i].split,
+            sk[i].reduce, iso_cmd, sk[i].split_sets[s],
+            sk[i].reduce_sets[s], shape_params[s], sk[i].rparams[s],
+            sk[i].sgroups_v[s], sk[i].rgroups_v[s]));
+        wall[i].push_back(g_wall_ns);
+        red_samples[i].push_back(dispatch_split_isolated(ctx,
+            sk[i].split, sk[i].reduce, iso_cmd, sk[i].split_sets[s],
+            sk[i].reduce_sets[s], shape_params[s], sk[i].rparams[s], 0u,
+            sk[i].rgroups_v[s]));
+      }
+    }
+    for (int i = 0; i < kNumSplitSides; ++i) {
+      uint64_t med = median(samples[i]);
+      uint64_t wmed = median(wall[i]);
+      uint64_t rmed = median(red_samples[i]);
+      uint64_t bmed = median(base_samples);
+      uint64_t bwmed = median(base_wall);
+      double split_bytes =
+          (double)bytes + 2.0 * (double)cols * 4.0 * (double)sk[i].splits;
+      std::printf(
+          "{\"k\":\"shape_split\",\"name\":\"%s\",\"splits\":%u,"
+          "\"split_grid\":%u,\"reduce_grid\":%u,\"bytes\":%llu,"
+          "\"split_bytes\":%.0f,\"med_ns\":%llu,\"ratio_vs_base\":%.4f,"
+          "\"wall_med_ns\":%llu,\"wall_ratio_vs_base\":%.4f,"
+          "\"wall_gb_s\":%.2f,\"wall_split_gb_s\":%.2f,"
+          "\"reduce_only_med_ns\":%llu}\n",
+          sh.name, sk[i].splits, sk[i].sgroups_v[s], sk[i].rgroups_v[s],
+          (unsigned long long)bytes, split_bytes,
+          (unsigned long long)med, (double)med / (double)bmed,
+          (unsigned long long)wmed, (double)wmed / (double)bwmed,
+          (double)bytes / (double)wmed, split_bytes / (double)wmed,
+          (unsigned long long)rmed);
+    }
   }
 
   std::printf("{\"k\":\"done\"}\n");

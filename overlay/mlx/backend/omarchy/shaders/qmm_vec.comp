@@ -101,6 +101,14 @@ layout(set = 0, binding = 0, std430) readonly buffer InputX {
 #ifndef QMM_VEC_Q4_WORD
 #error "QMM_VEC_MULTI builds on QMM_VEC_Q4_WORD"
 #endif
+#ifdef QMM_VEC_Q4_SPLITK
+#ifndef QMM_VEC_MULTI
+#error "QMM_VEC_Q4_SPLITK applies to the multi-weight decode path"
+#endif
+#if QMM_VEC_Q4_SPLITK < 2
+#error "QMM_VEC_Q4_SPLITK must be 2 or more"
+#endif
+#endif
 // Multi-weight decode dispatch: up to three transposed 4-bit/group-64
 // weights against one x row in one dispatch, each with its own
 // scale/bias/output triple and an optional fused Add epilogue
@@ -135,6 +143,15 @@ layout(set = 0, binding = B + 5, std430) writeonly buffer Sum##I { \
 QMM_VEC_MULTI_WEIGHT(0, 1)
 QMM_VEC_MULTI_WEIGHT(1, 7)
 QMM_VEC_MULTI_WEIGHT(2, 13)
+#ifdef QMM_VEC_Q4_SPLITK
+// Split-K scratch (QMM_VEC_Q4_SPLITK build only): one raw f32 total per
+// (split, output column). The reduction pass sums the SPLIT segments per
+// column, rounds once, and applies the Add epilogue. Only the gated
+// builds declare the binding; the default binaries are untouched.
+layout(set = 0, binding = 19, std430) writeonly buffer Partials {
+  float values[];
+} partials;
+#endif
 #else
 layout(set = 0, binding = 1, std430) readonly buffer InputW {
   uint values[];
@@ -341,6 +358,22 @@ uint q6_at(uint e, uint c0, uint c1, uint c2) {
 // no runtime-count inner loop sits between the loads and the math.
 // Expects w_base, scale_base, bias_base, x_row, words_per_row, n and
 // lane_in_slot in scope and accumulates into `accumulator`.
+#ifdef QMM_VEC_Q4_SPLITK
+// Split-K row loop (QMM_VEC_Q4_SPLITK build only): the same qmv
+// one-word-per-lane map over the split's word range [w_lo, w_hi)
+// instead of the whole row. The qmv_fast pair tile is a whole-row
+// choice; the split path keeps the single-word map so the measurement
+// isolates the k-range reordering from a lane-map change. Expects
+// w_lo and w_hi in scope.
+#define Q4_ROW(W, S, B) { \
+    for (uint w = w_lo + lane_in_slot; w < w_hi; w += LANES) { \
+      precise float dot = 0.0; \
+      precise float input_sum = 0.0; \
+      Q4_WORD(W.values[w_base + w], x_row + w * 8u) \
+      Q4_BLOCK_FINISH(w, S, B) \
+    } \
+  }
+#else
 #define Q4_ROW(W, S, B) { \
   if (params.matrix_k % 512u == 0u && n % 8u == 0u) { \
     for (uint w = lane_in_slot * 2u; w < words_per_row; \
@@ -360,6 +393,7 @@ uint q6_at(uint e, uint c0, uint c1, uint c2) {
     } \
   } \
 }
+#endif
 #endif
 
 #ifdef QMM_VEC_MULTI
@@ -405,6 +439,16 @@ void main() {
   uint groups0 = (n0 + COLUMNS_PER_GROUP - 1u) / COLUMNS_PER_GROUP;
   uint groups1 = (n1 + COLUMNS_PER_GROUP - 1u) / COLUMNS_PER_GROUP;
   uint workgroup = gl_WorkGroupID.x;
+#ifdef QMM_VEC_Q4_SPLITK
+// gl_WorkGroupID.x = split_index * row_blocks + row_block; row_blocks
+// is recomputed from the per-weight N so no new push constant rides
+// along. words_per_row divides by SPLIT (the host refuses otherwise),
+// so every split owns the same number of packed words.
+  uint groups2 = (n2 + COLUMNS_PER_GROUP - 1u) / COLUMNS_PER_GROUP;
+  uint row_blocks = groups0 + groups1 + groups2;
+  uint split_index = workgroup / row_blocks;
+  workgroup -= split_index * row_blocks;
+#endif
   uint which;
   uint n;
   if (workgroup < groups0) {
@@ -424,6 +468,10 @@ void main() {
   precise float accumulator = 0.0;
   if (column_active) {
     uint words_per_row = params.matrix_k / 8u;
+#ifdef QMM_VEC_Q4_SPLITK
+    uint w_lo = split_index * (words_per_row / QMM_VEC_Q4_SPLITK);
+    uint w_hi = w_lo + words_per_row / QMM_VEC_Q4_SPLITK;
+#endif
     uint groups_per_row = params.matrix_k / 64u;
     uint w_base = column * words_per_row;
     uint scale_base = column * groups_per_row;
@@ -451,6 +499,14 @@ void main() {
   float total = reduce_scratch[lane];
 #endif
   if (lane_in_slot == 0u && column_active) {
+#ifdef QMM_VEC_Q4_SPLITK
+    // Raw f32 slot total into the split's segment; the reduction pass
+    // sums the segments per column and mirrors Q4_MULTI_STORE's
+    // round-then-add order for the output and the Add epilogue.
+    uint seg_start = (which == 0u) ? 0u : ((which == 1u) ? n0 : (n0 + n1));
+    partials.values[split_index * (n0 + n1 + n2) + seg_start + column] =
+        total;
+#else
     float rounded = ROUND_STORAGE(total);
     if (which == 0u) {
       Q4_MULTI_STORE(0, rounded)
@@ -459,6 +515,7 @@ void main() {
     } else {
       Q4_MULTI_STORE(2, rounded)
     }
+#endif
   }
 }
 #else
