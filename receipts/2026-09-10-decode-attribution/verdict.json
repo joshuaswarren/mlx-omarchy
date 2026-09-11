@@ -1,0 +1,60 @@
+{
+  "schema": "mlx-omarchy/decode-attribution/1",
+  "status": "PARTIAL - baseline digest gate green, ablation arm data INVALID (hook non-engagement defect), cross-check microbench complete",
+  "date_utc": "2026-09-10",
+  "host": "jwm1-linux, Apple M1 (G13G B1), Honeykrisp (installed mesa-honeykrisp-omarchy package), linux-asahi 7.1.6, glslc",
+  "baseline_commit": "b6d662a (mlx-omarchy; wheel mlx_omarchy-0.32.2.dev202609101916+b6d662a - the wheel behind the 112.2/108.9/96.1 context numbers)",
+  "main_advance_note": "Main advanced to 9737c36e mid-run (producer-direct KV writes, 273->249 dispatches, +2.0-2.4% decode). This receipt describes b6d662a, not 9737c36e; on 9737c36e the kvwrite row shrinks by the removed dispatches and every other row rescales by the ~2% token-time reduction.",
+  "what_is_proven": {
+    "baseline_digest_gate": {
+      "result": "PASS - six canonical digests reproduced on a quiet machine by the unmodified release wheel, and re-reproduced on 3 interleaved reps (9/9 digest checks, >=6 required)",
+      "tok_s_median": {"short-decode-32": 112.53, "long-decode-128": 109.23, "longctx-1024-decode-32": 97.30},
+      "digests": {"short-decode-32": "7fd25a869ff21678", "long-decode-128": "4cc08910089477fd", "longctx-1024-decode-32": "7da83f06ec9f001d"},
+      "canonical_agreement": "matches receipts/2026-09-10-dispatch-floor/legs/r1-wt-default.json (112.86/108.77/96.39)",
+      "evidence": "arms/r1..r3-baseline-*.json, window.log sampler shows loadavg < 1.0 during legs"
+    },
+    "measurement_wheel": {
+      "what": "ad-hoc ablation wheel 0f79507 (wave/DecodeAttribution on jwm1, NEVER merge, never digest-gated): kernel-level no-work variants for qmm multi+word, rope, rms, slice_update_pair, sdpa_decode_native, swiglu, logsumexp, argreduce behind MLX_OMARCHY_ABLATE=gemv,rope,rms,kvwrite,attn,swiglu,sampler,all",
+      "verification": "for all 9 touched shader targets the default-define build compiles to BYTE-IDENTICAL SPIR-V vs pristine sources (local glslc, tools record in shader_check output), and every ablate variant compiles to a DIFFERENT blob",
+      "ablate_wheel_sha256": "cef797f0952c87d149979745648c1c44ade05dfd90b18a40f6b108559361e8a8"
+    },
+    "cross_check_microbench": {
+      "status": "COMPLETE - independent instrument, release wheel, quiet machine, serial dependent chains (eval-window medians, 30 reps)",
+      "numbers_ms_per_token_equivalent": {
+        "lm_head_1_dispatch": 1.62,
+        "gemv_gate_up_down_serial_pairs_48_dispatches": "2.87 (seq48) / 4.04 (seq16) / 3.56 (seq1024)",
+        "rope_48": "1.53-1.71",
+        "rms_49": "1.13-1.17",
+        "sdpa_24": "0.84 (seq48) / 0.80 (seq16) / 2.12 (seq1024)",
+        "swiglu_24_serial": "1.47-2.43 (unstable, treat as upper bound)",
+        "sampler_48_independent_roots": "8.70-9.28 (harness-floor dominated, not resolvable)",
+        "kvwrite_48": "INVALID as cross-check - eager mx.slice_update materializes a full cache copy; the production SliceUpdatePairF16 in-place write is not reachable from plain eager python"
+      },
+      "harness_floor": "serial tiny-add chain = 0.96-1.39 ms for 24 ops (~40-58 us/op) - the EAGER per-op wall cost is ~10x the 4.5 us pre-recorded dispatch floor, so this instrument can only resolve classes costing more than ~40 us/op"
+    }
+  },
+  "defect_blocked_the_table": {
+    "what": "all 7 single-class ablation arms AND the all arm produced CANONICAL digests and baseline-equal tok/s with the ablate wheel binary loaded (provenance verified match, libmlx.so 26c662cb...), i.e. the runtime swap in shader_bytes did not engage in these runs",
+    "counterevidence": "an earlier manual smoke with MLX_OMARCHY_ABLATE=all on the same wheel+venv DID engage (short digest flipped to 8a86dd30276a7f38, 181.02 tok/s) - see smoke/all.json",
+    "arms_table_recorded": "arm medians are all within noise of baseline (e.g. attn short 112.95 vs baseline 112.53; kvwrite longctx 97.07 vs 97.30) - this is the non-engagement, NOT a measured zero cost",
+    "not_root_caused": [
+      "suspect 1: env hand-off through the run_arms -> bench_matrix -> engine subprocess chain (verify with a getenv probe in the engine process)",
+      "suspect 2: pipeline creation for some kernels bypassing the shader_bytes swap path (compute.cpp create_pipeline callers)",
+      "suspect 3: static-init order of the ablate map vs getenv visibility"
+    ],
+    "next_step": "one-line getenv debug print at shader_bytes entry, rebuild (2.5 min), single-class smoke leg, fix hand-off, rerun run_arms.py (leg jsons cache; ~45 min GPU inside one flock window) + analyze.py for the table"
+  },
+  "attribution_table": "NOT DELIVERED - would be fiction from the current arms data; the only honest cross-check numbers so far are microbench.json",
+  "policy": {
+    "never_merged": "ablation wheel lives on jwm1 branch wave/DecodeAttribution commit 0f79507; nothing merged into main",
+    "digest_gates": "canonical digests gated ONLY on the unmodified release wheel; ablate wheels never used as digest evidence",
+    "gpu_windows": "single flock /tmp/m1-gpu.lock windows on jwm1, coordinated with DecodeCopyFusionFinish, QmmAlignDeterminism, Bf16NativeOrderRequalify, Bf16DecodeGemvLand via hub; my final window stopped by me when the defect was found, lock released to Bf16DecodeGemvLand"
+  },
+  "artifacts": [
+    "arms/ (57 leg jsons+logs: baseline 3x3 green, ablate arms invalid per defect)",
+    "microbench.json (complete, 27 chains x 3 seqs)",
+    "smoke/ (base.json: 3 canonical digests; all.json: hook-engagement proof)",
+    "window.log (quiet-gate + loadavg sampler trace)",
+    "run_arms.py, chain_microbench.py, window.sh, analyze.py, summarize.py"
+  ]
+}
