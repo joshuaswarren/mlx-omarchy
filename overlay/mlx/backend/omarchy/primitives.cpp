@@ -6574,8 +6574,10 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
   bool tile_path = tile_env == nullptr || std::strcmp(tile_env, "0") != 0;
   const char* rb_env = std::getenv("MLX_OMARCHY_QMM_TILE_RB");
   bool rb_enabled = rb_env == nullptr || std::strcmp(rb_env, "0") != 0;
+  // Mirrors shaders/qmm_coopmat.comp: f16 operand staging (32x24 x tile
+  // + 16x40 weight tile) plus a 4x8x8 f32 accumulator drain scratch.
   constexpr uint32_t kQmmCoopmatSharedBytes =
-      (32u * 16u + 16u * 32u) * sizeof(float);
+      (32u * 24u + 16u * 40u) * 2u + 4u * 8u * 8u * sizeof(float);
   const auto& coopmat_caps = encoder.device().capabilities();
   bool coopmat_reachable =
       tile_path && rb_enabled && q4_g64_transpose &&
@@ -6721,10 +6723,12 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
   if (tile_path) {
     if (rb_enabled && out.dtype() == float16 && transpose_ && bits_ == 4 &&
         group_size_ == 64) {
-      // Same layout on the 8x8x8 fp32 cooperative matrix when the
-      // device advertises it (shaders/qmm_coopmat.comp: 32x32 output
-      // tile per two-subgroup workgroup, 4 KiB shared staging; x is
-      // read as 32-bit word pairs). The materialization above stages any
+      // Same layout on the 8x8x8 cooperative matrix when the device
+      // advertises it (shaders/qmm_coopmat.comp: 32x32 output tile per
+      // two-subgroup workgroup; both operands staged as f16 with
+      // upstream Metal's padded pitch, weights dequantized straight
+      // into the f16 tile, f16 A/B with f32 accumulate; x is read as
+      // 32-bit word pairs). The materialization above stages any
       // odd-offset x view and out is a fresh offset-0 allocation, so
       // operand alignment holds by construction and coopmat_reachable
       // alone decides the route. If that contract ever broke, refusing
