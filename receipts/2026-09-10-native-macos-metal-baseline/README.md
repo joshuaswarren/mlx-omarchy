@@ -94,7 +94,7 @@ router leg served sustained traffic through every attempt (12/12 reps
 contended twice, per-leg CPU deltas 1–2.2 s, decode collapsed to
 47–68 tok/s); attempts were refused rather than published. Raw evidence:
 `att1/laptop-att1-routerbusy-rep12/`. The router was not disturbed
-(standing llm-router redundancy order); a clean M2 Max window must wait
+(a resident service outside this project was left running by policy); a clean M2 Max window must wait
 for quiet router traffic. The two accepted hosts already bracket the
 cross-chip conclusion above.
 
@@ -133,7 +133,7 @@ reproduce exactly, confirming `docs/parity-id-policy.md` rule 2.
    router leg (58% CPU, ~31 GB resident): decode collapsed 296 -> 11
    tok/s with digests unchanged. Kept as
    `att1/native-baseline-macstudio-att1-omlx-contended.json`; the router
-   leg was NOT disturbed (standing llm-router redundancy order).
+   leg was NOT disturbed (a resident service outside this project was left running by policy).
 3. With `ollama stop` applied to resident models and the CPU-watch
    active, macstudio produced a valid gated matrix (router busy for the
    first two reps, quiet for 5-6 clean reps per leg; medians unchanged
