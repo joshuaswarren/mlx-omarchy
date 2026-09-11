@@ -26,7 +26,6 @@ import sys
 import time
 
 import mlx.core as mx
-from mlx_lm.models import qwen2  # noqa: F401  (import guard for wheel sanity)
 
 
 def timed(fn, warmup=3, reps=30):
