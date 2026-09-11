@@ -35,7 +35,7 @@ def run_one(seed, k_len):
     v = v_cache[:, :, :k_len, :]
     out = mx.fast.scaled_dot_product_attention(
         q, k, v, scale=1.0 / (HD ** 0.5))
-    out.eval()
+    mx.eval(out)
     return out.view(mx.uint16)
 
 

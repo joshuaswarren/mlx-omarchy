@@ -42,9 +42,7 @@ def time_chain(k_len, reps):
         delta = mx.array([float(r)], dtype=mx.float16)
         outs = build_chain(k_len, delta)  # build outside the timed window
         t0 = time.perf_counter()
-        for o in outs:
-            o.eval()
-        mx.synchronize()
+        mx.eval(*outs)
         walls.append((time.perf_counter() - t0) * 1e3)
     return walls
 
