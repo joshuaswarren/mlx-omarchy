@@ -628,6 +628,13 @@ static CmdRes make_cmd(const DeviceCtx& ctx, uint32_t queries) {
   return r;
 }
 
+static uint64_t g_wall_ns = 0;
+
+// Host CLOCK_MONOTONIC bracket around the whole submit (queue submit +
+// fence wait). This is the only trustworthy timing instrument on this
+// driver (receipts/2026-09-10-dispatch-floor,
+// receipts/2026-09-11-decode-gap): every wall number this bench prints
+// comes from here.
 static VkFence submit_and_wait(const DeviceCtx& ctx, VkCommandBuffer cmd) {
   VkSubmitInfo si{};
   si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -638,11 +645,16 @@ static VkFence submit_and_wait(const DeviceCtx& ctx, VkCommandBuffer cmd) {
   fci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
   if (g_vk.CreateFence(g_vk.dev, &fci, nullptr, &fence) != VK_SUCCESS)
     die("CreateFence");
+  auto wall_t0 = std::chrono::steady_clock::now();
   if (g_vk.QueueSubmit(ctx.queue, 1, &si, fence) != VK_SUCCESS)
     die("QueueSubmit");
   if (g_vk.WaitForFences(g_vk.dev, 1, &fence, VK_TRUE, UINT64_MAX) !=
       VK_SUCCESS)
     die("WaitForFences");
+  auto wall_t1 = std::chrono::steady_clock::now();
+  g_wall_ns = (uint64_t)std::chrono::duration_cast<
+      std::chrono::nanoseconds>(wall_t1 - wall_t0)
+                  .count();
   g_vk.DestroyFence(g_vk.dev, fence, nullptr);
   return VK_NULL_HANDLE;
 }
@@ -779,6 +791,7 @@ static void run_peak(const DeviceCtx& ctx, const char* src_path,
   CmdRes cmd = make_cmd(ctx, 2);
   uint32_t groups = uvec4_count / 256u;
   std::vector<uint64_t> samples;
+  std::vector<uint64_t> wall_samples;
   if (!skip) {
     for (int rep = 0; rep < 3; ++rep) {
       begin(cmd);
@@ -797,6 +810,18 @@ static void run_peak(const DeviceCtx& ctx, const char* src_path,
       read_ticks(ctx, cmd, 2, ticks);
       samples.push_back(
           (uint64_t)((double)(ticks[1] - ticks[0]) * ctx.timestampPeriod));
+      // Wall-anchored repeat of the same dispatch: the copy roof the
+      // kernel numbers are judged against, measured with the same
+      // submit bracket (so per-submit overhead inflates both equally).
+      begin(cmd);
+      g_vk.CmdBindPipeline(
+          cmd.cmd, VK_PIPELINE_BIND_POINT_COMPUTE, p.pipe);
+      g_vk.CmdBindDescriptorSets(cmd.cmd, VK_PIPELINE_BIND_POINT_COMPUTE,
+          p.layout, 0, 1, &set, 0, nullptr);
+      g_vk.CmdDispatch(cmd.cmd, groups, 1, 1);
+      g_vk.EndCommandBuffer(cmd.cmd);
+      submit_and_wait(ctx, cmd.cmd);
+      wall_samples.push_back(g_wall_ns);
     }
   }
   double bytes = (double)uvec4_count * 16.0 *
@@ -805,12 +830,15 @@ static void run_peak(const DeviceCtx& ctx, const char* src_path,
     std::printf("{\"k\":\"peak\",\"tag\":\"%s\",\"skipped\":true}\n", tag);
   } else {
     uint64_t med = median(samples);
+    uint64_t wmed = median(wall_samples);
     std::printf(
         "{\"k\":\"peak\",\"tag\":\"%s\",\"bytes\":%llu,\"med_gpu_ns\":%llu,"
-        "\"min_gpu_ns\":%llu,\"med_gb_s\":%.2f,\"min_gb_s\":%.2f}\n",
+        "\"min_gpu_ns\":%llu,\"med_gb_s\":%.2f,\"min_gb_s\":%.2f,"
+        "\"wall_med_ns\":%llu,\"wall_med_gb_s\":%.2f}\n",
         tag, (unsigned long long)bytes, (unsigned long long)med,
         (unsigned long long)min_of(samples), bytes / (double)med,
-        bytes / (double)min_of(samples));
+        bytes / (double)min_of(samples), (unsigned long long)wmed,
+        bytes / (double)wmed);
   }
   g_vk.DestroyDescriptorPool(g_vk.dev, pool, nullptr);
   g_vk.DestroyBuffer(g_vk.dev, a.buf, nullptr);
@@ -1277,14 +1305,334 @@ static void run_gap_mode(const DeviceCtx& ctx, bool quick) {
     for (uint32_t s = 0; s < kNumShapes; ++s)
       gap_free_shape(gs.sh[s]);
 }
+// ---------------------------------------------------------------------------
+// Access-pattern roof mode (--roof): what GB/s the memory system delivers
+// for the exact Q4 decode GEMV byte layout, wall-anchored only. Arms:
+//   * streaming copy/read peaks (same submit bracket as everything else),
+//   * the parametrized pattern probe (shaders/q4_pattern.comp): the
+//     packed-word + per-group-scale/bias + x stream with a near-empty
+//     body, sweeping load width, rows per workgroup and row pitch,
+//   * the production base kernel wall-timed per dispatch shape (8
+//     back-to-back dispatches per submit, divided by 8) and as the
+//     four-dispatch layer chain in one submit.
+struct PatArm {
+  const char* name;
+  const char* defines;
+  uint32_t rows_per_wg;
+  uint32_t pitch;
+};
+
+static void run_roof_mode(const DeviceCtx& ctx, bool quick,
+    const char* variant_defines) {
+  const uint32_t rows = 524288u; // 524288 x 448 B words = 235 MB
+  const uint32_t words_per_row = 112u; // k = 896
+  const uint32_t groups_per_row = 14u;
+  const uint32_t max_pitch = 128u;
+  const int rounds = quick ? 3 : 7;
+
+  // Streaming peaks, same instrument as every arm below.
+  run_peak(ctx, "tools/q4-bw-bench/shaders/peak_copy.comp",
+      "/tmp/roof_copy.spv", "copy", 1u << 24u, false);
+  run_peak(ctx, "tools/q4-bw-bench/shaders/peak_read.comp",
+      "/tmp/roof_read.spv", "read", 1u << 24u, false);
+
+  // Pattern probe buffers, sized once for the largest pitch.
+  Buf x_b = make_buf(g_vk.dev, ctx.mp, (uint64_t)words_per_row * 16u, false);
+  Buf w_b = make_buf(g_vk.dev, ctx.mp,
+      (uint64_t)rows * max_pitch * 4u, false);
+  Buf s_b = make_buf(g_vk.dev, ctx.mp,
+      (uint64_t)rows * groups_per_row * 2u, false);
+  Buf b_b = make_buf(g_vk.dev, ctx.mp,
+      (uint64_t)rows * groups_per_row * 2u, false);
+  Buf o_b = make_buf(g_vk.dev, ctx.mp, (uint64_t)rows * 4u, true);
+
+  struct PatPipe {
+    VkShaderModule mod{VK_NULL_HANDLE};
+    VkDescriptorSetLayout dsl{VK_NULL_HANDLE};
+    VkPipelineLayout layout{VK_NULL_HANDLE};
+    VkPipeline pipe{VK_NULL_HANDLE};
+    VkDescriptorPool pool{VK_NULL_HANDLE};
+    VkDescriptorSet set{VK_NULL_HANDLE};
+    CmdRes cmd;
+  };
+  auto make_pat = [&](PatPipe& pp, const char* defines) {
+    if (compile_shader("tools/q4-bw-bench/shaders/q4_pattern.comp",
+            defines, "/tmp/roof_pat.spv") != 0)
+      die("compile pattern arm %s", defines);
+    pp.mod = make_module(read_file("/tmp/roof_pat.spv"));
+    VkDescriptorSetLayoutBinding b[7]{};
+    for (uint32_t i = 0; i < 7; ++i) {
+      b[i].binding = i;
+      b[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+      b[i].descriptorCount = 1;
+      b[i].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+    }
+    VkDescriptorSetLayoutCreateInfo dslci{};
+    dslci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    dslci.bindingCount = 7;
+    dslci.pBindings = b;
+    if (g_vk.CreateDescriptorSetLayout(g_vk.dev, &dslci, nullptr,
+            &pp.dsl) != VK_SUCCESS)
+      die("pattern dsl");
+    VkPushConstantRange pc{};
+    pc.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+    pc.offset = 0;
+    pc.size = 16u;
+    VkPipelineLayoutCreateInfo plci{};
+    plci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    plci.setLayoutCount = 1;
+    plci.pSetLayouts = &pp.dsl;
+    plci.pushConstantRangeCount = 1;
+    plci.pPushConstantRanges = &pc;
+    if (g_vk.CreatePipelineLayout(g_vk.dev, &plci, nullptr, &pp.layout) !=
+        VK_SUCCESS)
+      die("pattern layout");
+    VkComputePipelineCreateInfo cpci{};
+    cpci.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+    cpci.stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    cpci.stage.stage = VK_SHADER_STAGE_COMPUTE_BIT;
+    cpci.stage.module = pp.mod;
+    cpci.stage.pName = "main";
+    cpci.layout = pp.layout;
+    if (g_vk.CreateComputePipelines(g_vk.dev, VK_NULL_HANDLE, 1, &cpci,
+            nullptr, &pp.pipe) != VK_SUCCESS)
+      die("pattern pipe");
+    VkDescriptorPoolSize ps{};
+    ps.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    ps.descriptorCount = 7;
+    VkDescriptorPoolCreateInfo dpci{};
+    dpci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    dpci.maxSets = 1;
+    dpci.poolSizeCount = 1;
+    dpci.pPoolSizes = &ps;
+    if (g_vk.CreateDescriptorPool(g_vk.dev, &dpci, nullptr, &pp.pool) !=
+        VK_SUCCESS)
+      die("pattern pool");
+    VkDescriptorSetAllocateInfo dsai{};
+    dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    dsai.descriptorPool = pp.pool;
+    dsai.descriptorSetCount = 1;
+    dsai.pSetLayouts = &pp.dsl;
+    if (g_vk.AllocateDescriptorSets(g_vk.dev, &dsai, &pp.set) !=
+        VK_SUCCESS)
+      die("pattern set");
+    VkDescriptorBufferInfo dbi[7]{};
+    Buf* bufs[7] = {&x_b, &w_b, &s_b, &b_b, &o_b, &w_b, &w_b};
+    VkWriteDescriptorSet wr[7]{};
+    for (uint32_t i = 0; i < 7; ++i) {
+      dbi[i].buffer = bufs[i]->buf;
+      dbi[i].range = VK_WHOLE_SIZE;
+      wr[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+      wr[i].dstSet = pp.set;
+      wr[i].dstBinding = i;
+      wr[i].descriptorCount = 1;
+      wr[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+      wr[i].pBufferInfo = &dbi[i];
+    }
+    g_vk.UpdateDescriptorSets(g_vk.dev, 7, wr, 0, nullptr);
+    pp.cmd = make_cmd(ctx, 2);
+  };
+
+  const PatArm arms[] = {
+      // Production access pattern: scalar words, one per lane per step,
+      // 8 rows per workgroup, contiguous 448 B rows.
+      {"pat_w1_r8", "-DROWS_PER_WG=8 -DWORDS_PER_LANE=1 -DLOAD_WIDTH=1",
+          8u, 112u},
+      // Pitch/alignment: line-aligned 512 B rows and odd-phase rows.
+      {"pat_w1_r8_l128",
+          "-DROWS_PER_WG=8 -DWORDS_PER_LANE=1 -DLOAD_WIDTH=1", 8u, 128u},
+      {"pat_w1_r8_p114",
+          "-DROWS_PER_WG=8 -DWORDS_PER_LANE=1 -DLOAD_WIDTH=1", 8u, 114u},
+      // Load width at the production row count.
+      {"pat_w2_r8", "-DROWS_PER_WG=8 -DWORDS_PER_LANE=2 -DLOAD_WIDTH=1",
+          8u, 112u},
+      {"pat_v2_r8", "-DROWS_PER_WG=8 -DWORDS_PER_LANE=2 -DLOAD_WIDTH=2",
+          8u, 112u},
+      {"pat_v4_r8", "-DROWS_PER_WG=8 -DWORDS_PER_LANE=4 -DLOAD_WIDTH=4",
+          8u, 112u},
+      // Concurrent rows per workgroup at the production load width.
+      {"pat_w1_r1", "-DROWS_PER_WG=1 -DWORDS_PER_LANE=1 -DLOAD_WIDTH=1",
+          1u, 112u},
+      {"pat_w1_r2", "-DROWS_PER_WG=2 -DWORDS_PER_LANE=1 -DLOAD_WIDTH=1",
+          2u, 112u},
+      {"pat_w1_r4", "-DROWS_PER_WG=4 -DWORDS_PER_LANE=1 -DLOAD_WIDTH=1",
+          4u, 112u},
+      {"pat_w1_r16", "-DROWS_PER_WG=16 -DWORDS_PER_LANE=1 -DLOAD_WIDTH=1",
+          16u, 112u},
+      // Best-guess wide x deep combinations.
+      {"pat_v4_r16", "-DROWS_PER_WG=16 -DWORDS_PER_LANE=4 -DLOAD_WIDTH=4",
+          16u, 112u},
+      {"pat_v2_r16", "-DROWS_PER_WG=16 -DWORDS_PER_LANE=2 -DLOAD_WIDTH=2",
+          16u, 112u},
+  };
+  for (const PatArm& arm : arms) {
+    PatPipe pp;
+    make_pat(pp, arm.defines);
+    uint32_t xg = (rows + arm.rows_per_wg - 1u) / arm.rows_per_wg;
+    uint32_t gx = xg < 32768u ? xg : 32768u;
+    uint32_t gy = (xg + gx - 1u) / gx;
+    uint32_t pcvals[4] = {rows, words_per_row, arm.pitch, groups_per_row};
+    double bytes = (double)rows * ((double)words_per_row * 4.0 +
+        (double)groups_per_row * 4.0 + 4.0) + (double)words_per_row * 16.0;
+    std::vector<uint64_t> samples;
+    for (int rep = 0; rep < rounds + 1; ++rep) {
+      begin(pp.cmd);
+      g_vk.CmdBindPipeline(
+          pp.cmd.cmd, VK_PIPELINE_BIND_POINT_COMPUTE, pp.pipe);
+      g_vk.CmdBindDescriptorSets(pp.cmd.cmd, VK_PIPELINE_BIND_POINT_COMPUTE,
+          pp.layout, 0, 1, &pp.set, 0, nullptr);
+      g_vk.CmdPushConstants(pp.cmd.cmd, pp.layout,
+          VK_SHADER_STAGE_COMPUTE_BIT, 0, 16u, pcvals);
+      g_vk.CmdDispatch(pp.cmd.cmd, gx, gy, 1);
+      g_vk.EndCommandBuffer(pp.cmd.cmd);
+      submit_and_wait(ctx, pp.cmd.cmd);
+      if (rep > 0) samples.push_back(g_wall_ns);
+    }
+    uint64_t med = median(samples);
+    std::printf(
+        "{\"k\":\"pat\",\"arm\":\"%s\",\"rows\":%u,\"pitch\":%u,"
+        "\"rows_per_wg\":%u,\"bytes\":%.0f,\"med_wall_ns\":%llu,"
+        "\"med_gb_s\":%.2f,\"min_gb_s\":%.2f}\n",
+        arm.name, rows, arm.pitch, arm.rows_per_wg, bytes,
+        (unsigned long long)med, bytes / (double)med,
+        bytes / (double)min_of(samples));
+    fflush(stdout);
+    g_vk.DestroyCommandPool(g_vk.dev, pp.cmd.pool, nullptr);
+    g_vk.DestroyDescriptorPool(g_vk.dev, pp.pool, nullptr);
+    g_vk.DestroyPipeline(g_vk.dev, pp.pipe, nullptr);
+    g_vk.DestroyPipelineLayout(g_vk.dev, pp.layout, nullptr);
+    g_vk.DestroyDescriptorSetLayout(g_vk.dev, pp.dsl, nullptr);
+    g_vk.DestroyShaderModule(g_vk.dev, pp.mod, nullptr);
+  }
+
+  // Production base kernel, wall-anchored per shape and as the layer
+  // chain. Bit-identity is not at stake here (no candidate side); this
+  // anchors the pattern arms to the real kernel's achieved rate.
+  Side base;
+  base.tag = "base";
+  if (compile_shader("tools/q4-bw-bench/shaders/qmm_vec_base.comp",
+          variant_defines, "/tmp/roof_base.spv") != 0)
+    die("compile base");
+  base.mod = make_module(read_file("/tmp/roof_base.spv"));
+  make_pipeline(base);
+  SetBufs inputs[kNumShapes];
+  SetBufs outs[kNumShapes];
+  Params shape_params[kNumShapes];
+  uint32_t groups_v[kNumShapes];
+  for (uint32_t s = 0; s < kNumShapes; ++s) {
+    const Shape& sh = kShapes[s];
+    inputs[s].x = make_buf(g_vk.dev, ctx.mp, (uint64_t)sh.k * 2u, false);
+    for (uint32_t d = 0; d < sh.dims; ++d) {
+      inputs[s].w[d] = make_buf(g_vk.dev, ctx.mp,
+          (uint64_t)sh.n[d] * (sh.k / 8u) * 4u, false);
+      inputs[s].scales[d] = make_buf(g_vk.dev, ctx.mp,
+          (uint64_t)sh.n[d] * (sh.k / 64u) * 2u, false);
+      inputs[s].biases[d] = make_buf(g_vk.dev, ctx.mp,
+          (uint64_t)sh.n[d] * (sh.k / 64u) * 2u, false);
+      outs[s].out[d] = make_buf(g_vk.dev, ctx.mp,
+          (uint64_t)sh.n[d] * 2u, true);
+    }
+    for (uint32_t d = sh.dims; d < kMaxDims; ++d)
+      outs[s].out[d] = outs[s].out[0];
+    groups_v[s] = shape_groups(sh, 8u);
+    fill_params(shape_params[s], sh, groups_v[s]);
+  }
+  VkDescriptorPoolSize ps{};
+  ps.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+  ps.descriptorCount = kBindings * kNumShapes;
+  VkDescriptorPoolCreateInfo dpci{};
+  dpci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+  dpci.maxSets = kNumShapes;
+  dpci.poolSizeCount = 1;
+  dpci.pPoolSizes = &ps;
+  VkDescriptorPool pool;
+  if (g_vk.CreateDescriptorPool(g_vk.dev, &dpci, nullptr, &pool) !=
+      VK_SUCCESS)
+    die("roof base pool");
+  VkDescriptorSet sets[kNumShapes];
+  for (uint32_t s = 0; s < kNumShapes; ++s) {
+    SetBufs combined = inputs[s];
+    for (uint32_t d = 0; d < kMaxDims; ++d)
+      combined.out[d] = outs[s].out[d];
+    sets[s] = make_set(pool, base.dsl, combined, kShapes[s].dims);
+  }
+  CmdRes cmd = make_cmd(ctx, 2);
+  const uint32_t k_repeat = 8u;
+  for (uint32_t s = 0; s < kNumShapes; ++s) {
+    const Shape& sh = kShapes[s];
+    std::vector<uint64_t> samples;
+    for (int rep = 0; rep < rounds + 1; ++rep) {
+      begin(cmd);
+      g_vk.CmdBindPipeline(
+          cmd.cmd, VK_PIPELINE_BIND_POINT_COMPUTE, base.pipe);
+      g_vk.CmdBindDescriptorSets(cmd.cmd, VK_PIPELINE_BIND_POINT_COMPUTE,
+          base.layout, 0, 1, &sets[s], 0, nullptr);
+      for (uint32_t k = 0; k < k_repeat; ++k) {
+        g_vk.CmdPushConstants(cmd.cmd, base.layout,
+            VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(Params),
+            &shape_params[s]);
+        g_vk.CmdDispatch(cmd.cmd, groups_v[s], 1, 1);
+      }
+      g_vk.EndCommandBuffer(cmd.cmd);
+      submit_and_wait(ctx, cmd.cmd);
+      if (rep > 0) samples.push_back(g_wall_ns / k_repeat);
+    }
+    uint64_t med = median(samples);
+    double bytes = (double)shape_bytes(sh);
+    std::printf(
+        "{\"k\":\"q4wall\",\"shape\":\"%s\",\"grid\":%u,\"k_repeat\":%u,"
+        "\"bytes\":%.0f,\"med_wall_ns\":%llu,\"med_gb_s\":%.2f,"
+        "\"min_gb_s\":%.2f}\n",
+        sh.name, groups_v[s], k_repeat, bytes, (unsigned long long)med,
+        bytes / (double)med, bytes / (double)min_of(samples));
+    fflush(stdout);
+  }
+  // One layer chain: qkv, o, gate_up, down in one submit, like one
+  // decode-token layer issues them.
+  {
+    std::vector<uint64_t> samples;
+    for (int rep = 0; rep < rounds + 1; ++rep) {
+      begin(cmd);
+      g_vk.CmdBindPipeline(
+          cmd.cmd, VK_PIPELINE_BIND_POINT_COMPUTE, base.pipe);
+      for (uint32_t s = 0; s < kNumShapes; ++s) {
+        g_vk.CmdBindDescriptorSets(cmd.cmd,
+            VK_PIPELINE_BIND_POINT_COMPUTE, base.layout, 0, 1, &sets[s],
+            0, nullptr);
+        g_vk.CmdPushConstants(cmd.cmd, base.layout,
+            VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(Params),
+            &shape_params[s]);
+        g_vk.CmdDispatch(cmd.cmd, groups_v[s], 1, 1);
+      }
+      g_vk.EndCommandBuffer(cmd.cmd);
+      submit_and_wait(ctx, cmd.cmd);
+      if (rep > 0) samples.push_back(g_wall_ns);
+    }
+    uint64_t med = median(samples);
+    double bytes = 0.0;
+    for (uint32_t s = 0; s < kNumShapes; ++s)
+      bytes += (double)shape_bytes(kShapes[s]);
+    std::printf(
+        "{\"k\":\"q4layer\",\"bytes\":%.0f,\"med_wall_ns\":%llu,"
+        "\"med_gb_s\":%.2f,\"us_per_layer\":%.1f,\"ms_per_token_24\":%.2f,"
+        "\"tok_s_q4only\":%.1f}\n",
+        bytes, (unsigned long long)med, bytes / (double)med,
+        (double)med / 1000.0, 24.0 * (double)med / 1e6,
+        1000.0 / (24.0 * (double)med / 1e9));
+    fflush(stdout);
+  }
+}
+
 int main(int argc, char** argv) {
   bool tree_mode = false;
   bool quick = false;
   bool gap_mode = false;
+  bool roof_mode = false;
   for (int i = 1; i < argc; ++i) {
     if (std::string(argv[i]) == "--tree") tree_mode = true;
     if (std::string(argv[i]) == "--quick") quick = true;
     if (std::string(argv[i]) == "--gap") gap_mode = true;
+    if (std::string(argv[i]) == "--roof") roof_mode = true;
   }
   const int reps = quick ? 7 : 21;
 
@@ -1323,6 +1671,11 @@ int main(int argc, char** argv) {
       tree_mode ? "tree" : "subgroup", reps);
   if (gap_mode) {
     run_gap_mode(ctx, quick);
+    std::printf("{\"k\":\"done\"}\n");
+    return 0;
+  }
+  if (roof_mode) {
+    run_roof_mode(ctx, quick, variant_defines);
     std::printf("{\"k\":\"done\"}\n");
     return 0;
   }
@@ -1430,10 +1783,12 @@ int main(int argc, char** argv) {
     const Shape& sh = kShapes[s];
     std::vector<uint64_t> med(num_sides), minv(num_sides);
     std::vector<std::vector<uint64_t>> samples(num_sides);
+    std::vector<std::vector<uint64_t>> wall(num_sides);
     for (int rep = 0; rep < reps; ++rep) {
       for (int i = 0; i < num_sides; ++i) {
         samples[i].push_back(dispatch_isolated(ctx, sides[i], iso_cmd,
             sets[s][i], shape_params[s], groups_v[s][i]));
+        wall[i].push_back(g_wall_ns);
       }
     }
     uint64_t bytes = shape_bytes(sh);
@@ -1441,14 +1796,21 @@ int main(int argc, char** argv) {
       med[i] = median(samples[i]);
       minv[i] = min_of(samples[i]);
     }
+    std::vector<uint64_t> wmed(num_sides);
+    for (int i = 0; i < num_sides; ++i) {
+      wmed[i] = median(wall[i]);
+    }
     std::printf("{\"k\":\"shape\",\"name\":\"%s\",\"bytes\":%llu",
         sh.name, (unsigned long long)bytes);
     for (int i = 0; i < num_sides; ++i) {
       std::printf(
           ",\"%s\":{\"grid\":%u,\"med_ns\":%llu,\"min_ns\":%llu,"
-          "\"ratio_vs_base\":%.4f}",
+          "\"ratio_vs_base\":%.4f,\"wall_med_ns\":%llu,"
+          "\"wall_gb_s\":%.2f,\"wall_ratio_vs_base\":%.4f}",
           specs[i].tag, groups_v[s][i], (unsigned long long)med[i],
-          (unsigned long long)minv[i], (double)med[i] / (double)med[0]);
+          (unsigned long long)minv[i], (double)med[i] / (double)med[0],
+          (unsigned long long)wmed[i], (double)bytes / (double)wmed[i],
+          (double)wmed[i] / (double)wmed[0]);
     }
     std::printf("}\n");
   }
