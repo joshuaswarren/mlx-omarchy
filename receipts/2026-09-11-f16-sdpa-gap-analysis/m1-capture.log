@@ -1,0 +1,6 @@
+== full suite: /tmp/fast-alpha ==
+61058d55a45ae631273fba4c2546f7ed9ec1901c6c8971459012f05bb4f40866  /tmp/fast-alpha
+rc=0
+== throwing cases ==
+[doctest] assertions: 1104353 | 1104353 passed | 0 failed |
+[doctest] Status: SUCCESS!

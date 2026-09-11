@@ -158,6 +158,27 @@ Until then, update a row only when the linked receipt proves every named gate.
   prepared tree under `.work/mlx` holds a copy of the overlay, so a
   build after a rebase without it tests the code you had, not the code
   you have.
+- M1 qualification windows (driver, full-coverage, decode-prefill) must
+  run the standing M1 battery, not an ad-hoc subset. The standing M1
+  battery is the suites under `overlay/tests/omarchy/` that exercise
+  every omarchy-backend route: `omarchy_runtime_tests`,
+  `omarchy_primitive_tests`, `omarchy_matmul_family_tests`,
+  `omarchy_fast_ops_tests`, `omarchy_kv_ops_tests`,
+  `omarchy_indexing_ops_tests`, `omarchy_reduce_ops_tests`,
+  `omarchy_shape_ops_tests`, `omarchy_linalg_ops_tests`,
+  `omarchy_copy_offset_tests`, `omarchy_distributed_tests`,
+  `omarchy_compiled_tape_tests`, `omarchy_fft_ops_tests`,
+  `omarchy_fft_general_tests`, `omarchy_eig_ops_tests`,
+  `omarchy_take_fill_tests`, `omarchy_conv_tests`,
+  `omarchy_complex_ops_tests`, `omarchy_select_layout_tests`,
+  `omarchy_fast_regression_tests`, `omarchy_scatter_determinism_tests`,
+  `omarchy_eq_math_tests`, `omarchy_fused_chain_tests`,
+  `omarchy_error_contract_tests`, `omarchy_ane_bundle_tests`, plus the
+  `omarchy_capability_sim_tests` profile matrix. The prior pattern of
+  running only `omarchy_matmul_family_tests` +
+  `omarchy_runtime_tests` left the f16 SDPA route untested on the M1 for
+  months and let a simulation-only refusal pattern be mistaken for a real
+  defect (`receipts/2026-09-11-f16-sdpa-gap-analysis`).
 
 Do not lower tolerances, shorten a stability run, or remove a failing workload to make a gate pass.
 
