@@ -311,3 +311,34 @@ target_link_options(omarchy_two_rank_harness PRIVATE ${SANITIZER_LINK_FLAGS})
 add_test(NAME omarchy_two_rank_harness
          COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/distributed/run-two-rank.sh
                  $<TARGET_FILE:omarchy_two_rank_harness>)
+
+# CapabilitySimulation: one binary, one MLX_OMARCHY_CAPS_SIM profile per
+# invocation (test_capability_simulation.cpp). Each registered test runs
+# the real kernels on whatever device the host has (llvmpipe for
+# software development) under one simulated capability profile and
+# asserts the intended outcome: correct result through the gate-chosen
+# fallback, or the loud named refusal for a simulated axis the hardware
+# cannot back. ALLOW_NON_APPLE is set here because these tests exist to
+# run on non-Apple software drivers; on Omarchy hardware the flag only
+# widens acceptance of the same Honeykrisp device.
+add_executable(omarchy_capability_sim_tests
+               ${CMAKE_CURRENT_SOURCE_DIR}/test_capability_simulation.cpp)
+target_link_libraries(omarchy_capability_sim_tests PRIVATE mlx doctest)
+target_compile_options(omarchy_capability_sim_tests
+                       PRIVATE ${SANITIZER_COMPILE_FLAGS})
+target_link_options(omarchy_capability_sim_tests
+                    PRIVATE ${SANITIZER_LINK_FLAGS})
+
+foreach(_capsim_profile IN ITEMS
+            m1-honeykrisp-fork
+            m1-stock-no-coopmat
+            subgroup-size-64
+            small-shared-memory
+            no-cooperative-matrix)
+  add_test(NAME omarchy_capability_sim_tests/${_capsim_profile}
+           COMMAND omarchy_capability_sim_tests ${_capsim_profile})
+  set_tests_properties(omarchy_capability_sim_tests/${_capsim_profile}
+                       PROPERTIES
+                       ENVIRONMENT "MLX_OMARCHY_ALLOW_NON_APPLE=1"
+                       TIMEOUT 1800)
+endforeach()

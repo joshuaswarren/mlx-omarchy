@@ -1,0 +1,136 @@
+{
+  "receipt": "2026-09-11-capability-simulation",
+  "date": "2026-09-11",
+  "branch": "wave/capability-sim",
+  "base": "origin/main 21710dfb",
+  "host": "x86_64 dev box, Mesa llvmpipe (LLVM 15.0.6, 256 bits), Vulkan 1.3.230, software driver only; no Apple silicon touched, M1 GPU lock untouched",
+  "summary": "Named capability-simulation profiles (MLX_OMARCHY_CAPS_SIM) overriding the discovered capability report so non-M1 capability axes develop and regression-test without the hardware; explicit, stamped, evidence-free, and backed-or-refused.",
+  "axis_vocabulary": {
+    "source": "ChipPortabilityAudit, docs/chip-capability-axes.json (branch wave/chip-portability-audit commit 5151bcdf)",
+    "axes": [
+      "driver_variant (never simulated; profiles record which driver_variant they represent)",
+      "cooperative_matrix_fp32_8x8x8 (C++ field cooperative_matrix_f32_8)",
+      "subgroup_size",
+      "subgroup_ops_mask (C++ field subgroup_operations)",
+      "shared_memory_limit_bytes (C++ field max_compute_shared_memory_size)",
+      "workgroup_limits (C++ fields max_compute_work_group_invocations + max_compute_work_group_size[])",
+      "atomic_float_add (C++ field shader_atomic_float_add)",
+      "memory_model (C++ fields unified_memory + host_visible_coherent; inherit-only in shipped profiles)",
+      "digest_policy (per_driver_build; enforced by refusing all digest/bench evidence under simulation)"
+    ]
+  },
+  "measured_host_facts": {
+    "llvmpipe_subgroup_size": 8,
+    "llvmpipe_subgroup_ops_mask": "0xbf (BASIC|VOTE|ARITHMETIC|BALLOT|SHUFFLE|SHUFFLE_RELATIVE + CLUSTERED)",
+    "llvmpipe_shared_memory_limit_bytes": 32768,
+    "llvmpipe_workgroup": "1024 invocations / 1024 size_x",
+    "llvmpipe_atomic_float_add": 1,
+    "consequence": "any 32-lane subgroup claim over this host cannot be executed faithfully: subgroupAdd and shuffle-down kernels assume physical == logical 32 lanes; the harness refuses them by name instead of silently mis-summing"
+  },
+  "profiles": [
+    {
+      "name": "m1-honeykrisp-fork",
+      "represents_driver_variant": "honeykrisp_fork",
+      "deltas": "cooperative_matrix_fp32_8x8x8=1, subgroup_size=32, ops |= ARITHMETIC|SHUFFLE|SHUFFLE_RELATIVE|BASIC",
+      "exercises": "M1-fork dispatch decisions: QmmVecSubgroup/QmmVecQ4WordSubgroup gate ON, MatmulVecBF16 gate ON, Matmul/QmmPrefillCoopmat selection ON, SdpaDecodeNative gate ON",
+      "llvmpipe_outcome": "all five gated kernels refuse by name (hardware cannot back 32-lane physical subgroups or the coopmat extension); refusals name profile, kernel, and axis"
+    },
+    {
+      "name": "m1-stock-no-coopmat",
+      "represents_driver_variant": "stock_mesa_honeykrisp",
+      "deltas": "as m1-fork minus cooperative_matrix_fp32_8x8x8",
+      "exercises": "today's stock-M1 routes: subgroup gates flip the decode kernels on, coopmat gates off -> tile/composed fallbacks",
+      "llvmpipe_outcome": "subgroup kernels refuse by name; dense matmul 16x16 tile, QmmTileRbF16 prefill, composed f16 SDPA all correct within documented envelopes"
+    },
+    {
+      "name": "subgroup-size-64",
+      "represents_driver_variant": "other",
+      "deltas": "subgroup_size=64, cooperative_matrix_fp32_8x8x8=0, full op mask",
+      "exercises": "every ==32 gate falling back on width alone: qmm vec subgroup OFF, BF16 GEMV shuffle OFF, SDPA native OFF",
+      "llvmpipe_outcome": "q4 GEMV bound 0.0462, BF16 GEMV max_abs_err 0.0367 <= bound 0.1631, tile + composed SDPA correct; zero refusals"
+    },
+    {
+      "name": "small-shared-memory",
+      "represents_driver_variant": "honeykrisp_fork",
+      "deltas": "m1-fork set with shared_memory_limit_bytes=16384",
+      "exercises": "the shared-memory axis in isolation: 21504-byte SdpaDecodeNative staging gate flips OFF, 4096-byte coopmat gates stay satisfied",
+      "llvmpipe_outcome": "SDPA decode routes to composed f16 SDPA (correct); coopmat kernels still refuse by name; single-axis delta over m1-fork confirmed"
+    },
+    {
+      "name": "no-cooperative-matrix",
+      "represents_driver_variant": "other",
+      "deltas": "subgroup_size=64, ops AND-out SHUFFLE|SHUFFLE_RELATIVE, cooperative_matrix_fp32_8x8x8=0",
+      "exercises": "op-mask axis (subgroup_ops_mask) independent of width: qmm subgroup and BF16 GEMV gates fall back on missing feature bits alone",
+      "llvmpipe_outcome": "all fallbacks correct; zero refusals"
+    }
+  ],
+  "test_results": {
+    "runner": "omarchy_capability_sim_tests (doctest), one invocation per profile, MLX_OMARCHY_ALLOW_NON_APPLE=1",
+    "cases": [
+      "unit (no device): unknown profile refuses by name listing every registered profile; registry complete; apply() delta mapping per audit axis",
+      "capability report is stamped with the active profile (simulated=true, profile name, driver_variant; hardware report unstamped and identical device identity; device_info carries simulated/simulation_profile keys)",
+      "q4 g64 decode gemv matches the f64 host reference",
+      "dense bf16 decode gemv matches the f64 bound",
+      "coopmat f32 matmul routes per the profile",
+      "f16 q4 g64 prefill routes per the profile",
+      "sdpa decode routes per the profile"
+    ],
+    "per_profile": {
+      "m1-honeykrisp-fork": "6/6 pass (3 named refusals asserted, 2 named refusals for subgroup kernels asserted, stamp case)",
+      "m1-stock-no-coopmat": "6/6 pass",
+      "subgroup-size-64": "6/6 pass",
+      "small-shared-memory": "6/6 pass",
+      "no-cooperative-matrix": "6/6 pass"
+    },
+    "silent_path_change_policy": "no test accepts a silently different numeric path: every gated kernel either matches its documented accuracy envelope through the gate-chosen route or refuses by name. On this host the 32-lane-subgroup kernels CANNOT execute faithfully (physical 8-lane subgroups), so those legs assert the named refusal and remain owned by real 32-lane hardware (the M1 leg)"
+  },
+  "default_path_unchanged_proof": {
+    "spir_v": {
+      "method": "omarchy_shaders target built from pristine origin/main 21710dfb worktree and from this branch with the identical pinned toolchain (glslang); sha256 of every .spv compared",
+      "result": "416/416 shaders byte-for-byte identical (hash lists equal: sha256 6a7950a4e4bec49b851865fd79ce34539da9915587a056a8f90e1fa50b68b46b for both sorted hash lists)",
+      "claim": "the compiled kernels this change ships are the kernels main ships"
+    },
+    "device_report": {
+      "method": "mlx-omarchy-info --json with no MLX_OMARCHY_CAPS_SIM on both builds, same llvmpipe host",
+      "result": "byte-identical output; the simulated/simulation_profile/simulated_driver_variant keys are emitted only when a profile is active"
+    },
+    "dispatch_path": {
+      "method": "source delta: the only dispatch-path additions are omarchy::capsim::require_backed calls that return immediately when caps.simulated is false (always false without the env var); VkDevice creation reads hardware_caps_ which equals the discovered report without simulation; no ComputeKernel enum value changed (GPU-profile stream ids stable); no gate expression rewritten",
+      "claim": "with the env var unset the dispatch decisions are the same decisions main makes on the same report"
+    }
+  },
+  "evidence_refusals": {
+    "backend_stamp": "simulated CapabilityReport stamps device_info() and mlx-omarchy-info (json + text) with simulated/simulation_profile/simulated_driver_variant; init prints a three-line stderr banner",
+    "scripts": "scripts/caps_sim_guard.py wired into scripts/bench_decode.py and scripts/bench_matrix.py (exit 3, named refusal) and scripts/sdpa-ab.sh; bench_decode_identity.py inherits the refusal through bench_decode and its device_info dump carries the stamp",
+    "tests": "tests/test_capability_sim_guard.py: 2/2 pass (refusal exit code, profile name in stderr)"
+  },
+  "files": [
+    "overlay/mlx/backend/omarchy/capability_sim.h",
+    "overlay/mlx/backend/omarchy/capability_sim.cpp",
+    "overlay/mlx/backend/omarchy/device.h",
+    "overlay/mlx/backend/omarchy/device.cpp",
+    "overlay/mlx/backend/omarchy/device_info.cpp",
+    "overlay/mlx/backend/omarchy/primitives.cpp",
+    "overlay/mlx/backend/omarchy/CMakeLists.txt",
+    "overlay/tools/mlx-omarchy-info/main.cpp",
+    "overlay/tests/omarchy/test_capability_simulation.cpp",
+    "overlay/tests/omarchy/CMakeLists.txt",
+    "scripts/caps_sim_guard.py",
+    "scripts/bench_decode.py",
+    "scripts/bench_matrix.py",
+    "scripts/sdpa-ab.sh",
+    "tests/test_capability_sim_guard.py",
+    "docs/new-chip-bringup.md"
+  ],
+  "constraints_honored": {
+    "kernel_arithmetic": "no shader or kernel arithmetic touched (SPIR-V 416/416 identical)",
+    "digest_pins": "six canonical Q4 digests and per-driver BF16 pins untouched; simulation refuses to produce any digest evidence",
+    "m1_gpu_lock": "not taken; all work on llvmpipe",
+    "default_build": "byte-identical shaders, byte-identical no-sim device report"
+  },
+  "known_limits": [
+    "the numeric proof of the 32-lane subgroup kernels (QmmVec*Subgroup*, MatmulVecBF16, SdpaDecodeNative) stays on the M1 leg; software hosts cannot execute them faithfully and the harness now says so by name",
+    "cooperative-matrix kernels cannot execute on any software driver; profiles claiming them assert the named refusal here and the real numbers on the honeykrisp-fork hardware leg",
+    "memory_model and workgroup_limits axes are inherit-only in the five shipped profiles; the schema supports overrides when a chip needs them"
+  ]
+}

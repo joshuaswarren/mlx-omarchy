@@ -21,6 +21,7 @@
 #include "mlx/backend/common/slicing.h"
 #include "mlx/backend/common/unary.h"
 #include "mlx/backend/omarchy/allocator.h"
+#include "mlx/backend/omarchy/capability_sim.h"
 #include "mlx/backend/omarchy/compute.h"
 #include "mlx/backend/omarchy/compiled.h"
 #include "mlx/backend/omarchy/device.h"
@@ -581,6 +582,13 @@ void dispatch_matmul(
     kernel = kernel == omarchy::ComputeKernel::MatmulF32
         ? omarchy::ComputeKernel::MatmulF32Coopmat
         : omarchy::ComputeKernel::MatmulBF16Coopmat;
+    omarchy::capsim::require_backed(
+        encoder.device(),
+        caps,
+        coopmat,
+        "MatmulF32Coopmat/MatmulBF16Coopmat",
+        "cooperative_matrix_fp32_8x8x8",
+        encoder.device().hardware_capabilities().cooperative_matrix_f32_8);
   }
   // Register-blocked f16 tile for prefill-sized matrices (the
   // attention scores and probs matmuls): same per-output arithmetic as
@@ -629,6 +637,15 @@ void dispatch_matmul(
       (caps.subgroup_operations & VK_SUBGROUP_FEATURE_SHUFFLE_RELATIVE_BIT) != 0 &&
       bf16_vec_aligned;
   if (bf16_vec) {
+    omarchy::capsim::require_backed(
+        encoder.device(),
+        caps,
+        bf16_vec,
+        "MatmulVecBF16",
+        "subgroup_size==32+subgroup_ops_mask[SHUFFLE_RELATIVE]",
+        (encoder.device().hardware_capabilities().subgroup_size == 32u &&
+         (encoder.device().hardware_capabilities().subgroup_operations &
+          VK_SUBGROUP_FEATURE_SHUFFLE_RELATIVE_BIT) != 0));
     encoder.dispatch_compute(
         omarchy::ComputeKernel::MatmulVecBF16,
         bindings,
@@ -6466,6 +6483,17 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
       bool subgroup_ready =
           caps.subgroup_size == 32u &&
           (caps.subgroup_operations & VK_SUBGROUP_FEATURE_ARITHMETIC_BIT) != 0;
+      omarchy::capsim::require_backed(
+          fp_encoder.device(),
+          caps,
+          subgroup_ready,
+          "QmmVecSubgroupFp*",
+          "subgroup_size==32+subgroup_ops_mask[ARITHMETIC]",
+          (fp_encoder.device().hardware_capabilities().subgroup_size ==
+                  32u &&
+              (fp_encoder.device().hardware_capabilities()
+                       .subgroup_operations &
+                  VK_SUBGROUP_FEATURE_ARITHMETIC_BIT) != 0));
       auto vec_kernel = subgroup_ready
           ? select_float_kernel(
                 out.dtype(),
@@ -6687,6 +6715,15 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
     bool subgroup_ready =
         caps.subgroup_size == 32u &&
         (caps.subgroup_operations & VK_SUBGROUP_FEATURE_ARITHMETIC_BIT) != 0;
+    omarchy::capsim::require_backed(
+        encoder.device(),
+        caps,
+        subgroup_ready,
+        "QmmVec*Subgroup*",
+        "subgroup_size==32+subgroup_ops_mask[ARITHMETIC]",
+        (encoder.device().hardware_capabilities().subgroup_size == 32u &&
+         (encoder.device().hardware_capabilities().subgroup_operations &
+          VK_SUBGROUP_FEATURE_ARITHMETIC_BIT) != 0));
     // Eligibility was computed before dense normalization because the packed
     // f16 input view also requires a 16-byte-aligned x row.
     auto vec_kernel = subgroup_ready
@@ -6736,6 +6773,14 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
           ((params.lhs_offset | params.output_offset) & 1u) != 0u) {
         omarchy::unsupported(tag + " coopmat operand alignment", out);
       }
+      omarchy::capsim::require_backed(
+          encoder.device(),
+          coopmat_caps,
+          coopmat,
+          "QmmPrefillCoopmatF16",
+          "cooperative_matrix_fp32_8x8x8",
+          encoder.device().hardware_capabilities()
+              .cooperative_matrix_f32_8);
       uint32_t m_groups = (params.matrix_m + 31u) / 32u;
       uint32_t n_groups = coopmat ? (params.matrix_n + 31u) / 32u
                                   : (params.matrix_n + 15u) / 16u;
@@ -8285,6 +8330,13 @@ void ScatterAxis::eval_gpu(const std::vector<array>& inputs, array& out) {
     default:
       omarchy::unsupported("ScatterAxis dtype", out);
   }
+  omarchy::capsim::require_backed(
+      encoder.device(),
+      encoder.device().capabilities(),
+      hw_atomic_add && is_sum,
+      "ScatterAxisFAdd*",
+      "atomic_float_add",
+      encoder.device().hardware_capabilities().shader_atomic_float_add);
   CopyType copy_type = src.data_size() == 1 ? CopyType::Scalar
       : (src.flags().row_contiguous && src.data_size() == src.size())
       ? CopyType::Vector
@@ -10333,6 +10385,14 @@ void ScaledDotProductAttention::eval_gpu(
     params.in_strides[3] = checked_u32(v.strides()[3], tag, out);
     std::array<omarchy::ComputeBinding, 4> bindings{
         binding(q), binding(k), binding(v), binding(out)};
+      omarchy::capsim::require_backed(
+          encoder.device(),
+          decode_caps,
+          decode_subgroup_ready,
+          "SdpaDecodeNativeF16",
+          "cooperative_matrix_fp32_8x8x8+workgroup_limits+"
+          "shared_memory_limit_bytes",
+          encoder.device().hardware_capabilities().cooperative_matrix_f32_8);
     encoder.dispatch_compute(
         omarchy::ComputeKernel::SdpaDecodeNativeF16,
         bindings,

@@ -141,6 +141,11 @@ void print_json(uint32_t index) {
       caps.max_descriptor_set_storage_buffers,
       true);
   num_field("non_apple_dev_override", non_apple ? 1 : 0, true);
+  if (caps.simulated) {
+    num_field("simulated", 1, true);
+    str_field("simulation_profile", caps.simulation_profile, true);
+    str_field("simulated_driver_variant", caps.simulated_driver_variant, true);
+  }
   std::cout << "  \"trace\": {\n";
   num_field(
       "gpu_primitive_dispatches", trace.gpu_primitive_dispatches.load(), true);
@@ -197,6 +202,11 @@ void print_text(uint32_t index) {
   if (env_flag("MLX_OMARCHY_ALLOW_NON_APPLE")) {
     std::cout << "  NOTE: MLX_OMARCHY_ALLOW_NON_APPLE=1; this is a"
                  " development-only device, not Omarchy Honeykrisp.\n";
+  }
+  if (caps.simulated) {
+    std::cout << "  SIMULATED:         capability profile '"
+              << caps.simulation_profile << "' (stands in for driver_variant "
+              << caps.simulated_driver_variant << "); NOT hardware results\n";
   }
 }
 
