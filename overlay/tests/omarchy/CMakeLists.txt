@@ -308,6 +308,22 @@ target_link_options(omarchy_fused_chain_tests
 doctest_discover_tests(omarchy_fused_chain_tests)
 add_test(NAME omarchy_fused_chain_tests COMMAND omarchy_fused_chain_tests)
 
+# WrongValueSweep: float-to-bool casts decide from encoded bits (driver
+# denorm flush turned f32/bf16 subnormals into False), and same-mode
+# convolve / padded pool keep exact boundary bytes under allocator
+# churn (the scalar-fill drain the batching commit removed).
+add_executable(omarchy_wrong_value_sweep_tests
+               ${CMAKE_CURRENT_SOURCE_DIR}/test_wrong_value_sweep.cpp)
+target_link_libraries(omarchy_wrong_value_sweep_tests PRIVATE mlx doctest)
+target_compile_options(omarchy_wrong_value_sweep_tests
+                       PRIVATE ${SANITIZER_COMPILE_FLAGS})
+target_link_options(omarchy_wrong_value_sweep_tests
+                    PRIVATE ${SANITIZER_LINK_FLAGS})
+
+doctest_discover_tests(omarchy_wrong_value_sweep_tests)
+add_test(NAME omarchy_wrong_value_sweep_tests
+         COMMAND omarchy_wrong_value_sweep_tests)
+
 # TwoRankDistributed: the five distributed primitives value-proven on a
 # real two-rank ring group over loopback. The doctest binary is ONE rank's
 # process and fails its own group-size guards when run alone, so the
