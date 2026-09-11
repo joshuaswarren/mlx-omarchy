@@ -6,18 +6,16 @@ the procedure in [`docs/new-chip-bringup.md`](../new-chip-bringup.md) to this
 specific die and states the acceptance bar from
 [`docs/chip-portability.md`](../chip-portability.md) section 4.
 
-**Unverified premise, flagged 2026-09-11.** The dual-boot shape and the whole
-of section 3's fleet protocol rest on an assumption the author did not verify:
-that this machine currently serves a leg in the local inference fleet and
-therefore cannot be converted. The attempt to read the router pool config
-failed with a host-key error and the assumption was carried anyway. The owner
-has since said the conclusions about converting this machine were mostly
-wrong. Treat every fleet-side statement below as a question for the owner, not
-a finding: whether this machine serves any alias, whether Omarchy on it could
-serve that role instead, and whether full-time conversion is actually blocked.
-The hardware facts in section 1 are measured (`sysctl`, `system_profiler`) and
-stand; the Asahi per-generation support statements are sourced from upstream
-and stand; everything about the fleet is unverified.
+**Unverified premise, flagged 2026-09-11.** The first version of this plan
+assumed the machine had a standing duty that made conversion impossible, and
+built a dual-boot requirement plus an operational procedure on that
+assumption. The check meant to establish it failed and the assumption was
+carried anyway. Whatever this machine does outside this project is the owner's
+to state; the plan no longer describes it. What stands: the hardware facts in
+section 1 (measured with `sysctl` and `system_profiler`) and the Asahi
+per-generation support statements (sourced from upstream). Dual-boot is kept
+as the safe default for getting qualification evidence without committing the
+machine, not as a constraint proven by this document.
 
 Everything here is documentation and planning. The base M1 (`jwm1-linux`,
 `/tmp/m1-gpu.lock`) is untouched by this work.
@@ -31,7 +29,7 @@ Everything here is documentation and planning. The base M1 (`jwm1-linux`,
 | CPU | 4P+4E | 8P+2E (10 cores) |
 | DRAM part | 68.25 GB/s class (measured roof 58.5 GB/s, `receipts/2026-09-11-q4-memory-roof`) | ~400 GB/s public spec — verify with the copy-roof probe, never assume |
 | System level cache | 8 MB | 48 MB public spec — verify |
-| OS today | Omarchy/Linux (Asahi) | macOS, serving the inference fleet |
+| OS today | Omarchy/Linux (Asahi) | macOS |
 | Driver | `mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1` | none yet — the question of section 5 |
 
 Three consequences drive the whole plan:
@@ -43,13 +41,11 @@ Three consequences drive the whole plan:
 2. **The performance envelope moves ~6x on paper.** Every GB/s number and
    every occupancy verdict measured against 8 cores sits on a 68 GB/s
    latency-bound part. Section 6 names the verdicts that do not transfer.
-3. **Conversion is an open question, not a settled constraint.** The author
-   asserted that a fleet standing order blocked conversion; that assertion was
-   not verified and the owner says it was largely wrong. Dual-boot is still a
-   safe way to get qualification evidence without committing the machine, but
-   it is one option rather than the only shape available. Section 8's
-   conditions are written from the unverified premise and need the owner's
-   correction before they mean anything.
+3. **Conversion is an open question, not a settled constraint.** Dual-boot is
+   a safe way to get qualification evidence without committing the machine,
+   but it is one option rather than the only shape available. Section 8 lists
+   what would have to be true for full-time Omarchy, and defers the
+   machine's other duties to the owner.
 
 ## 2. What dual-booting means for this machine
 
@@ -59,33 +55,21 @@ lands in the m1n1/U-Boot boot picker, and the selected OS runs exclusively
 until the next reboot. The operating contract is:
 
 - **macOS is the resting state.** The machine boots macOS by default and
-  serves its fleet leg whenever it is not explicitly in a window.
+  returns to it at the end of every window.
 - **Omarchy is booted only inside an announced window** for bring-up and
   qualification work. A window has a start, a single top-level GPU session,
   receipts, and an explicit end that includes rebooting back to macOS.
-- **While Omarchy is up, the Mac serves no fleet leg.** The router pool must
-  reflect that for the duration of the window (section 3), and must be
-  restored at window end.
+- **While Omarchy is up, macOS is not running**, so anything that machine
+  hosts is offline for the duration. Coordinating that is the owner's call
+  and is deliberately not specified here.
 
 ### Window protocol (every Omarchy session)
 
-1. Announce the window start and expected duration.
-2. On CT 350: back up `/opt/llm-router/config.yaml`, then remove or retarget
-   the `16m1mbp` oMLX leg so no dead `api_base` sits in the pool. If any
-   critical alias would drop below two physical hosts with this leg gone,
-   add a replacement leg **in the same edit** — never leave one. The
-   critical aliases are `qwen3.8-27b-64k-fast`, `qwen3.8-27b-64k-nothink`,
-   `qwen3.8-27b-64k`, `qwen3.8-27b-128k`, `qwen3.8-27b-abl`, `josh-voice`.
-3. Restart `litellm-advisor`; confirm `check-redundancy.py --static` passes
-   (it is `ExecStartPre`; do not bypass it without naming the reason in
-   `containers/llm-router/notes.md`); smoke every critical alias with a real
-   completion under `curl --max-time` — a `/health` 200 is not proof.
-4. Record the pool edit + smoke receipts in `containers/llm-router/notes.md`
-   and the repo snapshot, per the standing order.
-5. Do the GPU work; receipts under `receipts/<date>-m1max-*/`.
-6. End of window: shut down Omarchy, boot macOS, verify the oMLX leg is
-   serving again, restore (or re-add) its leg in the pool, restart
-   `litellm-advisor`, smoke the aliases again, record the receipt.
+1. Announce the window start and expected duration, and settle any hosting
+   the machine does with its owner before booting.
+2. Do the GPU work; receipts under `receipts/<date>-m1max-*/`.
+3. End of window: shut down Omarchy, boot macOS, confirm the machine is back
+   in its normal state, and record the receipt.
 
 ## 3. Before the first boot — what must be true
 
@@ -103,16 +87,9 @@ macOS side (do these before touching the installer):
   legs on **this die** now (`receipts/native-baseline-2026-09-06` pattern).
   The macOS side of this exact machine is the native oracle for the
   digest-policy rule-1 legs later — no other machine can produce them.
-- Note which fleet aliases this machine's leg currently serves (read the
-  pool config), so the window protocol's pool edit is mechanical.
-
-Fleet side:
-
-- The standing order is a constraint, not an assumption: with this leg out,
-  every critical alias must still have two physical hosts. Verify from the
-  pool config **before** the first window, not during it. If any alias is
-  single-leg without this machine, a replacement leg must exist before the
-  machine ever leaves macOS.
+- Settle with the owner what this machine currently hosts and how that is
+  covered while it is booted into Omarchy. That coordination is outside this
+  repository and is not described here.
 
 Installer side:
 
@@ -122,17 +99,13 @@ Installer side:
   key (windows are driven headless from the dev box), pick a hostname
   distinct from `jwm1`, record the sudo password with the owner's secrets.
 - After install, set the default boot entry back to macOS and verify an
-  unattended cold boot lands in macOS. The machine must fail safe to the
-  fleet-serving OS.
+  unattended cold boot lands in macOS. The machine must fail safe to macOS.
 
 ## 4. After the first boot — what to verify
 
-macOS side (after the first return):
-
-- Boots, oMLX leg serving, pool restored, aliases smoke-tested with
-  `curl --max-time` completions, receipt recorded. The dual-boot is only
-  proven once a full macOS → Omarchy → macOS round trip has left the fleet
-  untouched.
+- Boots normally, whatever it hosts is serving again, receipt recorded. The
+  dual-boot is only proven once a full macOS → Omarchy → macOS round trip has
+  left the machine's normal duties intact.
 
 Omarchy side, in this order:
 
@@ -367,16 +340,12 @@ updated compatibility notes, and receipts under `receipts/<date>-m1max-*/`.
 
 This is a different bar from section 7 and must not be reached by drifting:
 
-- **Fleet redundancy is a hard constraint, stated here rather than assumed
-  away.** Converting the machine removes the macOS oMLX leg permanently.
-  The standing order requires every critical alias to keep at least two
-  physical hosts; taking a host out of the pool means adding another one in
-  the same edit, never leaving one. Until a replacement leg exists —
-  another Mac, or an Omarchy-side serving leg qualified for 24/7 duty —
-  full-time conversion is off the table regardless of how well the
-  bring-up goes.
-- **An Omarchy serving leg would be a new qualification**, not a byproduct
-  of this plan: 24/7 stability of an alpha driver under serving load,
+- **Whatever the machine hosts today is the owner's decision to move, keep,
+  or drop.** This plan takes no position on it and records no details about
+  it; that reasoning belongs in the owner's private notes, not in a public
+  repository.
+- **Serving from Omarchy would be a new qualification**, not a byproduct of
+  this plan: 24/7 stability of an alpha driver under serving load,
   serving-throughput legs, and a recovery story. Scope it separately.
 - **Machine-level daily-driver checks**, each verified in a window before
   any default-boot switch: GPU-accelerated desktop stability, lid
