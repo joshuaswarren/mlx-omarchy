@@ -272,6 +272,12 @@
 #include "qmm_vec_q4_multi_subgroup_bf16.h"
 #include "qmm_vec_q4_multi_subgroup_f16.h"
 #include "qmm_vec_q4_multi_subgroup_f32.h"
+#include "qmm_vec_q4_splitk2_multi_subgroup_f16.h"
+#include "qmm_vec_q4_splitk4_multi_subgroup_f16.h"
+#include "qmm_vec_q4_splitk8_multi_subgroup_f16.h"
+#include "qmm_vec_q4_splitk_reduce2_f16.h"
+#include "qmm_vec_q4_splitk_reduce4_f16.h"
+#include "qmm_vec_q4_splitk_reduce8_f16.h"
 #include "sdpa_decode_native_f16.h"
 #include "qmm_tile_bf16.h"
 #include "qmm_tile_f16.h"
@@ -1239,6 +1245,30 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {sdpa_decode_native_f16, sdpa_decode_native_f16_size};
     case ComputeKernel::QuantizeFpF16:
       return {quantize_fp_f16, quantize_fp_f16_size};
+    case ComputeKernel::QmmVecQ4SplitK2MultiSubgroupF16:
+      return {
+          qmm_vec_q4_splitk2_multi_subgroup_f16,
+          qmm_vec_q4_splitk2_multi_subgroup_f16_size};
+    case ComputeKernel::QmmVecQ4SplitK4MultiSubgroupF16:
+      return {
+          qmm_vec_q4_splitk4_multi_subgroup_f16,
+          qmm_vec_q4_splitk4_multi_subgroup_f16_size};
+    case ComputeKernel::QmmVecQ4SplitK8MultiSubgroupF16:
+      return {
+          qmm_vec_q4_splitk8_multi_subgroup_f16,
+          qmm_vec_q4_splitk8_multi_subgroup_f16_size};
+    case ComputeKernel::QmmVecQ4SplitKReduce2F16:
+      return {
+          qmm_vec_q4_splitk_reduce2_f16,
+          qmm_vec_q4_splitk_reduce2_f16_size};
+    case ComputeKernel::QmmVecQ4SplitKReduce4F16:
+      return {
+          qmm_vec_q4_splitk_reduce4_f16,
+          qmm_vec_q4_splitk_reduce4_f16_size};
+    case ComputeKernel::QmmVecQ4SplitKReduce8F16:
+      return {
+          qmm_vec_q4_splitk_reduce8_f16,
+          qmm_vec_q4_splitk_reduce8_f16_size};
     case ComputeKernel::QuantizeFpBF16:
       return {quantize_fp_bf16, quantize_fp_bf16_size};
     case ComputeKernel::DequantFpF32:

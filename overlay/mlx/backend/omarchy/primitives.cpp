@@ -6792,6 +6792,29 @@ bool q4_word_enabled() {
   return env == nullptr || std::strcmp(env, "1") == 0;
 }
 
+// Split-K decode gate (measurement only): 2, 4, or 8 splits the k range
+// of every output across that many row-block sets with a separate
+// reduction pass. Anything else - unset, 0, 1, garbage - keeps the
+// default single-pass dispatch untouched. The variant changes the
+// accumulation order, so it is never the default.
+uint32_t q4_splitk_count() {
+  const char* env = std::getenv("MLX_OMARCHY_QMM_VEC_Q4_SPLITK");
+  if (env == nullptr) {
+    return 0;
+  }
+  if (std::strcmp(env, "2") == 0) {
+    return 2;
+  }
+  if (std::strcmp(env, "4") == 0) {
+    return 4;
+  }
+  if (std::strcmp(env, "8") == 0) {
+    return 8;
+  }
+  return 0;
+}
+
+
 bool float_dtype_supported(Dtype dtype, const CapabilityReport& caps) {
   if (dtype == float32) {
     return true;
@@ -6972,6 +6995,101 @@ bool dispatch_quantized_gemv_group(
       params.flags |= 4096u << i;
       params.matrix_m = window.head_dim;
     }
+  }
+  // Split-K decode (MLX_OMARCHY_QMM_VEC_Q4_SPLITK measurement variant):
+  // every output's k range is computed by SPLIT row-block sets and a
+  // second dispatch reduces the per-split f32 partials (sum in split
+  // order, round once, then the Add epilogue exactly as the single-pass
+  // kernel applies it). Gated to the f16 subgroup shape the four real
+  // decode dispatches use, with the packed row divisible into SPLIT
+  // equal word ranges and no direct-KV sum window; everything else
+  // falls through to the default single-pass path below, untouched.
+  const uint32_t split_count = q4_splitk_count();
+  const bool use_splitk = split_count != 0 && dtype == float16 &&
+      caps.subgroup_size == 32u &&
+      (caps.subgroup_operations & VK_SUBGROUP_FEATURE_ARITHMETIC_BIT) !=
+          0 &&
+      !any_kv_window &&
+      encoder.device().compute().binding_limit() >=
+          (kQmmVecMultiBindings + 1) &&
+      (static_cast<uint32_t>(k) / 8u) % split_count == 0;
+  if (use_splitk) {
+    uint32_t total_columns = 0;
+    for (const auto& member : members) {
+      total_columns += static_cast<uint32_t>(member.node.size());
+    }
+    array partials(
+        Shape{static_cast<int>(total_columns) *
+                static_cast<int>(split_count)},
+        float32,
+        nullptr,
+        {});
+    partials.set_data(allocate_omarchy(partials.nbytes()));
+    encoder.add_temporary(partials);
+    std::array<ComputeBinding, kQmmVecMultiBindings + 1> split_bindings{};
+    split_bindings[0] = binding(x);
+    const ComputeBinding split_filler = binding(members[0].node);
+    for (uint32_t i = 0; i < kQmmVecMultiWeights; ++i) {
+      uint32_t base = 1 + i * kQmmVecMultiBindingsPerWeight;
+      if (i < members.size()) {
+        const auto& member = members[i];
+        split_bindings[base] = binding(member.node.inputs()[1]);
+        split_bindings[base + 1] = binding(member.node.inputs()[2]);
+        split_bindings[base + 2] = binding(member.node.inputs()[3]);
+        split_bindings[base + 3] = binding(member.node);
+        split_bindings[base + 4] =
+            member.addend ? binding(*member.addend) : split_filler;
+        split_bindings[base + 5] = split_filler;
+      } else {
+        for (uint32_t j = 0; j < kQmmVecMultiBindingsPerWeight; ++j) {
+          split_bindings[base + j] = split_filler;
+        }
+      }
+    }
+    split_bindings[kQmmVecMultiBindings] = binding(partials);
+    ComputeKernel split_kernel = split_count == 2
+        ? ComputeKernel::QmmVecQ4SplitK2MultiSubgroupF16
+        : (split_count == 4
+              ? ComputeKernel::QmmVecQ4SplitK4MultiSubgroupF16
+              : ComputeKernel::QmmVecQ4SplitK8MultiSubgroupF16);
+    encoder.dispatch_compute(
+        split_kernel,
+        split_bindings,
+        params,
+        total_groups * split_count,
+        1u,
+        1u);
+    // Reduction pass: partials slot 0 = the split partials, slots 1..3
+    // the per-weight outputs, 4..6 the Add epilogue sums (flags
+    // 256<<i), 7..9 the addends.
+    std::array<ComputeBinding, 10> reduce_bindings{};
+    reduce_bindings[0] = binding(partials);
+    for (uint32_t i = 0; i < 3; ++i) {
+      reduce_bindings[1 + i] =
+          i < members.size() ? binding(members[i].node) : split_filler;
+      reduce_bindings[4 + i] =
+          (i < members.size() && members[i].epilogue)
+          ? binding(*members[i].epilogue)
+          : split_filler;
+      reduce_bindings[7 + i] =
+          (i < members.size() && members[i].addend)
+          ? binding(*members[i].addend)
+          : split_filler;
+    }
+    ComputeKernel reduce_kernel = split_count == 2
+        ? ComputeKernel::QmmVecQ4SplitKReduce2F16
+        : (split_count == 4 ? ComputeKernel::QmmVecQ4SplitKReduce4F16
+                            : ComputeKernel::QmmVecQ4SplitKReduce8F16);
+    ComputeParams reduce_params = params;
+    reduce_params.matrix_n = total_columns;
+    encoder.dispatch_compute(
+        reduce_kernel,
+        reduce_bindings,
+        reduce_params,
+        (total_columns + 63u) / 64u,
+        1u,
+        1u);
+    return true;
   }
   std::array<ComputeBinding, kQmmVecMultiBindings> bindings{};
   bindings[0] = binding(x);

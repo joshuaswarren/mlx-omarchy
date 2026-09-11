@@ -255,6 +255,18 @@ omarchy_shader(qmm_vec_q4_multi_bf16 shaders/qmm_vec.comp -DUSE_BF16=1 -DQMM_VEC
 omarchy_shader(qmm_vec_q4_multi_subgroup_f32 shaders/qmm_vec.comp -DUSE_SUBGROUP=1 -DQMM_VEC_Q4_WORD=1 -DQMM_VEC_MULTI=1)
 omarchy_shader(qmm_vec_q4_multi_subgroup_f16 shaders/qmm_vec.comp -DUSE_FP16=1 -DUSE_SUBGROUP=1 -DQMM_VEC_Q4_WORD=1 -DQMM_VEC_MULTI=1)
 omarchy_shader(qmm_vec_q4_multi_subgroup_bf16 shaders/qmm_vec.comp -DUSE_BF16=1 -DUSE_SUBGROUP=1 -DQMM_VEC_Q4_WORD=1 -DQMM_VEC_MULTI=1)
+# Q4 split-K decode (measurement-gated): the k range of every output is
+# split across SPLIT workgroups-per-row-block with a separate reduction
+# pass, selected only via MLX_OMARCHY_QMM_VEC_Q4_SPLITK=2/4/8 at
+# dispatch; the default binaries and the generated digests are
+# unchanged when the env is unset. Never default: it changes the
+# accumulation order.
+omarchy_shader(qmm_vec_q4_splitk2_multi_subgroup_f16 shaders/qmm_vec.comp -DUSE_FP16=1 -DUSE_SUBGROUP=1 -DQMM_VEC_Q4_WORD=1 -DQMM_VEC_MULTI=1 -DQMM_VEC_Q4_SPLITK=2)
+omarchy_shader(qmm_vec_q4_splitk4_multi_subgroup_f16 shaders/qmm_vec.comp -DUSE_FP16=1 -DUSE_SUBGROUP=1 -DQMM_VEC_Q4_WORD=1 -DQMM_VEC_MULTI=1 -DQMM_VEC_Q4_SPLITK=4)
+omarchy_shader(qmm_vec_q4_splitk8_multi_subgroup_f16 shaders/qmm_vec.comp -DUSE_FP16=1 -DUSE_SUBGROUP=1 -DQMM_VEC_Q4_WORD=1 -DQMM_VEC_MULTI=1 -DQMM_VEC_Q4_SPLITK=8)
+omarchy_shader(qmm_vec_q4_splitk_reduce2_f16 shaders/qmm_vec_splitk_reduce.comp -DUSE_FP16=1 -DQMM_VEC_Q4_SPLITK=2)
+omarchy_shader(qmm_vec_q4_splitk_reduce4_f16 shaders/qmm_vec_splitk_reduce.comp -DUSE_FP16=1 -DQMM_VEC_Q4_SPLITK=4)
+omarchy_shader(qmm_vec_q4_splitk_reduce8_f16 shaders/qmm_vec_splitk_reduce.comp -DUSE_FP16=1 -DQMM_VEC_Q4_SPLITK=8)
 omarchy_shader(sdpa_decode_native_f16 shaders/sdpa_decode_native.comp)
 # PrefillQmmTile: m-tiled quantized matmul for prefill (matrix_m > 1);
 # one workgroup dequantizes each 16 x 16 weight block into shared f32
