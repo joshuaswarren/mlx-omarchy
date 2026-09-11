@@ -42,8 +42,9 @@ def timed(fn, warmup=3, reps=30):
 
 
 def f16_digest(a):
-    b = mx.contiguous(a.astype(mx.float16)).view(mx.uint8).tolist()
-    return hashlib.sha256(bytes(b)).hexdigest()[:16]
+    import numpy as np
+    b = np.ascontiguousarray(np.asarray(a, dtype=np.float16)).tobytes()
+    return hashlib.sha256(b).hexdigest()[:16]
 
 
 def quantize_f16(n, k, group=64, bits=4, seed=7):
