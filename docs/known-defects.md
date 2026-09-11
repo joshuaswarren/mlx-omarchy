@@ -86,6 +86,38 @@ all; decode projections dispatch the dense matmul and prefill dispatches
 the cooperative-matrix kernel. Receipt:
 [`receipts/2026-09-10-bf16-rootcause/README.md`](../receipts/2026-09-10-bf16-rootcause/README.md).
 
+### The fast attention route stores scores and probabilities in the narrow input type
+
+Source-level, confirmed 2026-09-11 against the pinned MLX. Upstream Metal's
+vector attention kernel keeps every intermediate in float32 — its scores,
+`exp` values, running max, running sum, and output accumulator all use
+`typedef float U`, and only the inputs and the final output carry the narrow
+type (`mlx/backend/metal/kernels/sdpa_vector.h:50`). The omarchy fast route
+instead allocates the scores and the softmax probabilities in the input's own
+dtype: `const Dtype storage_dtype = bf16 ? bfloat16 : float16`
+(`overlay/mlx/backend/omarchy/primitives.cpp:10405`), so a bf16 model rounds
+the score tensor and the probability tensor to 8 mantissa bits between
+dispatches.
+
+The measured consequence is outlier amplification, not a wrong answer. An
+f64 round-to-nearest probe of the bf16 fast route on the M1 reports mean
+2.61 ULP with a maximum of 242 ULP, and an f64 simulation of exactly this
+storage at the probe's seeded inputs reproduces it (mean 2.70, max 242): a
+sharp softmax turns a single rounded score into a visibly rounded
+probability. The six canonical Q4 digests and every BF16 pin are unaffected,
+including the native-matching BF16 1K-context pin, so no generated token has
+moved because of it.
+
+Two things follow. Promoting those two intermediates to float32 would match
+upstream arithmetic but costs bandwidth on exactly the class that already
+dominates the BF16 decode token (58% of it at short context per
+[`receipts/2026-09-11-bf16-decode-attribution`](../receipts/2026-09-11-bf16-decode-attribution/README.md)),
+so it is a measurement, not an obvious win. And an f64 max-ULP bound applied
+to this route measures this storage rather than whatever change is under
+test — which is why the bf16 coopmat alpha fix stalled against a 32 ULP
+bound it was never the cause of. Receipt:
+[`receipts/2026-09-11-bf16-alpha-fix/README.md`](../receipts/2026-09-11-bf16-alpha-fix/README.md).
+
 ## Fixed in development
 
 ### Bool logical ops and broadcast `where` conditions went unwritten past 16,776,960 elements
