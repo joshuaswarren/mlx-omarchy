@@ -599,13 +599,25 @@ enum class ComputeKernel : uint16_t {
   SdpaDecodeNativeF16,
   Custom,
   // Qmm coopmat bench arms (shaders/qmm_coopmat_bench.comp). Selected
-  // only by MLX_OMARCHY_QMM_COOP_BENCH=1..4 for data-path measurement
-  // at the prefill shapes; arm 0 always means QmmPrefillCoopmatF16 and
-  // no value of this variable changes any default dispatch.
+  // only by MLX_OMARCHY_QMM_COOP_BENCH=1..10 for data-path and
+  // chains-in-flight measurement at the prefill shapes; arm 0 always
+  // means QmmPrefillCoopmatF16 and no value of this variable changes
+  // any default dispatch.
   QmmCoopBenchChunkF16,
   QmmCoopBenchChunkPadF16,
   QmmCoopBenchLoadCeilF16,
   QmmCoopBenchMuladdCeilF16,
+  // Chains-in-flight ladder and scheduling variants (CoopmatIlpChains):
+  // 5/6/7 are one/two/four-chain pure-MulAdd rungs (measurement only);
+  // 8 double-buffered step staging, 9 load-hoist, 10 paired issue
+  // order - the latter three reproduce the shipped kernel's outputs
+  // bitwise.
+  QmmCoopBenchIlp1F16,
+  QmmCoopBenchIlp2F16,
+  QmmCoopBenchIlp4F16,
+  QmmCoopBenchDoubleBufF16,
+  QmmCoopBenchLoadHoistF16,
+  QmmCoopBenchPairOrderF16,
   Count,
 };
 

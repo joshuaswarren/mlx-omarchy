@@ -4008,3 +4008,120 @@ TEST_CASE("qmm coopmat output is bit-identical across x offset alignment") {
             << " aligned_diff=" << aligned_diff
             << " odd_diff=" << odd_diff << " bound=" << bound << "\n";
 }
+
+// CoopmatIlpChains: the ILP scheduling arms (8 double-buffered step
+// staging, 9 load-hoist, 10 paired issue order) must reproduce the
+// shipped kernel's f16 output bitwise - they reorder only the ISSUE of
+// independent accumulator-fragment updates, never any output's k walk.
+// The env is re-read per dispatch, so one process compares the shipped
+// kernel against each arm directly. On devices without
+// cooperative_matrix_f32_8 every arm takes the tile route and the
+// comparison is inert.
+TEST_CASE("qmm coopmat ILP schedule arms reproduce the shipped kernel bitwise") {
+  if (!compute_available() || !float16_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  const auto& caps = omarchy::device(0).capabilities();
+  const bool coopmat_device =
+      caps.cooperative_matrix_f32_8 && caps.subgroup_size == 32;
+  std::cout << "[provenance] cooperative_matrix_f32_8="
+            << (caps.cooperative_matrix_f32_8 ? 1 : 0)
+            << " subgroup_size=" << caps.subgroup_size
+            << " -> ILP arm comparison "
+            << (coopmat_device ? "compares coopmat arms bitwise"
+                               : "is inert without coopmat support")
+            << "\n";
+
+  constexpr int group_size = 64;
+  constexpr int bits = 4;
+  const int arm_cases[3][2] = {{896, 262}, {4864, 1053}};
+  unsigned seed = 470u;
+  for (auto [k, m] : arm_cases) {
+    const int n = 896;
+    const int words_per_row = k / (32 / bits);
+    const int groups_per_row = k / group_size;
+    std::mt19937 gen(seed++);
+    std::uniform_real_distribution<float> dist(-2.0f, 2.0f);
+    std::vector<float> matrix(static_cast<size_t>(n) * k);
+    for (auto& value : matrix) {
+      value = dist(gen);
+    }
+    HostQuantizedWeights weights =
+        host_affine_quantize(matrix, n, k, group_size, bits);
+    weights.scales = round_trip(stream, weights.scales, float16);
+    weights.biases = round_trip(stream, weights.biases, float16);
+    array w_words(weights.words.begin(), Shape{n, words_per_row}, uint32);
+    array scales(weights.scales.begin(), Shape{n, groups_per_row}, float16);
+    array biases(weights.biases.begin(), Shape{n, groups_per_row}, float16);
+
+    std::vector<float> x_values(static_cast<size_t>(m) * k);
+    for (auto& value : x_values) {
+      value = dist(gen);
+    }
+    x_values = round_trip(stream, x_values, float16);
+    const std::vector<float> expected =
+        host_quantized_matmul(weights, x_values, m, n, k, group_size, bits);
+    array x(x_values.begin(), Shape{m, k}, float16);
+    QmmTileGate gate(true, true);
+
+    // Exact f32 widenings of the f16 outputs: f16 -> f32 is exact, so
+    // vector equality is bit equality for finite data.
+    auto run = [&](const char* arm_value) {
+      setenv("MLX_OMARCHY_QMM_COOP_BENCH", arm_value, 1);
+      array out = quantized_matmul(
+          x, w_words, scales, biases, true, group_size, bits, "affine",
+          stream);
+      return readback_f32(stream, out);
+    };
+    const auto shipped = run("0");
+    REQUIRE_EQ(shipped.size(), expected.size());
+
+    // The host-reference bound from the coopmat prefill case: every
+    // arm must be correct, not merely self-consistent.
+    double max_abs = 1.0;
+    for (size_t index = 0; index < shipped.size(); ++index) {
+      REQUIRE(std::isfinite(shipped[index]));
+      max_abs = std::max(max_abs, std::fabs(static_cast<double>(
+                                      shipped[index])));
+    }
+    const double bound =
+        (3.0 * k + 1.0) * (2.0 * max_abs) * std::ldexp(1.0, -23) +
+        (2.0 * max_abs) * std::ldexp(1.0, -11);
+    double shipped_diff = 0.0;
+    for (size_t index = 0; index < shipped.size(); ++index) {
+      shipped_diff = std::max(shipped_diff, std::fabs(
+          static_cast<double>(shipped[index]) - expected[index]));
+    }
+    CHECK(shipped_diff <= bound);
+
+    for (const char* arm : {"8", "9", "10"}) {
+      const auto candidate = run(arm);
+      REQUIRE_EQ(candidate.size(), shipped.size());
+      size_t mismatched = 0;
+      size_t worst = 0;
+      for (size_t index = 0; index < shipped.size(); ++index) {
+        if (candidate[index] != shipped[index]) {
+          ++mismatched;
+          worst = index;
+        }
+      }
+      double cand_diff = 0.0;
+      for (size_t index = 0; index < shipped.size(); ++index) {
+        cand_diff = std::max(cand_diff, std::fabs(
+            static_cast<double>(candidate[index]) - expected[index]));
+      }
+      INFO("arm=" << arm << " m=" << m << " k=" << k
+           << " mismatches=" << mismatched << " worst=" << worst
+           << " shipped=" << shipped[worst] << " cand=" << candidate[worst]);
+      CHECK_EQ(mismatched, size_t{0});
+      CHECK(cand_diff <= bound);
+      std::cout << "[qmm-ilp-arms] arm=" << arm << " m=" << m << " k=" << k
+                << " n=" << n << " mismatches=" << mismatched
+                << " shipped_diff=" << shipped_diff
+                << " cand_diff=" << cand_diff << " bound=" << bound
+                << "\n";
+    }
+    setenv("MLX_OMARCHY_QMM_COOP_BENCH", "0", 1);
+  }
+}

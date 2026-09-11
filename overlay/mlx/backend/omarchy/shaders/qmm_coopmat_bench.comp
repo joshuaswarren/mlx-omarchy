@@ -22,6 +22,22 @@
 //   4  pure MulAdd ceiling: fragments are loaded once, the k loop
 //      only issues coopMatMulAdd. Measures the driver's 8x8x8 fp32
 //      matrix rate at the real dispatch shapes; measurement arm.
+//   5  pure MulAdd ceiling with ONE independent accumulator chain per
+//      lane (latency-bound rung); measurement arm.
+//   6  pure MulAdd ceiling, two independent chains; measurement arm.
+//   7  pure MulAdd ceiling, four independent chains; measurement arm.
+//      Arms 4-7 form the chains-in-flight ladder: 8/1/2/4 chains at
+//      the real dispatch shapes, 64 MulAdds per lane per k chunk each.
+//   8  double-buffered step staging: staging for the next 16-k step
+//      overlaps the current step's MulAdd burst, one barrier per step
+//      instead of two, 8 KiB shared. Same per-output ascending-k
+//      MulAdd sequence; bit-identical to the shipped kernel.
+//   9  load-hoist: shipped staging and barrier cadence, but all six
+//      operand fragments for both 8-k halves load before the MulAdd
+//      burst, so the 16 MulAdds issue back to back. Bit-identical.
+//  10  paired order: arm 9's hoisted loads with each fragment's two
+//      updates issued adjacently (two serial updates per chain).
+//      Bit-identical; isolates burst width from load placement.
 
 const uint TILE_M = 32u;
 const uint TILE_N = 32u;
@@ -34,6 +50,19 @@ const uint WSTRIDE = 34u;
 #else
 const uint XSTRIDE = 64u;
 const uint WSTRIDE = 32u;
+#endif
+
+// Chains-in-flight ladder (arms 4-7): independent accumulator chains
+// updated per loop iteration. Every rung issues 64 MulAdds per lane
+// per 64-k chunk, so GFLOP/s compares directly across the ladder.
+#if QMM_COOP_BENCH_PATH == 5
+const uint ILP_CHAINS = 1u;
+#elif QMM_COOP_BENCH_PATH == 6
+const uint ILP_CHAINS = 2u;
+#elif QMM_COOP_BENCH_PATH == 7
+const uint ILP_CHAINS = 4u;
+#else
+const uint ILP_CHAINS = 8u;
 #endif
 
 layout(local_size_x = 64) in;
@@ -78,8 +107,78 @@ layout(push_constant) uniform Params {
   uint out_strides[4];
 } params;
 
+#if QMM_COOP_BENCH_PATH == 8
+// Two 16-k step buffers: 2x (32x16 x tile) + 2x (16x32 weight tile)
+// = 8 KiB, below the 16 KiB occupancy cliff the chunk arms hit.
+shared float x_s[2u * TILE_M * 16u];
+shared float w_s[2u * 16u * TILE_N];
+#else
 shared float x_s[TILE_M * XSTRIDE];
 shared float w_s[CHUNK_K * WSTRIDE];
+#endif
+
+#if QMM_COOP_BENCH_PATH >= 8
+// Stage one 16-k step exactly like the shipped kernel: x as exact
+// f16->f32 pairs, weights dequantized (scale * nibble + bias) in f32.
+// SLOT selects the double-buffer slot (arm 8; arms 9/10 pass 0).
+void qmm_stage_step(
+    uint b, uint tile_row, uint tile_col, uint k_base, uint slot) {
+  uint lid = gl_LocalInvocationID.x;
+  uint w_part = lid / 32u;
+  uint w_column_local = lid % 32u;
+  uint words_per_row = params.matrix_k / 8u;
+  uint groups_per_row = params.matrix_k / 64u;
+  uint x_words_per_row = params.matrix_k / 2u;
+  uint w_slice = params.rhs_offset + b * params.shape[1];
+  uint scale_slice = params.aux_offset + b * params.shape[2];
+  uint bias_slice = params.aux_size + b * params.shape[2];
+  uint x_slice = (params.lhs_offset +
+                     b * params.matrix_m * params.matrix_k) / 2u;
+  uint row_base = tile_row * TILE_M;
+  uint column = tile_col * TILE_N + w_column_local;
+  bool column_ok = column < params.matrix_n;
+  uint w_row = w_slice + column * words_per_row;
+  uint scale_row = scale_slice + column * groups_per_row;
+  uint bias_row = bias_slice + column * groups_per_row;
+  uint xoff = slot * (TILE_M * 16u);
+  for (uint j = 0u; j < 4u; ++j) {
+    uint i = lid + 64u * j;
+    uint local_row = i / 8u;
+    uint row = row_base + local_row;
+    uint word = row < params.matrix_m
+        ? input_x.values[x_slice + row * x_words_per_row +
+              k_base / 2u + (i % 8u)]
+        : 0u;
+    vec2 pair = unpackHalf2x16(word);
+    x_s[xoff + local_row * 16u + 2u * (i % 8u)] = pair.x;
+    x_s[xoff + local_row * 16u + 2u * (i % 8u) + 1u] = pair.y;
+  }
+  uint packed = column_ok
+      ? input_w.values[w_row + k_base / 8u + w_part] : 0u;
+  float scale = 0.0;
+  float bias = 0.0;
+  if (column_ok) {
+    scale = float(scales.values[scale_row + k_base / 64u]);
+    bias = float(biases.values[bias_row + k_base / 64u]);
+  }
+  uint w_base = slot * (16u * TILE_N) + 8u * w_part * TILE_N +
+      w_column_local;
+  w_s[w_base] = scale * float(packed & 0xFu) + bias;
+  w_s[w_base + 1u * TILE_N] =
+      scale * float((packed >> 4u) & 0xFu) + bias;
+  w_s[w_base + 2u * TILE_N] =
+      scale * float((packed >> 8u) & 0xFu) + bias;
+  w_s[w_base + 3u * TILE_N] =
+      scale * float((packed >> 12u) & 0xFu) + bias;
+  w_s[w_base + 4u * TILE_N] =
+      scale * float((packed >> 16u) & 0xFu) + bias;
+  w_s[w_base + 5u * TILE_N] =
+      scale * float((packed >> 20u) & 0xFu) + bias;
+  w_s[w_base + 6u * TILE_N] =
+      scale * float((packed >> 24u) & 0xFu) + bias;
+  w_s[w_base + 7u * TILE_N] = scale * float(packed >> 28u) + bias;
+}
+#endif
 
 void main() {
   uint lid = gl_LocalInvocationID.x;
@@ -109,7 +208,7 @@ void main() {
   barrier();
 #endif
 
-#if QMM_COOP_BENCH_PATH == 4
+#if QMM_COOP_BENCH_PATH >= 4 && QMM_COOP_BENCH_PATH <= 7
   coopmat<float, gl_ScopeSubgroup, MAT, MAT, gl_MatrixUseA> acc_in_a[2];
   coopmat<float, gl_ScopeSubgroup, MAT, MAT, gl_MatrixUseB> acc_in_b[4];
   for (uint rb = 0u; rb < 2u; ++rb) {
@@ -154,7 +253,119 @@ void main() {
         }
       }
       for (uint chunk = 0u; chunk < k_chunks; ++chunk) {
-#if QMM_COOP_BENCH_PATH <= 2
+#if QMM_COOP_BENCH_PATH == 8
+        // Double-buffered step staging: the next step's operands are
+        // staged while the current step's MulAdd burst runs; one
+        // barrier per step instead of two. Staged values and the
+        // per-output ascending-k MulAdd sequence match the shipped
+        // kernel exactly.
+        qmm_stage_step(
+            b, tile_row, tile_col, chunk * CHUNK_K + 0u * 16u, 0u);
+        barrier();
+        for (uint step = 0u; step < CHUNK_K / 16u; ++step) {
+          if (step + 1u < CHUNK_K / 16u) {
+            qmm_stage_step(b, tile_row, tile_col,
+                chunk * CHUNK_K + (step + 1u) * 16u, (step + 1u) & 1u);
+          }
+          uint xoff = (step & 1u) * (TILE_M * 16u);
+          uint woff = (step & 1u) * (16u * TILE_N);
+          for (uint ks = 0u; ks < 2u; ++ks) {
+            coopmat<float, gl_ScopeSubgroup, MAT, MAT, gl_MatrixUseA>
+                mat_a[2];
+            coopmat<float, gl_ScopeSubgroup, MAT, MAT, gl_MatrixUseB>
+                mat_b[4];
+            for (uint rb = 0u; rb < 2u; ++rb) {
+              coopMatLoad(
+                  mat_a[rb], x_s,
+                  xoff + (sub_rb + rb) * (MAT * 16u) + ks * MAT, 16u,
+                  gl_CooperativeMatrixLayoutRowMajor);
+            }
+            for (uint cb = 0u; cb < 4u; ++cb) {
+              coopMatLoad(
+                  mat_b[cb], w_s,
+                  woff + ks * (MAT * TILE_N) + cb * MAT, TILE_N,
+                  gl_CooperativeMatrixLayoutRowMajor);
+            }
+            for (uint rb = 0u; rb < 2u; ++rb) {
+              for (uint cb = 0u; cb < 4u; ++cb) {
+                acc[rb][cb] =
+                    coopMatMulAdd(mat_a[rb], mat_b[cb], acc[rb][cb]);
+              }
+            }
+          }
+          barrier();
+        }
+#elif QMM_COOP_BENCH_PATH == 9 || QMM_COOP_BENCH_PATH == 10
+        // Shipped staging and barrier cadence; the operand fragments
+        // for BOTH 8-k halves load before any MulAdd, so the 16
+        // updates issue back to back. Arm 10 pairs each fragment's
+        // two updates adjacently (two serial updates per chain).
+        for (uint step = 0u; step < CHUNK_K / 16u; ++step) {
+          qmm_stage_step(
+              b, tile_row, tile_col, chunk * CHUNK_K + step * 16u, 0u);
+          barrier();
+          uint kk = step * 16u;
+          coopmat<float, gl_ScopeSubgroup, MAT, MAT, gl_MatrixUseA>
+              mat_a0[2];
+          coopmat<float, gl_ScopeSubgroup, MAT, MAT, gl_MatrixUseA>
+              mat_a1[2];
+          coopmat<float, gl_ScopeSubgroup, MAT, MAT, gl_MatrixUseB>
+              mat_b0[4];
+          coopmat<float, gl_ScopeSubgroup, MAT, MAT, gl_MatrixUseB>
+              mat_b1[4];
+          for (uint rb = 0u; rb < 2u; ++rb) {
+            coopMatLoad(
+                mat_a0[rb], x_s, (sub_rb + rb) * MAT * XSTRIDE + kk,
+                XSTRIDE, gl_CooperativeMatrixLayoutRowMajor);
+            coopMatLoad(
+                mat_a1[rb], x_s,
+                (sub_rb + rb) * MAT * XSTRIDE + kk + MAT, XSTRIDE,
+                gl_CooperativeMatrixLayoutRowMajor);
+          }
+          for (uint cb = 0u; cb < 4u; ++cb) {
+            coopMatLoad(
+                mat_b0[cb], w_s, kk * WSTRIDE + cb * MAT, WSTRIDE,
+                gl_CooperativeMatrixLayoutRowMajor);
+            coopMatLoad(
+                mat_b1[cb], w_s, (kk + MAT) * WSTRIDE + cb * MAT,
+                WSTRIDE, gl_CooperativeMatrixLayoutRowMajor);
+          }
+#if QMM_COOP_BENCH_PATH == 10
+          for (uint rb = 0u; rb < 2u; ++rb) {
+            for (uint cb = 0u; cb < 4u; ++cb) {
+              acc[rb][cb] =
+                  coopMatMulAdd(mat_a0[rb], mat_b0[cb], acc[rb][cb]);
+              acc[rb][cb] =
+                  coopMatMulAdd(mat_a1[rb], mat_b1[cb], acc[rb][cb]);
+            }
+          }
+#else
+          for (uint rb = 0u; rb < 2u; ++rb) {
+            for (uint cb = 0u; cb < 4u; ++cb) {
+              acc[rb][cb] =
+                  coopMatMulAdd(mat_a0[rb], mat_b0[cb], acc[rb][cb]);
+            }
+          }
+          for (uint rb = 0u; rb < 2u; ++rb) {
+            for (uint cb = 0u; cb < 4u; ++cb) {
+              acc[rb][cb] =
+                  coopMatMulAdd(mat_a1[rb], mat_b1[cb], acc[rb][cb]);
+            }
+          }
+#endif
+          barrier();
+        }
+#elif QMM_COOP_BENCH_PATH >= 5
+        // Chains-in-flight ladder rung: ILP_CHAINS independent
+        // accumulator chains per iteration, 64 MulAdds per lane per
+        // chunk (arm 4's issue count at every rung).
+        for (uint iter = 0u; iter < 64u / ILP_CHAINS; ++iter) {
+          for (uint i = 0u; i < ILP_CHAINS; ++i) {
+            acc[i / 4u][i % 4u] = coopMatMulAdd(
+                acc_in_a[i / 4u], acc_in_b[i % 4u], acc[i / 4u][i % 4u]);
+          }
+        }
+#elif QMM_COOP_BENCH_PATH <= 2
         // Stage the whole 64-wide chunk once: x as exact f16->f32
         // pairs, weights dequantized exactly like the shipped kernel
         // (scale * nibble + bias in f32).
@@ -210,6 +421,7 @@ void main() {
         }
         barrier();
 #endif
+#if QMM_COOP_BENCH_PATH <= 4
         for (uint step = 0u; step < CHUNK_K / 16u; ++step) {
           for (uint ks = 0u; ks < 2u; ++ks) {
 #if QMM_COOP_BENCH_PATH == 4
@@ -254,6 +466,7 @@ void main() {
 #endif
           }
         }
+#endif
 #if QMM_COOP_BENCH_PATH <= 2
         barrier();
 #endif
