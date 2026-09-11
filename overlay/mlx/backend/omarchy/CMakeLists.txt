@@ -272,6 +272,15 @@ omarchy_shader(qmm_tile_rb_precise_f16 shaders/qmm_tile.comp -DUSE_FP16=1 -DREGI
 # device capability in primitives.cpp, MLX_OMARCHY_NO_COOPMAT=1 forces
 # the register-blocked tile.
 omarchy_shader(qmm_coopmat_f16 shaders/qmm_coopmat.comp)
+# QmmCoopBench arms: shaders/qmm_coopmat_bench.comp compiled four ways
+# (chunk staging, chunk staging with padded strides, shared-load+MMA
+# ceiling, pure-MulAdd ceiling). Dispatched only when
+# MLX_OMARCHY_QMM_COOP_BENCH selects the arm; default dispatches are
+# unchanged. See primitives.cpp for the per-arm shared-memory gate.
+omarchy_shader(qmm_coop_bench_chunk_f16 shaders/qmm_coopmat_bench.comp -DQMM_COOP_BENCH_PATH=1)
+omarchy_shader(qmm_coop_bench_chunk_pad_f16 shaders/qmm_coopmat_bench.comp -DQMM_COOP_BENCH_PATH=2)
+omarchy_shader(qmm_coop_bench_load_ceil_f16 shaders/qmm_coopmat_bench.comp -DQMM_COOP_BENCH_PATH=3)
+omarchy_shader(qmm_coop_bench_muladd_ceil_f16 shaders/qmm_coopmat_bench.comp -DQMM_COOP_BENCH_PATH=4)
 omarchy_shader(binary_vec_f16 shaders/binary_vec.comp -DUSE_FP16=1)
 omarchy_shader(binary_vec_bf16 shaders/binary_vec.comp -DUSE_BF16=1)
 omarchy_shader(matmul_rb_f16 shaders/matmul_rb.comp)

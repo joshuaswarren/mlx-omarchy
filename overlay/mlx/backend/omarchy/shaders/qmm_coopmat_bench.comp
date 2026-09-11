@@ -1,0 +1,288 @@
+#version 460
+#extension GL_KHR_cooperative_matrix : require
+#extension GL_KHR_memory_scope_semantics : require
+#extension GL_KHR_shader_subgroup_basic : require
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
+
+// Bench/data-path arms for the Q4/group-64 f16 prefill cooperative
+// matrix kernel (shaders/qmm_coopmat.comp). Selected only through
+// MLX_OMARCHY_QMM_COOP_BENCH; arm 0 always means the shipped kernel.
+//
+// Arms (compiled as separate SPIR-V kernels via -DQMM_COOP_BENCH_PATH):
+//   1  chunk staging: one 64-wide k chunk staged per barrier pair
+//      (8 barriers per chunk instead of 32), same f32 values and the
+//      same ascending 8-wide coopmat updates over k, so the output is
+//      bit-identical to the shipped kernel.
+//   2  chunk staging with anti-bank-alias strides (x_s row pitch 66,
+//      w_s row pitch 34 instead of 64/32); also bit-identical.
+//   3  shared-load + MMA ceiling: shared is filled with synthetic
+//      values once, the k loop only coopMatLoad + MulAdd. Output is
+//      deterministic garbage; measurement arm.
+//   4  pure MulAdd ceiling: fragments are loaded once, the k loop
+//      only issues coopMatMulAdd. Measures the driver's 8x8x8 fp32
+//      matrix rate at the real dispatch shapes; measurement arm.
+
+const uint TILE_M = 32u;
+const uint TILE_N = 32u;
+const uint CHUNK_K = 64u;
+const uint MAT = 8u;
+
+#if QMM_COOP_BENCH_PATH == 2
+const uint XSTRIDE = 66u;
+const uint WSTRIDE = 34u;
+#else
+const uint XSTRIDE = 64u;
+const uint WSTRIDE = 32u;
+#endif
+
+layout(local_size_x = 64) in;
+
+layout(set = 0, binding = 0, std430) readonly buffer InputX {
+  uint values[];
+} input_x;
+layout(set = 0, binding = 1, std430) readonly buffer InputW {
+  uint values[];
+} input_w;
+layout(set = 0, binding = 2, std430) readonly buffer Scales {
+  float16_t values[];
+} scales;
+layout(set = 0, binding = 3, std430) readonly buffer Biases {
+  float16_t values[];
+} biases;
+layout(set = 0, binding = 4, std430) writeonly buffer Output {
+  float16_t values[];
+} output_data;
+
+layout(push_constant) uniform Params {
+  uint count;
+  uint operation;
+  uint lhs_size;
+  uint rhs_size;
+  uint reduce_size;
+  uint output_size;
+  uint lhs_offset;
+  uint rhs_offset;
+  uint output_offset;
+  uint aux_size;
+  uint aux_offset;
+  uint matrix_m;
+  uint matrix_n;
+  uint matrix_k;
+  uint flags;
+  float alpha;
+  float beta;
+  uint dims;
+  uint shape[4];
+  uint in_strides[4];
+  uint out_strides[4];
+} params;
+
+shared float x_s[TILE_M * XSTRIDE];
+shared float w_s[CHUNK_K * WSTRIDE];
+
+void main() {
+  uint lid = gl_LocalInvocationID.x;
+  uint sub = gl_SubgroupID;
+  uint sub_rb = 2u * sub;
+  uint batch = params.shape[0];
+  uint w_batch_words = params.shape[1];
+  uint param_batch = params.shape[2];
+  uint x_batch_rows = params.matrix_m * params.matrix_k;
+  uint m_tiles = (params.matrix_m + TILE_M - 1u) / TILE_M;
+  uint n_tiles = (params.matrix_n + TILE_N - 1u) / TILE_N;
+  uint k_chunks = params.matrix_k / CHUNK_K;
+  uint words_per_row = params.matrix_k / 8u;
+  uint groups_per_row = params.matrix_k / 64u;
+  uint x_words_per_row = params.matrix_k / 2u;
+  uint w_column_local = lid % 32u;
+  uint w_part = lid / 32u;
+
+#if QMM_COOP_BENCH_PATH >= 3
+  // Synthetic operand tiles; values are deterministic and finite.
+  for (uint i = lid; i < TILE_M * XSTRIDE; i += 64u) {
+    x_s[i] = float((i * 7u) % 64u) * 0.25;
+  }
+  for (uint i = lid; i < CHUNK_K * WSTRIDE; i += 64u) {
+    w_s[i] = float((i * 5u) % 32u) * 0.25;
+  }
+  barrier();
+#endif
+
+#if QMM_COOP_BENCH_PATH == 4
+  coopmat<float, gl_ScopeSubgroup, MAT, MAT, gl_MatrixUseA> acc_in_a[2];
+  coopmat<float, gl_ScopeSubgroup, MAT, MAT, gl_MatrixUseB> acc_in_b[4];
+  for (uint rb = 0u; rb < 2u; ++rb) {
+    coopMatLoad(
+        acc_in_a[rb],
+        x_s,
+        (sub_rb + rb) * MAT * XSTRIDE,
+        XSTRIDE,
+        gl_CooperativeMatrixLayoutRowMajor);
+  }
+  for (uint cb = 0u; cb < 4u; ++cb) {
+    coopMatLoad(
+        acc_in_b[cb],
+        w_s,
+        cb * MAT,
+        WSTRIDE,
+        gl_CooperativeMatrixLayoutRowMajor);
+  }
+#endif
+
+  for (uint b = 0u; b < batch; ++b) {
+  uint w_slice = params.rhs_offset + b * w_batch_words;
+  uint scale_slice = params.aux_offset + b * param_batch;
+  uint bias_slice = params.aux_size + b * param_batch;
+  uint x_slice = (params.lhs_offset + b * x_batch_rows) / 2u;
+  uint out_slice = params.output_offset +
+      b * params.matrix_m * params.matrix_n;
+  for (uint tile_row = gl_WorkGroupID.y; tile_row < m_tiles;
+       tile_row += gl_NumWorkGroups.y) {
+    uint row_base = tile_row * TILE_M;
+    for (uint tile_col = gl_WorkGroupID.x; tile_col < n_tiles;
+         tile_col += gl_NumWorkGroups.x) {
+      uint column = tile_col * TILE_N + w_column_local;
+      bool column_ok = column < params.matrix_n;
+
+      coopmat<float, gl_ScopeSubgroup, MAT, MAT, gl_MatrixUseAccumulator>
+          acc[2][4];
+      for (uint rb = 0u; rb < 2u; ++rb) {
+        for (uint cb = 0u; cb < 4u; ++cb) {
+          acc[rb][cb] = coopmat<float, gl_ScopeSubgroup, MAT, MAT,
+              gl_MatrixUseAccumulator>(0.0);
+        }
+      }
+      for (uint chunk = 0u; chunk < k_chunks; ++chunk) {
+#if QMM_COOP_BENCH_PATH <= 2
+        // Stage the whole 64-wide chunk once: x as exact f16->f32
+        // pairs, weights dequantized exactly like the shipped kernel
+        // (scale * nibble + bias in f32).
+        // 32 rows x 64 halves = 1024 packed words, 16 per lane.
+        for (uint j = 0u; j < 16u; ++j) {
+          uint w = lid + 64u * j;
+          uint local_row = w / 32u;
+          uint kcol = (w % 32u) * 2u;
+          uint row = row_base + local_row;
+          uint pair = row < params.matrix_m
+              ? input_x.values[
+                    x_slice + row * x_words_per_row + chunk * 32u +
+                    (w % 32u)]
+              : 0u;
+          vec2 halves = unpackHalf2x16(pair);
+          x_s[local_row * XSTRIDE + kcol] = halves.x;
+          x_s[local_row * XSTRIDE + kcol + 1u] = halves.y;
+        }
+        // 64 k x 32 columns = 256 packed words, 4 per lane.
+        for (uint j = 0u; j < 4u; ++j) {
+          uint w = lid + 64u * j;
+          uint col = w % 32u;
+          uint ksub = w / 32u;
+          uint wcol = tile_col * TILE_N + col;
+          bool col_ok = wcol < params.matrix_n;
+          uint packed = col_ok
+              ? input_w.values[
+                    w_slice + wcol * words_per_row + chunk * 8u + ksub]
+              : 0u;
+          float cs = 0.0;
+          float cb = 0.0;
+          if (col_ok) {
+            cs = float(scales.values[
+                scale_slice + wcol * groups_per_row + chunk]);
+            cb = float(biases.values[
+                bias_slice + wcol * groups_per_row + chunk]);
+          }
+          uint dst = (ksub * 8u) * WSTRIDE + col;
+          w_s[dst] = cs * float(packed & 0xFu) + cb;
+          w_s[dst + WSTRIDE] = cs * float((packed >> 4u) & 0xFu) + cb;
+          w_s[dst + 2u * WSTRIDE] =
+              cs * float((packed >> 8u) & 0xFu) + cb;
+          w_s[dst + 3u * WSTRIDE] =
+              cs * float((packed >> 12u) & 0xFu) + cb;
+          w_s[dst + 4u * WSTRIDE] =
+              cs * float((packed >> 16u) & 0xFu) + cb;
+          w_s[dst + 5u * WSTRIDE] =
+              cs * float((packed >> 20u) & 0xFu) + cb;
+          w_s[dst + 6u * WSTRIDE] =
+              cs * float((packed >> 24u) & 0xFu) + cb;
+          w_s[dst + 7u * WSTRIDE] =
+              cs * float(packed >> 28u) + cb;
+        }
+        barrier();
+#endif
+        for (uint step = 0u; step < CHUNK_K / 16u; ++step) {
+          for (uint ks = 0u; ks < 2u; ++ks) {
+#if QMM_COOP_BENCH_PATH == 4
+            for (uint rb = 0u; rb < 2u; ++rb) {
+              for (uint cb = 0u; cb < 4u; ++cb) {
+                acc[rb][cb] = coopMatMulAdd(
+                    acc_in_a[rb], acc_in_b[cb], acc[rb][cb]);
+              }
+            }
+#else
+            coopmat<float, gl_ScopeSubgroup, MAT, MAT, gl_MatrixUseA>
+                mat_a[2];
+            coopmat<float, gl_ScopeSubgroup, MAT, MAT, gl_MatrixUseB>
+                mat_b[4];
+            uint k_off = chunk * CHUNK_K + step * 16u + ks * 8u;
+            uint kk = QMM_COOP_BENCH_PATH >= 3
+                ? (step * 16u + ks * 8u)
+                : k_off;
+            for (uint rb = 0u; rb < 2u; ++rb) {
+              coopMatLoad(
+                  mat_a[rb],
+                  x_s,
+                  (sub_rb + rb) * MAT * XSTRIDE + kk,
+                  XSTRIDE,
+                  gl_CooperativeMatrixLayoutRowMajor);
+            }
+            for (uint cb = 0u; cb < 4u; ++cb) {
+              coopMatLoad(
+                  mat_b[cb],
+                  w_s,
+                  kk * WSTRIDE + cb * MAT,
+                  WSTRIDE,
+                  gl_CooperativeMatrixLayoutRowMajor);
+            }
+            for (uint rb = 0u; rb < 2u; ++rb) {
+              for (uint cb = 0u; cb < 4u; ++cb) {
+                acc[rb][cb] =
+                    coopMatMulAdd(mat_a[rb], mat_b[cb], acc[rb][cb]);
+              }
+            }
+#endif
+          }
+        }
+#if QMM_COOP_BENCH_PATH <= 2
+        barrier();
+#endif
+      }
+
+      // One subgroup stores each 16-row half; duplicated column lanes
+      // each drain their four distinct rows of the selected 8-row block.
+      for (uint rb = 0u; rb < 4u; ++rb) {
+        if (sub_rb == (rb & ~1u)) {
+          for (uint cb = 0u; cb < 4u; ++cb) {
+            coopMatStore(
+                acc[rb & 1u][cb], x_s, cb * MAT * MAT, MAT,
+                gl_CooperativeMatrixLayoutRowMajor);
+          }
+        }
+        barrier();
+        if (column_ok) {
+          for (uint pass = 0u; pass < 4u; ++pass) {
+            uint r = 4u * w_part + pass;
+            uint row = row_base + rb * MAT + r;
+            if (row < params.matrix_m) {
+              output_data.values[out_slice + row * params.matrix_n + column] =
+                  float16_t(x_s[(w_column_local / 8u) * MAT * MAT +
+                                r * MAT + (w_column_local % 8u)]);
+            }
+          }
+        }
+        barrier();
+      }
+    }
+  }
+  }
+}
