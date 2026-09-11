@@ -6570,13 +6570,32 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
   bool rb_enabled = rb_env == nullptr || std::strcmp(rb_env, "0") != 0;
   constexpr uint32_t kQmmCoopmatSharedBytes =
       (32u * 16u + 16u * 32u) * sizeof(float);
+  // Bench arms: MLX_OMARCHY_QMM_COOP_BENCH=1..4 reroutes the qmm
+  // cooperative-matrix prefill to a shaders/qmm_coopmat_bench.comp
+  // arm for data-path measurement at the prefill shapes. 0/unset keeps
+  // the shipped kernel; nothing here changes any default dispatch.
+  // The variable is re-read per dispatch (bench-only cost) so tests
+  // can flip arms inside one process.
+  int qmm_coop_bench_arm = 0;
+  {
+    const char* arm = std::getenv("MLX_OMARCHY_QMM_COOP_BENCH");
+    long value = arm == nullptr ? 0L : std::strtol(arm, nullptr, 10);
+    if (value >= 0 && value <= 4) {
+      qmm_coop_bench_arm = static_cast<int>(value);
+    }
+  }
+  const uint32_t qmm_coop_shared_bytes = qmm_coop_bench_arm == 0
+      ? kQmmCoopmatSharedBytes
+      : qmm_coop_bench_arm == 2
+      ? (32u * 66u + 64u * 34u) * sizeof(float)
+      : (32u * 64u + 64u * 32u) * sizeof(float);
   const auto& coopmat_caps = encoder.device().capabilities();
   bool coopmat_reachable =
       tile_path && rb_enabled && q4_g64_transpose &&
       out.dtype() == float16 && x.ndim() >= 2 && x.shape(-2) > 1 &&
       coopmat_caps.cooperative_matrix_f32_8 &&
       coopmat_caps.subgroup_size == 32u && !coopmat_disabled &&
-      kQmmCoopmatSharedBytes <= coopmat_caps.max_compute_shared_memory_size;
+      qmm_coop_shared_bytes <= coopmat_caps.max_compute_shared_memory_size;
   // The f16 Q4 shader reads eight halves as one uvec4. Materialize only the
   // rare row-contiguous view whose element offset is not 16-byte aligned;
   // the coopmat word-pair reader extends the same rule to a 2-byte
@@ -6733,11 +6752,19 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
       uint32_t m_groups = (params.matrix_m + 31u) / 32u;
       uint32_t n_groups = coopmat ? (params.matrix_n + 31u) / 32u
                                   : (params.matrix_n + 15u) / 16u;
-      omarchy::ComputeKernel qmm_kernel = coopmat
-          ? omarchy::ComputeKernel::QmmPrefillCoopmatF16
-          : params.matrix_m >= 1024u
-          ? omarchy::ComputeKernel::QmmTileRbPreciseF16
-          : omarchy::ComputeKernel::QmmTileRbF16;
+      omarchy::ComputeKernel qmm_kernel = !coopmat
+          ? (params.matrix_m >= 1024u
+                    ? omarchy::ComputeKernel::QmmTileRbPreciseF16
+                    : omarchy::ComputeKernel::QmmTileRbF16)
+          : qmm_coop_bench_arm == 1
+          ? omarchy::ComputeKernel::QmmCoopBenchChunkF16
+          : qmm_coop_bench_arm == 2
+          ? omarchy::ComputeKernel::QmmCoopBenchChunkPadF16
+          : qmm_coop_bench_arm == 3
+          ? omarchy::ComputeKernel::QmmCoopBenchLoadCeilF16
+          : qmm_coop_bench_arm == 4
+          ? omarchy::ComputeKernel::QmmCoopBenchMuladdCeilF16
+          : omarchy::ComputeKernel::QmmPrefillCoopmatF16;
       encoder.dispatch_compute(
           qmm_kernel,
           bindings,

@@ -278,6 +278,10 @@
 #include "qmm_tile_rb_f16.h"
 #include "qmm_tile_rb_precise_f16.h"
 #include "qmm_coopmat_f16.h"
+#include "qmm_coop_bench_chunk_f16.h"
+#include "qmm_coop_bench_chunk_pad_f16.h"
+#include "qmm_coop_bench_load_ceil_f16.h"
+#include "qmm_coop_bench_muladd_ceil_f16.h"
 #include "binary_vec_f16.h"
 #include "binary_vec_bf16.h"
 #include "matmul_rb_f16.h"
@@ -1193,6 +1197,20 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {qmm_tile_f16, qmm_tile_f16_size};
     case ComputeKernel::QmmTileRbF16:
       return {qmm_tile_rb_f16, qmm_tile_rb_f16_size};
+    case ComputeKernel::QmmCoopBenchChunkF16:
+      return {qmm_coop_bench_chunk_f16, qmm_coop_bench_chunk_f16_size};
+    case ComputeKernel::QmmCoopBenchChunkPadF16:
+      return {
+          qmm_coop_bench_chunk_pad_f16,
+          qmm_coop_bench_chunk_pad_f16_size};
+    case ComputeKernel::QmmCoopBenchLoadCeilF16:
+      return {
+          qmm_coop_bench_load_ceil_f16,
+          qmm_coop_bench_load_ceil_f16_size};
+    case ComputeKernel::QmmCoopBenchMuladdCeilF16:
+      return {
+          qmm_coop_bench_muladd_ceil_f16,
+          qmm_coop_bench_muladd_ceil_f16_size};
     case ComputeKernel::QmmTileRbPreciseF16:
       return {qmm_tile_rb_precise_f16, qmm_tile_rb_precise_f16_size};
     case ComputeKernel::QmmPrefillCoopmatF16:

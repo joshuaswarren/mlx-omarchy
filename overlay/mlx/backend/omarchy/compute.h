@@ -598,6 +598,14 @@ enum class ComputeKernel : uint16_t {
   // Native-order single-query f16 attention; append-only profile id.
   SdpaDecodeNativeF16,
   Custom,
+  // Qmm coopmat bench arms (shaders/qmm_coopmat_bench.comp). Selected
+  // only by MLX_OMARCHY_QMM_COOP_BENCH=1..4 for data-path measurement
+  // at the prefill shapes; arm 0 always means QmmPrefillCoopmatF16 and
+  // no value of this variable changes any default dispatch.
+  QmmCoopBenchChunkF16,
+  QmmCoopBenchChunkPadF16,
+  QmmCoopBenchLoadCeilF16,
+  QmmCoopBenchMuladdCeilF16,
   Count,
 };
 
