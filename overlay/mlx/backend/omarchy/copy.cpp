@@ -421,6 +421,7 @@ void copy_gpu_inplace(
     if (in.has_primitive()) {
       omarchy::unsupported("GPU-in-flight scalar fill", out);
     }
+    encoder.synchronize();
     if (scalar_is_zero(in, i_offset)) {
       fill_pattern(s, out, o_offset, 0);
       return;
