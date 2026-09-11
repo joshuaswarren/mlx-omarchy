@@ -168,7 +168,7 @@ def main():
 
     # ---- part 2: f64 truth streams (CPU) ----
     inner = model.model.layers[0]
-    cfg = model.config
+    cfg = model.args
     theta = float(getattr(cfg, "rope_theta", 1000000.0))
     eps = float(getattr(cfg, "rms_norm_eps", 1e-6))
     n_layers = len(model.model.layers)
