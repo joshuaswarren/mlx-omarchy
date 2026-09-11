@@ -516,6 +516,7 @@ target_sources(
           ${CMAKE_CURRENT_SOURCE_DIR}/compute.cpp
           ${CMAKE_CURRENT_SOURCE_DIR}/custom_kernel.cpp
           ${CMAKE_CURRENT_SOURCE_DIR}/device.cpp
+          ${CMAKE_CURRENT_SOURCE_DIR}/capability_sim.cpp
           ${CMAKE_CURRENT_SOURCE_DIR}/device_info.cpp
           ${CMAKE_CURRENT_SOURCE_DIR}/encoder.cpp
           ${CMAKE_CURRENT_SOURCE_DIR}/eval.cpp

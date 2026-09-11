@@ -17,6 +17,7 @@
 
 #include "mlx/backend/omarchy/vulkan.h"
 
+#include "mlx/backend/omarchy/capability_sim.h"
 #include "mlx/backend/omarchy/allocator.h"
 
 namespace mlx::core::omarchy {
@@ -88,7 +89,11 @@ int env_index(const char* name) {
 struct PhysicalDeviceInfo {
   VkPhysicalDevice handle{VK_NULL_HANDLE};
   DeviceSupport support;
+  // Dispatch/provenance view; a named simulation profile when
+  // MLX_OMARCHY_CAPS_SIM is active, otherwise identical to hardware.
   CapabilityReport caps;
+  // Hardware truth from discovery, never overridden by simulation.
+  CapabilityReport hardware;
 };
 
 // Process-wide Vulkan state. The VkInstance lives as long as the process;
@@ -299,6 +304,25 @@ CapabilityReport collect_capabilities(
 }
 
 bool Runtime::init_impl() {
+  // Capability simulation resolves once per process. An unknown
+  // MLX_OMARCHY_CAPS_SIM name throws here and lands in |error|: the
+  // backend refuses to start rather than silently running real caps.
+  const std::string sim_profile = capsim::requested_profile();
+  const capsim::SimulationProfile* sim =
+      sim_profile.empty() ? nullptr : capsim::find(sim_profile);
+  if (sim) {
+    std::fprintf(
+        stderr,
+        "[omarchy] CAPABILITY SIMULATION ACTIVE: profile '%s'"
+        " (stands in for driver_variant %s)\n",
+        sim->name,
+        sim->represents_driver_variant);
+    std::fprintf(
+        stderr,
+        "[omarchy] simulated runs are not hardware results: no"
+        " benchmark or generated-id-digest evidence may be recorded"
+        " from this process.\n");
+  }
   allow_non_apple = env_flag("MLX_OMARCHY_ALLOW_NON_APPLE");
   preferred_device_index = env_index("MLX_OMARCHY_DEVICE_INDEX");
   // MLX_OMARCHY_NO_BUFFER_CACHE (diagnostic, docs/install-omarchy.md):
@@ -472,6 +496,28 @@ bool Runtime::init_impl() {
         m3,
         m4,
         subgroup);
+    info.hardware = info.caps;
+    if (sim) {
+      info.caps = capsim::apply(info.caps, *sim);
+      std::fprintf(
+          stderr,
+          "[omarchy] simulated device %u: '%s' (%s) as"
+          " subgroup_size=%u subgroup_ops_mask=0x%x"
+          " cooperative_matrix_fp32_8x8x8=%d"
+          " shared_memory_limit_bytes=%zu"
+          " workgroup_invocations=%u workgroup_size_x=%u"
+          " atomic_float_add=%d\n",
+          static_cast<unsigned>(supported.size()),
+          info.caps.device_name.c_str(),
+          info.caps.driver_name.c_str(),
+          info.caps.subgroup_size,
+          info.caps.subgroup_operations,
+          info.caps.cooperative_matrix_f32_8 ? 1 : 0,
+          info.caps.max_compute_shared_memory_size,
+          info.caps.max_compute_work_group_invocations,
+          info.caps.max_compute_work_group_size[0],
+          info.caps.shader_atomic_float_add ? 1 : 0);
+    }
     if (info.caps.queue_count == 0) {
       if (first_refusal.empty()) {
         first_refusal = "[omarchy] device '" + info.caps.device_name +
@@ -658,41 +704,63 @@ const CapabilityReport& capability_report(uint32_t index) {
   return rt.supported[index].caps;
 }
 
+// Hardware-truth report for a supported index regardless of any active
+// capability simulation. mlx-omarchy-info --hardware and the
+// simulation tests read this.
+const CapabilityReport& hardware_capability_report(uint32_t index) {
+  auto& rt = runtime();
+  if (!rt.init()) {
+    throw std::runtime_error(rt.error);
+  }
+  if (index >= rt.supported.size()) {
+    throw std::invalid_argument(
+        "[omarchy] device index " + std::to_string(index) +
+        " is out of range.");
+  }
+  return rt.supported[index].hardware;
+}
+
 // --- Device ---------------------------------------------------------------
 
 Device::Device(uint32_t physical_device_index) {
   auto& rt = runtime();
   auto& info = rt.supported.at(physical_device_index);
+  // Dispatch and provenance see the (possibly simulated) report; the
+  // VkDevice is created from hardware truth, so a simulated capability
+  // can never enable an extension or feature the driver does not
+  // actually have.
   caps_ = info.caps;
+  hardware_caps_ = info.hardware;
+  const CapabilityReport& hw = hardware_caps_;
   VkPhysicalDevice pd = info.handle;
   auto& it = vk::instance_table();
 
   VkPhysicalDeviceShaderAtomicFloatFeaturesEXT enabled_fa{
       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_FEATURES_EXT};
   enabled_fa.shaderBufferFloat32AtomicAdd =
-      caps_.shader_atomic_float_add ? VK_TRUE : VK_FALSE;
+      hw.shader_atomic_float_add ? VK_TRUE : VK_FALSE;
   VkPhysicalDeviceCooperativeMatrixFeaturesKHR enabled_cm{
       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_MATRIX_FEATURES_KHR};
   enabled_cm.cooperativeMatrix =
-      caps_.cooperative_matrix_f32_8 ? VK_TRUE : VK_FALSE;
+      hw.cooperative_matrix_f32_8 ? VK_TRUE : VK_FALSE;
   VkPhysicalDevice16BitStorageFeatures enabled16{
       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES};
   enabled16.storageBuffer16BitAccess =
-      caps_.storage_buffer_16bit_access ? VK_TRUE : VK_FALSE;
+      hw.storage_buffer_16bit_access ? VK_TRUE : VK_FALSE;
   VkPhysicalDeviceVulkan12Features enabled12{
       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES};
   enabled12.timelineSemaphore = VK_TRUE;
-  enabled12.shaderFloat16 = caps_.shader_float16 ? VK_TRUE : VK_FALSE;
+  enabled12.shaderFloat16 = hw.shader_float16 ? VK_TRUE : VK_FALSE;
   VkPhysicalDeviceVulkan13Features enabled13{
       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES};
   VkPhysicalDeviceFeatures2 enabled2{
       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
-  enabled2.features.shaderInt16 = caps_.shader_int16 ? VK_TRUE : VK_FALSE;
-  enabled2.features.shaderInt64 = caps_.shader_int64 ? VK_TRUE : VK_FALSE;
+  enabled2.features.shaderInt16 = hw.shader_int16 ? VK_TRUE : VK_FALSE;
+  enabled2.features.shaderInt64 = hw.shader_int64 ? VK_TRUE : VK_FALSE;
   enabled16.pNext = &enabled12;
   enabled12.pNext = &enabled13;
   enabled13.pNext = &enabled_fa;
-  if (caps_.cooperative_matrix_f32_8) {
+  if (hw.cooperative_matrix_f32_8) {
     enabled_fa.pNext = &enabled_cm;
   }
   enabled2.pNext = &enabled16;
@@ -709,15 +777,14 @@ Device::Device(uint32_t physical_device_index) {
   dci.pNext = &enabled2;
   dci.queueCreateInfoCount = 1;
   dci.pQueueCreateInfos = &qci;
-  // The float-atomic extension is enabled only when the capability
-  // query saw the extension and the buffer-add feature bit; the
-  // scatter float Sum/Prod kernels are dispatched only behind that
-  // same flag.
+  // Extensions enabled only from hardware truth: a simulated
+  // cooperative-matrix or float-atomic claim can never enable an
+  // extension the driver does not actually provide.
   std::vector<const char*> device_exts;
-  if (caps_.shader_atomic_float_add) {
+  if (hw.shader_atomic_float_add) {
     device_exts.push_back("VK_EXT_shader_atomic_float");
   }
-  if (caps_.cooperative_matrix_f32_8) {
+  if (hw.cooperative_matrix_f32_8) {
     device_exts.push_back(VK_KHR_COOPERATIVE_MATRIX_EXTENSION_NAME);
   }
   if (!device_exts.empty()) {

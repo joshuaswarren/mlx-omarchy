@@ -72,6 +72,11 @@ device_info(int device_index) {
     info["max_storage_buffer_range"] =
         static_cast<size_t>(caps.max_storage_buffer_range);
     info["timestamp_period_ns"] = static_cast<size_t>(caps.timestamp_period);
+    if (caps.simulated) {
+      info["simulated"] = size_t{1};
+      info["simulation_profile"] = caps.simulation_profile;
+      info["simulated_driver_variant"] = caps.simulated_driver_variant;
+    }
   } catch (const std::exception&) {
     // Leave the entry empty; upstream documents that keys vary and the
     // unavailable case reports an empty map (no_gpu behavior).

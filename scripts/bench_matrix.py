@@ -633,6 +633,8 @@ def collect_metadata(args, manifest):
 
 
 def main():
+    import caps_sim_guard
+    caps_sim_guard.refuse_if_simulated("bench_matrix")
     ap = argparse.ArgumentParser(
         description=__doc__.splitlines()[0],
         formatter_class=argparse.RawDescriptionHelpFormatter)

@@ -48,6 +48,11 @@
 set -uo pipefail
 echo "PID $$ host $(hostname) start $(date +%T)"
 [ $# -eq 2 ] || { echo "usage: $0 <before-sha> <after-sha>" >&2; exit 2; }
+[ -n "${MLX_OMARCHY_CAPS_SIM:-}" ] && {
+  echo "REFUSING: MLX_OMARCHY_CAPS_SIM='${MLX_OMARCHY_CAPS_SIM}' is" \
+       "active; capability simulation never produces digest evidence" >&2
+  exit 3
+}
 BEFORE=$1; AFTER=$2
 if [ "$BEFORE" = "$AFTER" ]; then
   MODE=same-wheel-gates

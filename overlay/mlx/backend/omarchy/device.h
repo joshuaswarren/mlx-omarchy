@@ -112,6 +112,14 @@ struct CapabilityReport {
   // the load-bearing combination for the qmm_vec subgroup path.
   uint32_t subgroup_size{0};
   uint32_t subgroup_operations{0};
+  // Capability simulation (MLX_OMARCHY_CAPS_SIM): set on a report that
+  // is a named simulated profile, never on hardware discovery. The
+  // profile name and the driver_variant axis it stands in for ride
+  // alongside, so provenance output can stamp simulated runs. See
+  // capability_sim.h for the axis vocabulary and gating contract.
+  bool simulated{false};
+  std::string simulation_profile;
+  std::string simulated_driver_variant;
 };
 
 // A pending wait fails after 10 seconds with neither completion progress nor
@@ -233,6 +241,13 @@ class Device {
     return caps_;
   }
 
+  // Hardware truth even when capabilities() is a simulated profile:
+  // VkDevice creation and the simulation backing checks read this.
+  // Without MLX_OMARCHY_CAPS_SIM the two reports are identical.
+  const CapabilityReport& hardware_capabilities() const {
+    return hardware_caps_;
+  }
+
   std::mutex& queue_mutex() {
     return queue_mutex_;
   }
@@ -250,6 +265,7 @@ class Device {
   uint64_t signal_timeline(VkSemaphore semaphore, uint64_t value);
 
   CapabilityReport caps_;
+  CapabilityReport hardware_caps_{};
   VkPhysicalDeviceMemoryProperties mem_props_{};
   VkDevice device_{VK_NULL_HANDLE};
   VkQueue queue_{VK_NULL_HANDLE};
@@ -282,6 +298,11 @@ MLX_API bool runtime_alive();
 // Throws std::runtime_error when the index is out of range or discovery
 // failed.
 MLX_API const CapabilityReport& capability_report(uint32_t index);
+// Hardware-truth report for a supported index even when
+// capability_report() is serving a simulated profile. Throws
+// std::runtime_error when the index is out of range or discovery
+// failed.
+MLX_API const CapabilityReport& hardware_capability_report(uint32_t index);
 
 // True when the named MLX_OMARCHY_* boolean environment variable is set
 // to 1/on/true/yes (case-insensitive). False when unset or any other

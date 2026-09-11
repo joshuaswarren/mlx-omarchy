@@ -216,6 +216,11 @@ def self_test():
 
 
 def main():
+    # Self-test is stub-only and stays runnable anywhere; the guard
+    # sits behind it so only real measurement refuses under simulation.
+    if not ({"--self-test"} & set(sys.argv[1:])):
+        import caps_sim_guard
+        caps_sim_guard.refuse_if_simulated("bench_decode")
     ap = argparse.ArgumentParser()
     ap.add_argument("--model", default=None)
     ap.add_argument("--prompt", default=None)
