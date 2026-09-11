@@ -308,40 +308,51 @@ class MLX_API CommandEncoder {
   // ---- Recorded-sequence replay prototype (MLX_OMARCHY_REPLAY=1). ----
   // Measurement wheel (branch wave/HostPathOverhead), never merged. Decode
   // re-executes the same dispatch sequence every token; a dispatch whose
-  // pipeline, bindings, push constants and groups are byte-identical to
-  // the previous batch's entry at the same sequence position replays a
-  // cached command buffer instead of re-recording (no descriptor
-  // alloc/update, no vkCmd* recording). Everything else records fresh
-  // into a per-dispatch command buffer; one submission carries the whole
-  // ordered array. Dependency structure is unchanged: the default
-  // unconditional pre/post barriers around every dispatch have
-  // submission-order scope, and cached buffers are only resubmitted after
-  // their previous execution drained (decode joins every token at the
-  // sampler read). Cacheable descriptor sets live in a dedicated
-  // never-retired pool (8192 sets; genuinely-rotating bindings allocate
-  // again and the stale set is orphaned until teardown - a noted
-  // prototype ceiling).
-  struct ReplayEntry {
-    VkPipeline pipeline{VK_NULL_HANDLE};
-    uint32_t binding_count{0};
+  // pipeline, push constants and groups repeat at the same sequence
+  // position replays a cached command buffer instead of re-recording.
+  // Because mlx_lm's async decode alternates the allocator between two
+  // buffer address sets, each entry keeps up to kReplayMaxVariants
+  // binding-address variants (set + command buffer per variant); k-step
+  // periodic reuse still removes the record+descriptor work on the
+  // stable majority. Params-changing dispatches (rope offset, KV write
+  // offset, attention length) keep one variant that is replaced every
+  // token. One submission carries the whole ordered array; dependency
+  // structure is unchanged (the default unconditional pre/post barriers
+  // have submission-order scope; cached buffers resubmit only after
+  // drain). Descriptor sets live in dedicated pools that grow by
+  // chaining when exhausted; stale sets are orphaned until teardown
+  // (noted prototype ceiling).
+  static constexpr uint32_t kReplayMaxVariants = 4;
+  struct ReplayVariant {
     std::array<VkBuffer, kComputeBindingBudget> buffers{};
     std::array<VkDeviceSize, kComputeBindingBudget> offsets{};
     std::array<VkDeviceSize, kComputeBindingBudget> ranges{};
+    VkDescriptorSet descriptor_set{VK_NULL_HANDLE};
+    VkCommandBuffer cmd{VK_NULL_HANDLE};
+  };
+  struct ReplayEntry {
+    VkPipeline pipeline{VK_NULL_HANDLE};
     ComputeParams params{};
     uint32_t gx{0};
     uint32_t gy{0};
     uint32_t gz{0};
-    VkDescriptorSet descriptor_set{VK_NULL_HANDLE};
-    VkCommandBuffer cmd{VK_NULL_HANDLE};
+    std::vector<ReplayVariant> variants;
   };
   static bool replay_enabled();
   VkDescriptorSet acquire_replay_descriptor_set(ComputeRuntime& compute);
   VkCommandBuffer acquire_replay_cmd();
-  // Replays the dispatch when the cached entry at the cursor matches, else
-  // records it fresh into a replay command buffer (creating or replacing
-  // the entry). Pushes the executing command buffer onto replay_order_ in
-  // both cases and stamps the bound buffers into the batch. Returns false
-  // when the batch decided replay is off entirely.
+  // Records pre-barrier + bind + push + dispatch + post-barrier into an
+  // arbitrary (replay) command buffer; the dependency scheme matches the
+  // default ring path exactly.
+  void record_dispatch_locked(
+      VkCommandBuffer cmd,
+      VkDescriptorSet descriptor_set,
+      VkPipeline pipeline,
+      VkPipelineLayout pipeline_layout,
+      const ComputeParams& params,
+      uint32_t group_count_x,
+      uint32_t group_count_y,
+      uint32_t group_count_z);
   bool replay_dispatch(
       VkPipeline pipeline,
       ComputeKernel profile_kernel,
@@ -364,8 +375,10 @@ class MLX_API CommandEncoder {
   std::vector<VkCommandBuffer> replay_scratch_;  // drained, reusable
   std::vector<VkCommandBuffer> replay_retiring_; // await drain, then scratch
   VkCommandPool replay_pool_{VK_NULL_HANDLE};
+  std::vector<VkDescriptorPool> replay_desc_pools_;  // chained, kept alive
   VkDescriptorPool replay_desc_pool_{VK_NULL_HANDLE};
   uint32_t replay_desc_remaining_{0};
+  static constexpr uint32_t kReplayPoolSets = 8192;
 
   Device& device_;
   VkCommandPool pool_{VK_NULL_HANDLE};
