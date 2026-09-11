@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="2" skipped="2" tests="421" time="54.769" timestamp="2026-09-11T18:06:50.526711-05:00" hostname="omp-studio-local"><testcase classname="python.tests.test_ops.TestOps" name="test_abs" time="0.041" /><testcase classname="python.tests.test_ops.TestOps" name="test_add" time="0.022" /><testcase classname="python.tests.test_ops.TestOps" name="test_all" time="0.010" /><testcase classname="python.tests.test_ops.TestOps" name="test_allclose" time="0.014" /><testcase classname="python.tests.test_ops.TestOps" name="test_along_axis_invalid_axis" time="0.001" /><testcase classname="python.tests.test_ops.TestOps" name="test_any" time="0.001" /><testcase classname="python.tests.test_ops.TestOps" name="test_arange_corner_cases_cast" time="0.003" /><testcase classname="python.tests.test_ops.TestOps" name="test_arange_inferred_dtype" time="0.001" /><testcase classname="python.tests.test_ops.TestOps" name="test_arange_overload_dispatch" time="0.003" /><testcase classname="python.tests.test_ops.TestOps" name="test_argmin_argmax" time="0.028" /><testcase classname="python.tests.test_ops.TestOps" name="test_argpartition" time="0.134" /><testcase classname="python.tests.test_ops.TestOps" name="test_argsort_nan" time="0.080" /><testcase classname="python.tests.test_ops.TestOps" name="test_array_equal" time="0.078" /><testcase classname="python.tests.test_ops.TestOps" name="test_as_strided" time="0.009" /><testcase classname="python.tests.test_ops.TestOps" name="test_atleast_1d" time="0.002" /><testcase classname="python.tests.test_ops.TestOps" name="test_atleast_2d" time="0.002" /><testcase classname="python.tests.test_ops.TestOps" name="test_atleast_3d" time="0.003" /><testcase classname="python.tests.test_ops.TestOps" name="test_bartlett_general" time="0.002" /><testcase classname="python.tests.test_ops.TestOps" name="test_binary_ops" time="0.272" /><testcase classname="python.tests.test_ops.TestOps" name="test_bitwise_grad" time="0.003" /><testcase classname="python.tests.test_ops.TestOps" name="test_bitwise_ops" time="0.087" /><testcase classname="python.tests.test_ops.TestOps" name="test_blackman_general" time="0.003" /><testcase classname="python.tests.test_ops.TestOps" name="test_broadcast" time="0.001" /><testcase classname="python.tests.test_ops.TestOps" name="test_broadcast_arrays" time="0.000" /><testcase classname="python.tests.test_ops.TestOps" name="test_broadcast_shapes" time="0.000" /><testcase classname="python.tests.test_ops.TestOps" name="test_ceil" time="0.001" /><testcase classname="python.tests.test_ops.TestOps" name="test_clip" time="0.001" /><testcase classname="python.tests.test_ops.TestOps" name="test_comparisons" time="0.002" /><testcase classname="python.tests.test_ops.TestOps" name="test_complex_ops" time="0.058" /><testcase classname="python.tests.test_ops.TestOps" name="test_complex_power" time="0.002" /><testcase classname="python.tests.test_ops.TestOps" name="test_concatenate" time="0.019" /><testcase classname="python.tests.test_ops.TestOps" name="test_conjugate" time="0.003" /><testcase classname="python.tests.test_ops.TestOps" name="test_cos" time="0.001" /><testcase classname="python.tests.test_ops.TestOps" name="test_count_nonzero" time="0.005" /><testcase classname="python.tests.test_ops.TestOps" name="test_cross_invalid_axis" time="0.000" /><testcase classname="python.tests.test_ops.TestOps" name="test_cummax_cummin_nan" time="0.015" /><testcase classname="python.tests.test_ops.TestOps" name="test_degrees" time="0.001" /><testcase classname="python.tests.test_ops.TestOps" name="test_depends" time="0.001" /><testcase classname="python.tests.test_ops.TestOps" name="test_diag" time="0.105" /><testcase classname="python.tests.test_ops.TestOps" name="test_diag_zero_size" time="0.001" /><testcase classname="python.tests.test_ops.TestOps" name="test_diagonal" time="0.003" /><testcase classname="python.tests.test_ops.TestOps" name="test_diff" time="0.001" /><testcase classname="python.tests.test_ops.TestOps" name="test_divide" time="0.001" /><testcase classname="python.tests.test_ops.TestOps" name="test_divmod" time="0.010" /><testcase classname="python.tests.test_ops.TestOps" name="test_dynamic_slicing" time="0.003" /><testcase classname="python.tests.test_ops.TestOps" name="test_empty_matmuls" time="0.003" /><testcase classname="python.tests.test_ops.TestOps" name="test_erf" time="0.001" /><testcase classname="python.tests.test_ops.TestOps" name="test_erfinv" time="0.002" /><testcase classname="python.tests.test_ops.TestOps" name="test_exp" time="0.001" /><testcase classname="python.tests.test_ops.TestOps" name="test_expm1" time="0.001" /><testcase classname="python.tests.test_ops.TestOps" name="test_eye" time="0.007" /><testcase classname="python.tests.test_ops.TestOps" name="test_flatten" time="0.000" /><testcase classname="python.tests.test_ops.TestOps" name="test_flip" time="0.000" /><testcase classname="python.tests.test_ops.TestOps" name="test_floor" time="0.000" /><testcase classname="python.tests.test_ops.TestOps" name="test_full_ones_zeros" time="0.004" /><testcase classname="python.tests.test_ops.TestOps" name="test_hadamard" time="0.000"><skipped type="pytest.skip" message="too slow in CI">/home/joshuawarren/src/mlx-omarchy-wrongvalue/.work/mlx/python/tests/test_ops.py:3777: too slow in CI</skipped></testcase><testcase classname="python.tests.test_ops.TestOps" name="test_hadamard_grad_vmap" time="22.793" /><testcase classname="python.tests.test_ops.TestOps" name="test_hadamard_m_only" time="0.000"><skipped type="pytest.skip" message="Metal only">/home/joshuawarren/src/mlx-omarchy-wrongvalue/.work/mlx/python/tests/test_ops.py:3873: Metal only</skipped></testcase><testcase classname="python.tests.test_ops.TestOps" name="test_hamming_general" time="0.001" /><testcase classname="python.tests.test_ops.TestOps" name="test_hanning_general" time="0.001" /><testcase classname="python.tests.test_ops.TestOps" name="test_inner" time="0.009" /><testcase classname="python.tests.test_ops.TestOps" name="test_integer_index_protocol" time="0.001" /><testcase classname="python.tests.test_ops.TestOps" name="test_integer_power" time="0.001" /><testcase classname="python.tests.test_ops.TestOps" name="test_irregular_alignments" time="0.004" /><testcase classname="python.tests.test_ops.TestOps" name="test_irregular_binary_ops" time="1.012" /><testcase classname="python.tests.test_ops.TestOps" name="test_isclose" time="0.004" /><testcase classname="python.tests.test_ops.TestOps" name="test_isfinite" time="0.007" /><testcase classname="python.tests.test_ops.TestOps" name="test_isinf" time="0.005" /><testcase classname="python.tests.test_ops.TestOps" name="test_isnan" time="0.003" /><testcase classname="python.tests.test_ops.TestOps" name="test_isneginf" time="0.001" /><testcase classname="python.tests.test_ops.TestOps" name="test_isposinf" time="0.001" /><testcase classname="python.tests.test_ops.TestOps" name="test_issubdtype" time="0.001" /><testcase classname="python.tests.test_ops.TestOps" name="test_kron" time="0.001" /><testcase classname="python.tests.test_ops.TestOps" name="test_large_binary" time="15.171" /><testcase classname="python.tests.test_ops.TestOps" name="test_linspace" time="0.416" /><testcase classname="python.tests.test_ops.TestOps" name="test_linspace_endpoint" time="0.019" /><testcase classname="python.tests.test_ops.TestOps" name="test_log" time="0.001" /><testcase classname="python.tests.test_ops.TestOps" name="test_log10" time="0.001" /><testcase classname="python.tests.test_ops.TestOps" name="test_log1p" time="0.001" /><testcase classname="python.tests.test_ops.TestOps" name="test_log2" time="0.001" /><testcase classname="python.tests.test_ops.TestOps" name="test_logaddexp" time="0.001" /><testcase classname="python.tests.test_ops.TestOps" name="test_logcumsumexp" time="0.375" /><testcase classname="python.tests.test_ops.TestOps" name="test_logical_and" time="0.001" /><testcase classname="python.tests.test_ops.TestOps" name="test_logical_not" time="0.001" /><testcase classname="python.tests.test_ops.TestOps" name="test_logical_or" time="0.001" /><testcase classname="python.tests.test_ops.TestOps" name="test_logical_xor" time="0.001" /><testcase classname="python.tests.test_ops.TestOps" name="test_logsumexp" time="0.351" /><testcase classname="python.tests.test_ops.TestOps" name="test_logsumexp_shape" time="0.016" /><testcase classname="python.tests.test_ops.TestOps" name="test_masked_scatter" time="0.259" /><testcase classname="python.tests.test_ops.TestOps" name="test_maximum" time="0.001" /><testcase classname="python.tests.test_ops.TestOps" name="test_mean" time="0.001" /><testcase classname="python.tests.test_ops.TestOps" name="test_median" time="0.991" /><testcase classname="python.tests.test_ops.TestOps" name="test_median_nan" time="1.222" /><testcase classname="python.tests.test_ops.TestOps" name="test_meshgrid" time="0.020" /><testcase classname="python.tests.test_ops.TestOps" name="test_min_and_max" time="0.001" /><testcase classname="python.tests.test_ops.TestOps" name="test_minimum" time="0.001" /><testcase classname="python.tests.test_ops.TestOps" name="test_move_swap_axes" time="0.000" /><testcase classname="python.tests.test_ops.TestOps" name="test_multiply" time="0.001" /><testcase classname="python.tests.test_ops.TestOps" name="test_nan_to_num" time="0.003" /><testcase classname="python.tests.test_ops.TestOps" name="test_negative" time="0.001" /><testcase classname="python.tests.test_ops.TestOps" name="test_outer" time="0.253" /><testcase classname="python.tests.test_ops.TestOps" name="test_pad" time="0.008" /><testcase classname="python.tests.test_ops.TestOps" name="test_pad_reflect_symmetric" time="0.012" /><testcase classname="python.tests.test_ops.TestOps" name="test_partition" time="0.110" /><testcase classname="python.tests.test_ops.TestOps" name="test_prod" time="0.001" /><testcase classname="python.tests.test_ops.TestOps" name="test_put_along_axis" time="0.506" /><testcase classname="python.tests.test_ops.TestOps" name="test_radians" time="0.001" /><testcase classname="python.tests.test_ops.TestOps" name="test_real_imag" time="0.002" /><testcase classname="python.tests.test_ops.TestOps" name="test_reciprocal" time="0.001" /><testcase classname="python.tests.test_ops.TestOps" name="test_remainder" time="0.689" /><testcase classname="python.tests.test_ops.TestOps" name="test_repeat" time="0.009" /><testcase classname="python.tests.test_ops.TestOps" name="test_roll" time="0.014" /><testcase classname="python.tests.test_ops.TestOps" name="test_roll_errors" time="0.001" /><testcase classname="python.tests.test_ops.TestOps" name="test_round" time="0.632" /><testcase classname="python.tests.test_ops.TestOps" name="test_rsqrt" time="0.001" /><testcase classname="python.tests.test_ops.TestOps" name="test_scalar_inputs" time="0.315" /><testcase classname="python.tests.test_ops.TestOps" name="test_scan_size_one_axis" time="0.004" /><testcase classname="python.tests.test_ops.TestOps" name="test_scans" time="1.763" /><testcase classname="python.tests.test_ops.TestOps" name="test_scans_complex_exclusive" time="0.009" /><testcase classname="python.tests.test_ops.TestOps" name="test_searchsorted" time="0.783" /><testcase classname="python.tests.test_ops.TestOps" name="test_shape_overflow_error" time="0.001" /><testcase classname="python.tests.test_ops.TestOps" name="test_sigmoid" time="0.001" /><testcase classname="python.tests.test_ops.TestOps" name="test_sign" time="0.001" /><testcase classname="python.tests.test_ops.TestOps" name="test_sin" time="0.001"><failure message="RuntimeError: [omarchy] Sin argument magnitude 1000000015047466219876688855040.000000 exceeds the built-in accuracy limit 100000.000000 on this backend: the Vulkan driver's sin/cos range reduction is untrusted above it, the software Payne-Hanek fallback miscompiles on this driver, and no other accurate kernel exists. No silent wrong value and no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.">self = &lt;test_ops.TestOps testMethod=test_sin&gt;
+
+    def test_sin(self):
+        a = mx.array(
+            [0, math.pi / 4, math.pi / 2, math.pi, 3 * math.pi / 4, 2 * math.pi]
+        )
+        result = mx.sin(a)
+        expected = np.sin(a, dtype=np.float32)
+    
+        self.assertTrue(np.allclose(result, expected))
+    
+        # Large arguments still have to land in [-1, 1]
+        big = np.array([1e8, 1e9, 1e10, 1e20, 1e30], dtype=np.float32)
+        for op, npop in [(mx.sin, np.sin), (mx.cos, np.cos)]:
+&gt;           out = np.array(op(mx.array(big)))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           RuntimeError: [omarchy] Sin argument magnitude 1000000015047466219876688855040.000000 exceeds the built-in accuracy limit 100000.000000 on this backend: the Vulkan driver's sin/cos range reduction is untrusted above it, the software Payne-Hanek fallback miscompiles on this driver, and no other accurate kernel exists. No silent wrong value and no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.
+
+.work/mlx/python/tests/test_ops.py:1300: RuntimeError</failure></testcase><testcase classname="python.tests.test_ops.TestOps" name="test_slice_update_reversed" time="0.001" /><testcase classname="python.tests.test_ops.TestOps" name="test_slice_with_negative_stride" time="0.002" /><testcase classname="python.tests.test_ops.TestOps" name="test_softmax" time="0.483" /><testcase classname="python.tests.test_ops.TestOps" name="test_sort" time="1.824"><failure message="AssertionError: False is not true">self = &lt;test_ops.TestOps testMethod=test_sort&gt;
+
+    def test_sort(self):
+        shape = (6, 4, 10)
+        tests = product(
+            ("int32", "float32", "complex64"),  # type
+            (None, 0, 1, 2),  # axis
+            (True, False),  # strided
+        )
+        for dtype, axis, strided in tests:
+            with self.subTest(dtype=dtype, axis=axis, strided=strided):
+                np.random.seed(0)
+                np_dtype = getattr(np, dtype)
+                if np.issubdtype(np_dtype, np.complexfloating):
+                    a_np = (
+                        np.random.uniform(0, 100, size=shape)
+                        + 1j * np.random.uniform(0, 100, size=shape)
+                    ).astype(np_dtype)
+                else:
+                    a_np = np.random.uniform(0, 100, size=shape).astype(np_dtype)
+                a_mx = mx.array(a_np)
+                if strided:
+                    a_mx = a_mx[::2, :, ::2]
+                    a_np = a_np[::2, :, ::2]
+    
+                b_np = np.sort(a_np, axis=axis)
+                b_mx = mx.sort(a_mx, axis=axis)
+    
+                self.assertTrue(np.array_equal(b_np, b_mx))
+                self.assertEqual(b_mx.dtype, a_mx.dtype)
+    
+                c_np = np.argsort(a_np, axis=axis)
+                c_mx = mx.argsort(a_mx, axis=axis)
+                d_np = np.take_along_axis(a_np, c_np, axis=axis)
+                d_mx = mx.take_along_axis(a_mx, c_mx, axis=axis)
+    
+                self.assertTrue(np.array_equal(d_np, d_mx))
+                self.assertEqual(c_mx.dtype, mx.uint32)
+    
+        # Set random seed
+        np.random.seed(0)
+    
+        # Test multi-block sort
+        for strided in (False, True):
+            with self.subTest(strided=strided):
+                a_np = np.random.normal(size=(32769,)).astype(np.float32)
+                a_mx = mx.array(a_np)
+    
+                if strided:
+                    a_mx = a_mx[::3]
+                    a_np = a_np[::3]
+    
+                b_np = np.sort(a_np)
+                b_mx = mx.sort(a_mx)
+    
+                self.assertTrue(np.array_equal(b_np, b_mx))
+                self.assertEqual(b_mx.dtype, a_mx.dtype)
+    
+                # Test multi-dum multi-block sort
+                a_np = np.random.normal(size=(2, 4, 32769)).astype(np.float32)
+                a_mx = mx.array(a_np)
+    
+                if strided:
+                    a_mx = a_mx[..., ::3]
+                    a_np = a_np[..., ::3]
+    
+                b_np = np.sort(a_np, axis=-1)
+                b_mx = mx.sort(a_mx, axis=-1)
+    
+                self.assertTrue(np.array_equal(b_np, b_mx))
+                self.assertEqual(b_mx.dtype, a_mx.dtype)
+    
+                a_np = np.random.normal(size=(2, 32769, 4)).astype(np.float32)
+                a_mx = mx.array(a_np)
+    
+                if strided:
+                    a_mx = a_mx[:, ::3]
+                    a_np = a_np[:, ::3]
+    
+                b_np = np.sort(a_np, axis=1)
+                b_mx = mx.sort(a_mx, axis=1)
+    
+                self.assertTrue(np.array_equal(b_np, b_mx))
+                self.assertEqual(b_mx.dtype, a_mx.dtype)
+    
+        # test 0 strides
+        a_np = np.array([1, 0, 2, 1, 3, 0, 4, 0])
+        a_mx = mx.array(a_np)
+        b_np = np.broadcast_to(a_np, (16, 8))
+        b_mx = mx.broadcast_to(a_mx, (16, 8))
+        mx.eval(b_mx)
+        for axis in (0, 1):
+            c_np = np.sort(b_np, axis=axis)
+            c_mx = mx.sort(b_mx, axis=axis)
+&gt;           self.assertTrue(np.array_equal(c_np, c_mx))
+E           AssertionError: False is not true
+
+.work/mlx/python/tests/test_ops.py:2885: AssertionError</failure></testcase><testcase classname="python.tests.test_ops.TestOps" name="test_sort_nan" time="0.003" /><testcase classname="python.tests.test_ops.TestOps" name="test_split" time="0.001" /><testcase classname="python.tests.test_ops.TestOps" name="test_split_invalid_num_splits" time="0.000" /><testcase classname="python.tests.test_ops.TestOps" name="test_sqrt" time="0.001" /><testcase classname="python.tests.test_ops.TestOps" name="test_square" time="0.001" /><testcase classname="python.tests.test_ops.TestOps" name="test_squeeze_expand" time="0.000" /><testcase classname="python.tests.test_ops.TestOps" name="test_squeeze_expand_invalid_axes" time="0.000" /><testcase classname="python.tests.test_ops.TestOps" name="test_stack" time="0.001" /><testcase classname="python.tests.test_ops.TestOps" name="test_std" time="0.123" /><testcase classname="python.tests.test_ops.TestOps" name="test_stop_gradient" time="0.001" /><testcase classname="python.tests.test_ops.TestOps" name="test_subnormal_bool_cast" time="0.004" /><testcase classname="python.tests.test_ops.TestOps" name="test_subtract" time="0.001" /><testcase classname="python.tests.test_ops.TestOps" name="test_sum" time="0.003" /><testcase classname="python.tests.test_ops.TestOps" name="test_take" time="0.002" /><testcase classname="python.tests.test_ops.TestOps" name="test_take_along_axis" time="0.241" /><testcase classname="python.tests.test_ops.TestOps" name="test_tensordot" time="0.733" /><testcase classname="python.tests.test_ops.TestOps" name="test_tile" time="0.011" /><testcase classname="python.tests.test_ops.TestOps" name="test_to_from_fp8" time="0.609" /><testcase classname="python.tests.test_ops.TestOps" name="test_trace" time="0.708" /><testcase classname="python.tests.test_ops.TestOps" name="test_transpose_axis" time="0.000" /><testcase classname="python.tests.test_ops.TestOps" name="test_transpose_noargs" time="0.000" /><testcase classname="python.tests.test_ops.TestOps" name="test_tri" time="0.020" /><testcase classname="python.tests.test_ops.TestOps" name="test_trig_ops" time="0.023" /><testcase classname="python.tests.test_ops.TestOps" name="test_tril" time="0.010" /><testcase classname="python.tests.test_ops.TestOps" name="test_triu" time="0.010" /><testcase classname="python.tests.test_ops.TestOps" name="test_trunc" time="0.001" /><testcase classname="python.tests.test_ops.TestOps" name="test_unary_ops" time="0.009" /><testcase classname="python.tests.test_ops.TestOps" name="test_unary_ops_from_non_array" time="0.202" /><testcase classname="python.tests.test_ops.TestOps" name="test_unstack" time="0.002" /><testcase classname="python.tests.test_ops.TestOps" name="test_var" time="0.004" /><testcase classname="python.tests.test_ops.TestOps" name="test_vecdot" time="0.222" /><testcase classname="python.tests.test_ops.TestOps" name="test_view" time="0.005" /><testcase classname="python.tests.test_ops.TestOps" name="test_where" time="0.009" /><testcase classname="python.tests.test_ops.TestOps" name="test_zeros_ones_empty_like_dtype" time="0.002" /></testsuite></testsuites>

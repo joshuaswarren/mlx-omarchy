@@ -1,0 +1,131 @@
+.......................................................s.s... [ 37%]
+..............................................................F...F..... [ 82%]
+.............................            [100%]
+=================================== FAILURES ===================================
+_______________________________ TestOps.test_sin _______________________________
+
+self = <test_ops.TestOps testMethod=test_sin>
+
+    def test_sin(self):
+        a = mx.array(
+            [0, math.pi / 4, math.pi / 2, math.pi, 3 * math.pi / 4, 2 * math.pi]
+        )
+        result = mx.sin(a)
+        expected = np.sin(a, dtype=np.float32)
+    
+        self.assertTrue(np.allclose(result, expected))
+    
+        # Large arguments still have to land in [-1, 1]
+        big = np.array([1e8, 1e9, 1e10, 1e20, 1e30], dtype=np.float32)
+        for op, npop in [(mx.sin, np.sin), (mx.cos, np.cos)]:
+>           out = np.array(op(mx.array(big)))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           RuntimeError: [omarchy] Sin argument magnitude 1000000015047466219876688855040.000000 exceeds the built-in accuracy limit 100000.000000 on this backend: the Vulkan driver's sin/cos range reduction is untrusted above it, the software Payne-Hanek fallback miscompiles on this driver, and no other accurate kernel exists. No silent wrong value and no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.
+
+.work/mlx/python/tests/test_ops.py:1300: RuntimeError
+______________________________ TestOps.test_sort _______________________________
+
+self = <test_ops.TestOps testMethod=test_sort>
+
+    def test_sort(self):
+        shape = (6, 4, 10)
+        tests = product(
+            ("int32", "float32", "complex64"),  # type
+            (None, 0, 1, 2),  # axis
+            (True, False),  # strided
+        )
+        for dtype, axis, strided in tests:
+            with self.subTest(dtype=dtype, axis=axis, strided=strided):
+                np.random.seed(0)
+                np_dtype = getattr(np, dtype)
+                if np.issubdtype(np_dtype, np.complexfloating):
+                    a_np = (
+                        np.random.uniform(0, 100, size=shape)
+                        + 1j * np.random.uniform(0, 100, size=shape)
+                    ).astype(np_dtype)
+                else:
+                    a_np = np.random.uniform(0, 100, size=shape).astype(np_dtype)
+                a_mx = mx.array(a_np)
+                if strided:
+                    a_mx = a_mx[::2, :, ::2]
+                    a_np = a_np[::2, :, ::2]
+    
+                b_np = np.sort(a_np, axis=axis)
+                b_mx = mx.sort(a_mx, axis=axis)
+    
+                self.assertTrue(np.array_equal(b_np, b_mx))
+                self.assertEqual(b_mx.dtype, a_mx.dtype)
+    
+                c_np = np.argsort(a_np, axis=axis)
+                c_mx = mx.argsort(a_mx, axis=axis)
+                d_np = np.take_along_axis(a_np, c_np, axis=axis)
+                d_mx = mx.take_along_axis(a_mx, c_mx, axis=axis)
+    
+                self.assertTrue(np.array_equal(d_np, d_mx))
+                self.assertEqual(c_mx.dtype, mx.uint32)
+    
+        # Set random seed
+        np.random.seed(0)
+    
+        # Test multi-block sort
+        for strided in (False, True):
+            with self.subTest(strided=strided):
+                a_np = np.random.normal(size=(32769,)).astype(np.float32)
+                a_mx = mx.array(a_np)
+    
+                if strided:
+                    a_mx = a_mx[::3]
+                    a_np = a_np[::3]
+    
+                b_np = np.sort(a_np)
+                b_mx = mx.sort(a_mx)
+    
+                self.assertTrue(np.array_equal(b_np, b_mx))
+                self.assertEqual(b_mx.dtype, a_mx.dtype)
+    
+                # Test multi-dum multi-block sort
+                a_np = np.random.normal(size=(2, 4, 32769)).astype(np.float32)
+                a_mx = mx.array(a_np)
+    
+                if strided:
+                    a_mx = a_mx[..., ::3]
+                    a_np = a_np[..., ::3]
+    
+                b_np = np.sort(a_np, axis=-1)
+                b_mx = mx.sort(a_mx, axis=-1)
+    
+                self.assertTrue(np.array_equal(b_np, b_mx))
+                self.assertEqual(b_mx.dtype, a_mx.dtype)
+    
+                a_np = np.random.normal(size=(2, 32769, 4)).astype(np.float32)
+                a_mx = mx.array(a_np)
+    
+                if strided:
+                    a_mx = a_mx[:, ::3]
+                    a_np = a_np[:, ::3]
+    
+                b_np = np.sort(a_np, axis=1)
+                b_mx = mx.sort(a_mx, axis=1)
+    
+                self.assertTrue(np.array_equal(b_np, b_mx))
+                self.assertEqual(b_mx.dtype, a_mx.dtype)
+    
+        # test 0 strides
+        a_np = np.array([1, 0, 2, 1, 3, 0, 4, 0])
+        a_mx = mx.array(a_np)
+        b_np = np.broadcast_to(a_np, (16, 8))
+        b_mx = mx.broadcast_to(a_mx, (16, 8))
+        mx.eval(b_mx)
+        for axis in (0, 1):
+            c_np = np.sort(b_np, axis=axis)
+            c_mx = mx.sort(b_mx, axis=axis)
+>           self.assertTrue(np.array_equal(c_np, c_mx))
+E           AssertionError: False is not true
+
+.work/mlx/python/tests/test_ops.py:2885: AssertionError
+----------------------------- Captured stdout call -----------------------------
+uuuuuuuuuuuuuuuuuuuuuuuuuu
+=========================== short test summary info ============================
+FAILED .work/mlx/python/tests/test_ops.py::TestOps::test_sin - RuntimeError: [omarchy] Sin argument magnitude 1000000015047466219876688855040.000000 exceeds the built-in accuracy limit 100000.000000 on this backend: the Vulkan driver's sin/cos range reduction is untrusted above it, the software Payne-Hanek fallback miscompiles on this driver, and no other accurate kernel exists. No silent wrong value and no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.
+FAILED .work/mlx/python/tests/test_ops.py::TestOps::test_sort - AssertionError: False is not true
+2 failed, 158 passed, 2 skipped, 259 subtests passed in 54.77s

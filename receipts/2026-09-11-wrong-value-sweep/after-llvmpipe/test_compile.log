@@ -1,0 +1,59 @@
+...................F................F....F.........................      [100%]
+=================================== FAILURES ===================================
+_________________ TestCompile.test_compile_nonfinite_constants _________________
+
+self = <test_compile.TestCompile testMethod=test_compile_nonfinite_constants>
+
+    def test_compile_nonfinite_constants(self):
+        # Regression test: a non-finite scalar constant (NaN / infinity) baked
+        # into a fused compiled kernel used to stream a bare token (e.g. `nan`)
+        # into the generated kernel source, which is not a valid identifier and
+        # broke compilation (notably on the Metal backend).
+        x = mx.array([1.0, -1.0])
+    
+        for dtype in (mx.float32, mx.float16, mx.bfloat16):
+            xd = x.astype(dtype)
+    
+            nan_fn = mx.compile(
+                lambda a: mx.where(a > 0, a, mx.array(float("nan"), dtype=a.dtype))
+            )
+            out = nan_fn(xd)
+>           mx.eval(out)
+E           RuntimeError: [omarchy] Compiled tape bfloat16 is refused: bf16 fragments corrupt nondeterministically on Honeykrisp. Re-run with MLX_DISABLE_COMPILE=1. No GPU kernel exists for it; no silent CPU fallback occurs.
+
+.work/mlx/python/tests/test_compile.py:62: RuntimeError
+________________ TestCompile.test_compiled_subnormal_bool_cast _________________
+
+self = <test_compile.TestCompile testMethod=test_compiled_subnormal_bool_cast>
+
+    def test_compiled_subnormal_bool_cast(self):
+        f32_sub = mx.array(np.array([0x00000001] * 4, dtype=np.uint32)).view(mx.float32)
+        f16_sub = mx.array(np.array([0x0001] * 4, dtype=np.uint16)).view(mx.float16)
+        bf16_sub = mx.array(np.array([0x0001] * 4, dtype=np.uint16)).view(mx.bfloat16)
+    
+        # A single-op compile does not fuse; the fused path needs >= 2 ops.
+        fn = mx.compile(lambda x: mx.broadcast_to(x, (2, 4)).astype(mx.bool_))
+        for sub in (f32_sub, f16_sub, bf16_sub):
+>           self.assertTrue(mx.all(fn(sub)).item())
+                            ^^^^^^^^^^^^^^^^^^^^^^
+E           RuntimeError: [omarchy] Compiled tape bfloat16 is refused: bf16 fragments corrupt nondeterministically on Honeykrisp. Re-run with MLX_DISABLE_COMPILE=1. No GPU kernel exists for it; no silent CPU fallback occurs.
+
+.work/mlx/python/tests/test_compile.py:1634: RuntimeError
+________________________ TestCompile.test_inf_constant _________________________
+
+self = <test_compile.TestCompile testMethod=test_inf_constant>
+
+    def test_inf_constant(self):
+        def fn(x):
+            return mx.where(mx.isinf(x), 0, 1)
+    
+        x = mx.array([0, float("inf"), 1], dtype=mx.bfloat16)
+>       self.assertTrue(mx.array_equal(mx.compile(fn)(x), fn(x)))
+E       RuntimeError: [omarchy] Compiled tape bfloat16 is refused: bf16 fragments corrupt nondeterministically on Honeykrisp. Re-run with MLX_DISABLE_COMPILE=1. No GPU kernel exists for it; no silent CPU fallback occurs.
+
+.work/mlx/python/tests/test_compile.py:968: RuntimeError
+=========================== short test summary info ============================
+FAILED .work/mlx/python/tests/test_compile.py::TestCompile::test_compile_nonfinite_constants - RuntimeError: [omarchy] Compiled tape bfloat16 is refused: bf16 fragments corrupt nondeterministically on Honeykrisp. Re-run with MLX_DISABLE_COMPILE=1. No GPU kernel exists for it; no silent CPU fallback occurs.
+FAILED .work/mlx/python/tests/test_compile.py::TestCompile::test_compiled_subnormal_bool_cast - RuntimeError: [omarchy] Compiled tape bfloat16 is refused: bf16 fragments corrupt nondeterministically on Honeykrisp. Re-run with MLX_DISABLE_COMPILE=1. No GPU kernel exists for it; no silent CPU fallback occurs.
+FAILED .work/mlx/python/tests/test_compile.py::TestCompile::test_inf_constant - RuntimeError: [omarchy] Compiled tape bfloat16 is refused: bf16 fragments corrupt nondeterministically on Honeykrisp. Re-run with MLX_DISABLE_COMPILE=1. No GPU kernel exists for it; no silent CPU fallback occurs.
+3 failed, 64 passed in 0.74s

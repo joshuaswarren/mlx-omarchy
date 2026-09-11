@@ -1,0 +1,150 @@
+============================= test session starts ==============================
+collecting ... collected 67 items
+
+.work/mlx/python/tests/test_compile.py::TestCompile::test_compile_abs_unsigned PASSED [  1%]
+.work/mlx/python/tests/test_compile.py::TestCompile::test_compile_broadcast_only PASSED [  2%]
+.work/mlx/python/tests/test_compile.py::TestCompile::test_compile_capture PASSED [  4%]
+.work/mlx/python/tests/test_compile.py::TestCompile::test_compile_changing_outputs PASSED [  5%]
+.work/mlx/python/tests/test_compile.py::TestCompile::test_compile_changing_outputs_with_state PASSED [  7%]
+.work/mlx/python/tests/test_compile.py::TestCompile::test_compile_create_list PASSED [  8%]
+.work/mlx/python/tests/test_compile.py::TestCompile::test_compile_different_log_bases PASSED [ 10%]
+.work/mlx/python/tests/test_compile.py::TestCompile::test_compile_donates_input_buffer PASSED [ 11%]
+.work/mlx/python/tests/test_compile.py::TestCompile::test_compile_dynamic_dims FAILED [ 13%]
+.work/mlx/python/tests/test_compile.py::TestCompile::test_compile_equal_nan PASSED [ 14%]
+.work/mlx/python/tests/test_compile.py::TestCompile::test_compile_grad PASSED [ 16%]
+.work/mlx/python/tests/test_compile.py::TestCompile::test_compile_inf PASSED [ 17%]
+.work/mlx/python/tests/test_compile.py::TestCompile::test_compile_inputs_with_primitives PASSED [ 19%]
+.work/mlx/python/tests/test_compile.py::TestCompile::test_compile_kwargs PASSED [ 20%]
+.work/mlx/python/tests/test_compile.py::TestCompile::test_compile_large_graph_with_broadcasts PASSED [ 22%]
+.work/mlx/python/tests/test_compile.py::TestCompile::test_compile_many_inputs PASSED [ 23%]
+.work/mlx/python/tests/test_compile.py::TestCompile::test_compile_many_outputs PASSED [ 25%]
+.work/mlx/python/tests/test_compile.py::TestCompile::test_compile_multi_output PASSED [ 26%]
+.work/mlx/python/tests/test_compile.py::TestCompile::test_compile_negative_strides PASSED [ 28%]
+.work/mlx/python/tests/test_compile.py::TestCompile::test_compile_nonfinite_constants FAILED [ 29%]
+.work/mlx/python/tests/test_compile.py::TestCompile::test_compile_output_with_siblings PASSED [ 31%]
+.work/mlx/python/tests/test_compile.py::TestCompile::test_compile_release_on_another_thread PASSED [ 32%]
+.work/mlx/python/tests/test_compile.py::TestCompile::test_compile_rng PASSED [ 34%]
+.work/mlx/python/tests/test_compile.py::TestCompile::test_compile_rng_across_threads PASSED [ 35%]
+.work/mlx/python/tests/test_compile.py::TestCompile::test_compile_shapeless_with_broadcast PASSED [ 37%]
+.work/mlx/python/tests/test_compile.py::TestCompile::test_compile_state_capture_with_rng_updates_in_place PASSED [ 38%]
+.work/mlx/python/tests/test_compile.py::TestCompile::test_compile_tuple_output_in_thread PASSED [ 40%]
+.work/mlx/python/tests/test_compile.py::TestCompile::test_compile_two_input_grad PASSED [ 41%]
+.work/mlx/python/tests/test_compile.py::TestCompile::test_compile_types PASSED [ 43%]
+.work/mlx/python/tests/test_compile.py::TestCompile::test_compile_vjp PASSED [ 44%]
+.work/mlx/python/tests/test_compile.py::TestCompile::test_compile_with_closure PASSED [ 46%]
+.work/mlx/python/tests/test_compile.py::TestCompile::test_compile_with_constant PASSED [ 47%]
+.work/mlx/python/tests/test_compile.py::TestCompile::test_compile_with_long_name PASSED [ 49%]
+.work/mlx/python/tests/test_compile.py::TestCompile::test_compile_with_none PASSED [ 50%]
+.work/mlx/python/tests/test_compile.py::TestCompile::test_compile_without_captured_inputs PASSED [ 52%]
+.work/mlx/python/tests/test_compile.py::TestCompile::test_compiled_preserves_attributes PASSED [ 53%]
+.work/mlx/python/tests/test_compile.py::TestCompile::test_compiled_subnormal_bool_cast FAILED [ 55%]
+.work/mlx/python/tests/test_compile.py::TestCompile::test_double_constant PASSED [ 56%]
+.work/mlx/python/tests/test_compile.py::TestCompile::test_dtypes PASSED  [ 58%]
+.work/mlx/python/tests/test_compile.py::TestCompile::test_enable_disable PASSED [ 59%]
+.work/mlx/python/tests/test_compile.py::TestCompile::test_function_creates_array PASSED [ 61%]
+.work/mlx/python/tests/test_compile.py::TestCompile::test_inf_constant FAILED [ 62%]
+.work/mlx/python/tests/test_compile.py::TestCompile::test_leaks PASSED   [ 64%]
+.work/mlx/python/tests/test_compile.py::TestCompile::test_max_into_equal PASSED [ 65%]
+.work/mlx/python/tests/test_compile.py::TestCompile::test_multiple_compile_same_capture PASSED [ 67%]
+.work/mlx/python/tests/test_compile.py::TestCompile::test_outputs_changing PASSED [ 68%]
+.work/mlx/python/tests/test_compile.py::TestCompile::test_shapeless_compile PASSED [ 70%]
+.work/mlx/python/tests/test_compile.py::TestCompile::test_shapeless_compile_addmm PASSED [ 71%]
+.work/mlx/python/tests/test_compile.py::TestCompile::test_shapeless_compile_full_like PASSED [ 73%]
+.work/mlx/python/tests/test_compile.py::TestCompile::test_shapeless_compile_gather PASSED [ 74%]
+.work/mlx/python/tests/test_compile.py::TestCompile::test_shapeless_compile_gather_mm PASSED [ 76%]
+.work/mlx/python/tests/test_compile.py::TestCompile::test_shapeless_compile_gather_qmm PASSED [ 77%]
+.work/mlx/python/tests/test_compile.py::TestCompile::test_shapeless_compile_matmul PASSED [ 79%]
+.work/mlx/python/tests/test_compile.py::TestCompile::test_shapeless_compile_reduce_after_gather PASSED [ 80%]
+.work/mlx/python/tests/test_compile.py::TestCompile::test_shapeless_compile_slice_update PASSED [ 82%]
+.work/mlx/python/tests/test_compile.py::TestCompile::test_shapeless_compile_unflatten PASSED [ 83%]
+.work/mlx/python/tests/test_compile.py::TestCompile::test_shapeless_compile_with_broadcasts PASSED [ 85%]
+.work/mlx/python/tests/test_compile.py::TestCompile::test_shapeless_compile_with_reduction PASSED [ 86%]
+.work/mlx/python/tests/test_compile.py::TestCompile::test_shapeless_compile_with_reshape PASSED [ 88%]
+.work/mlx/python/tests/test_compile.py::TestCompile::test_shapeless_mean PASSED [ 89%]
+.work/mlx/python/tests/test_compile.py::TestCompile::test_shared_broadcast PASSED [ 91%]
+.work/mlx/python/tests/test_compile.py::TestCompile::test_simple_compile PASSED [ 92%]
+.work/mlx/python/tests/test_compile.py::TestCompile::test_transform_over_eval_compiled PASSED [ 94%]
+.work/mlx/python/tests/test_compile.py::TestCompile::test_unsupported_input_types PASSED [ 95%]
+.work/mlx/python/tests/test_compile.py::TestCompile::test_vjp_vjp_compiled PASSED [ 97%]
+.work/mlx/python/tests/test_compile.py::TestCompile::test_vmap_compiled PASSED [ 98%]
+.work/mlx/python/tests/test_compile.py::TestCompile::test_wrap_compiled PASSED [100%]
+
+=================================== FAILURES ===================================
+____________________ TestCompile.test_compile_dynamic_dims _____________________
+
+self = <test_compile.TestCompile testMethod=test_compile_dynamic_dims>
+
+    def test_compile_dynamic_dims(self):
+        a = mx.random.uniform(shape=(2,) * 10)
+        b = mx.random.uniform(shape=(2,) * 10)
+        a = a.T
+        mx.eval(a, b)
+    
+        def fn(a, b):
+            return mx.abs(a + b)
+    
+        out = mx.compile(fn)(a, b)
+        expected = fn(a, b)
+>       self.assertTrue(mx.allclose(out, expected))
+E       AssertionError: array(False, dtype=bool) is not true
+
+.work/mlx/python/tests/test_compile.py:1032: AssertionError
+_________________ TestCompile.test_compile_nonfinite_constants _________________
+
+self = <test_compile.TestCompile testMethod=test_compile_nonfinite_constants>
+
+    def test_compile_nonfinite_constants(self):
+        # Regression test: a non-finite scalar constant (NaN / infinity) baked
+        # into a fused compiled kernel used to stream a bare token (e.g. `nan`)
+        # into the generated kernel source, which is not a valid identifier and
+        # broke compilation (notably on the Metal backend).
+        x = mx.array([1.0, -1.0])
+    
+        for dtype in (mx.float32, mx.float16, mx.bfloat16):
+            xd = x.astype(dtype)
+    
+            nan_fn = mx.compile(
+                lambda a: mx.where(a > 0, a, mx.array(float("nan"), dtype=a.dtype))
+            )
+            out = nan_fn(xd)
+>           mx.eval(out)
+E           RuntimeError: [omarchy] Compiled tape bfloat16 is refused: bf16 fragments corrupt nondeterministically on Honeykrisp. Re-run with MLX_DISABLE_COMPILE=1. No GPU kernel exists for it; no silent CPU fallback occurs.
+
+.work/mlx/python/tests/test_compile.py:62: RuntimeError
+________________ TestCompile.test_compiled_subnormal_bool_cast _________________
+
+self = <test_compile.TestCompile testMethod=test_compiled_subnormal_bool_cast>
+
+    def test_compiled_subnormal_bool_cast(self):
+        f32_sub = mx.array(np.array([0x00000001] * 4, dtype=np.uint32)).view(mx.float32)
+        f16_sub = mx.array(np.array([0x0001] * 4, dtype=np.uint16)).view(mx.float16)
+        bf16_sub = mx.array(np.array([0x0001] * 4, dtype=np.uint16)).view(mx.bfloat16)
+    
+        # A single-op compile does not fuse; the fused path needs >= 2 ops.
+        fn = mx.compile(lambda x: mx.broadcast_to(x, (2, 4)).astype(mx.bool_))
+        for sub in (f32_sub, f16_sub, bf16_sub):
+>           self.assertTrue(mx.all(fn(sub)).item())
+                            ^^^^^^^^^^^^^^^^^^^^^^
+E           RuntimeError: [omarchy] Compiled tape bfloat16 is refused: bf16 fragments corrupt nondeterministically on Honeykrisp. Re-run with MLX_DISABLE_COMPILE=1. No GPU kernel exists for it; no silent CPU fallback occurs.
+
+.work/mlx/python/tests/test_compile.py:1634: RuntimeError
+________________________ TestCompile.test_inf_constant _________________________
+
+self = <test_compile.TestCompile testMethod=test_inf_constant>
+
+    def test_inf_constant(self):
+        def fn(x):
+            return mx.where(mx.isinf(x), 0, 1)
+    
+        x = mx.array([0, float("inf"), 1], dtype=mx.bfloat16)
+>       self.assertTrue(mx.array_equal(mx.compile(fn)(x), fn(x)))
+E       RuntimeError: [omarchy] Compiled tape bfloat16 is refused: bf16 fragments corrupt nondeterministically on Honeykrisp. Re-run with MLX_DISABLE_COMPILE=1. No GPU kernel exists for it; no silent CPU fallback occurs.
+
+.work/mlx/python/tests/test_compile.py:968: RuntimeError
+------------- generated xml file: /tmp/wvs-before/test_compile.xml -------------
+=========================== short test summary info ============================
+FAILED .work/mlx/python/tests/test_compile.py::TestCompile::test_compile_dynamic_dims - AssertionError: array(False, dtype=bool) is not true
+FAILED .work/mlx/python/tests/test_compile.py::TestCompile::test_compile_nonfinite_constants - RuntimeError: [omarchy] Compiled tape bfloat16 is refused: bf16 fragments corrupt nondeterministically on Honeykrisp. Re-run with MLX_DISABLE_COMPILE=1. No GPU kernel exists for it; no silent CPU fallback occurs.
+FAILED .work/mlx/python/tests/test_compile.py::TestCompile::test_compiled_subnormal_bool_cast - RuntimeError: [omarchy] Compiled tape bfloat16 is refused: bf16 fragments corrupt nondeterministically on Honeykrisp. Re-run with MLX_DISABLE_COMPILE=1. No GPU kernel exists for it; no silent CPU fallback occurs.
+FAILED .work/mlx/python/tests/test_compile.py::TestCompile::test_inf_constant - RuntimeError: [omarchy] Compiled tape bfloat16 is refused: bf16 fragments corrupt nondeterministically on Honeykrisp. Re-run with MLX_DISABLE_COMPILE=1. No GPU kernel exists for it; no silent CPU fallback occurs.
+========================= 4 failed, 63 passed in 3.15s =========================

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="1" tests="26" time="0.440" timestamp="2026-09-11T17:24:00.447452-05:00" hostname="omp-studio-local"><testcase classname="python.tests.test_optimizers.TestOptimizers" name="test_adadelta" time="0.028" /><testcase classname="python.tests.test_optimizers.TestOptimizers" name="test_adafactor" time="0.084" /><testcase classname="python.tests.test_optimizers.TestOptimizers" name="test_adagrad" time="0.001" /><testcase classname="python.tests.test_optimizers.TestOptimizers" name="test_adam" time="0.004" /><testcase classname="python.tests.test_optimizers.TestOptimizers" name="test_adamw_matches_pytorch" time="0.000"><skipped type="pytest.skip" message="requires Torch">/home/joshuawarren/src/mlx-omarchy-wrongvalue/.work/mlx/python/tests/test_optimizers.py:216: requires Torch</skipped></testcase><testcase classname="python.tests.test_optimizers.TestOptimizers" name="test_compiled_optimizer" time="0.015"><failure message="AssertionError: array(False, dtype=bool) is not true">self = &lt;test_optimizers.TestOptimizers testMethod=test_compiled_optimizer&gt;
+
+    def test_compiled_optimizer(self):
+        model = nn.Linear(10, 10)
+        x = mx.random.uniform(shape=(2, 10))
+        optim = opt.SGD(learning_rate=1e-2, momentum=0.9)
+    
+        orig_params = model.parameters()
+    
+        def loss(model, x):
+            return model(x).sum()
+    
+        # Uncompiled version
+        def step(x):
+            _, grad = nn.value_and_grad(model, loss)(model, x)
+            optim.update(model, grad)
+    
+        step(x)
+        uncompiled_params = model.parameters()
+    
+        # Pure version
+        def loss(params, x):
+            model.update(params)
+            return model(x).sum()
+    
+        model.update(orig_params)
+        optim = opt.SGD(learning_rate=1e-2, momentum=0.9)
+    
+        @mx.compile
+        def step(params, opt_state, x):
+            grad = mx.grad(loss)(params, x)
+            optim.state = opt_state
+            params = optim.apply_gradients(grad, params)
+            return params, optim.state
+    
+        optim.init(model.parameters())
+        pure_params, _ = step(model.parameters(), optim.state, x)
+&gt;       self.assertTrue(mx.allclose(pure_params["weight"], uncompiled_params["weight"]))
+E       AssertionError: array(False, dtype=bool) is not true
+
+.work/mlx/python/tests/test_optimizers.py:402: AssertionError</failure></testcase><testcase classname="python.tests.test_optimizers.TestOptimizers" name="test_epsilon_validation" time="0.001" /><testcase classname="python.tests.test_optimizers.TestOptimizers" name="test_lion" time="0.001" /><testcase classname="python.tests.test_optimizers.TestOptimizers" name="test_muon" time="0.007" /><testcase classname="python.tests.test_optimizers.TestOptimizers" name="test_optimizer_state" time="0.000" /><testcase classname="python.tests.test_optimizers.TestOptimizers" name="test_optimizers" time="0.020" /><testcase classname="python.tests.test_optimizers.TestOptimizers" name="test_rmsprop" time="0.006" /><testcase classname="python.tests.test_optimizers.TestOptimizers" name="test_sgd" time="0.002" /><testcase classname="python.tests.test_optimizers.TestOptimizers" name="test_types_conserved" time="0.001" /><testcase classname="python.tests.test_optimizers.TestOptimizers" name="test_update_lr_compiled" time="0.003" /><testcase classname="python.tests.test_optimizers.TestSchedulers" name="test_clip_grad_norm" time="0.014" /><testcase classname="python.tests.test_optimizers.TestSchedulers" name="test_compile_with_schedule" time="0.001" /><testcase classname="python.tests.test_optimizers.TestSchedulers" name="test_cosine_decay" time="0.002" /><testcase classname="python.tests.test_optimizers.TestSchedulers" name="test_decay_lr" time="0.046" /><testcase classname="python.tests.test_optimizers.TestSchedulers" name="test_exponential_decay" time="0.000" /><testcase classname="python.tests.test_optimizers.TestSchedulers" name="test_init_from_state" time="0.001" /><testcase classname="python.tests.test_optimizers.TestSchedulers" name="test_linear_warmup_with_cosine_decay" time="0.016" /><testcase classname="python.tests.test_optimizers.TestSchedulers" name="test_multi_optimizer" time="0.001" /><testcase classname="python.tests.test_optimizers.TestSchedulers" name="test_multi_optimizer_with_parameterless_layers" time="0.024" /><testcase classname="python.tests.test_optimizers.TestSchedulers" name="test_schedule_joiner" time="0.004" /><testcase classname="python.tests.test_optimizers.TestSchedulers" name="test_step_decay" time="0.000" /></testsuite></testsuites>
