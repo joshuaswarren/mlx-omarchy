@@ -18,7 +18,9 @@
       "m1_g13_reference": "honeykrisp_installed (Mesa 26.3.0-devel git-6f6afc8968, driverID 26)",
       "m2_known": "expected honeykrisp family (Asahi G14 GPU acceleration is upstream); build identity unmeasured",
       "m2_unknown": [],
-      "future_silicon_unknown": true
+      "future_silicon_unknown": true,
+      "m1_max_macos": "Metal-side, not a Vulkan value: runtime Metal JIT on macOS 26.6.2 (25G83), Apple metal 32023.883 (metalfe-32023.883); pinned-MLX kernels compile clean through it (receipts/2026-09-11-m1max-macos-capture/mlx-kernels)",
+      "m1_max_unknown": ["honeykrisp build identity under Omarchy (driverID + driverInfo string) - it becomes the digest-pin key", "all six digest pins on that build"]
     },
     {
       "name": "cooperative_matrix_fp32_8x8x8",
@@ -28,7 +30,9 @@
       "m1_g13_reference": true,
       "m2_known": null,
       "m2_unknown": ["presence under the M2 driver build", "lowering equivalence across driver builds"],
-      "future_silicon_unknown": true
+      "future_silicon_unknown": true,
+      "m1_max_macos": "simdgroup_matrix<float,8,8> compiled, executed and bit-exact vs a CPU fp32 reference (runtime probe); Metal has no cooperative-matrix extension - this is the hardware capability underneath it. simdgroup_matrix at f16 and bf16 also compiles and executes (scalar-exact; see receipt caveat on 16-bit layout assumptions)",
+      "m1_max_unknown": ["VK_KHR_cooperative_matrix enumeration + feature + enumerated 8x8x8 fp32 shape under the Omarchy driver"]
     },
     {
       "name": "subgroup_size",
@@ -38,7 +42,10 @@
       "m1_g13_reference": 32,
       "m2_known": null,
       "m2_unknown": ["reported size under the M2 driver"],
-      "future_silicon_unknown": true
+      "future_silicon_unknown": true,
+      "m1_max_macos": 32,
+      "m1_max_macos_note": "MTLComputePipelineState.threadExecutionWidth on a compiled pipeline, runtime",
+      "m1_max_unknown": ["reported VkPhysicalDeviceSubgroupProperties.subgroupSize under the Omarchy driver", "physical == reported sanity probe (new-chip-bringup step 1.4)"]
     },
     {
       "name": "subgroup_ops_mask",
@@ -52,7 +59,9 @@
       "m1_g13_reference": "BASIC|ARITHMETIC|SHUFFLE|SHUFFLE_RELATIVE proven present (all four consumed by enabled routes); full mask not dumped in-repo",
       "m2_known": null,
       "m2_unknown": ["full supportedOperations mask"],
-      "future_silicon_unknown": true
+      "future_silicon_unknown": true,
+      "m1_max_macos": "no Metal mask-query API; runtime evidence is compile+execute of the simd-consuming pinned kernels: sdpa_vector (simd-index attributes, no simdgroup_matrix) and steel mma.h simdgroup_matrix exact at fp32 with scalar-exact f16/bf16 multiply (receipts/2026-09-11-m1max-macos-capture)",
+      "m1_max_unknown": ["full supportedOperations mask under the Omarchy driver"]
     },
     {
       "name": "shared_memory_limit_bytes",
@@ -62,7 +71,10 @@
       "m1_g13_reference": ">= 21504 (gate-proven floor: SdpaDecodeNative enabled on the reference driver); exact limit not dumped in-repo",
       "m2_known": null,
       "m2_unknown": ["exact limit"],
-      "future_silicon_unknown": true
+      "future_silicon_unknown": true,
+      "m1_max_macos": 32768,
+      "m1_max_macos_note": "MTLDevice.maxThreadgroupMemoryLength, runtime; dynamic threadgroup allocation at the full 32768 B executed and byte-verified",
+      "m1_max_unknown": ["maxComputeSharedMemorySize under the Omarchy driver"]
     },
     {
       "name": "workgroup_limits",
@@ -73,7 +85,10 @@
       "m1_g13_reference": ">= 1024 invocations and >= 1024 size_x (gate-proven floor); exact values not dumped in-repo",
       "m2_known": null,
       "m2_unknown": ["all four fields"],
-      "future_silicon_unknown": true
+      "future_silicon_unknown": true,
+      "m1_max_macos": {"invocations": 1024, "size_x": 1024, "size_y": 1024, "size_z": 1024},
+      "m1_max_macos_note": "MTLDevice.maxThreadsPerThreadgroup (MTLSize), runtime; a 1024-wide single-threadgroup dispatch completed and verified",
+      "m1_max_unknown": ["all four fields under the Omarchy driver"]
     },
     {
       "name": "atomic_float_add",
@@ -83,7 +98,10 @@
       "m1_g13_reference": false,
       "m2_known": null,
       "m2_unknown": ["extension presence under the M2 driver build"],
-      "future_silicon_unknown": true
+      "future_silicon_unknown": true,
+      "m1_max_macos": true,
+      "m1_max_macos_note": "device atomic_float add executed, exact at 1048576 accumulates (runtime probe). Asymmetry the audit needs: the base-M1 Linux reference reads false only because honeykrisp does not advertise VK_EXT_shader_atomic_float - the M1 hardware can do it; whether this die's Omarchy driver advertises it is exactly what must be re-measured",
+      "m1_max_unknown": ["VK_EXT_shader_atomic_float + shaderBufferFloat32AtomicAdd advertisement under the Omarchy driver"]
     },
     {
       "name": "memory_model",
@@ -93,7 +111,10 @@
       "m1_g13_reference": "uma_coherent",
       "m2_known": "uma_coherent (Apple UMA is an architecture fact, not a driver measurement)",
       "m2_unknown": [],
-      "future_silicon_unknown": false
+      "future_silicon_unknown": false,
+      "m1_max_macos": "uma_coherent",
+      "m1_max_macos_note": "MTLDevice.hasUnifiedMemory true (runtime); recommendedMaxWorkingSetSize ~55.7 GB of 64 GB, argument buffers tier2, maxBufferLength ~38.9 GiB",
+      "m1_max_unknown": []
     },
     {
       "name": "digest_policy",
@@ -122,11 +143,14 @@
       },
       "m2_known": null,
       "m2_unknown": ["all six pins until measured on the M2's driver build"],
-      "future_silicon_unknown": true
+      "future_silicon_unknown": true,
+      "m1_max_macos": "policy unchanged (per_driver_build); this die's native macOS legs are already recorded in receipts/2026-09-10-native-macos-metal-baseline (Q4 286.96/296.25/283.79, BF16 217.88/214.72/207.95 tok/s, reference native digests reproduced)",
+      "m1_max_unknown": ["all six pins on the Omarchy driver build this machine receives"]
     }
   ],
   "per_chip_expectations": {
     "m1_g13": "reference row; every value measured or gate-proven on jwm1-linux",
+    "m1_max": "this machine; macOS-side analogues of every axis runtime-measured pre-install in receipts/2026-09-11-m1max-macos-capture (applegpu_g13s, 32 GPU cores, threadExecutionWidth 32, threadgroup memory 32768 B verified, maxThreadsPerThreadgroup 1024^3 dispatched, argument buffers tier2, unified memory, device atomic_float add exact, GPU blit copy roof 306 GB/s median / CPU memcpy roof 190 GB/s); every Linux/Vulkan-side value below stays unknown until Omarchy qualification on this die - the m1_g13 reference row (8-core g13g) is NOT valid for it",
     "m2_max": "target once Omarchy lands on it: memory_model known (uma_coherent); driver_variant, coopmat, subgroup, shared, workgroup, atomic_float_add, and all six digests must be measured at qualification time",
     "m3": "Asahi has installer support but software rendering only: no Honeykrisp GPU driver -> backend refuses at device discovery unless run under a software driver via MLX_OMARCHY_ALLOW_NON_APPLE=1 (development only)",
     "m4": "GPU support TBA upstream: everything unknown",

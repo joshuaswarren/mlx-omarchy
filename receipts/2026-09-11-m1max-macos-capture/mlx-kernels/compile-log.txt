@@ -1,0 +1,14 @@
+=== scaled_dot_product_attention ===
+rc=0
+=== quantized ===
+rc=0
+=== quantized_nax ===
+rc=0
+-rw-r--r--  1 joshuawarren  wheel  11018384 Sep 11 17:02 /tmp/mlxcap/quantized.air
+-rw-r--r--  1 joshuawarren  wheel  12292992 Sep 11 17:03 /tmp/mlxcap/quantized_nax.air
+-rw-r--r--  1 joshuawarren  wheel    158000 Sep 11 17:02 /tmp/mlxcap/scaled_dot_product_attention.air
+
+=== quantized_nax ===
+rc=0
+metallib rc=0
+0

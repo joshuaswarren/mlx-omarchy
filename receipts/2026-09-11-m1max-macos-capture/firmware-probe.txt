@@ -1,0 +1,8 @@
+iboot-
+iboot-
+iboot-
+---
+kern.osproductversioncompat: 
+kern.osproductversion: 26.6.2
+---
+nvram: Error getting variable - '83BD4B81-BF06-4FDE-B1E9-8410CD82A6C0': (iokit/common) data was not found

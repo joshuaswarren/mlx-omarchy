@@ -1,0 +1,332 @@
+APFS Containers (6 found)
+|
++-- Container disk3 CECAD06A-5B50-41E1-9962-ABC78B3A2F0C
+|   ====================================================
+|   APFS Container Reference:     disk3
+|   Size (Capacity Ceiling):      3996329328640 B (4.0 TB)
+|   Capacity In Use By Volumes:   3939015458816 B (3.9 TB) (98.6% used)
+|   Capacity Not Allocated:       57313869824 B (57.3 GB) (1.4% free)
+|   |
+|   +-< Physical Store disk0s2 A81452EF-594B-4CEA-96CA-5879D3ECA139
+|   |   -----------------------------------------------------------
+|   |   APFS Physical Store Disk:   disk0s2
+|   |   Size:                       3996329328640 B (4.0 TB)
+|   |
+|   +-> Volume disk3s1 AE368CF8-024F-4D25-B33B-F293DEB0D275
+|   |   ---------------------------------------------------
+|   |   APFS Volume Disk (Role):   disk3s1 (System)
+|   |   Name:                      Macintosh HD (Case-insensitive)
+|   |   Mount Point:               Not Mounted
+|   |   Capacity Consumed:         12633800704 B (12.6 GB)
+|   |   Sealed:                    Yes
+|   |   FileVault:                 Yes (Unlocked)
+|   |   Encrypted:                 No
+|   |   |
+|   |   Snapshot:                  C8902F75-BB0A-4B3C-ADFB-A369795069F2
+|   |   Snapshot Disk:             disk3s1s1
+|   |   Snapshot Mount Point:      /
+|   |   Snapshot Sealed:           Yes
+|   |
+|   +-> Volume disk3s2 15ADA8EC-A65A-4EBC-BB45-6A9B9CC52065
+|   |   ---------------------------------------------------
+|   |   APFS Volume Disk (Role):   disk3s2 (Preboot)
+|   |   Name:                      Preboot (Case-insensitive)
+|   |   Mount Point:               /System/Volumes/Preboot
+|   |   Capacity Consumed:         9004732416 B (9.0 GB)
+|   |   Sealed:                    No
+|   |   FileVault:                 No
+|   |
+|   +-> Volume disk3s3 B3A085D9-CDB4-475F-8B1B-1824F5232F37
+|   |   ---------------------------------------------------
+|   |   APFS Volume Disk (Role):   disk3s3 (Recovery)
+|   |   Name:                      Recovery (Case-insensitive)
+|   |   Mount Point:               Not Mounted
+|   |   Capacity Consumed:         1307541504 B (1.3 GB)
+|   |   Sealed:                    No
+|   |   FileVault:                 No
+|   |
+|   +-> Volume disk3s5 974D7F09-B2FB-4F2A-B059-00AF28B108A0
+|   |   ---------------------------------------------------
+|   |   APFS Volume Disk (Role):   disk3s5 (Data)
+|   |   Name:                      Data (Case-insensitive)
+|   |   Mount Point:               /System/Volumes/Data
+|   |   Capacity Consumed:         3906428321792 B (3.9 TB)
+|   |   Sealed:                    No
+|   |   FileVault:                 Yes (Unlocked)
+|   |
+|   +-> Volume disk3s6 C402E8FA-FB06-44E0-A086-87B7C4695F8D
+|   |   ---------------------------------------------------
+|   |   APFS Volume Disk (Role):   disk3s6 (VM)
+|   |   Name:                      VM (Case-insensitive)
+|   |   Mount Point:               /System/Volumes/VM
+|   |   Capacity Consumed:         5368741888 B (5.4 GB)
+|   |   Sealed:                    No
+|   |   FileVault:                 No
+|   |
+|   +-> Volume disk3s7 A1D8FE6A-A62C-48FD-B446-F275E5D473F8
+|       ---------------------------------------------------
+|       APFS Volume Disk (Role):   disk3s7 (No specific role)
+|       Name:                      Nix Store (Case-insensitive)
+|       Mount Point:               /nix
+|       Capacity Consumed:         3785003008 B (3.8 GB)
+|       Sealed:                    No
+|       FileVault:                 Yes (Unlocked)
+|
++-- Container disk7 E7EBDE35-2096-49C2-AC5D-C3DDC24A4481
+|   ====================================================
+|   APFS Container Reference:     disk7
+|   Size (Capacity Ceiling):      1000517623808 B (1.0 TB)
+|   Capacity In Use By Volumes:   183810535424 B (183.8 GB) (18.4% used)
+|   Capacity Not Allocated:       816707088384 B (816.7 GB) (81.6% free)
+|   |
+|   +-< Physical Store disk6s2 0EF406E9-7EB6-42C3-8BA3-26B3A2AB09A3
+|   |   -----------------------------------------------------------
+|   |   APFS Physical Store Disk:   disk6s2
+|   |   Size:                       1000517623808 B (1.0 TB)
+|   |
+|   +-> Volume disk7s1 6F82B5C1-1280-4C23-A55A-377B51108B5D
+|       ---------------------------------------------------
+|       APFS Volume Disk (Role):   disk7s1 (No specific role)
+|       Name:                      SD Storage (Case-insensitive)
+|       Mount Point:               Not Mounted
+|       Capacity Consumed:         183603228672 B (183.6 GB)
+|       Sealed:                    No
+|       FileVault:                 Yes (Unlocked)
+|
++-- Container disk5 5A183C19-BF66-4D40-BE9B-2218F03F3C84
+|   ====================================================
+|   APFS Container Reference:     disk5
+|   Size (Capacity Ceiling):      16057892864 B (16.1 GB)
+|   Capacity In Use By Volumes:   15554957312 B (15.6 GB) (96.9% used)
+|   Capacity Not Allocated:       502935552 B (502.9 MB) (3.1% free)
+|   |
+|   +-< Physical Store disk4s1 34F3EF99-D59F-4466-A2A0-B2DDEDC125A4
+|   |   -----------------------------------------------------------
+|   |   APFS Physical Store Disk:   disk4s1
+|   |   Size:                       16057892864 B (16.1 GB)
+|   |
+|   +-> Volume disk5s1 85F93A04-4B33-4D7D-8B2C-CFF258A74318
+|       ---------------------------------------------------
+|       APFS Volume Disk (Role):   disk5s1 (No specific role)
+|       Name:                      xrOS 1.0 21N305 Simulator (Case-insensitive)
+|       Mount Point:               /Library/Developer/CoreSimulator/Volumes/xrOS_21N305
+|       Capacity Consumed:         15513051136 B (15.5 GB)
+|       Sealed:                    No
+|       FileVault:                 No
+|
++-- Container disk9 5B2B8293-3E2E-4A9A-8885-C51ADD324C9C
+    ====================================================
+    APFS Container Reference:     disk9
+    Size (Capacity Ceiling):      2306867200 B (2.3 GB)
+    Capacity In Use By Volumes:   2231095296 B (2.2 GB) (96.7% used)
+    Capacity Not Allocated:       75771904 B (75.8 MB) (3.3% free)
+    |
+    +-< Physical Store disk8s1 E9080452-167C-471D-A276-12B37C0B6C6C
+    |   -----------------------------------------------------------
+    |   APFS Physical Store Disk:   disk8s1
+    |   Size:                       2306867200 B (2.3 GB)
+    |
+    +-> Volume disk9s1 8FBF648C-5893-4C7A-B2D0-56DD267979E8
+        ---------------------------------------------------
+        APFS Volume Disk (Role):   disk9s1 (No specific role)
+        Name:                      MetalToolchainCryptex (Case-insensitive)
+        Mount Point:               /private/var/run/com.apple.security.cryptexd/mnt/com.apple.MobileAsset.MetalToolchain-v17.6.109.0.mEFY58
+        Capacity Consumed:         2221293568 B (2.2 GB)
+        Sealed:                    Yes
+        FileVault:                 No
+---ROOTINFO---
+   Device Identifier:         disk3s1s1
+   Device Node:               /dev/disk3s1s1
+   Whole:                     No
+   Part of Whole:             disk3
+
+   Volume Name:               Macintosh HD
+   Mounted:                   Yes
+   Mount Point:               /
+
+   Partition Type:            41504653-0000-11AA-AA11-00306543ECAC
+   File System Personality:   APFS
+   Type (Bundle):             apfs
+   Name (User Visible):       APFS
+   Owners:                    Enabled
+
+   OS Can Be Installed:       No
+   Booter Disk:               disk3s2
+   Recovery Disk:             disk3s3
+   Media Type:                Generic
+   Protocol:                  Apple Fabric
+   SMART Status:              Verified
+   Volume UUID:               C8902F75-BB0A-4B3C-ADFB-A369795069F2
+   Disk / Partition UUID:     C8902F75-BB0A-4B3C-ADFB-A369795069F2
+
+   Disk Size:                 4.0 TB (3996329328640 Bytes) (exactly 7805330720 512-Byte-Units)
+   Device Block Size:         4096 Bytes
+
+   Volume Used Space:         12.6 GB (12633800704 Bytes) (exactly 24675392 512-Byte-Units)
+   Container Total Space:     4.0 TB (3996329328640 Bytes) (exactly 7805330720 512-Byte-Units)
+   Container Free Space:      57.3 GB (57311256576 Bytes) (exactly 111936048 512-Byte-Units)
+   Allocation Block Size:     4096 Bytes
+
+   Media OS Use Only:         No
+   Media Read-Only:           Yes
+   Volume Read-Only:          Yes (read-only mount flag set)
+
+   Device Location:           Internal
+   Removable Media:           Fixed
+
+   Solid State:               Yes
+   Hardware AES Support:      Yes
+
+   This disk is an APFS Volume Snapshot.  APFS Information:
+   APFS Snapshot Name:        com.apple.os.update-60587424F5399FC05D957DF05B4D2F65543462495C77AEF520F790FBB57CB212
+   APFS Snapshot UUID:        C8902F75-BB0A-4B3C-ADFB-A369795069F2
+   APFS Container:            disk3
+   APFS Physical Store:       disk0s2
+   APFS Volume Group:         974D7F09-B2FB-4F2A-B059-00AF28B108A0
+   EFI Driver In macOS:       2811160007000004
+   Encrypted:                 No
+   FileVault:                 Yes
+   Sealed:                    Yes
+   Locked:                    No
+
+   APFS Snapshots are defined upon this APFS Volume.  Snapshot list:
+   Snapshot UUID:             C8902F75-BB0A-4B3C-ADFB-A369795069F2
+   Name:                      com.apple.os.update-60587424F5399FC05D957DF05B4D2F65543462495C77AEF520F790FBB57CB212
+   XID:                       87675011
+
+---DATAINFO---
+   Device Identifier:         disk3s5
+   Device Node:               /dev/disk3s5
+   Whole:                     No
+   Part of Whole:             disk3
+
+   Volume Name:               Data
+   Mounted:                   Yes
+   Mount Point:               /System/Volumes/Data
+
+   Partition Type:            41504653-0000-11AA-AA11-00306543ECAC
+   File System Personality:   APFS
+   Type (Bundle):             apfs
+   Name (User Visible):       APFS
+   Owners:                    Enabled
+
+   OS Can Be Installed:       Yes
+   Booter Disk:               disk3s2
+   Recovery Disk:             disk3s3
+   Media Type:                Generic
+   Protocol:                  Apple Fabric
+   SMART Status:              Verified
+   Volume UUID:               974D7F09-B2FB-4F2A-B059-00AF28B108A0
+   Disk / Partition UUID:     974D7F09-B2FB-4F2A-B059-00AF28B108A0
+
+   Disk Size:                 4.0 TB (3996329328640 Bytes) (exactly 7805330720 512-Byte-Units)
+   Device Block Size:         4096 Bytes
+
+   Volume Used Space:         3.9 TB (3906430369792 Bytes) (exactly 7629746816 512-Byte-Units)
+   Container Total Space:     4.0 TB (3996329328640 Bytes) (exactly 7805330720 512-Byte-Units)
+   Container Free Space:      57.3 GB (57311821824 Bytes) (exactly 111937152 512-Byte-Units)
+   Allocation Block Size:     4096 Bytes
+
+   Media OS Use Only:         No
+   Media Read-Only:           No
+   Volume Read-Only:          No
+
+   Device Location:           Internal
+   Removable Media:           Fixed
+
+   Solid State:               Yes
+   Hardware AES Support:      Yes
+
+   This disk is an APFS Volume.  APFS Information:
+   APFS Container:            disk3
+   APFS Physical Store:       disk0s2
+   APFS Volume Group:         974D7F09-B2FB-4F2A-B059-00AF28B108A0
+   FileVault:                 Yes
+   Sealed:                    No
+   Locked:                    No
+
+   APFS Snapshots are defined upon this APFS Volume.  Snapshot list:
+   Snapshot UUID:             6E277D18-3E3C-454E-9343-112DF558EFF8
+   Name:                      com.apple.TimeMachine.2026-09-10-154031.local
+   XID:                       87999150
+   Snapshot UUID:             BD8FCDA8-532A-4F88-9A39-1300D8862A57
+   Name:                      com.apple.TimeMachine.2026-09-10-164009.local
+   XID:                       88000212
+   Snapshot UUID:             8FB7132B-0D75-4E6D-8760-1F5D03D006CD
+   Name:                      com.apple.TimeMachine.2026-09-10-174001.local
+   XID:                       88001222
+   Snapshot UUID:             8EFFC7D8-1304-4159-8021-AD5FB754700E
+   Name:                      com.apple.TimeMachine.2026-09-10-183947.local
+   XID:                       88003281
+   Snapshot UUID:             8AF888B3-1A2C-40A7-8C2A-89E25A08D6BE
+   Name:                      com.apple.TimeMachine.2026-09-10-194001.local
+   XID:                       88004321
+   Snapshot UUID:             C30513C0-3556-44A6-BD92-E8BE3CAA5A8D
+   Name:                      com.apple.TimeMachine.2026-09-10-203946.local
+   XID:                       88006148
+   Snapshot UUID:             2C1723F8-0F14-4393-9307-8A13507BAB62
+   Name:                      com.apple.TimeMachine.2026-09-10-213945.local
+   XID:                       88006842
+   Snapshot UUID:             C275302A-EAF5-4F8E-ADCA-D791C02444DD
+   Name:                      com.apple.TimeMachine.2026-09-10-224023.local
+   XID:                       88007549
+   Snapshot UUID:             77F42093-82CD-4A2F-8719-EB67830609B8
+   Name:                      com.apple.TimeMachine.2026-09-10-234032.local
+   XID:                       88008334
+   Snapshot UUID:             0E7CD1ED-38C3-4D27-B586-EA6578F7C62F
+   Name:                      com.apple.TimeMachine.2026-09-11-003946.local
+   XID:                       88008865
+   Snapshot UUID:             FC3A377B-AEF2-4CA2-9A2A-9C525E6F6482
+   Name:                      com.apple.TimeMachine.2026-09-11-013938.local
+   XID:                       88009638
+   Snapshot UUID:             6B9E5A64-FDE6-44AB-ACF5-2C2D65800A92
+   Name:                      com.apple.TimeMachine.2026-09-11-024024.local
+   XID:                       88010101
+   Snapshot UUID:             7D2C442E-45A5-42BF-8813-2B0EA214A4AD
+   Name:                      com.apple.TimeMachine.2026-09-11-033943.local
+   XID:                       88010580
+   Snapshot UUID:             23A303C5-8161-4D0D-BB19-9304165F1F48
+   Name:                      com.apple.TimeMachine.2026-09-11-043931.local
+   XID:                       88011122
+   Snapshot UUID:             4D8616DD-1A0B-49F3-8420-DA797AB59F55
+   Name:                      com.apple.TimeMachine.2026-09-11-053932.local
+   XID:                       88011770
+   Snapshot UUID:             89BC438E-FA36-4A23-82F2-58324568F05E
+   Name:                      com.apple.TimeMachine.2026-09-11-064032.local
+   XID:                       88013367
+   Snapshot UUID:             66C93987-34BF-4445-AB01-042D45D8B413
+   Name:                      com.apple.TimeMachine.2026-09-11-073923.local
+   XID:                       88014372
+   Snapshot UUID:             4BF1A62F-3557-463E-A818-97C9E4E22811
+   Name:                      com.apple.TimeMachine.2026-09-11-083941.local
+   XID:                       88015667
+   Snapshot UUID:             9150EDB8-B171-43C0-8975-F351F6C6EBEF
+   Name:                      com.apple.TimeMachine.2026-09-11-093924.local
+   XID:                       88016622
+   Snapshot UUID:             F1401ABB-11D3-46DE-B2D1-50C2DAE892B4
+   Name:                      com.apple.TimeMachine.2026-09-11-103931.local
+   XID:                       88017907
+   Snapshot UUID:             D182D56B-8EFA-4E92-9B71-9C20410E99EC
+   Name:                      com.apple.TimeMachine.2026-09-11-114009.local
+   XID:                       88019115
+   Snapshot UUID:             E4A785EC-1088-4B99-A53C-FFE28572FC79
+   Name:                      com.apple.TimeMachine.2026-09-11-124024.local
+   XID:                       88020043
+   Snapshot UUID:             685ABBC5-EAAF-4281-A147-2A6EBD962988
+   Name:                      com.apple.TimeMachine.2026-09-11-134009.local
+   XID:                       88021181
+   Snapshot UUID:             AA6D16F5-F658-42EB-AC0C-644F9AF71F88
+   Name:                      com.apple.TimeMachine.2026-09-11-143931.local
+   XID:                       88021883
+   Snapshot UUID:             9F408899-B3DD-4AE3-8563-CA19A7B1661B
+   Name:                      com.apple.TimeMachine.2026-09-11-153933.local
+   XID:                       88023038
+
+---DF---
+Filesystem        Size    Used   Avail Capacity iused ifree %iused  Mounted on
+/dev/disk3s1s1   3.6Ti    12Gi    53Gi    19%    459k  560M    0%   /
+/dev/disk3s5     3.6Ti   3.6Ti    53Gi    99%    8.2M  560M    1%   /System/Volumes/Data
+---BOOT---
+nvram: Error getting variable - 'efi-boot-device': (iokit/common) data was not found
+---BLESS---
+/dev/disk3s1

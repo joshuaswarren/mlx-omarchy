@@ -1,0 +1,103 @@
+{
+  "bf16_mixed_float_out" : {
+    "compiled" : true,
+    "executed" : true,
+    "first8cells_bits" : [
+      1105461248,
+      1105461248,
+      1105461248,
+      1105461248,
+      1105461248,
+      1105461248,
+      1105461248,
+      1105461248
+    ],
+    "mismatches_vs_expected" : 64,
+    "numericallyCorrect" : false
+  },
+  "bf16_same_bf_out" : {
+    "compiled" : true,
+    "executed" : true,
+    "first8cells_bits" : [
+      1105478116,
+      1105478116,
+      1105478116,
+      1105478116,
+      1105478116,
+      1105478116,
+      1105478116,
+      1105478116
+    ],
+    "mismatches_vs_expected" : 64,
+    "numericallyCorrect" : false
+  },
+  "discriminator_bf16_scalar2" : {
+    "cell0" : 1107296256,
+    "compiled" : true,
+    "executed" : true,
+    "matches32" : false,
+    "uniform" : true
+  },
+  "discriminator_f16_scalar2" : {
+    "cell0" : 1342177280,
+    "compiled" : true,
+    "executed" : true,
+    "matches32" : false,
+    "uniform" : true
+  },
+  "discriminator_f32_scalar2" : {
+    "cell0" : 32,
+    "compiled" : true,
+    "executed" : true,
+    "matches32" : true,
+    "uniform" : true
+  },
+  "f16_mixed_float_out" : {
+    "compiled" : true,
+    "executed" : true,
+    "first8cells_bits" : [
+      1106345984,
+      1106345984,
+      1106345984,
+      1106345984,
+      1106345984,
+      1106345984,
+      1106345984,
+      1106345984
+    ],
+    "mismatches_vs_expected" : 64,
+    "numericallyCorrect" : false
+  },
+  "f16_same_half_out" : {
+    "compiled" : true,
+    "executed" : true,
+    "first8cells_bits" : [
+      1334595468,
+      1334595468,
+      1334595468,
+      1334595468,
+      1334595468,
+      1334595468,
+      1334595468,
+      1334595468
+    ],
+    "mismatches_vs_expected" : 64,
+    "numericallyCorrect" : false
+  },
+  "f32_control_float_out" : {
+    "compiled" : true,
+    "executed" : true,
+    "first8cells_bits" : [
+      1593673024,
+      1593673024,
+      1593673024,
+      1593673024,
+      1593673024,
+      1593673024,
+      1593673024,
+      1593673024
+    ],
+    "mismatches_vs_expected" : 0,
+    "numericallyCorrect" : true
+  }
+}
