@@ -1,0 +1,9 @@
+{"arm": 4, "shape": "262x896x128", "median_ms": 0.3387, "f16_digest": "a9df1c92c8965cb5", "tflops": 177.5}
+{"arm": 4, "shape": "1053x896x128", "median_ms": 0.315, "f16_digest": "ee3e5703ebdfdbd2", "tflops": 766.7}
+{"arm": 4, "shape": "262x896x896", "median_ms": 0.4772, "f16_digest": "7d2562f6d8e726e8", "tflops": 881.5}
+{"arm": 4, "shape": "1053x896x896", "median_ms": 1.3668, "f16_digest": "d4e8a853e9193aee", "tflops": 1237.0}
+{"arm": 4, "shape": "262x4864x896", "median_ms": 1.5002, "f16_digest": "934c5867ab5e624b", "tflops": 1522.2}
+{"arm": 4, "shape": "1053x4864x896", "median_ms": 4.5282, "f16_digest": "7055bf55c8a98245", "tflops": 2026.9}
+{"arm": 4, "shape": "262x896x9728", "median_ms": 3.7134, "f16_digest": "e2ca8f678deca22f", "tflops": 1230.0}
+{"arm": 4, "shape": "1053x896x9728", "median_ms": 12.7438, "f16_digest": "5da380ac014b69c1", "tflops": 1440.4}
+PROBE-DONE

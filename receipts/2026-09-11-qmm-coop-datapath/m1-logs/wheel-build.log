@@ -1,0 +1,42 @@
+== prepare upstream tree ==
+patching file CMakeLists.txt
+patching file mlx/CMakeLists.txt
+patching file tests/CMakeLists.txt
+patching file mlx/transforms.cpp
+patching file setup.py
+patching file mlx/io/safetensors.cpp
+patching file mlx/io/load.cpp
+patching file mlx/export.cpp
+patching file mlx/linalg.cpp
+patching file python/src/buffer.h
+patching file mlx/ops.cpp
+Hunk #2 succeeded at 5051 (offset 1 line).
+patching file mlx/backend/cpu/distributed.cpp
+patching file mlx/fast.cpp
+patching file mlx/backend/common/metal_kernel.cpp
+patching file setup.py
+/home/joshuawarren/src/mlx-omarchy-cfbench/.work/mlx
+== build venv (/home/joshuawarren/src/mlx-omarchy-cfbench/.work/venv-build) ==
+== wheel build ==
+Processing ./.work/mlx
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Building wheels for collected packages: mlx-omarchy
+  Building wheel for mlx-omarchy (pyproject.toml): started
+  Building wheel for mlx-omarchy (pyproject.toml): still running...
+  Building wheel for mlx-omarchy (pyproject.toml): still running...
+  Building wheel for mlx-omarchy (pyproject.toml): finished with status 'done'
+  Created wheel for mlx-omarchy: filename=mlx_omarchy-0.32.2.dev202609110629+1aa2999b-cp314-cp314-linux_aarch64.whl size=7582253 sha256=990db4f15b866cbadd4aa8239dbac85e30dc04c87b25a900fdb6efce537f545b
+  Stored in directory: /tmp/pip-ephem-wheel-cache-au0eho6t/wheels/7d/df/63/ad0686187c60aad8589835f28f2b016665cda56dd24d2bbd31
+Successfully built mlx-omarchy
+== receipt ==
+[receipt] wheel: /home/joshuawarren/src/mlx-omarchy-cfbench/dist/mlx_omarchy-0.32.2.dev202609110629+1aa2999b-cp314-cp314-linux_aarch64.whl
+[receipt] size: 7582253 bytes
+[receipt] sha256: 990db4f15b866cbadd4aa8239dbac85e30dc04c87b25a900fdb6efce537f545b
+[receipt] source commit: 1aa2999
+[receipt] NEXT STEP - do not skip: after you upload this wheel to a
+[receipt] release, verify the UPLOADED asset with
+[receipt]   python3 scripts/verify-release-assets.py <tag>
+[receipt] It must print VERIFIED before the release is announced as
+[receipt] usable. See docs/release.md. A local build check does not
+[receipt] verify what users download.

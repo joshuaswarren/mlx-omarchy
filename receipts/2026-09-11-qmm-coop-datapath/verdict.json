@@ -1,0 +1,60 @@
+{
+  "schema": "mlx-omarchy/qmm-coop-datapath/1",
+  "date": "2026-09-11",
+  "agent": "CoopmatTflopClose",
+  "decision": "RECEIPT-ONLY NEGATIVE: land no source change. The shipped QmmPrefillCoopmatF16 kernel is not merged; wave/CoopmatTflopClose carries bench arms + analysis only.",
+  "question": "Can the cooperative-matrix quantized matmul be raised from ~1.03 TFLOP/s toward the native ~1.7 TFLOP/s at the real 1K prefill shapes by restructuring the MMA data path (staging, barriers, operand transport), with outputs preserved bitwise?",
+  "base": "origin/main 33eb8ced; branch wave/CoopmatTflopClose (bench arms at 30b1bbd2, evidence wheels stamped 1aa2999b). Never merge.",
+  "upstream_metal_structure": {
+    "kernel": "affine_qmm_t -> qmm_t_impl (mlx/backend/metal/kernels/quantized.h), f16 affine q4/g64 transposed prefill",
+    "tile": "32x32 per 4-simdgroup (128-lane) threadgroup; 16x16 per simdgroup (WM=WN=2)",
+    "accumulator_fragments_per_lane": "4 x 8x8 f32 = 8 f32 registers",
+    "mma_issue_rate": "8 simdgroup_multiply_accumulate per lane per 8-k step = 32 per 32-k slice (16 per 16-k equivalent)",
+    "staging": "both operands through threadgroup f16, leading dim padded 32->40 f16 (80 B pitch) against bank aliasing; 5 KiB shared",
+    "dequant": "packed u8 words dequantized straight to the f16 threadgroup tile (no f32 round trip); same per-tile-band weight re-read amortization as ours",
+    "double_buffering": "none; 2 barriers per 65536 FLOP; 12 KiB shared traffic per slice = 0.19 B/FLOP"
+  },
+  "our_kernel_structure": {
+    "kernel": "shaders/qmm_coopmat.comp, 64 lanes = 2 subgroups, 32x32 tile, 16-row half per subgroup",
+    "accumulator_fragments_per_lane": "8 x 8x8 f32 = 16 f32 registers (2x upstream density)",
+    "mma_issue_rate": "16 coopMatMulAdd per lane per 16-k step (same as upstream per FLOP)",
+    "staging": "x_s[32x16] + w_s[16x32] f32 (4 KiB); x exact f16->f32 pairs, w dequantized scale*float(nibble)+bias in f32",
+    "shared_traffic": "9 KiB per 16384 FLOP = 0.56 B/FLOP (~2.9x upstream, 2x bytes/value)",
+    "barriers": "2 per 16384 FLOP (4x upstream rate)",
+    "bank_aliasing": "w_s pitch 32 f32 = full bank cycle; x_s pitch 16 f32 = half cycle; upstream pads instead",
+    "redundant_loads": "none within a step; weights re-dequantized per 32-row band exactly as upstream (33 bands at M=1053)",
+    "dequant_per_weight_word": "8 nibble extracts + 8 f32 fma + 8 f32 stores per word per band pass"
+  },
+  "bench_arms": "MLX_OMARCHY_QMM_COOP_BENCH=1..4 selects shaders/qmm_coopmat_bench.comp arms; 0/unset = shipped kernel; nothing default changes. Arm 1: one 64-wide k chunk staged per barrier pair (8 barriers/chunk instead of 32), 16 KiB shared. Arm 2: arm 1 + anti-bank-alias strides (66/34). Arm 3: shared-load + MulAdd only (synthetic operands staged once, no staging or barriers in the k loop). Arm 4: pure MulAdd (fragments loaded once). 4 warmups + 30 timed evals, median wall ms, f16 sha256 per cell, four real shapes (896x128, 896x896, 4864x896, 896x9728) x m {262, 1053}, f16 scales/biases, fixed seeds.",
+  "bit_identity_gate": "PASS: arms 1 and 2 reproduce arm 0's f16 output digest exactly on all 8 cells (8 shapes x m) on the M1 fork driver, AND land identical max_abs_err vs the host reference to 7 decimals through the full dispatch stack (m1-qmm-coopmat-arm{1,2}-test.log). The k32 Honeykrisp cooperative-matrix anomaly was NOT observed for the chunk schedule.",
+  "results_1053_median": {
+    "q_896x896":    {"arm0": 899.2, "arm1": 315.2, "arm2": 287.0, "arm3": 649.0, "arm4": 1237.0},
+    "down_4864x896": {"arm0": 974.9, "arm1": 328.3, "arm2": 255.1, "arm3": 823.6, "arm4": 2026.9},
+    "gate_up_896x9728": {"arm0": 1032.0, "arm1": 336.9, "arm2": 269.0, "arm3": 746.4, "arm4": 1440.4},
+    "kv_896x128":   {"arm0": 360.0, "arm1": 208.6, "arm2": 184.1, "arm3": 401.7, "arm4": 766.7},
+    "units": "GFLOP/s; arm medians in m1-logs/bench-verdict.json"
+  },
+  "findings": [
+    "1. Both digest-preserving data-path candidates REGRESS: chunk staging (arm 1) is 2.7-3.4x slower than the shipped kernel on every cell; padded strides (arm 2) are worse still. The 4x fewer barriers and amortized staging do not pay for the 4 KiB -> 16 KiB shared-memory growth. [measured]",
+    "2. The shared-load path itself is the bottleneck, not the shipped kernel's staging: arm 3 (coopMatLoad + MulAdd only, zero staging writes, zero barriers in the loop) reaches only 649-824 GFLOP/s on the three large 1053 shapes - BELOW the shipped kernel's 899-1032. The shipped step cadence pipelines staging against the matrix unit better than a bare load loop. [measured]",
+    "3. The driver's zero-traffic MulAdd ceiling at the dominant gate_up shape (1053x896x9728) is 1440 GFLOP/s, and at down_proj 2027 GFLOP/s (arm 4: fragments loaded once, k loop issues only coopMatMulAdd). Any Vulkan f32 8x8x8 cooperative-matrix kernel on this driver, including one with no operand traffic at all, is capped at 1.44 TFLOP/s at gate_up - below the native whole-leg implied ~1.7 average. [measured]",
+    "4. The shared-load+MMA ceiling (arm 3, 746 GFLOP/s at gate_up) being below arm 4 (1440) shows coopMatLoad from shared memory costs roughly half the achievable rate at that shape; the shipped kernel (1032) already sits between the two ceilings, closer to the zero-traffic bound. [measured]",
+    "5. Structural ceiling for this API: SPIR-V cooperative matrix objects have no per-lane element access (GL_KHR_cooperative_matrix exposes only coopMatLoad/Store/MulAdd), so the Main-directed 'dequantize directly into MMA fragments' path is not expressible on Vulkan; some memory round trip is mandatory. [API fact]"
+  ],
+  "structural_limit": "Named and measured: on the installed fork driver (mesa-honeykrisp-omarchy 26.3.0-devel git-6f6afc8968, cooperative_matrix_f32_8, subgroup 32), the 8x8x8 fp32 cooperative-matrix multiply itself tops out at 1.44 TFLOP/s at the 1053x896x9728 prefill shape with zero memory traffic (arm 4), the shared-memory operand-load path caps a loads+MMA loop at 0.75-0.82 TFLOP/s (arm 3), and the shipped kernel's 1.03 TFLOP/s already exceeds the latter. Raising the kernel toward native's implied 1.7 at the dominant shape would require outrunning the driver's own emulation ceiling - not achievable by any shader-side data-path restructure; a different matrix lowering (f16 operands, the native Metal path's width) is the remaining route and moves arithmetic, hence digests, so it is out of scope for this digest-preserved kernel.",
+  "policy": "No source change landed; default dispatch byte-identical (arm selector defaults to 0; llvmpipe and stock Mesa never reach the route). No digest movement possible from main. Phase B paired fork/stock matrix not run: nothing qualified to pair.",
+  "hardware": "jwm1-linux, Apple M1 (G13G B1), AGX_SIMDMAT=1, every measurement under one top-level flock /tmp/m1-gpu.lock (windows A/A6), quiet-gate announced in hub.",
+  "wheel_provenance": {
+    "wheel": "mlx_omarchy-0.32.2.dev202609110629+1aa2999b-cp314-cp314-linux_aarch64.whl",
+    "libmlx_sha256": "c33fcd1e1775f4f8366018273f89dde0d1e3eef85d29c6dbdc1a4cc9ca944079",
+    "member_loaded_match": true,
+    "functional_gates_on_this_binary": [
+      "qmm coopmat prefill matches host reference at Qwen shapes: PASS (default kernel)",
+      "same case under MLX_OMARCHY_QMM_COOP_BENCH=1: PASS, max_abs_err identical to default",
+      "same case under MLX_OMARCHY_QMM_COOP_BENCH=2: PASS, max_abs_err identical to default",
+      "qmm coopmat output is bit-identical across x offset alignment: PASS"
+    ]
+  },
+  "logs": "m1-logs/ (bench-verdict.json, probe-arm{0..4}.log, windowA/A6.log, four functional gate logs, wheel-build.log)",
+  "next": "If prefill parity at gate_up remains the blocker, the remaining routes are driver-level (an f16-input cooperative matrix or a native simd-matrix lowering in Honeykrisp) or an f16-operand kernel that accepts new digests - both out of scope for a digest-preserving source change. The bench arms stay on wave/CoopmatTflopClose for any future re-screen; do not repeat the chunk-staged or padded-stride schedules."
+}
