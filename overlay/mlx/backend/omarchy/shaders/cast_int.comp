@@ -185,9 +185,23 @@ void main() {
           : float(wide);
     }
 #endif
-    uint truth = floating_source
-        ? (real_value != 0.0 ? 1u : 0u)
-        : ((lo | hi) != 0u ? 1u : 0u);
+    // static_cast<bool>(x) is (x != 0). Deciding it from the float value
+    // relies on DenormPreserve, which Vulkan only grants opt-in: the
+    // Honeykrisp fork flushes subnormal operands to zero, so a float32
+    // subnormal (and a bfloat16 subnormal, which rides the same f32
+    // subnormal encoding) compared != 0.0 reads as false where every CPU
+    // and the float16 path (whose subnormals decode to normal f32 values)
+    // say true. Decide from the encoded bits instead: every nonzero
+    // encoding except the sign bit means nonzero - this covers
+    // subnormals of any width and keeps NaN true and both zeros false.
+    uint truth;
+#if SRC_W == 2
+    truth = floating_source ? ((lo & 0x7FFFu) != 0u ? 1u : 0u)
+                            : ((lo | hi) != 0u ? 1u : 0u);
+#else
+    truth = floating_source ? ((lo & 0x7FFFFFFFu) != 0u ? 1u : 0u)
+                            : ((lo | hi) != 0u ? 1u : 0u);
+#endif
     bool floating_destination = DST_CODE >= CODE_F32;
     if (floating_destination) {
 #if DST_W == 2
