@@ -223,9 +223,9 @@ def main():
         for bi in range(b):
             for kv_i in range(kv_heads):
                 for r in range(rep):
-                    h = kv_i * rep + r
                     outs[bi, h] = f64_attention_truth(
-                        q[bi, h], k[bi, kv_i], v[bi, kv_i], scale)
+                        q[bi, h][None], k[bi, kv_i][None],
+                        v[bi, kv_i][None], scale)[0]
         return outs
 
     def forward(ids, capture_last_attn=None):
