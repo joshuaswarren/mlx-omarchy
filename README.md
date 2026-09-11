@@ -112,6 +112,17 @@ the [2026-09-10 policy amendment](docs/parity-id-policy.md), and the accuracy
 contract moved into a regression test that values every decode projection
 shape against a float64 reference.
 
+Then the BF16 prefill cooperative-matrix kernel was restructured to the staging
+form that won the Q4 bakeoff — bit-identical to the previous kernel on every
+production cell, with all twelve digest gates unchanged — and the paired matrix
+repeated the gain in all six cells ([receipt](receipts/2026-09-11-bf16-prefill/verdict.json)):
+
+| Model | Prompt / generated tokens | Prefill tok/s before (fork / stock) | Prefill tok/s after (fork / stock) |
+|---|---|---:|---:|
+| BF16 | 30 / 32 | 86.0 / 83.8 | 131.6 / 132.2 |
+| BF16 | 262 / 128 | 318.0 / 210.8 | 447.9 / 230.0 |
+| BF16 | 1053 / 32 | 364.4 / 220.4 | 453.3 / 224.3 |
+
 `MLX_OMARCHY_FUSED_CHAIN=0`, `MLX_OMARCHY_QMM_VEC_Q4_WORD=0`, and `MLX_OMARCHY_QMM_TILE_RB=0` disable the fused chain, the decode kernel, and the prefill kernel for comparison.
 
 Performance parity is still open, and the remaining distance is now specific. The denominator is the committed macOS MLX 0.32.2 baseline on an Apple M1, five repetitions with stable digests ([receipt](receipts/native-baseline-2026-09-06/native-2026-09-06-summary.json)): Q4 decode 150.57 / 146.77 / 140.38 tok/s and prefill 294.1 / 1213.0 / 1840.9; BF16 decode 56.43 / 55.72 / 54.55 and prefill 232.6 / 1007.7 / 1655.7. The fork build reaches these fractions of native:
@@ -121,9 +132,9 @@ Performance parity is still open, and the remaining distance is now specific. Th
 | Q4 | 30 / 32 | 0.75 | 1.13 |
 | Q4 | 262 / 128 | 0.74 | 0.80 |
 | Q4 | 1053 / 32 | 0.68 | 0.60 |
-| BF16 | 30 / 32 | 0.46 | 0.54 |
-| BF16 | 262 / 128 | 0.49 | 0.34 |
-| BF16 | 1053 / 32 | 0.42 | 0.20 |
+| BF16 | 30 / 32 | 0.46 | 0.57 |
+| BF16 | 262 / 128 | 0.49 | 0.44 |
+| BF16 | 1053 / 32 | 0.42 | 0.27 |
 
 Short-prompt Q4 prefill is the one leg already past native. Dense BF16 decode now runs a native-order vector kernel (2.2-2.8x decode, no float64-accuracy cost: both kernels are RNE(f64)-exact on the captured decode projections), and its remaining distance is measured against the committed native baseline above. Cross-OS timings do not establish numerical parity: the Q4 short and 1024-context token-ID digests match native, while the Q4 long-prompt digest differs (native `254d73fd93164b98`, Linux `4cc08910089477fd`). The BF16 262-token mismatch was root-caused to macOS-side rounding, with the Linux result bit-exact to a float64 round-to-nearest-even reference ([receipt](receipts/2026-09-10-bf16-rootcause/README.md)), and the BF16 short/262 pins now carry the measured per-driver Linux values under the [policy amendment](docs/parity-id-policy.md).
 
