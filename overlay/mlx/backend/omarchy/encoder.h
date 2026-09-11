@@ -358,6 +358,7 @@ class MLX_API CommandEncoder {
       VkDeviceSize a_offset,
       VkDeviceSize b_offset,
       uint32_t value);
+  std::vector<ReplayEntry> replay_entries_;
   size_t replay_cursor_{0};
   std::vector<VkCommandBuffer> replay_order_;
   std::vector<VkCommandBuffer> replay_scratch_;  // drained, reusable
