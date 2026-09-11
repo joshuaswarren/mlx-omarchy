@@ -133,12 +133,6 @@ inline bool dump(const char* path) {
 
 }  // namespace mlx::core::omarchy::htrace
 
-extern "C" __attribute__((visibility("default"))) inline void
-mlx_omarchy_host_trace_reset(void) {
-  mlx::core::omarchy::htrace::reset();
-}
-
-extern "C" __attribute__((visibility("default"))) inline int
-mlx_omarchy_host_trace_dump(const char* path) {
-  return mlx::core::omarchy::htrace::dump(path) ? 0 : 1;
-}
+// The C ABI entry points live in encoder.cpp (non-inline, so the symbols
+// are actually emitted for ctypes/dlsym instead of being discarded as
+// unreferenced inline functions).

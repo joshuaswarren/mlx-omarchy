@@ -1242,3 +1242,13 @@ std::unordered_map<int, CommandEncoder>& get_global_command_encoders() {
 }
 
 } // namespace mlx::core::omarchy
+
+extern "C" __attribute__((visibility("default"))) void
+mlx_omarchy_host_trace_reset(void) {
+  htrace::reset();
+}
+
+extern "C" __attribute__((visibility("default"))) int
+mlx_omarchy_host_trace_dump(const char* path) {
+  return htrace::dump(path) ? 0 : 1;
+}
