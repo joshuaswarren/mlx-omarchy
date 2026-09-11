@@ -1,0 +1,107 @@
+{
+  "chains": {
+    "gemv_layer": {
+      "build_ms_median": 0.1896,
+      "dispatches": 48,
+      "eval_ms_median": 3.4876,
+      "eval_ms_min": 3.0745,
+      "gpu_chain_ms_est_minus_receipt_floor": 3.2716,
+      "per_dispatch_us_median": 72.658,
+      "per_dispatch_us_minus_receipt_floor": 68.158
+    },
+    "harness": {
+      "build_ms_median": 0.1254,
+      "dispatches": 24,
+      "eval_ms_median": 0.9653,
+      "eval_ms_min": 0.9319,
+      "gpu_chain_ms_est_minus_receipt_floor": 0.8573,
+      "per_dispatch_us_median": 40.221,
+      "per_dispatch_us_minus_receipt_floor": 35.721
+    },
+    "kvwrite": {
+      "build_ms_median": 0.3355,
+      "dispatches": 48,
+      "eval_ms_median": 15.479,
+      "eval_ms_min": 14.9841,
+      "gpu_chain_ms_est_minus_receipt_floor": 15.263,
+      "per_dispatch_us_median": 322.479,
+      "per_dispatch_us_minus_receipt_floor": 317.979
+    },
+    "lm_head": {
+      "build_ms_median": 0.1179,
+      "dispatches": 24,
+      "eval_ms_median": 39.4235,
+      "eval_ms_min": 39.3565,
+      "gpu_chain_ms_est_minus_receipt_floor": 39.3155,
+      "per_dispatch_us_median": 1642.645,
+      "per_dispatch_us_minus_receipt_floor": 1638.145
+    },
+    "rms": {
+      "build_ms_median": 0.1558,
+      "dispatches": 49,
+      "eval_ms_median": 1.166,
+      "eval_ms_min": 1.1001,
+      "gpu_chain_ms_est_minus_receipt_floor": 0.9455,
+      "per_dispatch_us_median": 23.796,
+      "per_dispatch_us_minus_receipt_floor": 19.296
+    },
+    "rope": {
+      "build_ms_median": 0.2327,
+      "dispatches": 48,
+      "eval_ms_median": 1.7411,
+      "eval_ms_min": 1.6855,
+      "gpu_chain_ms_est_minus_receipt_floor": 1.5251,
+      "per_dispatch_us_median": 36.272,
+      "per_dispatch_us_minus_receipt_floor": 31.772
+    },
+    "sampler": {
+      "build_ms_median": 0.2178,
+      "dispatches": 48,
+      "eval_ms_median": 8.7083,
+      "eval_ms_min": 8.6623,
+      "gpu_chain_ms_est_minus_receipt_floor": 8.4923,
+      "per_dispatch_us_median": 181.424,
+      "per_dispatch_us_minus_receipt_floor": 176.924
+    },
+    "sdpa@seq1024": {
+      "build_ms_median": 0.1155,
+      "dispatches": 24,
+      "eval_ms_median": 2.1159,
+      "eval_ms_min": 1.7778,
+      "gpu_chain_ms_est_minus_receipt_floor": 2.0079,
+      "per_dispatch_us_median": 88.162,
+      "per_dispatch_us_minus_receipt_floor": 83.662
+    },
+    "sdpa@seq16": {
+      "build_ms_median": 0.1151,
+      "dispatches": 24,
+      "eval_ms_median": 0.7401,
+      "eval_ms_min": 0.453,
+      "gpu_chain_ms_est_minus_receipt_floor": 0.6321,
+      "per_dispatch_us_median": 30.838,
+      "per_dispatch_us_minus_receipt_floor": 26.338
+    },
+    "sdpa@seq48": {
+      "build_ms_median": 0.1184,
+      "dispatches": 24,
+      "eval_ms_median": 4.5669,
+      "eval_ms_min": 3.374,
+      "gpu_chain_ms_est_minus_receipt_floor": 4.4589,
+      "per_dispatch_us_median": 190.289,
+      "per_dispatch_us_minus_receipt_floor": 185.789
+    },
+    "swiglu": {
+      "build_ms_median": 0.1911,
+      "dispatches": 24,
+      "eval_ms_median": 1.6052,
+      "eval_ms_min": 0.898,
+      "gpu_chain_ms_est_minus_receipt_floor": 1.4972,
+      "per_dispatch_us_median": 66.882,
+      "per_dispatch_us_minus_receipt_floor": 62.382
+    }
+  },
+  "floor_us": 4.5,
+  "note": "graphs rebuilt per rep with perturbed inputs (mlx memoizes evaluated graphs); eval window is the GPU chain estimate, build window is the host graph-construction cost",
+  "reps": 30,
+  "schema": "decode-attribution-chain-microbench/1"
+}

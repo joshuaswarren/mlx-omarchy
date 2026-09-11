@@ -1,0 +1,447 @@
+=== window3 start 2026-09-11T01:22:19Z
+=== lock held 2026-09-11T01:22:19Z
+quiet-gate wait 1 load=0.08
+quiet-gate wait 2 load=0.05
+quiet gate done ok=3
+1789089779 0.04 1.23 2.48
+r1-baseline-short-decode-32 cached
+r1-baseline-short-decode-32 ok 112.53 tok/s 7fd25a869ff21678
+r1-baseline-long-decode-128 cached
+r1-baseline-long-decode-128 ok 109.32 tok/s 4cc08910089477fd
+r1-baseline-longctx-1024-decode-32 cached
+r1-baseline-longctx-1024-decode-32 ok 97.3 tok/s 7da83f06ec9f001d
+r1-gemv-short-decode-32 cached
+r1-gemv-short-decode-32 ok 112.2 tok/s 7fd25a869ff21678
+r1-gemv-longctx-1024-decode-32 cached
+r1-gemv-longctx-1024-decode-32 ok 96.74 tok/s 7da83f06ec9f001d
+r1-rope-short-decode-32 cached
+r1-rope-short-decode-32 ok 112.13 tok/s 7fd25a869ff21678
+r1-rope-longctx-1024-decode-32 cached
+r1-rope-longctx-1024-decode-32 ok 99.17 tok/s 7da83f06ec9f001d
+r1-rms-short-decode-32 cached
+r1-rms-short-decode-32 ok 112.7 tok/s 7fd25a869ff21678
+r1-rms-longctx-1024-decode-32 cached
+r1-rms-longctx-1024-decode-32 ok 97.28 tok/s 7da83f06ec9f001d
+r1-kvwrite-short-decode-32 cached
+r1-kvwrite-short-decode-32 ok 112.07 tok/s 7fd25a869ff21678
+r1-kvwrite-long-decode-128 cached
+r1-kvwrite-long-decode-128 ok 109.31 tok/s 4cc08910089477fd
+r1-kvwrite-longctx-1024-decode-32 cached
+r1-kvwrite-longctx-1024-decode-32 ok 95.75 tok/s 7da83f06ec9f001d
+r1-attn-short-decode-32 cached
+r1-attn-short-decode-32 ok 112.95 tok/s 7fd25a869ff21678
+r1-attn-long-decode-128 cached
+r1-attn-long-decode-128 ok 109.52 tok/s 4cc08910089477fd
+r1-attn-longctx-1024-decode-32 cached
+r1-attn-longctx-1024-decode-32 ok 95.7 tok/s 7da83f06ec9f001d
+r1-swiglu-short-decode-32 cached
+r1-swiglu-short-decode-32 ok 112.73 tok/s 7fd25a869ff21678
+r1-swiglu-longctx-1024-decode-32 cached
+r1-swiglu-longctx-1024-decode-32 ok 96.84 tok/s 7da83f06ec9f001d
+r1-sampler-short-decode-32 cached
+r1-sampler-short-decode-32 ok 111.92 tok/s 7fd25a869ff21678
+r1-sampler-longctx-1024-decode-32 cached
+r1-sampler-longctx-1024-decode-32 ok 97.44 tok/s 7da83f06ec9f001d
+r1-all-short-decode-32 cached
+r1-all-short-decode-32 ok 112.7 tok/s 7fd25a869ff21678
+r1-all-long-decode-128 cached
+r1-all-long-decode-128 ok 109.18 tok/s 4cc08910089477fd
+r1-all-longctx-1024-decode-32 cached
+r1-all-longctx-1024-decode-32 ok 97.34 tok/s 7da83f06ec9f001d
+r2-baseline-short-decode-32 cached
+r2-baseline-short-decode-32 ok 112.92 tok/s 7fd25a869ff21678
+r2-baseline-long-decode-128 cached
+r2-baseline-long-decode-128 ok 107.9 tok/s 4cc08910089477fd
+r2-baseline-longctx-1024-decode-32 cached
+r2-baseline-longctx-1024-decode-32 ok 97.55 tok/s 7da83f06ec9f001d
+r2-gemv-short-decode-32 cached
+r2-gemv-short-decode-32 ok 113.23 tok/s 7fd25a869ff21678
+r2-gemv-longctx-1024-decode-32 cached
+r2-gemv-longctx-1024-decode-32 ok 97.24 tok/s 7da83f06ec9f001d
+r2-rope-short-decode-32 cached
+r2-rope-short-decode-32 ok 113.39 tok/s 7fd25a869ff21678
+r2-rope-longctx-1024-decode-32 cached
+r2-rope-longctx-1024-decode-32 ok 97.55 tok/s 7da83f06ec9f001d
+r2-rms-short-decode-32 cached
+r2-rms-short-decode-32 ok 112.61 tok/s 7fd25a869ff21678
+r2-rms-longctx-1024-decode-32 cached
+r2-rms-longctx-1024-decode-32 ok 96.99 tok/s 7da83f06ec9f001d
+r2-kvwrite-short-decode-32 cached
+r2-kvwrite-short-decode-32 ok 113.14 tok/s 7fd25a869ff21678
+r2-kvwrite-long-decode-128 cached
+r2-kvwrite-long-decode-128 ok 109.44 tok/s 4cc08910089477fd
+r2-kvwrite-longctx-1024-decode-32 cached
+r2-kvwrite-longctx-1024-decode-32 ok 97.35 tok/s c012153375296df3
+r2-attn-short-decode-32 cached
+r2-attn-short-decode-32 ok 112.96 tok/s 7fd25a869ff21678
+r2-attn-long-decode-128 cached
+r2-attn-long-decode-128 ok 109.05 tok/s 4cc08910089477fd
+r2-attn-longctx-1024-decode-32 cached
+r2-attn-longctx-1024-decode-32 ok 97.25 tok/s 7da83f06ec9f001d
+r2-swiglu-short-decode-32 cached
+r2-swiglu-short-decode-32 ok 113.46 tok/s 7fd25a869ff21678
+r2-swiglu-longctx-1024-decode-32 cached
+r2-swiglu-longctx-1024-decode-32 ok 95.82 tok/s 7da83f06ec9f001d
+r2-sampler-short-decode-32 cached
+r2-sampler-short-decode-32 ok 111.91 tok/s 7fd25a869ff21678
+r2-sampler-longctx-1024-decode-32 cached
+r2-sampler-longctx-1024-decode-32 ok 96.86 tok/s 7da83f06ec9f001d
+r2-all-short-decode-32 cached
+r2-all-short-decode-32 ok 113.15 tok/s 7fd25a869ff21678
+r2-all-long-decode-128 cached
+r2-all-long-decode-128 ok 109.36 tok/s 4cc08910089477fd
+r2-all-longctx-1024-decode-32 cached
+r2-all-longctx-1024-decode-32 ok 96.39 tok/s 7da83f06ec9f001d
+r3-baseline-short-decode-32 cached
+r3-baseline-short-decode-32 ok 111.11 tok/s 7fd25a869ff21678
+r3-baseline-long-decode-128 cached
+r3-baseline-long-decode-128 ok 109.23 tok/s 4cc08910089477fd
+r3-baseline-longctx-1024-decode-32 cached
+r3-baseline-longctx-1024-decode-32 ok 96.9 tok/s 7da83f06ec9f001d
+r3-gemv-short-decode-32 cached
+r3-gemv-short-decode-32 ok 112.95 tok/s 7fd25a869ff21678
+r3-gemv-longctx-1024-decode-32 cached
+r3-gemv-longctx-1024-decode-32 ok 97.86 tok/s 7da83f06ec9f001d
+r3-rope-short-decode-32 cached
+r3-rope-short-decode-32 ok 113.12 tok/s 7fd25a869ff21678
+r3-rope-longctx-1024-decode-32 cached
+r3-rope-longctx-1024-decode-32 ok 96.44 tok/s 7da83f06ec9f001d
+r3-rms-short-decode-32 cached
+r3-rms-short-decode-32 ok 113.46 tok/s 7fd25a869ff21678
+r3-rms-longctx-1024-decode-32 cached
+r3-rms-longctx-1024-decode-32 ok 96.84 tok/s 7da83f06ec9f001d
+r3-kvwrite-short-decode-32 cached
+r3-kvwrite-short-decode-32 ok 112.3 tok/s 7fd25a869ff21678
+r3-kvwrite-long-decode-128 cached
+r3-kvwrite-long-decode-128 ok 109.25 tok/s 4cc08910089477fd
+r3-kvwrite-longctx-1024-decode-32 cached
+r3-kvwrite-longctx-1024-decode-32 ok 97.07 tok/s 7da83f06ec9f001d
+r3-attn-short-decode-32 cached
+r3-attn-short-decode-32 ok 112.49 tok/s 7fd25a869ff21678
+r3-attn-long-decode-128 cached
+r3-attn-long-decode-128 ok 111.57 tok/s aa876bd5cec12523
+r3-attn-longctx-1024-decode-32 cached
+r3-attn-longctx-1024-decode-32 ok 102.47 tok/s c012153375296df3
+r3-swiglu-short-decode-32 cached
+r3-swiglu-short-decode-32 ok 113.45 tok/s cb4afe27fc1d5e6b
+r3-swiglu-longctx-1024-decode-32 cached
+r3-swiglu-longctx-1024-decode-32 ok 96.22 tok/s e0263985d3acfee8
+r3-sampler-short-decode-32 cached
+r3-sampler-short-decode-32 ok 116.91 tok/s 8a86dd30276a7f38
+r3-sampler-longctx-1024-decode-32 cached
+r3-sampler-longctx-1024-decode-32 ok 100.27 tok/s 8a86dd30276a7f38
+r3-all-short-decode-32 cached
+r3-all-short-decode-32 ok 390.69 tok/s 8a86dd30276a7f38
+r3-all-long-decode-128 cached
+r3-all-long-decode-128 ok 179.69 tok/s 7982d8f12778bdce
+r3-all-longctx-1024-decode-32 cached
+r3-all-longctx-1024-decode-32 ok 154.69 tok/s 8a86dd30276a7f38
+r4-baseline-short-decode-32 cached
+r4-baseline-short-decode-32 ok 112.85 tok/s 7fd25a869ff21678
+1789089789 0.11 1.21 2.45
+r4-baseline-long-decode-128 ok 108.79 tok/s 4cc08910089477fd
+1789089799 0.16 1.18 2.43
+r4-baseline-longctx-1024-decode-32 ok 98.63 tok/s 7da83f06ec9f001d
+r4-gemv-short-decode-32 ok 315.71 tok/s 8a86dd30276a7f38
+1789089809 0.21 1.16 2.41
+r4-gemv-longctx-1024-decode-32 ok 165.63 tok/s 8a86dd30276a7f38
+1789089819 0.26 1.14 2.39
+r4-rope-short-decode-32 ok 114.31 tok/s b9de04256bbb21d5
+1789089829 0.29 1.12 2.37
+r4-rope-longctx-1024-decode-32 ok 99.1 tok/s ee68416413b01952
+1789089839 0.40 1.11 2.36
+r4-rms-short-decode-32 ok 117.6 tok/s 8a86dd30276a7f38
+r4-rms-longctx-1024-decode-32 cached
+r4-rms-longctx-1024-decode-32 ok 99.49 tok/s 8a86dd30276a7f38
+r4-kvwrite-short-decode-32 cached
+r4-kvwrite-short-decode-32 ok 109.76 tok/s c012153375296df3
+r4-kvwrite-long-decode-128 cached
+r4-kvwrite-long-decode-128 ok 109.69 tok/s aa876bd5cec12523
+r4-kvwrite-longctx-1024-decode-32 cached
+r4-kvwrite-longctx-1024-decode-32 ok 96.86 tok/s c012153375296df3
+r4-attn-short-decode-32 cached
+r4-attn-short-decode-32 ok 113.31 tok/s c012153375296df3
+r4-attn-long-decode-128 cached
+r4-attn-long-decode-128 ok 111.21 tok/s aa876bd5cec12523
+r4-attn-longctx-1024-decode-32 cached
+r4-attn-longctx-1024-decode-32 ok 101.52 tok/s c012153375296df3
+r4-swiglu-short-decode-32 cached
+r4-swiglu-short-decode-32 ok 108.49 tok/s cb4afe27fc1d5e6b
+r4-swiglu-longctx-1024-decode-32 cached
+r4-swiglu-longctx-1024-decode-32 ok 96.91 tok/s e0263985d3acfee8
+r4-sampler-short-decode-32 cached
+r4-sampler-short-decode-32 ok 116.7 tok/s 8a86dd30276a7f38
+r4-sampler-longctx-1024-decode-32 cached
+r4-sampler-longctx-1024-decode-32 ok 98.49 tok/s 8a86dd30276a7f38
+r4-all-short-decode-32 cached
+r4-all-short-decode-32 ok 403.61 tok/s 8a86dd30276a7f38
+r4-all-long-decode-128 cached
+r4-all-long-decode-128 ok 177.89 tok/s 7982d8f12778bdce
+r4-all-longctx-1024-decode-32 cached
+r4-all-longctx-1024-decode-32 ok 173.48 tok/s 8a86dd30276a7f38
+r5-baseline-short-decode-32 cached
+r5-baseline-short-decode-32 ok 108.86 tok/s 7fd25a869ff21678
+1789089849 0.50 1.11 2.34
+r5-baseline-long-decode-128 ok 109.58 tok/s 4cc08910089477fd
+1789089859 0.57 1.10 2.33
+r5-baseline-longctx-1024-decode-32 ok 98.32 tok/s 7da83f06ec9f001d
+1789089869 0.64 1.10 2.31
+r5-gemv-short-decode-32 ok 313.15 tok/s 8a86dd30276a7f38
+1789089879 0.70 1.10 2.30
+r5-gemv-longctx-1024-decode-32 ok 162.79 tok/s 8a86dd30276a7f38
+1789089889 0.74 1.09 2.28
+r5-rope-short-decode-32 ok 114.34 tok/s b9de04256bbb21d5
+1789089899 0.78 1.09 2.27
+r5-rope-longctx-1024-decode-32 ok 98.23 tok/s ee68416413b01952
+1789089909 0.82 1.09 2.25
+r5-rms-short-decode-32 ok 116.9 tok/s 8a86dd30276a7f38
+1789089919 0.84 1.08 2.24
+r5-rms-longctx-1024-decode-32 ok 99.62 tok/s 8a86dd30276a7f38
+1789089929 0.87 1.08 2.23
+r5-kvwrite-short-decode-32 ok 112.33 tok/s c012153375296df3
+1789089939 0.89 1.08 2.21
+r5-kvwrite-long-decode-128 ok 109.68 tok/s aa876bd5cec12523
+1789089949 0.91 1.07 2.20
+r5-kvwrite-longctx-1024-decode-32 ok 86.75 tok/s c012153375296df3
+1789089959 0.92 1.07 2.19
+r5-attn-short-decode-32 ok 113.55 tok/s c012153375296df3
+1789089969 0.93 1.07 2.17
+r5-attn-long-decode-128 ok 111.31 tok/s aa876bd5cec12523
+1789089979 0.87 1.05 2.15
+r5-attn-longctx-1024-decode-32 ok 101.92 tok/s c012153375296df3
+1789089989 0.89 1.05 2.14
+r5-swiglu-short-decode-32 ok 110.75 tok/s cb4afe27fc1d5e6b
+1789089999 0.83 1.03 2.12
+r5-swiglu-longctx-1024-decode-32 ok 98.35 tok/s e0263985d3acfee8
+1789090009 0.79 1.01 2.11
+r5-sampler-short-decode-32 ok 117.55 tok/s 8a86dd30276a7f38
+1789090019 0.75 0.99 2.09
+r5-sampler-longctx-1024-decode-32 ok 100.6 tok/s 8a86dd30276a7f38
+1789090029 0.79 1.00 2.08
+r5-all-short-decode-32 ok 410.47 tok/s 8a86dd30276a7f38
+1789090039 0.82 1.00 2.06
+r5-all-long-decode-128 ok 187.29 tok/s 7982d8f12778bdce
+1789090049 0.85 1.00 2.05
+r5-all-longctx-1024-decode-32 ok 156.62 tok/s 8a86dd30276a7f38
+1789090059 0.87 1.00 2.04
+r6-baseline-short-decode-32 ok 112.22 tok/s 7fd25a869ff21678
+1789090069 0.82 0.98 2.02
+r6-baseline-long-decode-128 ok 109.01 tok/s 4cc08910089477fd
+1789090079 1.41 1.10 2.05
+r6-baseline-longctx-1024-decode-32 ok 98.44 tok/s 7da83f06ec9f001d
+1789090089 1.34 1.10 2.04
+r6-gemv-short-decode-32 ok 307.04 tok/s 8a86dd30276a7f38
+1789090099 1.22 1.08 2.02
+r6-gemv-longctx-1024-decode-32 ok 149.24 tok/s 8a86dd30276a7f38
+1789090109 1.18 1.07 2.01
+r6-rope-short-decode-32 ok 115.05 tok/s b9de04256bbb21d5
+1789090119 1.00 1.04 1.99
+r6-rope-longctx-1024-decode-32 ok 98.91 tok/s ee68416413b01952
+1789090129 0.92 1.02 1.97
+r6-rms-short-decode-32 ok 116.17 tok/s 8a86dd30276a7f38
+1789090139 0.85 1.00 1.95
+r6-rms-longctx-1024-decode-32 ok 100.45 tok/s 8a86dd30276a7f38
+1789090149 0.80 0.98 1.94
+r6-kvwrite-short-decode-32 ok 113.3 tok/s c012153375296df3
+1789090159 0.83 0.98 1.93
+r6-kvwrite-long-decode-128 ok 109.53 tok/s aa876bd5cec12523
+1789090169 0.78 0.97 1.91
+r6-kvwrite-longctx-1024-decode-32 ok 97.71 tok/s c012153375296df3
+1789090179 0.74 0.95 1.90
+r6-attn-short-decode-32 ok 114.04 tok/s c012153375296df3
+1789090189 0.71 0.94 1.88
+r6-attn-long-decode-128 ok 111.16 tok/s aa876bd5cec12523
+1789090199 0.68 0.92 1.87
+r6-attn-longctx-1024-decode-32 ok 101.67 tok/s c012153375296df3
+1789090209 0.65 0.91 1.85
+r6-swiglu-short-decode-32 ok 113.07 tok/s cb4afe27fc1d5e6b
+1789090219 0.63 0.90 1.84
+r6-swiglu-longctx-1024-decode-32 ok 97.45 tok/s e0263985d3acfee8
+1789090229 0.62 0.88 1.82
+r6-sampler-short-decode-32 ok 116.14 tok/s 8a86dd30276a7f38
+1789090239 0.60 0.87 1.81
+r6-sampler-longctx-1024-decode-32 ok 100.85 tok/s 8a86dd30276a7f38
+1789090249 0.59 0.86 1.79
+r6-all-short-decode-32 ok 369.75 tok/s 8a86dd30276a7f38
+1789090259 0.65 0.86 1.78
+r6-all-long-decode-128 ok 184.42 tok/s 7982d8f12778bdce
+1789090269 0.71 0.87 1.77
+r6-all-longctx-1024-decode-32 ok 158.82 tok/s 8a86dd30276a7f38
+1789090279 1.27 0.99 1.80
+r7-baseline-short-decode-32 ok 112.77 tok/s 7fd25a869ff21678
+1789090289 1.74 1.10 1.83
+r7-baseline-long-decode-128 ok 109.98 tok/s 4cc08910089477fd
+1789090299 1.71 1.12 1.83
+r7-baseline-longctx-1024-decode-32 ok 96.79 tok/s 7da83f06ec9f001d
+1789090309 2.19 1.24 1.86
+r7-gemv-short-decode-32 ok 315.44 tok/s 8a86dd30276a7f38
+1789090319 1.93 1.22 1.85
+r7-gemv-longctx-1024-decode-32 ok 158.51 tok/s 8a86dd30276a7f38
+1789090329 1.86 1.23 1.84
+r7-rope-short-decode-32 ok 113.85 tok/s b9de04256bbb21d5
+1789090339 1.64 1.20 1.83
+r7-rope-longctx-1024-decode-32 ok 99.0 tok/s ee68416413b01952
+1789090349 1.47 1.18 1.81
+r7-rms-short-decode-32 ok 116.31 tok/s 8a86dd30276a7f38
+1789090359 1.31 1.16 1.80
+r7-rms-longctx-1024-decode-32 ok 99.37 tok/s 8a86dd30276a7f38
+1789090369 1.18 1.13 1.78
+r7-kvwrite-short-decode-32 ok 113.53 tok/s c012153375296df3
+1789090379 1.08 1.11 1.77
+r7-kvwrite-long-decode-128 ok 107.57 tok/s aa876bd5cec12523
+1789090389 0.91 1.08 1.75
+r7-kvwrite-longctx-1024-decode-32 ok 97.56 tok/s c012153375296df3
+1789090399 0.84 1.06 1.74
+r7-attn-short-decode-32 ok 114.23 tok/s c012153375296df3
+1789090409 0.95 1.07 1.73
+r7-attn-long-decode-128 ok 111.18 tok/s aa876bd5cec12523
+1789090419 0.87 1.05 1.72
+r7-attn-longctx-1024-decode-32 ok 101.87 tok/s c012153375296df3
+1789090429 0.82 1.03 1.71
+r7-swiglu-short-decode-32 ok 113.24 tok/s cb4afe27fc1d5e6b
+1789090439 0.77 1.01 1.69
+r7-swiglu-longctx-1024-decode-32 ok 91.25 tok/s e0263985d3acfee8
+1789090449 0.73 1.00 1.68
+r7-sampler-short-decode-32 ok 116.27 tok/s 8a86dd30276a7f38
+1789090459 0.77 1.00 1.67
+r7-sampler-longctx-1024-decode-32 ok 98.72 tok/s 8a86dd30276a7f38
+1789090469 0.73 0.98 1.66
+r7-all-short-decode-32 ok 389.44 tok/s 8a86dd30276a7f38
+r7-all-long-decode-128 ok 177.84 tok/s 7982d8f12778bdce
+1789090479 0.69 0.97 1.65
+r7-all-longctx-1024-decode-32 ok 157.73 tok/s 8a86dd30276a7f38
+1789090489 0.58 0.93 1.63
+r8-baseline-short-decode-32 ok 112.64 tok/s 7fd25a869ff21678
+1789090499 0.65 0.94 1.62
+r8-baseline-long-decode-128 ok 108.74 tok/s 4cc08910089477fd
+1789090509 0.63 0.92 1.61
+r8-baseline-longctx-1024-decode-32 ok 97.62 tok/s 7da83f06ec9f001d
+1789090519 0.77 0.94 1.61
+r8-gemv-short-decode-32 ok 316.9 tok/s 8a86dd30276a7f38
+1789090529 1.36 1.06 1.64
+r8-gemv-longctx-1024-decode-32 ok 167.21 tok/s 8a86dd30276a7f38
+1789090539 1.87 1.17 1.67
+r8-rope-short-decode-32 ok 114.22 tok/s b9de04256bbb21d5
+1789090549 2.30 1.29 1.70
+r8-rope-longctx-1024-decode-32 ok 99.79 tok/s ee68416413b01952
+1789090559 2.66 1.39 1.73
+r8-rms-short-decode-32 ok 116.78 tok/s 8a86dd30276a7f38
+1789090569 3.04 1.51 1.77
+r8-rms-longctx-1024-decode-32 ok 100.52 tok/s 8a86dd30276a7f38
+1789090579 3.29 1.61 1.79
+r8-kvwrite-short-decode-32 ok 112.28 tok/s c012153375296df3
+1789090589 3.50 1.71 1.82
+r8-kvwrite-long-decode-128 ok 109.5 tok/s aa876bd5cec12523
+1789090599 3.67 1.80 1.85
+r8-kvwrite-longctx-1024-decode-32 ok 97.9 tok/s c012153375296df3
+1789090609 3.26 1.77 1.84
+r8-attn-short-decode-32 ok 114.66 tok/s c012153375296df3
+1789090619 2.91 1.75 1.83
+r8-attn-long-decode-128 ok 111.74 tok/s aa876bd5cec12523
+1789090629 2.62 1.72 1.82
+r8-attn-longctx-1024-decode-32 ok 102.8 tok/s c012153375296df3
+1789090639 2.37 1.70 1.81
+r8-swiglu-short-decode-32 ok 113.32 tok/s cb4afe27fc1d5e6b
+1789090649 2.16 1.67 1.80
+r8-swiglu-longctx-1024-decode-32 ok 98.06 tok/s e0263985d3acfee8
+1789090659 1.98 1.65 1.80
+r8-sampler-short-decode-32 ok 117.69 tok/s 8a86dd30276a7f38
+1789090669 1.83 1.63 1.79
+r8-sampler-longctx-1024-decode-32 ok 100.42 tok/s 8a86dd30276a7f38
+1789090680 1.70 1.61 1.78
+r8-all-short-decode-32 ok 417.12 tok/s 8a86dd30276a7f38
+r8-all-long-decode-128 cached
+r8-all-long-decode-128 ok 180.89 tok/s 7982d8f12778bdce
+1789090690 1.59 1.59 1.77
+r8-all-longctx-1024-decode-32 ok 157.96 tok/s 8a86dd30276a7f38
+1789090700 1.42 1.55 1.76
+r9-baseline-short-decode-32 ok 108.71 tok/s 7fd25a869ff21678
+1789090710 1.28 1.52 1.74
+r9-baseline-long-decode-128 ok 108.99 tok/s 4cc08910089477fd
+1789090720 1.16 1.48 1.73
+r9-baseline-longctx-1024-decode-32 ok 95.51 tok/s 7da83f06ec9f001d
+1789090730 1.13 1.47 1.72
+r9-gemv-short-decode-32 ok 306.74 tok/s 8a86dd30276a7f38
+1789090740 1.04 1.43 1.71
+r9-rope-short-decode-32 ok 111.93 tok/s b9de04256bbb21d5
+1789090750 0.96 1.40 1.69
+r9-rms-short-decode-32 ok 117.48 tok/s 8a86dd30276a7f38
+1789090760 0.89 1.37 1.68
+r9-kvwrite-short-decode-32 ok 112.57 tok/s c012153375296df3
+1789090770 0.91 1.36 1.67
+r9-attn-short-decode-32 ok 113.41 tok/s c012153375296df3
+1789090780 0.85 1.33 1.66
+r9-swiglu-short-decode-32 ok 113.31 tok/s cb4afe27fc1d5e6b
+1789090790 0.80 1.31 1.65
+r9-sampler-short-decode-32 ok 117.05 tok/s 8a86dd30276a7f38
+1789090800 0.76 1.28 1.63
+r9-all-short-decode-32 ok 416.98 tok/s 8a86dd30276a7f38
+1789090810 0.72 1.25 1.62
+r10-baseline-short-decode-32 ok 113.1 tok/s 7fd25a869ff21678
+1789090820 0.69 1.23 1.61
+r10-baseline-long-decode-128 ok 109.31 tok/s 4cc08910089477fd
+1789090830 0.74 1.22 1.60
+r10-baseline-longctx-1024-decode-32 ok 98.4 tok/s 7da83f06ec9f001d
+1789090840 0.71 1.20 1.59
+r10-gemv-short-decode-32 ok 317.16 tok/s 8a86dd30276a7f38
+1789090850 0.75 1.19 1.58
+r10-rope-short-decode-32 ok 115.22 tok/s b9de04256bbb21d5
+1789090860 0.64 1.15 1.56
+r10-rms-short-decode-32 ok 116.95 tok/s 8a86dd30276a7f38
+1789090870 0.69 1.14 1.56
+r10-kvwrite-short-decode-32 ok 113.33 tok/s c012153375296df3
+1789090880 0.66 1.12 1.55
+r10-attn-short-decode-32 ok 114.39 tok/s c012153375296df3
+1789090890 0.70 1.12 1.54
+r10-swiglu-short-decode-32 ok 107.85 tok/s cb4afe27fc1d5e6b
+1789090900 0.76 1.11 1.53
+r10-sampler-short-decode-32 ok 116.45 tok/s 8a86dd30276a7f38
+1789090910 0.64 1.08 1.52
+r10-all-short-decode-32 ok 376.12 tok/s 8a86dd30276a7f38
+1789090920 0.70 1.07 1.51
+r11-baseline-short-decode-32 ok 112.77 tok/s 7fd25a869ff21678
+1789090930 0.89 1.10 1.52
+r11-baseline-long-decode-128 ok 109.49 tok/s 4cc08910089477fd
+1789090940 0.91 1.10 1.51
+r11-baseline-longctx-1024-decode-32 ok 99.08 tok/s 7da83f06ec9f001d
+1789090950 1.00 1.11 1.51
+r11-gemv-short-decode-32 ok 313.59 tok/s 8a86dd30276a7f38
+1789090960 1.00 1.11 1.51
+r11-rope-short-decode-32 ok 114.63 tok/s b9de04256bbb21d5
+1789090970 1.00 1.11 1.50
+r11-rms-short-decode-32 ok 116.26 tok/s 8a86dd30276a7f38
+1789090980 1.00 1.10 1.49
+r11-kvwrite-short-decode-32 ok 113.37 tok/s c012153375296df3
+1789090990 1.00 1.10 1.49
+r11-attn-short-decode-32 ok 114.36 tok/s c012153375296df3
+1789091000 1.00 1.09 1.48
+r11-swiglu-short-decode-32 ok 112.57 tok/s cb4afe27fc1d5e6b
+1789091010 1.00 1.09 1.48
+r11-sampler-short-decode-32 ok 115.66 tok/s 8a86dd30276a7f38
+1789091020 1.00 1.09 1.47
+r11-all-short-decode-32 ok 405.89 tok/s 8a86dd30276a7f38
+1789091030 1.00 1.08 1.46
+r12-baseline-short-decode-32 ok 110.67 tok/s 7fd25a869ff21678
+1789091040 1.00 1.08 1.46
+r12-baseline-long-decode-128 ok 109.17 tok/s 4cc08910089477fd
+1789091050 1.00 1.08 1.45
+r12-baseline-longctx-1024-decode-32 ok 97.81 tok/s 7da83f06ec9f001d
+1789091060 1.00 1.07 1.45
+r12-gemv-short-decode-32 ok 313.88 tok/s 8a86dd30276a7f38
+1789091070 0.93 1.06 1.44
+r12-rope-short-decode-32 ok 110.15 tok/s b9de04256bbb21d5
+1789091080 0.94 1.05 1.43
+r12-rms-short-decode-32 ok 116.73 tok/s 8a86dd30276a7f38
+1789091090 0.87 1.04 1.42
+r12-kvwrite-short-decode-32 ok 113.37 tok/s c012153375296df3
+1789091100 0.89 1.03 1.42
+r12-attn-short-decode-32 ok 114.43 tok/s c012153375296df3
+r12-swiglu-short-decode-32 cached
+r12-swiglu-short-decode-32 ok 113.42 tok/s cb4afe27fc1d5e6b
+r12-sampler-short-decode-32 cached
+r12-sampler-short-decode-32 ok 116.71 tok/s 8a86dd30276a7f38
+r12-all-short-decode-32 cached
+r12-all-short-decode-32 ok 401.1 tok/s 8a86dd30276a7f38
+ALL_ARMS_DONE
+=== window3 done 2026-09-11T01:45:01Z
+=== wrapper exit rc=0 2026-09-11T01:45:01Z

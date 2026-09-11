@@ -1,0 +1,371 @@
+=== wrapper start 2026-09-10T23:22:23Z pid 1868177
+=== lock held 2026-09-10T23:22:23Z by 1868182
+quiet-gate wait 1 load=3.51 2026-09-10T23:22:23Z
+quiet-gate wait 2 load=3.46 2026-09-10T23:22:43Z
+quiet-gate wait 3 load=3.62 2026-09-10T23:23:03Z
+quiet-gate wait 4 load=3.73 2026-09-10T23:23:23Z
+quiet-gate wait 5 load=3.80 2026-09-10T23:23:43Z
+quiet-gate wait 6 load=3.86 2026-09-10T23:24:03Z
+quiet-gate wait 7 load=3.90 2026-09-10T23:24:23Z
+quiet-gate wait 8 load=3.47 2026-09-10T23:24:43Z
+quiet-gate wait 9 load=2.77 2026-09-10T23:25:03Z
+quiet-gate wait 10 load=2.26 2026-09-10T23:25:23Z
+quiet-gate wait 11 load=1.68 2026-09-10T23:25:43Z
+quiet-gate wait 12 load=1.20 2026-09-10T23:26:03Z
+quiet-gate wait 13 load=0.86 2026-09-10T23:26:23Z
+quiet-gate wait 14 load=0.62 2026-09-10T23:26:43Z
+quiet gate done ok=3 load=0.44
+1789082823 0.44 2.04 1.82
+Traceback (most recent call last):
+  File "/home/joshuawarren/src/mlx-DecodeAttribution/receipts/2026-09-10-decode-attribution/run_arms.py", line 154, in <module>
+    main()
+    ~~~~^^
+  File "/home/joshuawarren/src/mlx-DecodeAttribution/receipts/2026-09-10-decode-attribution/run_arms.py", line 121, in main
+    subprocess.run(cmd, cwd=root, env=env, stdout=log,
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                   stderr=subprocess.STDOUT, check=True,
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                   timeout=args.timeout + 120)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/subprocess.py", line 578, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '['/usr/bin/python3', 'scripts/bench_matrix.py', '--mode', 'run', '--manifest', '/home/joshuawarren/src/mlx-DecodeAttribution/receipts/2026-09-10-decode-attribution/arms/manifest-q4.json', '--python', '/usr/bin/python3.14', '--wheel', '/home/joshuawarren/src/mlx-main-b6d662a8/dist/mlx_omarchy-0.32.2.dev202609101916+b6d662a-cp314-cp314-linux_aarch64.whl', '--expect-pins', 'qwen25-0.5b-4bit=a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3', '--host-label', 'jwm1-decode-attrib-baseline-r1', '--timeout', '600', '--out', '/home/joshuawarren/src/mlx-DecodeAttribution/receipts/2026-09-10-decode-attribution/arms/r1-baseline-short-decode-32.json']' returned non-zero exit status 3.
+Traceback (most recent call last):
+  File "/home/joshuawarren/src/mlx-DecodeAttribution/receipts/2026-09-10-decode-attribution/chain_microbench.py", line 144, in <module>
+    main()
+    ~~~~^^
+  File "/home/joshuawarren/src/mlx-DecodeAttribution/receipts/2026-09-10-decode-attribution/chain_microbench.py", line 123, in main
+    for name, (outs, ndisp) in build_chains(seq).items():
+                               ~~~~~~~~~~~~^^^^^
+  File "/home/joshuawarren/src/mlx-DecodeAttribution/receipts/2026-09-10-decode-attribution/chain_microbench.py", line 63, in build_chains
+    + [qmm(x, wd) for _ in range(L)],
+       ~~~^^^^^^^
+  File "/home/joshuawarren/src/mlx-DecodeAttribution/receipts/2026-09-10-decode-attribution/chain_microbench.py", line 44, in qmm
+    return mx.quantized_matmul(x, w, s, b, transpose=True,
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                               group_size=64, bits=4)
+                               ^^^^^^^^^^^^^^^^^^^^^^
+ValueError: [quantized_matmul] Last dimension of first input with shape (..., 896) does not match the expanded quantized matrix (4864, 896) computed from shape (896,608) with group_size=64, bits=4 and transpose=true
+=== window done 2026-09-10T23:27:04Z
+=== wrapper exit rc=0 2026-09-10T23:27:04Z
+=== wrapper start 2026-09-10T23:29:29Z pid 1875258
+=== lock held 2026-09-10T23:29:29Z by 1875263
+quiet-gate wait 1 load=2.38 2026-09-10T23:29:29Z
+quiet-gate wait 2 load=2.84 2026-09-10T23:29:49Z
+quiet-gate wait 3 load=3.17 2026-09-10T23:30:09Z
+quiet-gate wait 4 load=3.41 2026-09-10T23:30:29Z
+quiet-gate wait 5 load=3.64 2026-09-10T23:30:49Z
+quiet-gate wait 6 load=3.75 2026-09-10T23:31:09Z
+quiet-gate wait 7 load=3.70 2026-09-10T23:31:29Z
+quiet-gate wait 8 load=3.16 2026-09-10T23:31:49Z
+quiet-gate wait 9 load=2.51 2026-09-10T23:32:09Z
+quiet-gate wait 10 load=1.80 2026-09-10T23:32:29Z
+quiet-gate wait 11 load=1.96 2026-09-10T23:32:49Z
+quiet-gate wait 12 load=2.54 2026-09-10T23:33:09Z
+quiet-gate wait 13 load=2.96 2026-09-10T23:33:29Z
+quiet-gate wait 14 load=3.25 2026-09-10T23:33:49Z
+quiet-gate wait 15 load=3.47 2026-09-10T23:34:09Z
+quiet-gate wait 16 load=3.62 2026-09-10T23:34:29Z
+quiet-gate wait 17 load=3.73 2026-09-10T23:34:49Z
+quiet-gate wait 18 load=3.27 2026-09-10T23:35:09Z
+quiet-gate wait 19 load=3.08 2026-09-10T23:35:29Z
+quiet-gate wait 20 load=2.47 2026-09-10T23:35:49Z
+quiet-gate wait 21 load=2.85 2026-09-10T23:36:09Z
+quiet-gate wait 22 load=3.25 2026-09-10T23:36:29Z
+quiet-gate wait 23 load=2.39 2026-09-10T23:36:49Z
+quiet-gate wait 24 load=1.71 2026-09-10T23:37:09Z
+quiet-gate wait 25 load=1.22 2026-09-10T23:37:29Z
+quiet-gate wait 26 load=0.88 2026-09-10T23:37:49Z
+quiet-gate wait 27 load=0.63 2026-09-10T23:38:09Z
+quiet gate done ok=3 load=0.45
+1789083509 0.45 1.93 2.04
+usage: run_arms.py [-h] [--root ROOT] --python PYTHON
+                   --ablate-python ABLATE_PYTHON --wheel WHEEL --out OUT
+                   [--arms [ARMS ...]] [--timeout TIMEOUT]
+run_arms.py: error: unrecognized arguments: --ablate-wheel /home/joshuawarren/src/mlx-DecodeAttribution/dist/mlx_omarchy-0.32.2.dev202609102308+0f79507-cp314-cp314-linux_aarch64.whl
+48 gemv_layer {'dispatches': 168, 'eval_ms_median': 5.7893, 'eval_ms_min': 4.9866, 'build_ms_median': 0.4656, 'per_dispatch_us_median': 34.46, 'per_dispatch_us_minus_receipt_floor': 29.96, 'gpu_chain_ms_est_minus_receipt_floor': 5.0333}
+48 lm_head {'dispatches': 24, 'eval_ms_median': 38.9542, 'eval_ms_min': 38.8706, 'build_ms_median': 0.1114, 'per_dispatch_us_median': 1623.092, 'per_dispatch_us_minus_receipt_floor': 1618.592, 'gpu_chain_ms_est_minus_receipt_floor': 38.8462}
+48 rope {'dispatches': 48, 'eval_ms_median': 1.2913, 'eval_ms_min': 0.8167, 'build_ms_median': 0.2306, 'per_dispatch_us_median': 26.902, 'per_dispatch_us_minus_receipt_floor': 22.402, 'gpu_chain_ms_est_minus_receipt_floor': 1.0753}
+48 rms {'dispatches': 49, 'eval_ms_median': 1.1568, 'eval_ms_min': 1.13, 'build_ms_median': 0.1494, 'per_dispatch_us_median': 23.608, 'per_dispatch_us_minus_receipt_floor': 19.108, 'gpu_chain_ms_est_minus_receipt_floor': 0.9363}
+48 sdpa {'dispatches': 24, 'eval_ms_median': 0.8149, 'eval_ms_min': 0.7761, 'build_ms_median': 0.1131, 'per_dispatch_us_median': 33.954, 'per_dispatch_us_minus_receipt_floor': 29.454, 'gpu_chain_ms_est_minus_receipt_floor': 0.7069}
+48 kvwrite {'dispatches': 48, 'eval_ms_median': 13.0756, 'eval_ms_min': 12.7095, 'build_ms_median': 0.3196, 'per_dispatch_us_median': 272.408, 'per_dispatch_us_minus_receipt_floor': 267.908, 'gpu_chain_ms_est_minus_receipt_floor': 12.8596}
+48 swiglu {'dispatches': 24, 'eval_ms_median': 1.362, 'eval_ms_min': 1.3236, 'build_ms_median': 0.19, 'per_dispatch_us_median': 56.751, 'per_dispatch_us_minus_receipt_floor': 52.251, 'gpu_chain_ms_est_minus_receipt_floor': 1.254}
+48 sampler {'dispatches': 48, 'eval_ms_median': 8.6765, 'eval_ms_min': 8.6053, 'build_ms_median': 0.2192, 'per_dispatch_us_median': 180.76, 'per_dispatch_us_minus_receipt_floor': 176.26, 'gpu_chain_ms_est_minus_receipt_floor': 8.4605}
+48 harness {'dispatches': 24, 'eval_ms_median': 0.9558, 'eval_ms_min': 0.9291, 'build_ms_median': 0.1327, 'per_dispatch_us_median': 39.827, 'per_dispatch_us_minus_receipt_floor': 35.327, 'gpu_chain_ms_est_minus_receipt_floor': 0.8478}
+16 gemv_layer {'dispatches': 168, 'eval_ms_median': 7.3919, 'eval_ms_min': 6.3855, 'build_ms_median': 0.7606, 'per_dispatch_us_median': 43.999, 'per_dispatch_us_minus_receipt_floor': 39.499, 'gpu_chain_ms_est_minus_receipt_floor': 6.6359}
+16 lm_head {'dispatches': 24, 'eval_ms_median': 39.0341, 'eval_ms_min': 38.8801, 'build_ms_median': 0.1172, 'per_dispatch_us_median': 1626.42, 'per_dispatch_us_minus_receipt_floor': 1621.92, 'gpu_chain_ms_est_minus_receipt_floor': 38.9261}
+16 rope {'dispatches': 48, 'eval_ms_median': 1.2921, 'eval_ms_min': 1.2535, 'build_ms_median': 0.2283, 'per_dispatch_us_median': 26.919, 'per_dispatch_us_minus_receipt_floor': 22.419, 'gpu_chain_ms_est_minus_receipt_floor': 1.0761}
+16 rms {'dispatches': 49, 'eval_ms_median': 1.1606, 'eval_ms_min': 1.1389, 'build_ms_median': 0.1492, 'per_dispatch_us_median': 23.686, 'per_dispatch_us_minus_receipt_floor': 19.186, 'gpu_chain_ms_est_minus_receipt_floor': 0.9401}
+16 sdpa {'dispatches': 24, 'eval_ms_median': 0.7898, 'eval_ms_min': 0.7564, 'build_ms_median': 0.1135, 'per_dispatch_us_median': 32.91, 'per_dispatch_us_minus_receipt_floor': 28.41, 'gpu_chain_ms_est_minus_receipt_floor': 0.6818}
+16 kvwrite {'dispatches': 48, 'eval_ms_median': 11.4766, 'eval_ms_min': 7.0162, 'build_ms_median': 0.3117, 'per_dispatch_us_median': 239.096, 'per_dispatch_us_minus_receipt_floor': 234.596, 'gpu_chain_ms_est_minus_receipt_floor': 11.2606}
+16 swiglu {'dispatches': 24, 'eval_ms_median': 0.9708, 'eval_ms_min': 0.8083, 'build_ms_median': 0.1173, 'per_dispatch_us_median': 40.45, 'per_dispatch_us_minus_receipt_floor': 35.95, 'gpu_chain_ms_est_minus_receipt_floor': 0.8628}
+16 sampler {'dispatches': 48, 'eval_ms_median': 8.6888, 'eval_ms_min': 8.3822, 'build_ms_median': 0.2214, 'per_dispatch_us_median': 181.016, 'per_dispatch_us_minus_receipt_floor': 176.516, 'gpu_chain_ms_est_minus_receipt_floor': 8.4728}
+16 harness {'dispatches': 24, 'eval_ms_median': 0.9897, 'eval_ms_min': 0.9677, 'build_ms_median': 0.1315, 'per_dispatch_us_median': 41.238, 'per_dispatch_us_minus_receipt_floor': 36.738, 'gpu_chain_ms_est_minus_receipt_floor': 0.8817}
+1024 gemv_layer {'dispatches': 168, 'eval_ms_median': 7.2297, 'eval_ms_min': 6.354, 'build_ms_median': 0.7479, 'per_dispatch_us_median': 43.034, 'per_dispatch_us_minus_receipt_floor': 38.534, 'gpu_chain_ms_est_minus_receipt_floor': 6.4737}
+1024 lm_head {'dispatches': 24, 'eval_ms_median': 39.1066, 'eval_ms_min': 39.0484, 'build_ms_median': 0.1148, 'per_dispatch_us_median': 1629.443, 'per_dispatch_us_minus_receipt_floor': 1624.943, 'gpu_chain_ms_est_minus_receipt_floor': 38.9986}
+1024 rope {'dispatches': 48, 'eval_ms_median': 1.2843, 'eval_ms_min': 1.2394, 'build_ms_median': 0.2355, 'per_dispatch_us_median': 26.757, 'per_dispatch_us_minus_receipt_floor': 22.257, 'gpu_chain_ms_est_minus_receipt_floor': 1.0683}
+1024 rms {'dispatches': 49, 'eval_ms_median': 1.1597, 'eval_ms_min': 0.837, 'build_ms_median': 0.151, 'per_dispatch_us_median': 23.667, 'per_dispatch_us_minus_receipt_floor': 19.167, 'gpu_chain_ms_est_minus_receipt_floor': 0.9392}
+1024 sdpa {'dispatches': 24, 'eval_ms_median': 1.6683, 'eval_ms_min': 1.5735, 'build_ms_median': 0.1144, 'per_dispatch_us_median': 69.512, 'per_dispatch_us_minus_receipt_floor': 65.012, 'gpu_chain_ms_est_minus_receipt_floor': 1.5603}
+1024 kvwrite {'dispatches': 48, 'eval_ms_median': 15.4976, 'eval_ms_min': 14.562, 'build_ms_median': 0.3216, 'per_dispatch_us_median': 322.866, 'per_dispatch_us_minus_receipt_floor': 318.366, 'gpu_chain_ms_est_minus_receipt_floor': 15.2816}
+1024 swiglu {'dispatches': 24, 'eval_ms_median': 1.4607, 'eval_ms_min': 1.3575, 'build_ms_median': 0.1922, 'per_dispatch_us_median': 60.862, 'per_dispatch_us_minus_receipt_floor': 56.362, 'gpu_chain_ms_est_minus_receipt_floor': 1.3527}
+1024 sampler {'dispatches': 48, 'eval_ms_median': 8.6935, 'eval_ms_min': 8.4057, 'build_ms_median': 0.2213, 'per_dispatch_us_median': 181.116, 'per_dispatch_us_minus_receipt_floor': 176.616, 'gpu_chain_ms_est_minus_receipt_floor': 8.4775}
+1024 harness {'dispatches': 24, 'eval_ms_median': 0.9675, 'eval_ms_min': 0.9437, 'build_ms_median': 0.1261, 'per_dispatch_us_median': 40.311, 'per_dispatch_us_minus_receipt_floor': 35.811, 'gpu_chain_ms_est_minus_receipt_floor': 0.8595}
+MICROBENCH_DONE
+=== window done 2026-09-10T23:38:38Z
+=== wrapper exit rc=0 2026-09-10T23:38:38Z
+=== wrapper start 2026-09-10T23:44:15Z pid 1893037
+=== lock held 2026-09-10T23:44:15Z by 1893042
+quiet-gate wait 1 load=3.78 2026-09-10T23:44:15Z
+quiet-gate wait 2 load=3.84 2026-09-10T23:44:35Z
+quiet-gate wait 3 load=3.27 2026-09-10T23:44:55Z
+quiet-gate wait 4 load=2.74 2026-09-10T23:45:15Z
+quiet-gate wait 5 load=3.10 2026-09-10T23:45:35Z
+quiet-gate wait 6 load=3.36 2026-09-10T23:45:55Z
+quiet-gate wait 7 load=3.70 2026-09-10T23:46:15Z
+quiet-gate wait 8 load=3.79 2026-09-10T23:46:35Z
+quiet-gate wait 9 load=3.91 2026-09-10T23:46:55Z
+quiet-gate wait 10 load=3.94 2026-09-10T23:47:15Z
+quiet-gate wait 11 load=3.49 2026-09-10T23:47:35Z
+quiet-gate wait 12 load=3.23 2026-09-10T23:47:55Z
+quiet-gate wait 13 load=2.52 2026-09-10T23:48:15Z
+quiet-gate wait 14 load=1.80 2026-09-10T23:48:35Z
+quiet-gate wait 15 load=1.29 2026-09-10T23:48:55Z
+quiet-gate wait 16 load=0.99 2026-09-10T23:49:15Z
+quiet-gate wait 17 load=0.71 2026-09-10T23:49:35Z
+quiet gate done ok=3 load=0.51
+1789084195 0.51 2.15 2.32
+1789084205 0.58 2.11 2.30
+Traceback (most recent call last):
+  File "/home/joshuawarren/src/mlx-DecodeAttribution/receipts/2026-09-10-decode-attribution/run_arms.py", line 154, in <module>
+    main()
+    ~~~~^^
+  File "/home/joshuawarren/src/mlx-DecodeAttribution/receipts/2026-09-10-decode-attribution/run_arms.py", line 133, in main
+    digest = m["generated_ids_sha256_16"]
+             ^
+NameError: name 'm' is not defined
+48 gemv_layer {'dispatches': 48, 'eval_ms_median': 2.8673, 'eval_ms_min': 2.6882, 'build_ms_median': 0.0809, 'per_dispatch_us_median': 59.735, 'per_dispatch_us_minus_receipt_floor': 55.235, 'gpu_chain_ms_est_minus_receipt_floor': 2.6513}
+48 lm_head {'dispatches': 24, 'eval_ms_median': 40.1076, 'eval_ms_min': 39.3861, 'build_ms_median': 0.1131, 'per_dispatch_us_median': 1671.149, 'per_dispatch_us_minus_receipt_floor': 1666.649, 'gpu_chain_ms_est_minus_receipt_floor': 39.9996}
+48 rope {'dispatches': 48, 'eval_ms_median': 1.5942, 'eval_ms_min': 1.0104, 'build_ms_median': 0.2212, 'per_dispatch_us_median': 33.212, 'per_dispatch_us_minus_receipt_floor': 28.712, 'gpu_chain_ms_est_minus_receipt_floor': 1.3782}
+48 rms {'dispatches': 49, 'eval_ms_median': 1.1581, 'eval_ms_min': 1.0966, 'build_ms_median': 0.1539, 'per_dispatch_us_median': 23.634, 'per_dispatch_us_minus_receipt_floor': 19.134, 'gpu_chain_ms_est_minus_receipt_floor': 0.9376}
+48 sdpa {'dispatches': 24, 'eval_ms_median': 0.8394, 'eval_ms_min': 0.7715, 'build_ms_median': 0.1158, 'per_dispatch_us_median': 34.973, 'per_dispatch_us_minus_receipt_floor': 30.473, 'gpu_chain_ms_est_minus_receipt_floor': 0.7314}
+48 kvwrite {'dispatches': 48, 'eval_ms_median': 13.343, 'eval_ms_min': 8.4821, 'build_ms_median': 0.3186, 'per_dispatch_us_median': 277.978, 'per_dispatch_us_minus_receipt_floor': 273.478, 'gpu_chain_ms_est_minus_receipt_floor': 13.127}
+48 swiglu {'dispatches': 24, 'eval_ms_median': 2.4024, 'eval_ms_min': 2.2659, 'build_ms_median': 0.189, 'per_dispatch_us_median': 100.1, 'per_dispatch_us_minus_receipt_floor': 95.6, 'gpu_chain_ms_est_minus_receipt_floor': 2.2944}
+48 sampler {'dispatches': 48, 'eval_ms_median': 9.2835, 'eval_ms_min': 8.7805, 'build_ms_median': 0.2143, 'per_dispatch_us_median': 193.407, 'per_dispatch_us_minus_receipt_floor': 188.907, 'gpu_chain_ms_est_minus_receipt_floor': 9.0675}
+48 harness {'dispatches': 24, 'eval_ms_median': 1.3948, 'eval_ms_min': 1.3228, 'build_ms_median': 0.1305, 'per_dispatch_us_median': 58.118, 'per_dispatch_us_minus_receipt_floor': 53.618, 'gpu_chain_ms_est_minus_receipt_floor': 1.2868}
+16 gemv_layer {'dispatches': 48, 'eval_ms_median': 4.1407, 'eval_ms_min': 3.5795, 'build_ms_median': 0.187, 'per_dispatch_us_median': 86.264, 'per_dispatch_us_minus_receipt_floor': 81.764, 'gpu_chain_ms_est_minus_receipt_floor': 3.9247}
+16 lm_head {'dispatches': 24, 'eval_ms_median': 39.7807, 'eval_ms_min': 39.327, 'build_ms_median': 0.1135, 'per_dispatch_us_median': 1657.529, 'per_dispatch_us_minus_receipt_floor': 1653.029, 'gpu_chain_ms_est_minus_receipt_floor': 39.6727}
+16 rope {'dispatches': 48, 'eval_ms_median': 1.5766, 'eval_ms_min': 1.4903, 'build_ms_median': 0.2222, 'per_dispatch_us_median': 32.846, 'per_dispatch_us_minus_receipt_floor': 28.346, 'gpu_chain_ms_est_minus_receipt_floor': 1.3606}
+16 rms {'dispatches': 49, 'eval_ms_median': 1.1642, 'eval_ms_min': 1.0995, 'build_ms_median': 0.154, 'per_dispatch_us_median': 23.76, 'per_dispatch_us_minus_receipt_floor': 19.26, 'gpu_chain_ms_est_minus_receipt_floor': 0.9437}
+16 sdpa {'dispatches': 24, 'eval_ms_median': 0.888, 'eval_ms_min': 0.8037, 'build_ms_median': 0.1153, 'per_dispatch_us_median': 37.0, 'per_dispatch_us_minus_receipt_floor': 32.5, 'gpu_chain_ms_est_minus_receipt_floor': 0.78}
+16 kvwrite {'dispatches': 48, 'eval_ms_median': 11.5258, 'eval_ms_min': 11.2836, 'build_ms_median': 0.3104, 'per_dispatch_us_median': 240.12, 'per_dispatch_us_minus_receipt_floor': 235.62, 'gpu_chain_ms_est_minus_receipt_floor': 11.3098}
+16 swiglu {'dispatches': 24, 'eval_ms_median': 1.4732, 'eval_ms_min': 1.4236, 'build_ms_median': 0.1923, 'per_dispatch_us_median': 61.383, 'per_dispatch_us_minus_receipt_floor': 56.883, 'gpu_chain_ms_est_minus_receipt_floor': 1.3652}
+16 sampler {'dispatches': 48, 'eval_ms_median': 8.6996, 'eval_ms_min': 8.4374, 'build_ms_median': 0.217, 'per_dispatch_us_median': 181.242, 'per_dispatch_us_minus_receipt_floor': 176.742, 'gpu_chain_ms_est_minus_receipt_floor': 8.4836}
+16 harness {'dispatches': 24, 'eval_ms_median': 0.9759, 'eval_ms_min': 0.9407, 'build_ms_median': 0.1291, 'per_dispatch_us_median': 40.661, 'per_dispatch_us_minus_receipt_floor': 36.161, 'gpu_chain_ms_est_minus_receipt_floor': 0.8679}
+1024 gemv_layer {'dispatches': 48, 'eval_ms_median': 3.3475, 'eval_ms_min': 3.2701, 'build_ms_median': 0.1851, 'per_dispatch_us_median': 69.74, 'per_dispatch_us_minus_receipt_floor': 65.24, 'gpu_chain_ms_est_minus_receipt_floor': 3.1315}
+1024 lm_head {'dispatches': 24, 'eval_ms_median': 39.7566, 'eval_ms_min': 39.3007, 'build_ms_median': 0.1095, 'per_dispatch_us_median': 1656.524, 'per_dispatch_us_minus_receipt_floor': 1652.024, 'gpu_chain_ms_est_minus_receipt_floor': 39.6486}
+1024 rope {'dispatches': 48, 'eval_ms_median': 1.7183, 'eval_ms_min': 1.6848, 'build_ms_median': 0.2242, 'per_dispatch_us_median': 35.799, 'per_dispatch_us_minus_receipt_floor': 31.299, 'gpu_chain_ms_est_minus_receipt_floor': 1.5023}
+1024 rms {'dispatches': 49, 'eval_ms_median': 1.1742, 'eval_ms_min': 0.9795, 'build_ms_median': 0.1539, 'per_dispatch_us_median': 23.964, 'per_dispatch_us_minus_receipt_floor': 19.464, 'gpu_chain_ms_est_minus_receipt_floor': 0.9537}
+1024 sdpa {'dispatches': 24, 'eval_ms_median': 2.12, 'eval_ms_min': 1.7828, 'build_ms_median': 0.1146, 'per_dispatch_us_median': 88.333, 'per_dispatch_us_minus_receipt_floor': 83.833, 'gpu_chain_ms_est_minus_receipt_floor': 2.012}
+1024 kvwrite {'dispatches': 48, 'eval_ms_median': 15.7664, 'eval_ms_min': 15.2339, 'build_ms_median': 0.3228, 'per_dispatch_us_median': 328.466, 'per_dispatch_us_minus_receipt_floor': 323.966, 'gpu_chain_ms_est_minus_receipt_floor': 15.5504}
+1024 swiglu {'dispatches': 24, 'eval_ms_median': 1.5865, 'eval_ms_min': 1.5286, 'build_ms_median': 0.1871, 'per_dispatch_us_median': 66.102, 'per_dispatch_us_minus_receipt_floor': 61.602, 'gpu_chain_ms_est_minus_receipt_floor': 1.4785}
+1024 sampler {'dispatches': 48, 'eval_ms_median': 8.6986, 'eval_ms_min': 8.4121, 'build_ms_median': 0.2135, 'per_dispatch_us_median': 181.222, 'per_dispatch_us_minus_receipt_floor': 176.722, 'gpu_chain_ms_est_minus_receipt_floor': 8.4826}
+1024 harness {'dispatches': 24, 'eval_ms_median': 0.9621, 'eval_ms_min': 0.856, 'build_ms_median': 0.1246, 'per_dispatch_us_median': 40.089, 'per_dispatch_us_minus_receipt_floor': 35.589, 'gpu_chain_ms_est_minus_receipt_floor': 0.8541}
+MICROBENCH_DONE
+=== window done 2026-09-10T23:50:14Z
+=== wrapper exit rc=0 2026-09-10T23:50:14Z
+=== wrapper start 2026-09-10T23:56:54Z pid 1900084
+=== lock held 2026-09-10T23:56:54Z by 1900089
+quiet-gate wait 1 load=0.45 2026-09-10T23:56:54Z
+quiet-gate wait 2 load=0.32 2026-09-10T23:57:14Z
+quiet gate done ok=3 load=0.23
+1789084654 0.23 0.88 1.61
+r1-baseline-short-decode-32 cached
+Traceback (most recent call last):
+  File "/home/joshuawarren/src/mlx-DecodeAttribution/receipts/2026-09-10-decode-attribution/run_arms.py", line 154, in <module>
+    main()
+    ~~~~^^
+  File "/home/joshuawarren/src/mlx-DecodeAttribution/receipts/2026-09-10-decode-attribution/run_arms.py", line 132, in main
+    m = leg["metrics"]
+        ^^^
+NameError: name 'leg' is not defined. Did you mean: 'legs'?
+48 gemv_layer {'dispatches': 48, 'eval_ms_median': 2.8323, 'eval_ms_min': 2.675, 'build_ms_median': 0.0658, 'per_dispatch_us_median': 59.005, 'per_dispatch_us_minus_receipt_floor': 54.505, 'gpu_chain_ms_est_minus_receipt_floor': 2.6163}
+48 lm_head {'dispatches': 24, 'eval_ms_median': 39.5764, 'eval_ms_min': 38.9795, 'build_ms_median': 0.114, 'per_dispatch_us_median': 1649.018, 'per_dispatch_us_minus_receipt_floor': 1644.518, 'gpu_chain_ms_est_minus_receipt_floor': 39.4684}
+48 rope {'dispatches': 48, 'eval_ms_median': 1.5737, 'eval_ms_min': 1.53, 'build_ms_median': 0.2207, 'per_dispatch_us_median': 32.785, 'per_dispatch_us_minus_receipt_floor': 28.285, 'gpu_chain_ms_est_minus_receipt_floor': 1.3577}
+48 rms {'dispatches': 49, 'eval_ms_median': 1.1743, 'eval_ms_min': 0.9874, 'build_ms_median': 0.156, 'per_dispatch_us_median': 23.965, 'per_dispatch_us_minus_receipt_floor': 19.465, 'gpu_chain_ms_est_minus_receipt_floor': 0.9538}
+48 sdpa {'dispatches': 24, 'eval_ms_median': 0.9553, 'eval_ms_min': 0.8553, 'build_ms_median': 0.1185, 'per_dispatch_us_median': 39.803, 'per_dispatch_us_minus_receipt_floor': 35.303, 'gpu_chain_ms_est_minus_receipt_floor': 0.8473}
+48 kvwrite {'dispatches': 48, 'eval_ms_median': 13.2578, 'eval_ms_min': 12.8227, 'build_ms_median': 0.3164, 'per_dispatch_us_median': 276.204, 'per_dispatch_us_minus_receipt_floor': 271.704, 'gpu_chain_ms_est_minus_receipt_floor': 13.0418}
+48 swiglu {'dispatches': 24, 'eval_ms_median': 2.3361, 'eval_ms_min': 1.9644, 'build_ms_median': 0.1857, 'per_dispatch_us_median': 97.337, 'per_dispatch_us_minus_receipt_floor': 92.837, 'gpu_chain_ms_est_minus_receipt_floor': 2.2281}
+48 sampler {'dispatches': 48, 'eval_ms_median': 9.2578, 'eval_ms_min': 8.5808, 'build_ms_median': 0.2164, 'per_dispatch_us_median': 192.871, 'per_dispatch_us_minus_receipt_floor': 188.371, 'gpu_chain_ms_est_minus_receipt_floor': 9.0418}
+48 harness {'dispatches': 24, 'eval_ms_median': 1.3522, 'eval_ms_min': 1.3193, 'build_ms_median': 0.129, 'per_dispatch_us_median': 56.341, 'per_dispatch_us_minus_receipt_floor': 51.841, 'gpu_chain_ms_est_minus_receipt_floor': 1.2442}
+16 gemv_layer {'dispatches': 48, 'eval_ms_median': 4.0395, 'eval_ms_min': 3.5692, 'build_ms_median': 0.1873, 'per_dispatch_us_median': 84.156, 'per_dispatch_us_minus_receipt_floor': 79.656, 'gpu_chain_ms_est_minus_receipt_floor': 3.8235}
+16 lm_head {'dispatches': 24, 'eval_ms_median': 38.5909, 'eval_ms_min': 38.5393, 'build_ms_median': 0.1111, 'per_dispatch_us_median': 1607.954, 'per_dispatch_us_minus_receipt_floor': 1603.454, 'gpu_chain_ms_est_minus_receipt_floor': 38.4829}
+16 rope {'dispatches': 48, 'eval_ms_median': 1.5278, 'eval_ms_min': 1.4937, 'build_ms_median': 0.2199, 'per_dispatch_us_median': 31.829, 'per_dispatch_us_minus_receipt_floor': 27.329, 'gpu_chain_ms_est_minus_receipt_floor': 1.3118}
+16 rms {'dispatches': 49, 'eval_ms_median': 1.1338, 'eval_ms_min': 1.0935, 'build_ms_median': 0.1571, 'per_dispatch_us_median': 23.139, 'per_dispatch_us_minus_receipt_floor': 18.639, 'gpu_chain_ms_est_minus_receipt_floor': 0.9133}
+16 sdpa {'dispatches': 24, 'eval_ms_median': 0.8349, 'eval_ms_min': 0.7774, 'build_ms_median': 0.1157, 'per_dispatch_us_median': 34.788, 'per_dispatch_us_minus_receipt_floor': 30.288, 'gpu_chain_ms_est_minus_receipt_floor': 0.7269}
+16 kvwrite {'dispatches': 48, 'eval_ms_median': 11.4554, 'eval_ms_min': 11.2067, 'build_ms_median': 0.3142, 'per_dispatch_us_median': 238.655, 'per_dispatch_us_minus_receipt_floor': 234.155, 'gpu_chain_ms_est_minus_receipt_floor': 11.2394}
+16 swiglu {'dispatches': 24, 'eval_ms_median': 1.4701, 'eval_ms_min': 1.3937, 'build_ms_median': 0.1885, 'per_dispatch_us_median': 61.252, 'per_dispatch_us_minus_receipt_floor': 56.752, 'gpu_chain_ms_est_minus_receipt_floor': 1.3621}
+16 sampler {'dispatches': 48, 'eval_ms_median': 8.6952, 'eval_ms_min': 8.2918, 'build_ms_median': 0.219, 'per_dispatch_us_median': 181.15, 'per_dispatch_us_minus_receipt_floor': 176.65, 'gpu_chain_ms_est_minus_receipt_floor': 8.4792}
+16 harness {'dispatches': 24, 'eval_ms_median': 0.9564, 'eval_ms_min': 0.9254, 'build_ms_median': 0.1285, 'per_dispatch_us_median': 39.85, 'per_dispatch_us_minus_receipt_floor': 35.35, 'gpu_chain_ms_est_minus_receipt_floor': 0.8484}
+1024 gemv_layer {'dispatches': 48, 'eval_ms_median': 3.5559, 'eval_ms_min': 3.2327, 'build_ms_median': 0.1868, 'per_dispatch_us_median': 74.082, 'per_dispatch_us_minus_receipt_floor': 69.582, 'gpu_chain_ms_est_minus_receipt_floor': 3.3399}
+1024 lm_head {'dispatches': 24, 'eval_ms_median': 38.5829, 'eval_ms_min': 38.541, 'build_ms_median': 0.1136, 'per_dispatch_us_median': 1607.619, 'per_dispatch_us_minus_receipt_floor': 1603.119, 'gpu_chain_ms_est_minus_receipt_floor': 38.4749}
+1024 rope {'dispatches': 48, 'eval_ms_median': 1.7053, 'eval_ms_min': 1.6478, 'build_ms_median': 0.2277, 'per_dispatch_us_median': 35.526, 'per_dispatch_us_minus_receipt_floor': 31.026, 'gpu_chain_ms_est_minus_receipt_floor': 1.4893}
+1024 rms {'dispatches': 49, 'eval_ms_median': 1.1597, 'eval_ms_min': 1.0995, 'build_ms_median': 0.1573, 'per_dispatch_us_median': 23.667, 'per_dispatch_us_minus_receipt_floor': 19.167, 'gpu_chain_ms_est_minus_receipt_floor': 0.9392}
+1024 sdpa {'dispatches': 24, 'eval_ms_median': 2.1229, 'eval_ms_min': 1.772, 'build_ms_median': 0.115, 'per_dispatch_us_median': 88.454, 'per_dispatch_us_minus_receipt_floor': 83.954, 'gpu_chain_ms_est_minus_receipt_floor': 2.0149}
+1024 kvwrite {'dispatches': 48, 'eval_ms_median': 15.3916, 'eval_ms_min': 14.9272, 'build_ms_median': 0.3191, 'per_dispatch_us_median': 320.659, 'per_dispatch_us_minus_receipt_floor': 316.159, 'gpu_chain_ms_est_minus_receipt_floor': 15.1756}
+1024 swiglu {'dispatches': 24, 'eval_ms_median': 1.5532, 'eval_ms_min': 1.5037, 'build_ms_median': 0.1891, 'per_dispatch_us_median': 64.718, 'per_dispatch_us_minus_receipt_floor': 60.218, 'gpu_chain_ms_est_minus_receipt_floor': 1.4452}
+1024 sampler {'dispatches': 48, 'eval_ms_median': 8.6884, 'eval_ms_min': 8.4298, 'build_ms_median': 0.2176, 'per_dispatch_us_median': 181.007, 'per_dispatch_us_minus_receipt_floor': 176.507, 'gpu_chain_ms_est_minus_receipt_floor': 8.4724}
+1024 harness {'dispatches': 24, 'eval_ms_median': 0.97, 'eval_ms_min': 0.9382, 'build_ms_median': 0.1251, 'per_dispatch_us_median': 40.418, 'per_dispatch_us_minus_receipt_floor': 35.918, 'gpu_chain_ms_est_minus_receipt_floor': 0.862}
+MICROBENCH_DONE
+=== window done 2026-09-10T23:57:42Z
+=== wrapper exit rc=0 2026-09-10T23:57:42Z
+=== wrapper start 2026-09-11T00:04:55Z pid 1901073
+=== lock held 2026-09-11T00:04:55Z by 1901078
+quiet-gate wait 1 load=0.00 2026-09-11T00:04:55Z
+quiet-gate wait 2 load=0.00 2026-09-11T00:05:15Z
+quiet gate done ok=3 load=0.00
+1789085135 0.00 0.18 0.95
+r1-baseline-short-decode-32 cached
+r1-baseline-short-decode-32 ok 112.53 tok/s 7fd25a869ff21678
+1789085145 0.15 0.21 0.95
+r1-baseline-long-decode-128 ok 109.32 tok/s 4cc08910089477fd
+1789085155 0.28 0.24 0.95
+r1-baseline-longctx-1024-decode-32 ok 97.3 tok/s 7da83f06ec9f001d
+1789085165 0.39 0.26 0.95
+r1-gemv-short-decode-32 ok 112.2 tok/s 7fd25a869ff21678
+1789085175 0.64 0.32 0.97
+r1-gemv-longctx-1024-decode-32 ok 96.74 tok/s 7da83f06ec9f001d
+1789085185 0.69 0.34 0.97
+r1-rope-short-decode-32 ok 112.13 tok/s 7fd25a869ff21678
+1789085195 0.74 0.36 0.97
+r1-rope-longctx-1024-decode-32 ok 99.17 tok/s 7da83f06ec9f001d
+1789085205 0.78 0.39 0.97
+r1-rms-short-decode-32 ok 112.7 tok/s 7fd25a869ff21678
+1789085215 0.81 0.41 0.97
+r1-rms-longctx-1024-decode-32 ok 97.28 tok/s 7da83f06ec9f001d
+1789085225 0.76 0.41 0.97
+r1-kvwrite-short-decode-32 ok 112.07 tok/s 7fd25a869ff21678
+1789085235 0.80 0.43 0.97
+r1-kvwrite-long-decode-128 ok 109.31 tok/s 4cc08910089477fd
+1789085245 1.35 0.56 1.00
+r1-kvwrite-longctx-1024-decode-32 ok 95.75 tok/s 7da83f06ec9f001d
+1789085255 1.21 0.56 1.00
+r1-attn-short-decode-32 ok 112.95 tok/s 7fd25a869ff21678
+1789085265 1.18 0.57 1.00
+r1-attn-long-decode-128 ok 109.52 tok/s 4cc08910089477fd
+1789085275 1.15 0.59 1.00
+r1-attn-longctx-1024-decode-32 ok 95.7 tok/s 7da83f06ec9f001d
+1789085285 1.50 0.68 1.03
+r1-swiglu-short-decode-32 ok 112.73 tok/s 7fd25a869ff21678
+1789085295 1.35 0.68 1.02
+r1-swiglu-longctx-1024-decode-32 ok 96.84 tok/s 7da83f06ec9f001d
+1789085305 1.29 0.69 1.02
+r1-sampler-short-decode-32 ok 111.92 tok/s 7fd25a869ff21678
+1789085315 1.17 0.68 1.01
+r1-sampler-longctx-1024-decode-32 ok 97.44 tok/s 7da83f06ec9f001d
+1789085325 1.06 0.68 1.01
+r1-all-short-decode-32 ok 112.7 tok/s 7fd25a869ff21678
+1789085335 0.97 0.67 1.00
+r1-all-long-decode-128 ok 109.18 tok/s 4cc08910089477fd
+1789085345 0.89 0.66 0.99
+r1-all-longctx-1024-decode-32 ok 97.34 tok/s 7da83f06ec9f001d
+1789085355 0.84 0.66 0.99
+r2-baseline-short-decode-32 ok 112.92 tok/s 7fd25a869ff21678
+1789085365 0.79 0.65 0.98
+r2-baseline-long-decode-128 ok 107.9 tok/s 4cc08910089477fd
+1789085375 0.75 0.65 0.98
+r2-baseline-longctx-1024-decode-32 ok 97.55 tok/s 7da83f06ec9f001d
+1789085385 0.71 0.64 0.97
+r2-gemv-short-decode-32 ok 113.23 tok/s 7fd25a869ff21678
+1789085395 0.68 0.64 0.97
+r2-gemv-longctx-1024-decode-32 ok 97.24 tok/s 7da83f06ec9f001d
+1789085405 0.66 0.64 0.97
+r2-rope-short-decode-32 ok 113.39 tok/s 7fd25a869ff21678
+1789085415 0.64 0.63 0.96
+r2-rope-longctx-1024-decode-32 ok 97.55 tok/s 7da83f06ec9f001d
+1789085425 0.62 0.63 0.96
+r2-rms-short-decode-32 ok 112.61 tok/s 7fd25a869ff21678
+1789085435 0.60 0.62 0.95
+r2-rms-longctx-1024-decode-32 ok 96.99 tok/s 7da83f06ec9f001d
+1789085445 1.15 0.74 0.98
+r2-kvwrite-short-decode-32 ok 113.14 tok/s 7fd25a869ff21678
+1789085455 1.69 0.86 1.02
+r2-kvwrite-long-decode-128 ok 109.44 tok/s 4cc08910089477fd
+1789085465 1.51 0.85 1.02
+r2-kvwrite-longctx-1024-decode-32 ok 97.18 tok/s 7da83f06ec9f001d
+1789085475 1.28 0.82 1.00
+r2-attn-short-decode-32 ok 112.96 tok/s 7fd25a869ff21678
+1789085485 1.16 0.81 1.00
+r2-attn-long-decode-128 ok 109.05 tok/s 4cc08910089477fd
+1789085495 1.06 0.80 0.99
+r2-attn-longctx-1024-decode-32 ok 97.25 tok/s 7da83f06ec9f001d
+1789085505 0.90 0.77 0.98
+r2-swiglu-short-decode-32 ok 113.46 tok/s 7fd25a869ff21678
+1789085515 0.84 0.76 0.98
+r2-swiglu-longctx-1024-decode-32 ok 95.82 tok/s 7da83f06ec9f001d
+1789085525 0.87 0.77 0.98
+r2-sampler-short-decode-32 ok 111.91 tok/s 7fd25a869ff21678
+1789085535 0.81 0.76 0.97
+r2-sampler-longctx-1024-decode-32 ok 96.86 tok/s 7da83f06ec9f001d
+1789085545 0.76 0.75 0.97
+r2-all-short-decode-32 ok 113.15 tok/s 7fd25a869ff21678
+1789085555 0.80 0.76 0.97
+r2-all-long-decode-128 ok 109.36 tok/s 4cc08910089477fd
+1789085565 0.83 0.77 0.97
+r2-all-longctx-1024-decode-32 ok 96.39 tok/s 7da83f06ec9f001d
+1789085575 0.86 0.78 0.97
+r3-baseline-short-decode-32 ok 111.11 tok/s 7fd25a869ff21678
+1789085585 0.88 0.79 0.97
+r3-baseline-long-decode-128 ok 109.23 tok/s 4cc08910089477fd
+1789085595 0.90 0.79 0.97
+r3-baseline-longctx-1024-decode-32 ok 96.9 tok/s 7da83f06ec9f001d
+1789085605 0.91 0.80 0.97
+r3-gemv-short-decode-32 ok 112.95 tok/s 7fd25a869ff21678
+1789085615 0.93 0.81 0.98
+r3-gemv-longctx-1024-decode-32 ok 97.86 tok/s 7da83f06ec9f001d
+1789085625 0.94 0.82 0.98
+r3-rope-short-decode-32 ok 113.12 tok/s 7fd25a869ff21678
+1789085635 1.46 0.94 1.01
+r3-rope-longctx-1024-decode-32 ok 96.44 tok/s 7da83f06ec9f001d
+1789085645 1.39 0.94 1.01
+r3-rms-short-decode-32 ok 113.46 tok/s 7fd25a869ff21678
+1789085655 1.33 0.94 1.01
+r3-rms-longctx-1024-decode-32 ok 96.84 tok/s 7da83f06ec9f001d
+1789085665 1.28 0.94 1.01
+r3-kvwrite-short-decode-32 ok 112.3 tok/s 7fd25a869ff21678
+1789085675 1.24 0.95 1.01
+r3-kvwrite-long-decode-128 ok 109.25 tok/s 4cc08910089477fd
+1789085685 1.27 0.96 1.02
+r3-kvwrite-longctx-1024-decode-32 ok 97.07 tok/s 7da83f06ec9f001d
+1789085695 1.23 0.97 1.01
+Terminated                 python3 "$R/run_arms.py" --python /home/joshuawarren/src/mlx-main-b6d662a8/.work/venv-run/bin/python --ablate-python /home/joshuawarren/src/mlx-DecodeAttribution/.work/venv-ablate/bin/python --wheel /home/joshuawarren/src/mlx-main-b6d662a8/dist/mlx_omarchy-0.32.2.dev202609101916+b6d662a-cp314-cp314-linux_aarch64.whl --ablate-wheel /home/joshuawarren/src/mlx-DecodeAttribution/dist/mlx_omarchy-0.32.2.dev202609102308+0f79507-cp314-cp314-linux_aarch64.whl --out "$R/arms"
+48 gemv_layer {'dispatches': 48, 'eval_ms_median': 6.7293, 'eval_ms_min': 3.9146, 'build_ms_median': 0.1054, 'per_dispatch_us_median': 140.193, 'per_dispatch_us_minus_receipt_floor': 135.693, 'gpu_chain_ms_est_minus_receipt_floor': 6.5133}
+48 lm_head {'dispatches': 24, 'eval_ms_median': 43.0821, 'eval_ms_min': 41.6754, 'build_ms_median': 0.1805, 'per_dispatch_us_median': 1795.088, 'per_dispatch_us_minus_receipt_floor': 1790.588, 'gpu_chain_ms_est_minus_receipt_floor': 42.9741}
+48 rope {'dispatches': 48, 'eval_ms_median': 1.1319, 'eval_ms_min': 0.8681, 'build_ms_median': 0.1206, 'per_dispatch_us_median': 23.581, 'per_dispatch_us_minus_receipt_floor': 19.081, 'gpu_chain_ms_est_minus_receipt_floor': 0.9159}
+48 rms {'dispatches': 49, 'eval_ms_median': 3.7532, 'eval_ms_min': 0.6656, 'build_ms_median': 0.1548, 'per_dispatch_us_median': 76.596, 'per_dispatch_us_minus_receipt_floor': 72.096, 'gpu_chain_ms_est_minus_receipt_floor': 3.5327}
+48 sdpa {'dispatches': 24, 'eval_ms_median': 4.5669, 'eval_ms_min': 3.374, 'build_ms_median': 0.1184, 'per_dispatch_us_median': 190.289, 'per_dispatch_us_minus_receipt_floor': 185.789, 'gpu_chain_ms_est_minus_receipt_floor': 4.4589}
+48 kvwrite {'dispatches': 48, 'eval_ms_median': 11.8821, 'eval_ms_min': 7.4006, 'build_ms_median': 0.3141, 'per_dispatch_us_median': 247.544, 'per_dispatch_us_minus_receipt_floor': 243.044, 'gpu_chain_ms_est_minus_receipt_floor': 11.6661}
+48 swiglu {'dispatches': 24, 'eval_ms_median': 1.6073, 'eval_ms_min': 1.491, 'build_ms_median': 0.1182, 'per_dispatch_us_median': 66.971, 'per_dispatch_us_minus_receipt_floor': 62.471, 'gpu_chain_ms_est_minus_receipt_floor': 1.4993}
+48 sampler {'dispatches': 48, 'eval_ms_median': 8.8423, 'eval_ms_min': 7.987, 'build_ms_median': 0.1353, 'per_dispatch_us_median': 184.215, 'per_dispatch_us_minus_receipt_floor': 179.715, 'gpu_chain_ms_est_minus_receipt_floor': 8.6263}
+48 harness {'dispatches': 24, 'eval_ms_median': 1.2971, 'eval_ms_min': 1.203, 'build_ms_median': 0.1292, 'per_dispatch_us_median': 54.044, 'per_dispatch_us_minus_receipt_floor': 49.544, 'gpu_chain_ms_est_minus_receipt_floor': 1.1891}
+16 gemv_layer {'dispatches': 48, 'eval_ms_median': 3.8917, 'eval_ms_min': 3.2933, 'build_ms_median': 0.1687, 'per_dispatch_us_median': 81.076, 'per_dispatch_us_minus_receipt_floor': 76.576, 'gpu_chain_ms_est_minus_receipt_floor': 3.6757}
+16 lm_head {'dispatches': 24, 'eval_ms_median': 43.7933, 'eval_ms_min': 39.1391, 'build_ms_median': 0.1382, 'per_dispatch_us_median': 1824.723, 'per_dispatch_us_minus_receipt_floor': 1820.223, 'gpu_chain_ms_est_minus_receipt_floor': 43.6853}
+16 rope {'dispatches': 48, 'eval_ms_median': 3.8179, 'eval_ms_min': 0.8025, 'build_ms_median': 0.0822, 'per_dispatch_us_median': 79.539, 'per_dispatch_us_minus_receipt_floor': 75.039, 'gpu_chain_ms_est_minus_receipt_floor': 3.6019}
+16 rms {'dispatches': 49, 'eval_ms_median': 3.9642, 'eval_ms_min': 0.7089, 'build_ms_median': 0.0769, 'per_dispatch_us_median': 80.902, 'per_dispatch_us_minus_receipt_floor': 76.402, 'gpu_chain_ms_est_minus_receipt_floor': 3.7437}
+16 sdpa {'dispatches': 24, 'eval_ms_median': 0.7401, 'eval_ms_min': 0.453, 'build_ms_median': 0.1151, 'per_dispatch_us_median': 30.838, 'per_dispatch_us_minus_receipt_floor': 26.338, 'gpu_chain_ms_est_minus_receipt_floor': 0.6321}
+16 kvwrite {'dispatches': 48, 'eval_ms_median': 10.954, 'eval_ms_min': 7.2477, 'build_ms_median': 0.32, 'per_dispatch_us_median': 228.209, 'per_dispatch_us_minus_receipt_floor': 223.709, 'gpu_chain_ms_est_minus_receipt_floor': 10.738}
+16 swiglu {'dispatches': 24, 'eval_ms_median': 1.4638, 'eval_ms_min': 1.4152, 'build_ms_median': 0.1896, 'per_dispatch_us_median': 60.991, 'per_dispatch_us_minus_receipt_floor': 56.491, 'gpu_chain_ms_est_minus_receipt_floor': 1.3558}
+16 sampler {'dispatches': 48, 'eval_ms_median': 8.7028, 'eval_ms_min': 8.6431, 'build_ms_median': 0.2185, 'per_dispatch_us_median': 181.309, 'per_dispatch_us_minus_receipt_floor': 176.809, 'gpu_chain_ms_est_minus_receipt_floor': 8.4868}
+16 harness {'dispatches': 24, 'eval_ms_median': 0.9666, 'eval_ms_min': 0.9349, 'build_ms_median': 0.1293, 'per_dispatch_us_median': 40.277, 'per_dispatch_us_minus_receipt_floor': 35.777, 'gpu_chain_ms_est_minus_receipt_floor': 0.8586}
+1024 gemv_layer {'dispatches': 48, 'eval_ms_median': 3.4876, 'eval_ms_min': 3.0745, 'build_ms_median': 0.1896, 'per_dispatch_us_median': 72.658, 'per_dispatch_us_minus_receipt_floor': 68.158, 'gpu_chain_ms_est_minus_receipt_floor': 3.2716}
+1789085705 1.12 0.95 1.01
+1024 lm_head {'dispatches': 24, 'eval_ms_median': 39.4235, 'eval_ms_min': 39.3565, 'build_ms_median': 0.1179, 'per_dispatch_us_median': 1642.645, 'per_dispatch_us_minus_receipt_floor': 1638.145, 'gpu_chain_ms_est_minus_receipt_floor': 39.3155}
+1024 rope {'dispatches': 48, 'eval_ms_median': 1.7411, 'eval_ms_min': 1.6855, 'build_ms_median': 0.2327, 'per_dispatch_us_median': 36.272, 'per_dispatch_us_minus_receipt_floor': 31.772, 'gpu_chain_ms_est_minus_receipt_floor': 1.5251}
+1024 rms {'dispatches': 49, 'eval_ms_median': 1.166, 'eval_ms_min': 1.1001, 'build_ms_median': 0.1558, 'per_dispatch_us_median': 23.796, 'per_dispatch_us_minus_receipt_floor': 19.296, 'gpu_chain_ms_est_minus_receipt_floor': 0.9455}
+1024 sdpa {'dispatches': 24, 'eval_ms_median': 2.1159, 'eval_ms_min': 1.7778, 'build_ms_median': 0.1155, 'per_dispatch_us_median': 88.162, 'per_dispatch_us_minus_receipt_floor': 83.662, 'gpu_chain_ms_est_minus_receipt_floor': 2.0079}
+1024 kvwrite {'dispatches': 48, 'eval_ms_median': 15.479, 'eval_ms_min': 14.9841, 'build_ms_median': 0.3355, 'per_dispatch_us_median': 322.479, 'per_dispatch_us_minus_receipt_floor': 317.979, 'gpu_chain_ms_est_minus_receipt_floor': 15.263}
+1024 swiglu {'dispatches': 24, 'eval_ms_median': 1.6052, 'eval_ms_min': 0.898, 'build_ms_median': 0.1911, 'per_dispatch_us_median': 66.882, 'per_dispatch_us_minus_receipt_floor': 62.382, 'gpu_chain_ms_est_minus_receipt_floor': 1.4972}
+1024 sampler {'dispatches': 48, 'eval_ms_median': 8.7083, 'eval_ms_min': 8.6623, 'build_ms_median': 0.2178, 'per_dispatch_us_median': 181.424, 'per_dispatch_us_minus_receipt_floor': 176.924, 'gpu_chain_ms_est_minus_receipt_floor': 8.4923}
+1024 harness {'dispatches': 24, 'eval_ms_median': 0.9653, 'eval_ms_min': 0.9319, 'build_ms_median': 0.1254, 'per_dispatch_us_median': 40.221, 'per_dispatch_us_minus_receipt_floor': 35.721, 'gpu_chain_ms_est_minus_receipt_floor': 0.8573}
+MICROBENCH_DONE
+=== window done 2026-09-11T00:15:08Z
