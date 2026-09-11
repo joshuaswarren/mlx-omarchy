@@ -1843,8 +1843,10 @@ void dispatch_sort_any_axis(
 // needed here. The shader accumulates in float32 for every dtype, which
 // also covers the precise flag. ScaledDotProductAttention shares this
 // dispatch for its float32 score normalization.
-// causal_offset >= 0 selects the shader's causal mode with that key
-// length minus query length (q_len is the query length).
+// causal=true selects the shader's causal mode; causal_offset is the key
+// length minus query length and may be negative when the query outgrew
+// the key (a ragged causal decode tail), so it can not double as the
+// mode sentinel.
 void dispatch_softmax(
     const std::string& name,
     const array& input,
@@ -1852,7 +1854,8 @@ void dispatch_softmax(
     const Stream& s,
     const array* sinks = nullptr,
     int q_len = 0,
-    int causal_offset = -1) {
+    bool causal = false,
+    int causal_offset = 0) {
   auto& encoder = omarchy::get_command_encoder(s);
   require_float_dtype(name, input, out, encoder);
   std::optional<array> dense_temp;
@@ -1880,10 +1883,12 @@ void dispatch_softmax(
     params.matrix_m = checked_u32(q_len, name, out);
     params.matrix_n = checked_u32(sinks->size(), name, out);
   }
-  if (causal_offset >= 0) {
+  if (causal) {
     params.flags = 1u;
     params.aux_size = checked_u32(q_len, name, out);
-    params.aux_offset = checked_u32(causal_offset, name, out);
+    // Two's complement on purpose: negative offsets ride the same u32
+    // and the shader recovers the signed value per row.
+    params.aux_offset = static_cast<uint32_t>(causal_offset);
   }
   std::array<omarchy::ComputeBinding, 3> bindings{
       binding(src),
@@ -10490,7 +10495,8 @@ void ScaledDotProductAttention::eval_gpu(
         s,
         sinks,
         q_len,
-        do_causal_ ? static_cast<int>(causal_offset) : -1);
+        do_causal_,
+        do_causal_ ? static_cast<int>(causal_offset) : 0);
     encoder.add_temporary(probs);
 
     Shape result_shape = probs.shape();
