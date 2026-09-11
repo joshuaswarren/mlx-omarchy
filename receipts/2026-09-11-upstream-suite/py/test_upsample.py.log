@@ -1,0 +1,14 @@
+============================= test session starts ==============================
+collecting ... collected 6 items
+
+.work/mlx/python/tests/test_upsample.py::TestUpsample::test_antialias_1d_smoke 
+.work/mlx/python/tests/test_upsample.py::TestUpsample::test_antialias_1d_smoke PASSED [ 16%]
+.work/mlx/python/tests/test_upsample.py::TestUpsample::test_antialias_non_integer_scale_smoke 
+.work/mlx/python/tests/test_upsample.py::TestUpsample::test_antialias_non_integer_scale_smoke PASSED [ 33%]
+.work/mlx/python/tests/test_upsample.py::TestUpsample::test_antialias_upscale_cubic_matches_pytorch SKIPPED [ 50%]
+.work/mlx/python/tests/test_upsample.py::TestUpsample::test_antialias_upscale_linear_is_noop SKIPPED [ 66%]
+.work/mlx/python/tests/test_upsample.py::TestUpsample::test_torch_upsample SKIPPED [ 83%]
+.work/mlx/python/tests/test_upsample.py::TestUpsample::test_torch_upsample_antialias SKIPPED [100%]
+
+- generated xml file: /home/joshuawarren/src/mlx-omarchy-requal-20260911/receipts/.requal-py-stage/py/test_upsample.py.xml -
+=============== 2 passed, 4 skipped, 10 subtests passed in 0.17s ===============

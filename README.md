@@ -156,12 +156,12 @@ Primitive coverage and upstream test coverage measure different things:
 | Measure | Result | Date |
 |---|---|---|
 | MLX primitives with a working GPU kernel (the badge above) | 128 / 130 | 2026-09-05 |
-| Upstream MLX C++ test cases passing on the GPU device | 251 / 251 | 2026-09-06 |
-| Upstream MLX Python test cases passing on the GPU device | 10,767 / 11,437 | 2026-09-06 |
+| Upstream MLX C++ test cases passing on the GPU device | 251 / 251 | 2026-09-11 |
+| Upstream MLX Python test cases passing on the GPU device | 11,483 / 11,847 | 2026-09-11 |
 
 The first counts operations: a primitive counts once it computes on the GPU and a test verifies its values against a host reference. The other two run upstream's own test suites, pinned at the commit the backend is built from (MLX 0.32.2, `1f8e74e3`); one test case exercises many primitives across many dtypes and layouts, so they are the stricter measure. The table is a dated full-suite snapshot, not a qualification of the current development branch.
 
-The [Python failure classification](receipts/upstream-suite-2026-09-06-py4/case-classification.csv) at `ef188d58` records 471 named refusals, 149 assertion failures, and 50 other errors, including 40 watchdog timeouts. All 670 remain failures in that snapshot; a named refusal does not count as support. GPU operations never fall back silently to CPU execution. Per-primitive status is generated from source in [docs/compatibility-matrix.md](docs/compatibility-matrix.md).
+The 2026-09-11 snapshot ran both suites at `2a9add42` on an Apple M1 (Honeykrisp Vulkan): every C++ case passes, and the [Python failure classification](receipts/2026-09-11-upstream-suite/case-classification.csv) records 342 named refusals, 13 assertion failures, and 9 other errors — 364 failures, down from 670 (471 / 149 / 50) at the [2026-09-06 snapshot](receipts/upstream-suite-2026-09-06-py4/case-classification.csv), with no watchdog timeouts in either suite phase. A named refusal does not count as support, and GPU operations never fall back silently to CPU execution. The two standing refusal clusters are the quantized-matmul weight layout (258 cases) and bfloat16-input quantize (83 cases); the 13 remaining wrong-value cases, ranked by shared root cause with primitive and shape/dtype signatures, are in the [snapshot notes](receipts/2026-09-11-upstream-suite/notes.md). The executed-case denominator grew by 410 since 2026-09-06 because upstream's device-conditional sweeps run more subtests on this host and the earlier environment skipped the quantization sweep; the per-category deltas and case-level analysis account for it. Per-primitive status is generated from source in [docs/compatibility-matrix.md](docs/compatibility-matrix.md).
 
 At `f5ba1c82`, fresh native M1 checks pass all 40 runtime cases and the packed-word prefill case (11,140 assertions). The full native upstream C++ run passes 250 of 251 cases. Its remaining exact-equality failure is `log(3)`, one float32 ULP below the host result; an installed-wheel comparison reproduces the same value in v0.3.7. It remains a failure, not qualified parity.
 

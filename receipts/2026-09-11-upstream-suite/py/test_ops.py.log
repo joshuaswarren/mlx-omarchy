@@ -1,0 +1,349 @@
+============================= test session starts ==============================
+collecting ... collected 162 items
+
+.work/mlx/python/tests/test_ops.py::TestOps::test_abs PASSED             [  0%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_add PASSED             [  1%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_all PASSED             [  1%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_allclose PASSED        [  2%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_along_axis_invalid_axis PASSED [  3%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_any PASSED             [  3%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_arange_corner_cases_cast PASSED [  4%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_arange_inferred_dtype PASSED [  4%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_arange_overload_dispatch PASSED [  5%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_argmin_argmax PASSED   [  6%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_argpartition PASSED    [  6%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_argsort_nan 
+.work/mlx/python/tests/test_ops.py::TestOps::test_argsort_nan PASSED     [  7%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_array_equal 
+.work/mlx/python/tests/test_ops.py::TestOps::test_array_equal PASSED     [  8%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_as_strided PASSED      [  8%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_atleast_1d PASSED      [  9%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_atleast_2d PASSED      [  9%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_atleast_3d PASSED      [ 10%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_bartlett_general PASSED [ 11%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_binary_ops 
+.work/mlx/python/tests/test_ops.py::TestOps::test_binary_ops PASSED      [ 11%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_bitwise_grad PASSED    [ 12%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_bitwise_ops PASSED     [ 12%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_blackman_general PASSED [ 13%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_broadcast PASSED       [ 14%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_broadcast_arrays PASSED [ 14%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_broadcast_shapes PASSED [ 15%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_ceil PASSED            [ 16%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_clip PASSED            [ 16%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_comparisons PASSED     [ 17%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_complex_ops 
+.work/mlx/python/tests/test_ops.py::TestOps::test_complex_ops PASSED     [ 17%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_complex_power PASSED   [ 18%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_concatenate PASSED     [ 19%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_conjugate PASSED       [ 19%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_cos PASSED             [ 20%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_count_nonzero PASSED   [ 20%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_cross_invalid_axis PASSED [ 21%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_cummax_cummin_nan PASSED [ 22%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_degrees PASSED         [ 22%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_depends PASSED         [ 23%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_diag PASSED            [ 24%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_diag_zero_size PASSED  [ 24%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_diagonal PASSED        [ 25%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_diff PASSED            [ 25%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_divide PASSED          [ 26%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_divmod PASSED          [ 27%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_dynamic_slicing PASSED [ 27%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_empty_matmuls PASSED   [ 28%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_erf PASSED             [ 29%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_erfinv PASSED          [ 29%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_exp PASSED             [ 30%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_expm1 PASSED           [ 30%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_eye PASSED             [ 31%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_flatten PASSED         [ 32%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_flip PASSED            [ 32%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_floor PASSED           [ 33%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_full_ones_zeros PASSED [ 33%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_hadamard 
+.work/mlx/python/tests/test_ops.py::TestOps::test_hadamard PASSED        [ 34%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_hadamard_grad_vmap PASSED [ 35%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_hadamard_m_only SKIPPED [ 35%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_hamming_general PASSED [ 36%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_hanning_general PASSED [ 37%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_inner PASSED           [ 37%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_integer_index_protocol 
+.work/mlx/python/tests/test_ops.py::TestOps::test_integer_index_protocol PASSED [ 38%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_integer_power PASSED   [ 38%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_irregular_alignments PASSED [ 39%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_irregular_binary_ops PASSED [ 40%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_isclose PASSED         [ 40%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_isfinite PASSED        [ 41%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_isinf PASSED           [ 41%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_isnan PASSED           [ 42%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_isneginf PASSED        [ 43%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_isposinf PASSED        [ 43%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_issubdtype PASSED      [ 44%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_kron PASSED            [ 45%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_large_binary PASSED    [ 45%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_linspace PASSED        [ 46%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_linspace_endpoint PASSED [ 46%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_log PASSED             [ 47%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_log10 PASSED           [ 48%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_log1p PASSED           [ 48%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_log2 PASSED            [ 49%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_logaddexp PASSED       [ 50%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_logcumsumexp PASSED    [ 50%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_logical_and PASSED     [ 51%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_logical_not PASSED     [ 51%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_logical_or PASSED      [ 52%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_logical_xor PASSED     [ 53%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_logsumexp PASSED       [ 53%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_logsumexp_shape PASSED [ 54%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_masked_scatter PASSED  [ 54%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_maximum PASSED         [ 55%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_mean PASSED            [ 56%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_median PASSED          [ 56%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_median_nan PASSED      [ 57%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_meshgrid PASSED        [ 58%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_min_and_max PASSED     [ 58%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_minimum PASSED         [ 59%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_move_swap_axes PASSED  [ 59%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_multiply PASSED        [ 60%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_nan_to_num PASSED      [ 61%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_negative PASSED        [ 61%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_outer PASSED           [ 62%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_pad 
+.work/mlx/python/tests/test_ops.py::TestOps::test_pad PASSED             [ 62%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_pad_reflect_symmetric PASSED [ 63%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_partition 
+.work/mlx/python/tests/test_ops.py::TestOps::test_partition PASSED       [ 64%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_prod PASSED            [ 64%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_put_along_axis PASSED  [ 65%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_radians PASSED         [ 66%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_real_imag PASSED       [ 66%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_reciprocal PASSED      [ 67%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_remainder PASSED       [ 67%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_repeat PASSED          [ 68%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_roll PASSED            [ 69%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_roll_errors PASSED     [ 69%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_round PASSED           [ 70%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_rsqrt PASSED           [ 70%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_scalar_inputs PASSED   [ 71%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_scan_size_one_axis 
+.work/mlx/python/tests/test_ops.py::TestOps::test_scan_size_one_axis PASSED [ 72%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_scans PASSED           [ 72%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_scans_complex_exclusive PASSED [ 73%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_searchsorted PASSED    [ 74%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_shape_overflow_error PASSED [ 74%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_sigmoid PASSED         [ 75%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_sign PASSED            [ 75%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_sin FAILED             [ 76%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_slice_update_reversed PASSED [ 77%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_slice_with_negative_stride PASSED [ 77%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_softmax PASSED         [ 78%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_sort 
+.work/mlx/python/tests/test_ops.py::TestOps::test_sort FAILED            [ 79%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_sort_nan 
+.work/mlx/python/tests/test_ops.py::TestOps::test_sort_nan PASSED        [ 79%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_split PASSED           [ 80%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_split_invalid_num_splits PASSED [ 80%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_sqrt PASSED            [ 81%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_square PASSED          [ 82%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_squeeze_expand PASSED  [ 82%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_squeeze_expand_invalid_axes PASSED [ 83%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_stack PASSED           [ 83%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_std PASSED             [ 84%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_stop_gradient PASSED   [ 85%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_subnormal_bool_cast FAILED [ 85%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_subtract PASSED        [ 86%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_sum PASSED             [ 87%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_take PASSED            [ 87%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_take_along_axis PASSED [ 88%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_tensordot 
+.work/mlx/python/tests/test_ops.py::TestOps::test_tensordot PASSED       [ 88%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_tile PASSED            [ 89%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_to_from_fp8 PASSED     [ 90%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_trace PASSED           [ 90%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_transpose_axis PASSED  [ 91%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_transpose_noargs PASSED [ 91%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_tri PASSED             [ 92%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_trig_ops 
+.work/mlx/python/tests/test_ops.py::TestOps::test_trig_ops PASSED        [ 93%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_tril PASSED            [ 93%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_triu PASSED            [ 94%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_trunc PASSED           [ 95%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_unary_ops 
+.work/mlx/python/tests/test_ops.py::TestOps::test_unary_ops PASSED       [ 95%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_unary_ops_from_non_array 
+.work/mlx/python/tests/test_ops.py::TestOps::test_unary_ops_from_non_array PASSED [ 96%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_unstack PASSED         [ 96%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_var PASSED             [ 97%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_vecdot PASSED          [ 98%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_view PASSED            [ 98%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_where PASSED           [ 99%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_zeros_ones_empty_like_dtype PASSED [100%]
+
+=================================== FAILURES ===================================
+_______________________________ TestOps.test_sin _______________________________
+
+self = <test_ops.TestOps testMethod=test_sin>
+
+    def test_sin(self):
+        a = mx.array(
+            [0, math.pi / 4, math.pi / 2, math.pi, 3 * math.pi / 4, 2 * math.pi]
+        )
+        result = mx.sin(a)
+        expected = np.sin(a, dtype=np.float32)
+    
+        self.assertTrue(np.allclose(result, expected))
+    
+        # Large arguments still have to land in [-1, 1]
+        big = np.array([1e8, 1e9, 1e10, 1e20, 1e30], dtype=np.float32)
+        for op, npop in [(mx.sin, np.sin), (mx.cos, np.cos)]:
+>           out = np.array(op(mx.array(big)))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           RuntimeError: [omarchy] Sin argument magnitude 1000000015047466219876688855040.000000 exceeds the built-in accuracy limit 100000.000000 on this backend: the Vulkan driver's sin/cos range reduction is untrusted above it, the software Payne-Hanek fallback miscompiles on this driver, and no other accurate kernel exists. No silent wrong value and no silent CPU fallback occurs. Run it on an explicit CPU stream to use the CPU implementation.
+
+.work/mlx/python/tests/test_ops.py:1300: RuntimeError
+______________________________ TestOps.test_sort _______________________________
+
+self = <test_ops.TestOps testMethod=test_sort>
+
+    def test_sort(self):
+        shape = (6, 4, 10)
+        tests = product(
+            ("int32", "float32", "complex64"),  # type
+            (None, 0, 1, 2),  # axis
+            (True, False),  # strided
+        )
+        for dtype, axis, strided in tests:
+            with self.subTest(dtype=dtype, axis=axis, strided=strided):
+                np.random.seed(0)
+                np_dtype = getattr(np, dtype)
+                if np.issubdtype(np_dtype, np.complexfloating):
+                    a_np = (
+                        np.random.uniform(0, 100, size=shape)
+                        + 1j * np.random.uniform(0, 100, size=shape)
+                    ).astype(np_dtype)
+                else:
+                    a_np = np.random.uniform(0, 100, size=shape).astype(np_dtype)
+                a_mx = mx.array(a_np)
+                if strided:
+                    a_mx = a_mx[::2, :, ::2]
+                    a_np = a_np[::2, :, ::2]
+    
+                b_np = np.sort(a_np, axis=axis)
+                b_mx = mx.sort(a_mx, axis=axis)
+    
+                self.assertTrue(np.array_equal(b_np, b_mx))
+                self.assertEqual(b_mx.dtype, a_mx.dtype)
+    
+                c_np = np.argsort(a_np, axis=axis)
+                c_mx = mx.argsort(a_mx, axis=axis)
+                d_np = np.take_along_axis(a_np, c_np, axis=axis)
+                d_mx = mx.take_along_axis(a_mx, c_mx, axis=axis)
+    
+                self.assertTrue(np.array_equal(d_np, d_mx))
+                self.assertEqual(c_mx.dtype, mx.uint32)
+    
+        # Set random seed
+        np.random.seed(0)
+    
+        # Test multi-block sort
+        for strided in (False, True):
+            with self.subTest(strided=strided):
+                a_np = np.random.normal(size=(32769,)).astype(np.float32)
+                a_mx = mx.array(a_np)
+    
+                if strided:
+                    a_mx = a_mx[::3]
+                    a_np = a_np[::3]
+    
+                b_np = np.sort(a_np)
+                b_mx = mx.sort(a_mx)
+    
+                self.assertTrue(np.array_equal(b_np, b_mx))
+                self.assertEqual(b_mx.dtype, a_mx.dtype)
+    
+                # Test multi-dum multi-block sort
+                a_np = np.random.normal(size=(2, 4, 32769)).astype(np.float32)
+                a_mx = mx.array(a_np)
+    
+                if strided:
+                    a_mx = a_mx[..., ::3]
+                    a_np = a_np[..., ::3]
+    
+                b_np = np.sort(a_np, axis=-1)
+                b_mx = mx.sort(a_mx, axis=-1)
+    
+                self.assertTrue(np.array_equal(b_np, b_mx))
+                self.assertEqual(b_mx.dtype, a_mx.dtype)
+    
+                a_np = np.random.normal(size=(2, 32769, 4)).astype(np.float32)
+                a_mx = mx.array(a_np)
+    
+                if strided:
+                    a_mx = a_mx[:, ::3]
+                    a_np = a_np[:, ::3]
+    
+                b_np = np.sort(a_np, axis=1)
+                b_mx = mx.sort(a_mx, axis=1)
+    
+                self.assertTrue(np.array_equal(b_np, b_mx))
+                self.assertEqual(b_mx.dtype, a_mx.dtype)
+    
+        # test 0 strides
+        a_np = np.array([1, 0, 2, 1, 3, 0, 4, 0])
+        a_mx = mx.array(a_np)
+        b_np = np.broadcast_to(a_np, (16, 8))
+        b_mx = mx.broadcast_to(a_mx, (16, 8))
+        mx.eval(b_mx)
+        for axis in (0, 1):
+            c_np = np.sort(b_np, axis=axis)
+            c_mx = mx.sort(b_mx, axis=axis)
+>           self.assertTrue(np.array_equal(c_np, c_mx))
+E           AssertionError: False is not true
+
+.work/mlx/python/tests/test_ops.py:2885: AssertionError
+----------------------------- Captured stdout call -----------------------------
+SUBPASSED(dtype='int32', axis=None, strided=True) [ 79%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_sort SUBPASSED(dtype='int32', axis=None, strided=False) [ 79%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_sort SUBPASSED(dtype='int32', axis=0, strided=True) [ 79%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_sort SUBPASSED(dtype='int32', axis=0, strided=False) [ 79%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_sort SUBPASSED(dtype='int32', axis=1, strided=True) [ 79%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_sort SUBPASSED(dtype='int32', axis=1, strided=False) [ 79%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_sort SUBPASSED(dtype='int32', axis=2, strided=True) [ 79%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_sort SUBPASSED(dtype='int32', axis=2, strided=False) [ 79%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_sort SUBPASSED(dtype='float32', axis=None, strided=True) [ 79%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_sort SUBPASSED(dtype='float32', axis=None, strided=False) [ 79%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_sort SUBPASSED(dtype='float32', axis=0, strided=True) [ 79%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_sort SUBPASSED(dtype='float32', axis=0, strided=False) [ 79%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_sort SUBPASSED(dtype='float32', axis=1, strided=True) [ 79%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_sort SUBPASSED(dtype='float32', axis=1, strided=False) [ 79%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_sort SUBPASSED(dtype='float32', axis=2, strided=True) [ 79%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_sort SUBPASSED(dtype='float32', axis=2, strided=False) [ 79%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_sort SUBPASSED(dtype='complex64', axis=None, strided=True) [ 79%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_sort SUBPASSED(dtype='complex64', axis=None, strided=False) [ 79%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_sort SUBPASSED(dtype='complex64', axis=0, strided=True) [ 79%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_sort SUBPASSED(dtype='complex64', axis=0, strided=False) [ 79%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_sort SUBPASSED(dtype='complex64', axis=1, strided=True) [ 79%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_sort SUBPASSED(dtype='complex64', axis=1, strided=False) [ 79%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_sort SUBPASSED(dtype='complex64', axis=2, strided=True) [ 79%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_sort SUBPASSED(dtype='complex64', axis=2, strided=False) [ 79%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_sort SUBPASSED(strided=False) [ 79%]
+.work/mlx/python/tests/test_ops.py::TestOps::test_sort SUBPASSED(strided=True) [ 79%]
+_______________________ TestOps.test_subnormal_bool_cast _______________________
+
+self = <test_ops.TestOps testMethod=test_subnormal_bool_cast>
+
+    def test_subnormal_bool_cast(self):
+        f32_sub = mx.array(np.array([0x00000001], dtype=np.uint32)).view(mx.float32)
+        f16_sub = mx.array(np.array([0x0001], dtype=np.uint16)).view(mx.float16)
+        bf16_sub = mx.array(np.array([0x0001], dtype=np.uint16)).view(mx.bfloat16)
+    
+>       self.assertTrue(f32_sub.astype(mx.bool_).item())
+E       AssertionError: False is not true
+
+.work/mlx/python/tests/test_ops.py:1409: AssertionError
+- generated xml file: /home/joshuawarren/src/mlx-omarchy-requal-20260911/receipts/.requal-py-stage/py/test_ops.py.xml -
+=========================== short test summary info ============================
+FAILED .work/mlx/python/tests/test_ops.py::TestOps::test_sin - RuntimeError: ...
+FAILED .work/mlx/python/tests/test_ops.py::TestOps::test_sort - AssertionErro...
+FAILED .work/mlx/python/tests/test_ops.py::TestOps::test_subnormal_bool_cast
+======== 3 failed, 158 passed, 1 skipped, 322 subtests passed in 5.48s =========

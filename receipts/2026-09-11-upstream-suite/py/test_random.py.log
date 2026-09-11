@@ -1,0 +1,20 @@
+============================= test session starts ==============================
+collecting ... collected 14 items
+
+.work/mlx/python/tests/test_random.py::TestRandom::test_bernoulli PASSED [  7%]
+.work/mlx/python/tests/test_random.py::TestRandom::test_broadcastable_scale_loc PASSED [ 14%]
+.work/mlx/python/tests/test_random.py::TestRandom::test_categorical PASSED [ 21%]
+.work/mlx/python/tests/test_random.py::TestRandom::test_complex_normal PASSED [ 28%]
+.work/mlx/python/tests/test_random.py::TestRandom::test_global_rng PASSED [ 35%]
+.work/mlx/python/tests/test_random.py::TestRandom::test_gumbel PASSED    [ 42%]
+.work/mlx/python/tests/test_random.py::TestRandom::test_key PASSED       [ 50%]
+.work/mlx/python/tests/test_random.py::TestRandom::test_key_split PASSED [ 57%]
+.work/mlx/python/tests/test_random.py::TestRandom::test_multivariate_normal PASSED [ 64%]
+.work/mlx/python/tests/test_random.py::TestRandom::test_normal_and_laplace PASSED [ 71%]
+.work/mlx/python/tests/test_random.py::TestRandom::test_permutation PASSED [ 78%]
+.work/mlx/python/tests/test_random.py::TestRandom::test_randint PASSED   [ 85%]
+.work/mlx/python/tests/test_random.py::TestRandom::test_truncated_normal PASSED [ 92%]
+.work/mlx/python/tests/test_random.py::TestRandom::test_uniform PASSED   [100%]
+
+- generated xml file: /home/joshuawarren/src/mlx-omarchy-requal-20260911/receipts/.requal-py-stage/py/test_random.py.xml -
+============================== 14 passed in 0.30s ==============================

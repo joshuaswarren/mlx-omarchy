@@ -1,0 +1,8 @@
+============================= test session starts ==============================
+collecting ... collected 2 items
+
+.work/mlx/python/tests/test_threads.py::TestThreads::test_concurrent_transforms PASSED [ 50%]
+.work/mlx/python/tests/test_threads.py::TestThreads::test_threadlocal_stream PASSED [100%]
+
+- generated xml file: /home/joshuawarren/src/mlx-omarchy-requal-20260911/receipts/.requal-py-stage/py/test_threads.py.xml -
+============================== 2 passed in 1.86s ===============================
