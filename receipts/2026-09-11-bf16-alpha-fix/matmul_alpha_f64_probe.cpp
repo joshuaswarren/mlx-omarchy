@@ -161,7 +161,7 @@ TEST_CASE("scaled bf16 sdpa matches f64 RNE reference on both routes") {
         array(v_data.begin(), Shape{B, KV, kL, D}, float32), bfloat16, stream);
     auto out = fast::scaled_dot_product_attention(
         q, k, v, scale, "", {}, std::nullopt, false, stream);
-    eval(out);
+    out.eval();
     synchronize(stream);
     const uint16_t* bits = out.data<uint16_t>();
     return std::vector<uint16_t>(bits, bits + out.size());
