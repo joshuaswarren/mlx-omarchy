@@ -567,10 +567,16 @@ void dispatch_matmul(
     bf16_aligned = ((params.in_strides[axis] |
         params.out_strides[axis]) & 1u) == 0u;
   }
+  // The staged bf16 tile shares qmm_coopmat's 4 KiB staging footprint
+  // (a 32x16 A patch and a 16x32 B patch); gate on the device limit the
+  // same way the qmm route does instead of assuming it.
+  constexpr uint32_t kMatmulCoopmatBf16SharedBytes =
+      (32u * 16u + 16u * 32u) * sizeof(float);
   const bool coopmat = coopmat_base &&
       (kernel == omarchy::ComputeKernel::MatmulF32 ||
        (kernel == omarchy::ComputeKernel::MatmulBF16 && bf16_aligned &&
-        params.matrix_m >= 32u));
+        params.matrix_m >= 32u &&
+        kMatmulCoopmatBf16SharedBytes <= caps.max_compute_shared_memory_size));
   if (coopmat) {
     kernel = kernel == omarchy::ComputeKernel::MatmulF32
         ? omarchy::ComputeKernel::MatmulF32Coopmat
