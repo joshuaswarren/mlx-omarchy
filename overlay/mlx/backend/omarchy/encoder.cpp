@@ -492,26 +492,6 @@ void CommandEncoder::replay_record_transfer(
   node_count_++;
 }
 
-namespace {
-
-inline bool variant_matches(
-    const CommandEncoder::ReplayVariant& v,
-    std::span<const ComputeBinding> bindings) {
-  if (bindings.size() == 0) {
-    return false;
-  }
-  for (uint32_t i = 0; i < bindings.size(); ++i) {
-    if (v.buffers[i] != bindings[i].buffer ||
-        v.offsets[i] != bindings[i].offset ||
-        v.ranges[i] != bindings[i].range) {
-      return false;
-    }
-  }
-  return true;
-}
-
-}  // namespace
-
 void CommandEncoder::record_dispatch_locked(
     VkCommandBuffer cmd,
     VkDescriptorSet descriptor_set,
@@ -575,6 +555,22 @@ void CommandEncoder::record_dispatch_locked(
       nullptr,
       0,
       nullptr);
+}
+
+bool CommandEncoder::variant_matches(
+    const ReplayVariant& v,
+    std::span<const ComputeBinding> bindings) {
+  if (bindings.size() == 0) {
+    return false;
+  }
+  for (uint32_t i = 0; i < bindings.size(); ++i) {
+    if (v.buffers[i] != bindings[i].buffer ||
+        v.offsets[i] != bindings[i].offset ||
+        v.ranges[i] != bindings[i].range) {
+      return false;
+    }
+  }
+  return true;
 }
 
 bool CommandEncoder::replay_dispatch(
