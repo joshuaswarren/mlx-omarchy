@@ -251,8 +251,7 @@ void CommandEncoder::fill_buffer(
     VkDeviceSize size,
     VkDeviceSize offset) {
   ensure_recording();
-  bool full_barrier = tape_full_barriers();
-  if (full_barrier) {
+  if (tape_full_barriers()) {
     record_dependency_barrier();
   }
   if (gated_barriers()) {
@@ -266,12 +265,6 @@ void CommandEncoder::fill_buffer(
       prof::get().on_barrier(false);
     }
     tracked_writes_.push_back(write);
-  } else if (!full_barrier) {
-    // Host-scalar fills can now share a command buffer. Preserve WAW order
-    // between consecutive fills instead of obtaining it from a host drain.
-    record_dependency_barrier();
-    trace::counters().barriers_emitted++;
-    prof::get().on_barrier(true);
   }
   vk::device_table().CmdFillBuffer(cmd_, dst, offset, size, value);
   node_count_++;
