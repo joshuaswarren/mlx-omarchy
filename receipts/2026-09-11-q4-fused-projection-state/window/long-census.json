@@ -1,0 +1,74 @@
+{
+ "leg": "long",
+ "fused_gemv": null,
+ "prompt_id": "long",
+ "dispatches_per_token": 249,
+ "submissions_per_token": 2,
+ "gpu_busy_us": 16221,
+ "gap_us": 5179,
+ "span_us": 21400,
+ "by_kernel": {
+  "TakeF16": {
+   "n": 2,
+   "gpu_us": 130,
+   "gap_us": 46
+  },
+  "TakeU32": {
+   "n": 1,
+   "gpu_us": 265,
+   "gap_us": 49
+  },
+  "DequantF16": {
+   "n": 1,
+   "gpu_us": 31,
+   "gap_us": 25
+  },
+  "FastRmsNormF16": {
+   "n": 49,
+   "gpu_us": 1881,
+   "gap_us": 1185
+  },
+  "QmmVecQ4MultiSubgroupF16": {
+   "n": 96,
+   "gpu_us": 8815,
+   "gap_us": 1916
+  },
+  "FastRopeF16": {
+   "n": 48,
+   "gpu_us": 1055,
+   "gap_us": 985
+  },
+  "SdpaDecodeNativeF16": {
+   "n": 24,
+   "gpu_us": 1168,
+   "gap_us": 533
+  },
+  "SwigluF16": {
+   "n": 24,
+   "gpu_us": 432,
+   "gap_us": 338
+  },
+  "QmmVecQ4WordSubgroupF16": {
+   "n": 1,
+   "gpu_us": 1870,
+   "gap_us": 10
+  },
+  "LogSumExpF16": {
+   "n": 1,
+   "gpu_us": 259,
+   "gap_us": 38
+  },
+  "ElementwiseF16": {
+   "n": 1,
+   "gpu_us": 180,
+   "gap_us": 28
+  },
+  "ArgReduceF16": {
+   "n": 1,
+   "gpu_us": 136,
+   "gap_us": 26
+  }
+ },
+ "token_interval": 10,
+ "model": "mlx-community/Qwen2.5-0.5B-Instruct-4bit@a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3"
+}
