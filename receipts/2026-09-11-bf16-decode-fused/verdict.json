@@ -1,0 +1,89 @@
+{
+  "schema": "bf16-decode-fused-verdict/1",
+  "date_utc": "2026-09-11",
+  "decision": "receipt-only-negative",
+  "implementation_branch": "wave/Bf16FusedDecode",
+  "implementation_commit": "72ca97e3",
+  "base_commit": "2a9add42",
+  "blocker": "BF16 fork-driver generated-id digest moved on short (f26175202f3dabe9 -> 7fc0f968789b1882) and long (8690dc83246b39f8 -> 06b014aebf5d4b66) legs; assignment gate forbids landing and re-pinning",
+  "policy_notes": {
+    "short_fork": "moved digest equals native (7fc0f968789b1882): parity rule 1 would admit",
+    "long_fork": "moved digest is neither old nor native (407b7624ed1b3b29): parity rule 1 rejects",
+    "onek_pin": "ff502900d2a179a5 held on both drivers with the kernel engaged",
+    "stock": "route refuses on stock; stock stream untouched"
+  },
+  "dispatch_census": {
+    "before": 726,
+    "after": 510,
+    "delta": -216,
+    "composition_removed": {
+      "CastBF16F32": 72,
+      "CopyGeneralBF16": 48,
+      "ElementwiseF32": 24,
+      "MatmulF32": 48,
+      "SoftmaxF32": 24,
+      "CastF32BF16": 24
+    },
+    "added": {
+      "SdpaDecodeNativeBF16": 24
+    }
+  },
+  "ms_per_token_median3": {
+    "fork": {
+      "short": [
+        31.2,
+        29.0
+      ],
+      "long": [
+        34.7,
+        29.6
+      ],
+      "ctx1024": [
+        43.3,
+        29.8
+      ]
+    },
+    "stock": {
+      "short": [
+        31.1,
+        31.0
+      ],
+      "long": [
+        34.3,
+        34.3
+      ],
+      "ctx1024": [
+        43.0,
+        43.3
+      ]
+    }
+  },
+  "fractions_of_native": {
+    "before": [
+      0.566,
+      0.518,
+      0.426
+    ],
+    "after_fork": [
+      0.613,
+      0.607,
+      0.618
+    ]
+  },
+  "wheels": {
+    "base_2a9add42": {
+      "version": "0.32.2.dev202609112136+2a9add4",
+      "sha256": "e47d7b2fa0f51f80bfbc5bf02788a2ed419f9d0f168ef678ac03762a8dd16812"
+    },
+    "fused_72ca97e3": {
+      "version": "0.32.2.dev202609112149+72ca97e",
+      "sha256": "7c999fd0db2f17be590cdea1362e31e1f611c463fa137464e25f6f87a5b88570"
+    },
+    "diag_72ca97e3": {
+      "version": "0.32.2.dev202609112139+diag.72ca97e",
+      "sha256": "c5589105f63f5c1f2cd715cfcb7ed7d45b371a4da2ce419f9731280f8e99f542"
+    }
+  },
+  "digest_evidence": "every rep of 4 runs per cell identical; see README.md tables",
+  "host": "jwm1-linux (Apple M1 G13G B1), mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1"
+}
