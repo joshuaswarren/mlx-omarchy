@@ -819,12 +819,472 @@ static void run_peak(const DeviceCtx& ctx, const char* src_path,
   g_vk.FreeMemory(g_vk.dev, dst.mem, nullptr);
 }
 
+// ---------------------------------------------------------------------------
+// Decode gap mode (--gap): reproduce the in-model decode interleaving in
+// isolation and move one between-dispatch factor at a time. All timing is
+// host CLOCK_MONOTONIC around whole submits (tokens x sets x 4 dispatches
+// per bracket) - per-dispatch timestamp brackets are forbidden as an
+// instrument (receipts/2026-09-10-dispatch-floor: 21-23 us per bracket
+// pair, untrustworthy device timestamp period).
+//
+// Arms (one factor each):
+//   iso4      one weight set, the four layer dispatches, no chaining -
+//             calibrates against the prior isolated instrument.
+//   iso4dep   same but o/gate_up/down/next-token-qkv read the previous
+//             dispatch's output buffer (RAW chain like the model).
+//   fill2 / fill24   iso4 with the peak_read streaming probe pushed
+//             between the GEMV dispatches: 2 MB/layer (real interstitial
+//             traffic scale) vs 24 MB/layer (forced eviction).
+//   churn     iso4 with fresh x/out allocations per round (address churn;
+//             allocations happen between timed brackets like the host
+//             allocator acts between tokens).
+//   wideind   24 weight sets cycled per token, no chaining: the ~200 MB
+//             working set cannot stay cache-resident.
+//   widedep   24 sets cycled AND chained: the in-model analog.
+//   sub2async / sub2sync   widedep as two submissions per token (sets
+//             0-11, 12-23), queued without / with an inter-submit wait.
+//   sweep     wideind at sets = 1,2,4,6,8,12,16,24: the residency
+//             crossover curve.
+struct GapShapeBufs {
+  Buf x;
+  Buf out[kMaxDims], w[kMaxDims], scales[kMaxDims], biases[kMaxDims];
+};
+struct GapSet {
+  GapShapeBufs sh[kNumShapes];
+};
+
+static Buf gap_alloc(const DeviceCtx& ctx, uint64_t bytes) {
+  return make_buf(g_vk.dev, ctx.mp, bytes, true);
+}
+static void gap_free(Buf& b) {
+  if (b.buf != VK_NULL_HANDLE)
+    g_vk.DestroyBuffer(g_vk.dev, b.buf, nullptr);
+  if (b.mem != VK_NULL_HANDLE)
+    g_vk.FreeMemory(g_vk.dev, b.mem, nullptr);
+  b.buf = VK_NULL_HANDLE;
+  b.mem = VK_NULL_HANDLE;
+}
+static void gap_free_shape(GapShapeBufs& g) {
+  gap_free(g.x);
+  for (uint32_t d = 0; d < kMaxDims; ++d) {
+    gap_free(g.out[d]);
+    gap_free(g.w[d]);
+    gap_free(g.scales[d]);
+    gap_free(g.biases[d]);
+  }
+}
+
+// One descriptor set for shape sh_idx. x/out come from g; the weight
+// slots come from wsrc (allows churn to pair fresh x/out with frozen
+// weights). x_override replaces the x binding (RAW chaining).
+static VkDescriptorSet gap_make_set(VkDescriptorPool pool,
+    VkDescriptorSetLayout dsl, const GapShapeBufs& g,
+    const GapShapeBufs& wsrc, uint32_t sh_idx, const Buf* x_override) {
+  const Shape& sh = kShapes[sh_idx];
+  VkDescriptorSetAllocateInfo dsai{};
+  dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+  dsai.descriptorPool = pool;
+  dsai.descriptorSetCount = 1;
+  dsai.pSetLayouts = &dsl;
+  VkDescriptorSet set;
+  if (g_vk.AllocateDescriptorSets(g_vk.dev, &dsai, &set) != VK_SUCCESS)
+    die("gap AllocateDescriptorSets");
+  VkDescriptorBufferInfo dbi[kBindings]{};
+  auto info = [&](uint32_t i, const Buf& b) {
+    dbi[i].buffer = b.buf;
+    dbi[i].offset = 0;
+    dbi[i].range = VK_WHOLE_SIZE;
+  };
+  info(0, x_override ? *x_override : g.x);
+  for (uint32_t d = 0; d < kMaxDims; ++d) {
+    uint32_t base = 1 + d * 6;
+    if (d < sh.dims) {
+      info(base, wsrc.w[d]);
+      info(base + 1, wsrc.scales[d]);
+      info(base + 2, wsrc.biases[d]);
+      info(base + 3, g.out[d]);
+      info(base + 4, g.out[d]);
+      info(base + 5, g.out[d]);
+    } else {
+      for (uint32_t j = 0; j < 6; ++j) info(base + j, g.out[0]);
+    }
+  }
+  VkWriteDescriptorSet wr[kBindings]{};
+  for (uint32_t i = 0; i < kBindings; ++i) {
+    wr[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    wr[i].dstSet = set;
+    wr[i].dstBinding = i;
+    wr[i].descriptorCount = 1;
+    wr[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    wr[i].pBufferInfo = &dbi[i];
+  }
+  g_vk.UpdateDescriptorSets(g_vk.dev, kBindings, wr, 0, nullptr);
+  return set;
+}
+
+static void run_gap_mode(const DeviceCtx& ctx, bool quick) {
+  const int rounds = quick ? 3 : 7;
+  const uint32_t tokens_iso = quick ? 32 : 64;
+  const uint32_t tokens_wide = quick ? 8 : 16;
+  const uint32_t Lmax = 24;
+
+  const char* q4_defines =
+      "-DUSE_FP16=1 -DUSE_SUBGROUP=1 -DQMM_VEC_Q4_WORD=1 -DQMM_VEC_MULTI=1";
+  if (compile_shader("tools/q4-bw-bench/shaders/qmm_vec_base.comp",
+          q4_defines, "/tmp/q4gap_base.spv") != 0)
+    die("compile gap base");
+  Side side;
+  side.tag = "base";
+  side.mod = make_module(read_file("/tmp/q4gap_base.spv"));
+  make_pipeline(side);
+
+  Params sparams[kNumShapes];
+  uint32_t sgroups[kNumShapes];
+  uint64_t layer_bytes = 0;
+  for (uint32_t s = 0; s < kNumShapes; ++s) {
+    sgroups[s] = shape_groups(kShapes[s], 8u);
+    fill_params(sparams[s], kShapes[s], sgroups[s]);
+    layer_bytes += shape_bytes(kShapes[s]);
+  }
+  std::printf(
+      "{\"k\":\"gap_cfg\",\"layer_bytes\":%llu,\"sets\":%u,\"bytes_all\":%llu,"
+      "\"tokens_iso\":%u,\"tokens_wide\":%u,\"rounds\":%d}\n",
+      (unsigned long long)layer_bytes, Lmax,
+      (unsigned long long)layer_bytes * Lmax, tokens_iso, tokens_wide,
+      rounds);
+
+  // Weight sets: Lmax independent per-layer weight footprints.
+  std::vector<GapSet> sets(Lmax);
+  for (uint32_t s = 0; s < kNumShapes; ++s) {
+    const Shape& sh = kShapes[s];
+    for (uint32_t l = 0; l < Lmax; ++l) {
+      GapShapeBufs& g = sets[l].sh[s];
+      g.x = gap_alloc(ctx, (uint64_t)sh.k * 2u);
+      for (uint32_t d = 0; d < sh.dims; ++d) {
+        g.w[d] = gap_alloc(ctx, (uint64_t)sh.n[d] * (sh.k / 8u) * 4u);
+        g.scales[d] = gap_alloc(ctx, (uint64_t)sh.n[d] * (sh.k / 64u) * 2u);
+        g.biases[d] = gap_alloc(ctx, (uint64_t)sh.n[d] * (sh.k / 64u) * 2u);
+        g.out[d] = gap_alloc(ctx, (uint64_t)sh.n[d] * 2u);
+      }
+    }
+  }
+
+  VkDescriptorPoolSize ps{};
+  ps.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+  ps.descriptorCount = kBindings * 512;
+  VkDescriptorPoolCreateInfo dpci{};
+  dpci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+  dpci.maxSets = 512;
+  dpci.poolSizeCount = 1;
+  dpci.pPoolSizes = &ps;
+  dpci.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+  VkDescriptorPool pool;
+  if (g_vk.CreateDescriptorPool(g_vk.dev, &dpci, nullptr, &pool) !=
+      VK_SUCCESS)
+    die("gap descriptor pool");
+
+  using D4 = std::array<VkDescriptorSet, kNumShapes>;
+  // Chained descriptor variants: shape s reads the producer's output.
+  auto chain_x = [&](uint32_t l, uint32_t s, bool ring_b) -> const Buf* {
+    if (s == 1) return &sets[l].sh[0].out[0]; // o.x = qkv.out0
+    if (s == 2) return &sets[l].sh[1].out[0]; // gate_up.x = o.out0
+    if (s == 3) return &sets[l].sh[2].out[0]; // down.x = gate_up.out0
+    // qkv.x = previous set's down.out0; set 0 closes the ring across tokens.
+    if (l == 0) return ring_b ? &sets[Lmax - 1].sh[3].out[0] : nullptr;
+    return &sets[l - 1].sh[3].out[0];
+  };
+  std::vector<D4> desc_ind(Lmax), dep_a(Lmax), dep_b(Lmax);
+  for (uint32_t l = 0; l < Lmax; ++l) {
+    for (uint32_t s = 0; s < kNumShapes; ++s) {
+      desc_ind[l][s] = gap_make_set(pool, side.dsl, sets[l].sh[s],
+          sets[l].sh[s], s, nullptr);
+      dep_a[l][s] = gap_make_set(pool, side.dsl, sets[l].sh[s],
+          sets[l].sh[s], s, chain_x(l, s, false));
+      dep_b[l][s] = gap_make_set(pool, side.dsl, sets[l].sh[s],
+          sets[l].sh[s], s, chain_x(l, s, true));
+    }
+  }
+  // One-set RAW ring (iso4dep): odd tokens close the ring on its own down.
+  D4 iso_dep_a, iso_dep_b;
+  for (uint32_t s = 0; s < kNumShapes; ++s) {
+    const Buf* xa = chain_x(0, s, false);
+    const Buf* xb = chain_x(0, s, true);
+    iso_dep_a[s] = gap_make_set(pool, side.dsl, sets[0].sh[s],
+        sets[0].sh[s], s, xa);
+    iso_dep_b[s] = gap_make_set(pool, side.dsl, sets[0].sh[s],
+        sets[0].sh[s], s, xb);
+  }
+
+  // Filler pipeline: the peak_read streaming probe (same access shape as
+  // the weight stream), pushed between GEMV dispatches.
+  if (compile_shader("tools/q4-bw-bench/shaders/peak_read.comp", "",
+          "/tmp/q4gap_fill.spv") != 0)
+    die("compile gap filler");
+  PeakPipe fill;
+  fill.mod = make_module(read_file("/tmp/q4gap_fill.spv"));
+  {
+    VkDescriptorSetLayoutBinding b[2]{};
+    for (uint32_t i = 0; i < 2; ++i) {
+      b[i].binding = i;
+      b[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+      b[i].descriptorCount = 1;
+      b[i].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+    }
+    VkDescriptorSetLayoutCreateInfo dslci{};
+    dslci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    dslci.bindingCount = 2;
+    dslci.pBindings = b;
+    if (g_vk.CreateDescriptorSetLayout(
+            g_vk.dev, &dslci, nullptr, &fill.dsl) != VK_SUCCESS)
+      die("gap filler dsl");
+    VkPipelineLayoutCreateInfo plci{};
+    plci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    plci.setLayoutCount = 1;
+    plci.pSetLayouts = &fill.dsl;
+    if (g_vk.CreatePipelineLayout(
+            g_vk.dev, &plci, nullptr, &fill.layout) != VK_SUCCESS)
+      die("gap filler layout");
+    VkComputePipelineCreateInfo cpci{};
+    cpci.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+    cpci.stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    cpci.stage.stage = VK_SHADER_STAGE_COMPUTE_BIT;
+    cpci.stage.module = fill.mod;
+    cpci.stage.pName = "main";
+    cpci.layout = fill.layout;
+    if (g_vk.CreateComputePipelines(
+            g_vk.dev, VK_NULL_HANDLE, 1, &cpci, nullptr, &fill.pipe) !=
+        VK_SUCCESS)
+      die("gap filler pipe");
+  }
+  Buf fill_src = gap_alloc(ctx, 64ull << 20);
+  VkDescriptorSet fill_set{};
+  Buf fill_sink = gap_alloc(ctx, 65536);
+  {
+    VkDescriptorPoolSize fps{};
+    fps.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    fps.descriptorCount = 2;
+    VkDescriptorPoolCreateInfo fdpci{};
+    fdpci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    fdpci.maxSets = 1;
+    fdpci.poolSizeCount = 1;
+    fdpci.pPoolSizes = &fps;
+    VkDescriptorPool fpool;
+    if (g_vk.CreateDescriptorPool(g_vk.dev, &fdpci, nullptr, &fpool) !=
+        VK_SUCCESS)
+      die("gap filler pool");
+    VkDescriptorSetAllocateInfo dsai{};
+    dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    dsai.descriptorPool = fpool;
+    dsai.descriptorSetCount = 1;
+    dsai.pSetLayouts = &fill.dsl;
+    if (g_vk.AllocateDescriptorSets(g_vk.dev, &dsai, &fill_set) != VK_SUCCESS)
+      die("gap filler set");
+    VkDescriptorBufferInfo dbi[2]{};
+    dbi[0].buffer = fill_src.buf;
+    dbi[0].range = VK_WHOLE_SIZE;
+    dbi[1].buffer = fill_sink.buf;
+    dbi[1].range = VK_WHOLE_SIZE;
+    VkWriteDescriptorSet w[2]{};
+    for (int i = 0; i < 2; ++i) {
+      w[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+      w[i].dstSet = fill_set;
+      w[i].dstBinding = i;
+      w[i].descriptorCount = 1;
+      w[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+      w[i].pBufferInfo = &dbi[i];
+    }
+    g_vk.UpdateDescriptorSets(g_vk.dev, 2, w, 0, nullptr);
+  }
+
+  CmdRes cmd = make_cmd(ctx, 2);
+
+  auto record_filler = [&](VkCommandBuffer c, uint32_t groups) {
+    g_vk.CmdBindPipeline(c, VK_PIPELINE_BIND_POINT_COMPUTE, fill.pipe);
+    g_vk.CmdBindDescriptorSets(c, VK_PIPELINE_BIND_POINT_COMPUTE,
+        fill.layout, 0, 1, &fill_set, 0, nullptr);
+    g_vk.CmdDispatch(c, groups, 1, 1);
+    g_vk.CmdBindPipeline(c, VK_PIPELINE_BIND_POINT_COMPUTE, side.pipe);
+  };
+  auto record_layer = [&](VkCommandBuffer c, const VkDescriptorSet* d4,
+                            bool with_filler, uint32_t fill_per) {
+    for (uint32_t s = 0; s < kNumShapes; ++s) {
+      if (with_filler) record_filler(c, fill_per);
+      g_vk.CmdBindDescriptorSets(c, VK_PIPELINE_BIND_POINT_COMPUTE,
+          side.layout, 0, 1, &d4[s], 0, nullptr);
+      g_vk.CmdPushConstants(c, side.layout, VK_SHADER_STAGE_COMPUTE_BIT, 0,
+          sizeof(Params), &sparams[s]);
+      g_vk.CmdDispatch(c, sgroups[s], 1, 1);
+    }
+    if (with_filler) record_filler(c, fill_per);
+  };
+
+  auto line = [&](const char* arm, uint32_t nsets, uint32_t tokens,
+                    const std::vector<uint64_t>& per_layer_ns, int pass) {
+    uint64_t med = median(per_layer_ns), mn = min_of(per_layer_ns);
+    std::printf(
+        "{\"k\":\"gap\",\"arm\":\"%s\",\"sets\":%u,\"tokens\":%u,"
+        "\"rounds\":%d,\"layer_bytes\":%llu,\"layer_ns_med\":%llu,"
+        "\"layer_ns_min\":%llu,\"token_ns_med\":%llu,\"weight_gb_s\":%.2f,"
+        "\"pass\":%d}\n",
+        arm, nsets, tokens, rounds, (unsigned long long)layer_bytes,
+        (unsigned long long)med, (unsigned long long)mn,
+        (unsigned long long)med * nsets,
+        (double)layer_bytes / ((double)med * 1e-9) / 1e9, pass);
+  };
+
+  // Standard arm: tokens_per_submit tokens recorded into one submit;
+  // per-round wall clock divided by tokens*nsets gives per-layer ns.
+  auto run_arm = [&](const char* arm, uint32_t nsets, uint32_t tokens,
+      bool chained, bool with_filler, uint32_t filler_mb, int pass) {
+    uint32_t fill_per = filler_mb * 64u; // filler dispatch = mb/4 MB
+    std::vector<uint64_t> samples;
+    for (int r = -1; r < rounds; ++r) {
+      begin(cmd);
+      g_vk.CmdBindPipeline(
+          cmd.cmd, VK_PIPELINE_BIND_POINT_COMPUTE, side.pipe);
+      for (uint32_t t = 0; t < tokens; ++t) {
+        uint32_t parity = t & 1u;
+        for (uint32_t j = 0; j < nsets; ++j) {
+          const VkDescriptorSet* d4 =
+              chained ? (parity ? (nsets == 1 ? iso_dep_b.data()
+                                                : dep_b[j].data())
+                                : (nsets == 1 ? iso_dep_a.data()
+                                                : dep_a[j].data()))
+                      : desc_ind[j].data();
+          record_layer(cmd.cmd, d4, with_filler, fill_per);
+        }
+      }
+      g_vk.EndCommandBuffer(cmd.cmd);
+      auto t0 = std::chrono::steady_clock::now();
+      submit_and_wait(ctx, cmd.cmd);
+      auto t1 = std::chrono::steady_clock::now();
+      if (r >= 0)
+        samples.push_back(
+            std::chrono::duration_cast<std::chrono::nanoseconds>(t1 - t0)
+                    .count() /
+                (tokens * nsets));
+    }
+    line(arm, nsets, tokens, samples, pass);
+  };
+
+  // churn: fresh x/out allocations per round (outside the timed bracket,
+  // as the host allocator acts between tokens).
+  auto run_churn = [&](uint32_t tokens, int pass) {
+    std::vector<uint64_t> samples;
+    for (int r = -1; r < rounds; ++r) {
+      GapSet fresh{};
+      for (uint32_t s = 0; s < kNumShapes; ++s) {
+        const Shape& sh = kShapes[s];
+        GapShapeBufs& g = fresh.sh[s];
+        g.x = gap_alloc(ctx, (uint64_t)sh.k * 2u);
+        for (uint32_t d = 0; d < sh.dims; ++d)
+          g.out[d] = gap_alloc(ctx, (uint64_t)sh.n[d] * 2u);
+      }
+      D4 d4;
+      for (uint32_t s = 0; s < kNumShapes; ++s)
+        d4[s] = gap_make_set(pool, side.dsl, fresh.sh[s], sets[0].sh[s],
+            s, nullptr);
+      begin(cmd);
+      g_vk.CmdBindPipeline(
+          cmd.cmd, VK_PIPELINE_BIND_POINT_COMPUTE, side.pipe);
+      for (uint32_t t = 0; t < tokens; ++t)
+        record_layer(cmd.cmd, d4.data(), false, 0);
+      g_vk.EndCommandBuffer(cmd.cmd);
+      auto t0 = std::chrono::steady_clock::now();
+      submit_and_wait(ctx, cmd.cmd);
+      auto t1 = std::chrono::steady_clock::now();
+      if (r >= 0)
+        samples.push_back(
+            std::chrono::duration_cast<std::chrono::nanoseconds>(t1 - t0)
+                    .count() /
+                tokens);
+      for (auto& gf : fresh.sh) gap_free_shape(gf);
+      Buf shift = gap_alloc(ctx, (1ull << 20) + (r & 1) * 4096ull);
+      gap_free(shift);
+    }
+    line("churn", 1, tokens, samples, pass);
+  };
+
+  // sub2: widedep as two submissions per token (half the sets each).
+  auto run_sub2 = [&](bool sync, uint32_t tokens, int pass) {
+    std::vector<uint64_t> samples;
+    uint32_t half = Lmax / 2;
+    for (int r = -1; r < rounds; ++r) {
+      auto t0 = std::chrono::steady_clock::now();
+      for (uint32_t t = 0; t < tokens; ++t) {
+        uint32_t parity = t & 1u;
+        for (int h = 0; h < 2; ++h) {
+          begin(cmd);
+          g_vk.CmdBindPipeline(cmd.cmd, VK_PIPELINE_BIND_POINT_COMPUTE,
+              side.pipe);
+          for (uint32_t j = h * half; j < (h + 1) * half; ++j) {
+            const VkDescriptorSet* d4 =
+                parity ? dep_b[j].data() : dep_a[j].data();
+            record_layer(cmd.cmd, d4, false, 0);
+          }
+          g_vk.EndCommandBuffer(cmd.cmd);
+          VkSubmitInfo si{};
+          si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+          si.commandBufferCount = 1;
+          si.pCommandBuffers = &cmd.cmd;
+          VkFence f;
+          VkFenceCreateInfo fci{};
+          fci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+          g_vk.CreateFence(g_vk.dev, &fci, nullptr, &f);
+          g_vk.QueueSubmit(ctx.queue, 1, &si, f);
+          if (sync || h == 1)
+            g_vk.WaitForFences(g_vk.dev, 1, &f, VK_TRUE, UINT64_MAX);
+          g_vk.DestroyFence(g_vk.dev, f, nullptr);
+        }
+      }
+      auto t1 = std::chrono::steady_clock::now();
+      if (r >= 0)
+        samples.push_back(
+            std::chrono::duration_cast<std::chrono::nanoseconds>(t1 - t0)
+                    .count() /
+                (tokens * Lmax));
+    }
+    line(sync ? "sub2sync" : "sub2async", Lmax, tokens, samples, pass);
+  };
+
+  // Anchor probes: the device DRAM ceiling through the same instrument.
+  run_peak(ctx, "tools/q4-bw-bench/shaders/peak_copy.comp",
+      "/tmp/peak_copy.spv", "copy", 1u << 24u, false);
+  run_peak(ctx, "tools/q4-bw-bench/shaders/peak_read.comp",
+      "/tmp/peak_read.spv", "read", 1u << 24u, false);
+
+  for (int pass = 1; pass <= 2; ++pass) {
+    run_arm("iso4", 1, tokens_iso, false, false, 0, pass);
+    run_arm("iso4dep", 1, tokens_iso, true, false, 0, pass);
+    run_arm("fill2", 1, tokens_iso / 2, false, true, 2, pass);
+    run_arm("fill24", 1, tokens_iso / 4, false, true, 24, pass);
+    run_churn(tokens_iso, pass);
+    const uint32_t sweep_sizes[] = {1, 2, 4, 6, 8, 12, 16, 24};
+    for (uint32_t n : sweep_sizes) {
+      uint32_t tok = n >= 12 ? tokens_wide : tokens_iso / (n / 2 + 1);
+      run_arm("sweep", n, tok, false, false, 0, pass);
+    }
+    run_arm("wideind", Lmax, tokens_wide, false, false, 0, pass);
+    run_arm("widedep", Lmax, tokens_wide, true, false, 0, pass);
+    run_sub2(false, tokens_wide / 2, pass);
+    run_sub2(true, tokens_wide / 2, pass);
+  }
+
+  // Cleanup (process exits anyway; keep the driver happy on the way out).
+  gap_free(fill_src);
+  gap_free(fill_sink);
+  for (auto& gs : sets)
+    for (uint32_t s = 0; s < kNumShapes; ++s)
+      gap_free_shape(gs.sh[s]);
+}
 int main(int argc, char** argv) {
   bool tree_mode = false;
   bool quick = false;
+  bool gap_mode = false;
   for (int i = 1; i < argc; ++i) {
     if (std::string(argv[i]) == "--tree") tree_mode = true;
     if (std::string(argv[i]) == "--quick") quick = true;
+    if (std::string(argv[i]) == "--gap") gap_mode = true;
   }
   const int reps = quick ? 7 : 21;
 
@@ -861,6 +1321,11 @@ int main(int argc, char** argv) {
   std::printf(
       "{\"k\":\"mode\",\"variant\":\"%s\",\"reps\":%d}\n",
       tree_mode ? "tree" : "subgroup", reps);
+  if (gap_mode) {
+    run_gap_mode(ctx, quick);
+    std::printf("{\"k\":\"done\"}\n");
+    return 0;
+  }
 
   std::vector<Side> sides(num_sides);
   for (int i = 0; i < num_sides; ++i) {
