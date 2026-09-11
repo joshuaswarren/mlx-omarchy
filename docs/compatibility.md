@@ -544,6 +544,20 @@ TFLOP/s at 256/512/1024 with max_abs_err 0.0 against a host reference
 on every gated shape; receipt
 `receipts/2026-09-08-coopmat-dense.json`.
 
+The bf16 sibling `MatmulBF16Coopmat`
+(`shaders/matmul_coopmat_bf16.comp`, bf16 operands, f32 accumulators,
+word-packed RNE stores) takes the same gate with even-alignment instead
+of 4-float alignment and `matrix_m >= 32`, and it scales the f32
+accumulator by alpha at the drain - the only coopmat kernel that does.
+The dispatch gate therefore still requires `alpha == 1` for
+`MatmulF32Coopmat` but admits any alpha for `MatmulBF16Coopmat`, which
+is what the bf16 fast-path attention scores matmul
+(`alpha = 1/sqrt(head_dim)`, enabled by `MLX_OMARCHY_SDPA_BF16_FAST`)
+rides. alpha==1 multiplies exactly, so the projection traffic that
+always ran this kernel is bit-identical. Regression:
+"scaled_dot_product_attention bf16 fast scores scale through
+MatmulBF16Coopmat" (`omarchy_fast_ops`).
+
 ### Q4 prefill on the G13 matrix unit
 
 `QmmPrefillCoopmatF16` (`shaders/qmm_coopmat.comp`) runs the transposed

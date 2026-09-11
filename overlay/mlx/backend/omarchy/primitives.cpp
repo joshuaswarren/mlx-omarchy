@@ -560,8 +560,13 @@ void dispatch_matmul(
   const auto& caps = encoder.device().capabilities();
   const bool coopmat_base = caps.cooperative_matrix_f32_8 &&
       caps.subgroup_size == 32 && !coopmat_disabled &&
-      params.matrix_m > 1u && (params.matrix_k % 8u) == 0u &&
-      alpha == 1.0f && !use_c;
+      params.matrix_m > 1u && (params.matrix_k % 8u) == 0u && !use_c;
+  // matmul_coopmat.comp never reads alpha (MatmulF32Coopmat stays gated
+  // on alpha == 1); matmul_coopmat_bf16.comp scales its f32 accumulator
+  // by alpha at the drain, so MatmulBF16Coopmat may take any alpha -
+  // that is the attention-scores shape (alpha = 1/sqrt(head_dim)).
+  const bool coopmat_alpha = alpha == 1.0f ||
+      kernel == omarchy::ComputeKernel::MatmulBF16;
   bool bf16_aligned = ((params.lhs_offset | params.rhs_offset |
       params.output_offset | a_gap | b_gap | params.matrix_n) & 1u) == 0u;
   for (uint32_t axis = 0; bf16_aligned && axis < params.dims; ++axis) {
@@ -573,7 +578,7 @@ void dispatch_matmul(
   // same way the qmm route does instead of assuming it.
   constexpr uint32_t kMatmulCoopmatBf16SharedBytes =
       (32u * 16u + 16u * 32u) * sizeof(float);
-  const bool coopmat = coopmat_base &&
+  const bool coopmat = coopmat_base && coopmat_alpha &&
       (kernel == omarchy::ComputeKernel::MatmulF32 ||
        (kernel == omarchy::ComputeKernel::MatmulBF16 && bf16_aligned &&
         params.matrix_m >= 32u &&
