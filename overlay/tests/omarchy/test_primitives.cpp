@@ -6203,8 +6203,11 @@ TEST_CASE("affine quantize bfloat16 matches the f32-math bf16-store oracle") {
     for (size_t index = 0; index < dequantized.size(); ++index) {
       size_t group =
           (index / columns) * groups + (index % columns) / group_size;
+      // Codes are chosen against the unrounded f32 scale; dequantize
+      // reads the bf16 rounding, so the bound is half an f32 step plus
+      // the worst bf16 parameter drift over the full code range.
       CHECK(std::abs(dequantized[index] - matrix[index]) <=
-            std::abs(device_scales[group]) + 1e-3);
+            std::abs(oracle.scales[group]) * 1.6f + 1e-3);
     }
 
     // The bf16 quantized matmul consumes the bf16 parameters: the
@@ -6250,17 +6253,17 @@ TEST_CASE("rank-1 quantized mat-vec matches the rank-2 oracle") {
   // of eight elements, scale and bias 0.03125, x = 0.5 over K = 128,
   // so output column n is 0.5 * 128 * 0.03125 * (code + 1) =
   // 2 * (code + 1) with the byte code pattern {0,0,1,1,2,2,3,3}.
-  std::vector<uint32_t> words(128 * 4, 0x33221100u);
+  std::vector<uint32_t> words(128 * 16, 0x33221100u);
   std::vector<float> params(128, 0.03125f);
-  array w(words.begin(), Shape{128, 4}, uint32);
+  array w(words.begin(), Shape{128, 16}, uint32);
   array sb(params.begin(), Shape{128, 1}, float32);
   std::vector<float> x_values(128, 0.5f);
   array x(x_values.begin(), Shape{128}, float32);
   array y = quantized_matmul(x, w, sb, sb, false, 128, 4, "affine", stream);
-  CHECK_EQ(y.shape(), Shape{32});
+  CHECK_EQ(y.shape(), Shape{128});
   constexpr int codes[8] = {0, 0, 1, 1, 2, 2, 3, 3};
   std::vector<float> expected;
-  for (int c = 0; c < 32; ++c) {
+  for (int c = 0; c < 128; ++c) {
     expected.push_back(2.0f * (codes[c % 8] + 1));
   }
   check_values(std::move(y), expected, stream, 1e-6);
