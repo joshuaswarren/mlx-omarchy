@@ -1,0 +1,53 @@
+{
+ "schema": "mlx-omarchy/q4-rows-per-lane/1",
+ "date": "2026-09-11",
+ "agent": "Q4RowsPerLane",
+ "decision": "RECEIPT-ONLY NEGATIVE: land no source change. Giving each lane two or four output rows (R independent accumulators, R concurrent weight-row streams, one shared x load) is bit-identical to the shipped kernel as designed and verified, but it LOSES decisively on the M1: +29.4/+29.6 percent us/layer at R=2 and +46.2/+52.8 percent at R=4 in the in-model widedep instrument, both legs, far past the -3 percent win bar in the wrong direction. The last untested memory-level-parallelism structure for the Q4 decode GEMV is now measured-dead; the 41 GB/s vs 60 GB/s roof gap is not per-lane-MLP-recoverable within the pinned arithmetic order. Nothing merged; branch rows-per-lane (5bcae341) carries the bench arms, raw legs and this receipt only.",
+ "question": "Does raising per-lane memory-level parallelism by giving each lane 2 or 4 output rows (two or four independent accumulators issuing concurrent load streams from different weight rows, x loads shared) move the Q4 decode GEMV toward its 60 GB/s layout roof, bit-preserving, and win by >=3 percent repeatably?",
+ "arm_design": "Slot (32 lanes) covers R consecutive output columns instead of one; lane j walks the SAME words it walked for each column in the shipped kernel (w = j, j+32, ...; the qmv_fast tile preserved as dead code for K%512==0), each dot/input_sum chain and per-word block finish keep the shipped sequence, and the 32-lane reduction keeps the shipped stride-1-first pairing per column (interleaved scratch columns in tree mode). Only the workgroup->column map changes: grid shrinks by R (COLUMNS_PER_WG = 8*R). x is loaded once per w-step and shared across the R rows; each step issues R weight-word loads from rows words_per_row*4 bytes apart before any arithmetic.",
+ "host": "jwm1-linux, Apple M1 (G13G B1), fork driver mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1 (verified in-window, phase 0 pacman -Q), linux-asahi; screen from ~/src/mlx-Q4RowsPerLane at 5bcae341",
+ "gates": {
+  "bit_identity_llvmpipe": "PASS before any timing: 35/35 eq cells zero across unroll/loadfirst/wg128/r2/r4 vs base on all four shapes (qkv/o/gate_up/down, tree flavor, lavapipe)",
+  "bit_identity_m1": "PASS in both default legs before the isolated timings: 35/35 eq cells zero, subgroup flavor, subgroupSize 32 arithmetic",
+  "production_shader_guard": "PASS: qmm_vec_base.comp byte-equal to overlay production shader in-window (diff guard in window.sh)",
+  "digest_gate": "six canonical Q4 digests untouched by construction: production shader unchanged, nothing landed, no model-level legs exercised (the >=3 percent win gate failed, so the paired fork/stock 30/262/1053 legs were not run)",
+  "timing_instrument": "host CLOCK_MONOTONIC around whole submits only; wall-anchored; base re-measured today (205.4/205.9 us widedep) reproduces yesterday's receipt (205.5/206.1) - instrument stable"
+ },
+ "in_model_widedep_us_per_layer": {
+  "base":   [205.4, 205.9],
+  "r2":     [266.3, 266.4],
+  "r4":     [313.8, 301.1],
+  "ratio_r2_vs_base": [1.296, 1.294],
+  "ratio_r4_vs_base": [1.528, 1.462],
+  "iso4_calibration": {"base": [203.1, 203.5], "r2": [258.6, 261.5], "r4": [301.1, 291.5]},
+  "legs": "rpl-gap-a / rpl-gap-b 20260911T130818Z, pass 2 medians (pass 1 agrees)"
+ },
+ "achieved_gb_s_tables": {
+  "widedep_weight_gb_s": {"base": [41.03, 40.92], "r2": [31.65, 31.64], "r4": [26.85, 27.99],
+   "context_roof": "wall copy peak 58.14-58.25, read peak 59.07-59.34 (same instrument, same legs); layout roof from receipts/2026-09-11-q4-memory-roof: 60.1-60.2"},
+  "isolated_wall_ratio_vs_base_legs_a_b": {
+   "r2": {"qkv": [0.9934, 1.049], "o": [1.0292, 1.0117], "gate_up": [0.9907, 0.9947], "down": [1.0606, 1.0764]},
+   "r4": {"qkv": [1.0705, 0.9847], "o": [1.0305, 1.02], "gate_up": [1.0319, 1.022], "down": [1.0821, 1.0959]},
+   "note": "flat to worse; the isolated instrument is launch-latency-dominated on the small shapes, the widedep table above is the decision instrument"
+  }
+ },
+ "register_cost_table": {
+  "source": "AGX_MESA_DEBUG=shaderdb, MESA_SHADER_CACHE_DISABLE=true, pipeline-compile order base/unroll/loadfirst/wg128/r2/r4 (rpl-shaderdb-20260911T130818Z.log); final RA counts the memory-roof receipt could not obtain - shaderdb exposes them (gprs = ctx->max_reg)",
+  "base":      {"instrs": 600,  "gprs": 35, "uniforms": 213, "code_bytes": 4132,  "max_threads": 1024},
+  "unroll":    {"instrs": 876,  "gprs": 37, "uniforms": 249, "code_bytes": 5860,  "max_threads": 1024},
+  "loadfirst": {"instrs": 867,  "gprs": 39, "uniforms": 249, "code_bytes": 5842,  "max_threads": 1024},
+  "wg128":     {"instrs": 558,  "gprs": 35, "uniforms": 189, "code_bytes": 3766,  "max_threads": 1024},
+  "r2":        {"instrs": 1132, "gprs": 63, "uniforms": 284, "code_bytes": 7514,  "max_threads": 1024},
+  "r4":        {"instrs": 2066, "gprs": 87, "uniforms": 428, "code_bytes": 13764, "max_threads": 1024}
+ },
+ "what_limits_it": "The kernel's 41 GB/s is 69 percent of its own layout roof, but the deficit is not a per-lane MLP deficit: rows-per-lane multiplies per-lane live state (35 -> 63 -> 87 gprs) and the straight-line instruction stream (600 -> 1132 -> 2066 instrs) while total weight bytes per layer are fixed, so achieved bandwidth FALLS (41.0 -> 31.6 -> 27-28 GB/s). max_threads stays 1024 across all arms, so the occupancy table does not cap threads; the cost is register liveness and issue overhead, the same class as the prefetch-depth ladder from receipts/2026-09-11-q4-memory-roof. Latency was already hidden by thread-level parallelism; the remaining gap to the roof lives elsewhere (reduction/barrier structure and CDM issue), consistent with that receipt's conclusion. The R-way weight streams also do not help the real limiter: with one lane per row-walk, each stream is one word per lane per step, and widening the streams was measured (wider uvec4, 2.7 percent pattern-level only) without surviving at model level.",
+ "observed_not_landed": "wg128 showed -4.25/-4.42 percent vs base in both of today's gap legs (196.7/196.8 vs 205.4/205.9 us), but receipts/2026-09-11-q4-memory-roof measured it bimodal across windows (+0.34/-4.43) and owns that verdict; recorded here as context only, ownership stays there.",
+ "peak_probe_note": "the med_gb_s field of the peak rows is the known-bogus device-timestamp number (11.5 TB/s class); the wall_med_gb_s fields are the real ones and were used for the roof context",
+ "windows": "one flock window 2026-09-11 13:08Z (~77 s: two default legs, two gap legs, shaderdb dump), announced to Q4DecodeSplitK in hub before acquisition",
+ "provenance": {
+  "branch": "rows-per-lane at 5bcae341 (origin), worktree mlx-omarchy-rpl",
+  "bench_commit": "70ec7b2b q4-bw-bench: rows-per-lane arms (r2/r4)",
+  "raw_legs": ["rpl-a-20260911T130818Z.ndjson", "rpl-b-20260911T130818Z.ndjson", "rpl-gap-a-20260911T130818Z.ndjson", "rpl-gap-b-20260911T130818Z.ndjson", "rpl-shaderdb-20260911T130818Z.log", "window-console-20260911T130818Z.txt"],
+  "llvmpipe_screen": "local x64 lavapipe run (pre-M1 gate), /tmp/rpl-llvmpipe.ndjson on the worktree host; 35/35 eq zero"
+ }
+}
