@@ -272,6 +272,11 @@ omarchy_shader(qmm_tile_rb_precise_f16 shaders/qmm_tile.comp -DUSE_FP16=1 -DREGI
 # device capability in primitives.cpp, MLX_OMARCHY_NO_COOPMAT=1 forces
 # the register-blocked tile.
 omarchy_shader(qmm_coopmat_f16 shaders/qmm_coopmat.comp)
+# Prefill schedule screens (receipts/2026-09-10-qmm-prefill-tile):
+# same shader, larger M tile and wider k step. Removed with the screen.
+omarchy_shader(qmm_coopmat_m64_f16 shaders/qmm_coopmat.comp -DTILE_M=64 -DTILE_WIDE=1)
+omarchy_shader(qmm_coopmat_k32_f16 shaders/qmm_coopmat.comp -DSTEP_K=32)
+omarchy_shader(qmm_coopmat_m64_k32_f16 shaders/qmm_coopmat.comp -DTILE_M=64 -DTILE_WIDE=1 -DSTEP_K=32)
 omarchy_shader(binary_vec_f16 shaders/binary_vec.comp -DUSE_FP16=1)
 omarchy_shader(binary_vec_bf16 shaders/binary_vec.comp -DUSE_BF16=1)
 omarchy_shader(matmul_rb_f16 shaders/matmul_rb.comp)

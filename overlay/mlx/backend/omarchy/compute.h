@@ -567,6 +567,11 @@ enum class ComputeKernel : uint16_t {
   // Prefill on the 8x8x8 fp32 cooperative matrix, same layout as
   // QmmTileRbF16 (shaders/qmm_coopmat.comp).
   QmmPrefillCoopmatF16,
+  // Prefill schedule screens (receipts/2026-09-10-qmm-prefill-tile);
+  // append-only profile ids, removed with the screen.
+  QmmPrefillCoopmatM64F16,
+  QmmPrefillCoopmatK32F16,
+  QmmPrefillCoopmatM64K32F16,
   MatmulBF16Coopmat,
   // Eager BF16 SwiGLU fusion. Appended to keep profile kernel ids stable.
   FusedChainBF16,

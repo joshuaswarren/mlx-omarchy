@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstdlib>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
@@ -6568,15 +6569,32 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
   bool tile_path = tile_env == nullptr || std::strcmp(tile_env, "0") != 0;
   const char* rb_env = std::getenv("MLX_OMARCHY_QMM_TILE_RB");
   bool rb_enabled = rb_env == nullptr || std::strcmp(rb_env, "0") != 0;
-  constexpr uint32_t kQmmCoopmatSharedBytes =
-      (32u * 16u + 16u * 32u) * sizeof(float);
+  // Prefill schedule screen (receipts/2026-09-10-qmm-prefill-tile):
+  // MLX_OMARCHY_QMM_COOP_TILE selects the compiled qmm_coopmat schedule
+  // variant - 0 base 32x16, 1 m64, 2 k32, 3 m64+k32 - for the
+  // kernel-isolated probe only. The screen is removed with its variants;
+  // the shipped default stays variant 0, bit-identical to the released
+  // kernel.
+  const char* coop_tile_env = std::getenv("MLX_OMARCHY_QMM_COOP_TILE");
+  unsigned coop_tile = coop_tile_env == nullptr
+      ? 0u
+      : std::min(std::strtoul(coop_tile_env, nullptr, 10), 3ul);
+  uint32_t coop_shared_bytes = coop_tile == 3u
+      ? (64u * 32u + 32u * 32u) * sizeof(float)
+      : coop_tile == 2u
+      ? (32u * 32u + 32u * 32u) * sizeof(float)
+      : coop_tile == 1u
+      ? (64u * 16u + 16u * 32u) * sizeof(float)
+      : (32u * 16u + 16u * 32u) * sizeof(float);
+  uint32_t coop_lanes = (coop_tile == 1u || coop_tile == 3u) ? 128u : 64u;
   const auto& coopmat_caps = encoder.device().capabilities();
   bool coopmat_reachable =
       tile_path && rb_enabled && q4_g64_transpose &&
       out.dtype() == float16 && x.ndim() >= 2 && x.shape(-2) > 1 &&
       coopmat_caps.cooperative_matrix_f32_8 &&
       coopmat_caps.subgroup_size == 32u && !coopmat_disabled &&
-      kQmmCoopmatSharedBytes <= coopmat_caps.max_compute_shared_memory_size;
+      coop_shared_bytes <= coopmat_caps.max_compute_shared_memory_size &&
+      coop_lanes <= coopmat_caps.max_compute_work_group_invocations;
   // The f16 Q4 shader reads eight halves as one uvec4. Materialize only the
   // rare row-contiguous view whose element offset is not 16-byte aligned;
   // the coopmat word-pair reader extends the same rule to a 2-byte
@@ -6718,7 +6736,8 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
       // Same layout on the 8x8x8 fp32 cooperative matrix when the
       // device advertises it (shaders/qmm_coopmat.comp: 32x32 output
       // tile per two-subgroup workgroup, 4 KiB shared staging; x is
-      // read as 32-bit word pairs). The materialization above stages any
+      // read as 32-bit word pairs; TILE_M/STEP_K screens compile the
+      // same file at larger geometry). The materialization above stages any
       // odd-offset x view and out is a fresh offset-0 allocation, so
       // operand alignment holds by construction and coopmat_reachable
       // alone decides the route. If that contract ever broke, refusing
@@ -6730,11 +6749,20 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
           ((params.lhs_offset | params.output_offset) & 1u) != 0u) {
         omarchy::unsupported(tag + " coopmat operand alignment", out);
       }
-      uint32_t m_groups = (params.matrix_m + 31u) / 32u;
+      uint32_t coop_tile_m = coop_tile >= 1u ? 64u : 32u;
+      uint32_t m_groups = coopmat
+          ? (params.matrix_m + coop_tile_m - 1u) / coop_tile_m
+          : (params.matrix_m + 31u) / 32u;
       uint32_t n_groups = coopmat ? (params.matrix_n + 31u) / 32u
                                   : (params.matrix_n + 15u) / 16u;
       omarchy::ComputeKernel qmm_kernel = coopmat
-          ? omarchy::ComputeKernel::QmmPrefillCoopmatF16
+          ? (coop_tile == 1u
+                 ? omarchy::ComputeKernel::QmmPrefillCoopmatM64F16
+                 : coop_tile == 2u
+                 ? omarchy::ComputeKernel::QmmPrefillCoopmatK32F16
+                 : coop_tile == 3u
+                 ? omarchy::ComputeKernel::QmmPrefillCoopmatM64K32F16
+                 : omarchy::ComputeKernel::QmmPrefillCoopmatF16)
           : params.matrix_m >= 1024u
           ? omarchy::ComputeKernel::QmmTileRbPreciseF16
           : omarchy::ComputeKernel::QmmTileRbF16;
