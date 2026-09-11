@@ -1,0 +1,8 @@
+arm: 0
+{"shape": "L=30", "median_ms": 0.3838, "gflops": 8.4, "f16_digest": "d15883a0cdb9f457"}
+{"shape": "L=262", "median_ms": 0.88, "gflops": 279.6, "f16_digest": "752d42f9e059c786"}
+{"shape": "L=1053", "median_ms": 6.2467, "gflops": 636.2, "f16_digest": "b382aa193eef1953"}
+{"shape": "1053x896", "median_ms": 0.3872}
+{"shape": "1053x896x151936", "median_ms": 267.5844, "gflops": 1071.4}
+{"shape": "1x896x151936", "median_ms": 1.9795, "gflops": 137.5}
+SUMMARY {"arm": "0", "attn": [{"shape": "L=30", "median_ms": 0.3838, "gflops": 8.4, "f16_digest": "d15883a0cdb9f457"}, {"shape": "L=262", "median_ms": 0.88, "gflops": 279.6, "f16_digest": "752d42f9e059c786"}, {"shape": "L=1053", "median_ms": 6.2467, "gflops": 636.2, "f16_digest": "b382aa193eef1953"}], "norms": [{"shape": "1053x896", "median_ms": 0.3872}], "lmhead": [{"shape": "1053x896x151936", "median_ms": 267.5844, "gflops": 1071.4}, {"shape": "1x896x151936", "median_ms": 1.9795, "gflops": 137.5}]}
