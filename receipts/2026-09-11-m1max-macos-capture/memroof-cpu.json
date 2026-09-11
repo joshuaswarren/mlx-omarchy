@@ -1,0 +1,10 @@
+{
+  "method": "8-thread memcpy, 8x128MiB slices, 1GiB src -> 1GiB dst, posix_memalign 16K, memset-touched, 1 untimed warmup pass; traffic counted as read+write",
+  "threads": 8,
+  "buffer_gib": 1,
+  "single_pass_s": 0.012917,
+  "timed_passes": 116,
+  "wall_s": 1.311738,
+  "gbps": 189.91,
+  "dst_checksum_ok": true
+}

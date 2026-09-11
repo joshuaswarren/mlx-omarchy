@@ -1,0 +1,21 @@
+ProductName:		macOS
+ProductVersion:		26.6.2
+BuildVersion:		25G83
+---
+Darwin [redacted-host] 25.6.0 Darwin Kernel Version 25.6.0: Fri Jul 31 19:18:49 PDT 2026; root:xnu-12377.161.14~5/RELEASE_ARM64_T6000 arm64
+---
+hw.model: MacBookPro18,2
+hw.ncpu: 10
+hw.memsize: 68719476736
+hw.perflevel0.logicalcpu: 8
+hw.perflevel1.logicalcpu: 2
+hw.perflevel0.physicalcpu: 8
+hw.perflevel1.physicalcpu: 2
+machdep.cpu.brand_string: Apple M1 Max
+hw.tbfrequency: 24000000
+hw.l2cachesize: 4194304
+hw.cachelinesize: 128
+---
+System Integrity Protection status: enabled.
+---
+FileVault is On.

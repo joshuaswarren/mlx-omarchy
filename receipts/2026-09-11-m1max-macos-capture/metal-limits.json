@@ -1,0 +1,91 @@
+{
+  "device" : {
+    "architectureName" : "applegpu_g13s",
+    "argumentBuffersSupport" : "tier2",
+    "currentAllocatedSize" : 65536,
+    "gpuFamilies" : {
+      "apple1" : true,
+      "apple2" : true,
+      "apple3" : true,
+      "apple4" : true,
+      "apple5" : true,
+      "apple6" : true,
+      "apple7" : true,
+      "apple8" : false,
+      "apple9" : false,
+      "common1" : true,
+      "common2" : true,
+      "common3" : true,
+      "mac1" : true,
+      "mac2" : true,
+      "metal3" : true,
+      "metal4" : true
+    },
+    "hasUnifiedMemory" : true,
+    "headless" : false,
+    "lowPower" : false,
+    "maxArgumentBufferSamplerCount" : 1024,
+    "maxBufferLength" : 41747087360,
+    "maxThreadgroupMemoryLength" : 32768,
+    "maxThreadsPerThreadgroup" : {
+      "depth" : 1024,
+      "height" : 1024,
+      "width" : 1024
+    },
+    "name" : "Apple M1 Max",
+    "peerCount" : 0,
+    "peerGroupID" : 0,
+    "peerIndex" : 0,
+    "readWriteTextureTier" : "tier2",
+    "recommendedMaxWorkingSetSize" : 55662788608,
+    "registryID" : 4294970029,
+    "removable" : false,
+    "supports32BitFloatFiltering" : true,
+    "supports32BitMSAA" : true
+  },
+  "probes" : {
+    "atomicFloatDeviceAdd" : {
+      "compiled" : true,
+      "executed" : true,
+      "expected" : 1048576,
+      "got" : 1048576,
+      "numericallyCorrect" : true
+    },
+    "simdgroupMatrixBF16_8x8x8" : {
+      "check" : {
+        "mismatches" : 64
+      },
+      "compiled" : true,
+      "executed" : true,
+      "numericallyCorrect" : false
+    },
+    "simdgroupMatrixF16_8x8x8" : {
+      "check" : {
+        "mismatches" : 64
+      },
+      "compiled" : true,
+      "executed" : true,
+      "numericallyCorrect" : false
+    },
+    "simdgroupMatrixF32_8x8x8" : {
+      "check" : {
+        "mismatches" : 0
+      },
+      "compiled" : true,
+      "executed" : true,
+      "numericallyCorrect" : true
+    },
+    "threadgroupMemoryAtMax" : {
+      "compiled" : true,
+      "executed" : true,
+      "sumOK" : true
+    },
+    "trivial" : {
+      "compiled" : true,
+      "maxThreadsDispatchCompleted" : true,
+      "pipelineMaxTotalThreadsPerThreadgroup" : 1024,
+      "threadExecutionWidth" : 32,
+      "wroteValue" : true
+    }
+  }
+}

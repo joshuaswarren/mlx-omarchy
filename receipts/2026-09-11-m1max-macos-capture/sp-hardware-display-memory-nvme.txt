@@ -1,0 +1,74 @@
+2026-09-11 16:35:55.393 system_profiler[5148:22237611] hw.cpufamily: 0x1b588bb3
+Hardware:
+
+    Hardware Overview:
+
+      Model Name: MacBook Pro
+      Model Identifier: MacBookPro18,2
+      Model Number: MMQW3LL/A
+      Chip: Apple M1 Max
+      Total Number of Cores: 10 (8 Performance and 2 Efficiency)
+      Memory: 64 GB
+      System Firmware Version: 18000.161.10
+      OS Loader Version: 18000.161.10
+      Serial Number (system): [redacted-serial]
+      Hardware UUID: [redacted-uuid]
+      Provisioning UDID: [redacted-udid]
+      Activation Lock Status: Enabled
+
+Graphics/Displays:
+
+    Apple M1 Max:
+
+      Chipset Model: Apple M1 Max
+      Type: GPU
+      Bus: Built-In
+      Total Number of Cores: 32
+      Vendor: Apple (0x106b)
+      Metal Support: Metal 4
+      Displays:
+        Color LCD:
+          Display Type: Built-in Liquid Retina XDR Display
+          Resolution: 3456 x 2234 Retina
+          Main Display: Yes
+          Mirror: Off
+          Online: Yes
+          Automatically Adjust Brightness: Yes
+          Connection Type: Internal
+
+Memory:
+
+      Memory: 64 GB
+      Type: LPDDR5
+      Manufacturer: Hynix
+
+NVMExpress:
+
+    Apple SSD Controller:
+
+        APPLE SSD AP4096R:
+
+          Capacity: 4 TB (4,002,222,325,760 bytes)
+          TRIM Support: Yes
+          Model: APPLE SSD AP4096R
+          Revision: 561.100.
+          Serial Number: [redacted-serial]
+          Detachable Drive: No
+          BSD Name: disk0
+          Partition Map Type: GPT (GUID Partition Table)
+          Removable Media: No
+          S.M.A.R.T. status: Verified
+          Volumes:
+            iSCPreboot:
+              Capacity: 524.3 MB (524,288,000 bytes)
+              BSD Name: disk0s1
+              Content: Apple_APFS_ISC
+            Macintosh HD:
+              Capacity: 4 TB (3,996,329,328,640 bytes)
+              BSD Name: disk0s2
+              Content: Apple_APFS
+            Recovery:
+              Capacity: 5.37 GB (5,368,664,064 bytes)
+              BSD Name: disk0s3
+              Content: Apple_APFS_Recovery
+
