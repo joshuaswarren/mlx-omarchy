@@ -182,15 +182,40 @@ passes on llvmpipe and its M1 post-fix gate is pending).
   convolve case fails; with the revert it passes (measured both ways this
   session). 32/32 doctest assertions green at head.
 
-## Pending M1 work (single GPU window, ~20 min, batched)
+## M1 window results (2026-09-11 18:29-18:32, jwm1, fork driver pinned)
 
-1. Warmup, then: run the exact `test_subnormal_bool_cast` snippet on the
-   fork driver against the pre-fix wheel (fails-before, expected False),
-   then install a wheel from this branch and re-run (expected True) —
-   cast gate.
-2. Suite re-runs: test_conv / test_nn / test_compile / test_optimizers /
-   test_ops on the branch wheel; expect the llvmpipe after-table to hold.
-3. Digest gates: the drain restore (`2a198ea1`) touches a shared fill
-   path — run the six canonical Q4 digests + BF16 pins before landing.
-4. `test_sort` unlock bisect (see declined section) if window time
-   remains — else next window.
+Window script + raw artifacts in this directory (`m1-window.sh`,
+`cast-prepost.txt`, `driver.txt`, `py/*.xml|log`, `matrix/`,
+`digest-gates.json`). Branch wheel
+`mlx_omarchy-0.32.2.dev202609112322+856c0f8d`; main comparator = the
+09-11 receipt wheel `…+2a9add42` (content-identical to bddc061f).
+
+1. **Cast gate PASSED.** On the fork driver: main wheel `f32->bool False,
+   bf16->bool False` (receipt reproduced, fails-before); branch wheel
+   `True/True/True`. `test_ops.py::test_subnormal_bool_cast` PASSED on
+   the branch wheel (M1 suite: 159 passed / 2 failed vs the receipt's
+   158/3; the recovered case is this one; remaining failures are the
+   `test_sin` standing refusal and `test_sort`).
+2. **Five-file suite on the branch wheel (M1):** test_conv 10/0,
+   test_nn 72/0, test_optimizers 25/0, test_compile 64 passed + 3
+   tracked bf16-tape refusals, test_ops 159/2 — matches the llvmpipe
+   after-table exactly.
+3. **Digest gates ALL-HELD** on both wheels (`digest-gates.json`): the
+   six canonical Q4 digests + BF16 pins hold on the branch (drain
+   restore + cast fix + fused-chain picks are digest-clean).
+4. **Drain-revert timing (r1 after per-wheel warmup, decode_tok_s,
+   branch vs main):** 4bit short-32 109.66 vs 111.08 (−1.3%); 4bit
+   long-128 101.42 vs 107.60 (−5.7%); 4bit longctx-32 94.77 vs 95.79
+   (−1.1%); bf16 short-32 30.44 vs 31.56 (−3.5%); bf16 long-128 29.02
+   vs 28.50 (+1.8%); bf16 longctx-32 22.98 vs 23.11 (−0.6%). Single-rep
+   deltas straddle zero on one leg and lean 1-3.5% on four — at or near
+   noise, but the preponderance is a small real cost.
+
+**Verdict / proposed next step (landing decision with Main):** the
+revert is correctness-clean and digest-clean with a possible 1-3%
+decode cost. The narrow alternative is designed: gate the drain on an
+allocator "this block came from the free list" flag (fresh zeroed pages
+skip the drain), leaving every other scalar fill drain-free — verified
+by the churn probe (38/40 vs 0/40 discrimination) plus a timing pair.
+It needs one build + one window; the full revert is safe to land
+tonight if the parity table prefers certainty over the last percent.
