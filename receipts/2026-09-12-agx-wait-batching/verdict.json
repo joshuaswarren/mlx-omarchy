@@ -1,0 +1,79 @@
+{
+ "schema": "mlx-omarchy/agx-wait-batching/1",
+ "date": "2026-09-12",
+ "agent": "AgxWaitBatching",
+ "question": "Make the wait-batching driver patch actually fire (root cause: frame detection resolved merges via order[] before visitation), prove it at ISA level, and qualify it if the step body moves.",
+ "mesa_branch": "hk/agx-wait-batching (github.com/joshuaswarren/mesa)",
+ "commit_chain": {
+  "baseline": "6f6afc89684 (= installed mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1)",
+  "84fcd220de1": "inert: eager order[] merge lookup before visitation; also hoisted wait_mask to block scope (stale-bit re-drain, the 216->1966 wait explosion) and assigned 4 scoreboard slots into the 1-bit IR field",
+  "8f3169a4342": "lazy merge resolution at else-arrival (inherited, unbuilt)",
+  "c3cebc011bd": "first firing proof: 75 ACCEPT / 0 close-shaped merges resolved, 25 FOLDs (fallthrough shapes have no jump to resolve from); dispatched before qualification, disclosed",
+  "30ffef135e0": "conservative rewrite: AGX_NUM_SLOTS=2 (1-bit IR field, _Static_assert pinned), sum-carry at else arrivals with overflow drain, pop_exec-lazy region close, per-instruction wait_mask",
+  "f11106ddfb0": "host capacity/hazard gtests"
+ },
+ "root_causes": [
+  "eager merge resolution against unvisited blocks (the named inert cause); deeper: AGX if/else guards are fallthrough shapes with no jump to resolve a merge from - regions now close lazily on a pop_exec-predecessor (emit_if appends pop_exec after every region's last else-arm block)",
+  "wait_mask hoisted to block scope by 84fcd220de1: stale hazard bits re-drained every later instruction in a block; restored per-instruction scoping",
+  "4-slot scoreboard assignment truncated by the 1-bit IR field agx_instr::scoreboard ('Scoreboard index, 0 or 1'); texture sample packs a single bit (agx_pack.c)"
+ ],
+ "firing_proof": {
+  "instrumentation": "temporary unconditional prints: pass entry, per-site ACCEPT/reject-with-reason, else-arrival, close, carry, drain, overflow-drain",
+  "patched_driver_commit": "30ffef135e0",
+  "all_shaders": {"agxwaits_lines": 469, "accept": 75, "else_arrivals": 75, "close": 75, "folds": 0, "overflow_drains": 4},
+  "coopmat_kernel_log": "logs/waits-firing-coopmat-kernel.log",
+  "full_dump": "logs/full-dump-patched-30ffef.log.gz"
+ },
+ "isa_verdict": "MOVED",
+ "isa": {
+  "anchor": "shipped qmm coopmat kernel (shaders/qmm_coopmat.comp), final packed disassembly; stock reference from receipts/2026-09-12-agx-qmm-codegen/dumps, identical extraction on the patched dump",
+  "stock_instructions": 749,
+  "patched_instructions": 699,
+  "delta_instructions": -50,
+  "stock_waits": 32,
+  "patched_waits": 19,
+  "load_adjacent_waits_stock": 15,
+  "load_adjacent_waits_patched": 6,
+  "diff": "isa/kernel-final-isa.diff",
+  "mechanism": "waits deferred from exec-mask block exits to first true hazard; RA reuses each guarded load's destination register for the else-arm default, so the 4 x-load guards remain individually waited - the win is issue/wait count, not full latency overlap"
+ },
+ "digest": {
+  "dominant_cell": "1053x896x9728 q4 group-64 transposed",
+  "pin": "5179630cd4a7c3f9",
+  "patched_driver": "5179630cd4a7c3f9",
+  "held": true
+ },
+ "hardware_execution_disclosure": [
+  {
+   "commit": "c3cebc011bd",
+   "time_utc": "2026-09-12T12:47:58Z",
+   "nature": "real kernel dispatch on then-unqualified driver (dump probe), disclosed; log used only for fold-shape diagnosis, no numbers taken"
+  },
+  {
+   "commit": "30ffef135e0",
+   "time_utc": "2026-09-12T13:09:32Z",
+   "command": "flock /tmp/m1-gpu.lock; VK_DRIVER_FILES=~/benchq/qmm-coop-bench/icd-waitbatch-patched.json AGX_SIMDMAT=1 MESA_SHADER_CACHE_DISABLE=true MESA_SHADER_CACHE_DIR=$(mktemp -d) AGX_MESA_DEBUG=shaders ~/venv-qmmcoop/bin/python ~/benchq/qmm-coop-bench/qmm_dump_probe.py",
+   "nature": "real kernel dispatch (5 warmup + 6 timed + 1 digest eval) on driver qualified only by reviewer static analysis at that point; digest held",
+   "result": {"median_ms": 17.2814, "tflops": 1062.2, "f16_digest": "5179630cd4a7c3f9"},
+   "caveat": "single unpaired run in a different window from the stock reference (17.5371 ms / 1046.7 GFLOP/s) - continuity only, not a performance claim"
+  }
+ ],
+ "safety_model": {
+  "per_lane_claim": "none - pending counts sum at unions and any slot past AGX_MAX_PENDING is force-drained at the merge; conservative under either per-lane or shared-FIFO accounting",
+  "ra_interaction": "RA runs before this pass; the else arm sees the then arm's carried pending state so physical-register reuse WAWs wait out in-flight writebacks",
+  "preissuance_bound": "upstream count>=8 pre-issue check retained in both arms; a ninth tracked message on a slot can never issue",
+  "zero_init": "agx_alloc_instr zero-allocates; unassigned scoreboard is 0 (valid); asserted, not guarded",
+  "still_draining": "real branches, loop back-edges, barriers"
+ },
+ "host_tests": {
+  "commit": "f11106ddfb0",
+  "cases": ["RawHazardWaitsAtUse", "SlotCapacityWaitsBeforeIssue", "DivergentWawWaitsInElseArm", "MergeReaderSeesCarriedPending"],
+  "result": "PENDING-RUN"
+ },
+ "qualification": {
+  "plan": "conditionally approved by root: control digest gates first, then interleaved base/patched kernel probe 3 rounds, then interleaved bench_matrix (discarded warmup per driver + 3 rounds) on the unchanged a2e38c3 wheel with committed pins; any digest movement is a rejection, no re-pins",
+  "window_script": "window.sh",
+  "result": "PENDING"
+ },
+ "status": "PASS FIRES + ISA MOVED + DIGEST HELD; host tests running; paired qualification gated on host results"
+}

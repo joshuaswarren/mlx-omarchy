@@ -1,0 +1,699 @@
+   0: f2053000               mov      $r1, thread_in_threadgroup_x
+   4: f2093500               mov      $r2, simdgroup_index_in_threadgroup
+   8: 7e0d82f28100           and      r3, $r1, 31
+   e: 2e91002024050000       shr      r4, r1, 5
+  16: 0e150040e4000000       iadd     r5, 0, r2.sx, lsl 1
+  1e: 62000000               ldimm    r0l, 0
+  22: 621900000000           ldimm    r6, 0
+  28: 522c8c821800           while    $r6, u4, 1, ult
+  2e: 20c02a130000           jmp_none 4906
+  34: 721d0000               mov      r7, threadgroup_in_grid_x
+  38: f2210100               mov      $r8, threadgroup_in_grid_y
+  3c: 9e258ce658000000       imul     $r9, $r6.sx, u7.sx
+  44: 9e299225699e0500       imadd    $r10, u9.sx, $r9.sx, u15.sx
+  4c: 2ea9004025010000       shr      r10, r10, 1
+  54: 1e2d8ca658a00500       imadd    r11, $r6.sx, u5.sx, u16.sx
+  5c: 9e314cc658000000       imul     $r12, r6.sx, u6.sx
+  64: 0e35a68569000000       iadd     r13, u19.sx, $r12.sx
+  6c: 0e31a48565000000       iadd     r12, u18.sx, r12.sx
+  74: 1e25902565a20500       imadd    r9, u8.sx, r9.sx, u17.sx
+  7c: 0e2150a65a000000       iadd     r8, r8.sx, u21.sx
+  84: 420800000000           if       0.0, 0.0, 1, feq
+  8a: 522c90421900           while    $r8, u10, 1, ult
+  90: 20c0b4120000           jmp_none 4788
+  96: 2e39000025050000       shl      r14, r8, 5
+  9e: 0e3d4e865a000000       iadd     r15, r7.sx, u20.sx
+  a6: 420800000000           if       0.0, 0.0, 1, feq
+  ac: 522c9e621900           while    $r15, u11, 1, ult
+  b2: 20c07e120000           jmp_none 4734
+  b8: 9e415e0602460600       imadd    $r16, r15.sx, 32, r3.sx
+  c0: 1e45608659000000       imul     r17, r16.sx, u12.sx
+  c8: 624900000000           ldimm    r18, 0
+  ce: 624d00000000           ldimm    r19, 0
+  d4: 625100000000           ldimm    r20, 0
+  da: 625500000000           ldimm    r21, 0
+  e0: 625900000000           ldimm    r22, 0
+  e6: 625d00000000           ldimm    r23, 0
+  ec: 626100000000           ldimm    r24, 0
+  f2: 626500000000           ldimm    r25, 0
+  f8: 626900000000           ldimm    r26, 0
+  fe: 626d00000000           ldimm    r27, 0
+ 104: 627100000000           ldimm    r28, 0
+ 10a: 627500000000           ldimm    r29, 0
+ 110: 627900000000           ldimm    r30, 0
+ 116: 627d00000000           ldimm    r31, 0
+ 11c: 6281000000000010       ldimm    r32, 0
+ 124: 6285000000000010       ldimm    r33, 0
+ 12c: 6289000000000010       ldimm    r34, 0
+ 134: 420800000000           if       0.0, 0.0, 1, feq
+ 13a: 522c44821904           while    r34, u12, 1, ult
+ 140: 20c00c070000           jmp_none 1804
+ 146: 522860021900           if       r16, u8, 1, ult
+ 14c: 8e0d5a4668110000       iadd     $r35, r13.sx, $r34.sx
+ 154: 0e0da26664110000       iadd     r35, $r17.sx, r35.sx
+ 15c: 8504600e34c01000       load     r0h, du24, r35, i16, x, a
+ 164: 8e0d584664110000       iadd     $r35, r12.sx, r34.sx
+ 16c: 0e0d626664110000       iadd     r35, r17.sx, r35.sx
+ 174: 8518644e34c11000       load     r35l, du26, r35, i16, x, b
+ 17c: 420a00000000           else     0.0, 0.0, 1, feq
+ 182: 3801                   wait     b
+ 184: 628c00000010           ldimm    r35l, 0
+ 18a: 3800                   wait     a
+ 18c: 62020000               ldimm    r0h, 0
+ 190: 520e00000000           pop_exec 1
+ 196: 6291000000000010       ldimm    r36, 0
+ 19e: 420800000000           if       0.0, 0.0, 1, feq
+ 1a4: 522c88420004           while    $r36, 4, 1, ult
+ 1aa: 20c08e060000           jmp_none 1678
+ 1b0: ae15004024060011       shl      $r37, r34, 6
+ 1b8: 0e154a8664152000       iadd     r37, r37.sx, r36.sx, lsl 4
+ 1c0: ae99002024030010       shr      $r38, r1, 3
+ 1c8: 0e1d5cc664110000       iadd     r39, r14.sx, r38.sx
+ 1d0: 52284ee21804           if       r39, u7, 1, ult
+ 1d6: aea100a024010011       shr      $r40, r37, 1
+ 1de: 8e21540665110000       iadd     $r40, r10.sx, r40.sx
+ 1e6: 9e1d4ec659504614       imadd    $r39, r39.sx, u14.sx, r40.sx
+ 1ee: fe2142728010           and      $r40, r1, 7
+ 1f4: 0e1d50e664150000       iadd     r39, r40.sx, r39.sx
+ 1fc: 0539e80e34c11200       load     r39, du28, r39, i32, x, a
+ 204: 420a00000000           else     0.0, 0.0, 1, feq
+ 20a: 3800                   wait     a
+ 20c: 629d000000000010       ldimm    r39, 0
+ 214: 520e00000000           pop_exec 1
+ 21a: 8e21420600110000       iadd     $r40, r1.sx, 64
+ 222: aea5000025030011       shr      $r41, r40, 3
+ 22a: 0e295c2665110000       iadd     r42, r14.sx, r41.sx
+ 232: 522854e21804           if       r42, u7, 1, ult
+ 238: aead00a024010011       shr      $r43, r37, 1
+ 240: 8e2d546665110000       iadd     $r43, r10.sx, r43.sx
+ 248: 9e2954c659564614       imadd    $r42, r42.sx, u14.sx, r43.sx
+ 250: fe2d50728014           and      $r43, r40, 7
+ 256: 0e29564665150000       iadd     r42, r43.sx, r42.sx
+ 25e: 05514c0e35c11200       load     r42, du30, r42, i32, x, a
+ 266: 420a00000000           else     0.0, 0.0, 1, feq
+ 26c: 3800                   wait     a
+ 26e: 62a9000000000010       ldimm    r42, 0
+ 276: 520e00000000           pop_exec 1
+ 27c: 8e2d420600120000       iadd     $r43, r1.sx, 128
+ 284: aeb1006025030011       shr      $r44, r43, 3
+ 28c: 0e355c8665110000       iadd     r45, r14.sx, r44.sx
+ 294: 52285ae21804           if       r45, u7, 1, ult
+ 29a: aeb900a024010011       shr      $r46, r37, 1
+ 2a2: 8e3954c665110000       iadd     $r46, r10.sx, r46.sx
+ 2aa: 9e355ac6595c4614       imadd    $r45, r45.sx, u14.sx, r46.sx
+ 2b2: fe3956728014           and      $r46, r43, 7
+ 2b8: 0e355ca665150000       iadd     r45, r46.sx, r45.sx
+ 2c0: 0569a00e45c11200       load     r45, du32, r45, i32, x, a
+ 2c8: 420a00000000           else     0.0, 0.0, 1, feq
+ 2ce: 3800                   wait     a
+ 2d0: 62b5000000000010       ldimm    r45, 0
+ 2d8: 520e00000000           pop_exec 1
+ 2de: 8e39420600130000       iadd     $r46, r1.sx, 192
+ 2e6: aebd00c025030011       shr      $r47, r46, 3
+ 2ee: 0e415ce665110000       iadd     r48, r14.sx, r47.sx
+ 2f6: 522860e21804           if       r48, u7, 1, ult
+ 2fc: aec500a024010011       shr      $r49, r37, 1
+ 304: 8e45542666110000       iadd     $r49, r10.sx, r49.sx
+ 30c: 9e4160c659624614       imadd    $r48, r48.sx, u14.sx, r49.sx
+ 314: fe455c728014           and      $r49, r46, 7
+ 31a: 0e41620666150000       iadd     r48, r49.sx, r48.sx
+ 322: 0581040e46c11200       load     r48, du34, r48, i32, x, a
+ 32a: 420a00000000           else     0.0, 0.0, 1, feq
+ 330: 3800                   wait     a
+ 332: 62c1000000000010       ldimm    r48, 0
+ 33a: 520e00000000           pop_exec 1
+ 340: ae1900c024060011       shl      $r38, r38, 6
+ 348: fe4542728010           and      $r49, r1, 7
+ 34e: 8e194c26e6151000       iadd     $r38, r38.sx, r49.sx, lsl 3
+ 356: 7e0e8c088014           mov      r35h, $r38l
+ 35c: 2ac54e000016           fadd     r49, r39l, -0.0
+ 362: 29c5070214000014       lstore   r49, r35h, 0, i32, x
+ 36a: 0e194c4600140000       iadd     r38, r38.sx, 4
+ 372: 2ac54f000016           fadd     r49, r39h, -0.0
+ 378: 29c50c0214000014       lstore   r49, r38l, 0, i32, x
+ 380: ae19002025060011       shl      $r38, r41, 6
+ 388: fe1d50728014           and      $r39, r40, 7
+ 38e: 8e194ce6e4151000       iadd     $r38, r38.sx, r39.sx, lsl 3
+ 396: 7e0e8c088014           mov      r35h, $r38l
+ 39c: 2a9d54000016           fadd     r39, r42l, -0.0
+ 3a2: 299d070214000014       lstore   r39, r35h, 0, i32, x
+ 3aa: 0e194c4600140000       iadd     r38, r38.sx, 4
+ 3b2: 2a9d55000016           fadd     r39, r42h, -0.0
+ 3b8: 299d0c0214000014       lstore   r39, r38l, 0, i32, x
+ 3c0: ae19008025060011       shl      $r38, r44, 6
+ 3c8: fe1d56728014           and      $r39, r43, 7
+ 3ce: 8e194ce6e4151000       iadd     $r38, r38.sx, r39.sx, lsl 3
+ 3d6: 7e0e8c088014           mov      r35h, $r38l
+ 3dc: 2a9d5a000016           fadd     r39, r45l, -0.0
+ 3e2: 299d070214000014       lstore   r39, r35h, 0, i32, x
+ 3ea: 0e194c4600140000       iadd     r38, r38.sx, 4
+ 3f2: 2a9d5b000016           fadd     r39, r45h, -0.0
+ 3f8: 299d0c0214000014       lstore   r39, r38l, 0, i32, x
+ 400: ae1900e025060011       shl      $r38, r47, 6
+ 408: fe1d5c728014           and      $r39, r46, 7
+ 40e: 8e194ce6e4151000       iadd     $r38, r38.sx, r39.sx, lsl 3
+ 416: 7e0e8c088014           mov      r35h, $r38l
+ 41c: 2a9d60000016           fadd     r39, r48l, -0.0
+ 422: 299d070214000014       lstore   r39, r35h, 0, i32, x
+ 42a: 0e194c4600140000       iadd     r38, r38.sx, 4
+ 432: 2a9d61000016           fadd     r39, r48h, -0.0
+ 438: 299d0c0214000014       lstore   r39, r38l, 0, i32, x
+ 440: 522860021900           if       r16, u8, 1, ult
+ 446: ae9500a024030011       shr      $r37, r37, 3
+ 44e: 8e1556a664110000       iadd     $r37, r11.sx, r37.sx
+ 456: 8e154a8664140000       iadd     $r37, r37.sx, r4.sx
+ 45e: 1e1560a6594a4610       imadd    r37, r16.sx, u13.sx, r37.sx
+ 466: 0529a80e44c11200       load     r37, du36, r37, i32, x, a
+ 46e: 420a00000000           else     0.0, 0.0, 1, feq
+ 474: 3800                   wait     a
+ 476: 6295000000000010       ldimm    r37, 0
+ 47e: 520e00000000           pop_exec 1
+ 484: 9e1948a659460612       imadd    $r38, r4.sx, u77.sx, r3.sx
+ 48c: 8e1900c064111000       iadd     $r38, 0, r38.sx, lsl 2
+ 494: 0e1da6c568190000       iadd     r39, u83.sx, $r38.sx
+ 49c: 7e218af28014           and      r40, $r37, 15
+ 4a2: bea10a042511           u32_to_f $r40, r40, rte
+ 4a8: 3aa1810025864011       ffma     r40, $r0h, r40, $r35l
+ 4b0: 29a10e0214000014       lstore   r40, r39l, 0, i32, x
+ 4b8: 0e1dbec568190000       iadd     r39, u95.sx, $r38.sx
+ 4c0: 2ea100a028040411       bfeil    r40, 0, $r37, 4, 4
+ 4c8: bea10a042511           u32_to_f $r40, r40, rte
+ 4ce: 3aa1810025864011       ffma     r40, $r0h, r40, $r35l
+ 4d6: 29a10e0214000014       lstore   r40, r39l, 0, i32, x
+ 4de: 0e1dbac568190000       iadd     r39, u93.sx, $r38.sx
+ 4e6: 2ea100a028080411       bfeil    r40, 0, $r37, 8, 4
+ 4ee: bea10a042511           u32_to_f $r40, r40, rte
+ 4f4: 3aa1810025864011       ffma     r40, $r0h, r40, $r35l
+ 4fc: 29a10e0214000014       lstore   r40, r39l, 0, i32, x
+ 504: 0e1d82c5681d0000       iadd     r39, u97.sx, $r38.sx
+ 50c: 2ea100a0280c0411       bfeil    r40, 0, $r37, 12, 4
+ 514: bea10a042511           u32_to_f $r40, r40, rte
+ 51a: 3aa1810025864011       ffma     r40, $r0h, r40, $r35l
+ 522: 29a10e0214000014       lstore   r40, r39l, 0, i32, x
+ 52a: 0e1db2c568190000       iadd     r39, u89.sx, $r38.sx
+ 532: fe0e8b088014           mov      $r35h, $r37h
+ 538: 7e2147f08014           and      r40, r35h, 15
+ 53e: bea10a042511           u32_to_f $r40, r40, rte
+ 544: 3aa1810025864011       ffma     r40, $r0h, r40, $r35l
+ 54c: 29a10e0214000014       lstore   r40, r39l, 0, i32, x
+ 554: 0e1d90c5681d0000       iadd     r39, u104.sx, $r38.sx
+ 55c: 2ea100a028140411       bfeil    r40, 0, $r37, 20, 4
+ 564: bea10a042511           u32_to_f $r40, r40, rte
+ 56a: 3aa1810025864011       ffma     r40, $r0h, r40, $r35l
+ 572: 29a10e0214000014       lstore   r40, r39l, 0, i32, x
+ 57a: 0e1d80c5681d0000       iadd     r39, u96.sx, $r38.sx
+ 582: 2ea100a028180411       bfeil    r40, 0, $r37, 24, 4
+ 58a: bea10a042511           u32_to_f $r40, r40, rte
+ 590: 3aa1810025864011       ffma     r40, $r0h, r40, $r35l
+ 598: 29a10e0214000014       lstore   r40, r39l, 0, i32, x
+ 5a0: 0e1986c5641d0000       iadd     r38, u99.sx, r38.sx
+ 5a8: 2e9500a0241c0011       shr      r37, r37, 28
+ 5b0: be950aa42411           u32_to_f $r37, r37, rte
+ 5b6: 3a9541a024464011       ffma     r37, r0h, r37, r35l
+ 5be: 29950c0214000014       lstore   r37, r38l, 0, i32, x
+ 5c6: f2153410               mov      $r37, thread_index_in_simdgroup
+ 5ca: ae9900a068030011       bfeil    $r38, 0, $r37, 3, 1
+ 5d2: 8e1900c064111000       iadd     $r38, 0, r38.sx, lsl 2
+ 5da: fe1d8a128014           and      $r39, $r37, 1
+ 5e0: 8e194ce6e4150000       iadd     $r38, r38.sx, r39.sx, lsl 1
+ 5e8: ae9d00a068040011       bfeil    $r39, 0, $r37, 4, 1
+ 5f0: ae9500a0a4010011       bfeil    $r37, 0, r37, 1, 2
+ 5f8: 8e154ae664151000       iadd     $r37, r37.sx, r39.sx, lsl 2
+ 600: 9e1d44a6598c4612       imadd    $r39, r2.sx, u77.sx, $r38.sx
+ 608: 8e1d4ea668152000       iadd     $r39, r39.sx, $r37.sx, lsl 4
+ 610: 9e154a06024c4614       imadd    $r37, r37.sx, 32, r38.sx
+ 618: 8e1900e064111000       iadd     $r38, 0, r39.sx, lsl 2
+ 620: 0e1d8c4600140000       iadd     r39, $r38.sx, 4
+ 628: 0e218cc659160000       iadd     r40, $r38.sx, u78.sx
+ 630: 0e259ec568190000       iadd     r41, u79.sx, $r38.sx
+ 638: 8e1500a064111000       iadd     $r37, 0, r37.sx, lsl 2
+ 640: 0e29a6a568190000       iadd     r42, u83.sx, $r37.sx
+ 648: 0e2d8aa5681d0000       iadd     r43, u101.sx, $r37.sx
+ 650: 0e3192a5681d0000       iadd     r44, u105.sx, $r37.sx
+ 658: 0e3594a5681d0000       iadd     r45, u106.sx, $r37.sx
+ 660: 6800                   barrier
+ 662: 7e0e8c088014           mov      r35h, $r38l
+ 668: 69b9070214000014       lload    r46, r35h, 0, i32, x
+ 670: 69bd0e0214000014       lload    r47, r39l, 0, i32, x
+ 678: 69c1100214000014       lload    r48, r40l, 0, i32, x
+ 680: 69c5120214000014       lload    r49, r41l, 0, i32, x
+ 688: 69a1140214000014       lload    r40, r42l, 0, i32, x
+ 690: 69a5160214000014       lload    r41, r43l, 0, i32, x
+ 698: 69a9180214000014       lload    r42, r44l, 0, i32, x
+ 6a0: 69ad1a0214000014       lload    r43, r45l, 0, i32, x
+ 6a8: 6f795c4e257c0285       simd_matrix_fmadd32 r30, r46.abs.neg, r42, r30
+ 6b0: 6f59604e256c0285       simd_matrix_fmadd32 r22, r48.abs.neg, r42, r22
+ 6b8: 0e1db0a568190000       iadd     r39, u88.sx, $r37.sx
+ 6c0: 0e29aea568190000       iadd     r42, u87.sx, $r37.sx
+ 6c8: 69b10e0214000014       lload    r44, r39l, 0, i32, x
+ 6d0: 69b5140214000014       lload    r45, r42l, 0, i32, x
+ 6d8: 6f715c8e25780285       simd_matrix_fmadd32 r28, r46.abs.neg, r44, r28
+ 6e0: 6f51608e25680285       simd_matrix_fmadd32 r20, r48.abs.neg, r44, r20
+ 6e8: 0e1da8a568190000       iadd     r39, u84.sx, $r37.sx
+ 6f0: 0e29b8a568190000       iadd     r42, u92.sx, $r37.sx
+ 6f8: 69b10e0214000014       lload    r44, r39l, 0, i32, x
+ 700: 69b5140214000014       lload    r45, r42l, 0, i32, x
+ 708: 6f695c8e25740285       simd_matrix_fmadd32 r26, r46.abs.neg, r44, r26
+ 710: 6f49608e25640285       simd_matrix_fmadd32 r18, r48.abs.neg, r44, r18
+ 718: 6f61600e25700285       simd_matrix_fmadd32 r24, r48.abs.neg, r40, r24
+ 720: 6f015c0e25404295       simd_matrix_fmadd32 r32, r46.abs.neg, r40, r32
+ 728: 0e1d8c0602140000       iadd     r39, $r38.sx, 32
+ 730: 0e2124c068110000       iadd     r40, 36, $r38.sx
+ 738: 0e258c6659170000       iadd     r41, $r38.sx, u107.sx
+ 740: 0e19bcc564190000       iadd     r38, u94.sx, r38.sx
+ 748: 0e29aca568190000       iadd     r42, u86.sx, $r37.sx
+ 750: 0e2daaa568190000       iadd     r43, u85.sx, $r37.sx
+ 758: 0e31b6a568190000       iadd     r44, u91.sx, $r37.sx
+ 760: 0e35b4a568190000       iadd     r45, u90.sx, $r37.sx
+ 768: 69b90e0214000014       lload    r46, r39l, 0, i32, x
+ 770: 69bd100214000014       lload    r47, r40l, 0, i32, x
+ 778: 69c1120214000014       lload    r48, r41l, 0, i32, x
+ 780: 69c50c0214000014       lload    r49, r38l, 0, i32, x
+ 788: 6999140214000014       lload    r38, r42l, 0, i32, x
+ 790: 699d160214000014       lload    r39, r43l, 0, i32, x
+ 798: 69a1180214000014       lload    r40, r44l, 0, i32, x
+ 7a0: 69a51a0214000014       lload    r41, r45l, 0, i32, x
+ 7a8: 6f795c0e257c0285       simd_matrix_fmadd32 r30, r46.abs.neg, r40, r30
+ 7b0: 6f59600e256c0285       simd_matrix_fmadd32 r22, r48.abs.neg, r40, r22
+ 7b8: 0e218ca5681d0000       iadd     r40, u102.sx, $r37.sx
+ 7c0: 0e2588a5681d0000       iadd     r41, u100.sx, $r37.sx
+ 7c8: 69a9100214000014       lload    r42, r40l, 0, i32, x
+ 7d0: 69ad120214000014       lload    r43, r41l, 0, i32, x
+ 7d8: 6f715c4e25780285       simd_matrix_fmadd32 r28, r46.abs.neg, r42, r28
+ 7e0: 6f51604e25680285       simd_matrix_fmadd32 r20, r48.abs.neg, r42, r20
+ 7e8: 0e218ea5681d0000       iadd     r40, u103.sx, $r37.sx
+ 7f0: 0e1584a5641d0000       iadd     r37, u98.sx, r37.sx
+ 7f8: 69a1100214000014       lload    r40, r40l, 0, i32, x
+ 800: 69a50a0214000014       lload    r41, r37l, 0, i32, x
+ 808: 6f695c0e25740285       simd_matrix_fmadd32 r26, r46.abs.neg, r40, r26
+ 810: 6f49600e25640285       simd_matrix_fmadd32 r18, r48.abs.neg, r40, r18
+ 818: 6f6160ce24700285       simd_matrix_fmadd32 r24, r48.abs.neg, r38, r24
+ 820: 6f015cce24404295       simd_matrix_fmadd32 r32, r46.abs.neg, r38, r32
+ 828: 0e11481600140000       iadd     r36, r36.sx, 1
+ 830: 6800                   barrier
+ 832: 00c072f9ffff           jmp_any  -1678
+ 838: 520e00000000           pop_exec 1
+ 83e: 0e09441600140000       iadd     r34, r34.sx, 1
+ 846: 00c0f4f8ffff           jmp_any  -1804
+ 84c: 520e00000000           pop_exec 1
+ 852: 52084a020000           if       r5, 0, 1, ieq
+ 858: f2453400               mov      $r17, thread_index_in_simdgroup
+ 85c: ae890020aa010010       bfeil    $r34, 0, $r17, 1, 2
+ 864: ae8d00206a040010       bfeil    $r35, 0, $r17, 4, 1
+ 86c: 8e09446664151000       iadd     $r34, r34.sx, r35.sx, lsl 2
+ 874: fe0da2128010           and      $r35, $r17, 1
+ 87a: aec5002066030000       bfeil    $r17, 0, r17, 3, 1
+ 882: 8e45002066001000       iadd     $r17, 0, r17.sx, lsl 2
+ 88a: 8e456266e4010000       iadd     $r17, r17.sx, r35.sx, lsl 1
+ 892: 8e456246e4011000       iadd     $r17, r17.sx, r34.sx, lsl 3
+ 89a: 8e45002066001000       iadd     $r17, 0, r17.sx, lsl 2
+ 8a2: 7e02a2088000           mov      r0h, $r17l
+ 8a8: 2981010214000010       lstore   r32, r0h, 0, i32, x
+ 8b0: 0e09a24600100000       iadd     r34, $r17.sx, 4
+ 8b8: 2985040214000014       lstore   r33, r34l, 0, i32, x
+ 8c0: 0e099a256a180000       iadd     r34, u77.sx, $r17.sx
+ 8c8: 29f9040214000004       lstore   r30, r34l, 0, i32, x
+ 8d0: 0e09a0256a180000       iadd     r34, u80.sx, $r17.sx
+ 8d8: 29fd040214000004       lstore   r31, r34l, 0, i32, x
+ 8e0: 0e099c256a180000       iadd     r34, u78.sx, $r17.sx
+ 8e8: 29f1040214000004       lstore   r28, r34l, 0, i32, x
+ 8f0: 0e099e256a180000       iadd     r34, u79.sx, $r17.sx
+ 8f8: 29f5040214000004       lstore   r29, r34l, 0, i32, x
+ 900: 0e09a2256a180000       iadd     r34, u81.sx, $r17.sx
+ 908: 29e9040214000004       lstore   r26, r34l, 0, i32, x
+ 910: 0e45a42566080000       iadd     r17, u82.sx, r17.sx
+ 918: 29ed220214000000       lstore   r27, r17l, 0, i32, x
+ 920: 520e00000000           pop_exec 1
+ 926: 6800                   barrier
+ 928: 522860021900           if       r16, u8, 1, ult
+ 92e: 20c0c6010000           jmp_none 454
+ 934: 8e45008064001000       iadd     $r17, 0, r4.sx, lsl 2
+ 93c: 0e095c2666100000       iadd     r34, r14.sx, r17.sx
+ 944: 522844e21804           if       r34, u7, 1, ult
+ 94a: 8e0d520666100000       iadd     $r35, r9.sx, r16.sx
+ 952: 1e09440659464614       imadd    r34, r34.sx, u8.sx, r35.sx
+ 95a: fe0d82829912           and      $r35, $r1, u76
+ 960: ae91006024030010       shr      $r36, r3, 3
+ 968: 9e0d480600464615       imadd    $r35, r36.sx, 64, r35.sx
+ 970: fe110720a410           and      $r36, 7, r1
+ 976: 8e0d486664150000       iadd     $r35, r36.sx, r35.sx
+ 97e: 0e0d006064111000       iadd     r35, 0, r35.sx, lsl 2
+ 986: 698d060214000014       lload    r35, r35l, 0, i32, x
+ 98e: 2a8246020006           fadd     r0h, r35, -0.0
+ 994: c5044c0e44c01000       store    r0h, du38, r34, i16, x, a
+ 99c: 520e00000000           pop_exec 1
+ 9a2: 8e095c1600100000       iadd     $r34, r14.sx, 1
+ 9aa: 0e09624664110000       iadd     r34, r17.sx, r34.sx
+ 9b2: 522844e21804           if       r34, u7, 1, ult
+ 9b8: 8e0d520666100000       iadd     $r35, r9.sx, r16.sx
+ 9c0: 1e09440659464614       imadd    r34, r34.sx, u8.sx, r35.sx
+ 9c8: fe0d82829912           and      $r35, $r1, u76
+ 9ce: ae91006024030010       shr      $r36, r3, 3
+ 9d6: 9e0d480600464615       imadd    $r35, r36.sx, 64, r35.sx
+ 9de: fe110720a410           and      $r36, 7, r1
+ 9e4: 8e0d486664150000       iadd     $r35, r36.sx, r35.sx
+ 9ec: 0e0d206064111000       iadd     r35, 32, r35.sx, lsl 2
+ 9f4: 698d060214000014       lload    r35, r35l, 0, i32, x
+ 9fc: 2a8246020006           fadd     r0h, r35, -0.0
+ a02: c504404e54c01000       store    r0h, du40, r34, i16, x, b
+ a0a: 520e00000000           pop_exec 1
+ a10: 8e095c2600100000       iadd     $r34, r14.sx, 2
+ a18: 0e09624664110000       iadd     r34, r17.sx, r34.sx
+ a20: 522844e21804           if       r34, u7, 1, ult
+ a26: 8e0d520666100000       iadd     $r35, r9.sx, r16.sx
+ a2e: 1e09440659464614       imadd    r34, r34.sx, u8.sx, r35.sx
+ a36: fe0d82829912           and      $r35, $r1, u76
+ a3c: ae91006024030010       shr      $r36, r3, 3
+ a44: 9e0d480600464615       imadd    $r35, r36.sx, 64, r35.sx
+ a4c: fe110720a410           and      $r36, 7, r1
+ a52: 8e0d486664150000       iadd     $r35, r36.sx, r35.sx
+ a5a: 0e0d006064151000       iadd     r35, 64, r35.sx, lsl 2
+ a62: 698d060214000014       lload    r35, r35l, 0, i32, x
+ a6a: 2a8246020006           fadd     r0h, r35, -0.0
+ a70: c504440e54c01000       store    r0h, du42, r34, i16, x, a
+ a78: 520e00000000           pop_exec 1
+ a7e: 8e095c3600100000       iadd     $r34, r14.sx, 3
+ a86: 0e45624664010000       iadd     r17, r17.sx, r34.sx
+ a8e: 522862e21800           if       r17, u7, 1, ult
+ a94: 8e09520666100000       iadd     $r34, r9.sx, r16.sx
+ a9c: 1e45620659444600       imadd    r17, r17.sx, u8.sx, r34.sx
+ aa4: fe0982829912           and      $r34, $r1, u76
+ aaa: ae8d006024030010       shr      $r35, r3, 3
+ ab2: 9e09460600444615       imadd    $r34, r35.sx, 64, r34.sx
+ aba: fe0d0720a410           and      $r35, 7, r1
+ ac0: 8e09464664150000       iadd     $r34, r35.sx, r34.sx
+ ac8: 0e09204064151000       iadd     r34, 96, r34.sx, lsl 2
+ ad0: 6989040214000014       lload    r34, r34l, 0, i32, x
+ ad8: 2a8244020006           fadd     r0h, r34, -0.0
+ ade: c504280e52c01000       store    r0h, du44, r17, i16, x, a
+ ae6: 3800                   wait     a
+ ae8: 420a00000000           else     0.0, 0.0, 1, feq
+ aee: 520e00000000           pop_exec 1
+ af4: 520e00000000           pop_exec 1
+ afa: 3800                   wait     a
+ afc: 3801                   wait     b
+ afe: 6800                   barrier
+ b00: 52084a020000           if       r5, 0, 1, ieq
+ b06: f2453400               mov      $r17, thread_index_in_simdgroup
+ b0a: ae890020aa010010       bfeil    $r34, 0, $r17, 1, 2
+ b12: ae8d00206a040010       bfeil    $r35, 0, $r17, 4, 1
+ b1a: 8e09446664151000       iadd     $r34, r34.sx, r35.sx, lsl 2
+ b22: fe0da2128010           and      $r35, $r17, 1
+ b28: aec5002066030000       bfeil    $r17, 0, r17, 3, 1
+ b30: 8e45002066001000       iadd     $r17, 0, r17.sx, lsl 2
+ b38: 8e456266e4010000       iadd     $r17, r17.sx, r35.sx, lsl 1
+ b40: 8e456246e4011000       iadd     $r17, r17.sx, r34.sx, lsl 3
+ b48: 8e45002066001000       iadd     $r17, 0, r17.sx, lsl 2
+ b50: 7e02a2088000           mov      r0h, $r17l
+ b56: 29e1010214000000       lstore   r24, r0h, 0, i32, x
+ b5e: 0e09a24600100000       iadd     r34, $r17.sx, 4
+ b66: 29e5040214000004       lstore   r25, r34l, 0, i32, x
+ b6e: 0e099a256a180000       iadd     r34, u77.sx, $r17.sx
+ b76: 29d9040214000004       lstore   r22, r34l, 0, i32, x
+ b7e: 0e09a0256a180000       iadd     r34, u80.sx, $r17.sx
+ b86: 29dd040214000004       lstore   r23, r34l, 0, i32, x
+ b8e: 0e099c256a180000       iadd     r34, u78.sx, $r17.sx
+ b96: 29d1040214000004       lstore   r20, r34l, 0, i32, x
+ b9e: 0e099e256a180000       iadd     r34, u79.sx, $r17.sx
+ ba6: 29d5040214000004       lstore   r21, r34l, 0, i32, x
+ bae: 0e09a2256a180000       iadd     r34, u81.sx, $r17.sx
+ bb6: 29c9040214000004       lstore   r18, r34l, 0, i32, x
+ bbe: 0e45a42566080000       iadd     r17, u82.sx, r17.sx
+ bc6: 29cd220214000000       lstore   r19, r17l, 0, i32, x
+ bce: 520e00000000           pop_exec 1
+ bd4: 6800                   barrier
+ bd6: 522860021900           if       r16, u8, 1, ult
+ bdc: 20c0ce010000           jmp_none 462
+ be2: 8e455c8600000000       iadd     $r17, r14.sx, 8
+ bea: 8e09008064101000       iadd     $r34, 0, r4.sx, lsl 2
+ bf2: 0e45442666040000       iadd     r17, r34.sx, r17.sx
+ bfa: 522862e21800           if       r17, u7, 1, ult
+ c00: 8e0d520666100000       iadd     $r35, r9.sx, r16.sx
+ c08: 1e45620659464600       imadd    r17, r17.sx, u8.sx, r35.sx
+ c10: fe0d82829912           and      $r35, $r1, u76
+ c16: ae91006024030010       shr      $r36, r3, 3
+ c1e: 9e0d480600464615       imadd    $r35, r36.sx, 64, r35.sx
+ c26: fe110720a410           and      $r36, 7, r1
+ c2c: 8e0d486664150000       iadd     $r35, r36.sx, r35.sx
+ c34: 0e0d006064111000       iadd     r35, 0, r35.sx, lsl 2
+ c3c: 698d060214000014       lload    r35, r35l, 0, i32, x
+ c44: 2a8246020006           fadd     r0h, r35, -0.0
+ c4a: c5042c0e52c01000       store    r0h, du46, r17, i16, x, a
+ c52: 520e00000000           pop_exec 1
+ c58: 8e4509c065000000       iadd     $r17, 9, r14.sx
+ c60: 0e45442666040000       iadd     r17, r34.sx, r17.sx
+ c68: 522862e21800           if       r17, u7, 1, ult
+ c6e: 8e0d520666100000       iadd     $r35, r9.sx, r16.sx
+ c76: 1e45620659464600       imadd    r17, r17.sx, u8.sx, r35.sx
+ c7e: fe0d82829912           and      $r35, $r1, u76
+ c84: ae91006024030010       shr      $r36, r3, 3
+ c8c: 9e0d480600464615       imadd    $r35, r36.sx, 64, r35.sx
+ c94: fe110720a410           and      $r36, 7, r1
+ c9a: 8e0d486664150000       iadd     $r35, r36.sx, r35.sx
+ ca2: 0e0d206064111000       iadd     r35, 32, r35.sx, lsl 2
+ caa: 698d060214000014       lload    r35, r35l, 0, i32, x
+ cb2: 2a8246020006           fadd     r0h, r35, -0.0
+ cb8: c504204e62c01000       store    r0h, du48, r17, i16, x, b
+ cc0: 520e00000000           pop_exec 1
+ cc6: 8e450ac065000000       iadd     $r17, 10, r14.sx
+ cce: 0e45442666040000       iadd     r17, r34.sx, r17.sx
+ cd6: 522862e21800           if       r17, u7, 1, ult
+ cdc: 8e0d520666100000       iadd     $r35, r9.sx, r16.sx
+ ce4: 1e45620659464600       imadd    r17, r17.sx, u8.sx, r35.sx
+ cec: fe0d82829912           and      $r35, $r1, u76
+ cf2: ae91006024030010       shr      $r36, r3, 3
+ cfa: 9e0d480600464615       imadd    $r35, r36.sx, 64, r35.sx
+ d02: fe110720a410           and      $r36, 7, r1
+ d08: 8e0d486664150000       iadd     $r35, r36.sx, r35.sx
+ d10: 0e0d006064151000       iadd     r35, 64, r35.sx, lsl 2
+ d18: 698d060214000014       lload    r35, r35l, 0, i32, x
+ d20: 2a8246020006           fadd     r0h, r35, -0.0
+ d26: c504240e62c01000       store    r0h, du50, r17, i16, x, a
+ d2e: 520e00000000           pop_exec 1
+ d34: 8e450bc065000000       iadd     $r17, 11, r14.sx
+ d3c: 0e45442666040000       iadd     r17, r34.sx, r17.sx
+ d44: 522862e21800           if       r17, u7, 1, ult
+ d4a: 8e09520666100000       iadd     $r34, r9.sx, r16.sx
+ d52: 1e45620659444600       imadd    r17, r17.sx, u8.sx, r34.sx
+ d5a: fe0982829912           and      $r34, $r1, u76
+ d60: ae8d006024030010       shr      $r35, r3, 3
+ d68: 9e09460600444615       imadd    $r34, r35.sx, 64, r34.sx
+ d70: fe0d0720a410           and      $r35, 7, r1
+ d76: 8e09464664150000       iadd     $r34, r35.sx, r34.sx
+ d7e: 0e09204064151000       iadd     r34, 96, r34.sx, lsl 2
+ d86: 6989040214000014       lload    r34, r34l, 0, i32, x
+ d8e: 2a8244020006           fadd     r0h, r34, -0.0
+ d94: c504280e62c01000       store    r0h, du52, r17, i16, x, a
+ d9c: 3800                   wait     a
+ d9e: 420a00000000           else     0.0, 0.0, 1, feq
+ da4: 520e00000000           pop_exec 1
+ daa: 520e00000000           pop_exec 1
+ db0: 3800                   wait     a
+ db2: 3801                   wait     b
+ db4: 6800                   barrier
+ db6: 52084a220000           if       r5, 2, 1, ieq
+ dbc: f2453400               mov      $r17, thread_index_in_simdgroup
+ dc0: ae890020aa010010       bfeil    $r34, 0, $r17, 1, 2
+ dc8: ae8d00206a040010       bfeil    $r35, 0, $r17, 4, 1
+ dd0: 8e09446664151000       iadd     $r34, r34.sx, r35.sx, lsl 2
+ dd8: fe0da2128010           and      $r35, $r17, 1
+ dde: aec5002066030000       bfeil    $r17, 0, r17, 3, 1
+ de6: 8e45002066001000       iadd     $r17, 0, r17.sx, lsl 2
+ dee: 8e456266e4010000       iadd     $r17, r17.sx, r35.sx, lsl 1
+ df6: 8e456246e4011000       iadd     $r17, r17.sx, r34.sx, lsl 3
+ dfe: 8e45002066001000       iadd     $r17, 0, r17.sx, lsl 2
+ e06: 7e02a2088000           mov      r0h, $r17l
+ e0c: 2981010214000010       lstore   r32, r0h, 0, i32, x
+ e14: 0e01a24600100000       iadd     r32, $r17.sx, 4
+ e1c: 2985000214000014       lstore   r33, r32l, 0, i32, x
+ e24: 0e019a256a180000       iadd     r32, u77.sx, $r17.sx
+ e2c: 29f9000214000004       lstore   r30, r32l, 0, i32, x
+ e34: 0e79a0256a080000       iadd     r30, u80.sx, $r17.sx
+ e3c: 29fd3c0214000000       lstore   r31, r30l, 0, i32, x
+ e44: 0e799c256a080000       iadd     r30, u78.sx, $r17.sx
+ e4c: 29f13c0214000000       lstore   r28, r30l, 0, i32, x
+ e54: 0e719e256a080000       iadd     r28, u79.sx, $r17.sx
+ e5c: 29f5380214000000       lstore   r29, r28l, 0, i32, x
+ e64: 0e71a2256a080000       iadd     r28, u81.sx, $r17.sx
+ e6c: 29e9380214000000       lstore   r26, r28l, 0, i32, x
+ e74: 0e45a42566080000       iadd     r17, u82.sx, r17.sx
+ e7c: 29ed220214000000       lstore   r27, r17l, 0, i32, x
+ e84: 520e00000000           pop_exec 1
+ e8a: 6800                   barrier
+ e8c: 522860021900           if       r16, u8, 1, ult
+ e92: 20c0ce010000           jmp_none 462
+ e98: 8e455c0601000000       iadd     $r17, r14.sx, 16
+ ea0: 8e69008064001000       iadd     $r26, 0, r4.sx, lsl 2
+ ea8: 0e45742666000000       iadd     r17, r26.sx, r17.sx
+ eb0: 522862e21800           if       r17, u7, 1, ult
+ eb6: 8e6d520666000000       iadd     $r27, r9.sx, r16.sx
+ ebe: 1e45620659760600       imadd    r17, r17.sx, u8.sx, r27.sx
+ ec6: fe6d82829902           and      $r27, $r1, u76
+ ecc: aef1006024030000       shr      $r28, r3, 3
+ ed4: 9e6d780600760601       imadd    $r27, r28.sx, 64, r27.sx
+ edc: fe710720a400           and      $r28, 7, r1
+ ee2: 8e6d786667000000       iadd     $r27, r28.sx, r27.sx
+ eea: 0e6d006067001000       iadd     r27, 0, r27.sx, lsl 2
+ ef2: 69ed360214000000       lload    r27, r27l, 0, i32, x
+ efa: 2a8276020002           fadd     r0h, r27, -0.0
+ f00: c5042c0e62c01000       store    r0h, du54, r17, i16, x, a
+ f08: 520e00000000           pop_exec 1
+ f0e: 8e4511c065000000       iadd     $r17, 17, r14.sx
+ f16: 0e45742666000000       iadd     r17, r26.sx, r17.sx
+ f1e: 522862e21800           if       r17, u7, 1, ult
+ f24: 8e6d520666000000       iadd     $r27, r9.sx, r16.sx
+ f2c: 1e45620659760600       imadd    r17, r17.sx, u8.sx, r27.sx
+ f34: fe6d82829902           and      $r27, $r1, u76
+ f3a: aef1006024030000       shr      $r28, r3, 3
+ f42: 9e6d780600760601       imadd    $r27, r28.sx, 64, r27.sx
+ f4a: fe710720a400           and      $r28, 7, r1
+ f50: 8e6d786667000000       iadd     $r27, r28.sx, r27.sx
+ f58: 0e6d206067001000       iadd     r27, 32, r27.sx, lsl 2
+ f60: 69ed360214000000       lload    r27, r27l, 0, i32, x
+ f68: 2a8276020002           fadd     r0h, r27, -0.0
+ f6e: c504204e72c01000       store    r0h, du56, r17, i16, x, b
+ f76: 520e00000000           pop_exec 1
+ f7c: 8e4512c065000000       iadd     $r17, 18, r14.sx
+ f84: 0e45742666000000       iadd     r17, r26.sx, r17.sx
+ f8c: 522862e21800           if       r17, u7, 1, ult
+ f92: 8e6d520666000000       iadd     $r27, r9.sx, r16.sx
+ f9a: 1e45620659760600       imadd    r17, r17.sx, u8.sx, r27.sx
+ fa2: fe6d82829902           and      $r27, $r1, u76
+ fa8: aef1006024030000       shr      $r28, r3, 3
+ fb0: 9e6d780600760601       imadd    $r27, r28.sx, 64, r27.sx
+ fb8: fe710720a400           and      $r28, 7, r1
+ fbe: 8e6d786667000000       iadd     $r27, r28.sx, r27.sx
+ fc6: 0e6d006067041000       iadd     r27, 64, r27.sx, lsl 2
+ fce: 69ed360214000000       lload    r27, r27l, 0, i32, x
+ fd6: 2a8276020002           fadd     r0h, r27, -0.0
+ fdc: c504240e72c01000       store    r0h, du58, r17, i16, x, a
+ fe4: 520e00000000           pop_exec 1
+ fea: 8e4513c065000000       iadd     $r17, 19, r14.sx
+ ff2: 0e45742666000000       iadd     r17, r26.sx, r17.sx
+ ffa: 522862e21800           if       r17, u7, 1, ult
+1000: 8e69520666000000       iadd     $r26, r9.sx, r16.sx
+1008: 1e45620659740600       imadd    r17, r17.sx, u8.sx, r26.sx
+1010: fe6982829902           and      $r26, $r1, u76
+1016: aeed006024030000       shr      $r27, r3, 3
+101e: 9e69760600740601       imadd    $r26, r27.sx, 64, r26.sx
+1026: fe6d0720a400           and      $r27, 7, r1
+102c: 8e69764667000000       iadd     $r26, r27.sx, r26.sx
+1034: 0e69204067041000       iadd     r26, 96, r26.sx, lsl 2
+103c: 69e9340214000000       lload    r26, r26l, 0, i32, x
+1044: 2a8274020002           fadd     r0h, r26, -0.0
+104a: c504280e72c01000       store    r0h, du60, r17, i16, x, a
+1052: 3800                   wait     a
+1054: 420a00000000           else     0.0, 0.0, 1, feq
+105a: 520e00000000           pop_exec 1
+1060: 520e00000000           pop_exec 1
+1066: 3800                   wait     a
+1068: 3801                   wait     b
+106a: 6800                   barrier
+106c: 52084a220000           if       r5, 2, 1, ieq
+1072: f2453400               mov      $r17, thread_index_in_simdgroup
+1076: aee90020aa010000       bfeil    $r26, 0, $r17, 1, 2
+107e: aeed00206a040000       bfeil    $r27, 0, $r17, 4, 1
+1086: 8e69746667001000       iadd     $r26, r26.sx, r27.sx, lsl 2
+108e: fe6da2128000           and      $r27, $r17, 1
+1094: aec5002066030000       bfeil    $r17, 0, r17, 3, 1
+109c: 8e45002066001000       iadd     $r17, 0, r17.sx, lsl 2
+10a4: 8e456266e7000000       iadd     $r17, r17.sx, r27.sx, lsl 1
+10ac: 8e456246e7001000       iadd     $r17, r17.sx, r26.sx, lsl 3
+10b4: 8e45002066001000       iadd     $r17, 0, r17.sx, lsl 2
+10bc: 7e02a2088000           mov      r0h, $r17l
+10c2: 29e1010214000000       lstore   r24, r0h, 0, i32, x
+10ca: 0e61a24600000000       iadd     r24, $r17.sx, 4
+10d2: 29e5300214000000       lstore   r25, r24l, 0, i32, x
+10da: 0e619a256a080000       iadd     r24, u77.sx, $r17.sx
+10e2: 29d9300214000000       lstore   r22, r24l, 0, i32, x
+10ea: 0e59a0256a080000       iadd     r22, u80.sx, $r17.sx
+10f2: 29dd2c0214000000       lstore   r23, r22l, 0, i32, x
+10fa: 0e599c256a080000       iadd     r22, u78.sx, $r17.sx
+1102: 29d12c0214000000       lstore   r20, r22l, 0, i32, x
+110a: 0e519e256a080000       iadd     r20, u79.sx, $r17.sx
+1112: 29d5280214000000       lstore   r21, r20l, 0, i32, x
+111a: 0e51a2256a080000       iadd     r20, u81.sx, $r17.sx
+1122: 29c9280214000000       lstore   r18, r20l, 0, i32, x
+112a: 0e45a42566080000       iadd     r17, u82.sx, r17.sx
+1132: 29cd220214000000       lstore   r19, r17l, 0, i32, x
+113a: 520e00000000           pop_exec 1
+1140: 6800                   barrier
+1142: 522860021900           if       r16, u8, 1, ult
+1148: 20c0ce010000           jmp_none 462
+114e: 8e455c8601000000       iadd     $r17, r14.sx, 24
+1156: 8e49008064001000       iadd     $r18, 0, r4.sx, lsl 2
+115e: 0e45642666000000       iadd     r17, r18.sx, r17.sx
+1166: 522862e21800           if       r17, u7, 1, ult
+116c: 8e4d520666000000       iadd     $r19, r9.sx, r16.sx
+1174: 1e45620659660600       imadd    r17, r17.sx, u8.sx, r19.sx
+117c: fe4d82829902           and      $r19, $r1, u76
+1182: aed1006024030000       shr      $r20, r3, 3
+118a: 9e4d680600660601       imadd    $r19, r20.sx, 64, r19.sx
+1192: fe510720a400           and      $r20, 7, r1
+1198: 8e4d686666000000       iadd     $r19, r20.sx, r19.sx
+11a0: 0e4d006066001000       iadd     r19, 0, r19.sx, lsl 2
+11a8: 69cd260214000000       lload    r19, r19l, 0, i32, x
+11b0: 2a8266020002           fadd     r0h, r19, -0.0
+11b6: c5042c0e72c01000       store    r0h, du62, r17, i16, x, a
+11be: 520e00000000           pop_exec 1
+11c4: 8e4519c065000000       iadd     $r17, 25, r14.sx
+11cc: 0e45642666000000       iadd     r17, r18.sx, r17.sx
+11d4: 522862e21800           if       r17, u7, 1, ult
+11da: 8e4d520666000000       iadd     $r19, r9.sx, r16.sx
+11e2: 1e45620659660600       imadd    r17, r17.sx, u8.sx, r19.sx
+11ea: fe4d82829902           and      $r19, $r1, u76
+11f0: aed1006024030000       shr      $r20, r3, 3
+11f8: 9e4d680600660601       imadd    $r19, r20.sx, 64, r19.sx
+1200: fe510720a400           and      $r20, 7, r1
+1206: 8e4d686666000000       iadd     $r19, r20.sx, r19.sx
+120e: 0e4d206066001000       iadd     r19, 32, r19.sx, lsl 2
+1216: 69cd260214000000       lload    r19, r19l, 0, i32, x
+121e: 2a8266020002           fadd     r0h, r19, -0.0
+1224: c504204e82c01000       store    r0h, du64, r17, i16, x, b
+122c: 520e00000000           pop_exec 1
+1232: 8e451ac065000000       iadd     $r17, 26, r14.sx
+123a: 0e45642666000000       iadd     r17, r18.sx, r17.sx
+1242: 522862e21800           if       r17, u7, 1, ult
+1248: 8e4d520666000000       iadd     $r19, r9.sx, r16.sx
+1250: 1e45620659660600       imadd    r17, r17.sx, u8.sx, r19.sx
+1258: fe4d82829902           and      $r19, $r1, u76
+125e: aed1006024030000       shr      $r20, r3, 3
+1266: 9e4d680600660601       imadd    $r19, r20.sx, 64, r19.sx
+126e: fe510720a400           and      $r20, 7, r1
+1274: 8e4d686666000000       iadd     $r19, r20.sx, r19.sx
+127c: 0e4d006066041000       iadd     r19, 64, r19.sx, lsl 2
+1284: 69cd260214000000       lload    r19, r19l, 0, i32, x
+128c: 2a8266020002           fadd     r0h, r19, -0.0
+1292: c504240e82c01000       store    r0h, du66, r17, i16, x, a
+129a: 520e00000000           pop_exec 1
+12a0: 8e451bc065000000       iadd     $r17, 27, r14.sx
+12a8: 0e45642666000000       iadd     r17, r18.sx, r17.sx
+12b0: 522862e21800           if       r17, u7, 1, ult
+12b6: 8e41520666000000       iadd     $r16, r9.sx, r16.sx
+12be: 1e41620659600600       imadd    r16, r17.sx, u8.sx, r16.sx
+12c6: fe4582829902           and      $r17, $r1, u76
+12cc: aec9006024030000       shr      $r18, r3, 3
+12d4: 9e45640600620601       imadd    $r17, r18.sx, 64, r17.sx
+12dc: fe490720a400           and      $r18, 7, r1
+12e2: 8e45642666000000       iadd     $r17, r18.sx, r17.sx
+12ea: 0e45202066041000       iadd     r17, 96, r17.sx, lsl 2
+12f2: 69c5220214000000       lload    r17, r17l, 0, i32, x
+12fa: 2a8262020002           fadd     r0h, r17, -0.0
+1300: c504080e82c01000       store    r0h, du68, r16, i16, x, a
+1308: 3800                   wait     a
+130a: 420a00000000           else     0.0, 0.0, 1, feq
+1310: 520e00000000           pop_exec 1
+1316: 520e00000000           pop_exec 1
+131c: 3800                   wait     a
+131e: 3801                   wait     b
+1320: 6800                   barrier
+1322: 0e3d5ec658020000       iadd     r15, r15.sx, u70.sx
+132a: 00c082edffff           jmp_any  -4734
+1330: 520e00000000           pop_exec 1
+1336: 0e21504659020000       iadd     r8, r8.sx, u74.sx
+133e: 00c04cedffff           jmp_any  -4788
+1344: 520e00000000           pop_exec 1
+134a: 0e194c1600000000       iadd     r6, r6.sx, 1
+1352: 00c0d6ecffff           jmp_any  -4906
+1358: 520e00000000           pop_exec 1
+135e: 8800                   stop
