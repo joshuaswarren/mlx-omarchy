@@ -29,5 +29,12 @@ let package = Package(
             ],
             path: "Sources/parakeet-reference-capture"
         ),
+        .executableTarget(
+            name: "mel-stage-capture",
+            dependencies: [
+                .product(name: "ParakeetTDT", package: "parakeet-coreml-swift"),
+            ],
+            path: "Sources/mel-stage-capture"
+        ),
     ]
 )

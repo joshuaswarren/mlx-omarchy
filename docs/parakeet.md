@@ -51,13 +51,31 @@ The hash-verified capture comparison reports 215401/384128 identical float32
 bit patterns and maximum absolute error 4.769862e-05. The first difference is
 at frame 0, bin 0. Shapes and masks match; encoder input values do not.
 
-The diagnostic does not identify which stage causes the remaining difference.
+Stage isolation (2026-09-12, certified intermediates): `mel-stage-capture`
+runs the pinned `MelFeatureExtractor` on studio-host (CPU vDSP only, no
+CoreML), gates its stepwise intermediates byte-identical against the pinned
+library output, and reproduces the golden `mel.npy` hash exactly. Comparing
+each stage against that ground truth:
+
+```text
+bit-exact portable stages: preemphasis, framing geometry, Slaney
+  filterbank, sqrt-then-square power, per-bin mean/std, masks/shapes.
+divergent stages (all float32 libm/Accelerate internals):
+  hann window   243/400 values differ (Apple cosf; float64 correctly
+                rounded cos of the same argument differs on 304/400)
+  DFT           vDSP_DFT_zrop vs pocketfft: ~29% of bins, max |d| 4.8e-7
+  mel dot       vDSP_dotpr: best tested emulation (4-lane pairwise,
+                scalar tail) leaves 961/384128 values, +/-1 ulp
+  log           Apple logf vs float64-log cast: 339/384128 values
+```
+
 No approximate frontend is qualified, no tolerance changes, and no claim is
 made that exact reproduction is impossible. This implementation stays on the
 diagnostic branch rather than main.
 
 ```bash
 python3 overlay/tools/coreml/mel_reference.py <pinned-capture-directory>
+python3 overlay/tools/coreml/mel_stage_compare.py <capture-dir> <stage-dump-dir>
 ```
 
 Licensing: the Python port is derived from the pinned Apache-2.0
