@@ -573,6 +573,28 @@ void dispatch_matmul(
     bf16_aligned = ((params.in_strides[axis] |
         params.out_strides[axis]) & 1u) == 0u;
   }
+<<<<<<< HEAD
+=======
+  // Scalar-FMA bf16 route (shaders/matmul_fma_bf16.comp): the
+  // linear-layer orientation (row-major lhs, column-major rhs, alpha 1)
+  // leaves the 8x8x8 matrix unit. uvec4 operand reads need 8-byte
+  // offsets/strides; word-pair bf16 stores need an even output row.
+  // Reserved for drivers without the cooperative matrix (the gate below);
+  // MLX_OMARCHY_NO_MATMUL_FMA=1 falls back to the shipped pick for A/B.
+  static const bool matmul_fma_disabled =
+      omarchy::env_flag("MLX_OMARCHY_NO_MATMUL_FMA");
+  bool bf16_fma_aligned = ((params.lhs_offset | params.rhs_offset |
+      params.output_offset | a_gap | b_gap) % 8u) == 0u;
+  for (uint32_t axis = 0; bf16_fma_aligned && axis < params.dims; ++axis) {
+    bf16_fma_aligned = ((params.in_strides[axis] |
+        params.out_strides[axis]) % 8u) == 0u;
+  }
+  bool bf16_fma = !matmul_fma_disabled &&
+      kernel == omarchy::ComputeKernel::MatmulBF16 && alpha == 1.0f &&
+      b_transposed && !a_transposed && !use_c &&
+      params.matrix_m >= 32u && (params.matrix_k % 8u) == 0u &&
+      (params.matrix_n & 1u) == 0u && bf16_fma_aligned;
+>>>>>>> b1805b19 (fix: reserve the scalar-FMA prefill routes for drivers without the cooperative matrix)
   // The staged bf16 tile shares qmm_coopmat's 4 KiB staging footprint
   // (a 32x16 A patch and a 16x32 B patch); gate on the device limit the
   // same way the qmm route does instead of assuming it.
@@ -583,6 +605,13 @@ void dispatch_matmul(
        (kernel == omarchy::ComputeKernel::MatmulBF16 && bf16_aligned &&
         (params.matrix_k % 8u) == 0u && params.matrix_m >= 32u &&
         kMatmulCoopmatBf16SharedBytes <= caps.max_compute_shared_memory_size));
+  // Driver split, measured (receipts/2026-09-12-prefill-fma-qualify):
+  // where the bf16 cooperative-matrix route exists (fork) it beats the
+  // scalar-FMA kernel (783.7 vs 629.9 GFLOP/s at the dominant gate_up
+  // cell); where it does not (stock Mesa) the FMA kernel triples the
+  // shipped staged-tile fallback (645.2 vs 195.0). The FMA pick is
+  // therefore reserved for drivers without the cooperative matrix.
+  bf16_fma = bf16_fma && !coopmat;
   // Bit 8 tells matmul_coopmat_bf16.comp its operands are 8-byte
   // aligned, so the two word-adjacent orientations stage with uvec2
   // pair loads (one load per two bf16 pairs) instead of scalar words.
@@ -6673,6 +6702,15 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
   // unaligned view.
   static const bool coopmat_disabled =
       omarchy::env_flag("MLX_OMARCHY_NO_COOPMAT");
+<<<<<<< HEAD
+=======
+  // Scalar-FMA prefill route (shaders/qmm_fma.comp): no matrix unit, no
+  // shared memory. Reserved for drivers whose cooperative-matrix route is
+  // absent (gate at qmm_fma_reachable below); MLX_OMARCHY_NO_QMM_FMA=1
+  // falls back to the shipped pick for A/B measurement.
+  static const bool qmm_fma_disabled =
+      omarchy::env_flag("MLX_OMARCHY_NO_QMM_FMA");
+>>>>>>> b1805b19 (fix: reserve the scalar-FMA prefill routes for drivers without the cooperative matrix)
   const char* tile_env = std::getenv("MLX_OMARCHY_QMM_TILE");
   bool tile_path = tile_env == nullptr || std::strcmp(tile_env, "0") != 0;
   const char* rb_env = std::getenv("MLX_OMARCHY_QMM_TILE_RB");
@@ -6686,6 +6724,25 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
       coopmat_caps.cooperative_matrix_f32_8 &&
       coopmat_caps.subgroup_size == 32u && !coopmat_disabled &&
       kQmmCoopmatSharedBytes <= coopmat_caps.max_compute_shared_memory_size;
+<<<<<<< HEAD
+=======
+  bool qmm_fma_reachable = false;
+  // Driver split, measured (receipts/2026-09-12-prefill-fma-qualify): the
+  // scalar-FMA kernel loses to the 8x8x8 cooperative-matrix route wherever
+  // that route exists (fork: 545.6 vs 1034.6 GFLOP/s at the dominant
+  // gate_up cell) and doubles the shipped tile fallback where it does not
+  // (stock Mesa has no cooperative-matrix extension: 545.5 vs 275.6). The
+  // FMA route is therefore only the non-coopmat driver's prefill path; on
+  // a coopmat-capable driver the dispatch falls through to the shipped
+  // cooperative-matrix pick by name and the FMA kernels stay reserved.
+  if (!qmm_fma_disabled && !coopmat_reachable && tile_path && rb_enabled &&
+      q4_g64_transpose && out.dtype() == float16 && x.ndim() >= 2 &&
+      x.shape(-2) > 1) {
+    int fma_k = x.shape(-1);
+    int fma_n = transpose_ ? w.shape(-2) : w.shape(-1) * 32 / bits_;
+    qmm_fma_reachable = (fma_k % 8 == 0) && (fma_n % 2 == 0);
+  }
+>>>>>>> b1805b19 (fix: reserve the scalar-FMA prefill routes for drivers without the cooperative matrix)
   // The f16 Q4 shader reads eight halves as one uvec4. Materialize only the
   // rare row-contiguous view whose element offset is not 16-byte aligned;
   // the coopmat word-pair reader extends the same rule to a 2-byte
