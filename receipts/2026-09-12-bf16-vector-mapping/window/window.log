@@ -1,0 +1,25 @@
+=== wrapper start 2026-09-12T14:43:58Z pid 3124404
+2026-09-12T14:43:58Z waiting for m1-gpu.lock
+2026-09-12T14:43:58Z LOCK ACQUIRED
+driver-fork: mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1
+kernel: 7.1.6-1-1-ARCH
+machine: aarch64 unknown
+wheel: mlx_omarchy-0.32.2.dev202609121038+a2e38c3-cp314-cp314-linux_aarch64.whl
+wheel-sha256: 99664e11d51cd1ab375645992f971a2ea3c902c5d6e4ab2b22682d4b5b84fbe2
+source-commit: 49325af7ebc84f4aae47d512aee5305dd41688db
+window-wrapper-pid: 3124404
+quiet-gate wait 1 load=0.15 2026-09-12T14:43:58Z
+quiet-gate wait 2 load=0.11 2026-09-12T14:44:18Z
+quiet gate done ok=3 load=0.07
+=== micro arms 14:44:38
+micro exit=0 14:44:41
+=== bench bench-warmup 14:44:41 ===
+bench-warmup exit=0 14:44:44
+{"decode_tps": 32.1043, "device": "Apple M1 (G13G B1)", "engine": "bench_decode", "generated": 32, "ids_first": [9707, 0, 2585], "ids_last": [537, 2704, 1246], "ids_sha256_16": "f26175202f3dabe9", "prefill_s": 0.227459, "prefill_tps": 131.8921, "prompt_tokens": 30}
+=== bench bench-a 14:44:44 ===
+bench-a exit=0 14:44:48
+{"decode_tps": 31.8806, "device": "Apple M1 (G13G B1)", "engine": "bench_decode", "generated": 32, "ids_first": [9707, 0, 2585], "ids_last": [537, 2704, 1246], "ids_sha256_16": "f26175202f3dabe9", "prefill_s": 0.227399, "prefill_tps": 131.9268, "prompt_tokens": 30}
+=== bench bench-b 14:44:48 ===
+bench-b exit=0 14:44:51
+{"decode_tps": 31.9509, "device": "Apple M1 (G13G B1)", "engine": "bench_decode", "generated": 32, "ids_first": [9707, 0, 2585], "ids_last": [537, 2704, 1246], "ids_sha256_16": "f26175202f3dabe9", "prefill_s": 0.22637, "prefill_tps": 132.5263, "prompt_tokens": 30}
+=== wrapper end 2026-09-12T14:44:51Z elapsed=53s rc=0

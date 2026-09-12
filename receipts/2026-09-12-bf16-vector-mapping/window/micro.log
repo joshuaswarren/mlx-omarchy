@@ -1,0 +1,41 @@
+sanity lmhead max_abs_err=0.3076 rel=0.0023
+warmup discarded
+{
+ "schema": "bf16-vector-mapping-window/1",
+ "whole_submit_only": true,
+ "arms": {
+  "lmhead": {
+   "n": 24,
+   "median_s": 0.004729605512693524,
+   "min_s": 0.0046926060458645225,
+   "max_s": 0.005026478960644454
+  },
+  "lmhead_mis": {
+   "n": 8,
+   "median_s": 0.022356657980708405,
+   "min_s": 0.02232765796361491,
+   "max_s": 0.02344657003413886
+  },
+  "lmhead_half": {
+   "n": 24,
+   "median_s": 0.0025459685421083122,
+   "min_s": 0.002509030979126692,
+   "max_s": 0.0028758629923686385
+  },
+  "copy": {
+   "n": 24,
+   "median_s": 0.010452311486005783,
+   "min_s": 0.009980666975025088,
+   "max_s": 0.01188324304530397
+  }
+ },
+ "rates": {
+  "lmhead_read_gbs": 57.56702356449636,
+  "lmhead_half_read_gbs": 53.47067481331373,
+  "copy_read_gbs": 26.048717775444352,
+  "copy_rw_gbs": 52.097435550888704,
+  "lmhead_mis_read_gbs": 12.178444212678908
+ },
+ "aa_paired_delta_pct": 0.24440657127637877,
+ "sanity_rel_err": 0.0022914919623313774
+}

@@ -1,0 +1,8 @@
+vec-class bytes/token : 767,721,472
+tile-class bytes/token: 220,200,960
+total bytes/token     : 987,922,432
+ideal @ 58.5 GB/s copy roof : 16.89 ms
+measured class marginal: 18.31 ms -> 54.0 GB/s = 92.2% of copy roof, 79.1% of part
+above-roof bound (ALL kernel-recoverable payload time in class): 1.42 ms/token
+  spread over 169 gemv dispatches = 8.4 us/dispatch (matches the ~9 us/dispatch skeleton scale, i.e. dispatch ramp, not kernel work)
+lm_head alone: 272,269,312 B; at 4.687 ms isolated (span screen) = 58.09 GB/s = 99.3% of copy roof; max byte-preserving kernel gain 0.033 ms
