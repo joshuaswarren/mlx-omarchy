@@ -144,3 +144,32 @@ decode deficit is not the memory system.
 - `perf-runs.json` — extracted decode rates (A/B) + digest summary
 - `probe-alloc-dump.{log,stderr.log}` — per-class allocation dump at real model load
 - `verdict.json` — machine-readable summary
+
+## 5. Addendum (post-landing, same day): the pattern is the finding
+
+This receipt was landed on main by Main with two observations to record
+explicitly.
+
+**Third isolated-win evaporation.** Tonight, three real effects measured at
+kernel or memory level failed to reach the token, each with paired
+interleaved instrumentation:
+1. chunked decode softmax exposed genuine ILP, measured **−2.5%** paired
+   (receipts/2026-09-12-decode-chunked-softmax);
+2. packed pair loads measured **+1.1%** at the memory system, worse in
+   isolation (roof receipt);
+3. memory type: **+6.0%** flat-stream probe win → +0.12% to +0.91% on the
+   BF16 legs whose weights ARE flat 16-bit matrices — inside noise.
+The pattern is the result: **on this hardware the decode token is not
+limited by any single resource that can be improved in isolation.** Each
+isolated win evaporates at model level, which is why the +6% prediction
+for BF16 (the most favorable possible shape) still did not land. Future
+proposals should be screened against this record before burning windows.
+
+**Discipline catch.** Pairs p5–p6 were discarded because the per-10 s
+loadavg sampler caught a co-tenant build pushing 1-min load from 1.1 to
+7.07 mid-window; p1–p4 were kept at loadavg ≤ 0.92 with the loadavg log
+attached as proof. That is the contamination protocol working as designed
+— and the second time tonight a sibling's build polluted another agent's
+window (ChunkedSoftmaxDecode recorded the first). Batch builds outside
+measurement windows; re-gate between paired legs, not just at window
+start.
