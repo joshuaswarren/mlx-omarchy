@@ -25,6 +25,7 @@ from pathlib import Path
 
 import numpy as np
 
+from dotpr import mel_projection
 from reference import ReferenceLock
 
 TOOLS = Path(__file__).resolve().parent
@@ -116,8 +117,7 @@ def main(argv: list[str]) -> int:
     good, line = stage_diff("power", (mag * mag).astype(np.float32), mac["power"])
     print(line); ok &= good
 
-    # Stage 7: mel projection on certified power (float64 matmul, cast).
-    ref_mp = (mac["mel_fb"].astype(np.float64) @ mac["power"].T.astype(np.float64)).T.astype(np.float32)
+    ref_mp = mel_projection(mac["mel_fb"], mac["power"])
     good, line = stage_diff("melproj", ref_mp, mac["melproj"])
     print(line); ok &= good
 

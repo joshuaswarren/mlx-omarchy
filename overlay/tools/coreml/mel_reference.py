@@ -33,6 +33,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
+from dotpr import mel_projection
 from reference import MelConfig, ReferenceLock
 
 CHUNK_SAMPLES = 3000 * 160  # 30 s chunk, as chunked by ParakeetTranscriber
@@ -131,7 +132,7 @@ def logmel(frames: np.ndarray, cfg: MelConfig,
     im = spec.imag.astype(np.float32)
     mag = np.sqrt(re * re + im * im).astype(np.float32)
     power = (mag * mag).astype(np.float32)
-    mel = (fb.astype(np.float64) @ power.T.astype(np.float64)).T
+    mel = mel_projection(fb, power)
     return np.log(mel + float(np.float32(cfg.log_guard))).astype(np.float32)
 
 

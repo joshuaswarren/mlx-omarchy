@@ -36,5 +36,9 @@ let package = Package(
             ],
             path: "Sources/mel-stage-capture"
         ),
+        .executableTarget(
+            name: "mel-dotpr-probe",
+            path: "Sources/mel-dotpr-probe"
+        ),
     ]
 )
