@@ -278,6 +278,7 @@ omarchy_shader(qmm_coopmat_f16 shaders/qmm_coopmat.comp)
 # dispatch is unchanged. hoist is bit-preserving; nodequant is value-wrong.
 omarchy_shader(qmm_coop_probe_hoist_f16 shaders/qmm_coopmat_probe.comp -DQMM_COOP_PROBE_PATH=1)
 omarchy_shader(qmm_coop_probe_nodequant_f16 shaders/qmm_coopmat_probe.comp -DQMM_COOP_PROBE_PATH=2)
+omarchy_shader(qmm_coop_probe_unrollbase_f16 shaders/qmm_coopmat_probe.comp -DQMM_COOP_PROBE_PATH=3)
 omarchy_shader(qmm_fma_f16 shaders/qmm_fma.comp)
 omarchy_shader(qmm_fma_precise_f16 shaders/qmm_fma.comp -DPRECISE_ACCUM=1)
 omarchy_shader(matmul_fma_bf16 shaders/matmul_fma_bf16.comp)

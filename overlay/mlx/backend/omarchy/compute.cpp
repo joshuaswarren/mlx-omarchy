@@ -281,6 +281,7 @@
 #include "qmm_coopmat_f16.h"
 #include "qmm_coop_probe_hoist_f16.h"
 #include "qmm_coop_probe_nodequant_f16.h"
+#include "qmm_coop_probe_unrollbase_f16.h"
 #include "qmm_fma_precise_f16.h"
 #include "matmul_fma_bf16.h"
 #include "qmm_fma_f16.h"
@@ -1215,6 +1216,9 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
     case ComputeKernel::QmmCoopProbeNodequantF16:
       return {qmm_coop_probe_nodequant_f16,
               qmm_coop_probe_nodequant_f16_size};
+    case ComputeKernel::QmmCoopProbeUnrollbaseF16:
+      return {qmm_coop_probe_unrollbase_f16,
+              qmm_coop_probe_unrollbase_f16_size};
     case ComputeKernel::QmmPrefillFmaF16:
       return {qmm_fma_f16, qmm_fma_f16_size};
     case ComputeKernel::MatmulBF16Coopmat:
