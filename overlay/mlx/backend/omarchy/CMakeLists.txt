@@ -273,6 +273,11 @@ omarchy_shader(qmm_tile_rb_precise_f16 shaders/qmm_tile.comp -DUSE_FP16=1 -DREGI
 # device capability in primitives.cpp, MLX_OMARCHY_NO_COOPMAT=1 forces
 # the register-blocked tile.
 omarchy_shader(qmm_coopmat_f16 shaders/qmm_coopmat.comp)
+# Staging-attribution probes (receipts/2026-09-12-qmm-staging-attribution):
+# dispatched only when MLX_OMARCHY_QMM_COOP_PROBE selects a probe; default
+# dispatch is unchanged. hoist is bit-preserving; nodequant is value-wrong.
+omarchy_shader(qmm_coop_probe_hoist_f16 shaders/qmm_coopmat_probe.comp -DQMM_COOP_PROBE_PATH=1)
+omarchy_shader(qmm_coop_probe_nodequant_f16 shaders/qmm_coopmat_probe.comp -DQMM_COOP_PROBE_PATH=2)
 omarchy_shader(qmm_fma_f16 shaders/qmm_fma.comp)
 omarchy_shader(qmm_fma_precise_f16 shaders/qmm_fma.comp -DPRECISE_ACCUM=1)
 omarchy_shader(matmul_fma_bf16 shaders/matmul_fma_bf16.comp)
