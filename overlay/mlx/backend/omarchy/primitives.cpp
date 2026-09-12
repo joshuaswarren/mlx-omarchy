@@ -10455,6 +10455,13 @@ void ScaledDotProductAttention::eval_gpu(
   // 9,472 bytes of static shared the arm declares - so it gates on those
   // alone and engages on any device that meets them, including software
   // drivers, where its bit-identity against the composition is testable.
+  // Perf-only shape gate: below 256 keys the arm's serial accumulation
+  // loses to the composition (34.1 vs 31.2 ms/token at the short leg); at
+  // and above it the arm wins (34.4 vs 34.7 at 262, 39.9 vs 43.3 at 1K).
+  // The gate cannot move a digest: both routes store identical words for
+  // every input, so either side of the boundary the token stream is the
+  // base stream. 256 sits between the measured losing (<=61-key) and
+  // winning (>=262-key) regimes on the 16-wide tile boundary.
   constexpr uint32_t kDecodeBf16SharedBytes =
       (64u + 2048u + 256u) * sizeof(float);
   const bool decode_bf16_ready =
@@ -10469,7 +10476,8 @@ void ScaledDotProductAttention::eval_gpu(
       !output_logsumexp_ && batch == 1 && q_len == 1 &&
       (q.dtype() == float16 || q.dtype() == bfloat16) &&
       head_dim == 64 && v_dim == 64 && k_len > 0 &&
-      (q.dtype() != bfloat16 || k_len <= uint32_t{2048}) &&
+      (q.dtype() != bfloat16 ||
+          (k_len >= uint32_t{256} && k_len <= uint32_t{2048})) &&
       q.strides()[3] == 1 && k.strides()[3] == 1 && v.strides()[3] == 1) {
     const bool decode_bf16 = decode_bf16_probe;
     out.set_data(allocate_omarchy(out.nbytes()));
