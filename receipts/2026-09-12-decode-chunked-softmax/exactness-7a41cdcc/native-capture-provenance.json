@@ -1,0 +1,39 @@
+{
+  "mlx_version": "0.32.2",
+  "host": "16M1MBP.local",
+  "platform": "macOS-26.6.2-arm64-arm-64bit",
+  "machine": "arm64",
+  "device": {
+    "device_name": "Apple M1 Max",
+    "max_recommended_working_set_size": "55662788608",
+    "memory_size": "68719476736",
+    "architecture": "applegpu_g13s",
+    "max_buffer_length": "41747087360",
+    "resource_limit": "499000"
+  },
+  "shapes": {
+    "q_heads": 14,
+    "kv_heads": 2,
+    "head_dim": 64
+  },
+  "fixed_key_lengths": [
+    30,
+    62,
+    127,
+    263,
+    1053
+  ],
+  "random_key_lengths": [
+    1,
+    30,
+    31,
+    32,
+    62,
+    127,
+    263,
+    1053
+  ],
+  "random_seeds_per_length": 100,
+  "random_cases": 800,
+  "input_sha256": "3f688d5a5fe02197028408944a71402d56b9f6f875194b7a7d11982f22138c14"
+}

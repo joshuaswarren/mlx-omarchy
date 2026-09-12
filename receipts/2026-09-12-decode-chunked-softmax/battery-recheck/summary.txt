@@ -1,0 +1,4 @@
+FAIL omarchy_primitive_tests rc=1
+FAIL omarchy_shape_ops_tests rc=1
+FAIL omarchy_complex_ops_tests rc=1
+PASS omarchy_copy_offset_tests

@@ -1,0 +1,25 @@
+[doctest] doctest version is "2.4.12"
+[doctest] run with "--help" for options
+===============================================================================
+/home/joshuawarren/src/mlx-ChunkedSoftmaxDecode/.work/mlx/tests/omarchy/test_shape_ops.cpp:392:
+TEST CASE:  Pad fills multidimensional boundaries with exact values
+
+/home/joshuawarren/src/mlx-ChunkedSoftmaxDecode/.work/mlx/tests/omarchy/test_shape_ops.cpp:70: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0.25 == Approx( 0 ) )
+
+/home/joshuawarren/src/mlx-ChunkedSoftmaxDecode/.work/mlx/tests/omarchy/test_shape_ops.cpp:70: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0.25 == Approx( 0 ) )
+
+/home/joshuawarren/src/mlx-ChunkedSoftmaxDecode/.work/mlx/tests/omarchy/test_shape_ops.cpp:70: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 0.25 == Approx( 0 ) )
+
+/home/joshuawarren/src/mlx-ChunkedSoftmaxDecode/.work/mlx/tests/omarchy/test_shape_ops.cpp:70: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 60 == Approx( 0 ) )
+
+/home/joshuawarren/src/mlx-ChunkedSoftmaxDecode/.work/mlx/tests/omarchy/test_shape_ops.cpp:70: ERROR: CHECK( values[index] == doctest::Approx(expected[index]).epsilon(epsilon) ) is NOT correct!
+  values: CHECK( 60 == Approx( 0 ) )
+
+===============================================================================
+[doctest] test cases:  24 |  23 passed | 1 failed | 0 skipped
+[doctest] assertions: 466 | 461 passed | 5 failed |
+[doctest] Status: FAILURE!

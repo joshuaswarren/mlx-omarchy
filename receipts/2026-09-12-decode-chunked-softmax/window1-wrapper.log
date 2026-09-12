@@ -1,0 +1,160 @@
+=== wrapper start 2026-09-12T07:34:21Z pid 2889368
+2026-09-12T07:34:21Z waiting for m1-gpu.lock
+2026-09-12T07:34:21Z LOCK ACQUIRED (window announced start)
+driver-fork: mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1
+driver-stock: mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1
+kernel: 7.1.6-1-1-ARCH
+machine: aarch64 unknown
+chip: Apple M1 G13G B1
+stock-icd-sha256: 97bda66cb6dcd7c96479a835746535dbd96563c647d65251da569773ba230a4e
+wheel: mlx_omarchy-0.32.2.dev202609120722+3b1aeda1-cp314-cp314-linux_aarch64.whl
+wheel-sha256: 7b39eed1bb7f7f67a4b453802499706ac22e7544c58ed5ba33b21af80e4a28ad
+source-commit: 3b1aeda10c9d53488d8726e10fbb4b73bba0491f
+=== exactness verify vs native captures 2026-09-12T07:34:21Z
+exactness exit=0
+ "fixed": {
+    "30": {
+      "elements": 896,
+      "mismatches": 0,
+      "max_error": 0.0
+    },
+    "62": {
+      "elements": 896,
+      "mismatches": 0,
+      "max_error": 0.0
+    },
+    "127": {
+      "elements": 896,
+      "mismatches": 0,
+      "max_error": 0.0
+    },
+    "263": {
+      "elements": 896,
+      "mismatches": 0,
+      "max_error": 0.0
+    },
+    "1053": {
+      "elements": 896,
+      "mismatches": 0,
+      "max_error": 0.0
+    }
+  },
+  "fixed_mismatches": 0,
+  "random_cases": 800,
+  "random_element_comparisons": 716800,
+  "random_mismatches": 0,
+  "first_failure": null
+}
+quiet-gate wait 1 load=1.85 2026-09-12T07:34:22Z
+quiet-gate wait 2 load=1.33 2026-09-12T07:34:42Z
+quiet-gate wait 3 load=0.95 2026-09-12T07:35:02Z
+quiet-gate wait 4 load=0.68 2026-09-12T07:35:22Z
+quiet gate done ok=3 load=0.48
+1789198542 0.48 2.53 1.87
+=== matrix run fork-warmup 07:35:42 ===
+1789198552 1.27 2.63 1.91
+1789198562 1.45 2.62 1.91
+fork-warmup exit=0 07:36:10
+6
+=== matrix run stock-warmup 07:36:10 ===
+1789198572 1.30 2.55 1.90
+1789198582 1.17 2.49 1.88
+1789198592 1.07 2.42 1.87
+1789198602 0.99 2.36 1.85
+stock-warmup exit=0 07:36:50
+6
+=== matrix run fork-r1 07:36:50 ===
+1789198612 0.92 2.29 1.84
+1789198622 0.85 2.23 1.82
+1789198632 0.88 2.19 1.81
+fork-r1 exit=0 07:37:17
+6
+=== matrix run stock-r1 07:37:17 ===
+1789198642 0.82 2.14 1.80
+1789198652 0.77 2.08 1.79
+1789198662 0.81 2.05 1.78
+1789198672 1.49 2.16 1.82
+stock-r1 exit=0 07:37:56
+6
+=== matrix run fork-r2 07:37:56 ===
+1789198682 1.50 2.14 1.81
+1789198692 1.58 2.13 1.82
+1789198702 2.72 2.36 1.89
+fork-r2 exit=0 07:38:26
+6
+=== matrix run stock-r2 07:38:26 ===
+1789198712 4.25 2.69 2.01
+1789198722 4.91 2.89 2.08
+1789198732 5.54 3.09 2.15
+1789198742 6.07 3.28 2.23
+1789198752 6.44 3.46 2.29
+stock-r2 exit=0 07:39:21
+6
+=== matrix run fork-r3 07:39:21 ===
+1789198762 6.68 3.61 2.36
+1789198772 7.12 3.80 2.43
+1789198782 7.01 3.89 2.48
+1789198792 6.32 3.84 2.48
+fork-r3 exit=0 07:39:55
+6
+=== matrix run stock-r3 07:39:55 ===
+1789198802 5.81 3.81 2.48
+1789198812 5.14 3.74 2.47
+1789198822 4.58 3.66 2.46
+1789198832 4.03 3.57 2.44
+stock-r3 exit=0 07:40:34
+6
+=== digest + provenance assertions 2026-09-12T07:40:34Z
+Traceback (most recent call last):
+  File "<stdin>", line 42, in <module>
+NameError: name 'COMMIT_SHORT' is not defined
+DIGEST ASSERTION FAILED rc=1
+=== performance summary 2026-09-12T07:40:35Z
+fork qwen25-0.5b-4bit:short-decode-32: dec 0.727 pre 1.129
+fork qwen25-0.5b-4bit:long-decode-128: dec 0.7119 pre 0.79
+fork qwen25-0.5b-4bit:longctx-1024-decode-32: dec 0.6335 pre 0.6042
+fork qwen25-0.5b-bf16:short-decode-32: dec 0.5595 pre 0.6037
+fork qwen25-0.5b-bf16:long-decode-128: dec 0.5427 pre 0.5681
+fork qwen25-0.5b-bf16:longctx-1024-decode-32: dec 0.4546 pre 0.4031
+stock qwen25-0.5b-4bit:short-decode-32: dec 0.6713 pre 0.5841
+stock qwen25-0.5b-4bit:long-decode-128: dec 0.5493 pre 0.2661
+stock qwen25-0.5b-4bit:longctx-1024-decode-32: dec 0.3761 pre 0.1971
+stock qwen25-0.5b-bf16:short-decode-32: dec 0.5685 pre 0.5941
+stock qwen25-0.5b-bf16:long-decode-128: dec 0.5474 pre 0.2315
+stock qwen25-0.5b-bf16:longctx-1024-decode-32: dec 0.4301 pre 0.1412
+=== standing M1 battery 2026-09-12T07:40:35Z
+1789198842 3.64 3.51 2.43
+1789198852 3.79 3.54 2.46
+1789198862 4.64 3.72 2.53
+1789198872 4.00 3.61 2.50
+1789198882 3.38 3.50 2.48
+1789198892 3.02 3.41 2.46
+1789198902 2.71 3.33 2.44
+1789198912 2.36 3.24 2.42
+PASS omarchy_runtime_tests
+FAIL omarchy_primitive_tests rc=1
+PASS omarchy_matmul_family_tests
+PASS omarchy_fast_ops_tests
+PASS omarchy_kv_ops_tests
+PASS omarchy_indexing_ops_tests
+PASS omarchy_reduce_ops_tests
+FAIL omarchy_shape_ops_tests rc=1
+PASS omarchy_linalg_ops_tests
+PASS omarchy_copy_offset_tests
+PASS omarchy_distributed_tests
+PASS omarchy_compiled_tape_tests
+PASS omarchy_fft_ops_tests
+PASS omarchy_fft_general_tests
+PASS omarchy_eig_ops_tests
+PASS omarchy_take_fill_tests
+PASS omarchy_conv_tests
+FAIL omarchy_complex_ops_tests rc=1
+PASS omarchy_select_layout_tests
+PASS omarchy_fast_regression_tests
+PASS omarchy_scatter_determinism_tests
+PASS omarchy_eq_math_tests
+PASS omarchy_fused_chain_tests
+PASS omarchy_error_contract_tests
+PASS omarchy_ane_bundle_tests
+PASS omarchy_sdpa_decode_fused_tests
+=== window end 2026-09-12T07:41:54Z elapsed=453s
