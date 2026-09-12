@@ -441,6 +441,42 @@ void copy_gpu_inplace(
     if (in.has_primitive()) {
       omarchy::unsupported("GPU-in-flight scalar fill", out);
     }
+    // The scalar's bytes are read on the host by everything below (the
+    // zero check, the value reads, the dtype-converting scratch copy).
+    // When those bytes are GPU-produced and possibly unpublished - a
+    // pad's astype(pad_value) cast, or any scheduled scalar that has not
+    // drained - a host read races the producer (3f7e549a regression:
+    // pad and concat filled whole regions with recycled garbage read as
+    // the fill value) and a synchronize to close the race costs the
+    // prefill path its pipelining. So for an unpublished device-produced
+    // scalar the value is never read on the host at all: it is
+    // broadcast over the output with a zero-stride strided copy, which
+    // consumes the value on the device behind the per-dispatch barrier
+    // like any other dependent dispatch. Host-written scalars
+    // (completion == 0) take the fast paths below with no extra work.
+    const auto* in_buffer =
+        static_cast<const omarchy::VulkanBuffer*>(in.buffer().ptr());
+    if (in_buffer->completion != 0 &&
+        in_buffer->completion >
+            encoder.device().completions().drained_value()) {
+      array broadcast_view(
+          Shape(out.shape()), in.dtype(), nullptr, {});
+      broadcast_view.copy_shared_buffer(
+          in, Strides(broadcast_view.ndim(), 0), {true, false, false},
+          in.size());
+      encoder.add_temporary(broadcast_view);
+      copy_gpu_inplace(
+          broadcast_view,
+          out,
+          broadcast_view.shape(),
+          broadcast_view.strides(),
+          out.strides(),
+          /*i_offset=*/0,
+          o_offset,
+          CopyType::GeneralGeneral,
+          s);
+      return;
+    }
     if (scalar_is_zero(in, i_offset)) {
       fill_pattern(s, out, o_offset, 0);
       return;
