@@ -8,9 +8,32 @@ import numpy as np
 
 
 def _fma32(lhs: np.ndarray, rhs: np.ndarray, acc: np.ndarray) -> np.ndarray:
-    return (
-        lhs.astype(np.float64) * rhs.astype(np.float64) + acc.astype(np.float64)
-    ).astype(np.float32)
+    """Round an exact float32 product-plus-accumulator once to float32."""
+    lhs64 = lhs.astype(np.float64)
+    rhs64 = rhs.astype(np.float64)
+    acc64 = acc.astype(np.float64)
+    product = lhs64 * rhs64
+    total = product + acc64
+    back = total - product
+    residual = (product - (total - back)) + (acc64 - back)
+
+    with np.errstate(over="ignore", invalid="ignore"):
+        rounded = total.astype(np.float32)
+        rounded64 = rounded.astype(np.float64)
+        delta = total - rounded64
+        direction = np.where(
+            delta > 0, np.float32(np.inf), np.float32(-np.inf)
+        )
+        neighbor = np.nextafter(rounded, direction)
+        midpoint = rounded64 + (neighbor.astype(np.float64) - rounded64) * 0.5
+        adjust = (
+            np.isfinite(rounded)
+            & (delta != 0)
+            & (total == midpoint)
+            & (residual != 0)
+            & (np.signbit(residual) == np.signbit(delta))
+        )
+    return np.where(adjust, neighbor, rounded).astype(np.float32)
 
 
 def _add32(lhs: np.ndarray, rhs: np.ndarray) -> np.ndarray:

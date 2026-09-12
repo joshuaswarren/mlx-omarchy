@@ -17,6 +17,7 @@ from generate_dotpr_probes import probe_cases
 
 MACOS_RESULTS = {
     "fma-two-term": 0xBDE9787B,
+    "double-rounding-boundary": 0x3FC00005,
     "vector-four": 0x423CABE1,
     "association-eight": 0x450C31FC,
     "vector-tail-seventeen": 0x44252851,
@@ -35,16 +36,18 @@ def test_portable_dotpr_matches_macos_vdsp_bits(name, lhs_bits, rhs_bits):
     assert actual.view(np.uint32).item() == MACOS_RESULTS[name]
 
 
-def test_mel_projection_uses_the_same_reduction_for_every_pair():
-    _, lhs_bits, rhs_bits = probe_cases()[0]
-    lhs = np.stack([floats(lhs_bits), floats(rhs_bits)])
-    rhs = np.stack([floats(rhs_bits), floats(lhs_bits)])
-    actual = mel_projection(lhs, rhs)
+def test_mel_projection_matches_independent_macos_vdsp_matrix_bits():
+    filterbank = np.stack([
+        floats([0x4115B804, 0x3DBE3ACE, 0xBD94FC9D, 0x42EED71E]),
+        floats([0xBBA12958, 0x40C6ADFD, 0xC05058A1, 0x3EC6EFA3]),
+    ])
+    power = filterbank.copy()
+    actual = mel_projection(filterbank, power)
     expected = np.asarray(
-        [[portable_dotpr(row, vector) for row in lhs] for vector in rhs],
-        dtype=np.float32,
+        [[0x466032FE, 0x423CABE1], [0x423CABE1, 0x42453040]],
+        dtype=np.uint32,
     )
-    assert np.array_equal(actual.view(np.uint32), expected.view(np.uint32))
+    assert np.array_equal(actual.view(np.uint32), expected)
 
 
 @pytest.mark.parametrize(
