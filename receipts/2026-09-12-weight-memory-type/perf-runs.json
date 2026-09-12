@@ -1,0 +1,152 @@
+{
+ "digest_runs": {
+  "fork-d1": {
+   "qwen25-0.5b-4bit:short-decode-32": 111.52,
+   "qwen25-0.5b-4bit:long-decode-128": 107.03,
+   "qwen25-0.5b-4bit:longctx-1024-decode-32": 96.4,
+   "qwen25-0.5b-bf16:short-decode-32": 31.89,
+   "qwen25-0.5b-bf16:long-decode-128": 30.39,
+   "qwen25-0.5b-bf16:longctx-1024-decode-32": 24.85
+  },
+  "fork-d2": {
+   "qwen25-0.5b-4bit:short-decode-32": 111.36,
+   "qwen25-0.5b-4bit:long-decode-128": 107.93,
+   "qwen25-0.5b-4bit:longctx-1024-decode-32": 94.9,
+   "qwen25-0.5b-bf16:short-decode-32": 31.87,
+   "qwen25-0.5b-bf16:long-decode-128": 30.55,
+   "qwen25-0.5b-bf16:longctx-1024-decode-32": 24.97
+  },
+  "fork-d3": {
+   "qwen25-0.5b-4bit:short-decode-32": 111.42,
+   "qwen25-0.5b-4bit:long-decode-128": 108.01,
+   "qwen25-0.5b-4bit:longctx-1024-decode-32": 96.74,
+   "qwen25-0.5b-bf16:short-decode-32": 31.85,
+   "qwen25-0.5b-bf16:long-decode-128": 30.64,
+   "qwen25-0.5b-bf16:longctx-1024-decode-32": 24.94
+  },
+  "stock-d1": {
+   "qwen25-0.5b-4bit:short-decode-32": 103.09,
+   "qwen25-0.5b-4bit:long-decode-128": 81.4,
+   "qwen25-0.5b-4bit:longctx-1024-decode-32": 52.34,
+   "qwen25-0.5b-bf16:short-decode-32": 32.16,
+   "qwen25-0.5b-bf16:long-decode-128": 30.69,
+   "qwen25-0.5b-bf16:longctx-1024-decode-32": 25.05
+  },
+  "stock-d2": {
+   "qwen25-0.5b-4bit:short-decode-32": 102.0,
+   "qwen25-0.5b-4bit:long-decode-128": 81.22,
+   "qwen25-0.5b-4bit:longctx-1024-decode-32": 52.96,
+   "qwen25-0.5b-bf16:short-decode-32": 32.09,
+   "qwen25-0.5b-bf16:long-decode-128": 30.65,
+   "qwen25-0.5b-bf16:longctx-1024-decode-32": 24.31
+  },
+  "stock-d3": {
+   "qwen25-0.5b-4bit:short-decode-32": 101.9,
+   "qwen25-0.5b-4bit:long-decode-128": 81.39,
+   "qwen25-0.5b-4bit:longctx-1024-decode-32": 53.05,
+   "qwen25-0.5b-bf16:short-decode-32": 32.24,
+   "qwen25-0.5b-bf16:long-decode-128": 30.76,
+   "qwen25-0.5b-bf16:longctx-1024-decode-32": 24.41
+  }
+ },
+ "perf_A": [
+  {
+   "qwen25-0.5b-4bit:short-decode-32": 109.1,
+   "qwen25-0.5b-4bit:long-decode-128": 107.89,
+   "qwen25-0.5b-4bit:longctx-1024-decode-32": 97.49,
+   "qwen25-0.5b-bf16:short-decode-32": 31.84,
+   "qwen25-0.5b-bf16:long-decode-128": 30.53,
+   "qwen25-0.5b-bf16:longctx-1024-decode-32": 24.85
+  },
+  {
+   "qwen25-0.5b-4bit:short-decode-32": 111.03,
+   "qwen25-0.5b-4bit:long-decode-128": 108.14,
+   "qwen25-0.5b-4bit:longctx-1024-decode-32": 96.32,
+   "qwen25-0.5b-bf16:short-decode-32": 31.73,
+   "qwen25-0.5b-bf16:long-decode-128": 30.53,
+   "qwen25-0.5b-bf16:longctx-1024-decode-32": 24.89
+  },
+  {
+   "qwen25-0.5b-4bit:short-decode-32": 110.96,
+   "qwen25-0.5b-4bit:long-decode-128": 107.86,
+   "qwen25-0.5b-4bit:longctx-1024-decode-32": 95.62,
+   "qwen25-0.5b-bf16:short-decode-32": 31.62,
+   "qwen25-0.5b-bf16:long-decode-128": 30.64,
+   "qwen25-0.5b-bf16:longctx-1024-decode-32": 24.29
+  },
+  {
+   "qwen25-0.5b-4bit:short-decode-32": 110.45,
+   "qwen25-0.5b-4bit:long-decode-128": 106.89,
+   "qwen25-0.5b-4bit:longctx-1024-decode-32": 97.11,
+   "qwen25-0.5b-bf16:short-decode-32": 31.6,
+   "qwen25-0.5b-bf16:long-decode-128": 30.39,
+   "qwen25-0.5b-bf16:longctx-1024-decode-32": 24.81
+  },
+  {
+   "qwen25-0.5b-4bit:short-decode-32": 111.08,
+   "qwen25-0.5b-4bit:long-decode-128": 107.29,
+   "qwen25-0.5b-4bit:longctx-1024-decode-32": 97.05,
+   "qwen25-0.5b-bf16:short-decode-32": 32.08,
+   "qwen25-0.5b-bf16:long-decode-128": 23.86,
+   "qwen25-0.5b-bf16:longctx-1024-decode-32": 21.61
+  },
+  {
+   "qwen25-0.5b-4bit:short-decode-32": 97.75,
+   "qwen25-0.5b-4bit:long-decode-128": 66.18,
+   "qwen25-0.5b-4bit:longctx-1024-decode-32": 40.38,
+   "qwen25-0.5b-bf16:short-decode-32": 27.78,
+   "qwen25-0.5b-bf16:long-decode-128": 27.29,
+   "qwen25-0.5b-bf16:longctx-1024-decode-32": 24.76
+  }
+ ],
+ "perf_B": [
+  {
+   "qwen25-0.5b-4bit:short-decode-32": 111.8,
+   "qwen25-0.5b-4bit:long-decode-128": 107.96,
+   "qwen25-0.5b-4bit:longctx-1024-decode-32": 94.92,
+   "qwen25-0.5b-bf16:short-decode-32": 31.9,
+   "qwen25-0.5b-bf16:long-decode-128": 30.66,
+   "qwen25-0.5b-bf16:longctx-1024-decode-32": 24.87
+  },
+  {
+   "qwen25-0.5b-4bit:short-decode-32": 111.83,
+   "qwen25-0.5b-4bit:long-decode-128": 107.8,
+   "qwen25-0.5b-4bit:longctx-1024-decode-32": 96.37,
+   "qwen25-0.5b-bf16:short-decode-32": 31.69,
+   "qwen25-0.5b-bf16:long-decode-128": 30.45,
+   "qwen25-0.5b-bf16:longctx-1024-decode-32": 24.98
+  },
+  {
+   "qwen25-0.5b-4bit:short-decode-32": 110.95,
+   "qwen25-0.5b-4bit:long-decode-128": 108.17,
+   "qwen25-0.5b-4bit:longctx-1024-decode-32": 96.08,
+   "qwen25-0.5b-bf16:short-decode-32": 31.69,
+   "qwen25-0.5b-bf16:long-decode-128": 30.64,
+   "qwen25-0.5b-bf16:longctx-1024-decode-32": 24.89
+  },
+  {
+   "qwen25-0.5b-4bit:short-decode-32": 111.47,
+   "qwen25-0.5b-4bit:long-decode-128": 107.74,
+   "qwen25-0.5b-4bit:longctx-1024-decode-32": 92.58,
+   "qwen25-0.5b-bf16:short-decode-32": 31.74,
+   "qwen25-0.5b-bf16:long-decode-128": 30.49,
+   "qwen25-0.5b-bf16:longctx-1024-decode-32": 24.99
+  },
+  {
+   "qwen25-0.5b-4bit:short-decode-32": 95.96,
+   "qwen25-0.5b-4bit:long-decode-128": 65.46,
+   "qwen25-0.5b-4bit:longctx-1024-decode-32": 56.98,
+   "qwen25-0.5b-bf16:short-decode-32": 27.6,
+   "qwen25-0.5b-bf16:long-decode-128": 26.72,
+   "qwen25-0.5b-bf16:longctx-1024-decode-32": 22.96
+  },
+  {
+   "qwen25-0.5b-4bit:short-decode-32": 107.87,
+   "qwen25-0.5b-4bit:long-decode-128": 108.14,
+   "qwen25-0.5b-4bit:longctx-1024-decode-32": 98.09,
+   "qwen25-0.5b-bf16:short-decode-32": 29.5,
+   "qwen25-0.5b-bf16:long-decode-128": 30.44,
+   "qwen25-0.5b-bf16:longctx-1024-decode-32": 25.02
+  }
+ ]
+}

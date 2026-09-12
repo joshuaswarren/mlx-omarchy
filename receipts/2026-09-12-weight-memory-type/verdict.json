@@ -1,0 +1,35 @@
+{
+  "schema": "mlx-omarchy/weight-memory-type/1",
+  "closed": "2026-09-12",
+  "branch": "weight-memory-type",
+  "source_commit": "d389c24",
+  "wheel_sha256": "dc9f418338ebe9c86b76a8d0ab73005444ef32702c2dd2cf4e690b9d7a0516a4",
+  "memory_table": {
+    "heaps": [{"index": 0, "size": 8113881088, "flags": "DEVICE_LOCAL"}],
+    "types": [
+      {"index": 0, "propertyFlags": "0x000f", "props": "DEVICE_LOCAL|HOST_VISIBLE|HOST_COHERENT|HOST_CACHED"},
+      {"index": 1, "propertyFlags": "0x0007", "props": "DEVICE_LOCAL|HOST_VISIBLE|HOST_COHERENT"}
+    ],
+    "non_host_visible_device_local": false,
+    "allocator_default_pick": 0
+  },
+  "microbenchmark": {
+    "window": "2026-09-12T084300Z",
+    "binary_sha256": "47cdad1bd9385dec9d319bf73bb72e9ad330e4013f4dae8c7a17019b2a7b2b29",
+    "qmm_vec_base_sha256_prefix": "56aff1d3",
+    "pattern_pat_w1_r8": {"type0_gb_s": [58.36, 58.22, 58.34], "type1_gb_s": [58.13, 58.92, 58.88], "paired_geomean_pct": -0.14},
+    "peak_read_256mb": {"type0_gb_s": [59.43, 59.58, 59.19], "type1_gb_s": [63.29, 62.60, 63.03], "paired_geomean_pct": 6.0},
+    "peak_copy_256mb": {"type0_gb_s": [57.98, 57.81, 56.77], "type1_gb_s": [58.38, 57.82, 58.07], "paired_geomean_pct": 1.0}
+  },
+  "model_ab": {
+    "window": "2026-09-12T090512Z",
+    "env_gate": "MLX_OMARCHY_BIG_UNCACHED=1 (allocations >= 1 MiB -> type 1)",
+    "digests": "ALL_DIGESTS_HELD; six canonical legs, both drivers, 3 reps after discarded warmup; every perf run also asserted",
+    "clean_pairs": "p1-p4 (loadavg <= 0.92); p5-p6 discarded (co-tenant load 1.1->7.07)",
+    "paired_delta_geomean_pct_clean": {
+      "q4_short": 1.02, "q4_long": 0.21, "q4_1k": -1.71,
+      "bf16_short": 0.18, "bf16_long": 0.12, "bf16_1k": 0.91
+    }
+  },
+  "verdict": "Memory type is not the difference: no non-host-visible DEVICE_LOCAL exists on honeykrisp, the production Q4 GEMV pattern streams identically from both types, and the +6% flat-stream probe delta does not convert into any token. Receipt-only negative; allocator gate kept default-off on the branch."
+}
