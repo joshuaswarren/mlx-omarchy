@@ -449,19 +449,23 @@ def _validity(model: Any, functions: list[dict]) -> dict:
             notes.append(f"function {fn['name']}: {fn['opset_consistency']}")
         if fn["program_version"] is None:
             notes.append(f"function {fn['name']}: program.version is unset (0)")
-    identifiers_ok = True
-    for fn in functions:
-        for name in [fn["name"]] + [t["name"] for t in fn["inputs"]]:
-            if not _IDENTIFIER.match(name or ""):
-                identifiers_ok = False
-                notes.append(f"non-identifier value name: {name!r}")
+    unknown = proto.count_unknown_fields(model)
+    if unknown:
+        notes.append(
+            f"{unknown} field(s) written by a schema newer than the vendored "
+            "one are present but not interpreted (forward-compatibility limit)"
+        )
     return {
         "protobuf_parse": "ok",
         "model_type_set": model.WhichOneof("Type") is not None,
+        "unknown_schema_fields": unknown,
         "notes": notes,
-        "confidence": "full structure read through the official schema; "
-        "unknown op types and unknown schema fields would be reported, "
-        "none encountered" if not notes else "see notes",
+        "confidence": (
+            "full structure read through the official schema, zero unknown "
+            "schema fields encountered"
+            if not notes and not unknown
+            else "see notes"
+        ),
     }
 
 

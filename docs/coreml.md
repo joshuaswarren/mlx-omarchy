@@ -56,12 +56,16 @@ Everything on the plan's section-14 checklist, and nothing invented:
 - control flow (operations carrying nested blocks),
 - operation histogram and totals,
 - parse validity and confidence notes (unset model type, opset
-  inconsistencies, missing files — always named, never blank),
+  inconsistencies, missing files — always named, never blank), plus a
+  recursive scan counting fields written by a schema newer than the
+  vendored one (`unknown_schema_fields`: the forward-compatibility
+  limit is reported, never silently hidden),
 - compiler eligibility: explicitly **not assessed**. Eligibility
   claims require the target compiler's coverage data; this inspector
   refuses to guess deployment targets or compiler support. This
   separation is deliberate: parse validity and eligibility are
   different claims and never mixed.
+
 
 ## Official schema, vendored
 
