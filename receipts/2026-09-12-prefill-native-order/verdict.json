@@ -37,5 +37,29 @@
     "bench_window1c": "mlx_omarchy-0.32.2.dev202609120819+17425885 sha256 d6cac6f19d285733ffc86b2600f1f15c4a6f905a1bd25c77259d11254a26f645",
     "final": "mlx_omarchy-0.32.2.dev202609120833+877c2f1c sha256 449edd5f132506361ed69e202786bdea0d6211d459fcb6da8c536925497342a4",
     "base": "mlx_omarchy-0.32.2.dev202609120737+a0775c37 sha256 467da55fd5affd1ca7157115430ec7bf1c992c3898acfe8c50bfa75745d6b33d"
-  }
+  },
+  "landing_commit": "877c2f1c (fixups 18117721, 47733a42; branch tip 47733a42)",
+  "qualification_status": {
+    "digests": {
+      "screens": "every leg x driver x accumulator-class cell screened before landing: fused fork 6/6 (window1b), precise fork 6/6 (window1c precise-fork), fused stock short+long HELD (window1b stock), precise stock 1K HELD (window1c precise-stock)",
+      "window2_final_wheel": "candidate fork digest matrix 18/18 HELD (6 legs x 3 reps, digest-matrix.json); candidate stock runs measured (perf-fractions.json) with per-leg stock digest coverage carried by the screens above",
+      "base_pairing": "OPEN: base-fork runs refused on loaded-binary provenance (venv held the candidate binary); per-side-venv rerun window2b scripted but not completed in this run - the paired base-vs-candidate delta is the one unfinished instrument"
+    },
+    "prefill_fractions_of_native_fork_candidate": {
+      "q4": {
+        "short": 0.5916,
+        "long": 0.5361,
+        "1K": 0.36
+      },
+      "bf16": {
+        "short": 0.5667,
+        "long": 0.5185,
+        "1K": 0.3605
+      },
+      "note": "median of 3 quiet-window reps, wheel 877c2f1c, denominators receipts/native-baseline-2026-09-06; NOT attributable as a gain without the paired base side (same-window 5 percent noise floor)"
+    },
+    "battery": "targeted battery not run: .work/build-accept test binaries were not built in this run; project-wide battery is the integration owner's validation step. Known pre-existing failures on main (copy_offset scalar-fill batching, primitive affine m=1 offset) per receipts/2026-09-12-composed-main-qualification are NOT attributable to this branch.",
+    "tile_ladder": "the ROWS/COLS ladder (16x2/16x4/8x4) was never timed: the probe crashed on a json.dumps(flush=) bug in all three windows; shipped default is 16x2. Tile-shape sweeps were a stated non-goal; the kill-switch envs allow re-screening later."
+  },
+  "receipt_note": "A digest screen that catches an indexing bug before any timing is the pattern that saved this project repeatedly: window1's screen caught the q4 x uvec4 index bug (kw/4 read the wrong k window) via Q4 digest movement on both drivers while the bf16 kernel held all three BF16 digests on both drivers in the same screen."
 }
