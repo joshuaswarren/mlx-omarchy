@@ -1,0 +1,29 @@
+{
+  "scope": "Diagnostic review only; no mel frontend implementation on main",
+  "diagnostic_commit": "3fedbd456d28cb14635f3986e8d7b9d65a794b47",
+  "diagnostic_url": "https://github.com/joshuaswarren/mlx-omarchy/blob/3fedbd456d28cb14635f3986e8d7b9d65a794b47/receipts/2026-09-12-parakeet-mel-portable-divergence.md",
+  "capture": "20260912T154759Z-librispeech/ane",
+  "verification": {
+    "input_sha256": "all five files verified against the unchanged reference lock before metrics",
+    "shape": [
+      3001,
+      128
+    ],
+    "exact": false,
+    "matching_bit_patterns": 215401,
+    "total": 384128,
+    "max_absolute_error": 0.00004769862,
+    "mean_absolute_error": 1.532242e-7,
+    "first_difference": {
+      "frame": 0,
+      "bin": 0,
+      "golden": -0.1173354983329773,
+      "computed": -0.1173354908823967
+    },
+    "cli_exit": 1,
+    "tampered_capture": "rejected before array loading or metric computation",
+    "remaining_reference_tests": "28 passed in 6.55s"
+  },
+  "conclusion": "Exact preprocessing remains open under plan section 62. Shapes and masks match but encoder input values do not. This experiment does not isolate the cause or prove that a portable exact implementation is impossible.",
+  "cleanup": "Removed unsupported causal claims, the unused config helper, and experimental tests including one requiring the mismatch to persist."
+}

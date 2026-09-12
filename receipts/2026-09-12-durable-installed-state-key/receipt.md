@@ -27,8 +27,18 @@ are unchanged. No ANE capability is added.
 
 The menu and platform installation commands belong to `omacom/omarchy-mac`,
 whose default branch is `quattro`. This account has pull permission but no
-push permission. The platform change therefore requires a fork pull request;
-local source and smoke results do not constitute upstream adoption.
+push permission. Local source and smoke results do not constitute upstream
+adoption.
+
+Submitted as [upstream PR 425](https://github.com/omacom/omarchy-mac/pull/425),
+head `729079d4da6b37b402542b177f5fa99ea3e3361a`, targeting `quattro`. Both
+platform commands pin published installer `0545dc7f8678c9d25800d37f96ab7262cb07fc2b`
+and SHA-256 `993bf0222c998367c7a82732f03477723aa7d5b1a44e89edb56ee1fa977444e8`.
+The full platform install-guard script passed without skipped fixture cases.
+The actual migration controller writes its completion marker after success
+but not after a missing-package failure; the real menu predicate changes from
+absent to present. Menu bytes differ only in the two installed-state predicates.
+The graphical menu and a complete supported M1 installation remain untested.
 
 The earlier patch export and source-text tests were removed. The original
 patch omitted existing-install migration and pinned an unpublished installer;

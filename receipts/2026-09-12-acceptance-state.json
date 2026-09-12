@@ -1,0 +1,1247 @@
+{
+  "source_commit": "0545dc7f8678c9d25800d37f96ab7262cb07fc2b",
+  "scope": "Current task state, not full feature qualification; completed policy invariants describe this source scope only",
+  "stop_conditions": [
+    "Plan §62: absent-workspace compiler output cannot safely satisfy strict bundle-v2.",
+    "Plan §62: required encoder semantics/geometries and mixed-type multi-output representation remain unavailable.",
+    "Qualified driver/firmware applicability remains unresolved.",
+    "Plan §62: exact mel preprocessing remains unmatched; stage-level cause is not isolated.",
+    "Installed-state platform adoption awaits upstream review in omacom/omarchy-mac PR 425."
+  ],
+  "tasks": [
+    {
+      "phase": "Mesa parity",
+      "task": "Fix inert frame detection in wait batching",
+      "status": "completed"
+    },
+    {
+      "phase": "Mesa parity",
+      "task": "Prove patched compiler pass changes target ISA",
+      "status": "completed"
+    },
+    {
+      "phase": "Mesa parity",
+      "task": "Qualify patched driver on canonical output digests",
+      "status": "completed"
+    },
+    {
+      "phase": "Mesa parity",
+      "task": "Measure paired performance against matched native baseline",
+      "status": "completed"
+    },
+    {
+      "phase": "Mesa parity",
+      "task": "Fix affine stream offset baseline correctness failure",
+      "status": "completed"
+    },
+    {
+      "phase": "Mesa parity",
+      "task": "Reduce remaining BF16 decode performance gap",
+      "status": "in_progress"
+    },
+    {
+      "phase": "Release and documentation",
+      "task": "Verify recent release and qualified published artifacts",
+      "status": "completed"
+    },
+    {
+      "phase": "Release and documentation",
+      "task": "Audit README and all project documentation",
+      "status": "completed"
+    },
+    {
+      "phase": "Release and documentation",
+      "task": "Persist complete supplied plan with requirement traceability",
+      "status": "completed"
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Establish public Parakeet first receipt goal",
+      "status": "completed",
+      "evidence": "docs/plans/2026-09-12-coreml-parakeet-ane-plan.md §1 lines 41-45 (receipt goal verbatim), §58 lines 1907-1940 (CLI form), §63 lines 2129-2181 (receipt field list)",
+      "reason": "Goal defined and documented in the plan of record; no further artifact required until execution surfaces exist."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Keep product inside existing mlx omarchy repository",
+      "status": "completed",
+      "evidence": "All project code under mlx-omarchy overlay/: overlay/mlx/backend/omarchy/ane/, overlay/tools/coreml/, overlay/tests/omarchy/{ane,coreml}; plan §2; no new product repository created",
+      "reason": "Invariant preserved on main d8eb0037."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Preserve fixed MLX Vulkan execution contracts",
+      "status": "completed",
+      "evidence": "E-BATT (all Vulkan suites green on M1); CONTRIBUTING.md code rules: 'Use Vulkan for all tensor work', 'Never add a silent CPU tensor fallback'",
+      "reason": "Core ML work changed no Vulkan contract; GPU execution path intact."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Respect existing repository ownership boundaries",
+      "status": "completed",
+      "evidence": "plan §4; compiler work pinned to mil-hwx-compiler commit a0ce354c (receipts/2026-09-12-compiler-preparation/provenance.txt; h13-adapter-review.json compiler_commit); coverage receipt hosted in ane-linux-experiments repo (integration-review.json compiler_coverage.receipt URL); mlx-omarchy main holds only bundle validation + inspection tooling",
+      "reason": "No cross-repository leakage onto main; each concern lives in its owning repository/fork."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Preserve current strict ANE validation layer",
+      "status": "completed",
+      "evidence": "overlay/mlx/backend/omarchy/ane/bundle.cpp + manifest.cpp enforce manifest fields, tensor contracts, payloads, hashes, ANEC header, NCHW geometry, tile alignment, compiler identity, firmware range (plan §5 list); omarchy_ane_bundle_tests 25 cases / 2719 assertions pass (E-H13 host_checks); h13 review explicitly refused a validator bypass",
+      "reason": "Strict layer preserved; the §62 boundary is held at schema-decision level, not weakened."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Inventory existing H13 compiler support accurately",
+      "status": "completed",
+      "evidence": "coverage receipt tables: 87 elementwise, 113 broadcast, 186 norm, 175 conv, 145 matmul-envelope, 36 matvec templates (706 exact-match entries) enumerated with selector line cites (H13Program.cpp:411-470/909-917); no new compiler built (plan §6 respected)",
+      "reason": "H13 support inventory exists at per-template-table granularity with source citations — accurate enough to classify all 3351 ops and name the exact absent surfaces."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Integrate separate exactly pinned compiler dependency",
+      "status": "completed",
+      "evidence": "ane-compiler.lock + scripts/prepare-ane-compiler.sh + scripts/verify-ane-compiler.sh + receipts/2026-09-12-compiler-preparation/ (host qualification, determinism cross-check); integration review re-run PASS",
+      "reason": "The separate compiler is integrated as an exactly pinned, deterministically prepared external dependency at host level; build/release shipping of the binary is packaging (out of slice)."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Implement compiler lock and deterministic preparation",
+      "status": "completed",
+      "evidence": "ane-compiler.lock with all §8 fields; prepare script step 1 reads the lock; verify-all.log wrong-archive rejection before extraction; binary determinism (two prepares → identical sha256)",
+      "reason": "Lock and deterministic preparation implemented and receipted end to end."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Keep compiler external until maintenance justifies vendoring",
+      "status": "completed",
+      "evidence": "compiler-preparation README: 'The external compiler is not vendored; no compiler internals were copied into mlx-omarchy (the compiler's own hygiene check enforces this)'; overlay tree contains no compiler sources; §9 default decision stands (no maintenance evidence to justify vendoring)",
+      "reason": "Invariant honored: separate repository + lock; the vendoring trigger conditions have not occurred."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Pin public reference runtime and model",
+      "status": "completed",
+      "evidence": "lock reference_repo/reference_commit, model_repo/model_revision; capture Package.swift revision pin; freeze receipt (cloned, rev-parse confirmed, Apache-2.0 read)",
+      "reason": "Both the reference runtime (parakeet-coreml-swift) and the model are pinned exactly and re-pinned where consumed; no unpinned branch in any tooling."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Preserve reference Parakeet tensor and control contract",
+      "status": "blocked",
+      "evidence": "docs/parakeet.md; receipts/2026-09-12-licensed-parakeet-reference.json; receipts/2026-09-12-h13-adapter-review.json",
+      "reason": "Native contract is frozen and captured; preserving it through Linux decoder/joint/TDT execution remains unimplemented behind §62 compiler/runtime stop."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Freeze reproducible macOS reference before execution changes",
+      "status": "completed",
+      "evidence": "receipts/2026-09-12-parakeet-reference-freeze.md + lock numerical_contract (max_abs 0.3/mean 0.02/rel_l2 0.1, NaN/Inf 0, token+transcript exact) frozen before any Linux execution work; receipts/coreml-capture-review.json; licensed re-freeze 4f5802b0 retained exact native outputs",
+      "reason": "Reproducible reference record exists and predates execution work; no Linux/ANE execution change has been made that could have drifted it."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Implement hash verified public model downloader",
+      "status": "completed",
+      "evidence": "overlay/tools/coreml/reference.py (lock schema v1, full re-hash verification, never-trust-shortcuts stamps, HF endpoint override) + fetch_parakeet_reference.py (download|verify|path|info; refuses moved upstream, mismatched content, size-only integrity); tests/coreml/test_fetch_parakeet_reference.py hermetic fake-HF suite (tampered repair, drift refusal, corrupt-transfer refusal); live verify 'OK: 12 files verified'",
+      "reason": "Downloader meets all six §13 requirements including full SHA-256 verification and refusal semantics; file size alone is never treated as integrity."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Implement human and machine readable package inspector",
+      "status": "completed",
+      "evidence": "overlay/tools/coreml/inspect_mlpackage.py (human report + --json schema mlx-omarchy.coreml.inventory/1); official coremltools 9.0 schema vendored with provenance (schema/VENDORED.json, test_schema.py); docs/coreml.md; live strict run reproduced",
+      "reason": "Dual human/machine output with the §14 checklist coverage; device-free on Linux; replaces the wrong hand-written parser entirely (clean cutover)."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Parse required ML Program semantics without loss",
+      "status": "completed",
+      "evidence": "mlpackage.py typed inventory preserving both dtype enums (FeatureType vs MIL), symbolic dims, op versions/opset, op ordering, nested blocks, blob-file refs with offsets, compression (constexpr_*), unknown_schema_fields forward-compat counter (92e7c42d); explicit rejection of unsupported/malformed constructs; docs/coreml.md 'two enums, never conflated'",
+      "reason": "Validated inspection is complete for the pinned workload: nothing is silently normalized or coerced, and unsupported constructs fail named. Distinguishable from semantic translation: no compiler-IR conversion exists or is claimed (docs/coreml.md: parse validity and eligibility are different claims, never mixed); the translation layer is the separately blocked adapter/handoff work."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Reuse compiler representation without universal graph IR",
+      "status": "completed",
+      "evidence": "coverage receipt 'Reuse verdict': existing compiler representation (ANEGraphModule + ANEH13Compiler lowering) sufficient for the 79.5% reachable set; no universal graph IR created anywhere in mlx-omarchy (grep: frontend produces no IR; inspector is read-only reporting); recommended handoff is a dedicated proto→ANEGraphModule importer in compiler lib/MIL",
+      "reason": "The invariant is honored (no second IR exists) and the reuse decision is recorded with evidence; the importer that would implement the reuse path is compiler-repository work feeding excluded phase-6 tasks, not a mlx-omarchy deliverable."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Evaluate textual MIL versus direct compiler API",
+      "status": "completed",
+      "evidence": "coverage receipt section 'Textual MIL vs compiler API — minimum faithful handoff': textual path rejected with concrete loss evidence (coremltools has no textual round-trip for blobFileValue refs — 194 palettized weights + 266 large consts would inline as literal lists; literal-attribute spellings like fp32(1e-5) mismatch proto const operands); direct ANEGraphModule importer recommended",
+      "reason": "§17 evaluation completed with evidence; the plan's default (textual MIL) is explicitly overturned because it cannot represent the pinned encoder without loss — documented, not silently assumed."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Classify every encoder operation against compiler coverage",
+      "status": "completed",
+      "evidence": "coverage.csv + integration review compiler_coverage counts; every op classified with op name/version/dtype/shapes/attributes/const-vs-runtime status and occurrence counts (coverage README 'Model facts'), satisfying §18's per-op record fields",
+      "reason": "Same evidence as Gate 3: 3351/3351 classified before any generic compiler work was started, as §18 requires."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Implement missing compiler semantics in compiler repository",
+      "status": "blocked",
+      "evidence": "ane-compiler.lock unchanged at a0ce354; coverage receipt blockers (oracle campaign for 689 ops; masking; two-output contract); §19 ownership rule (compiler semantics go in mil-hwx-compiler, never in mlx-omarchy/coreml)",
+      "reason": "No compiler semantics have been (or may be) implemented frontend-side; the required extensions are blocked on hardware oracle minting (unauthorized here) plus two plan decisions. Correctly nothing was implemented in the wrong repository to fake progress."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Adapt compiler output into strict ANE bundles",
+      "status": "blocked",
+      "evidence": "receipts/2026-09-12-h13-adapter-review.json (absent-workspace boundary; adapter deliberately unimplemented); docs/coreml.md 'the adapter remains unimplemented pending an explicit absent-workspace contract'",
+      "reason": "Identical root to the Compiler-integration adapter task: §62 stop at bundle-v2 representation; no schema decision yet, and neither fabrication nor validator weakening is permitted."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Preserve ordered multi program package execution",
+      "status": "blocked",
+      "evidence": "E-H13 + E-NORT",
+      "reason": "§62 stop 'compiler output cannot be reconciled with runtime safely': emitted package is 4097 no-workspace programs that cannot pass strict bundle v2; no multi-program execution exists on main to preserve or extend."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Consume canonical ANE driver and userspace runtime",
+      "status": "blocked",
+      "evidence": "E-DRV + E-NORT; docs/forks.md records omarchy-ane fork state (omarchy-kmd instrumentation 'not a finished fix, resets the machine when loaded')",
+      "reason": "Canonical userspace runtime integration is unimplemented and the driver/module prerequisite is unqualified."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Verify qualified driver ABI before execution",
+      "status": "blocked",
+      "evidence": "E-DRV; roadmap.md 'Stabilize the ANE runtime ABI' exit receipt open",
+      "reason": "No qualified ABI exists to verify before execution; hardware operations out of scope for this reconciliation."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Implement bounded ANE worker resource ownership",
+      "status": "blocked",
+      "evidence": "E-NORT",
+      "reason": "Worker (plan §24) has no source on main; blocked behind bundle-contract resolution and driver qualification."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Keep worker private without inference server requirement",
+      "status": "blocked",
+      "evidence": "E-NORT; plan §25",
+      "reason": "Cannot satisfy a property of an unimplemented worker; design constraint documented and preserved."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Bound submissions and enforce hardware failure recovery",
+      "status": "blocked",
+      "evidence": "E-NORT + E-DRV; plan §26",
+      "reason": "No submission path or recovery state machine exists; both require qualified runtime."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Use qualified conservative host staging policy",
+      "status": "blocked",
+      "evidence": "E-DRV + E-NORT; plan §27",
+      "reason": "Conservative staging policy requires qualified driver staging semantics; absent."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Implement compiled Core ML artifact cache",
+      "status": "blocked",
+      "evidence": "E-H13 + E-NORT",
+      "reason": "§62 stops the pipeline one stage before cache creation: no compilable artifact exists to cache."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Key cache by every compatibility identity",
+      "status": "blocked",
+      "evidence": "E-H13; plan §29",
+      "reason": "Cache key identities are only meaningful once compilation produces artifacts; blocked."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Use mlpackage as canonical source artifact",
+      "status": "blocked",
+      "evidence": "E-H13; mlpackage today is read only by sibling inspection tooling (overlay/tools/coreml/)",
+      "reason": "No compile pipeline consumes mlpackage as canonical source artifact (§30); compile path blocked at §62."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Place initial Parakeet encoder on ANE",
+      "status": "blocked",
+      "evidence": "E-COV",
+      "reason": "Encoder cannot compile: 439 missing + 250 missing-envelope operations; runtime masking path unqualified; mixed-type two-output contract unrepresentable in current bindings."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Execute decoder and joint through Vulkan",
+      "status": "blocked",
+      "evidence": "E-COV + E-NORT",
+      "reason": "No decoder/joint graph implementation or input pipeline on main; end-to-end wiring sits behind blocked encoder placement."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Match exact reference mel preprocessing values",
+      "status": "blocked",
+      "evidence": "https://github.com/joshuaswarren/mlx-omarchy/commit/3fedbd456d28cb14635f3986e8d7b9d65a794b47",
+      "reason": "Plan §62 numerical stop: hash-verified portable mel comparison is not exact (215401/384128 bit patterns match; max absolute error 4.769862e-05). The cause is not isolated; no approximate frontend is qualified."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Preserve deterministic Parakeet TDT control behavior",
+      "status": "blocked",
+      "evidence": "E-REF + E-COV; docs/parakeet.md records TDT reference conventions",
+      "reason": "TDT control contract documented; verification of deterministic behavior requires running decoder/joint; pipeline blocked at §62."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Limit first release to offline transcription",
+      "status": "completed",
+      "evidence": "plan §35 + §60 non-goals (streaming dictation UI, microphone capture); no streaming or capture code in tree",
+      "reason": "Scope invariant preserved on main."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Expose small local Core ML model API",
+      "status": "blocked",
+      "evidence": "E-NORT; plan §36",
+      "reason": "load/compile/bind/predict API has no implementation; compile and predict are both blocked; only inspection tooling exists (sibling-owned)."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Enforce explicit ANE versus automatic placement semantics",
+      "status": "blocked",
+      "evidence": "E-NORT; plan §37",
+      "reason": "No placement code exists; explicit-ANE vs automatic semantics are unenforceable without a runtime."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Report precise frontend compiler and runtime errors",
+      "status": "blocked",
+      "evidence": "E-NORT; bundle.cpp already yields precise first-rejection messages (E-H13 quotes 'workspace byte_size must be positive')",
+      "reason": "Bundle-layer error contracts exist and are precise; the frontend-compiler and runtime error layers of §38 have no runtime to report from."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Report evidence based compiler eligibility in inspector",
+      "status": "completed",
+      "evidence": "receipts/2026-09-12-inspector-eligibility.json; receipts/2026-09-12-parakeet-h13-coverage.json; overlay/tools/coreml/inspect_mlpackage.py",
+      "reason": "Human/JSON CLI accepts source-matched static report, rejects model/weight mismatches and invalid totals; reports unknown compilability rather than a fake compiler pass. Root real encoder and decoder checks plus71 tests passed."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Verify all seven numerical acceptance layers",
+      "status": "blocked",
+      "evidence": "E-REF + E-COV",
+      "reason": "Layers 1-2 inputs are pinned (package metadata + mel golden); layers 3-7 require compiler/runtime execution; blocked at §62."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Pin numerical tolerances before evaluating outputs",
+      "status": "completed",
+      "evidence": "E-REF (encoder_tolerances_unchanged); overlay/tools/coreml/parakeet-reference.lock pins golden hashes; docs/parakeet.md freeze table",
+      "reason": "Tolerances fixed and hash-pinned before any Linux evaluation, per §41; unchanged through commit 4f5802b0."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Add ANE and Core ML backend counters",
+      "status": "blocked",
+      "evidence": "plan §42 counter lists; grep of overlay/mlx/backend/omarchy finds no ane_* or coreml_* counters (existing trace support: trace.h, gpu_profiler.h, mlx-omarchy-info trace counters)",
+      "reason": "Inspector op totals exist, but ANE runtime/dispatch counters cannot be implemented truthfully before runtime exists. Do not add inert zero counters to imply execution support. §62 compiler/package/driver prerequisites block the complete item."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Prove zero CPU tensor primitive dispatches",
+      "status": "blocked",
+      "evidence": "E-COV + E-NORT; plan §43",
+      "reason": "Proof requires an executed encoder's dispatch trace; no execution exists."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Measure every transcription stage after correctness",
+      "status": "blocked",
+      "evidence": "E-COV; plan §44",
+      "reason": "§44 orders measurement after parity; parity is blocked."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Verify one hundred warm encoder invocations",
+      "status": "blocked",
+      "evidence": "E-H13 (review limitations: '100 warm runs' explicitly not claimed)",
+      "reason": "Gate 10 contract needs an executable encoder; none exists."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Qualify known H13 graph through full integration",
+      "status": "blocked",
+      "evidence": "E-H13 (host boundary tests 5 cases/76 assertions pass; execution through omarchy-ane blocked by absent-workspace representation)",
+      "reason": "Gate 6 requirement: host-only qualification done, full integration blocked at the bundle-contract boundary."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Extend only inventory required compiler operations",
+      "status": "blocked",
+      "evidence": "coverage receipt: 689 required ops (439 missing incl. transpose/slice/select/pad/layer_norm/cast/int32 math, 250 missing-envelope incl. all spatial convs, runtime matmuls, softmax, silu/sigmoid) need new H13 oracles or absent encoders; pin unchanged at a0ce354 proves no extension landed",
+      "reason": "Same §62 boundary as the Compiler-coverage implementation task: extensions require hardware oracle minting (unauthorized for this reconciliation) plus owner decisions on masking and the two-output contract; 'only inventory required' discipline correctly prevented speculative compiler work."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Validate generated packages before any device access",
+      "status": "blocked",
+      "evidence": "§48 discipline implemented: strict device-free validation precedes any device access (bundle.cpp validator; boundary suites 5+25 cases / 2795 assertions pass per h13-adapter-review); the actual generated package was validated and rejected at the first workspace check; device_access: none throughout",
+      "reason": "The validation gate exists, runs before device access, and fails closed — but no generated package can currently pass it: blocked on the same absent-workspace schema decision as Gate 5. The discipline is proven; the passing state is unreachable without the schema decision."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Implement focused host only contract test suites",
+      "status": "blocked",
+      "evidence": "68 coreml tool tests pass (integration-review check 1); omarchy_ane_bundle_tests 25 cases/2719 assertions pass; no runtime host suite exists",
+      "reason": "Implemented source-tool contracts have71 passing tests; the complete planned runtime/worker/cache contract suite depends on currently blocked runtime interfaces. This item is not complete merely because the existing subset passes."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Implement bounded M1 hardware acceptance test suites",
+      "status": "blocked",
+      "evidence": "E-DRV + E-COV; no hardware operations authorized for this reconciliation",
+      "reason": "§50 suites target an unqualified runtime on unqualified firmware; blocked."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Run standing MLX battery without regressions",
+      "status": "completed",
+      "evidence": "E-BATT; docs/known-defects.md lines 590-592",
+      "reason": "Battery of record green on M1 as of the 2026-09-12 window; older 29/30-era receipts superseded by the closed affine storage-offset case."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Enforce one new hardware failure mode per test",
+      "status": "blocked",
+      "evidence": "E-DRV; plan §52",
+      "reason": "Rule binds new hardware tests; no new hardware tests exist to bind."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Keep project owned implementation under overlay",
+      "status": "completed",
+      "evidence": "All project code under overlay/ (backend ane/, tools/coreml, tools/mlx-omarchy-info, tests/omarchy/{ane,coreml}); CONTRIBUTING.md source rules; plan §53 layout matches actual tree",
+      "reason": "Layout invariant preserved; no stray project-owned files outside overlay/."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Gate builds behind existing Omarchy build flag",
+      "status": "completed",
+      "evidence": "CONTRIBUTING.md: 'Keep Omarchy changes behind MLX_BUILD_OMARCHY'; every receipt build script passes -DMLX_BUILD_OMARCHY=ON (e.g. receipts/2026-09-11-pyenv-parity/build_wheel.sh); new code lives in overlay/ compiled only in Omarchy builds",
+      "reason": "Flag discipline preserved; no new flag forest introduced (§54)."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Pin narrow licensed Linux aarch64 dependencies",
+      "status": "blocked",
+      "evidence": "ane-compiler.lock; docs/plans/2026-09-12-coreml-parakeet-ane-plan.md §54,§62",
+      "reason": "Source/schema/compiler pins exist; final runtime, libane ABI and shipping dependencies cannot be qualified before the driver and bundle schema prerequisites."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Document all reference and adapted source licenses",
+      "status": "completed",
+      "evidence": "docs/parakeet.md Licensing record; LICENSES/coremltools.txt; overlay/tools/coreml/schema/VENDORED.json",
+      "reason": "All currently incorporated reference/schema source and model/audio rights documented; future source additions must retain their licenses."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Derive private model compatibility from graph semantics",
+      "status": "blocked",
+      "evidence": "receipts/2026-09-12-coreml-integration-review.json; docs/coreml.md",
+      "reason": "Generic semantic inspection exists, but no compiler/runtime path can establish compatibility of private models; source-matched public coverage is not general qualification."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Deliver local explicit ANE transcription commands",
+      "status": "blocked",
+      "evidence": "E-COV + E-NORT; plan §58 CLI (mlx-omarchy-parakeet transcribe --compute-units ane) absent from overlay/tools/",
+      "reason": "Transcription commands have no pipeline behind them; blocked at §62."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Satisfy all twelve numbered acceptance gates",
+      "status": "blocked",
+      "evidence": "Gate 0 green (E-BATT); gates 1-5 are sibling-owned (reference frozen E-REF, inspection passing, coverage classified, compiler emits known graph 4097 programs, adapter blocked at §62); gates 6-11 blocked by E-H13/E-COV/E-DRV",
+      "reason": "Aggregate gate: 1 of 12 fully green; the rest blocked by the §62 chain; no gate may be marked satisfied without its evidence."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Enforce initial Core ML project non goals",
+      "status": "completed",
+      "evidence": "plan §60 list; tree contains no streaming UI, microphone capture, ONNX import, M2-M4 qualification, dma-buf, or CoreML.framework emulation code",
+      "reason": "Non-goals respected on main d8eb0037."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Execute ten implementation phases in required order",
+      "status": "blocked",
+      "evidence": "Phases 1-3 landed (E-REF; receipts/2026-09-12-coreml-inspector/; receipts/2026-09-12-compiler-preparation/); phase 4 (ANE runtime) blocked at §62 (E-H13)",
+      "reason": "Order preserved so far; execution cannot advance past phase 4 until the absent-workspace bundle contract is resolved."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Stop on named semantic or hardware blockers",
+      "status": "completed",
+      "evidence": "E-H13 stop_condition names §62 layer 'bundle-v2 representation of absent workspace' with decision not to fabricate workspace or change validator; integration-review stopped_at names §62 coverage layer",
+      "reason": "Stop discipline honored and documented with named layers; no symptom hiding or fallback."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Publish complete reproducible privacy safe hardware receipts",
+      "status": "blocked",
+      "evidence": "E-REF + E-H13; plan §63 receipt field list",
+      "reason": "Full Parakeet receipt requires executed pipeline (timing, dispatch trace, CPU count, 100-run, post-test device state); only reference-freeze and host-review receipts exist."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Preserve single Omarchy AI shipping architecture",
+      "status": "completed",
+      "evidence": "plan §64/§66; packaging/ contains only mesa-honeykrisp-omarchy; no second Install > AI product anywhere in tree",
+      "reason": "Single shipping architecture preserved."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Preserve pinned existing Omarchy MLX integration",
+      "status": "completed",
+      "evidence": "install.sh unchanged pattern: installs mlx-omarchy + mlx-omarchy-demo + desktop entry with matching uninstall (line 25); pinned installer flow per plan §65 untouched on main",
+      "reason": "Existing integration preserved; no installer churn without qualified content."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Avoid separate Core ML AI installation product",
+      "status": "completed",
+      "evidence": "No 'Install > AI > Core ML' entry exists; packaging/ has no such product (§66)",
+      "reason": "Prohibited second product was not created."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Extend one private userspace installation environment",
+      "status": "blocked",
+      "evidence": "E-H13 + E-DRV",
+      "reason": "§67 extension adds runtime components to the one userspace environment; no component is qualified, so the installer is correctly untouched."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Install shared Core ML and Parakeet commands",
+      "status": "blocked",
+      "evidence": "E-NORT; plan §68",
+      "reason": "Commands (mlx-omarchy-coreml, mlx-omarchy-parakeet) do not exist to install."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Add optional launcher through existing installer only",
+      "status": "blocked",
+      "evidence": "plan §69; no feature exists to launch",
+      "reason": "Launcher is an installer add-on for the qualified feature; blocked behind runtime."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Avoid collision with existing Omarchy Dictation product",
+      "status": "completed",
+      "evidence": "No new dictation-adjacent command installed; plan §70 constraint documented",
+      "reason": "Collision impossible while no new commands ship; constraint holds."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Keep current GPU menu label during development",
+      "status": "completed",
+      "evidence": "No menu rename in tree or receipts; Omarchy-side label unchanged per plan §71 and Release B",
+      "reason": "GPU menu label correctly retained during development."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Rename menu only after qualified ANE shipping",
+      "status": "blocked",
+      "evidence": "Release D precondition (§88): Release C qualified ANE not achieved (E-H13, E-COV, E-DRV)",
+      "reason": "Rename is correctly gated behind qualification; blocked, not skipped."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Use durable stack command for installed state",
+      "status": "blocked",
+      "evidence": "https://github.com/omacom/omarchy-mac/pull/425; receipts/2026-09-12-durable-installed-state-key/receipt.md",
+      "reason": "Installer support is on main at 0545dc7f; platform migration and menu cutover are submitted in upstream PR 425, awaiting owner review and adoption. No live installation or graphical menu qualification is claimed."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Treat ANE driver as platform hardware enablement",
+      "status": "completed",
+      "evidence": "docs/forks.md + docs/boot-and-kernel.md document the driver as kernel/platform work; no AI-app representation of the driver in tree or packaging; plan §74",
+      "reason": "Platform-enablement framing preserved."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Prefer base system driver and libane packages",
+      "status": "blocked",
+      "evidence": "E-DRV; docs/forks.md: omarchy-kmd module currently resets the machine when loaded",
+      "reason": "Base driver/libane packages do not exist; preferred shipping model (§75) cannot be exercised."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Package temporary driver dependency through system tooling",
+      "status": "blocked",
+      "evidence": "E-DRV; plan §76",
+      "reason": "Temporary driver packaging is moot until the module is loadable and qualified."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Handle kernel upgrades and module lifecycle deterministically",
+      "status": "blocked",
+      "evidence": "E-DRV; plan §77; docs/boot-and-kernel.md documents kernel constraints only",
+      "reason": "Deterministic lifecycle handling requires a packaged module; none exists."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Ship libane with exact runtime ABI verification",
+      "status": "blocked",
+      "evidence": "E-DRV; roadmap 'Stabilize the ANE runtime ABI' exit receipt open; plan §78",
+      "reason": "ABI unqualified; shipping with verification is blocked."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Ship verified compiler binary without user checkout",
+      "status": "blocked",
+      "evidence": "Compiler builds reproducibly host-side (receipts/2026-09-12-compiler-preparation/: verify-all PASS, archive sha256 12bf…6d64, h13-package-sha256.txt) but §80 release publishing requires qualified artifacts",
+      "reason": "Binary verified in preparation; shipping without checkout is blocked downstream of feature qualification."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Publish complete verified release asset set",
+      "status": "blocked",
+      "evidence": "E-H13 + E-COV; plan §80",
+      "reason": "Release asset set presumes qualified runtime artifacts; none exist."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Extend existing installer with new runtime components",
+      "status": "blocked",
+      "evidence": "E-H13 + E-DRV; plan §81",
+      "reason": "No qualified runtime component exists to add to the installer."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Preserve GPU usability when ANE is unavailable",
+      "status": "completed",
+      "evidence": "E-BATT; no ANE dependency added to the GPU path",
+      "reason": "Verified today: full standing battery green with no ANE present; §82 invariant preserved."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Add tiny qualified ANE installer smoke test",
+      "status": "blocked",
+      "evidence": "plan §83",
+      "reason": "Installer smoke test requires a qualified installable ANE; nothing to smoke."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Preserve safe install rollback and matching uninstall",
+      "status": "blocked",
+      "evidence": "install.sh line 25 removes PREFIX, both bins, and the desktop entry; unchanged on main; plan §84",
+      "reason": "Existing GPU-only installer remains unchanged; the expanded Core ML stack has no qualified install path, so expanded-stack rollback and matching uninstall remain unverified behind packaging/runtime gates."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Update Omarchy platform and existing integration appropriately",
+      "status": "blocked",
+      "evidence": "plan §85; Release B/C content absent (E-H13)",
+      "reason": "Platform changes (menu keying, installer pin update) are gated on qualified content; correctly deferred."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Report one stack with accurate internal capabilities",
+      "status": "blocked",
+      "evidence": "E-NORT; mlx-omarchy-info reports GPU capability and bundle validation accurately today; ANE/compiler/frontend rows unreportable until those components exist; plan §86/§89",
+      "reason": "Single-stack reporting surface exists and is truthful for current capability; full one-status-command report including ANE is blocked behind runtime."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Maintain capability first installed product model",
+      "status": "completed",
+      "evidence": "overlay/mlx/backend/omarchy/capability_sim.{h,cpp} + 5 capability-sim profiles in the battery; mlx-omarchy-info capability-first report; plan §87",
+      "reason": "Capability-first model preserved and tested."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Sequence GPU preview qualified and rename releases",
+      "status": "blocked",
+      "evidence": "plan §88; Release C preconditions (public parity, 100-run stability, driver packaging, clean installation) all blocked",
+      "reason": "Sequencing documented; progression blocked at Release B/C boundary."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Verify clean supported M1 installation end to end",
+      "status": "blocked",
+      "evidence": "Gate 11; plan §89 requires an installable feature; blocked behind runtime + release assets",
+      "reason": "No feature to install on a clean machine."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Document separate pinned contributor source workflow",
+      "status": "completed",
+      "evidence": "CONTRIBUTING.md (mlx.lock pinning, prepare-mlx.sh, overlay/patches rules); docs/forks.md (omarchy-ane fork setup incl. omarchy-kmd branch); scripts/prepare-ane-compiler.sh + verify-ane-compiler.sh shellcheck-clean (integration-review check 4); plan §90",
+      "reason": "Contributor path documented and separate from the user installation path."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Update architecture roadmap compatibility and feature documentation",
+      "status": "completed",
+      "evidence": "docs/architecture.md ANE integration sections; docs/roadmap.md v0.6 ANE gates with exit receipts; docs/parakeet.md freeze status; docs/coreml.md; docs/compatibility.md; doc commits 4560c7b1 and d8eb0037 on main",
+      "reason": "Documentation updated with current evidence; §91 'when implementation evidence exists' honored — nothing claims unimplemented behavior."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Use narrowly qualified Core ML compatibility wording",
+      "status": "completed",
+      "evidence": "docs/architecture.md line 7: ANE 'can replace supported static graph regions after numerical and performance gates pass'; docs/parakeet.md scope: frozen reference only; E-REF qualification line: 'No Linux ANE execution, hardware performance gain, clean transcription, or feature release'",
+      "reason": "No generic 'Core ML supported' claims anywhere; §92 honored."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Produce complete first public Parakeet execution receipt",
+      "status": "blocked",
+      "evidence": "E-H13 + E-COV; plan §93; only freeze/host receipts exist under receipts/",
+      "reason": "First public receipt requires executed encoder and complete TDT pipeline; blocked."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Inspect actual repositories and model before implementation",
+      "status": "completed",
+      "evidence": "receipts/2026-09-12-coreml-integration-review.json; receipts/2026-09-12-parakeet-h13-coverage.json",
+      "reason": "Actual pinned model, compiler sources, driver boundary, and package contract inspected; inventories and explicit stop conditions recorded."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Ship and close milestone without unrelated expansion",
+      "status": "blocked",
+      "evidence": "plan §95; §62 stop open (E-H13)",
+      "reason": "Milestone correctly not closed; no unrelated expansion observed on main."
+    },
+    {
+      "phase": "Core ML requirements",
+      "task": "Satisfy every final shipping definition criterion",
+      "status": "blocked",
+      "evidence": "16 §96 criteria; only GPU-intact and pinned-model-download are substantiated today; the remainder blocked by E-H13/E-COV/E-DRV",
+      "reason": "Aggregate final definition: not satisfiable until the §62 chain resolves."
+    },
+    {
+      "phase": "Reference freeze",
+      "task": "Pin exact public Parakeet source commit",
+      "status": "completed",
+      "evidence": "overlay/tools/coreml/parakeet-reference.lock (reference_repo, reference_commit 75aec2a1c991319657ff4dec5f602c12da6c5012); receipts/2026-09-12-parakeet-reference-freeze.md (clone + git rev-parse confirmed, Apache-2.0 LICENSE read); docs/parakeet.md pin table",
+      "reason": "Source repo and exact commit pinned in the lock and independently receipted; capture harness SwiftPM additionally pins the same commit by revision."
+    },
+    {
+      "phase": "Reference freeze",
+      "task": "Pin exact public model repository revision",
+      "status": "completed",
+      "evidence": "lock model_repo=mweinbach1/parakeet-tdt-0.6b-v3-coreml, model_revision=b650695c2322ee5281dff48d7345b2f3a58ff018; lock.files 12 entries with sha256+size; live rerun: fetch_parakeet_reference.py verify → 'OK: 12 files verified'; freeze receipt records LFS-oid-vs-SHA256 live-tree drift check",
+      "reason": "Revision pinned by content hash, not by tag; verification command reproduced this session."
+    },
+    {
+      "phase": "Reference freeze",
+      "task": "Create licensed deterministic audio fixture",
+      "status": "completed",
+      "evidence": "lock.audio: LibriSpeech test-clean/1089/134686/1089-134686-0000.flac, CC-BY-4.0 (OpenSLR SLR12), sha256 30885601…ed94c2, 16 kHz mono; receipts/2026-09-12-verify-librispeech.py (streams canonical openslr archive and byte-compares the member); licensed receipt audio.provenance.byte_identical=true",
+      "reason": "Licensed deterministic fixture exists with documented rights, replacing the earlier undocumented-rights JFK clip that the integration review flagged as an open gate."
+    },
+    {
+      "phase": "Reference freeze",
+      "task": "Collect pinned macOS reference encoder outputs",
+      "status": "completed",
+      "evidence": "receipts/2026-09-12-parakeet-reference-freeze.md (golden ANE capture 20260912T135844Z-ane on Apple M1 Ultra/Mac13,2, macOS 26.6.2, CoreML 3520.5.1, plus GPU/CPU cross-plan captures); receipts/coreml-capture-review.json; superseded golden re-captured under the licensed fixture: receipts/2026-09-12-licensed-parakeet-reference.json (capture 20260912T154759Z-librispeech, ANE encoder_max_abs=0, token/transcript crosschecks exact, all_three_captures_exit_zero=true)",
+      "reason": "Expected encoder outputs, token IDs, transcript, and inputs captured on pinned macOS reference for all three compute plans; scope is macOS capture only, no Linux execution claimed."
+    },
+    {
+      "phase": "Reference freeze",
+      "task": "Hash every reference model and output artifact",
+      "status": "completed",
+      "evidence": "lock.files (12 sha256+size), lock.macos_reference_paths (10 artifact hashes incl. encoder_hidden.npy, token_ids.json, transcript.txt), lock.audio.sha256; lock.macos_reference_environment; downloader re-hashes everything on every verify (reproduced exit 0)",
+      "reason": "Every model file and every reference output artifact is hash-pinned in the lock; capture manifests also carry manifest.sha256 (freeze receipt)."
+    },
+    {
+      "phase": "Package inspection",
+      "task": "Implement validated mlpackage manifest reader",
+      "status": "completed",
+      "evidence": "overlay/tools/coreml/mlpackage.py (open_mlpackage, _check_manifest_path: empty itemInfoEntries, absolute/traversing/escaping symlink paths, rootModelIdentifier, missing model bytes → MlPackageError); overlay/tests/omarchy/coreml/test_mlpackage.py; docs/coreml.md 'Validation behavior'; suite rerun this session: 68 passed",
+      "reason": "Manifest reading is structurally validated with explicit named rejections; hand-written parser was deleted in favor of the vendored official schema (68b839b9)."
+    },
+    {
+      "phase": "Package inspection",
+      "task": "Resolve exact ML Program metadata contracts",
+      "status": "completed",
+      "evidence": "Live strict run: model type mlProgram, specificationVersion 9, function main opset CoreML8, I/O FeatureType dtypes/shapes (input_features f32[1,3000,128], attention_mask i32[1,3000] → encoder_hidden f32[1,375,640], encoder_mask i32[1,375]), state=0, fileFormatVersion 1.0.0; receipts/2026-09-12-coreml-inspector/verdict.json (all three packages, strict pass, weight hashes matching lock); docs/parakeet.md spec table",
+      "reason": "Exact metadata contracts for all three pinned packages resolved and receipted against the official schema, not hand-written tables."
+    },
+    {
+      "phase": "Package inspection",
+      "task": "Discover and verify all external weight files",
+      "status": "completed",
+      "evidence": "mlpackage.py WeightFile (size+sha256) and blob-ref collection from attributes and bindings at all nesting depths, resolved relative to model file with offset range checks; --strict fails on missing files/out-of-range offsets; live encoder run: weight.bin 444016768 bytes sha256 23867a83…aac04 (matches lock), 'blob ref @model_path/weights/weight.bin: 814 offsets [ok]'",
+      "reason": "All external weights discovered, hashed, and every blob reference resolved; strict validation enforces failure on unresolved references."
+    },
+    {
+      "phase": "Package inspection",
+      "task": "Generate exact operation and shape inventory",
+      "status": "completed",
+      "evidence": "mlpackage.py describe_package/_op_summary/_walk_ops typed inventory; live run: 3351 ops, histogram, compression (194 constexpr_lut_to_dense), control flow none, parse validity ok; receipts/2026-09-12-coreml-inspector/encoder-inventory.json.gz (+decoder/joint, old-parser-comparison.json); integration review compiler_coverage.rows_verified=3351",
+      "reason": "Exact op and shape inventory exists for all three packages and its totals were independently cross-verified; boundary dtype/shape entries that the old parser emitted as None are now real typed values."
+    },
+    {
+      "phase": "Compiler integration",
+      "task": "Add exact compiler source lock file",
+      "status": "completed",
+      "evidence": "ane-compiler.lock: repository, commit a0ce354cf800011a84420da4e12013eb8140b2a5, immutable release-asset URL, archive SHA-256 12bfbcd0…6d64, package schema mil-hwxc.h13-anec-package.v1, qualified target H13 (all §8 fields)",
+      "reason": "Lock records every field the plan requires; release tooling never builds from a moving branch (immutable tagged release asset; codeload unavailability documented in the receipt)."
+    },
+    {
+      "phase": "Compiler integration",
+      "task": "Add deterministic compiler source preparation script",
+      "status": "completed",
+      "evidence": "scripts/prepare-ane-compiler.sh (lock-read, download with gh fallback, SHA-256 check BEFORE extraction, build under ignored .work/ane-compiler, compiler host tests, deterministic wrapper, provenance print); receipts/2026-09-12-compiler-preparation/verify-all.log ('wrong archive rejected before extraction and build: PASS'); shellcheck+bash -n exit 0 per integration review; fresh-clone reproducibility asserted (no ~/src reference)",
+      "reason": "Deterministic, hash-gated preparation with provenance output, matching the plan's eight-step script contract."
+    },
+    {
+      "phase": "Compiler integration",
+      "task": "Build pinned Linux mil hwx compiler",
+      "status": "completed",
+      "evidence": "verify-all.log prepare-ane-compiler: PASS; binary sha256 fff9f8fd…b9dd; determinism cross-check: two independent prepares byte-identical; GNUstep toolchain pins are exact commits (libobjc2/gnustep-make/gnustep-base) per provenance.txt; compiler's own host tests all PASS (operation graph, HWX writer, composition, H13 encoding, CLI, inspection, software tests, hygiene)",
+      "reason": "Pinned compiler builds on Linux from the locked archive with reproducible output; host-only scope, no device claim."
+    },
+    {
+      "phase": "Compiler integration",
+      "task": "Compile known qualified H13 graph fixture",
+      "status": "completed",
+      "evidence": "verify-all.log: tests/fixtures/conv_relu.mil --target H13 → 4097 ANEC programs; manifest asserts schema/target/format, all programs non-empty; research/inspect_anec.py device-free consistency PASS; receipts/2026-09-12-compiler-preparation/h13-package-sha256.txt (4096× 3d73787c… + 1× 63462dec…), package-size 19M",
+      "reason": "Known H13 graph compiles deterministically on Linux; 'known-good' is host/device-free container-tensor-binding-slice-dispatch consistency only — downstream strict-bundle reconciliation is precisely where it fails (see adapter tasks)."
+    },
+    {
+      "phase": "Compiler integration",
+      "task": "Adapt compiler package to existing bundle contract",
+      "status": "blocked",
+      "evidence": "receipts/2026-09-12-h13-adapter-review.json: all 4097 programs have zero workspace tiles (channel-3 uint32 at ANEC offset 52 = 0 for every program); bundle-v2 first rejection 'workspace byte_size must be positive' plus shape>0, stride>0, byte_size=dtype×product constraints; diagnostic one-line byte_size change proven insufficient; decision: no fabricated workspace, no validator change; main-branch changes were receipt+docs only (4560c7b1)",
+      "reason": "Plan §62 stop: compiler output cannot be reconciled with the runtime artifact contract safely. An absent-workspace representation needs an explicit bundle-schema decision (shape/stride/size/channel consistent); fabricating geometry or weakening load_bundle() is prohibited by plan §20 and the no-bypass rule."
+    },
+    {
+      "phase": "Compiler integration",
+      "task": "Validate adapted bundle before runtime access",
+      "status": "blocked",
+      "evidence": "Same receipt: strict validation rejects the package at the first workspace check; host checks that did run (h13 boundary tests 5 cases/76 assertions; bundle tests 25 cases/2719 assertions, 0 failed) prove the validator and the rejection, not an accepted bundle; no device access occurred (device_access: none)",
+      "reason": "Validation-before-device-access discipline is honored and tooling exists, but no adapted bundle can pass strict validation until the absent-workspace schema decision lands; the known-graph package fails closed as designed."
+    },
+    {
+      "phase": "ANE runtime",
+      "task": "Integrate qualified canonical omarchy ane runtime",
+      "status": "blocked",
+      "evidence": "E-NORT + E-H13 + E-DRV; plan §61 phase 4",
+      "reason": "No runtime integration exists; §62 bundle boundary and unqualified driver block phase 4 in full."
+    },
+    {
+      "phase": "ANE runtime",
+      "task": "Implement bounded private worker lifecycle",
+      "status": "blocked",
+      "evidence": "E-NORT; plan §24",
+      "reason": "Worker lifecycle unimplemented; blocked behind bundle contract and driver qualification."
+    },
+    {
+      "phase": "ANE runtime",
+      "task": "Pack runtime inputs according to compiler plan",
+      "status": "blocked",
+      "evidence": "E-NORT + E-H13 (no valid adapted package to pack against)",
+      "reason": "Input packing follows the compiler plan; no qualifying compiler package exists."
+    },
+    {
+      "phase": "ANE runtime",
+      "task": "Execute ordered compiler dispatch plan safely",
+      "status": "blocked",
+      "evidence": "E-H13 (4097 no-workspace programs cannot pass strict validation, so no dispatch plan is executable)",
+      "reason": "§62 'compiler output cannot be reconciled with runtime safely'."
+    },
+    {
+      "phase": "ANE runtime",
+      "task": "Unpack outputs according to compiler plan",
+      "status": "blocked",
+      "evidence": "E-NORT + E-H13",
+      "reason": "Output unpacking follows the compiler plan; same bundle-contract blocker."
+    },
+    {
+      "phase": "ANE runtime",
+      "task": "Enforce timeout and recovery state transitions",
+      "status": "blocked",
+      "evidence": "E-NORT + E-DRV; plan §26",
+      "reason": "Timeout/recovery transitions require a submission path and qualified device semantics."
+    },
+    {
+      "phase": "Compiler coverage",
+      "task": "Compare encoder inventory against H13 coverage",
+      "status": "completed",
+      "evidence": "receipts/2026-09-12-coreml-integration-review.json compiler_coverage (receipt ane-linux-experiments@5476d176 receipts/2026-09-12-parakeet-compiler-coverage: coverage.csv 3351 rows; direct 294, direct-alias 158, direct-const 1783, normalization-needed 427, missing-envelope 250, missing 439) verified against the pinned encoder proto+weights hashes; coverage README maps classes to plan §18 taxonomy with decisive reject/template-miss note per op",
+      "reason": "Full inventory-vs-coverage diff exists; 2662/3351 (79.5%) lowerable without new oracles, 689 (20.5%) are the plan-gating gap. Static classification only — measured execution coverage is explicitly not claimed."
+    },
+    {
+      "phase": "Compiler coverage",
+      "task": "Implement only missing required compiler semantics",
+      "status": "blocked",
+      "evidence": "Coverage receipt blockers 1–3: oracle coverage gap requires hardware probe campaign (large-spatial convs, runtime matmul rows≫16, spatial unary, (8,375,375) softmax, per-position mask broadcast, affine layer_norm); runtime attention masking has no ANE-side landing place (select/pad/slice/less have no encoder; mask is a runtime input); single-return fp16-binding program model vs two-output mixed-type encoder contract; ane-compiler.lock still at a0ce354 (no extension landed)",
+      "reason": "Plan §62 stop ('required H13 op is not understood'): implementing the 689-op gap requires hardware oracle minting, which is not authorized for this reconciliation, plus two plan-level decisions (masking strategy, second-output policy) that belong to the owner, not the frontend."
+    },
+    {
+      "phase": "Compiler coverage",
+      "task": "Update compiler pin after extension qualification",
+      "status": "blocked",
+      "evidence": "ane-compiler.lock unchanged at a0ce354cf800011a84420da4e12013eb8140b2a5 (archive sha256 matches integration review); §19/§47 require extension proven in mil-hwx-compiler with compiler tests BEFORE re-pin",
+      "reason": "Nothing to re-pin: no compiler extension has been qualified. Correctly no pin churn occurred; re-pin is mechanically blocked behind the blocked extension work above."
+    },
+    {
+      "phase": "Encoder parity",
+      "task": "Compile complete public Parakeet encoder graph",
+      "status": "blocked",
+      "evidence": "E-COV (439 missing + 250 missing-envelope ops; mixed-type two-output contract unrepresentable)",
+      "reason": "Complete encoder graph does not compile; §62 coverage layer stop."
+    },
+    {
+      "phase": "Encoder parity",
+      "task": "Run fixed reference mel encoder fixture",
+      "status": "blocked",
+      "evidence": "E-REF + E-COV",
+      "reason": "Fixture and golden outputs are pinned, but there is no compiled encoder to run."
+    },
+    {
+      "phase": "Encoder parity",
+      "task": "Compare complete encoder hidden and mask outputs",
+      "status": "blocked",
+      "evidence": "E-REF (tolerances 0.3/0.02/0.1 pinned) + E-COV",
+      "reason": "Nothing executed to compare; tolerance policy already pinned so no post-hoc loosening is possible."
+    },
+    {
+      "phase": "Transcription",
+      "task": "Implement exact public reference mel frontend",
+      "status": "blocked",
+      "evidence": "https://github.com/joshuaswarren/mlx-omarchy/commit/3fedbd456d28cb14635f3986e8d7b9d65a794b47",
+      "reason": "Plan §62 numerical stop: hash-verified portable mel comparison is not exact (215401/384128 bit patterns match; max absolute error 4.769862e-05). The cause is not isolated; no approximate frontend is qualified."
+    },
+    {
+      "phase": "Transcription",
+      "task": "Execute public Parakeet encoder on ANE",
+      "status": "blocked",
+      "evidence": "E-COV + E-NORT",
+      "reason": "Encoder does not compile and no ANE runtime exists."
+    },
+    {
+      "phase": "Transcription",
+      "task": "Execute decoder and joint on Vulkan",
+      "status": "blocked",
+      "evidence": "E-COV + E-NORT",
+      "reason": "No decoder/joint implementation or pipeline wiring on main; blocked behind encoder placement."
+    },
+    {
+      "phase": "Transcription",
+      "task": "Port deterministic TDT host control loop",
+      "status": "blocked",
+      "evidence": "E-REF + E-COV",
+      "reason": "TDT loop port is host code but its deterministic behavior is only verifiable against pinned tokens via a running decoder/joint; pipeline blocked."
+    },
+    {
+      "phase": "Transcription",
+      "task": "Implement reference tokenizer and transcript output",
+      "status": "blocked",
+      "evidence": "E-REF (golden token_ids and transcript hash-pinned) + E-COV",
+      "reason": "Tokenizer/transcript output has no token stream to consume; blocked behind decoder execution."
+    },
+    {
+      "phase": "Caching and reuse",
+      "task": "Implement compatibility keyed compiled model cache",
+      "status": "blocked",
+      "evidence": "E-H13; plan §28-29",
+      "reason": "Nothing compilable exists to cache; blocked one stage upstream."
+    },
+    {
+      "phase": "Caching and reuse",
+      "task": "Reuse resident program and immutable weight resources",
+      "status": "blocked",
+      "evidence": "E-NORT; plan §45",
+      "reason": "Resident program/weight reuse requires an executing worker; absent."
+    },
+    {
+      "phase": "Caching and reuse",
+      "task": "Run repeated warm invocation stability check",
+      "status": "blocked",
+      "evidence": "E-H13 (100 warm runs explicitly not claimed)",
+      "reason": "Repeated warm invocation requires an executable model; blocked."
+    },
+    {
+      "phase": "Parakeet performance",
+      "task": "Attribute all end to end transcription stages",
+      "status": "blocked",
+      "evidence": "E-COV; plan §44",
+      "reason": "Stage attribution requires a running end-to-end transcription; correctness not yet achieved."
+    },
+    {
+      "phase": "Parakeet performance",
+      "task": "Compare matched same machine reference performance",
+      "status": "blocked",
+      "evidence": "E-COV; plan §44 (public model is the reproducible baseline; no 450 ms private-model comparison)",
+      "reason": "No Linux execution to compare on the same M1."
+    },
+    {
+      "phase": "Parakeet performance",
+      "task": "Optimize only measured qualified transcription bottlenecks",
+      "status": "blocked",
+      "evidence": "E-COV; plan §61 phase 9 ('optimize measured bottleneck only')",
+      "reason": "No measurements exist; optimizing without measurement would violate the plan's own rule."
+    },
+    {
+      "phase": "Packaging",
+      "task": "Publish verified qualified feature release assets",
+      "status": "blocked",
+      "evidence": "E-H13 + E-COV + E-DRV; plan §80",
+      "reason": "No qualified feature to publish; release assets presume qualified artifacts."
+    },
+    {
+      "phase": "Packaging",
+      "task": "Extend existing coherent userspace install path",
+      "status": "blocked",
+      "evidence": "E-H13 + E-DRV; plan §81",
+      "reason": "No runtime component exists to extend the install path with."
+    },
+    {
+      "phase": "Packaging",
+      "task": "Update existing Omarchy M platform integration",
+      "status": "blocked",
+      "evidence": "plan §85/§88; Release B/C content absent",
+      "reason": "Platform integration updates are gated on qualified content; correctly deferred."
+    },
+    {
+      "phase": "Packaging",
+      "task": "Verify complete clean machine installation flow",
+      "status": "blocked",
+      "evidence": "Gate 11; plan §89",
+      "reason": "Clean-machine flow requires an installable feature; blocked."
+    },
+    {
+      "phase": "Acceptance gates",
+      "task": "Gate zero existing MLX battery passes",
+      "status": "completed",
+      "evidence": "E-BATT: 30/30 suites + capability profiles, omarchy_ane_bundle_tests included, M1 hardware 2026-09-12 window; docs/known-defects.md:590-592",
+      "reason": "Baseline gate green on the battery of record; older 29/30-era receipts superseded."
+    },
+    {
+      "phase": "Acceptance gates",
+      "task": "Gate one model and audio references pinned",
+      "status": "completed",
+      "evidence": "lock: reference_repo/reference_commit 75aec2a1 + model_repo/model_revision b650695c; overlay/tools/coreml/capture/Package.swift pins parakeet-coreml-swift by revision: for the macOS capture runtime; live downloader verify 'OK: 12 files verified'",
+      "reason": "Gate 1 satisfied: public model and audio fixture pinned by revision/hash; runtime source pinned by commit and re-pinned inside the capture harness."
+    },
+    {
+      "phase": "Acceptance gates",
+      "task": "Gate two Linux encoder inspection succeeds",
+      "status": "completed",
+      "evidence": "Live reproduction this session: inspect_mlpackage.py --strict exit 0 (3351 ops, 814 blob offsets [ok], weight hash matches lock); receipts/2026-09-12-coreml-inspector/verdict.json (encoder 3351 ops strict pass; decoder 69; joint 21); device-free on Linux x86_64 per docs/coreml.md",
+      "reason": "Encoder .mlpackage parses and inventories on Linux with zero device access — reproduced, not just receipted."
+    },
+    {
+      "phase": "Acceptance gates",
+      "task": "Gate three every encoder operation classified",
+      "status": "completed",
+      "evidence": "coverage.csv 3351/3351 rows classified across 31 distinct op types into direct/direct-alias/direct-const/normalization-needed/missing-envelope/missing; integration review rows_verified=3351; every verdict carries the decisive reject line or absent template key",
+      "reason": "Every encoder operation is classified; no unknown operations remain. Classification is not qualification — 689 ops remain uncovered but each has an explicit class and evidence note, which is what Gate 3 requires."
+    },
+    {
+      "phase": "Acceptance gates",
+      "task": "Gate four pinned compiler emits known graph",
+      "status": "completed",
+      "evidence": "receipts/2026-09-12-compiler-preparation/{README.md,verify-all.log,provenance.txt,h13-package-sha256.txt}: pinned compiler builds on Linux and emits the known conv_relu H13 graph as 4097 deterministic ANEC programs, device-free validated; binary + program hashes recorded",
+      "reason": "Gate 4's literal content (pinned compiler builds on Linux, emits known graph) is receipted and internally consistent; the emitted package is NOT bundle-v2-loadable — that failure is Gate 5's, and the receipts scope the claims accordingly."
+    },
+    {
+      "phase": "Acceptance gates",
+      "task": "Gate five package adapter passes strict validation",
+      "status": "blocked",
+      "evidence": "receipts/2026-09-12-h13-adapter-review.json stop_condition (plan §62, layer 'bundle-v2 representation of absent workspace', first_rejection 'workspace byte_size must be positive'); no adapter exists on main; validator untouched",
+      "reason": "Strict validation fails closed on the pinned compiler's output and must keep failing until an explicit absent-workspace schema decision lands; fabricating workspace or relaxing the validator is prohibited (no-bypass rule, plan §20). Unblock path: owner schema decision in the bundle contract, then adapter + strict pass, then Gate 6."
+    },
+    {
+      "phase": "Acceptance gates",
+      "task": "Gate six known graph executes correctly",
+      "status": "blocked",
+      "evidence": "E-H13",
+      "reason": "Known H13 graph passes strict host validation only; execution through omarchy-ane with matching output is blocked by the absent-workspace representation."
+    },
+    {
+      "phase": "Acceptance gates",
+      "task": "Gate seven complete public encoder compiles",
+      "status": "blocked",
+      "evidence": "E-COV",
+      "reason": "Coverage gaps (439 missing, 250 missing-envelope) and unrepresentable mixed-type outputs prevent complete compilation."
+    },
+    {
+      "phase": "Acceptance gates",
+      "task": "Gate eight encoder parity includes ANE trace",
+      "status": "blocked",
+      "evidence": "E-COV + E-REF",
+      "reason": "Parity comparison and the required ANE trace both need an executed encoder; none exists."
+    },
+    {
+      "phase": "Acceptance gates",
+      "task": "Gate nine local tokens and transcript match",
+      "status": "blocked",
+      "evidence": "E-COV + E-REF (golden tokens pinned, unusable without a pipeline)",
+      "reason": "No local inference path exists; server-free property trivially holds but the gate requires matching tokens and transcript."
+    },
+    {
+      "phase": "Acceptance gates",
+      "task": "Gate ten hundred warm invocations remain stable",
+      "status": "blocked",
+      "evidence": "E-H13",
+      "reason": "Requires an executable encoder; blocked."
+    },
+    {
+      "phase": "Acceptance gates",
+      "task": "Gate eleven fresh installation requires no checkout",
+      "status": "blocked",
+      "evidence": "Release assets and installer extension blocked (E-H13, E-DRV); plan §89/§90",
+      "reason": "Fresh installation without checkout requires shipped, verified artifacts; none exist."
+    },
+    {
+      "phase": "Final shipping criteria",
+      "task": "Install shipped stack through existing Omarchy mechanism",
+      "status": "blocked",
+      "evidence": "plan §81 + install.sh unchanged; E-H13",
+      "reason": "Shipped stack would include runtime components that do not exist."
+    },
+    {
+      "phase": "Final shipping criteria",
+      "task": "Keep existing MLX GPU functionality intact",
+      "status": "completed",
+      "evidence": "E-BATT: full M1 battery 30/30 incl. all Vulkan suites",
+      "reason": "GPU functionality verified intact; Core ML work introduced no regression."
+    },
+    {
+      "phase": "Final shipping criteria",
+      "task": "Provide ANE platform support through Omarchy",
+      "status": "blocked",
+      "evidence": "E-DRV; docs/forks.md driver state; plan §74-77",
+      "reason": "ANE platform enablement requires a loadable, packageable driver; unqualified."
+    },
+    {
+      "phase": "Final shipping criteria",
+      "task": "Report accurate GPU ANE compiler frontend capabilities",
+      "status": "blocked",
+      "evidence": "E-NORT; mlx-omarchy-info reports GPU + bundle truth only; inspector eligibility 'not assessed' (integration-review check 3)",
+      "reason": "Accurate reporting exists for current capability, but the criterion's ANE/compiler/frontend rows are unreportable until those layers exist."
+    },
+    {
+      "phase": "Final shipping criteria",
+      "task": "Download pinned public model with reproducible hashes",
+      "status": "completed",
+      "evidence": "overlay/tools/coreml/fetch_parakeet_reference.py verify: 12 pinned model files verified (integration-review check 2); parakeet-reference.lock pins size + SHA-256 with HF LFS oid verification (docs/parakeet.md)",
+      "reason": "Downloader implemented and verified against the pinned revision; reproducible hashes hold."
+    },
+    {
+      "phase": "Final shipping criteria",
+      "task": "Compile public encoder on Linux with pinned compiler",
+      "status": "blocked",
+      "evidence": "E-COV",
+      "reason": "Encoder compilation blocked by compiler coverage gaps and binding representability."
+    },
+    {
+      "phase": "Final shipping criteria",
+      "task": "Pass strict validation for every compiled artifact",
+      "status": "blocked",
+      "evidence": "E-H13",
+      "reason": "The only compiler-emitted package cannot pass strict validation (absent workspace); validator bypass forbidden."
+    },
+    {
+      "phase": "Final shipping criteria",
+      "task": "Execute encoder through qualified M1 ANE ABI",
+      "status": "blocked",
+      "evidence": "E-DRV",
+      "reason": "No qualified M1 ANE ABI exists to execute through."
+    },
+    {
+      "phase": "Final shipping criteria",
+      "task": "Match encoder against pinned macOS numerical contract",
+      "status": "blocked",
+      "evidence": "E-REF (tolerances pinned) + E-COV",
+      "reason": "No Linux encoder output to compare against the pinned macOS contract."
+    },
+    {
+      "phase": "Final shipping criteria",
+      "task": "Execute decoder and joint locally without fallback",
+      "status": "blocked",
+      "evidence": "E-COV + E-NORT",
+      "reason": "No decoder/joint implementation; nothing to execute without fallback."
+    },
+    {
+      "phase": "Final shipping criteria",
+      "task": "Match accepted complete TDT tokens and transcript",
+      "status": "blocked",
+      "evidence": "E-REF + E-COV",
+      "reason": "Golden tokens/transcript are pinned for comparison; no local pipeline produces outputs to match."
+    },
+    {
+      "phase": "Final shipping criteria",
+      "task": "Require no separate inference server process",
+      "status": "blocked",
+      "evidence": "E-NORT; plan §25; no server component in tree",
+      "reason": "Design constraint preserved (private worker, no inference server); the criterion is verifiable only against a running pipeline, which does not exist."
+    },
+    {
+      "phase": "Final shipping criteria",
+      "task": "Prove absence of CPU tensor primitive fallback",
+      "status": "blocked",
+      "evidence": "E-COV + E-NORT; plan §43",
+      "reason": "Proof is an executed-run trace property; no run exists."
+    },
+    {
+      "phase": "Final shipping criteria",
+      "task": "Pass hundred invocation warm stability contract",
+      "status": "blocked",
+      "evidence": "E-H13",
+      "reason": "Warm stability contract needs an executable model; blocked."
+    },
+    {
+      "phase": "Final shipping criteria",
+      "task": "Publish complete public end to end receipt",
+      "status": "blocked",
+      "evidence": "E-H13 + E-COV; plan §63/§93",
+      "reason": "End-to-end receipt requires the executed pipeline; only freeze and host-review receipts exist."
+    },
+    {
+      "phase": "Final shipping criteria",
+      "task": "Present one installed local Apple ML stack",
+      "status": "blocked",
+      "evidence": "E-H13 + E-DRV; plan §86/§89",
+      "reason": "One installed stack with GPU+ANE capability reporting requires the blocked runtime and packaging."
+    },
+    {
+      "phase": "Licensed speech reference",
+      "task": "Verify canonical speech fixture provenance",
+      "status": "completed",
+      "evidence": "receipts/2026-09-12-verify-librispeech.py + licensed receipt provenance {canonical_archive openslr.trmal.net test-clean.tar.gz, canonical_member 1089-134686-0000.flac, byte_identical true}; lock.audio note with attribution and license URL; docs/parakeet.md Licensing record",
+      "reason": "Mirror bytes proven byte-identical to the canonical OpenSLR archive member with CC-BY-4.0 documented; verification command recorded in the receipt and the lock."
+    },
+    {
+      "phase": "Licensed speech reference",
+      "task": "Capture matched reference outputs for licensed speech",
+      "status": "completed",
+      "evidence": "receipts/2026-09-12-licensed-parakeet-reference.json: capture 20260912T154759Z-librispeech on Mac13,2 (ANE plan golden: encoder_max_abs=0, token_ids/transcript exact vs pinned e2e transcriber; GPU within bounds max_abs 0.1397; CPU 100-token divergence recorded, not asserted equal); verification.all_manifest_hashes_verified=true, all_model_files_verified_before_inference=true; tolerances unchanged (0.3/0.02/0.1)",
+      "reason": "Matched reference outputs captured for the licensed fixture across all three compute plans with hashes; explicitly a reference freeze, not Linux ANE execution or clean-transcription evidence (erroneous Cyrillic suffix retained verbatim and recorded in docs/known-defects.md)."
+    },
+    {
+      "phase": "Licensed speech reference",
+      "task": "Update reference lock and affected documentation",
+      "status": "completed",
+      "evidence": "parakeet-reference.lock rewritten (audio block, numerical_contract.derived_from, golden hashes); docs/parakeet.md (golden capture section, licensing record, downloader); docs/coreml.md closing sections; docs/known-defects.md 'Pinned Parakeet reference emits an erroneous transcript suffix'; tests/coreml/test_reference_lock.py updated (4f5802b0 diff)",
+      "reason": "Lock and all affected documentation updated in the same change that pinned the licensed fixture; suite (68 tests) passes on the updated lock."
+    },
+    {
+      "phase": "Licensed speech reference",
+      "task": "Verify and publish licensed reference receipts",
+      "status": "completed"
+    }
+  ],
+  "verification": "Current integrated host check: python3 -m pytest tests/coreml/ overlay/tests/omarchy/coreml/ tests/test_install_sh_contract.py -q: 73 passed, 3 subtests passed in 9.36s. Historical M1 battery evidence is not a fresh hardware run. Exact mel diagnostic on separate commit 3fedbd456d28cb14635f3986e8d7b9d65a794b47 remains negative."
+}
