@@ -22,7 +22,7 @@ say() { printf '\033[1;32m==>\033[0m %s\n' "$*"; }
 die() { printf '\033[1;31merror:\033[0m %s\n' "$*" >&2; exit 1; }
 
 if [[ "${1:-}" == "--uninstall" ]]; then
-  rm -rf "$PREFIX" "$BIN/mlx-omarchy" "$BIN/mlx-omarchy-demo" "$APPS/mlx-omarchy-demo.desktop"
+  rm -rf "$PREFIX" "$BIN/mlx-omarchy" "$BIN/mlx-omarchy-demo" "$BIN/mlx-omarchy-info" "$APPS/mlx-omarchy-demo.desktop"
   say "mlx-omarchy removed. Model downloads stay in ~/.cache/huggingface; delete them yourself if you want the space back."
   exit 0
 fi
@@ -84,7 +84,11 @@ cat >"$BIN/mlx-omarchy-demo" <<EOF
 #!/usr/bin/env bash
 exec "$VENV/bin/python" "$PREFIX/chat.py" "\$@"
 EOF
-chmod +x "$BIN/mlx-omarchy" "$BIN/mlx-omarchy-demo"
+INFO=$("$VENV/bin/python" -I -c 'import os, mlx
+print(next(p for root in mlx.__path__
+           if os.access(p := os.path.join(root, "bin", "mlx-omarchy-info"), os.X_OK)))')
+printf '#!/usr/bin/env bash\nexec %q "$@"\n' "$INFO" >"$BIN/mlx-omarchy-info"
+chmod +x "$BIN/mlx-omarchy" "$BIN/mlx-omarchy-demo" "$BIN/mlx-omarchy-info"
 if command -v omarchy-launch-floating-terminal-with-presentation >/dev/null; then
   cat >"$APPS/mlx-omarchy-demo.desktop" <<EOF
 [Desktop Entry]
