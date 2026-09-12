@@ -163,6 +163,14 @@ are missing, and the mixed-type, two-output contract is not represented by
 the current compiler program model. Execution work stops at plan section 62;
 no CPU fallback or altered model contract substitutes for these gaps.
 
+The [known-H13 adapter review](../receipts/2026-09-12-h13-adapter-review.json)
+finds a separate bundle-v2 blocker. All 4,097 known-graph programs have no
+workspace tiles, but the schema requires positive workspace geometry, size,
+and stride. Removing only the byte-size check would not resolve the other
+constraints. No workspace or firmware identity is fabricated; the adapter
+remains unimplemented pending an explicit absent-workspace contract.
+
+
 The [licensed reference receipt](../receipts/2026-09-12-licensed-parakeet-reference.json)
 replaces the undocumented-rights JFK clip with a byte-verified CC-BY-4.0
 LibriSpeech utterance. ANE and GPU emit the same 104 tokens, including the
