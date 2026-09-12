@@ -139,12 +139,12 @@ def main():
                         "side": args.side,
                         "dtype": args.dtype,
                         "shape": f"{m}x{n}x{k}",
-                        "gflops": round(cell["gflops"], 1),
-                        "ms": round(cell["ms"], 3),
+                        "gflops": round(float(cell["gflops"]), 1),
+                        "ms": round(float(cell["ms"]), 3),
                         "sha": cell["sha"],
-                    },
-                    flush=True,
-                )
+                    }
+                ),
+                flush=True,
             )
     print("JSON " + json.dumps(summary), flush=True)
 
