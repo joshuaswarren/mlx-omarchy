@@ -1,5 +1,47 @@
 # Cross-die verification — 2026-09-12
 
+## Key finding
+
+**The decode attention oracle is die-agnostic.** 159 arrays are
+byte-identical across two different Apple dies (M1 Max `applegpu_g13s`,
+M1 Ultra `applegpu_g13d`) — including the 2,097,152-input `fast::exp`
+tables with zero differing bytes and every Metal `simd_sum`-consuming
+decode score in the sampled captures. A Linux decode kernel that
+reproduces these captured values reproduces values that native itself
+produces identically on every Apple die tested: it is a rule-1 gate
+without qualification. The gate no longer depends on which macOS
+machine captured it.
+
+**The 48 die-dependent arrays are a finding about native, not a
+defect in this capture.** They are confined to q4/short layer-0
+prefill at M=30 — exactly where qmm dispatch selects `qmm_t_splitk`
+with split_k=14, the heaviest split in the ladder — with the q_proj
+split-K output as the divergence root while its input and packed
+weights are byte-identical. Native's split-K reduction is itself
+die-dependent: the value varies with the hardware that computes it.
+Two consequences for future work:
+
+1. Any rule-1 qualification of a split-K path must name the die its
+   oracle came from. A Linux kernel cannot be required to match a
+   value that native does not reproduce across its own hardware.
+2. This partially explains why Q4 SHORT prefill is the one leg already
+   past native: the heaviest split-K is native's worst-conditioned
+   case, so beating it is not evidence of a defect on our side.
+
+## Artifact-provenance incident ledger entry
+
+The 36 first-pass "different" dispatch files were the sixth
+artifact-provenance incident of this session, and the pattern matches
+the previous five exactly: the instrument or environment differed, not
+the thing under test. Concretely: the probe's RNG stream is consumed
+step by step, so skipping the dump step on macstudio shifted every
+later synthetic input even with identical seeds. Fixed-input discipline
+for any multi-step probe: identical step ORDER, not just identical
+seed; and compare arrays only after asserting the inputs being fed
+forward are the same bytes. Verify the instrument is measuring the
+same object before believing a mismatch.
+
+## The run
 The full capture harness was re-run on **macstudio** (Apple M1 Ultra,
 `applegpu_g13d`, macOS 26.6.2) against the same pins — mlx==0.32.2 /
 mlx-lm==0.31.3 in a fresh venv, same HF snapshot revisions
