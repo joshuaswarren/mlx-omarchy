@@ -100,6 +100,17 @@ class ModelParseTest(unittest.TestCase):
         parsed = proto.load_model(raw)
         self.assertEqual(parsed.specificationVersion, 9)
 
+    def test_unknown_fields_are_counted_not_hidden(self):
+        # A package written by a schema newer than the vendored one:
+        # parse succeeds, and the unknown field shows up in the scan
+        # instead of silently disappearing.
+        model = Model_pb2.Model()
+        model.specificationVersion = 9
+        raw = model.SerializeToString() + bytes([0x82, 0x3E, 0x03]) + b"abc"
+        parsed = proto.load_model(raw)
+        self.assertEqual(proto.count_unknown_fields(parsed), 1)
+        self.assertEqual(proto.count_unknown_fields(model), 0)
+
 
 if __name__ == "__main__":
     unittest.main()
