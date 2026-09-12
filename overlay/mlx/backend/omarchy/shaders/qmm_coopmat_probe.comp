@@ -147,12 +147,15 @@ void main() {
           scale = float(scales.values[scale_row + chunk]);
           bias = float(biases.values[bias_row + chunk]);
         }
-        // Opaque trip count: min() against the runtime matrix_k keeps
-        // nir_opt_loop_unroll from flipping this constant-trip-4 loop
-        // into four straight-line copies, which restructures the whole
-        // k region and confounds attribution (matrix_k >= 64 by the
-        // dispatch gate, so the value is always 4).
-        uint step_count = min(CHUNK_K / STEP_K, params.matrix_k);
+        // The shipped kernel's step loop stays rolled in the final ISA.
+        // Both probe variants perturbed the body enough that
+        // nir_opt_loop_unroll flipped it into straight-line copies,
+        // restructuring the whole k region and swamping attribution,
+        // and a min()-opaque trip count did not stop it. Pin the
+        // shipped structure explicitly; the loop is semantically
+        // identical either way.
+        uint step_count = CHUNK_K / STEP_K;
+#pragma DONT_UNROLL
         for (uint step = 0u; step < step_count; ++step) {
           uint k_base = chunk * CHUNK_K + step * STEP_K;
 #if QMM_COOP_PROBE_PATH == 1
