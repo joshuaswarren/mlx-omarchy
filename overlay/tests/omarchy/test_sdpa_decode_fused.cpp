@@ -408,7 +408,14 @@ TEST_CASE("fused bf16 decode is bit-identical to the f32 composition") {
       uint64_t dispatches = dispatches_for(
           [&] { return sdpa_call(in, stream); }, stream);
       MESSAGE("keys ", keys, " dispatches ", dispatches);
-      CHECK_EQ(dispatches, 1);
+      if (keys >= 256) {
+        // Inside the arm's winning regime: one dispatch per call.
+        CHECK_EQ(dispatches, 1);
+      } else {
+        // Below the measured 256-key crossover the composition is faster;
+        // the perf gate routes there and both sides are bit-identical.
+        CHECK(dispatches > 1);
+      }
     }
     require_bit_identical(
         sdpa_call(in, stream), composition_reference_len(in, keys, stream), stream);
