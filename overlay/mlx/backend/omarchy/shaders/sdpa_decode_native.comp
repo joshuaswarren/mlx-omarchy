@@ -86,7 +86,6 @@ layout(push_constant) uniform Params {
 const uint SIMD = 32u;
 const uint DIM = 64u;
 const uint MAX_BLOCKS = 128u;
-const uint CHUNK = 4u;
 const float FINITE_MIN = -3.4028234663852886e38;
 
 #ifndef BF16_IO
@@ -129,68 +128,6 @@ uint16_t bf16_store(float value) {
 #else
 #define LD16(x) float(x)
 #endif
-
-// One chunk of a stream's keys folded into the online-softmax state. This
-// is the shipped serial per-key update re-spread for issue overlap: the
-// subgroup reductions issue as one independent batch, the two exps as a
-// second batch, and the only dependent chain left is the accumulator fmas.
-// Every operation keeps the operand bits and per-stream order of the
-// serial update (max/exp/fma on identical values in identical sequence),
-// so the result is bit-identical to the fully serial loop. The per-j
-// active guard gives each subgroupAdd exactly the active-lane set the
-// serial loop's same iteration had.
-void fold_chunk(uint key0, uint key_stride, uint k_len,
-                uint kv_head, uint q_dim, float q0, float q1,
-                inout float max_score, inout float sum_exp_score,
-                inout float o0, inout float o1) {
-  float sc[CHUNK];
-  float v0c[CHUNK];
-  float v1c[CHUNK];
-  float fac[CHUNK];
-  float expsc[CHUNK];
-  bool act[CHUNK];
-  uint key = key0;
-  for (uint j = 0u; j < CHUNK; ++j) {
-    sc[j] = 0.0;
-    v0c[j] = 0.0;
-    v1c[j] = 0.0;
-    fac[j] = 1.0;
-    expsc[j] = 0.0;
-    act[j] = key < k_len;
-    if (act[j]) {
-      uint k_base = params.rhs_offset + kv_head * params.shape[1] +
-          key * params.shape[2] + q_dim * params.in_strides[0];
-      float score = fma(q0, LD16(key_data.values[k_base]), 0.0);
-      score = fma(
-          q1,
-          LD16(key_data.values[k_base + params.in_strides[0]]),
-          score);
-      sc[j] = subgroupAdd(score);
-      uint v_base = params.aux_offset + kv_head * params.in_strides[1] +
-          key * params.in_strides[2] + q_dim * params.in_strides[3];
-      v0c[j] = LD16(value_data.values[v_base]);
-      v1c[j] = LD16(value_data.values[v_base + params.in_strides[3]]);
-    }
-    key += key_stride;
-  }
-  float running = max_score;
-  for (uint j = 0u; j < CHUNK; ++j) {
-    if (act[j]) {
-      float new_max = max(running, sc[j]);
-      fac[j] = native_exp(running - new_max);
-      expsc[j] = native_exp(sc[j] - new_max);
-      running = new_max;
-    }
-  }
-  max_score = running;
-  for (uint j = 0u; j < CHUNK; ++j) {
-    if (act[j]) {
-      sum_exp_score = fma(sum_exp_score, fac[j], expsc[j]);
-      o0 = fma(o0, fac[j], expsc[j] * v0c[j]);
-      o1 = fma(o1, fac[j], expsc[j] * v1c[j]);
-    }
-  }
-}
 
 void store_pair(uint head, uint lane, float x, float y, float denominator) {
   if (lane == 0u) {
@@ -350,28 +287,35 @@ void main() {
   if (blocks == 0u) {
     // Native sdpa_vector: each SIMD owns keys sgid, sgid+32, ... and keeps an
     // independent online-softmax state before the 32 states are merged.
-    // The stream walks CHUNK keys per fold_chunk call; the chunk count is
-    // uniform across the workgroup and the per-j guards keep every
-    // subgroupAdd's active lanes identical to the serial loop's.
     float max_score = FINITE_MIN;
     float sum_exp_score = 0.0;
     float o0 = 0.0;
     float o1 = 0.0;
-    uint chunk_count =
-        (params.matrix_k + SIMD * CHUNK - 1u) / (SIMD * CHUNK);
-    for (uint c = 0u; c < chunk_count; ++c) {
-      fold_chunk(
-          sgid + c * SIMD * CHUNK,
-          SIMD,
-          params.matrix_k,
-          kv_head,
-          q_dim,
-          q0,
+    for (uint key = sgid; key < params.matrix_k; key += SIMD) {
+      uint k_base = params.rhs_offset + kv_head * params.shape[1] +
+          key * params.shape[2] + q_dim * params.in_strides[0];
+      float score = fma(q0, LD16(key_data.values[k_base]), 0.0);
+      score = fma(
           q1,
-          max_score,
-          sum_exp_score,
+          LD16(key_data.values[k_base + params.in_strides[0]]),
+          score);
+      score = subgroupAdd(score);
+      float new_max = max(max_score, score);
+      float factor = native_exp(max_score - new_max);
+      float exp_score = native_exp(score - new_max);
+      max_score = new_max;
+      sum_exp_score = fma(sum_exp_score, factor, exp_score);
+      uint v_base = params.aux_offset + kv_head * params.in_strides[1] +
+          key * params.in_strides[2] + q_dim * params.in_strides[3];
+      o0 = fma(
           o0,
-          o1);
+          factor,
+          exp_score * LD16(value_data.values[v_base]));
+      o1 = fma(
+          o1,
+          factor,
+          exp_score *
+              LD16(value_data.values[v_base + params.in_strides[3]]));
     }
 
     if (lane == 0u) {
@@ -397,11 +341,7 @@ void main() {
 
   // Native sdpa_vector_2pass_1. A physical subgroup computes four logical
   // native blocks sequentially; logical blocks remain independent and land
-  // in the exact f16/f32 intermediate formats consumed by pass 2. The
-  // serial per-key update stays serial here: at native's crossover each
-  // block stream holds only ~8 keys, so the re-spread has nothing to hide
-  // its register cost behind (measured, receipts/2026-09-12-decode-
-  // chunked-softmax).
+  // in the exact f16/f32 intermediate formats consumed by pass 2.
   for (uint block = sgid; block < blocks; block += SIMD) {
     float max_score = FINITE_MIN;
     float sum_exp_score = 0.0;
@@ -440,6 +380,9 @@ void main() {
     s_partial_words[block * SIMD + lane] = packHalf2x16(vec2(o0, o1));
   }
   barrier();
+
+  // Native sdpa_vector_2pass_2 max and denominator: each lane folds blocks
+  // lane+32*b, then the hardware SIMD reduction merges the 32 lanes.
   float merged_max = FINITE_MIN;
   for (uint block = lane; block < blocks; block += SIMD) {
     merged_max = max(merged_max, s_max[block]);
