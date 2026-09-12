@@ -63,13 +63,17 @@ def bench(m, n, k, dtype, warmup, timed, seed):
     w = mx.random.normal((n, k), key=mx.random.key(seed + 1))
     if dtype == "q4":
         x = x.astype(mx.float16)
-        wq = mx.quantize(w.astype(mx.float16), group_size=64, bits=4)
-        scales = wq.scales.astype(mx.float16)
-        biases = wq.biases.astype(mx.float16)
+        q = mx.quantize(w.astype(mx.float16), group_size=64, bits=4)
+        if hasattr(q, "scales"):
+            words, scales, biases = q.weight, q.scales, q.biases
+        else:
+            words, scales, biases = q
+        scales = scales.astype(mx.float16)
+        biases = biases.astype(mx.float16)
 
         def run():
             return mx.quantized_matmul(
-                x, wq.weight, scales, biases, True, 64, 4, "affine"
+                x, words, scales, biases, True, 64, 4, "affine"
             )
     else:
         x = x.astype(mx.bfloat16)

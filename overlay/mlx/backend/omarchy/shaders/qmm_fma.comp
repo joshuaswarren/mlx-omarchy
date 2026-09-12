@@ -122,6 +122,7 @@ void main() {
           }
           for (uint s = 0u; s < 8u; ++s) {
             uint kw = g * 8u + s;
+            uint xk = g * 8u + s;
             float wv[COLS][8];
             for (uint c = 0u; c < COLS_U; ++c) {
               uint col = col0 + c;
@@ -140,7 +141,7 @@ void main() {
             for (uint r = 0u; r < ROWS_U; ++r) {
               uint row = row0 + r;
               uvec4 xw = row < m
-                  ? input_x4.values4[x_slice4 + row * x_vec_per_row + kw / 4u]
+                  ? input_x4.values4[x_slice4 + row * x_vec_per_row + xk]
                   : uvec4(0u);
               float x0 = unpackHalf2x16(xw.x).x;
               float x1 = unpackHalf2x16(xw.x).y;
