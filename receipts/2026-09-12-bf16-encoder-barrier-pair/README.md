@@ -1,187 +1,116 @@
-# BF16 decode barrier-pair collapse at the command-encoder boundary —
-# exclusion receipt (2026-09-12)
+# Deferred post-dispatch barriers: no measured decode gain
 
-Status: COMPLETE. Receipt-only negative. The named mechanism — deferring
-the default path's redundant post-dispatch barrier until a non-compute
-consumer needs it — is spec-safe, was implemented behind
-`MLX_OMARCHY_DEFERRED_POST_BARRIERS` (default off, commit on
-`wave/Bf16EncoderBoundary`), provably ENGAGED on hardware in the real
-decode loop, held every digest on both drivers, and produced no
-repeating end-to-end gain on any canonical leg. It stays an opt-in
-diagnostic; nothing lands into production defaults. The measurement
-eliminates "barrier-command cost" as a meaningful term of the BF16
-decode skeleton and bounds it.
+The gate-on candidate preserved all 72 digest cells in the matched M1 window
+but showed no repeatable decode gain. Main receives this receipt only. The
+experimental encoder flag and trace ABI remain on
+[wave/Bf16EncoderBoundary](https://github.com/joshuaswarren/mlx-omarchy/tree/wave/Bf16EncoderBoundary).
+This result rejects this optimization for the measured workloads; it does
+not establish an upper bound on all barrier cost or locate every remaining
+source of the native-performance gap.
 
-## Question
+## Candidate and baseline
 
-Composed BF16 decode sits at 0.561/0.545/0.456 of native
-(`receipts/2026-09-12-parity-status`). The attribution receipt
-(`receipts/2026-09-11-bf16-decode-attribution`) closed the payload
-side (gemv dominates; residuals close) and named the skeleton —
-11.86/14.69/21.58 ms/token over 726 dispatches/token, ~16 us/dispatch
-versus native's 2-3 us — as the remaining cost, living in the
-graph/encoder/driver layers. The 2026-09-08 gated-barrier screen said
-"barriers don't matter", but it measured the pre-dense-GEMV regime
-(BF16 decode was ~116 ms/token then, kernel-payload-bound; the dense
-vec kernel brought it to ~31 ms), so its negative never covered
-today's 726-dispatch regime. This slice traced the actual
-command-encoding path and tested the strongest surviving encoder-bound
-mechanism with full engagement proof.
+- Baseline: `a12eafd994af881dbc2b39c0b9807523f27b171a`.
+- Candidate: `f5649936f68a2262e6f1e51ad9b146ec035808cb`.
+- Baseline wheel SHA-256: `9e601cebadd578657e678a173dd2efc993679ea3469c563f63d2b6c5725aef94`.
+- Candidate wheel SHA-256: `3f90904520d5441b2b1133aada10160b4f9cfb58bca79a378e7420c62e042df0`.
+- Host: jwm1, Apple M1 G13G B1; fork driver
+  `mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1`.
+- Stock smoke uses the existing private stock ICD override. No driver,
+  kernel, release fallback, or digest-policy change was made.
 
-## The mechanism, and why it is semantically safe
+The candidate keeps the pre-dispatch HOST|TRANSFER|COMPUTE → COMPUTE
+barrier. It defers the post-dispatch COMPUTE → COMPUTE|TRANSFER|HOST
+barrier until copy, fill, diagnostic full barrier, or batch close. A later
+compute dispatch's pre-barrier covers the earlier compute read/write
+hazards. The deferred barrier retains the old access masks before a
+non-compute consumer; its position in the command buffer changes.
 
-Default mode records TWO full barriers per dispatch:
+Review caught an incompatible expansion of the eight-field
+`MlxOmarchyTraceSnapshot` consumed by `scripts/fragmentation_probe.py`.
+The measured candidate preserves that layout and exposes barrier counters
+through a separate symbol. Neither change is integrated into main.
 
-- pre: src HOST|TRANSFER|COMPUTE (HOST_WRITE|TRANSFER_WRITE|SHADER_WRITE)
-  -> dst COMPUTE (SHADER_READ|SHADER_WRITE)
-- post: src COMPUTE (SHADER_WRITE)
-  -> dst COMPUTE|TRANSFER|HOST (SHADER_READ|TRANSFER_READ|HOST_READ)
+## Engagement
 
-For a dispatch pair A,B the post barrier of A is redundant: pre(B)'s
-EXECUTION dependency (first scope HOST/TRANSFER/COMPUTE, second scope
-COMPUTE) already orders every earlier compute-stage access — reads
-included, which covers WAR — before B, and its access masks make A's
-shader writes available and visible to B's reads and writes (RAW, WAW).
-The post barrier is only load-bearing for non-compute consumers that
-record no barrier of their own: `copy_buffer`, `fill_buffer`, host
-readback at batch close, and diagnostic dependency barriers. The
-implementation defers the post barrier and flushes it verbatim (same
-masks, same stream position) at exactly those four points
-(`encoder.cpp` `flush_pending_post_barrier`: copy_buffer, fill_buffer,
-`record_dependency_barrier`, submit-before-EndCommandBuffer). Interior
-dispatch pairs record one barrier instead of two. Gated-barrier mode
-and tape-full diagnostics are untouched; deferred counts surface in a
-new `post_barriers_deferred` trace counter.
+The isolated 200-dispatch chain emitted 400 barriers with the gate off;
+with the gate on it emitted 300 and counted 200 deferred post-barriers
+(`window3/probe-cand-{off,on}.txt`).
 
-## Engagement (measured, not assumed)
+The separate 12-token generation probe includes prompt processing and
+completion work, not just steady-state decode. Both arms recorded 790.5
+compute dispatches and 4.333 submissions per generated token. The candidate
+counted 790.5 deferred post-barriers and 846.75 emitted barriers per token.
+Its measured emitted count is about 46.4% below the baseline's inferred
+two-per-dispatch count of 1581; the baseline has no barrier counter symbol.
 
-ctypes probes over the new `mlx_omarchy_trace_barriers` C ABI (added
-additively; the published 8-field `MlxOmarchyTraceSnapshot` is
-unchanged — an initial expansion that would have broken
-`scripts/fragmentation_probe.py` was caught in review and reverted):
+Subtracting the 790.5 pre-barriers leaves 56.25 deferred flushes per token.
+There were 52 copies and 4.333 submissions per token; those counts do not
+sum exactly to the flush count. A copy or close flushes only when a barrier
+is pending. The aggregate counters do not identify which boundary did not
+flush. See `window4/decode-{base,cand-on}.txt` and
+`instruments/decode_probe.py`.
 
-- Isolated eager chain, 200 dispatches (probe.py, window 3):
-  gate off = 400 emitted / 0 deferred; gate on = 300 emitted / 200
-  deferred. The +100 are the per-submission close flushes: exact.
-- REAL BF16 decode loop, 12 greedy tokens via `stream_generate`
-  (decode_probe.py, window 4, gate on):
-  **790.5 compute dispatches/token across 4.333 submissions/token**
-  (average batch depth ~182 — the op-throttled batch is deep, not
-  per-op), **790.5 post barriers deferred/token, 846.75 emitted/token**.
-  Arithmetic closes exactly: emitted = 790.5 pre + 56.25 flushes
-  (52.0 copies/token + 4.33 batch closes). Against the base path's
-  2-per-dispatch (~1581 barriers/token) the engaged mechanism removes
-  ~46% of barrier commands in the real workload. The base wheel
-  rejects the barrier symbol (AttributeError, window4/decode-base.txt)
-  — expected: it predates the ABI addition, and its per-token
-  dispatch/submission counters are identical to the candidate's
-  (790.5/4.333 both arms).
+## Matched timing and correctness
 
-## Paired measurement vs the canonical unchanged baseline
+Window 3 held one `flock /tmp/m1-gpu.lock`, passed load <1.0 on three
+checks 20 seconds apart, discarded a full warmup per arm, measured an A/A
+baseline pair, then ran interleaved b-c-c-b-b-c repetitions. Both stock
+smoke arms followed in the same lock window. The wrapper completed at
+17:02:33Z after 364 seconds with checker exit 0. Source/wheel provenance
+reported `verified=match` in each measured cell. Raw logs report
+`harness=unknown`; instrument source is retained here.
 
-Three jwm1-linux windows (Apple M1 G13G B1, driver
-mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1 verified in-window,
-ONE top-level `/tmp/m1-gpu.lock` per window covering builds and runs,
-quiet gate = 1-min loadavg < 1.0 on three checks 20 s apart, discarded
-warmup per arm, wall-clock bench only):
+Twelve runs × six required legs held their existing fork or stock digest
+pins. This includes warmups, the A/A pair, six paired runs, and two stock
+smokes. Timing below is fork-driver decode throughput, median of three;
+stock was a correctness smoke, not a repeated performance comparison.
 
-- **Window 1 (invalid, kept for build provenance):** fork matrix legs
-  died on an empty env-array expansion (`timeout` received
-  `HF_HUB_OFFLINE=1` as the command, exit 127); probes crashed on the
-  mlx namespace package; the checker accepted a vacuous leg set. Its
-  `ALL_DIGEST_ASSERTIONS_PASSED` is VOID. Builds (rc=0) and wheel
-  hashes are the only evidence taken from it.
-- **Window 2 (valid but measures gate-off vs gate-off):** candidate
-  arm never set the gate env; probe proved non-engagement
-  (0 deferred / 400 emitted). A launcher error re-ran this window
-  once (16:47-16:55Z); artifacts are the rerun's, same protocol.
-  Value: build reproducibility + 12x6 digest cells on the candidate
-  wheel with the gate compiled in but off.
-- **Window 3 (the A/B):** candidate arm runs with the gate env set,
-  engagement proven by probes. Base = pristine main `a12eafd9`
-  wheel sha256 `9e601cebadd578657e678a173dd2efc993679ea3469c563f63d2b6c5725aef94`;
-  candidate = `f5649936` wheel sha256
-  `3f90904520d5441b2b1133aada10160b4f9cfb58bca79a378e7420c62e042df0`.
-  Interleaved counterbalanced b-c-c-b-b-c, medians of 3, 12 runs x 6
-  legs, every measured cell asserted against the committed fork pins
-  (`7fd25a869ff21678`, `4cc08910089477fd`, `7da83f06ec9f001d`,
-  `f26175202f3dabe9`, `8690dc83246b39f8`, `ff502900d2a179a5`) and the
-  stock pins on the stock-smoke cells (`7fc0f968789b1882`,
-  `46108ad71157cb4d`) — **72/72 held, provenance verified=match on
-  every cell, digest-neutral on both drivers with the gate ON.**
-- **Window 4:** the decode-loop structure probe above.
-
-Paired decode tok/s, window 3 (higher is better):
-
-| leg | base | cand (gate on) | ratio |
-|---|---|---|---|
+| Leg | Baseline tok/s | Candidate tok/s | Candidate / baseline |
+|---|---:|---:|---:|
 | Q4 short | 111.59 | 111.69 | 1.0009 |
 | Q4 long | 107.79 | 107.29 | 0.9954 |
-| Q4 1K ctx | 96.27 | 96.08 | 0.9980 |
+| Q4 1K context | 96.27 | 96.08 | 0.9980 |
 | BF16 short | 31.86 | 31.86 | 1.0000 |
 | BF16 long | 30.48 | 30.45 | 0.9990 |
-| BF16 1K ctx | 24.98 | 24.95 | 0.9988 |
+| BF16 1K context | 24.98 | 24.95 | 0.9988 |
 
-A/A baseline pair spread in the same window: BF16 0.22% / 0.79% /
-0.04%; Q4 4.43% (one transient outlier) / 0.09% / 0.64%. Every
-candidate delta is inside the in-window noise band; the session noise
-floor is ~5%. **No repeating gain on any leg** — the acceptance bar
-for a default flip is not met, so per the assignment nothing lands
-beyond the default-off diagnostic.
+The A/A pair differed by 0.22%, 0.79%, and 0.04% on BF16, and 4.43%,
+0.09%, and 0.64% on Q4. Q4 long and BF16 1K candidate decreases exceed
+their own A/A pair spread; not every delta is inside its per-leg spread.
+A single A/A pair is not a confidence interval. These measurements support
+no repeatable gain, not a statistical upper bound such as 0.3 ms/token.
 
-## What this eliminates, exactly
+The counter reduction did not improve these decode medians. It does not
+prove that required dependency stalls, dispatch launches, or submission
+cadence are the exclusive remaining costs. Native performance parity
+remains open; the published composed-main baseline is unchanged.
 
-1. **Barrier-command cost is not the BF16 decode skeleton.** With
-   engagement proven at ~46% fewer barrier commands per token
-   (1581 -> 847) and paired timing flat to <1%, the total wall-time
-   value of the removed commands is bounded by the noise band:
-   roughly <= 0.3 ms/token (~0.4 us per barrier command) on a
-   ~31.5 ms leg. The 2026-09-08 gated-barrier screen's negative now
-   holds in the modern regime too, with direct engagement
-   instrumentation instead of an off/on screen.
-2. **The "redundant barrier pair" as an optimization target.** The
-   remaining per-dispatch structure is one pre barrier + dispatch
-   launch + execution on the GPU; halving the barrier count around it
-   moves nothing, so the ~16 us/dispatch skeleton lives in
-   per-dispatch GPU work (launch and dependency-ordered execution at
-   726 dispatches/token) and per-submission structure (4.3
-   submissions/token), not in barrier commands.
-3. **Encoder-boundary routes to the skeleton, with receipts.** What
-   remains is owned elsewhere: dispatch COUNT is graph/kernel fusion
-   territory (the composition-exact fused attention at >=256 keys is
-   landed; further kernel fusion has published negatives or moved
-   digests), and submission cadence is the published batching
-   negative (2026-09-03: deep batching 4.5x slower; the correct
-   "flush when the scheduler would block" shape is upstream work).
+## Invalid and limited earlier windows
 
-## Why the code stays (default off)
+- Window 1 is invalid: fork legs exited 127 because an environment
+  assignment became the command; the checker accepted an empty leg set.
+  Its printed success is not correctness or performance evidence.
+- Window 2 measured gate-off versus gate-off. The probe recorded zero
+  deferrals. A launcher error later repeated that window. Neither run
+  measures this mechanism's performance.
+- Window 3 is the gate-on comparison retained here.
+- Window 4 is the generation-counter probe, not a timing qualification.
 
-The gate ships as an inert-by-default diagnostic in
-`wave/Bf16EncoderBoundary`: ~130 lines in encoder.{h,cpp} + additive
-trace counters + docs. It is spec-proved, contract-tested
-(omarchy_runtime_tests + omarchy_fast_ops_tests green in both gate
-states on llvmpipe, 22,691 + 1,116,299 assertions each; Main
-independently repeated the gate-on suites on the candidate),
-digest-neutral proven on hardware on both drivers, and its counters
-make barrier accounting observable. A future submission-structure or
-fusion change that re-weights barrier cost can re-qualify it from
-this receipt's baseline. Production defaults are root's decision;
-this receipt proposes no landing.
+Historical instruments remain on the diagnostic branch. Main retains
+only the successful-window instruments and raw evidence.
 
-## Provenance
+## Local semantic checks and limits
 
-- Branch `wave/Bf16EncoderBoundary`, worktree
-  `~/.config/superpowers/worktrees/mlx-omarchy/Bf16EncoderBoundary`,
-  head `f5649936f68a2262e6f1e51ad9b146ec035808cb` (single commit:
-  mechanism + counters + docs; the ABI-expansion fixup was amended in
-  before any wheel was measured).
-- Artifacts: `window3/` (21 files: wrapper log, drivers.txt with both
-  wheel sha256s, summary.json, 12 run JSONs + logs, probes, loadavg
-  trace), `window4/` (decode probes + wrapper log), `instruments/`
-  (window scripts, probes) — all copied verbatim from
-  `jwm1:~/enc-ab-window{3,4}`.
-- Hosts: dev box (x86, llvmpipe `MLX_OMARCHY_ALLOW_NON_APPLE=1`) for
-  compile + contract suites; jwm1-linux for every GPU number. No
-  driver or ICD change, no kernel change, no CPU fallback, no
-  weakened gate; stock reached only through the private stock ICD
-  override, same as prior receipts.
+The candidate's runtime and fast-ops suites ran on software Vulkan with
+`MLX_OMARCHY_ALLOW_NON_APPLE=1`. The worker recorded both gate states;
+the parent independently repeated gate-on: runtime 41 cases / 22,691
+assertions, fast ops 35 cases / 1,116,299 assertions, no failed assertions.
+Software Vulkan cannot exercise independent GPU execution or the M1
+cooperative-matrix route; those paths printed skip messages. An initial
+parent run without the development-device opt-in returned early from GPU
+tests and is not semantic evidence. These checks are not the full standing
+M1 battery, which was not run for this unmerged negative experiment.
+
+Raw measurements are in `window3/` and `window4/`; the commands and
+probes are in `instruments/`. Production encoder code is unchanged.
