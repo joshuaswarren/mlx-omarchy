@@ -40,6 +40,51 @@ bool CommandEncoder::gated_barriers() {
   return on;
 }
 
+// MLX_OMARCHY_DEFERRED_POST_BARRIERS (docs/install-omarchy.md): default
+// off. On, the unconditional post-dispatch barrier is not recorded with
+// the dispatch; it is deferred until a non-compute consumer needs it (a
+// copy, a fill, a diagnostic dependency barrier, or the end of the
+// open batch before EndCommandBuffer). A following compute dispatch
+// needs no post barrier: its own pre barrier's execution dependency
+// (first scope: HOST/TRANSFER/COMPUTE, second scope: COMPUTE) already
+// orders every earlier compute-stage access - reads included - before
+// the next dispatch, and its access masks make the earlier shader
+// writes visible to the later shader reads and writes. RAW, WAW and
+// WAR between dispatches are covered by that one barrier exactly as
+// the pair covered them; transfer and host consumers keep the
+// post barrier's COMPUTE -> COMPUTE|TRANSFER|HOST dependency verbatim.
+bool CommandEncoder::deferred_post_barriers() {
+  static const bool on = env_flag("MLX_OMARCHY_DEFERRED_POST_BARRIERS");
+  return on;
+}
+
+void CommandEncoder::flush_pending_post_barrier() {
+  if (!post_barrier_pending_) {
+    return;
+  }
+  post_barrier_pending_ = false;
+  auto& dt = vk::device_table();
+  VkMemoryBarrier after{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
+  after.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+  after.dstAccessMask =
+      VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_TRANSFER_READ_BIT |
+      VK_ACCESS_HOST_READ_BIT;
+  dt.CmdPipelineBarrier(
+      cmd_,
+      VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+      VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT |
+          VK_PIPELINE_STAGE_HOST_BIT,
+      0,
+      1,
+      &after,
+      0,
+      nullptr,
+      0,
+      nullptr);
+  trace::counters().barriers_emitted++;
+  prof::get().on_barrier(true);
+}
+
 bool CommandEncoder::batch_needs_barrier(
     std::span<const TrackedRange> reads,
     std::span<const TrackedRange> writes) const {
@@ -73,6 +118,10 @@ bool CommandEncoder::batch_needs_barrier(
 }
 
 void CommandEncoder::record_dependency_barrier() {
+  // A deferred post barrier must land before the heaviest dependency,
+  // or the diagnostic scope would drop a recorded barrier. Reachable
+  // only when a TapeDebugScope flips mid-batch; a plain no-op otherwise.
+  flush_pending_post_barrier();
   // The heaviest correct dependency: all commands, all memory access,
   // both directions. The tracker restarts after it because the barrier
   // orders everything recorded before it.
@@ -236,6 +285,10 @@ void CommandEncoder::copy_buffer(
     tracked_reads_.push_back(read);
     tracked_writes_.push_back(write);
   }
+  // Transfer commands carry no barrier of their own in the default
+  // mode; they ride the preceding dispatch's post barrier, which a
+  // deferred post barrier still owes them here.
+  flush_pending_post_barrier();
   VkBufferCopy region{};
   region.srcOffset = src_offset;
   region.dstOffset = dst_offset;
@@ -266,6 +319,9 @@ void CommandEncoder::fill_buffer(
     }
     tracked_writes_.push_back(write);
   }
+  // Same contract as copy_buffer above: fills consume the pending
+  // post barrier of the dispatch whose writes they must observe.
+  flush_pending_post_barrier();
   vk::device_table().CmdFillBuffer(cmd_, dst, offset, size, value);
   node_count_++;
   trace::counters().vk_buffer_fills++;
@@ -542,26 +598,38 @@ void CommandEncoder::dispatch_compute_pipeline(
 
   // Gated mode tracks this dispatch's writes instead of recording a
   // post barrier; the next node's overlap test consumes the tracking.
+  // Default mode records the post barrier with the dispatch - or, with
+  // MLX_OMARCHY_DEFERRED_POST_BARRIERS, defers it: a following compute
+  // dispatch's pre barrier already orders this dispatch (execution
+  // scope COMPUTE -> COMPUTE, writes made visible), and the deferred
+  // barrier is flushed verbatim for the non-compute consumers that
+  // would otherwise ride it (copy/fill above, batch close in submit,
+  // diagnostic dependency barriers).
   if (!gated_barriers()) {
-    VkMemoryBarrier after{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
-    after.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
-    after.dstAccessMask =
-        VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_TRANSFER_READ_BIT |
-        VK_ACCESS_HOST_READ_BIT;
-    dt.CmdPipelineBarrier(
-        cmd_,
-        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT |
-            VK_PIPELINE_STAGE_HOST_BIT,
-        0,
-        1,
-        &after,
-        0,
-        nullptr,
-        0,
-        nullptr);
-    trace::counters().barriers_emitted++;
-    prof::get().on_barrier(true);
+    if (deferred_post_barriers()) {
+      post_barrier_pending_ = true;
+      trace::counters().post_barriers_deferred++;
+    } else {
+      VkMemoryBarrier after{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
+      after.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+      after.dstAccessMask =
+          VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_TRANSFER_READ_BIT |
+          VK_ACCESS_HOST_READ_BIT;
+      dt.CmdPipelineBarrier(
+          cmd_,
+          VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+          VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT |
+              VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_HOST_BIT,
+          0,
+          1,
+          &after,
+          0,
+          nullptr,
+          0,
+          nullptr);
+      trace::counters().barriers_emitted++;
+      prof::get().on_barrier(true);
+    }
   }
   if (tape_full_barriers()) {
     // Diagnostic: matching full barrier out of this dispatch, so every
@@ -626,6 +694,11 @@ void CommandEncoder::submit() {
       trace::counters().barriers_emitted++;
       prof::get().on_barrier(true);
     }
+    // Batch close: a deferred post barrier is owed to the host and
+    // transfer consumers of this submission exactly where the historic
+    // in-stream post barrier of the last dispatch sat. No-op when every
+    // dispatch already recorded its post barrier (gate off, gated mode).
+    flush_pending_post_barrier();
     VKX_CHECK(dt.EndCommandBuffer(cmd_));
     close_t = prof::get().profiling() ? prof::host_ns() : 0;
   }
@@ -740,6 +813,7 @@ void CommandEncoder::submit() {
       signal_semaphores_.clear();
       completed_handlers_.clear();
       reset_dependency_tracking();
+      post_barrier_pending_ = false;
       throw;
     }
     // Publish only after the submit: the dispatcher must never wait on a
@@ -766,6 +840,7 @@ void CommandEncoder::submit() {
   // cross-submission dependency, so the open batch's unsynced ranges
   // die here either way.
   reset_dependency_tracking();
+  post_barrier_pending_ = false;
   prof::get().on_submit_boundary(submitted, close_t, queue_t0, queue_t1);
   prof::get().on_submit_end(
       this,
