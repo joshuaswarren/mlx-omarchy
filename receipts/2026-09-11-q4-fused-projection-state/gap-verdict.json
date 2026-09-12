@@ -1,0 +1,37 @@
+{
+  "schema": "mlx-omarchy/gap-probe/1",
+  "date_utc": "2026-09-12",
+  "agent": "Q4FusedProjections",
+  "topic": "Release-side GPU-gap attribution for Q4 decode short leg: is there unclaimed between-dispatch idle on the release wheel, or are the profiled gaps instrument cost?",
+  "decision": "RECEIPT-ONLY. There is NO comparable gap on the release path. Profiling OFF (the release execution path of the same binary) runs 8.99 ms/token; the profiled modes show 21.7-22.0 ms host walls, and BOTH profiler modes measure device gaps that are artifacts of the instrument: with the isolation barrier the profiler inflates per-dispatch device time (busy 14.35 ms > the 8.99 ms release wall is physically impossible on a quiet GPU); without it the profiler's own host cost starves the GPU and manufactures 17.10 ms of fake gap at 68.9 us mean. The profiled 5-6 ms/token gaps reported in receipts/2026-09-11-q4-fused-projection-state are INSTRUMENT COST, not release idle. Cross-checks: decode-bound-resolve's release-side slopes (host-add 0.005-0.04, GPU-add 1.0-1.2, GEMV ablation -5.63 ms, skeleton 2.37 ms; 5.63+2.37=8.0 ~ 8.99 wall) leave room for only ~0.3-0.6 ms of slack. The release token is GPU-busy end to end; the remaining deficit to native lives INSIDE the kernels.",
+  "host": "jwm1-linux, Apple M1 (G13G B1), Honeykrisp (mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1), linux-asahi 7.1.6",
+  "provenance": {
+    "branch": "wave/Q4GapProbe off 63c9a8d8 on jwm1 - THROWAWAY instrument, NEVER MERGE (env-gated isolation barrier in gpu_profiler.h, MLX_OMARCHY_PROFILE_NOISOBAR=1)",
+    "wheel": "dist/mlx_omarchy-0.32.2.dev202609112339+diag.63c9a8d-cp314-cp314-linux_aarch64.whl (ONE binary, all three modes; profiling env selects the path)",
+    "wheel_sha256": "e64dccd7e903edfcf04bec70942ed3200ae54b83dd4fd085da267be7d8360f0e",
+    "model": "mlx-community/Qwen2.5-0.5B-Instruct-4bit@a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3, short prompt, 32 tokens max, greedy, MLX_DISABLE_COMPILE=1",
+    "window": "single flock /tmp/m1-gpu.lock window, ~7 s of GPU work, 2026-09-11 ~23:5xZ; quiet except the announced windows"
+  },
+  "method": "gap-probe.py: three profile_generate runs on ONE wheel, identical prompt/seed: off = no profiling env (release path, host markers only); noiso = MLX_OMARCHY_GPU_PROFILE with the profiler's per-dispatch isolation barrier env-skipped (timestamps ride the native stream); iso = shipped diag instrument. Steady state = second half of intervals. Wall always from the script's CLOCK_MONOTONIC tok markers; busy = sum(t1-t0), span = last t1 - first t0, gap = span - busy from device timestamp ticks.",
+  "results_ms_per_token_median": {
+    "off_release_path": {"wall": 8.99, "note": "markers only; matches the 8.84-8.95 ms release tokens of decode-bound-resolve and hostpath"},
+    "noiso": {"wall": 21.68, "busy": 3.98, "span": 21.16, "gap": 17.10, "gap_mean_us": 68.9, "gap_at_boundaries": 0.24, "dispatches": 249, "submissions": 2},
+    "iso_shipped_instrument": {"wall": 21.95, "busy": 14.35, "span": 21.60, "gap": 7.31, "gap_mean_us": 29.5, "gap_at_boundaries": 0.25, "dispatches": 249, "submissions": 2},
+    "raw": "gap/short-gap-probe.json + per-mode logs on jwm1"
+  },
+  "reading": [
+    "The two profiled modes BRACKET the lie: iso makes the GPU look busy (every dispatch pays the ALL_COMMANDS isolation barrier: 57.6 us mean device time, 14.35 ms total busy - MORE than the whole 8.99 ms release token); noiso makes it look starved (the profiler's host cost doubles the token wall to 21.7 ms, the GPU drains each dispatch in ~16 us and waits ~69 us for the next one: 17.10 ms fake gap). Neither number is a release property.",
+    "Release attribution therefore rests on wall-clock + payload experiments (all on the release wheel, decode-bound-resolve): GEMV-class ablation removes 5.63 ms of wall; the all-ablated skeleton costs 2.37 ms at 2.26 ms thread-CPU; added GPU ms land on the wall 1:1; added host ms vanish (slope 0.005-0.04). 5.63 + 2.37 = 8.0 ms against an 8.84-8.99 ms wall: the GPU critical path is the wall, residual slack <= ~0.3-0.6 ms.",
+    "Consequence for the profiled receipts: the 5.7/4.2/5.8 ms after-bar gaps (short/long/ctx1024) and the 6.1 ms submission-boundary joins in receipts/2026-09-11-q4-fused-projection-state/window are the diag instrument's cost, and every profiled tok/s, gpu_busy and gap figure from ANY diag wheel carries the same distortion. Diag wheels are for dispatch COUNTS and structure; release wheels are for time."
+  ],
+  "instrument_artifact_defect_class": [
+    "Instance 1 (tonight, most consequential): receipts/2026-09-10-hostpath bucketed wall-minus-eval as 'Python graph construction' and concluded host-paced; the pipelined decode loop hides the y.item() GPU-wait in that bucket. decode-bound-resolve refuted it with host-add/GPU-add slopes: the token is GPU-paced. An instrument that cannot tell waiting from working will misdirect whole nights.",
+    "Instance 2 (tonight): the MLX_OMARCHY_GPU_PROFILE harness inserts an ALL_COMMANDS isolation barrier + two timestamps per dispatch and forces joins per submission; its per-dispatch isolation costs ~22-30 us (249 dispatches -> 5.4-7.3 ms/token of profiled 'gap') and its host cost alone doubles the token wall. Every 'gap' ever read from a diag NDJSON includes this.",
+    "Instance 3 (tonight): decode-gap (2026-09-11) documented that per-dispatch Honeykrisp device-timestamp intervals have an untrustworthy absolute scale (isolated 98 us/layer vs wall-anchored 203 us/layer), and AlphaProbeDecide hit a 2.07x device-timestamp undercount. Device-timestamp deltas from this driver rank but do not measure."
+  ],
+  "artifacts": [
+    "gap-probe.py, window-gap.sh, manifest-q4fp.json",
+    "gap/{off,noiso,iso}.log, gap/short-{off,noiso,iso}-m.jsonl, gap/short-{noiso,iso}.jsonl, gap/short-gap-probe.json",
+    "gap/wheel.sha256, gap/version.txt, gap/commit.txt"
+  ]
+}
