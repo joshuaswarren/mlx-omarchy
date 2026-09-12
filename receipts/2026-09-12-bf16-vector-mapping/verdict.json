@@ -1,5 +1,5 @@
 {
- "schema": "bf16-vector-mapping/1",
+ "schema": "bf16-vector-mapping/2",
  "date": "2026-09-12",
  "agent": "Bf16VectorMapping",
  "branch": "wave/bf16-vector-mapping (off origin/main 198cb7f4)",
@@ -9,26 +9,21 @@
   "form": "remap each lane from 4-element k-chunks (one uvec2 load per row per iteration, stride 128) to 8-element k-chunks (one 16-byte load per row per iteration, stride 256), cutting total load instructions ~43 percent for k=896",
   "landable": false,
   "eliminated_by": [
-   "not bit-preserving: counterexample_K16.npz - shipped sums to 0x0000, widened mapping to 0x4000 (tie-rich adversarial grid, trial 51); a bit-moving remap cannot land because fork short/long pins may only move to native's digest and BF16 1K holds at full strength",
-   "no headroom: the kernel already streams at 57.6 GB/s read (whole-submit, in-window) versus 52.1 GB/s aggregate for the same-instrument copy - it is DRAM-bound above copy throughput, so load-instruction count cannot be the limiter"
+   "not bit-preserving: counterexample_K16.npz gives shipped 0x0000 versus widened 0x4000. Independently reproduced with libm fmaf at K=16 and with zero-padding to K=896. This rejects the bit-preserving claim; it is not a modified-kernel GPU run."
   ]
  },
  "metric_adjudication": {
   "lm_head_isolated_9.3ms": "INVALIDATED - improperly scoped instrument (attribution isolation probe). In-window whole-submit median over 24 warmed rounds is 4.730 ms (57.57 GB/s read); the span screen's 4.687 ms reproduces. 9.3 ms would imply 29.3 GB/s for a pure read stream the same instrument class shows running at 57.6 GB/s.",
   "lm_head_span_screen_4.687ms": "VERIFIED in-window at 4.730 ms (0.9 percent agreement).",
-  "isolated_misaligned_22.36ms": "ISOLATED-EAGER ONLY - proves route discrimination (aligned 4.73 ms vs guard-refused 22.36 ms on the identical shape) but must not be read as the in-model tile rate; the class marginal bounds in-model tile at >= 44.3 GB/s (see byte accounting)."
+  "isolated_misaligned_22.36ms": "ISOLATED-EAGER ONLY - demonstrates route discrimination, not an in-model tile rate. The class ablation marginal does not isolate that route or establish a bandwidth bound."
  },
  "byte_accounting": {
   "vec_class_bytes_per_token": 767721472,
   "tile_class_bytes_per_token": 220200960,
   "total_bytes_per_token": 987922432,
   "class_marginal_ms": 18.31,
-  "class_effective_gbs": 54.0,
-  "class_pct_of_58.5_copy_roof": 92.2,
-  "class_pct_of_68.25_part": 79.1,
-  "above_roof_bound_ms_per_token": 1.42,
-  "above_roof_per_dispatch_us": 8.4,
-  "note": "corrects receipts/2026-09-11-bf16-decode-attribution, which states a ~370 MB class and 9.2 MB down+k+v; both dropped the x24 layer count (per-layer value)."
+  "bytes_divided_by_class_marginal_gbs": 54.0,
+  "note": "Corrects the prior ~370 MB class estimate, which omitted the 24-layer multiplier. Dividing bytes by an ablation marginal is not a measured kernel bandwidth. Measured copy throughput is not an upper bound; the former 1.42 ms recoverable-time bound and 8.4 us dispatch attribution are withdrawn."
  },
  "window": {
   "host": "jwm1-linux (Apple M1 G13G B1)",
@@ -59,9 +54,9 @@
    "note": "canonical fork BF16 short pin reproduced on every run; composed parity-status numbers (31.7 tok/s) reproduce in-window"
   }
  },
- "digest_policy": "No source change ships, so no digest leg moves. The full six-leg fork+stock matrix is required only when proposing a landing (docs/parity-id-policy.md); this receipt proposes none.",
+ "digest_policy": "No production kernel source change ships. Historical hardware controls retain their pins; this correction does not claim a fresh GPU qualification or speedup.",
  "local_proofs": {
-  "bit_model": "model/bit_model.py - exact-fma software model (bf16 x bf16 products are exact in f64, so f64-add + f32-round is the exact fma); random bf16 data is association-stable (0/96 columns differ) but the tie-rich grid yields the counterexample",
+  "bit_model": "model/bit_model.py - software accumulation model. The retained counterexample was independently checked with libm fmaf at K=16 and after zero-padding to K=896; shipped 0x0000 versus widened 0x4000 in both cases.",
   "spirv": "glslc -O --target-env=vulkan1.3; sha256 b6cc4e35eb01a059b7a30f80734aa917bd1a6de0cb9971c22962dd548c515ad1; inner loop = 5 storage-buffer v2uint loads + 16 GLSL.std450 Fma + index arithmetic; nothing scalarized, no pathological addressing"
  }
 }
