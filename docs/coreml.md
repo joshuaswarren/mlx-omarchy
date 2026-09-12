@@ -23,9 +23,11 @@ Options:
 - `--strict` — exit 2 on unresolved weight blob references, unset
   model type, or opset inconsistencies (parse validity itself is
   unaffected)
+- `--compiler-coverage REPORT.json` — attach a source-matched static H13
+  coverage report; does not run a classifier or compiler.
 
-Exit codes: `0` inspected, `1` invalid package/usage,
-`2` strict findings.
+Exit codes: `0` inspected, `1` invalid package/coverage report,
+`2` strict findings or argument usage errors.
 
 Inspection never opens the ANE device or imports Core ML or MLX. Weight
 files are streamed for hashing; tensor values are not decoded or computed.
@@ -59,11 +61,29 @@ Everything on the plan's section-14 checklist, and nothing invented:
   recursive scan counting fields written by a schema newer than the
   vendored one (`unknown_schema_fields`: the forward-compatibility
   limit is reported, never silently hidden),
-- compiler eligibility: explicitly **not assessed**. Eligibility
-  claims require the target compiler's coverage data; this inspector
-  refuses to guess deployment targets or compiler support. This
-  separation is deliberate: parse validity and eligibility are
-  different claims and never mixed.
+- compiler eligibility: unassessed without an explicit coverage report.
+  With one, the CLI verifies its model SHA-256, complete weight SHA-256
+  map, exact H13 compiler identity, and nonnegative classification totals
+  against the parsed inventory. It reports the supplied counts and source,
+  while `compilable` stays `null`: static coverage is not a compile or
+  execution qualification. The report source is declared, not authenticated.
+
+The pinned public encoder report is
+[`2026-09-12-parakeet-h13-coverage.json`](../receipts/2026-09-12-parakeet-h13-coverage.json).
+Use it with the downloaded encoder:
+
+```bash
+python3 overlay/tools/coreml/inspect_mlpackage.py inspect /path/to/encoder.mlpackage \
+  --compiler-coverage receipts/2026-09-12-parakeet-h13-coverage.json --strict
+```
+
+Its 3,351 classified operations include 427 requiring normalization and
+689 missing semantics or supported shapes. The source CSV is linked by
+immutable commit in the JSON. The report format contains `model_sha256`,
+`weights` (package-relative path to hash), `compiler` (repository, full
+commit, H13 target), `source`, and `counts`. Counts must contain all six
+categories shown in that report and sum to the inventory operation count.
+Different model or weight bytes reject the report with exit 1.
 
 
 ## Official schema, vendored

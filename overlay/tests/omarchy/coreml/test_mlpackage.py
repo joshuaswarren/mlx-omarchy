@@ -5,7 +5,9 @@ schema (validation, type semantics, flexibility, failures) plus the
 consumer contract."""
 
 import atexit
+import contextlib
 import hashlib
+import io
 import json
 import tempfile
 import unittest
@@ -180,6 +182,74 @@ def walk_bindings(inv: dict, *, expect_error: bool) -> None:
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
+
+class CoverageEvidenceTest(unittest.TestCase):
+    def setUp(self):
+        self.package = make_package(build_model())
+        self.model = self.package / "Data/com.apple.CoreML/model.mlmodel"
+        self.weight = self.package / "Data/com.apple.CoreML/weights/weight.bin"
+        self.report = {
+            "model_sha256": hashlib.sha256(self.model.read_bytes()).hexdigest(),
+            "weights": {
+                self.weight.relative_to(self.package).as_posix(): hashlib.sha256(
+                    self.weight.read_bytes()
+                ).hexdigest()
+            },
+            "compiler": {
+                "repository": "https://example.com/compiler",
+                "commit": "a" * 40,
+                "target": "H13",
+            },
+            "source": "https://example.com/coverage",
+            "counts": {
+                "direct": 0,
+                "direct-alias": 0,
+                "direct-const": 1,
+                "normalization-needed": 0,
+                "missing-envelope": 0,
+                "missing": 1,
+            },
+        }
+        self.report_path = self.package.parent / "coverage.json"
+
+    def run_report(self):
+        self.report_path.write_text(json.dumps(self.report))
+        output, errors = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(output), contextlib.redirect_stderr(errors):
+            code = main(
+                [
+                    "inspect",
+                    str(self.package),
+                    "--json",
+                    "--compiler-coverage",
+                    str(self.report_path),
+                ]
+            )
+        return code, output.getvalue(), errors.getvalue()
+
+    def test_source_matched_report_does_not_claim_compilation(self):
+        code, output, _ = self.run_report()
+        self.assertEqual(code, 0)
+        eligibility = json.loads(output)["eligibility"]
+        self.assertEqual(eligibility["counts"]["missing"], 1)
+        self.assertIsNone(eligibility["compilable"])
+        self.assertEqual(eligibility["compiler"]["commit"], "a" * 40)
+
+    def test_changed_source_or_weights_rejects_stale_report(self):
+        self.weight.write_bytes(b"changed weights")
+        self.assertEqual(self.run_report()[0], 1)
+        self.weight.write_bytes(b"\x00" * 128)
+        model = build_model()
+        model.description.metadata.author = "different model"
+        self.model.write_bytes(model.SerializeToString())
+        self.assertEqual(self.run_report()[0], 1)
+
+    def test_incomplete_or_invalid_counts_reject_report(self):
+        for count in (0, True, -1):
+            with self.subTest(count=count):
+                self.report["counts"]["missing"] = count
+                self.assertEqual(self.run_report()[0], 1)
 
 
 class InventorySemanticsTest(unittest.TestCase):

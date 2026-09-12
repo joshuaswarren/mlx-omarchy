@@ -1,0 +1,23 @@
+{
+  "scope": "Host-only source-matched static coverage reporting; no compiler or accelerator invocation",
+  "command": "python3 overlay/tools/coreml/inspect_mlpackage.py inspect <pinned-model-cache>/encoder.mlpackage --compiler-coverage receipts/2026-09-12-parakeet-h13-coverage.json --strict",
+  "coverage_rows_recounted_from_immutable_csv": 3351,
+  "coverage_counts": {
+    "direct": 294,
+    "direct-alias": 158,
+    "direct-const": 1783,
+    "normalization-needed": 427,
+    "missing-envelope": 250,
+    "missing": 439
+  },
+  "real_human_output": "H13 compiler coverage printed all six counts and immutable evidence source; ANE compilability: not proven (static report only)",
+  "real_json_output": "op_total3351; sum(counts)3351; eligibility.compilable=null",
+  "wrong_package_check": "Decoder with encoder report rejected: exit1, model SHA-256 does not match coverage evidence",
+  "regression_tests": "3 tests failed before implementation: --compiler-coverage unrecognized; after implementation71 tests and3 subtests passed in8.79s",
+  "lint": "ruff check passed",
+  "limitations": [
+    "Report provenance is declared rather than authenticated; source and weights hashes are matched.",
+    "Static classifier is not run by the inspector; compiler ownership stays external.",
+    "Pyright reports existing source-root import-resolution errors and optional __doc__ typing; actual CLI and pytest imports execute."
+  ]
+}

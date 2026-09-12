@@ -1,0 +1,20 @@
+{
+  "model_sha256": "2e4e6b54f32029d7b2a69549c2cedf5cd9c6daa8e5274a2b357fc7911747204b",
+  "weights": {
+    "Data/com.apple.CoreML/weights/weight.bin": "23867a834223ee6484d0b7b9b703530e8606546efa8e710535163d51ed9aac04"
+  },
+  "compiler": {
+    "repository": "https://github.com/joshuaswarren/mil-hwx-compiler",
+    "commit": "a0ce354cf800011a84420da4e12013eb8140b2a5",
+    "target": "H13"
+  },
+  "source": "https://github.com/joshuaswarren/ane-linux-experiments/blob/5476d1763c1d89845bc66f92924e5bb9660dfa15/receipts/2026-09-12-parakeet-compiler-coverage/coverage.csv",
+  "counts": {
+    "direct": 294,
+    "direct-alias": 158,
+    "direct-const": 1783,
+    "normalization-needed": 427,
+    "missing-envelope": 250,
+    "missing": 439
+  }
+}
