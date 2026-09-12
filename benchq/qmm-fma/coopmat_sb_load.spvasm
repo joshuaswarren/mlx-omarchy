@@ -1,0 +1,30 @@
+; Control: a cooperative matrix constructed by OpCooperativeMatrixLoadKHR
+; from a StorageBuffer pointer - the only construction path the shipped
+; kernels use. The driver must create a pipeline for this module.
+OpCapability Shader
+OpCapability CooperativeMatrixKHR
+OpExtension "SPV_KHR_cooperative_matrix"
+OpMemoryModel Logical GLSL450
+OpEntryPoint GLCompute %main "main"
+OpExecutionMode %main LocalSize 32 1 1
+%void = OpTypeVoid
+%fn = OpTypeFunction %void
+%u32 = OpTypeInt 32 0
+%f32 = OpTypeFloat 32
+%u32_0 = OpConstant %u32 0
+%u32_8 = OpConstant %u32 8
+%u32_3 = OpConstant %u32 3
+%u32_2 = OpConstant %u32 2
+%rtarr = OpTypeRuntimeArray %f32
+%strct = OpTypeStruct %rtarr
+%sb = OpTypePointer StorageBuffer %strct
+%buf = OpVariable %sb StorageBuffer
+%sb_f32 = OpTypePointer StorageBuffer %f32
+%cm = OpTypeCooperativeMatrixKHR %f32 %u32_3 %u32_8 %u32_8 %u32_2
+%main = OpFunction %void None %fn
+%entry = OpLabel
+%addr = OpAccessChain %sb_f32 %buf %u32_0 %u32_0
+%val = OpCooperativeMatrixLoadKHR %cm %addr %u32_8
+OpCooperativeMatrixStoreKHR %addr %val %u32_8
+OpReturn
+OpFunctionEnd
