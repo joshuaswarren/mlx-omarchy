@@ -1,6 +1,6 @@
 # Community hardware data snapshot
 
-Records: 11 | dataset generated_at: 2026-09-11T03:17:07.000Z | source: https://mlx-omarchy-community-data.joshua-s-warren.workers.dev
+Records: 12 | dataset generated_at: 2026-09-12T03:17:07.000Z | source: https://mlx-omarchy-community-data.joshua-s-warren.workers.dev
 
 Mirrored by `.github/workflows/community-data.yml` from the public
 read API. Summaries only; archive blobs stay on the endpoint.
@@ -18,6 +18,7 @@ read API. Summaries only; archive blobs stay on the endpoint.
 | [3ad4d2a3195f](https://mlx-omarchy-community-data.joshua-s-warren.workers.dev/v1/results/3ad4d2a3195fe55cd1e4bcc160fb454d1adb4aafdc2dc1cb40a883d3d25f77c2) | quick | apple,t6020 | 7.1.6-1-1-ARCH | - | - | [0](https://mlx-omarchy-community-data.joshua-s-warren.workers.dev/v1/results/3ad4d2a3195fe55cd1e4bcc160fb454d1adb4aafdc2dc1cb40a883d3d25f77c2/archive) |
 | [1319df259aa4](https://mlx-omarchy-community-data.joshua-s-warren.workers.dev/v1/results/1319df259aa4cc7633c9270e82bf8594948048b0a29fa1fcaeb43f62004ed93b) | deep | apple,t6020 | 7.1.6-1-1-ARCH | - | 0.32.2.dev202609040917+0535e62 | [6](https://mlx-omarchy-community-data.joshua-s-warren.workers.dev/v1/results/1319df259aa4cc7633c9270e82bf8594948048b0a29fa1fcaeb43f62004ed93b/archive) |
 | [937408d666f0](https://mlx-omarchy-community-data.joshua-s-warren.workers.dev/v1/results/937408d666f05a533a370a1846c7245dba8fef6485f24612de29902d9e3d9d4e) | deep | apple,t6020 | 7.1.6-1-1-ARCH | - | - | [0](https://mlx-omarchy-community-data.joshua-s-warren.workers.dev/v1/results/937408d666f05a533a370a1846c7245dba8fef6485f24612de29902d9e3d9d4e/archive) |
+| [d8ecfb5c539a](https://mlx-omarchy-community-data.joshua-s-warren.workers.dev/v1/results/d8ecfb5c539aba7c2a1f37f3722151b46e62b8ad300dc8f3b5477e615609e786) | deep | apple,t6020 | 7.1.13-1-1-ARCH | - | 0.32.2.dev202609100353+b3e977b | [6](https://mlx-omarchy-community-data.joshua-s-warren.workers.dev/v1/results/d8ecfb5c539aba7c2a1f37f3722151b46e62b8ad300dc8f3b5477e615609e786/archive) |
 
 Query this snapshot:
 
