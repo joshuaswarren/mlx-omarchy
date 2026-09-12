@@ -1,0 +1,48 @@
+{
+  "scope": "Host-only known-H13 compiler-package review; no adapter implementation or ANE execution",
+  "diagnostic_commit": "https://github.com/joshuaswarren/mlx-omarchy/commit/1c995661",
+  "diagnostic_receipt": "https://github.com/joshuaswarren/mlx-omarchy/blob/1c995661/receipts/2026-09-12-h13-bundle-adapter-blocker/receipt.md",
+  "compiler_commit": "a0ce354cf800011a84420da4e12013eb8140b2a5",
+  "source_graph_sha256": "cc204fd0252b16fe514970fcd82abde15600303f8355718984ae8ba4ddab7cf8",
+  "verified_package_fact": {
+    "program_count": 4097,
+    "workspace_tile_counts": {"0": 4097},
+    "dispatch_order_complete": true,
+    "method": "Read channel-3 tile count as little-endian uint32 at ANEC byte offset 52 for every program; require dispatchPlan == range(4097)"
+  },
+  "host_checks_executed": [
+    {
+      "command": "/dev/shm/h13boundary-build/tests/omarchy/omarchy_ane_h13_boundary_tests",
+      "cases_passed": 5,
+      "assertions_passed": 76,
+      "cases_skipped": 0,
+      "cases_failed": 0
+    },
+    {
+      "command": "/dev/shm/h13boundary-build/tests/omarchy/omarchy_ane_bundle_tests",
+      "cases_passed": 25,
+      "assertions_passed": 2719,
+      "cases_skipped": 0,
+      "cases_failed": 0
+    }
+  ],
+  "stop_condition": {
+    "plan_section": 62,
+    "layer": "bundle-v2 representation of absent workspace",
+    "first_rejection": "workspace byte_size must be positive",
+    "additional_constraints": [
+      "parse_tensor requires positive shape dimensions",
+      "parse_tensor also requires positive stride",
+      "byte_size must equal dtype size times the shape product"
+    ],
+    "decision": "Do not fabricate positive workspace or change the validator. An absent-workspace representation needs an explicit schema decision with consistent shape, stride, size, and channel validation.",
+    "unblock_prediction_correction": "The diagnostic branch's proposed one-line byte_size change is insufficient. Its tests prove the first rejection, not acceptance after removing it."
+  },
+  "limitations": [
+    "Diagnostic acceptance with fabricated workspace and firmware strings is not a usable bundle or hardware qualification.",
+    "Firmware applicability and the current M1 driver/module prerequisite remain unresolved.",
+    "The 674-line diagnostic test suite duplicates committed binary fixtures as base64 and pins current error text. It remains on the diagnostic branch; it is not added to the permanent main-branch test suite.",
+    "Full Parakeet compiler semantics, masked attention shapes, and mixed-type multi-output contracts remain blocked independently."
+  ],
+  "main_branch_changes": "Receipt and documentation only; no runtime, compiler, driver, bundle-validator, or public-model change"
+}
