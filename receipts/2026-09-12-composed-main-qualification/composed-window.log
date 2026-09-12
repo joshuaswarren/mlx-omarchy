@@ -1,0 +1,121 @@
+=== wrapper start 2026-09-12T00:52:17Z pid 2722962
+2026-09-12T00:52:17Z waiting for m1-gpu.lock
+2026-09-12T00:52:17Z LOCK ACQUIRED (window announced start)
+driver-fork: mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1
+driver-stock: mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1
+kernel: 7.1.6-1-1-ARCH
+machine: aarch64 unknown
+stock-icd-sha256: 97bda66cb6dcd7c96479a835746535dbd96563c647d65251da569773ba230a4e
+wheel: mlx_omarchy-0.32.2.dev202609120039+ab08be8b-cp314-cp314-linux_aarch64.whl
+wheel-sha256: 2584d5f1b8dc947fe6b5bca2e47b119c5810f830520e73b343e0535b23a988b7
+source-commit: ab08be8bb5a8cb232330b2a69229ea26e0b0cf32
+quiet-gate wait 1 load=0.91 2026-09-12T00:52:18Z
+quiet-gate wait 2 load=0.65 2026-09-12T00:52:38Z
+quiet gate done ok=3 load=0.46
+=== matrix run fork-warmup 00:52:58 ===
+1789174378 0.46 1.25 1.49
+1789174388 0.55 1.24 1.48
+1789174398 0.46 1.20 1.46
+fork-warmup exit=0 00:53:24
+6
+=== matrix run stock-warmup 00:53:24 ===
+1789174408 0.47 1.18 1.45
+1789174418 0.40 1.14 1.44
+1789174428 0.42 1.12 1.43
+1789174438 0.43 1.10 1.42
+stock-warmup exit=0 00:54:05
+6
+=== matrix run fork-r1 00:54:05 ===
+1789174448 0.45 1.08 1.41
+1789174458 0.46 1.06 1.40
+1789174468 0.54 1.05 1.39
+fork-r1 exit=0 00:54:32
+6
+=== matrix run stock-r1 00:54:32 ===
+1789174478 0.54 1.04 1.38
+1789174488 0.53 1.02 1.37
+1789174498 0.45 0.98 1.36
+1789174508 0.53 0.98 1.35
+stock-r1 exit=0 00:55:12
+6
+=== matrix run fork-r2 00:55:12 ===
+1789174518 0.44 0.95 1.34
+1789174528 0.46 0.94 1.33
+1789174538 0.39 0.90 1.31
+fork-r2 exit=0 00:55:39
+6
+=== matrix run stock-r2 00:55:39 ===
+1789174548 0.40 0.89 1.30
+1789174558 0.34 0.86 1.29
+1789174568 0.44 0.87 1.29
+1789174578 0.37 0.84 1.27
+stock-r2 exit=0 00:56:19
+6
+=== matrix run fork-r3 00:56:19 ===
+1789174588 0.47 0.84 1.27
+1789174598 0.47 0.83 1.26
+fork-r3 exit=0 00:56:46
+6
+=== matrix run stock-r3 00:56:46 ===
+1789174608 0.55 0.84 1.26
+1789174618 0.62 0.84 1.25
+1789174628 0.69 0.85 1.25
+1789174638 0.74 0.86 1.25
+stock-r3 exit=0 00:57:26
+6
+=== digest + provenance assertions 2026-09-12T00:57:26Z
+Traceback (most recent call last):
+  File "<stdin>", line 41, in <module>
+NameError: name 'COMMIT_SHORT' is not defined
+DIGEST ASSERTION FAILED rc=1
+=== performance summary 2026-09-12T00:57:26Z
+fork qwen25-0.5b-4bit:short-decode-32: dec 0.7305 pre 0.7392
+fork qwen25-0.5b-4bit:long-decode-128: dec 0.7286 pre 0.6409
+fork qwen25-0.5b-4bit:longctx-1024-decode-32: dec 0.6924 pre 0.5772
+fork qwen25-0.5b-bf16:short-decode-32: dec 0.5664 pre 0.4923
+fork qwen25-0.5b-bf16:long-decode-128: dec 0.5565 pre 0.5306
+fork qwen25-0.5b-bf16:longctx-1024-decode-32: dec 0.4579 pre 0.396
+stock qwen25-0.5b-4bit:short-decode-32: dec 0.6701 pre 0.4616
+stock qwen25-0.5b-4bit:long-decode-128: dec 0.552 pre 0.246
+stock qwen25-0.5b-4bit:longctx-1024-decode-32: dec 0.3747 pre 0.1893
+stock qwen25-0.5b-bf16:short-decode-32: dec 0.5724 pre 0.498
+stock qwen25-0.5b-bf16:long-decode-128: dec 0.5571 pre 0.2245
+stock qwen25-0.5b-bf16:longctx-1024-decode-32: dec 0.4605 pre 0.1374
+=== standing M1 battery 2026-09-12T00:57:26Z
+1789174648 0.70 0.84 1.24
+1789174658 0.59 0.82 1.23
+[doctest] assertions: 22694 | 22694 passed | 0 failed |
+[doctest] assertions: 2700947 | 2700946 passed | 1 failed |
+1789174668 0.58 0.81 1.22
+1789174678 0.57 0.79 1.21
+1789174688 0.55 0.78 1.20
+1789174698 0.55 0.78 1.19
+1789174708 0.62 0.78 1.19
+[doctest] assertions: 82940463 | 82940463 passed | 0 failed |
+[doctest] assertions: 1104354 | 1104354 passed | 0 failed |
+[doctest] assertions: 781 | 781 passed | 0 failed |
+[doctest] assertions: 4093 | 4093 passed | 0 failed |
+[doctest] assertions: 7152 | 7152 passed | 0 failed |
+[doctest] assertions: 466 | 466 passed | 0 failed |
+[doctest] assertions: 181118 | 181118 passed | 0 failed |
+[doctest] assertions: 629 | 628 passed | 1 failed |
+[doctest] assertions: 36 | 36 passed | 0 failed |
+[doctest] assertions: 1781 | 1781 passed | 0 failed |
+1789174718 0.60 0.77 1.18
+[doctest] assertions: 1379 | 1379 passed | 0 failed |
+[doctest] assertions: 4245 | 4245 passed | 0 failed |
+[doctest] assertions: 264 | 264 passed | 0 failed |
+[doctest] assertions: 1109 | 1109 passed | 0 failed |
+[doctest] assertions: 3450 | 3450 passed | 0 failed |
+[doctest] assertions: 1715 | 1715 passed | 0 failed |
+[doctest] assertions: 4500 | 4500 passed | 0 failed |
+[doctest] assertions: 16 | 16 passed | 0 failed |
+[doctest] assertions: 127 | 127 passed | 0 failed |
+[doctest] assertions: 116 | 116 passed | 0 failed |
+[doctest] assertions: 27066 | 27066 passed | 0 failed |
+[doctest] assertions: 14 | 14 passed | 0 failed |
+[doctest] assertions: 2719 | 2719 passed | 0 failed |
+28
+SUITE_FAIL=omarchy_primitive_tests
+SUITE_FAIL=omarchy_copy_offset_tests
+2026-09-12T00:58:41Z window complete, elapsed 384s -- LOCK RELEASED

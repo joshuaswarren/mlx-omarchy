@@ -1,0 +1,13 @@
+[doctest] doctest version is "2.4.12"
+[doctest] run with "--help" for options
+===============================================================================
+/home/joshuawarren/src/mlx-omarchy-composed/.work/mlx/tests/omarchy/test_copy_offsets.cpp:156:
+TEST CASE:  back-to-back scalar fills stay ordered in one submission
+
+/home/joshuawarren/src/mlx-omarchy-composed/.work/mlx/tests/omarchy/test_copy_offsets.cpp:181: ERROR: CHECK( omarchy::trace::counters().vk_submissions.load() == submissions + 1 ) is NOT correct!
+  values: CHECK( 7 == 6 )
+
+===============================================================================
+[doctest] test cases:  26 |  25 passed | 1 failed | 0 skipped
+[doctest] assertions: 629 | 628 passed | 1 failed |
+[doctest] Status: FAILURE!

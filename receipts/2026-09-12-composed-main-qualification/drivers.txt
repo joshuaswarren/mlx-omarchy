@@ -1,0 +1,8 @@
+driver-fork: mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1
+driver-stock: mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1
+kernel: 7.1.6-1-1-ARCH
+machine: aarch64 unknown
+stock-icd-sha256: 97bda66cb6dcd7c96479a835746535dbd96563c647d65251da569773ba230a4e
+wheel: mlx_omarchy-0.32.2.dev202609120039+ab08be8b-cp314-cp314-linux_aarch64.whl
+wheel-sha256: 2584d5f1b8dc947fe6b5bca2e47b119c5810f830520e73b343e0535b23a988b7
+source-commit: ab08be8bb5a8cb232330b2a69229ea26e0b0cf32
