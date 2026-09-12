@@ -196,3 +196,39 @@ wheel (built from 69a01db3, farm4).
   (bisect-observations.md, corrections/README.md) @ composed-main-qual.
 - Wheels: 63c9a8d8 sha16 2a32a2611ce8fee2 (mlx-Bf16PrefillBase/dist),
   ab08be8b sha16 9d5745b7a3b4f066, fix 69a01db3 (see window3 results).
+
+## CORRECTION (2026-09-12, later the same day) — the wait's ordering
+claim was incomplete, and pad/concat broke for it
+
+Fixed in `pad-fill-ordering` commit `182a02bb`; receipt:
+`receipts/2026-09-12-pad-fill-ordering/`.
+
+The fix section above says the timeline wait keeps "cross-stream
+in-flight writes ... ordered exactly as the drain ordered them", and the
+liveness section says the wait "orders device-visible work only" with
+host writes keeping a real drain. Both statements miss the case that
+matters most: the Scalar branch reads the fill value's bytes ON THE HOST
+(`scalar_is_zero`, the value read, the dtype-converting scratch source).
+The unconditional synchronize this fix removed did two jobs — it ordered
+the fill against the recycled target's in-flight writes AND it published
+the scalar's own bytes to the host before those reads. The timeline wait
+does the first job only. It cannot publish bytes to a host read, and it
+waits at the newest RESERVED value, so a producer sitting in an open
+batch (buffer stamped `kPendingCompletion`, not yet committed) is not
+covered at all.
+
+MLX's pad op always casts `pad_value` (`array(0)`, int32) to the input
+dtype, so every constant pad's fill value is GPU-produced. After this
+fix landed as `3f7e549a`, that cast sat in the open batch when the
+Scalar branch read the value, the read returned the recycled block's
+stale bytes, and those bytes became the fill value written across the
+whole padded region: deterministic garbage in `omarchy_shape_ops_tests`
+pad (0.25f, 60.0f read as fill values) and `omarchy_complex_ops_tests`
+pad/concat ((-0.402478, -0.0108201) at every padded index). Verified
+first-failing commit by run: 0043ef2d green (24/24, 34/34), 3f7e549a
+failing (23/24, 33/34), same cases through d389c24f.
+
+The fix gates the drain on the producer: GPU-produced scalars
+(completion > drained_value, including kPendingCompletion) synchronize
+before the host read; host-written scalars (completion == 0, the decode
+and prefill hot path) skip it, so the prefill restoration stands.
