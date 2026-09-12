@@ -27,10 +27,9 @@ Options:
 Exit codes: `0` inspected, `1` invalid package/usage,
 `2` strict findings.
 
-Inspection never opens the ANE device, never imports `coremltools`
-or MLX, and never reads or computes tensor data. It is pure file and
-protobuf reading and runs device-free on any Linux host (x86_64 and
-aarch64).
+Inspection never opens the ANE device or imports Core ML or MLX. Weight
+files are streamed for hashing; tensor values are not decoded or computed.
+The inspector runs device-free on Linux x86_64 and aarch64.
 
 ## What it reports
 
@@ -116,11 +115,13 @@ blank.
 
 Structural problems raise `coreml.mlpackage.MlPackageError` with a
 specific message: missing/unparsable manifest, empty itemInfoEntries,
-absolute or `..`-traversing manifest paths, missing or ambiguous
-model entries, missing model bytes. Corrupt or truncated model
-protobufs raise `coreml.proto.ModelSpecError` naming `model.mlmodel`.
-Weight blob references that do not resolve inside the package are
-reported explicitly (`resolved: false`) and fail under `--strict`.
+absolute, traversing, or escaping symlink paths, an invalid
+rootModelIdentifier, or missing model bytes. The manifest root selects
+the model regardless of its filename. Corrupt or truncated model
+protobufs raise coreml.proto.ModelSpecError. Weight references are collected
+from attributes and input bindings at every nesting depth, resolved exactly
+relative to the model file, and checked against the file size. Missing
+files or out-of-range offsets report resolved: false and fail --strict.
 
 ## Tests
 
@@ -147,3 +148,23 @@ parser's artifact: op counts/histograms agree (the old 3351/69/21
 histogram is now independently verified), while the old artifact's
 boundary dtype/shape entries were all `None` — blank values presented
 as data, which the new inspector refuses to emit.
+
+## Compiler preparation and execution boundary
+
+`scripts/prepare-ane-compiler.sh` downloads and hash-verifies the external
+compiler pinned in `ane-compiler.lock`. `scripts/verify-ane-compiler.sh all`
+checks archive rejection, Linux compilation, compiler tests, and emission
+of a known H13 graph. These are host checks, not ANE execution proof.
+
+The [integration review](../receipts/2026-09-12-coreml-integration-review.json)
+records the executed checks and links the complete encoder coverage table.
+The public encoder remains unqualified: required H13 semantics and shapes
+are missing, and the mixed-type, two-output contract is not represented by
+the current compiler program model. Execution work stops at plan section 62;
+no CPU fallback or altered model contract substitutes for these gaps.
+
+The [capture review](../receipts/coreml-capture-review.json) confirms exact
+reference token IDs and transcript across macOS compute plans. Duration
+and frame metadata differ at three positions. The recording rights for
+the pinned audio remain undocumented; the licensed public-fixture gate
+is still open. No Core ML feature release is claimed.

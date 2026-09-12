@@ -29,8 +29,8 @@ from pathlib import Path
 if __package__ in (None, ""):  # plain-script execution
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from coreml.mlpackage import MlPackageError, inspect  # noqa: E402
-from coreml.proto import ModelSpecError, schema_info  # noqa: E402
+from coreml.mlpackage import MlPackageError, inspect
+from coreml.proto import ModelSpecError, schema_info
 
 
 def _fmt_type(t: dict) -> str:
@@ -68,14 +68,20 @@ def human_report(inv: dict) -> str:
             f"Function {fn['name']}: opset={fn['opset']} "
             f"blocks={len(fn['block_specializations'])} ops={fn['op_total']}"
         )
-        for name, dtype in sorted(fn["op_histogram"].items(), key=lambda kv: -kv[1])[:12]:
+        for name, dtype in sorted(fn["op_histogram"].items(), key=lambda kv: -kv[1])[
+            :12
+        ]:
             lines.append(f"  {name}: {dtype}")
         if len(fn["op_histogram"]) > 12:
             lines.append(f"  ... {len(fn['op_histogram']) - 12} more op types")
     comp = inv["compression"]
     lines.append(
         f"Compression: {comp['representation']}"
-        + (f" ({comp['constexpr_op_count']} constexpr ops)" if comp["constexpr_op_count"] else "")
+        + (
+            f" ({comp['constexpr_op_count']} constexpr ops)"
+            if comp["constexpr_op_count"]
+            else ""
+        )
     )
     lines.append("Weights:")
     for wf in inv["weights"]["files"]:
@@ -93,7 +99,7 @@ def human_report(inv: dict) -> str:
     lines.append(f"Parse validity: {validity['protobuf_parse']}")
     for note in validity["notes"]:
         lines.append(f"  note: {note}")
-    lines.append(f"Compiler eligibility: not assessed (see JSON eligibility.note)")
+    lines.append("Compiler eligibility: not assessed (see JSON eligibility.note)")
     lines.append(
         f"Schema: official Core ML protobuf, vendored from {schema_info()['upstream']} "
         f"tag {schema_info()['tag']}"
@@ -108,7 +114,9 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
     p_inspect = sub.add_parser("inspect", help="inspect one .mlpackage")
     p_inspect.add_argument("path", type=Path, help="path to the .mlpackage directory")
-    p_inspect.add_argument("--json", action="store_true", help="machine-readable output")
+    p_inspect.add_argument(
+        "--json", action="store_true", help="machine-readable output"
+    )
     p_inspect.add_argument(
         "--strict",
         action="store_true",
@@ -119,7 +127,7 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         inv = inspect(args.path)
-    except (MlPackageError, ModelSpecError) as exc:
+    except (MlPackageError, ModelSpecError, OSError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
 

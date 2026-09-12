@@ -135,11 +135,9 @@ class TdtConfig:
 class AudioFixture:
     """Pinned deterministic speech input for the reference capture.
 
-    Provenance: LibriSpeech test-clean utterance 1089-134686-0001
-    (JFK, "The credit belongs to the man who is actually in the
-    arena"), 44.1 kHz stereo FLAC, mirrored verbatim in the openai
-    whisper repository. Not silence; real speech with a known
-    transcript.
+    JFK inaugural-address excerpt from the pinned openai/whisper
+    tests/jfk.flac file (44.1 kHz stereo). It is not a LibriSpeech
+    utterance. See the lock for the distribution and rights record.
     """
 
     url: str                 # exact-revision source URL
@@ -147,7 +145,7 @@ class AudioFixture:
     size: int
     sample_rate: int         # source sample rate (44100)
     duration_seconds: float
-    license: str             # "CC-BY-4.0 (LibriSpeech)"
+    license: str
     note: str
 
 
@@ -212,7 +210,7 @@ class ReferenceLock:
     macos_reference_paths: dict[str, str] = field(default_factory=dict)
 
     @classmethod
-    def from_dict(cls, d: dict) -> "ReferenceLock":
+    def from_dict(cls, d: dict) -> ReferenceLock:
         if not isinstance(d, dict):
             raise ReferenceError("reference lock must be a JSON object")
         try:
@@ -265,7 +263,7 @@ class ReferenceLock:
         }
 
     @classmethod
-    def load(cls, path: Path | None = None) -> "ReferenceLock":
+    def load(cls, path: Path | None = None) -> ReferenceLock:
         path = path or default_lock_path()
         try:
             text = path.read_text(encoding="utf-8")
