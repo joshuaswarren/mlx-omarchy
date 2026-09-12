@@ -1,0 +1,206 @@
+{
+ "mlx_version": "0.32.2",
+ "device": "{'device_name': 'Apple M1 Max', 'max_recommended_working_set_size': 55662788608, 'memory_size': 68719476736, 'architecture': 'applegpu_g13s', 'max_buffer_length': 41747087360, 'resource_limit': 499000}",
+ "sdpa_dump_runs": [
+  {
+   "tag": "f16_kv8",
+   "kv": 8,
+   "heads": 14,
+   "gqa": 7,
+   "dtype": "mlx.core.float16",
+   "out_sha16": "5b0ff6a45dcfcb21",
+   "dispatch_out_differences": 896,
+   "dispatch_out_sha16": "fc7643acd65473af"
+  },
+  {
+   "tag": "f16_kv30",
+   "kv": 30,
+   "heads": 14,
+   "gqa": 7,
+   "dtype": "mlx.core.float16",
+   "out_sha16": "545639af87f1efad",
+   "dispatch_out_differences": 896,
+   "dispatch_out_sha16": "7ff2696db5c34ab6"
+  },
+  {
+   "tag": "f16_kv31",
+   "kv": 31,
+   "heads": 14,
+   "gqa": 7,
+   "dtype": "mlx.core.float16",
+   "out_sha16": "a8eba1b16ac51aa6",
+   "dispatch_out_differences": 896,
+   "dispatch_out_sha16": "09baa2ac5876bf7f"
+  },
+  {
+   "tag": "f16_kv32",
+   "kv": 32,
+   "heads": 14,
+   "gqa": 7,
+   "dtype": "mlx.core.float16",
+   "out_sha16": "b6afe93b1ad6f19d",
+   "dispatch_out_differences": 896,
+   "dispatch_out_sha16": "2acc6b6f35d1ea0e"
+  },
+  {
+   "tag": "f16_kv64",
+   "kv": 64,
+   "heads": 14,
+   "gqa": 7,
+   "dtype": "mlx.core.float16",
+   "out_sha16": "3a071b09b69c31cb",
+   "dispatch_out_differences": 896,
+   "dispatch_out_sha16": "6479a0de0896f040"
+  },
+  {
+   "tag": "f16_kv262",
+   "kv": 262,
+   "heads": 14,
+   "gqa": 7,
+   "dtype": "mlx.core.float16",
+   "out_sha16": "0274e0621ed37a86",
+   "dispatch_out_differences": 896,
+   "dispatch_out_sha16": "827752ecab97f80b"
+  },
+  {
+   "tag": "f16_kv1023",
+   "kv": 1023,
+   "heads": 14,
+   "gqa": 7,
+   "dtype": "mlx.core.float16",
+   "out_sha16": "f3ebb3ec10b2908d",
+   "dispatch_out_differences": 896,
+   "dispatch_out_sha16": "1af7782651b3daaf"
+  },
+  {
+   "tag": "f16_kv1024",
+   "kv": 1024,
+   "heads": 14,
+   "gqa": 7,
+   "dtype": "mlx.core.float16",
+   "out_sha16": "45d7e9e613136ed3",
+   "dispatch_out_differences": 895,
+   "dispatch_out_sha16": "4f12b069d23ad9ec"
+  },
+  {
+   "tag": "f16_kv1053",
+   "kv": 1053,
+   "heads": 14,
+   "gqa": 7,
+   "dtype": "mlx.core.float16",
+   "out_sha16": "7c32ee1208718d52",
+   "dispatch_out_differences": 896,
+   "dispatch_out_sha16": "4cca3e501abfbbbb"
+  },
+  {
+   "tag": "f16_kv1054",
+   "kv": 1054,
+   "heads": 14,
+   "gqa": 7,
+   "dtype": "mlx.core.float16",
+   "out_sha16": "8f7683edc7a43422",
+   "dispatch_out_differences": 896,
+   "dispatch_out_sha16": "82255e9bf1e25a0b"
+  },
+  {
+   "tag": "bf16_kv8",
+   "kv": 8,
+   "heads": 14,
+   "gqa": 7,
+   "dtype": "mlx.core.bfloat16",
+   "out_sha16": "03d76811e618b4c7",
+   "dispatch_out_differences": 895,
+   "dispatch_out_sha16": "4efeabce055c4adc"
+  },
+  {
+   "tag": "bf16_kv30",
+   "kv": 30,
+   "heads": 14,
+   "gqa": 7,
+   "dtype": "mlx.core.bfloat16",
+   "out_sha16": "123b01538f644da8",
+   "dispatch_out_differences": 896,
+   "dispatch_out_sha16": "bb7e7890139c47f2"
+  },
+  {
+   "tag": "bf16_kv31",
+   "kv": 31,
+   "heads": 14,
+   "gqa": 7,
+   "dtype": "mlx.core.bfloat16",
+   "out_sha16": "cccc6b2178437a03",
+   "dispatch_out_differences": 895,
+   "dispatch_out_sha16": "6296faf852c38c6f"
+  },
+  {
+   "tag": "bf16_kv32",
+   "kv": 32,
+   "heads": 14,
+   "gqa": 7,
+   "dtype": "mlx.core.bfloat16",
+   "out_sha16": "f1ac56deb0ba5028",
+   "dispatch_out_differences": 894,
+   "dispatch_out_sha16": "11339f739e67d189"
+  },
+  {
+   "tag": "bf16_kv64",
+   "kv": 64,
+   "heads": 14,
+   "gqa": 7,
+   "dtype": "mlx.core.bfloat16",
+   "out_sha16": "1ea8ac7b25e4d3e2",
+   "dispatch_out_differences": 896,
+   "dispatch_out_sha16": "890a8e92d970d48f"
+  },
+  {
+   "tag": "bf16_kv262",
+   "kv": 262,
+   "heads": 14,
+   "gqa": 7,
+   "dtype": "mlx.core.bfloat16",
+   "out_sha16": "143c9aac042ad571",
+   "dispatch_out_differences": 896,
+   "dispatch_out_sha16": "c2a594475d37086a"
+  },
+  {
+   "tag": "bf16_kv1023",
+   "kv": 1023,
+   "heads": 14,
+   "gqa": 7,
+   "dtype": "mlx.core.bfloat16",
+   "out_sha16": "43bc843d214118c0",
+   "dispatch_out_differences": 895,
+   "dispatch_out_sha16": "547918114db68821"
+  },
+  {
+   "tag": "bf16_kv1024",
+   "kv": 1024,
+   "heads": 14,
+   "gqa": 7,
+   "dtype": "mlx.core.bfloat16",
+   "out_sha16": "b42b92817a86ee82",
+   "dispatch_out_differences": 896,
+   "dispatch_out_sha16": "1dbcbaca7959538f"
+  },
+  {
+   "tag": "bf16_kv1053",
+   "kv": 1053,
+   "heads": 14,
+   "gqa": 7,
+   "dtype": "mlx.core.bfloat16",
+   "out_sha16": "1c760c0b59372146",
+   "dispatch_out_differences": 896,
+   "dispatch_out_sha16": "d31e3b8a1ea3f09c"
+  },
+  {
+   "tag": "bf16_kv1054",
+   "kv": 1054,
+   "heads": 14,
+   "gqa": 7,
+   "dtype": "mlx.core.bfloat16",
+   "out_sha16": "f34d900de46024fe",
+   "dispatch_out_differences": 896,
+   "dispatch_out_sha16": "59fc10da62df5878"
+  }
+ ]
+}
