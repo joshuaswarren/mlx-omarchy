@@ -1,0 +1,58 @@
+2026-09-12T16:56:29Z waiting for m1-gpu.lock pid 3161360
+2026-09-12T16:56:29Z LOCK ACQUIRED
+host=jwm1-linux kernel=7.1.6-1-1-ARCH nproc=8
+mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1
+base_commit=a12eafd994af881dbc2b39c0b9807523f27b171a
+cand_commit=f5649936f68a2262e6f1e51ad9b146ec035808cb
+base_wheel_sha256=9e601cebadd578657e678a173dd2efc993679ea3469c563f63d2b6c5725aef94
+cand_wheel_sha256=3f90904520d5441b2b1133aada10160b4f9cfb58bca79a378e7420c62e042df0
+quiet gate done ok=3 load=0.19
+probe cand-off exit=0
+PROBE {"barriers": {"barriers_emitted": 400, "barriers_skipped": 0, "post_barriers_deferred": 0}, "dispatches": {"commit_calls_noop": 100, "commit_calls_with_work": 100, "gpu_primitive_dispatches": 300, "omarchy_finalize_calls": 100, "vk_buffer_copies": 0, "vk_buffer_fills": 0, "vk_compute_dispatches": 200, "vk_submissions": 100}}
+probe cand-on exit=0
+PROBE {"barriers": {"barriers_emitted": 300, "barriers_skipped": 0, "post_barriers_deferred": 200}, "dispatches": {"commit_calls_noop": 100, "commit_calls_with_work": 100, "gpu_primitive_dispatches": 300, "omarchy_finalize_calls": 100, "vk_buffer_copies": 0, "vk_buffer_fills": 0, "vk_compute_dispatches": 200, "vk_submissions": 100}}
+probe base exit=1
+    func = self._FuncPtr((name_or_ordinal, self))
+AttributeError: /home/joshuawarren/src/mlx-enc-base/.work/venv-base/lib/python3.14/site-packages/mlx/lib/libmlx.so: undefined symbol: mlx_omarchy_trace_barriers. Did you mean: 'mlx_omarchy_trace_snapshot'?
+=== matrix base-warmup 16:57:09 ===
+base-warmup exit=0 16:57:36
+=== matrix cand-warmup 16:57:36 ===
+cand-warmup exit=0 16:58:02
+=== matrix base-aa1 16:58:02 ===
+base-aa1 exit=0 16:58:28
+=== matrix base-aa2 16:58:28 ===
+base-aa2 exit=0 16:58:55
+=== matrix base-r1 16:58:55 ===
+base-r1 exit=0 16:59:21
+=== matrix cand-r1 16:59:21 ===
+cand-r1 exit=0 16:59:47
+=== matrix cand-r2 16:59:47 ===
+cand-r2 exit=0 17:00:14
+=== matrix base-r2 17:00:14 ===
+base-r2 exit=0 17:00:40
+=== matrix base-r3 17:00:40 ===
+base-r3 exit=0 17:01:06
+=== matrix cand-r3 17:01:06 ===
+cand-r3 exit=0 17:01:33
+=== matrix base-stock 17:01:33 ===
+base-stock exit=0 17:02:03
+=== matrix cand-stock 17:02:03 ===
+cand-stock exit=0 17:02:33
+=== digest + summary 2026-09-12T17:02:33Z
+== paired decode tok/s (medians of 3; higher is better)
+qwen25-0.5b-4bit:short-decode-32: base=111.59 cand=111.69 cand/base=1.0009
+qwen25-0.5b-4bit:long-decode-128: base=107.79 cand=107.29 cand/base=0.9954
+qwen25-0.5b-4bit:longctx-1024-decode-32: base=96.27 cand=96.08 cand/base=0.9980
+qwen25-0.5b-bf16:short-decode-32: base=31.86 cand=31.86 cand/base=1.0000
+qwen25-0.5b-bf16:long-decode-128: base=30.48 cand=30.45 cand/base=0.9990
+qwen25-0.5b-bf16:longctx-1024-decode-32: base=24.98 cand=24.95 cand/base=0.9988
+== A/A baseline pair (in-window noise)
+qwen25-0.5b-4bit:short-decode-32: 111.82 vs 107.08 (4.43%)
+qwen25-0.5b-4bit:long-decode-128: 108.12 vs 108.22 (0.09%)
+qwen25-0.5b-4bit:longctx-1024-decode-32: 96.93 vs 96.31 (0.64%)
+qwen25-0.5b-bf16:short-decode-32: 31.79 vs 31.86 (0.22%)
+qwen25-0.5b-bf16:long-decode-128: 30.63 vs 30.39 (0.79%)
+qwen25-0.5b-bf16:longctx-1024-decode-32: 24.96 vs 24.97 (0.04%)
+ALL_DIGEST_ASSERTIONS_PASSED (12 runs x 6 legs, nonempty)
+checker rc=0
+2026-09-12T17:02:33Z window complete, elapsed 364s -- LOCK RELEASED

@@ -1,0 +1,6 @@
+host=jwm1-linux kernel=7.1.6-1-1-ARCH nproc=8
+mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1
+base_commit=a12eafd994af881dbc2b39c0b9807523f27b171a
+cand_commit=f5649936f68a2262e6f1e51ad9b146ec035808cb
+base_wheel_sha256=9e601cebadd578657e678a173dd2efc993679ea3469c563f63d2b6c5725aef94
+cand_wheel_sha256=3f90904520d5441b2b1133aada10160b4f9cfb58bca79a378e7420c62e042df0

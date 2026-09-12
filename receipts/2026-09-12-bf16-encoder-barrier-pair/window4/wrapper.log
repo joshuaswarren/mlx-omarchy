@@ -1,0 +1,10 @@
+2026-09-12T17:08:01Z waiting for m1-gpu.lock pid 3165419
+2026-09-12T17:08:01Z LOCK ACQUIRED
+quiet gate done ok=3 load=0.03
+=== decode probe cand gate-on 17:08:41
+cand-on exit=0
+DECODEPROBE {"barriers_available": true, "barriers_per_token": {"barriers_emitted": 846.75, "barriers_skipped": 0.0, "post_barriers_deferred": 790.5}, "per_token": {"commit_calls_noop": 1.0833333333333333, "commit_calls_with_work": 4.333333333333333, "gpu_primitive_dispatches": 1403.3333333333333, "omarchy_finalize_calls": 1.0833333333333333, "vk_buffer_copies": 52.0, "vk_buffer_fills": 0.0, "vk_compute_dispatches": 790.5, "vk_submissions": 4.333333333333333}, "tokens": 12}
+=== decode probe base 17:08:43
+base exit=0
+DECODEPROBE {"barriers_available": false, "per_token": {"commit_calls_noop": 1.0833333333333333, "commit_calls_with_work": 4.333333333333333, "gpu_primitive_dispatches": 1403.3333333333333, "omarchy_finalize_calls": 1.0833333333333333, "vk_buffer_copies": 52.0, "vk_buffer_fills": 0.0, "vk_compute_dispatches": 790.5, "vk_submissions": 4.333333333333333}, "tokens": 12}
+2026-09-12T17:08:45Z window complete -- LOCK RELEASED
