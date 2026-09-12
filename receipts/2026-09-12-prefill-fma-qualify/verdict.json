@@ -72,14 +72,41 @@
       "bf16_long": [0.2314, 0.4851],
       "bf16_1k": [0.1411, 0.2987]
     },
-    "decode": "All decode deltas within +/-2.6% (noise); the routes touch prefill only. The bf16 short leg is parity by construction (m=30 < the m>=32 FMA gate).",
     "why_landing_is_gated": "On fork the ungated route regresses prefill by 34-47% against the shipped coopmat route; on stock it wins by 81-112% on the long legs. b1805b19 keeps the fork on the shipped route by name and gives stock the FMA route, so every driver takes the faster of the two while holding its own pins."
+  },
+  "window_b_gated_qualification": {
+    "protocol": "Same six-leg matrix, candidate = the GATED wheel built from b1805b19 vs base, fork + stock, discarded warmup + 3 reps, interleaved; stock kernel probes on the gated wheel; windowB.sh. Artifacts in windowB/ (windowB-run.log, drivers-windowB.txt, perf-fma-qualify-gated.json, probeB-*.log, and the per-run {cand,base}-{fork,stock}-{warmup,r1..r3}.{json,log} files; top-level run files of the same names are window A's).",
+    "digests": "72/72 pinned cells HELD, 0 failures (candidate and base x fork and stock x 3 reps).",
+    "fork_parity": "Candidate vs base prefill deltas: +0.99/+1.88/+0.53% (Q4), +0.13/-0.25/+0.16% (BF16) - the gate keeps the fork on the shipped cooperative-matrix route and nothing regresses.",
+    "stock_wins": "Q4 long +105.0% (309.39 -> 634.24 tok/s), Q4 1K +80.68% (365.01 -> 659.51), BF16 long +109.86% (233.25 -> 489.49), BF16 1K +110.0% (232.75 -> 488.77); Q4 short -2.22% and BF16 short -0.51% are parity legs (m=30 < the m>=32 bf16 gate; q4 short m=30 uses the fused class on both sides).",
+    "stock_native_fractions_base_to_candidate": {
+      "q4_short": [0.5934, 0.5802],
+      "q4_long": [0.2551, 0.5229],
+      "q4_1k": [0.1983, 0.3583],
+      "bf16_short": [0.5772, 0.5742],
+      "bf16_long": [0.2315, 0.4857],
+      "bf16_1k": [0.1406, 0.2952]
+    },
+    "stock_probe_dominant_cell_gflops": {
+      "gated_fma_q4": 545.7,
+      "base_tile_q4": 276.9,
+      "gated_fma_bf16": 642.6,
+      "base_tile_bf16": 195.2
+    },
+    "bit_identity": "The FMA kernel's output sha256 equals the shipped tile fallback's output sha256 on every probe cell (q4 and bf16, both windows) - the FMA route is a byte-exact drop-in for the tile fallback, not merely digest-equal.",
+    "decode_note": "All decode deltas within noise (route untouched) except one bf16 1K cell at +4.91%, inside this machine's session-to-session floor."
   },
   "instruments": {
     "pairing": "Candidate kill-switch arithmetic identity proven at byte level: probe output shas of the NO_*_FMA side on the candidate equal the base wheel's shas exactly. Session noise floor ~5% (receipts native-order window2 note); intra-side rep spread under 1%; all deltas quoted above exceed the floor by 7x or are marked parity.",
-    "window2_estimate_error": "The per-run estimate inherited from window2 (timeout 1500 per matrix run) was wrong: window2's first run paid one-time HF snapshot resolution and cold page cache per leg; in windowA the six-leg matrix runs complete in 27-40 s each (16 runs in ~8.5 min). Window time estimates for the lock schedule should use the warm-tree per-run cost, not the cold first run."
+    "window2_estimate_error": "The per-run estimate inherited from window2 (timeout 1500 per matrix run) was wrong: window2's first run paid one-time HF snapshot resolution and cold page cache per leg; in windowA/B the six-leg matrix runs complete in 27-45 s each (16 runs in ~9 min). Window time estimates for the lock schedule should use the warm-tree per-run cost, not the cold first run - our scheduling estimates were wrong in both directions today."
   },
-  "hardware": "jwm1-linux, Apple M1 (G13G B1), kernel 7.1.6-1-1-ARCH aarch64; every GPU access under one top-level flock /tmp/m1-gpu.lock (windowA acquired 09:20:53Z, released 09:36:19Z, 926 s total); quiet-CPU gate before measurement; wall-anchored timing only.",
+  "the_negative": {
+    "claim": "A hand-scheduled 32-independent-chain scalar FMA kernel with register dequant, no shared memory, no barriers, and no cooperative-matrix interface reaches 545.5-545.7 GFLOP/s at the dominant prefill cell (gate_up 1053x9728x896) - roughly HALF the shipped cooperative-matrix kernel (1034.6 on the fork) and a QUARTER of the 2303 GFLOP/s scalar-FMA microbenchmark ceiling (receipts/2026-09-11-fma-ceiling, a zero-traffic probe).",
+    "consequence": "The cooperative-matrix INTERFACE is not the prefill wall on the fork, and neither is the shared-memory round trip it forces: whatever limits the shipped kernel at ~1.03 TFLOP/s also limits a kernel with none of those constraints, at half the rate. The real kernel is bound by operand traffic and register dequant, not by the FMA chains or by any matrix-unit interface.",
+    "driver_insensitivity": "The FMA kernel measures 545.5 (fork) vs 545.6 (stock) vs 545.7 (stock, gated wheel) GFLOP/s - identical to within noise across drivers and builds - while the shipped routes differ wildly between drivers (fork coopmat 1034.6 vs stock tile 275.6-276.9). The scalar path is driver-insensitive here; the entire fork/stock prefill difference lives in the matrix path.",
+    "stock_user_note": "The project's published prefill fractions are fork-driver numbers. A reader on stock Mesa - which has no cooperative matrix at all - sees their own prefill move from 0.20-0.26 of native to 0.36-0.53 on the long/1K Q4 legs and 0.14-0.23 to 0.30-0.49 on BF16, the largest single-leg improvement landed today, with digests pinned per driver as always."
+  },
+  "hardware": "jwm1-linux, Apple M1 (G13G B1), kernel 7.1.6-1-1-ARCH aarch64; every GPU access under one top-level flock /tmp/m1-gpu.lock (windowA 09:20:53-09:36:19Z, windowB 09:49:07-10:11:26Z); quiet-CPU gate before measurement; wall-anchored timing only.",
   "drivers": {
     "fork": "mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1 (Mesa 26.3.0-devel git-6f6afc8968), cooperativeMatrix = true",
     "stock": "Mesa 26.1.7 Honeykrisp via private ICD (stock-icd.json sha256 97bda66cb6dcd7c96479a835746535dbd96563c647d65251da569773ba230a4e), no cooperativeMatrix section",
@@ -88,7 +115,7 @@
   "wheels": {
     "candidate_windowA": "mlx_omarchy-0.32.2.dev202609120833+877c2f1c sha256 449edd5f132506361ed69e202786bdea0d6211d459fcb6da8c536925497342a4 (overlay identical to branch tip 47733a42)",
     "base": "mlx_omarchy-0.32.2.dev202609120737+a0775c37 sha256 467da55fd5affd1ca7157115430ec7bf1c992c3898acfe8c50bfa75745d6b33d",
-    "gated_landing": "wheel from b1805b19 built on jwm1 (~/src/mlx-omarchy-fmaq); windowB re-proves digests and the paired stock delta on this wheel before integration"
+    "gated_landing": "mlx_omarchy-0.32.2.dev202609120944+b1805b19 sha256 7a40416a31f2f6978fa7a766063f609512a8480c4c307a95ee45ef002e43ff45 (built on jwm1 from the landing commit; windowB re-proved 72/72 pins and the paired stock delta on this exact wheel)"
   },
   "notes": {
     "raw_bits_vs_digest": "On fork, FMA-route raw layer outputs differ in low bits from coopmat outputs (probe shas differ) while all six generated-id digests hold across 3 reps x warmup; the digest contract is the generated-id stream, and it holds.",
