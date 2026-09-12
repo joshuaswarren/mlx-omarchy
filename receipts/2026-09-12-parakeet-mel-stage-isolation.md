@@ -111,3 +111,58 @@ ssh macstudio 'cd ~/parakeet-mel-stage && .build/release/mel-stage-capture \
 rsync -a macstudio:~/parakeet-mel-stage/stage-capture/ /tmp/stage-dumps/
 python3 overlay/tools/coreml/mel_stage_compare.py <capture-dir> /tmp/stage-dumps
 ```
+
+## Addendum: libm probes + DFT network probing (2026-09-12, same session)
+
+Published-source check: `apple-oss-distributions/libm` (main) publishes
+`Source/ARM/cosf.s` and `Source/ARM/logf.s` as **0-byte placeholders** —
+the arm64 `cosf`/`logf` algorithms are not open-sourced, and no
+license-usable published implementation of the shipping routines exists.
+
+`mel-stage-capture` gained `--mode probe-cosf|probe-logf|probe-dft`
+(CPU only). Probe data preserved outside git at
+`~/.cache/mlx-omarchy/parakeet-reference/captures/b650695c-75aec2a/mel-stage-probes/`
+(inputs, outputs, analysis scripts, certified stage dumps).
+
+Findings (arithmetic, not per-input tables):
+
+```text
+logf  : float32(log(float64(x))) after a float32 add of the guard —
+        EXACT on all 384128 capture values (the earlier 339-value log
+        divergence was solely the float32 guard add). Wide-range probe
+        (2.38M values incl. 2M synthetic): 15 outliers, outside the
+        capture domain.
+cosf  : Apple arm64 cosf deviates from correctly-rounded
+        float32(cos(float64(x))) on 1.31% of 4.0M probed float32 in
+        [0, 2*pi], always +/-1 ulp; on the 400 exact window arguments,
+        5/400 deviate. Algorithm-specific, not derivable from published
+        source.
+DFT   : vDSP_DFT_zrop output == mathematical DFT exactly (the vDSP x2
+        scale and the code's x0.5 cancel). Impulses at n=0/256 (trivial
+        internal path) reproduce float32-rounded exact roots everywhere;
+        general frames deviate 1-3 ulp — a float32 butterfly network
+        with accurately-rounded twiddles. Tested candidates: radix-2
+        DIT/DIF (bit-reversed, round32-exact per-stage twiddles),
+        two-rounding and single-rounding untangle, FMA/f64-stage
+        kernels. Best: radix-2 DIT + two-rounding untangle = 2799/6682
+        probe values mismatched (ulp-level); radix-2 DIF worse (3095).
+        The 256-point complex core's radix geometry/order is still
+        unidentified.
+```
+
+Next concrete experiment (handoff): identify the vDSP 256-point complex
+core — run single-impulse probes at every complex index c = 0..255
+(frames of 512 with 1.0 at sample 2c and 2c+1), recover each stage's
+effective twiddle multiply from the ulp signature, and test radix-4 /
+split-radix geometries against the preserved probe set; then re-run
+`mel_stage_compare.py`. Window (`cosf`) remains an owner decision;
+logf and the untangle are solved arithmetic; no lock, threshold, or
+tolerance was changed.
+
+Probe commands (macstudio, `~/parakeet-mel-stage`):
+
+```bash
+.build/release/mel-stage-capture --mode probe-cosf --waveform cos_in.f32 --out probe-cosf
+.build/release/mel-stage-capture --mode probe-logf --waveform log_in.f32 --out probe-logf
+.build/release/mel-stage-capture --mode probe-dft  --waveform dft_in.f32 --out probe-dft
+```
