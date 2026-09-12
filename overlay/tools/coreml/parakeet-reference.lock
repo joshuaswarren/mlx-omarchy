@@ -1,0 +1,136 @@
+{
+  "audio": {
+    "duration_seconds": 11.0,
+    "license": "CC-BY-4.0 (LibriSpeech test-clean utterance 1089-134686-0001)",
+    "note": "Real speech: JFK inaugural address excerpt ('And so, my fellow Americans, ask not...'), 44.1 kHz stereo FLAC 24-bit, mirrored verbatim in openai/whisper at pinned commit; loaded by the reference AudioLoader to 16 kHz mono float32 [-1,1].",
+    "sample_rate": 44100,
+    "sha256": "63a4b1e4c1dc655ac70961ffbf518acd249df237e5a0152faae9a4a836949715",
+    "size": 1152693,
+    "url": "https://raw.githubusercontent.com/openai/whisper/86098128c0b4f24f0e2aa2994de830614b474227/tests/jfk.flac"
+  },
+  "files": [
+    {
+      "path": ".gitattributes",
+      "sha256": "11ad7efa24975ee4b0c3c3a38ed18737f0658a5f75a0a96787b576a78a023361",
+      "size": 1519
+    },
+    {
+      "path": "README.md",
+      "sha256": "cb129db9521e751e1925569b5b9f6fd59f038f15721d23dab2c84970db77420e",
+      "size": 8445
+    },
+    {
+      "path": "decoder.mlpackage/Data/com.apple.CoreML/model.mlmodel",
+      "sha256": "8d068618a9fd3a981d6cbc09ae9643a25b2e382f2c3e05d3b9412b9c25a4372e",
+      "size": 12897
+    },
+    {
+      "path": "decoder.mlpackage/Data/com.apple.CoreML/weights/weight.bin",
+      "sha256": "36cd656ebf1105ee5aa85d1e55c00f25669327aef8b39346333a19260ca78018",
+      "size": 24425600
+    },
+    {
+      "path": "decoder.mlpackage/Manifest.json",
+      "sha256": "ef610fe0ccaff752f58f086772207ffb08970e67bf41fd07c923f9e006f8e4ec",
+      "size": 617
+    },
+    {
+      "path": "encoder.mlpackage/Data/com.apple.CoreML/model.mlmodel",
+      "sha256": "2e4e6b54f32029d7b2a69549c2cedf5cd9c6daa8e5274a2b357fc7911747204b",
+      "size": 625663
+    },
+    {
+      "path": "encoder.mlpackage/Data/com.apple.CoreML/weights/weight.bin",
+      "sha256": "23867a834223ee6484d0b7b9b703530e8606546efa8e710535163d51ed9aac04",
+      "size": 444016768
+    },
+    {
+      "path": "encoder.mlpackage/Manifest.json",
+      "sha256": "9fd1153994eb4bdae923626ffc4684c6e0ce547ab393f0d15010c0c3ed14ece7",
+      "size": 617
+    },
+    {
+      "path": "joint.mlpackage/Data/com.apple.CoreML/model.mlmodel",
+      "sha256": "cde4d7c509e8053ec7c90d04368f2d4bb5ad8db87a28b550de80541193100a39",
+      "size": 4025
+    },
+    {
+      "path": "joint.mlpackage/Data/com.apple.CoreML/weights/weight.bin",
+      "sha256": "d83381f8a19ac296033554a7cfec355063b8f3225129cb8bed013c92f6ab141f",
+      "size": 10510028
+    },
+    {
+      "path": "joint.mlpackage/Manifest.json",
+      "sha256": "977190c2261e2040f081fd0669fa3da7c4089c7d3f04c04a3c2b25e63f77f45c",
+      "size": 617
+    },
+    {
+      "path": "tokenizer.json",
+      "sha256": "bd321b096832a3f270bd3b2a88823957920f1a5c5ada71114a26ea729d0cbe91",
+      "size": 1159960
+    }
+  ],
+  "macos_reference_environment": {
+    "chip": "Apple M1 Ultra (Mac13,2)",
+    "compute_units": "cpuAndNeuralEngine (ParakeetComputeUnits.ane)",
+    "coreml_framework_version": "3520.5.1",
+    "coremltools_version": "9.0 (converter toolchain recorded in package spec metadata)",
+    "macos_release": "macOS 26.6.2 (25G83)",
+    "parakeet_coreml_swift_commit": "75aec2a1c991319657ff4dec5f602c12da6c5012",
+    "swift_toolchain": "Apple Swift 6.3.3 (swiftlang-6.3.3.1.3 clang-2100.1.1.101)"
+  },
+  "macos_reference_paths": {
+    "crosscheck.json": "7fbbe500b0d51046befb001ca4dae801ef4be0a48fe664d1bfb8b0270aa32b92",
+    "encoder_hidden.npy": "033afc6723c8d38927a8a803ab3f1dba2a9d1815a65deaac0002b223b315d0f5",
+    "encoder_input_features.npy": "c5e3fe3facb01d0c62d16869854e21c1913d2658546252676463f746c5823829",
+    "encoder_input_mask.npy": "c780ba913d904568f82acc0e32e504819b6a2fa14ae11f6a6b6c374064d70a5a",
+    "encoder_mask.npy": "39421ec62b400096f0cf09aab6ec1e64c66c584f95e218701b0dce076565a521",
+    "environment.json": "a05f5080e4bf50701cce97b49b450593720ae1444e31e3940a0932ba5b3583d7",
+    "mel.npy": "8d278672e1678115040594c293ca0834e29a4d7fbbc4f46b453d71ea69d13836",
+    "mel_mask.npy": "268ca8090e08c716062f36e2f01e41b54dadba939b71c8b199a3c33ad063d875",
+    "token_ids.json": "7ddf2ec5b2c4c791c6fb1a8c583a8d30d62468d49a3fe3547c9aeece0dbf43aa",
+    "transcript.txt": "8c5b77a6658311e2b5a8f8a9abbbebf2f8dedb80909a7e4fee93036654f352e8",
+    "waveform.npy": "a85e2aed49aefa92b77905ca04ceecb2975f40374348d96e8b672571370b7bbd"
+  },
+  "mel": {
+    "epsilon": 1e-05,
+    "hop_length": 160,
+    "log_guard": 5.960464477539063e-08,
+    "n_fft": 512,
+    "n_mels": 128,
+    "preemphasis": 0.97,
+    "sample_rate": 16000,
+    "win_length": 400
+  },
+  "model_license": "CC-BY-4.0 (inherits nvidia/parakeet-tdt-0.6b-v3)",
+  "model_quantization": "fp16 compute precision; encoder 4-bit palettized (kmeans, per-grouped-channel, conv excluded); decoder/joint fp16",
+  "model_repo": "mweinbach1/parakeet-tdt-0.6b-v3-coreml",
+  "model_revision": "b650695c2322ee5281dff48d7345b2f3a58ff018",
+  "numerical_contract": {
+    "derived_from": "Measured cross-compute-plan divergence of encoder_hidden [1,375,640] fp32 on Apple M1 Ultra / macOS 26.6.2 (25G83), CoreML 3520.5.1, pinned revision b650695c: ANE-vs-GPU max_abs=0.1148 mean_abs=0.00707 rel_l2=0.0386; ANE-vs-CPU max_abs=0.1313 mean_abs=0.00855 rel_l2=0.0471. Frozen bounds = 2x measured worst, rounded up. Waveform, mel, padded encoder inputs and encoder_mask bit-identical across compute plans; token/duration/frame sequences and transcript exactly identical across ANE/GPU/CPU; 0 NaN/Inf. Golden capture: 20260912T135844Z-ane.",
+    "encoder_max_abs_err": 0.3,
+    "encoder_mean_abs_err": 0.02,
+    "encoder_rel_l2_err": 0.1,
+    "inf_count_allowed": 0,
+    "joint_duration_logit_max_abs_err": null,
+    "joint_token_logit_max_abs_err": null,
+    "nan_count_allowed": 0,
+    "token_ids_must_match_exactly": true,
+    "transcript_must_match_exactly": true
+  },
+  "reference_commit": "75aec2a1c991319657ff4dec5f602c12da6c5012",
+  "reference_repo": "mweinbach/parakeet-coreml-swift",
+  "schema_version": 1,
+  "tdt": {
+    "blank_token_id": 8192,
+    "durations": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "max_symbols_per_step": 10,
+    "vocab_size": 8193
+  }
+}
