@@ -134,9 +134,13 @@ class VulkanAllocator : public allocator::Allocator {
 
   void destroy_buffer(VulkanBuffer* buf);
   // Resolve a memory type with the required flags, preferring types backed by
-  // a device-local heap (unified memory on Apple GPUs).
-  uint32_t find_memory_type(uint32_t type_bits, VkMemoryPropertyFlags required)
-      const;
+  // a device-local heap (unified memory on Apple GPUs). Types carrying any
+  // flag in |excluded| are skipped (used to select the coherent type
+  // without HOST_CACHED for the big-uncached experiment).
+  uint32_t find_memory_type(
+      uint32_t type_bits,
+      VkMemoryPropertyFlags required,
+      VkMemoryPropertyFlags excluded = 0) const;
 
   mutable std::mutex mutex_;
   size_t memory_limit_;
