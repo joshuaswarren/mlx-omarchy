@@ -12,8 +12,8 @@
   "30ffef135e0": "conservative rewrite: AGX_NUM_SLOTS=2 (1-bit IR field, _Static_assert pinned), sum-carry at else arrivals with overflow drain, pop_exec-lazy region close, per-instruction wait_mask",
   "93a3bcf78f0": "guard entry print for bare test contexts (no codegen change)",
   "29020ee569c": "restore exit-block drain skip (rewrite had regressed it: pointless end-of-shader waits)",
-  "14eb6778a69": "final qualified driver commit (host gtests green here; test-file fix on top of 29020ee)",
-  "f11106ddfb0": "host capacity/hazard gtests (superseded by 14eb6778a69 for the run)"
+  "14eb6778a69": "final qualified driver commit (host gtests green here)",
+  "f11106ddfb0": "host capacity/hazard gtests introduced"
  },
  "root_causes": [
   "eager merge resolution against unvisited blocks (the named inert cause); deeper: AGX if/else guards are fallthrough shapes with no jump to resolve a merge from - regions now close lazily on a pop_exec-predecessor (emit_if appends pop_exec after every region's last else-arm block)",
@@ -22,7 +22,7 @@
  ],
  "firing_proof": {
   "instrumentation": "temporary unconditional prints: pass entry, per-site ACCEPT/reject-with-reason, else-arrival, close, carry, drain, overflow-drain",
-  "patched_driver_commit": "30ffef135e0 (ISA) and 14eb6778a69 (final; kernel ISA identical - exit-drain fix touches only the shader end)",
+  "patched_driver_commit": "30ffef135e0 (kernel ISA identical at 14eb6778a69 - the exit-drain fix touches only the shader end)",
   "all_shaders": {"agxwaits_lines": 469, "accept": 75, "else_arrivals": 75, "close": 75, "folds": 0, "overflow_drains": 4},
   "coopmat_kernel_log": "logs/waits-firing-coopmat-kernel.log",
   "full_dump": "logs/full-dump-patched-30ffef.log.gz"
@@ -60,6 +60,11 @@
    "nature": "real kernel dispatch (5 warmup + 6 timed + 1 digest eval) on driver qualified only by reviewer static analysis at that point; digest held",
    "result": {"median_ms": 17.2814, "gflops": 1062.2, "f16_digest": "5179630cd4a7c3f9"},
    "caveat": "single unpaired run in a different window from the stock reference (17.5371 ms / 1046.7 GFLOP/s) - continuity only, not a performance claim"
+  },
+  {
+   "commit": "14eb6778a69",
+   "time_utc": "2026-09-12T13:40:16Z",
+   "nature": "host gtests green, then ISA re-dump at the final commit under the window lock; digest held (17.2878 ms, 1061.8 GFLOP/s single run)"
   }
  ],
  "safety_model": {
@@ -70,9 +75,9 @@
   "still_draining": "real branches, loop back-edges, barriers"
  },
  "host_tests": {
-  "commit": "f11106ddfb0 (cases) run on 14eb6778a69",
+  "commit": "cases introduced at f11106ddfb0, run green on 14eb6778a69",
   "cases": ["RawHazardWaitsAtUse", "SlotCapacityWaitsBeforeIssue", "DivergentWawWaitsInElseArm", "MergeReaderSeesCarriedPending"],
-  "result": "PASS 4/4, gtest rc=0, 2026-09-12T13:39Z on jwm1 CPU"
+  "result": "PASS 4/4, gtest rc=0, 2026-09-12T13:39Z on jwm1 CPU; also found and fixed the exit-block drain regression in the pass"
  },
  "qualification": {
   "plan": "conditionally approved by root: control digest gates first, then interleaved base/patched kernel probe 3 rounds, then interleaved bench_matrix (discarded warmup per driver + 3 rounds) on the unchanged a2e38c3 wheel with committed pins; any digest movement is a rejection, no re-pins",
@@ -83,11 +88,49 @@
     "outcome": "ABORTED - nested-lock failure: the script takes its own flock on the same path, so the outer wrapper deadlocked it; root terminated the inner waiter; script exited FATAL lock wait exceeded with zero measurements. No qualification run, no GPU results."
    },
    {
-    "invocation": "bg_33 2026-09-12T13:51Z: `bash /tmp/wb_window.sh` (ssh, no wrapping flock - script is sole lock owner), queues behind the staging-attribution build holding the lock",
-    "outcome": "PENDING"
+    "invocation": "bg_33 2026-09-12T13:51:17Z: `bash /tmp/wb_window.sh` (ssh, no wrapping flock - script is sole lock owner); queued behind the staging-attribution build, lock acquired 13:59:16Z after the quiet gate, released 14:04:06Z",
+    "outcome": "COMPLETE, exit clean, 290 s inside the lock"
    }
   ],
-  "result": "PENDING"
+  "provenance": {
+   "driver_patched_commit": "14eb6778a69",
+   "driver_base_commit": "6f6afc89684",
+   "wheel": "mlx_omarchy-0.32.2.dev202609121038+a2e38c3 (sha256 99664e11d51cd1ab375645992f971a2ea3c902c5d6e4ab2b22682d4b5b84fbe2, unchanged between arms)",
+   "package_fork": "mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1 (system package untouched; arms selected by ICD JSONs, sha256s in qual/provenance.txt)",
+   "kernel": "7.1.6-1-1-ARCH aarch64",
+   "quiet_gate": "passed, 3 checks load < 1.0"
+  },
+  "control_gates": {
+   "base_dominant_digest": "5179630cd4a7c3f9",
+   "patched_dominant_digest": "5179630cd4a7c3f9",
+   "pin": "5179630cd4a7c3f9",
+   "passed": true
+  },
+  "digests": {
+   "canonical_cells": "36/36 held (6 legs x 3 reps x 2 drivers, committed fork pins asserted per run)",
+   "probe_shapes": "digests identical between drivers on all 8 shapes, all reps",
+   "skipped_legs": "qwen25-7b/14b legs are skipped in this environment (model weights absent, both drivers alike) - environment limitation, not a digest failure"
+  },
+  "performance": {
+   "protocol": "paired interleaved, same wheel, same window, medians of 3",
+   "kernel_probe_gflops": {
+    "1053x896x9728_dominant": {"base": 1039.4, "patched": 1036.4, "delta_pct_ms": 0.29},
+    "262x896x128": {"base": 139.1, "patched": 109.6, "delta_pct_ms": 26.9},
+    "1053x896x128": {"base": 480.5, "patched": 460.2, "delta_pct_ms": 4.4},
+    "262x896x896": {"base": 569.6, "patched": 577.0, "delta_pct_ms": -1.3},
+    "1053x896x896": {"base": 891.4, "patched": 874.8, "delta_pct_ms": 1.9},
+    "262x4864x896": {"base": 840.8, "patched": 837.1, "delta_pct_ms": 0.4},
+    "1053x4864x896": {"base": 980.1, "patched": 978.6, "delta_pct_ms": 0.2},
+    "262x896x9728": {"base": 903.1, "patched": 894.1, "delta_pct_ms": 1.0}
+   },
+   "model_prefill_fractions": {
+    "q4": {"patched": [1.123, 0.7944, 0.6047], "base": [1.1285, 0.795, 0.6038]},
+    "bf16": {"patched": [0.5626, 0.5802, 0.4085], "base": [0.5744, 0.5823, 0.4097]}
+   },
+   "model_decode_fractions": "unchanged within 0.3 pt on all six legs",
+   "verdict": "NO KERNEL MOVE: every large shape is inside the ~5% session noise floor; one work-starved small shape regressed 26.9% (139.1 -> 109.6 GFLOP/s). Removing the exec-mask drain serialization does not recover the staged-load latency - corroborates the de-divergence finding that the staging cost is not the load->wait serialization."
+  },
+  "decision": "NOT LANDED as a performance change. The branch keeps the correctness fixes (per-instruction wait_mask scoping, exit-block drain skip restored, 2-slot field discipline with static assert, conservative carry) and the full negative-result evidence. The shipping branch (honeykrisp-omarchy) never contained 84fcd220de1 and needs nothing reverted."
  },
- "status": "PASS FIRES + ISA MOVED + DIGEST HELD; host tests running; paired qualification gated on host results"
+ "status": "COMPLETE: pass fires (log committed), ISA moved (749->699 instrs, 32->19 waits), digests 36/36 held, paired qualification shows no kernel improvement - the serialization is not the dominant staging cost. Negative result recorded per the assignment's evidence route."
 }

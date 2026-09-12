@@ -1,0 +1,491 @@
+AGXWAITS: enter shader=empty FS blocks=1
+AGXWAITS: blk0 carry
+AGXWAITS: enter shader=(unnamed) blocks=17
+AGXWAITS: blk1 ACCEPT frame=0 else=3
+AGXWAITS: blk1 carry
+AGXWAITS: blk3 else-arrival frame=0
+AGXWAITS: blk3 carry
+AGXWAITS: blk4 close frame=0
+AGXWAITS: blk4 reject target=NULL
+AGXWAITS: blk5 ACCEPT frame=0 else=7
+AGXWAITS: blk5 carry
+AGXWAITS: blk7 else-arrival frame=0
+AGXWAITS: blk7 carry
+AGXWAITS: blk8 close frame=0
+AGXWAITS: blk8 ACCEPT frame=0 else=10
+AGXWAITS: blk8 carry
+AGXWAITS: blk10 else-arrival frame=0
+AGXWAITS: blk10 carry
+AGXWAITS: blk11 close frame=0
+AGXWAITS: blk12 ACCEPT frame=0 else=14
+AGXWAITS: blk12 carry
+AGXWAITS: blk13 drain slots=1
+AGXWAITS: blk14 else-arrival frame=0
+AGXWAITS: blk14 carry
+AGXWAITS: blk15 close frame=0
+AGXWAITS: blk15 drain slots=1
+AGXWAITS: blk16 carry
+AGXWAITS: enter shader=(unnamed) blocks=1
+AGXWAITS: blk0 carry
+AGXWAITS: enter shader=(unnamed) blocks=9
+AGXWAITS: blk1 ACCEPT frame=0 else=3
+AGXWAITS: blk1 carry
+AGXWAITS: blk3 else-arrival frame=0
+AGXWAITS: blk3 carry
+AGXWAITS: blk4 close frame=0
+AGXWAITS: blk4 ACCEPT frame=0 else=6
+AGXWAITS: blk4 carry
+AGXWAITS: blk5 drain slots=1
+AGXWAITS: blk6 else-arrival frame=0
+AGXWAITS: blk6 carry
+AGXWAITS: blk7 close frame=0
+AGXWAITS: blk7 drain slots=1
+AGXWAITS: blk8 carry
+AGXWAITS: enter shader=(unnamed) blocks=1
+AGXWAITS: blk0 carry
+AGXWAITS: enter shader=(unnamed) blocks=79
+AGXWAITS: blk1 ACCEPT frame=0 else=3
+AGXWAITS: blk1 carry
+AGXWAITS: blk3 else-arrival frame=0
+AGXWAITS: blk3 carry
+AGXWAITS: blk4 close frame=0
+AGXWAITS: blk4 ACCEPT frame=0 else=6
+AGXWAITS: blk4 carry
+AGXWAITS: blk5 carry
+AGXWAITS: blk6 else-arrival frame=0
+AGXWAITS: blk6 reject target=NULL
+AGXWAITS: blk7 ACCEPT frame=1 else=9
+AGXWAITS: blk7 carry
+AGXWAITS: blk9 else-arrival frame=1
+AGXWAITS: blk9 carry
+AGXWAITS: blk10 close frame=1
+AGXWAITS: blk10 close frame=0
+AGXWAITS: blk10 ACCEPT frame=0 else=12
+AGXWAITS: blk10 carry
+AGXWAITS: blk11 carry
+AGXWAITS: blk12 else-arrival frame=0
+AGXWAITS: blk12 carry
+AGXWAITS: blk13 close frame=0
+AGXWAITS: blk13 ACCEPT frame=0 else=15
+AGXWAITS: blk13 carry
+AGXWAITS: blk14 carry
+AGXWAITS: blk15 else-arrival frame=0
+AGXWAITS: blk15 carry
+AGXWAITS: blk16 close frame=0
+AGXWAITS: blk16 ACCEPT frame=0 else=18
+AGXWAITS: blk16 carry
+AGXWAITS: blk17 carry
+AGXWAITS: blk18 else-arrival frame=0
+AGXWAITS: blk18 carry
+AGXWAITS: blk19 close frame=0
+AGXWAITS: blk19 ACCEPT frame=0 else=21
+AGXWAITS: blk19 carry
+AGXWAITS: blk20 carry
+AGXWAITS: blk21 else-arrival frame=0
+AGXWAITS: blk21 carry
+AGXWAITS: blk22 close frame=0
+AGXWAITS: blk24 ACCEPT frame=0 else=26
+AGXWAITS: blk24 carry
+AGXWAITS: blk25 drain slots=2
+AGXWAITS: blk26 else-arrival frame=0
+AGXWAITS: blk26 carry
+AGXWAITS: blk27 close frame=0
+AGXWAITS: blk27 ACCEPT frame=0 else=32
+AGXWAITS: blk27 carry
+AGXWAITS: blk28 ACCEPT frame=1 else=30
+AGXWAITS: blk28 carry
+AGXWAITS: blk29 carry
+AGXWAITS: blk30 else-arrival frame=1
+AGXWAITS: blk30 carry
+AGXWAITS: blk31 close frame=1
+AGXWAITS: blk31 carry
+AGXWAITS: blk32 else-arrival frame=0
+AGXWAITS: blk32 carry
+AGXWAITS: blk33 close frame=0
+AGXWAITS: blk33 ACCEPT frame=0 else=38
+AGXWAITS: blk33 carry
+AGXWAITS: blk34 ACCEPT frame=1 else=36
+AGXWAITS: blk34 carry
+AGXWAITS: blk35 carry
+AGXWAITS: blk36 else-arrival frame=1
+AGXWAITS: blk36 carry
+AGXWAITS: blk37 close frame=1
+AGXWAITS: blk37 carry
+AGXWAITS: blk38 else-arrival frame=0
+AGXWAITS: blk38 carry
+AGXWAITS: blk39 close frame=0
+AGXWAITS: blk39 ACCEPT frame=0 else=47
+AGXWAITS: blk39 carry
+AGXWAITS: blk40 ACCEPT frame=1 else=42
+AGXWAITS: blk40 carry
+AGXWAITS: blk41 carry
+AGXWAITS: blk42 else-arrival frame=1
+AGXWAITS: blk42 carry
+AGXWAITS: blk43 close frame=1
+AGXWAITS: blk43 ACCEPT frame=1 else=45
+AGXWAITS: blk43 carry
+AGXWAITS: blk44 carry
+AGXWAITS: blk45 else-arrival frame=1
+AGXWAITS: blk45 carry
+AGXWAITS: blk46 close frame=1
+AGXWAITS: blk46 carry
+AGXWAITS: blk47 else-arrival frame=0
+AGXWAITS: blk47 carry
+AGXWAITS: blk48 close frame=0
+AGXWAITS: blk48 ACCEPT frame=0 else=73
+AGXWAITS: blk48 carry
+AGXWAITS: blk49 ACCEPT frame=1 else=71
+AGXWAITS: blk49 carry
+AGXWAITS: blk50 ACCEPT frame=2 else=69
+AGXWAITS: blk50 carry
+AGXWAITS: blk51 ACCEPT frame=3 else=53
+AGXWAITS: blk51 carry
+AGXWAITS: blk52 carry
+AGXWAITS: blk53 else-arrival frame=3
+AGXWAITS: blk53 ACCEPT frame=4 else=55
+AGXWAITS: blk53 carry
+AGXWAITS: blk54 carry
+AGXWAITS: blk55 else-arrival frame=4
+AGXWAITS: blk55 ACCEPT frame=5 else=65
+AGXWAITS: blk55 carry
+AGXWAITS: blk56 ACCEPT frame=6 else=63
+AGXWAITS: blk56 carry
+AGXWAITS: blk57 reject target=NULL
+AGXWAITS: blk58 ACCEPT frame=7 else=60
+AGXWAITS: blk58 carry
+AGXWAITS: blk60 else-arrival frame=7
+AGXWAITS: blk60 carry
+AGXWAITS: blk61 close frame=7
+AGXWAITS: blk61 carry
+AGXWAITS: blk62 carry
+AGXWAITS: blk63 else-arrival frame=6
+AGXWAITS: blk63 carry
+AGXWAITS: blk64 close frame=6
+AGXWAITS: blk64 carry
+AGXWAITS: blk65 else-arrival frame=5
+AGXWAITS: blk65 carry
+AGXWAITS: blk66 close frame=5
+AGXWAITS: blk66 close frame=4
+AGXWAITS: blk66 close frame=3
+AGXWAITS: blk66 carry
+AGXWAITS: blk67 carry
+AGXWAITS: blk68 carry
+AGXWAITS: blk69 else-arrival frame=2
+AGXWAITS: blk69 carry
+AGXWAITS: blk70 close frame=2
+AGXWAITS: blk70 carry
+AGXWAITS: blk71 else-arrival frame=1
+AGXWAITS: blk71 carry
+AGXWAITS: blk72 close frame=1
+AGXWAITS: blk72 carry
+AGXWAITS: blk73 else-arrival frame=0
+AGXWAITS: blk73 carry
+AGXWAITS: blk74 close frame=0
+AGXWAITS: blk74 ACCEPT frame=0 else=76
+AGXWAITS: blk74 carry
+AGXWAITS: blk75 drain slots=1
+AGXWAITS: blk76 else-arrival frame=0
+AGXWAITS: blk76 carry
+AGXWAITS: blk77 close frame=0
+AGXWAITS: blk77 drain slots=1
+AGXWAITS: blk78 carry
+AGXWAITS: enter shader=(unnamed) blocks=1
+AGXWAITS: blk0 carry
+AGXWAITS: enter shader=(unnamed) blocks=39
+AGXWAITS: blk1 ACCEPT frame=0 else=3
+AGXWAITS: blk1 carry
+AGXWAITS: blk3 else-arrival frame=0
+AGXWAITS: blk3 carry
+AGXWAITS: blk4 close frame=0
+AGXWAITS: blk4 reject target=NULL
+AGXWAITS: blk5 ACCEPT frame=0 else=7
+AGXWAITS: blk5 carry
+AGXWAITS: blk7 else-arrival frame=0
+AGXWAITS: blk7 carry
+AGXWAITS: blk8 close frame=0
+AGXWAITS: blk9 ACCEPT frame=0 else=26
+AGXWAITS: blk9 carry
+AGXWAITS: blk10 reject target=NULL
+AGXWAITS: blk10 drain slots=2
+AGXWAITS: blk11 ACCEPT frame=1 else=13
+AGXWAITS: blk11 carry
+AGXWAITS: blk13 else-arrival frame=1
+AGXWAITS: blk13 carry
+AGXWAITS: blk14 close frame=1
+AGXWAITS: blk14 reject target=NULL
+AGXWAITS: blk15 ACCEPT frame=1 else=17
+AGXWAITS: blk15 carry
+AGXWAITS: blk17 else-arrival frame=1
+AGXWAITS: blk17 carry
+AGXWAITS: blk18 close frame=1
+AGXWAITS: blk18 carry
+AGXWAITS: blk19 reject target=NULL
+AGXWAITS: blk20 ACCEPT frame=1 else=22
+AGXWAITS: blk20 carry
+AGXWAITS: blk22 else-arrival frame=1
+AGXWAITS: blk22 carry
+AGXWAITS: blk23 close frame=1
+AGXWAITS: blk23 carry
+AGXWAITS: blk24 carry
+AGXWAITS: blk25 carry
+AGXWAITS: blk26 else-arrival frame=0
+AGXWAITS: blk26 reject target=NULL
+AGXWAITS: blk26 drain slots=2
+AGXWAITS: blk27 ACCEPT frame=1 else=29
+AGXWAITS: blk27 carry
+AGXWAITS: blk29 else-arrival frame=1
+AGXWAITS: blk29 carry
+AGXWAITS: blk30 close frame=1
+AGXWAITS: blk30 close frame=0
+AGXWAITS: blk30 reject target=NULL
+AGXWAITS: blk31 ACCEPT frame=0 else=33
+AGXWAITS: blk31 carry
+AGXWAITS: blk33 else-arrival frame=0
+AGXWAITS: blk33 carry
+AGXWAITS: blk34 close frame=0
+AGXWAITS: blk35 drain slots=1
+AGXWAITS: blk38 carry
+AGXWAITS: enter shader=(unnamed) blocks=1
+AGXWAITS: blk0 carry
+AGXWAITS: enter shader=(unnamed) blocks=9
+AGXWAITS: blk1 ACCEPT frame=0 else=3
+AGXWAITS: blk1 carry
+AGXWAITS: blk3 else-arrival frame=0
+AGXWAITS: blk3 carry
+AGXWAITS: blk4 close frame=0
+AGXWAITS: blk4 ACCEPT frame=0 else=6
+AGXWAITS: blk4 carry
+AGXWAITS: blk5 drain slots=1
+AGXWAITS: blk6 else-arrival frame=0
+AGXWAITS: blk6 carry
+AGXWAITS: blk7 close frame=0
+AGXWAITS: blk7 drain slots=1
+AGXWAITS: blk8 carry
+AGXWAITS: enter shader=(unnamed) blocks=1
+AGXWAITS: blk0 carry
+AGXWAITS: enter shader=(unnamed) blocks=116
+AGXWAITS: blk1 ACCEPT frame=0 else=3
+AGXWAITS: blk1 carry
+AGXWAITS: blk3 else-arrival frame=0
+AGXWAITS: blk3 carry
+AGXWAITS: blk4 close frame=0
+AGXWAITS: blk4 reject target=NULL
+AGXWAITS: blk5 ACCEPT frame=0 else=7
+AGXWAITS: blk5 carry
+AGXWAITS: blk7 else-arrival frame=0
+AGXWAITS: blk7 carry
+AGXWAITS: blk8 close frame=0
+AGXWAITS: blk8 reject target=NULL
+AGXWAITS: blk9 ACCEPT frame=0 else=11
+AGXWAITS: blk9 carry
+AGXWAITS: blk11 else-arrival frame=0
+AGXWAITS: blk11 carry
+AGXWAITS: blk12 close frame=0
+AGXWAITS: blk12 reject target=NULL
+AGXWAITS: blk13 ACCEPT frame=0 else=15
+AGXWAITS: blk13 carry
+AGXWAITS: blk15 else-arrival frame=0
+AGXWAITS: blk15 carry
+AGXWAITS: blk16 close frame=0
+AGXWAITS: blk16 ACCEPT frame=0 else=18
+AGXWAITS: blk16 carry
+AGXWAITS: blk17 carry
+AGXWAITS: blk18 else-arrival frame=0
+AGXWAITS: blk18 carry
+AGXWAITS: blk19 close frame=0
+AGXWAITS: blk19 reject target=NULL
+AGXWAITS: blk20 ACCEPT frame=0 else=22
+AGXWAITS: blk20 carry
+AGXWAITS: blk22 else-arrival frame=0
+AGXWAITS: blk22 carry
+AGXWAITS: blk23 close frame=0
+AGXWAITS: blk23 ACCEPT frame=0 else=25
+AGXWAITS: blk23 carry
+AGXWAITS: blk24 carry
+AGXWAITS: blk25 else-arrival frame=0
+AGXWAITS: blk25 carry
+AGXWAITS: blk26 close frame=0
+AGXWAITS: blk26 ACCEPT frame=0 else=28
+AGXWAITS: blk26 carry
+AGXWAITS: blk27 carry
+AGXWAITS: blk28 else-arrival frame=0
+AGXWAITS: blk28 carry
+AGXWAITS: blk29 close frame=0
+AGXWAITS: blk29 ACCEPT frame=0 else=31
+AGXWAITS: blk29 carry
+AGXWAITS: blk30 carry
+AGXWAITS: blk31 else-arrival frame=0
+AGXWAITS: blk31 carry
+AGXWAITS: blk32 close frame=0
+AGXWAITS: blk32 ACCEPT frame=0 else=34
+AGXWAITS: blk32 carry
+AGXWAITS: blk33 carry
+AGXWAITS: blk34 else-arrival frame=0
+AGXWAITS: blk34 carry
+AGXWAITS: blk35 close frame=0
+AGXWAITS: blk35 ACCEPT frame=0 else=37
+AGXWAITS: blk35 carry
+AGXWAITS: blk36 carry
+AGXWAITS: blk37 else-arrival frame=0
+AGXWAITS: blk37 carry
+AGXWAITS: blk38 close frame=0
+AGXWAITS: blk40 ACCEPT frame=0 else=42
+AGXWAITS: blk40 carry
+AGXWAITS: blk41 carry
+AGXWAITS: blk42 else-arrival frame=0
+AGXWAITS: blk42 carry
+AGXWAITS: blk43 close frame=0
+AGXWAITS: blk43 ACCEPT frame=0 else=57
+AGXWAITS: blk43 carry
+AGXWAITS: blk44 ACCEPT frame=1 else=46
+AGXWAITS: blk44 carry
+AGXWAITS: blk45 carry
+AGXWAITS: blk46 else-arrival frame=1
+AGXWAITS: blk46 carry
+AGXWAITS: blk47 close frame=1
+AGXWAITS: blk47 ACCEPT frame=1 else=49
+AGXWAITS: blk47 carry
+AGXWAITS: blk48 carry
+AGXWAITS: blk49 else-arrival frame=1
+AGXWAITS: blk49 carry
+AGXWAITS: blk50 close frame=1
+AGXWAITS: blk50 ACCEPT frame=1 else=52
+AGXWAITS: blk50 carry
+AGXWAITS: blk51 carry
+AGXWAITS: blk52 else-arrival frame=1
+AGXWAITS: blk52 carry
+AGXWAITS: blk53 close frame=1
+AGXWAITS: blk53 ACCEPT frame=1 else=55
+AGXWAITS: blk53 carry
+AGXWAITS: blk54 carry
+AGXWAITS: blk55 else-arrival frame=1
+AGXWAITS: blk55 overflow-drain mask=1
+AGXWAITS: blk55 carry
+AGXWAITS: blk56 close frame=1
+AGXWAITS: blk56 carry
+AGXWAITS: blk57 else-arrival frame=0
+AGXWAITS: blk57 carry
+AGXWAITS: blk58 close frame=0
+AGXWAITS: blk58 ACCEPT frame=0 else=60
+AGXWAITS: blk58 carry
+AGXWAITS: blk59 carry
+AGXWAITS: blk60 else-arrival frame=0
+AGXWAITS: blk60 carry
+AGXWAITS: blk61 close frame=0
+AGXWAITS: blk61 ACCEPT frame=0 else=75
+AGXWAITS: blk61 carry
+AGXWAITS: blk62 ACCEPT frame=1 else=64
+AGXWAITS: blk62 carry
+AGXWAITS: blk63 carry
+AGXWAITS: blk64 else-arrival frame=1
+AGXWAITS: blk64 carry
+AGXWAITS: blk65 close frame=1
+AGXWAITS: blk65 ACCEPT frame=1 else=67
+AGXWAITS: blk65 carry
+AGXWAITS: blk66 carry
+AGXWAITS: blk67 else-arrival frame=1
+AGXWAITS: blk67 carry
+AGXWAITS: blk68 close frame=1
+AGXWAITS: blk68 ACCEPT frame=1 else=70
+AGXWAITS: blk68 carry
+AGXWAITS: blk69 carry
+AGXWAITS: blk70 else-arrival frame=1
+AGXWAITS: blk70 carry
+AGXWAITS: blk71 close frame=1
+AGXWAITS: blk71 ACCEPT frame=1 else=73
+AGXWAITS: blk71 carry
+AGXWAITS: blk72 carry
+AGXWAITS: blk73 else-arrival frame=1
+AGXWAITS: blk73 overflow-drain mask=1
+AGXWAITS: blk73 carry
+AGXWAITS: blk74 close frame=1
+AGXWAITS: blk74 carry
+AGXWAITS: blk75 else-arrival frame=0
+AGXWAITS: blk75 carry
+AGXWAITS: blk76 close frame=0
+AGXWAITS: blk76 ACCEPT frame=0 else=78
+AGXWAITS: blk76 carry
+AGXWAITS: blk77 carry
+AGXWAITS: blk78 else-arrival frame=0
+AGXWAITS: blk78 carry
+AGXWAITS: blk79 close frame=0
+AGXWAITS: blk79 ACCEPT frame=0 else=93
+AGXWAITS: blk79 carry
+AGXWAITS: blk80 ACCEPT frame=1 else=82
+AGXWAITS: blk80 carry
+AGXWAITS: blk81 carry
+AGXWAITS: blk82 else-arrival frame=1
+AGXWAITS: blk82 carry
+AGXWAITS: blk83 close frame=1
+AGXWAITS: blk83 ACCEPT frame=1 else=85
+AGXWAITS: blk83 carry
+AGXWAITS: blk84 carry
+AGXWAITS: blk85 else-arrival frame=1
+AGXWAITS: blk85 carry
+AGXWAITS: blk86 close frame=1
+AGXWAITS: blk86 ACCEPT frame=1 else=88
+AGXWAITS: blk86 carry
+AGXWAITS: blk87 carry
+AGXWAITS: blk88 else-arrival frame=1
+AGXWAITS: blk88 carry
+AGXWAITS: blk89 close frame=1
+AGXWAITS: blk89 ACCEPT frame=1 else=91
+AGXWAITS: blk89 carry
+AGXWAITS: blk90 carry
+AGXWAITS: blk91 else-arrival frame=1
+AGXWAITS: blk91 overflow-drain mask=1
+AGXWAITS: blk91 carry
+AGXWAITS: blk92 close frame=1
+AGXWAITS: blk92 carry
+AGXWAITS: blk93 else-arrival frame=0
+AGXWAITS: blk93 carry
+AGXWAITS: blk94 close frame=0
+AGXWAITS: blk94 ACCEPT frame=0 else=96
+AGXWAITS: blk94 carry
+AGXWAITS: blk95 carry
+AGXWAITS: blk96 else-arrival frame=0
+AGXWAITS: blk96 carry
+AGXWAITS: blk97 close frame=0
+AGXWAITS: blk97 ACCEPT frame=0 else=111
+AGXWAITS: blk97 carry
+AGXWAITS: blk98 ACCEPT frame=1 else=100
+AGXWAITS: blk98 carry
+AGXWAITS: blk99 carry
+AGXWAITS: blk100 else-arrival frame=1
+AGXWAITS: blk100 carry
+AGXWAITS: blk101 close frame=1
+AGXWAITS: blk101 ACCEPT frame=1 else=103
+AGXWAITS: blk101 carry
+AGXWAITS: blk102 carry
+AGXWAITS: blk103 else-arrival frame=1
+AGXWAITS: blk103 carry
+AGXWAITS: blk104 close frame=1
+AGXWAITS: blk104 ACCEPT frame=1 else=106
+AGXWAITS: blk104 carry
+AGXWAITS: blk105 carry
+AGXWAITS: blk106 else-arrival frame=1
+AGXWAITS: blk106 carry
+AGXWAITS: blk107 close frame=1
+AGXWAITS: blk107 ACCEPT frame=1 else=109
+AGXWAITS: blk107 carry
+AGXWAITS: blk108 carry
+AGXWAITS: blk109 else-arrival frame=1
+AGXWAITS: blk109 overflow-drain mask=1
+AGXWAITS: blk109 carry
+AGXWAITS: blk110 close frame=1
+AGXWAITS: blk110 carry
+AGXWAITS: blk111 else-arrival frame=0
+AGXWAITS: blk111 carry
+AGXWAITS: blk112 close frame=0
+AGXWAITS: blk115 carry
+AGXWAITS: enter shader=(unnamed) blocks=1
+AGXWAITS: blk0 carry
+{"arm": 0, "shape": "262x896x128", "median_ms": 0.7185, "f16_digest": "6a31dc466db80a40", "tflops": 83.6}
+{"arm": 0, "shape": "1053x896x128", "median_ms": 0.5994, "f16_digest": "e9218e07c9c13e5e", "tflops": 403.0}
+{"arm": 0, "shape": "262x896x896", "median_ms": 0.7666, "f16_digest": "5c42552b5320472e", "tflops": 548.7}
+{"arm": 0, "shape": "1053x896x896", "median_ms": 1.9901, "f16_digest": "2df9480de6e511ec", "tflops": 849.6}
+{"arm": 0, "shape": "262x4864x896", "median_ms": 3.4306, "f16_digest": "ecd08c8841ecd105", "tflops": 665.7}
+{"arm": 0, "shape": "1053x4864x896", "median_ms": 9.3663, "f16_digest": "3e79733f76ed9d37", "tflops": 979.9}
+{"arm": 0, "shape": "262x896x9728", "median_ms": 5.088, "f16_digest": "4e29e2dbdf33b57b", "tflops": 897.7}
+{"arm": 0, "shape": "1053x896x9728", "median_ms": 17.7976, "f16_digest": "5179630cd4a7c3f9", "tflops": 1031.4}
+PROBE-DONE

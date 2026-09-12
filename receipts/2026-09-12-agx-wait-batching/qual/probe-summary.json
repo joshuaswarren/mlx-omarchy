@@ -1,0 +1,138 @@
+{
+ "262x896x128": {
+  "base": {
+   "median_ms": 0.432,
+   "median_tflops": 139.1,
+   "digests": [
+    "6a31dc466db80a40"
+   ]
+  },
+  "patched": {
+   "median_ms": 0.5484,
+   "median_tflops": 109.6,
+   "digests": [
+    "6a31dc466db80a40"
+   ]
+  },
+  "delta_pct_ms": 26.94
+ },
+ "1053x896x128": {
+  "base": {
+   "median_ms": 0.5027,
+   "median_tflops": 480.5,
+   "digests": [
+    "e9218e07c9c13e5e"
+   ]
+  },
+  "patched": {
+   "median_ms": 0.5249,
+   "median_tflops": 460.2,
+   "digests": [
+    "e9218e07c9c13e5e"
+   ]
+  },
+  "delta_pct_ms": 4.42
+ },
+ "262x896x896": {
+  "base": {
+   "median_ms": 0.7386,
+   "median_tflops": 569.6,
+   "digests": [
+    "5c42552b5320472e"
+   ]
+  },
+  "patched": {
+   "median_ms": 0.7291,
+   "median_tflops": 577.0,
+   "digests": [
+    "5c42552b5320472e"
+   ]
+  },
+  "delta_pct_ms": -1.29
+ },
+ "1053x896x896": {
+  "base": {
+   "median_ms": 1.8967,
+   "median_tflops": 891.4,
+   "digests": [
+    "2df9480de6e511ec"
+   ]
+  },
+  "patched": {
+   "median_ms": 1.9327,
+   "median_tflops": 874.8,
+   "digests": [
+    "2df9480de6e511ec"
+   ]
+  },
+  "delta_pct_ms": 1.9
+ },
+ "262x4864x896": {
+  "base": {
+   "median_ms": 2.716,
+   "median_tflops": 840.8,
+   "digests": [
+    "ecd08c8841ecd105"
+   ]
+  },
+  "patched": {
+   "median_ms": 2.728,
+   "median_tflops": 837.1,
+   "digests": [
+    "ecd08c8841ecd105"
+   ]
+  },
+  "delta_pct_ms": 0.44
+ },
+ "1053x4864x896": {
+  "base": {
+   "median_ms": 9.3644,
+   "median_tflops": 980.1,
+   "digests": [
+    "3e79733f76ed9d37"
+   ]
+  },
+  "patched": {
+   "median_ms": 9.379,
+   "median_tflops": 978.6,
+   "digests": [
+    "3e79733f76ed9d37"
+   ]
+  },
+  "delta_pct_ms": 0.16
+ },
+ "262x896x9728": {
+  "base": {
+   "median_ms": 5.0576,
+   "median_tflops": 903.1,
+   "digests": [
+    "4e29e2dbdf33b57b"
+   ]
+  },
+  "patched": {
+   "median_ms": 5.1084,
+   "median_tflops": 894.1,
+   "digests": [
+    "4e29e2dbdf33b57b"
+   ]
+  },
+  "delta_pct_ms": 1.0
+ },
+ "1053x896x9728": {
+  "base": {
+   "median_ms": 17.66,
+   "median_tflops": 1039.4,
+   "digests": [
+    "5179630cd4a7c3f9"
+   ]
+  },
+  "patched": {
+   "median_ms": 17.7117,
+   "median_tflops": 1036.4,
+   "digests": [
+    "5179630cd4a7c3f9"
+   ]
+  },
+  "delta_pct_ms": 0.29
+ }
+}

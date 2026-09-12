@@ -1,0 +1,11 @@
+driver-patched-commit: 14eb6778a69d7307231f572ec6127cc3d9c5cf95
+driver-base-commit: 6f6afc896844730f6d6c47f12a91145351cb4c28
+icd-base-sha256: 18fa5200a9940d428461284e0bdf2c2199143f74bfbe28a3a98d14c99862a15d
+icd-patched-sha256: 1a0271805462738d007ab9de714f78758cf09f6ca469e59b68e6d030faeba883
+wheel: mlx_omarchy-0.32.2.dev202609121038+a2e38c3-cp314-cp314-linux_aarch64.whl
+wheel-sha256: 99664e11d51cd1ab375645992f971a2ea3c902c5d6e4ab2b22682d4b5b84fbe2
+source-commit: 49325af7ebc84f4aae47d512aee5305dd41688db
+package-fork: mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1
+kernel: 7.1.6-1-1-ARCH
+machine: aarch64 unknown
+window-script-sha256: a289a5ae79b02b44feb3906652ca76fe77e89fe49f02ed10882bf441e98f092d
