@@ -41,7 +41,9 @@ SHAPES = {
 
 
 def digest(a):
-    return hashlib.sha256(np.asarray(a).tobytes()).hexdigest()
+    # bytes(memoryview(...)) keeps bf16/f16 arrays bit-exact; numpy
+    # cannot attach a dtype to bf16 and mis-parses the buffer format.
+    return hashlib.sha256(bytes(memoryview(a))).hexdigest()
 
 
 def timed_median(fn, warmup, timed):
