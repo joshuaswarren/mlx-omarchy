@@ -1,0 +1,128 @@
+{
+ "schema": "mlx-omarchy/agx-qmm-codegen/1",
+ "date": "2026-09-12",
+ "agent": "AgxQmmCodegen",
+ "question": "Why does the shipped cooperative-matrix qmm kernel run at ~1035 GFLOP/s at the dominant prefill cell (gate_up, 1053x896x9728) when the same matrix instruction sustains 2148 GFLOP/s (receipts/2026-09-11-fma-ceiling)? Read the generated AGX machine code, attribute the stall at instruction level, and fix the driver if the cause is there.",
+ "base": {
+  "driver_installed": "mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1 (git-6f6afc8968)",
+  "mesa_fork": "github.com/joshuaswarren/mesa, branch honeykrisp-omarchy @ 6f6afc89684",
+  "kernel": "shaders/qmm_coopmat.comp (shipped, unmodified), compiled by the installed driver",
+  "dump_env": "AGX_SIMDMAT=1 MESA_SHADER_CACHE_DISABLE=true AGX_MESA_DEBUG=shaders",
+  "bench_wheel": "mlx_omarchy-0.32.2.dev202609110924+48ea34dd (bench arm 0 = shipped kernel; wheel kernel identical to default dispatch)"
+ },
+ "baseline_reproduction": {
+  "cell": "1053x896x9728 q4 group-64 transposed, 4 warmups + 6 timed, wall perf_counter",
+  "median_ms": 17.5371,
+  "tflops": 1046.7,
+  "f16_digest": "5179630cd4a7c3f9",
+  "note": "Matches receipts/2026-09-11-coopmat-ilp-chains arm0 (17.5996 ms, 1043.0, same digest) - baseline reproduced on the same day, same driver."
+ },
+ "step_body_accounting": {
+  "unit": "steady-state 16-k step of the k loop, per lane, final packed AGX ISA (not NIR); one step body loops (while $r36<4 per 64-k chunk)",
+  "total_issued_instructions": 229,
+  "matrix_fmadd": {
+   "issued": 16,
+   "required": 16,
+   "verdict": "no issue waste; 2 ksub-steps x (2 A frag x 4 B frag); dependency spacing 8 inside each 8-fmadd burst; ks=1 fragment loads issued mid-burst (already software-pipelined inside the math phase)"
+  },
+  "shared_load_lload": {
+   "count": 24,
+   "form": "scalar 32-bit each; each 8x8 fragment = 2 loads per lane with adjacent 8-byte addresses (r38 and r38+4) - pairable into 12 vector loads"
+  },
+  "shared_store_lstore": {
+   "count": 16,
+   "form": "8 x_s (scalar f32 halves of unpacked f16x2) + 8 w_s (dequant), scalar"
+  },
+  "global_load": {
+   "count": 5,
+   "form": "4 x words + 1 packed w word; each inside its own divergent guard block; each followed by a wait within 2 instructions"
+  },
+  "scoreboard_wait": {
+   "count": 5,
+   "form": "all 5 loads serialized on effectively one scoreboard: load->wait pairs, no overlap between the 4 x-word latencies"
+  },
+  "barrier": {
+   "count": 2,
+   "form": "threadgroup_barrier per step (mandatory: single-buffered staging)"
+  },
+  "integer_address_math": {
+   "count": 107,
+   "breakdown": "65 iadd + 11 and + 10 shr + 8 imadd + 8 bfeil + 5 shl",
+   "note": "~90 of the 107 are recomputed per step from lane-constant values (lid%8, lid/8, x_s/w_s store addresses, the 12 fragment load addresses rebuilt from thread_index_in_simdgroup, w_base) - loop-invariant work NIR CSE/LICM did not lift across the step loop boundary"
+  },
+  "float": {
+   "count": 24,
+   "form": "8 ffma (dequant) + 8 u32_to_f + 8 fadd (f16->f32 widening via fadd x,-0.0)"
+  },
+  "phases": {
+   "staging_0x1a4_0x65e": 179,
+   "math_0x660_0x830": 50
+  },
+  "register_pressure": {
+   "max_reg": "r49 of 256",
+   "distinct_regs": 50,
+   "spill_ops": 0,
+   "accumulators": "r18-r33 (8 fragments x 2 f32) live in registers across the entire k loop including the staging phase - no spill, no reload"
+  }
+ },
+ "stall_attribution": {
+  "cycle_math": "16 matrix ops/step at the measured 14.9 clk/op sustained rate (2148 GFLOP/s) = 240 clk matrix-pipe time per step. Measured 1046 GFLOP/s implies ~494 clk/step, so the matrix pipe idles ~half the step. Issue time of the 229-instruction body (~229 clk at 1/clk) alone cannot explain the gap; the serialized global-load waits and the block-exit drain can.",
+  "primary_cause_driver": "agx_insert_waits_local (src/asahi/compiler/agx_insert_waits.c) used 2 scoreboard slots and drained ALL pending messages at EVERY block exit - including exits that are exec-mask transitions, not real branches. The source batches its 4 x-word loads in a separate loop from the unpack (qmm_coopmat.comp lines 126-143); the driver re-serialized them: each guarded load sits in a then-arm whose block exit inserts a wait before the else. Result: 4 exposed global-memory latencies per step instead of ~1, plus the w-word load similarly drained.",
+  "secondary_cause_driver": "~90 loop-invariant integer address ops recomputed every step (NIR local-only CSE; no cross-block/LICM lifting in the AGX pipeline for these). Bounds the win from wait-fixing alone.",
+  "tertiary": "24 scalar fragment lloads that are pairwise adjacent (vectorizable to 12); minor issue-slot and shared-bandwidth effect.",
+  "not_the_cause": [
+   "matrix issue count (16/16 exact)",
+   "accumulator spilling (zero stack ops)",
+   "register pressure (50/256)",
+   "MulAdd issue order inside bursts (spacing 8, matches fma-ceiling shape)",
+   "barrier count (2/step is the source's single-buffered structure; driver cannot legally merge)"
+  ]
+ },
+ "unified_cause_cross_reference": "Tonight's four negative receipts read as one cause when viewed through the ISA: agx_insert_waits_local's per-block scoreboard draining flattens whatever parallelism the source expresses, unless a data-parallel segment happens to live in a single basic block. (1) receipts/2026-09-11-qmm-coop-datapath: operand-transport restructures (fewer/larger staging chunks) lost because the staging phase they shrank was inflated by the driver's serialized guarded loads - trading shared memory and occupancy for it bought nothing. (2) receipts/2026-09-11-coopmat-ilp-chains: every bit-preserving ILP schedule lost; that receipt named the deficit as the between-burst 'memory segment' plus 16 loop-carried MOVs - this dump resolves that segment into 5 drained loads and ~90 recomputed lane-constant address ops, neither reachable by issue-order changes inside the loop. (3) receipts/2026-09-12-prefill-fma-qualify: a scalar-FMA kernel with NO barriers and NO shared memory still reached only 545 GFLOP/s (a quarter of the scalar ceiling) - removing the barriers cannot remove driver-inserted per-block waits on its global loads; its own verdict's operand-traffic bound is this same serialization seen from the memory side. (4) receipts/2026-09-12-weight-memory-type: +6.0% paired flat-stream read gain from the uncached heap type moved no token (model deltas -1.7 to +1.0%) - the kernels are latency/issue-starved by serialized waits, not bandwidth-starved, so extra memory throughput had nothing to feed. The counter-example proves the mechanism: receipts/2026-09-12-decode-chunked-softmax batched its subgroupAdds/exps inside ONE straight-line block and landed -1.4 to -4.1% decode latency - no guarded loads, no block-exit drains in the segment, source-level ILP survived.",
+ "driver_patch": {
+  "repo": "github.com/joshuaswarren/mesa",
+  "branch": "hk/agx-wait-batching",
+  "commit": "84fcd220de1",
+  "base": "6f6afc89684 (identical to installed package hk6f6afc8)",
+  "change": "agx_insert_waits.c rewritten: scoreboard slots 2->4 (2-bit packed immediate), pending state carried across exec-mask fallthrough edges of divergent if/else regions with merge seeding (union of both arms), waits inserted at first use; only real branches, back-edges and barriers drain. Well-formedness guards fall back to the old conservative per-block drain on any unexpected CFG shape.",
+  "reproducibility": "branch pushed to origin; A/B via explicit ICD JSON files, never an install over the system driver",
+  "icd_base": "~/benchq/qmm-coop-bench/icd-waitbatch-base.json -> ~/src/mesa-wt-waitbatch-base/build/src/asahi/vulkan/libvulkan_asahi.so (6f6afc89684, debugoptimized)",
+  "icd_patched": "~/benchq/qmm-coop-bench/icd-waitbatch-patched.json -> ~/src/mesa-wt-waitbatch/build/src/asahi/vulkan/libvulkan_asahi.so (84fcd220de1, debugoptimized)"
+ },
+ "ab_measurement": {
+  "protocol": "paired interleaved, same stock driver hk6f6afc8, 3 rounds x 8 shapes, wheel 48ea34dd (shipped kernel) vs wheel 8f6de34c (uniform-load shader), 4 warmups + 30 timed medians per run; digests compared per shape",
+  "shader_restructure_result": {
+   "bit_exactness": "PASS - all 8 shapes, 3 rounds, f16 digests identical to shipped kernel",
+   "dominant_cell_1053x896x9728": {
+    "shipped_Gflops": 1038.8,
+    "uniform_Gflops": 865.2,
+    "delta_pct": -20.1
+   },
+   "other_cells": {
+    "262x896x128": "+18.9% (work-starved shape)",
+    "1053x896x128": "+0.4%",
+    "262x896x896": "-5.6%",
+    "1053x896x896": "-13.1%",
+    "262x4864x896": "-25.9%",
+    "1053x4864x896": "-12.7%",
+    "262x896x9728": "-19.4%"
+   },
+   "verdict": "NEGATIVE on the stock driver - not landed. Removing the divergent guards (the drain sites this receipt identified) made the driver's codegen WORSE at every large shape. Suspected mechanism, unverified: the per-tile hoisted arrays (xbase/xmask/xsoff) indexed by a loop variable need loop unrolling to stay in registers; without it they spill to scratch in the hot loop - the same failure mode as the 2026-09-11 forced-unroll receipt. The ISA of the new shader was not dumped before budget close; that dump is the named next step.",
+   "conclusion": "The shader-level fix Main proposed is falsified for this driver: the drain sites are real, but removing them at source level does not recover the serialized latency - the stock scheduler's placement of the straight-line loads is worse. The driver-side fix (making the pass actually fire) remains the only validated route to the headroom."
+  },
+  "driver_patch_status": {
+   "commit": "84fcd220de1 (+ WIP debug commits 8818596cca8, debug2)",
+   "proven_on_target": "NO - the frame detection never fires: zero pushes across every shader (debug print, 263 blocks examined, 88 mask branches, 0 pushes). Root cause found at close: the shape guard resolves end_then via order[else_index-1], but blocks are visited in index order, so the then arm's last block is not yet in the order array when the frame pushes - end_then compares against NULL and every frame fails.",
+   "named_fix": "defer merge resolution to else-arrival (all then-arm blocks are visited by then): capture then_exit, compute merge from order[else_index-1]'s single fallthrough successor, fold then_exit into running and retire the frame if the shape is unexpected. Drop the pointer identity check on term->target in favor of index equality. ~30-line change to the committed pass; NOT yet built or verified.",
+   "evidence_patch_does_something": "4-slot change alone shifted preamble waits (stock 216 total waits vs patched 1966 across all shaders; coopmat kernel 32->38 waits, preamble drains removed) - the pass executes and changes codegen, just never through the intended frame path.",
+   "digest_screen": "deliberately not run - the patch is inert on the target guards; screening a no-op proves nothing (agreed with Main)."
+  }
+ },
+ "digest_screen": {},
+ "artifacts": {
+  "dump_full": "dumps/qmm-coopmat-full-dump.log.gz (NIR + all passes + packed ISA, all shaders of the dispatch)",
+  "dump_kernel": "dumps/coopmat-kernel-dump.txt.gz (the 64-lane coopmat kernel section only)",
+  "isa_final": "dumps/coopmat-kernel-final-isa.txt.gz (final packed disassembly)"
+ },
+ "status": "ANALYSIS COMPLETE + DRIVER PATCH ROOT-CAUSED INERT + SHADER RESTRUCTURE MEASURED NEGATIVE; nothing landed as a perf change"
+}
