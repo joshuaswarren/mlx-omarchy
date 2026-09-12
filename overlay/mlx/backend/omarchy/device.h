@@ -181,6 +181,9 @@ class CompletionDispatcher {
   };
 
   uint64_t reserve();
+  // Newest value handed out by reserve() (0 when none): everything
+  // reserved up to here is already submitted or submitting.
+  uint64_t last_reserved();
   void enqueue(
       uint64_t value,
       std::vector<std::shared_ptr<void>> temporaries,

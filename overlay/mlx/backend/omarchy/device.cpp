@@ -1151,6 +1151,11 @@ uint64_t CompletionDispatcher::reserve() {
   return ++next_value_;
 }
 
+uint64_t CompletionDispatcher::last_reserved() {
+  std::lock_guard<std::mutex> lk(mutex_);
+  return next_value_;
+}
+
 void CompletionDispatcher::enqueue(
     uint64_t value,
     std::vector<std::shared_ptr<void>> temporaries,
