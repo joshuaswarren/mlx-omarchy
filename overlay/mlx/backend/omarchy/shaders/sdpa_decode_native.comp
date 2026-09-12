@@ -397,27 +397,41 @@ void main() {
 
   // Native sdpa_vector_2pass_1. A physical subgroup computes four logical
   // native blocks sequentially; logical blocks remain independent and land
-  // in the exact f16/f32 intermediate formats consumed by pass 2.
+  // in the exact f16/f32 intermediate formats consumed by pass 2. The
+  // serial per-key update stays serial here: at native's crossover each
+  // block stream holds only ~8 keys, so the re-spread has nothing to hide
+  // its register cost behind (measured, receipts/2026-09-12-decode-
+  // chunked-softmax).
   for (uint block = sgid; block < blocks; block += SIMD) {
     float max_score = FINITE_MIN;
     float sum_exp_score = 0.0;
     float o0 = 0.0;
     float o1 = 0.0;
-    uint chunk_count =
-        (params.matrix_k + blocks * CHUNK - 1u) / (blocks * CHUNK);
-    for (uint c = 0u; c < chunk_count; ++c) {
-      fold_chunk(
-          block + c * blocks * CHUNK,
-          blocks,
-          params.matrix_k,
-          kv_head,
-          q_dim,
-          q0,
+    for (uint key = block; key < params.matrix_k; key += blocks) {
+      uint k_base = params.rhs_offset + kv_head * params.shape[1] +
+          key * params.shape[2] + q_dim * params.in_strides[0];
+      float score = fma(q0, LD16(key_data.values[k_base]), 0.0);
+      score = fma(
           q1,
-          max_score,
-          sum_exp_score,
+          LD16(key_data.values[k_base + params.in_strides[0]]),
+          score);
+      score = subgroupAdd(score);
+      float new_max = max(max_score, score);
+      float factor = native_exp(max_score - new_max);
+      float exp_score = native_exp(score - new_max);
+      max_score = new_max;
+      sum_exp_score = fma(sum_exp_score, factor, exp_score);
+      uint v_base = params.aux_offset + kv_head * params.in_strides[1] +
+          key * params.in_strides[2] + q_dim * params.in_strides[3];
+      o0 = fma(
           o0,
-          o1);
+          factor,
+          exp_score * LD16(value_data.values[v_base]));
+      o1 = fma(
+          o1,
+          factor,
+          exp_score *
+              LD16(value_data.values[v_base + params.in_strides[3]]));
     }
     if (lane == 0u) {
       s_max[block] = max_score;
