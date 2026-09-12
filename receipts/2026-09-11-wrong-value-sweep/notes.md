@@ -211,11 +211,25 @@ Window script + raw artifacts in this directory (`m1-window.sh`,
    deltas straddle zero on one leg and lean 1-3.5% on four — at or near
    noise, but the preponderance is a small real cost.
 
-**Verdict / proposed next step (landing decision with Main):** the
-revert is correctness-clean and digest-clean with a possible 1-3%
-decode cost. The narrow alternative is designed: gate the drain on an
-allocator "this block came from the free list" flag (fresh zeroed pages
-skip the drain), leaving every other scalar fill drain-free — verified
-by the churn probe (38/40 vs 0/40 discrimination) plus a timing pair.
-It needs one build + one window; the full revert is safe to land
-tonight if the parity table prefers certainty over the last percent.
+**Verdict: the narrow fix shipped instead.** Commit `a2aa2400`
+(rebased head): the allocator stamps `recycled` on every block handed
+out of the reuse cache (allocator.cpp:110) and `fill_pattern` drains
+only when that flag is set, clearing it after — fresh allocations and
+every buffer past its first fill skip the drain entirely. Four-gate
+verification on jwm1 (branch wheel
+`mlx_omarchy-0.32.2.dev202609120001+a2aa2400`, sha `8b5254af…`,
+rebased onto main `8fd294ed` content):
+
+1. Churn probe **0/40** (was 38/40 at HEAD, 0/40 full-revert).
+2. test_conv 10/0, test_nn 72/0 on the M1 (narrow wheel).
+3. Six canonical Q4 digests + BF16 pins **ALL-HELD**
+   (`digest-gates-narrow.json`, r2-branch).
+4. Timing vs main (decode_tok_s, narrow r2 vs main r1): 4bit short
+   110.11 vs 111.08 (−0.9%); 4bit long 106.20 vs 107.60 (−1.3%);
+   4bit longctx 98.57 vs 95.79 (+2.9%); bf16 short 31.77 vs 31.56
+   (+0.7%); bf16 long 28.36 vs 28.50 (−0.5%); bf16 longctx 22.95 vs
+   23.11 (−0.7%). Within noise; the full revert's −5.7% is recovered.
+
+The full revert (`2a198ea1`) remains in the branch history as the
+fails-before evidence; the narrow commit supersedes it as the head
+state.

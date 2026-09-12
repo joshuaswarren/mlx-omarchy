@@ -1,0 +1,11 @@
+# Cast gate, jwm1, fork driver mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1
+# (transcribed from the window log of 2026-09-11 18:29-18:31; the file was
+# lost in a worktree checkout shuffle and re-recorded verbatim)
+== cast main ==   wheel mlx_omarchy-0.32.2.dev202609112117+2a9add42 sha 9dc042d3
+f32->bool False
+f16->bool True
+bf16->bool False
+== cast branch == wheel mlx_omarchy-0.32.2.dev202609112322+856c0f8d
+f32->bool True
+f16->bool True
+bf16->bool True

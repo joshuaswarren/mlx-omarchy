@@ -1,0 +1,1 @@
+driver: mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1 (pinned, jwm1, 2026-09-11 window)
