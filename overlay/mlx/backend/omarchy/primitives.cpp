@@ -560,7 +560,7 @@ void dispatch_matmul(
   const auto& caps = encoder.device().capabilities();
   const bool coopmat_base = caps.cooperative_matrix_f32_8 &&
       caps.subgroup_size == 32 && !coopmat_disabled &&
-      params.matrix_m > 1u && (params.matrix_k % 8u) == 0u && !use_c;
+      params.matrix_m > 1u && params.matrix_k > 0u && !use_c;
   // matmul_coopmat.comp never reads alpha (MatmulF32Coopmat stays gated
   // on alpha == 1); matmul_coopmat_bf16.comp scales its f32 accumulator
   // by alpha at the drain, so MatmulBF16Coopmat may take any alpha -
@@ -581,8 +581,23 @@ void dispatch_matmul(
   const bool coopmat = coopmat_base && coopmat_alpha &&
       (kernel == omarchy::ComputeKernel::MatmulF32 ||
        (kernel == omarchy::ComputeKernel::MatmulBF16 && bf16_aligned &&
-        params.matrix_m >= 32u &&
+        (params.matrix_k % 8u) == 0u && params.matrix_m >= 32u &&
         kMatmulCoopmatBf16SharedBytes <= caps.max_compute_shared_memory_size));
+  // Bit 8 tells matmul_coopmat_bf16.comp its operands are 8-byte
+  // aligned, so the two word-adjacent orientations stage with uvec2
+  // pair loads (one load per two bf16 pairs) instead of scalar words.
+  // Pure transport: staged values are identical either way.
+  if (coopmat && kernel == omarchy::ComputeKernel::MatmulBF16 &&
+      ((params.lhs_offset | params.rhs_offset | a_gap | b_gap) & 3u) == 0u) {
+    bool pair_strides = true;
+    for (uint32_t axis = 0; pair_strides && axis < params.dims; ++axis) {
+      pair_strides = ((params.in_strides[axis] |
+          params.out_strides[axis]) & 3u) == 0u;
+    }
+    if (pair_strides) {
+      params.flags |= 8u;
+    }
+  }
   if (coopmat) {
     kernel = kernel == omarchy::ComputeKernel::MatmulF32
         ? omarchy::ComputeKernel::MatmulF32Coopmat
@@ -10646,11 +10661,15 @@ void ScaledDotProductAttention::eval_gpu(
   }
   const bool has_arr_mask =
       (inputs.size() == 5) || (inputs.size() == 4 && !has_sinks_);
-  if (do_causal_) {
+  const bool causal_fast = do_causal_ && k_len >= q_len;
+  if (!causal_fast && do_causal_) {
     // The additive causal mask holds 0 for attended positions and
     // -1e30 elsewhere: the same float32 tensor the validated
     // composition built from arange/greater_equal and
-    // (1 - cast) * -1e30, without Select or repeat.
+    // (1 - cast) * -1e30, without Select or repeat. Kept only for
+    // k_len < q_len: a row with zero admissible keys normalizes to
+    // 1/k_len under the additive mask but stores an all-zero row in
+    // the softmax causal mode, so the two agree only from offset >= 0.
     array mask(Shape{q_len, k_len}, float32, nullptr, {});
     mask.set_data(allocate_omarchy(mask.nbytes()));
     float* values = mask.data<float>();
@@ -10675,7 +10694,15 @@ void ScaledDotProductAttention::eval_gpu(
   encoder.add_temporary(logits);
 
   array probs(logits.shape(), float32, nullptr, {});
-  dispatch_softmax(tag, logits, probs, s, sinks, q_len);
+  dispatch_softmax(
+      tag,
+      logits,
+      probs,
+      s,
+      sinks,
+      q_len,
+      causal_fast,
+      causal_fast ? k_len - q_len : 0);
   encoder.add_temporary(probs);
 
   Shape result_shape = probs.shape();
