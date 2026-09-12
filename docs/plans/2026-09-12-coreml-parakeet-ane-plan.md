@@ -3151,7 +3151,7 @@ Status legend:
 
 | Gate | Definition (plan §59) | Grounding / prerequisite sections | Status |
 |------|------------------------|-----------------------------------|--------|
-| 0 | Existing test battery passes | §51, `overlay/tests/omarchy/` | EXISTS (must stay green) |
+| 0 | Existing test battery passes | §51; `receipts/2026-09-12-parity-status/battery/summary.txt` records 29/30, with the affine-stream offset case failing | OPEN (baseline repair in flight) |
 | 1 | Reproducible reference | §10, §12, §13 | OPEN (IN-FLIGHT) |
 | 2 | Linux Core ML inspection | §14, §15 | OPEN |
 | 3 | Compiler coverage classified | §6, §18 | OPEN |
