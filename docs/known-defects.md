@@ -26,8 +26,11 @@ while the m>1 general route composes the same view offsets correctly - which is
 why the failure is m=1 only. Impact is synthetic: real models pass scale and
 bias arrays at offset zero, and every canonical digest holds. It is left
 emitting values rather than refusing because a refusal at that site would also
-take down the passing general route; the fix is to derive the view offset per
-stream rather than per buffer. Receipt:
+take down the passing general route. Expected disposition: derive the view
+offset per stream rather than per buffer. If that proves harder than it looks,
+the fallback is a narrow named refusal of non-zero-offset affine streams on the
+vector route only - refusing the route itself would regress every quantized
+decode step. Receipt:
 [`receipts/2026-09-12-composed-regressions/README.md`](../receipts/2026-09-12-composed-regressions/README.md).
 
 ### Cooperative-matrix prefill output depends on which Mesa build provides the extension
