@@ -132,9 +132,9 @@ Performance parity is still open, and the remaining distance is now specific. Th
 | Q4 | 30 / 32 | 0.75 | 1.13 |
 | Q4 | 262 / 128 | 0.74 | 0.80 |
 | Q4 | 1053 / 32 | 0.68 | 0.60 |
-| BF16 | 30 / 32 | 0.46 | 0.57 |
-| BF16 | 262 / 128 | 0.49 | 0.58 |
-| BF16 | 1053 / 32 | 0.42 | 0.41 |
+| BF16 | 30 / 32 | 0.57 | 0.57 |
+| BF16 | 262 / 128 | 0.52 | 0.58 |
+| BF16 | 1053 / 32 | 0.48 | 0.41 |
 
 Short-prompt Q4 prefill is the one leg already past native. The BF16 prefill 262-token and 1K legs moved tonight (+30.7% and +48.1%) through three bit-preserving changes: the f32-composition causal attention now uses the softmax's causal mode instead of materializing and adding a 0/-1e30 mask, the coopmat shader masks k tails so a k that is not a multiple of eight no longer falls off the cooperative-matrix path onto a 0.09 TFLOP/s tile, and the bf16 coopmat path was widened ([receipt](receipts/2026-09-11-bf16-prefill-gap/README.md)). All six canonical digests hold on both drivers. Dense BF16 decode now runs a native-order vector kernel (2.2-2.8x decode, no float64-accuracy cost: both kernels are RNE(f64)-exact on the captured decode projections), and its remaining distance is measured against the committed native baseline above. Cross-OS timings do not establish numerical parity: the Q4 short and 1024-context token-ID digests match native, while the Q4 long-prompt digest differs (native `254d73fd93164b98`, Linux `4cc08910089477fd`). The BF16 262-token mismatch was root-caused to macOS-side rounding, with the Linux result bit-exact to a float64 round-to-nearest-even reference ([receipt](receipts/2026-09-10-bf16-rootcause/README.md)), and the BF16 short/262 pins now carry the measured per-driver Linux values under the [policy amendment](docs/parity-id-policy.md).
 
