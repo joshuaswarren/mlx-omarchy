@@ -6,6 +6,29 @@ timeline"). First failing commit named by run, not assumed. Fix:
 `pad-fill-ordering` commit `182a02bb` — one gated drain in
 `copy_gpu_inplace`'s Scalar branch; the prefill restoration stands.
 
+## Three commits, one path, two shipped wrong values
+
+Read this before editing copy.cpp's Scalar branch:
+
+1. `de780aa2` added an unconditional host drain before every scalar fill
+   to fix a LOST FILL WRITE (fills into freshly recycled storage lost to
+   the previous occupant's in-flight writes — convolve boundary garbage,
+   MaxPool1d wrong values). The drain also made the branch's host reads
+   of the fill value safe. Cost: +51 ms per prefill call.
+2. `3f7e549a` correctly removed the unconditional drain (it was the
+   measured prefill breaker) and replaced it with a timeline wait —
+   which orders GPU work only. The removal exposed the second defect:
+   the host read of a GPU-produced fill value now raced its producer,
+   and pad/concat filled regions with recycled garbage.
+3. `182a02bb` (this fix) narrows the drain to what actually needs it:
+   GPU-produced scalars drain; host-written scalars skip. Both wrong
+   values die with it.
+
+The pattern to fear: both failures surfaced as garbage in an output
+region, neither looked like a synchronization bug, and in both cases the
+symptom appeared only when a drain that had silently been load-bearing
+was removed or added.
+
 ## First failing commit: 3f7e549a
 
 Verified on llvmpipe (`MLX_OMARCHY_ALLOW_NON_APPLE=1`, x86_64 dev box),
@@ -201,9 +224,33 @@ written by the host before any submission could touch them.
    host-side state under mutex; no mapped reads. Safe.
 
 Audit verdict: after 182a02bb there is no remaining host read of
-device-produced mapped memory that lacks a drain. The structural lesson,
-recorded for the next person: `has_primitive()` is not a visibility test
-(detach() clears it at eval time, eval does not mean complete); the
-buffer completion stamp is. Any new host read of tensor bytes must sit
-behind a synchronize or gate on `completion > drained_value` the way
-scalar fills now do.
+device-produced mapped memory that lacks a drain. The structural
+lesson, recorded for the next person: `has_primitive()` is NOT a
+visibility test — detach() clears the primitive when an array is
+evaluated, and evaluated does not mean complete; the buffer completion
+stamp is the visibility state. Anyone reaching for has_primitive() as
+an in-flight test will re-create this bug. Any new host read of tensor
+bytes must sit behind a synchronize or gate on
+`completion > drained_value` the way scalar fills now do.
+
+Safe-only-by-accident (latent, named per request — safety held by an
+invariant elsewhere rather than a check at the site, the exact shape
+that broke scalar_is_zero):
+
+- Site 8 (every host write into a mapped allocation): safe only
+  because free() quarantines stamps it cannot prove drained. The
+  single point of failure is batch registration: a future dispatch
+  path that binds a buffer without `note_batch_buffer`/
+  `add_temporary` hands a block back while its producer is still
+  queued, and both the lost-write class and the stale-read class
+  return at once. A debug assertion at `reuse_from_cache` (block
+  drained or never stamped) would make this by construction; not
+  added in this fix.
+- Site 1's old guard `if (in.has_primitive()) unsupported(...)` reads
+  like a visibility check but only catches never-evaluated arrays;
+  without the new completion gate directly below it, it kept
+  "passing" while the read raced — the same trap scalar_is_zero sat
+  in for months. Do not collapse the completion gate into it.
+- Sites 2-6 are safe by construction: the synchronize is the
+  immediately preceding statement in the same function, not an
+  accident of call order.
