@@ -1,6 +1,6 @@
 # Forks and the backport flow
 
-mlx-omarchy patches three upstream lineages. Each has a fork under
+mlx-omarchy patches four upstream lineages. Each has a fork under
 `joshuaswarren` carrying our work on branches. Work lands in the fork first.
 Upstreaming a change is a separate, later decision.
 

@@ -113,7 +113,7 @@ verification commands that prove a node reached the kernel.
 
 - `mlx-omarchy` owns the downstream MLX patch set, Omarchy backend, ANE partitioner, packaging, tests, and releases.
 - `ane-linux-experiments` owns hardware probes, format research, fixtures, and evidence before interfaces stabilize.
-- `eiln/ane` is the upstream of the Linux ANE DRM driver and `libane` ABI.
+- `joshuaswarren/omarchy-ane` owns the ANE DRM driver and `libane` ABI; `eiln/ane` is its upstream lineage (fork map: [`forks.md`](forks.md)).
 
 Do not copy driver code into `mlx-omarchy`.
 Prove a driver change in the experiment repository first.

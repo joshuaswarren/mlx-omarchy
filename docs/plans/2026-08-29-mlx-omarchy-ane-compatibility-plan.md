@@ -11,6 +11,15 @@ execution: code
 
 # MLX on Omarchy GPU and ANE - Plan
 
+> **Status, 2026-09-12:** Two statements below are superseded by owner
+> direction; the text is kept as written. (1) Ownership: the canonical ANE
+> driver/ABI repository is `joshuaswarren/omarchy-ane` and the canonical ANE
+> compiler is `joshuaswarren/mil-hwx-compiler` — not `eiln/ane`
+> (see `docs/forks.md`). (2) Sequencing: a concurrent Core ML/Parakeet ANE
+> lane is approved (`docs/plans/2026-09-12-coreml-parakeet-ane-plan.md`); it
+> does not wait for GPU performance parity. Every correctness and
+> device-safety gate in this plan still applies.
+
 ## Goal Capsule
 
 - **Objective:** Existing MLX models and engines run on M1 Omarchy through Vulkan, with at least one representative region accelerated by ANE.

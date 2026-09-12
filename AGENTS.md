@@ -9,6 +9,8 @@ Read these files before changing code:
 3. `docs/roadmap.md`
 4. `docs/compatibility.md`
 5. `docs/plans/2026-08-29-mlx-omarchy-ane-compatibility-plan.md`
+6. `docs/plans/2026-09-12-coreml-parakeet-ane-plan.md` (the planned Core
+   ML/Parakeet ANE lane; plan only, nothing from it is implemented yet)
 
 Run `scripts/prepare-mlx.sh` before inspecting the pinned MLX source.
 Inspect the affected backend under `.work/mlx`.
@@ -37,10 +39,11 @@ Add the missing accelerator implementation or keep the test failing.
 - This repository owns the Omarchy backend, ANE partitioner, patches, packaging, tests, and releases.
 - Upstream MLX source and history must not enter this repository.
 - `joshuaswarren/ane-linux-experiments` owns hardware probes, format research, and unstable fixtures.
-- `eiln/ane` owns the ANE DRM driver and `libane` ABI.
+- `joshuaswarren/omarchy-ane` owns the ANE DRM driver and `libane` ABI
+  (upstream lineage and backport flow: `docs/forks.md`).
 
 Do not copy experimental driver code here.
-Prove a driver change in the experiment repository, then send the smallest stable ABI change to `eiln/ane`.
+Prove a driver change in the experiment repository, then send the smallest stable ABI change to `joshuaswarren/omarchy-ane`.
 
 ## Upstream MLX sync
 
@@ -60,10 +63,13 @@ Do not open an upstream MLX pull request or push to an Apple remote from an agen
 
 Work in the dependency order in `docs/roadmap.md`.
 The Vulkan baseline does not wait for ANE.
-ANE integration waits for the connected full-graph parity receipt.
-The ANE exporter also waits for a hand-authored MIL compiler proof.
-The exporter does not wait for dma-buf support.
-General MLX lowering waits for the one-operation MIL proof and the stable `libane` ABI.
+Owner direction, 2026-09-12: the Core ML/Parakeet ANE lane
+(`docs/plans/2026-09-12-coreml-parakeet-ane-plan.md`) runs concurrently
+with GPU performance-parity work; neither lane waits on the other's
+numbers. The correctness gates do not move: the ANE exporter still
+waits for the MIL compiler proof, general MLX lowering still waits for
+the one-operation MIL proof and the stable `libane` ABI, and the
+exporter still does not wait for dma-buf support.
 
 Implement primitives in model-driven order, but keep each primitive general.
 Do not add a model-name branch inside a core tensor kernel.

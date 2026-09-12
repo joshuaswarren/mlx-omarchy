@@ -144,9 +144,10 @@ Status: hardware present, boot path missing, driver dangerous.
   also has `power-domains` and `iommus`.
 
 - Open decision to settle before anything ships: the node crams three DARTs
-  into one `reg` block. That matches the out-of-tree `eiln/ane` driver
-  binding, not the mainline shape of separate DART nodes with `iommus`
-  phandles. The binding must be picked before the in-tree node is written.
+  into one `reg` block. That matches the out-of-tree ANE driver binding
+  (`eiln/ane` lineage, carried today by `joshuaswarren/omarchy-ane`), not
+  the mainline shape of separate DART nodes with `iommus` phandles. The
+  binding must be picked before the in-tree node is written.
 - The driver builds. `~/src/apple-ane-kmd/ane/ane.ko` has a `vermagic`
   that matches the running kernel exactly. Loading it hard-reset the
   machine: ssh died and the box reset itself, which wiped `/tmp`. Do not

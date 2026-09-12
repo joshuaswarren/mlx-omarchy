@@ -19,18 +19,22 @@ back through `bddc061f`, the case text is byte-identical across that range, and
 the affine dispatch block was untouched by the 2026-09-11 layout work, so an
 earlier report that this case was green on the M1 does not reproduce.
 
-The mechanism points at `1f6a7bf8` (2026-09-06, binding affine scales and
-biases directly): the m=1 vector route composes `aux_offset` from the scale
-base item and `aux_size` from the bias base item over whole-buffer bindings,
-while the m>1 general route composes the same view offsets correctly - which is
-why the failure is m=1 only. Impact is synthetic: real models pass scale and
-bias arrays at offset zero, and every canonical digest holds. It is left
-emitting values rather than refusing because a refusal at that site would also
-take down the passing general route. Expected disposition: derive the view
-offset per stream rather than per buffer. If that proves harder than it looks,
-the fallback is a narrow named refusal of non-zero-offset affine streams on the
-vector route only - refusing the route itself would regress every quantized
-decode step. Receipt:
+Working hypothesis, not confirmed: `1f6a7bf8` (2026-09-06, binding affine
+scales and biases directly) composes `aux_offset` and `aux_size` from whole
+buffer bindings on the m=1 vector route, while the m>1 general route composes
+per-view offsets - which would explain why the suite case fails at m=1 with
+scale and bias bound at a non-zero storage offset. Investigation continues;
+the trigger surface beyond the suite case is not yet mapped. Owner review
+flags that application code binding affine streams at non-zero offsets (for
+example through sliced views) is potentially affected. The pinned models
+bind at offset zero, so every canonical digest holds; that is not evidence
+the defect is harmless elsewhere.
+
+No fix has landed. Candidate dispositions under investigation include
+deriving the view offset per stream rather than per buffer, and a narrow
+named refusal or guard for non-zero-offset affine streams on the m=1 route.
+Until one lands, the route keeps emitting values rather than refusing.
+Receipt:
 [`receipts/2026-09-12-composed-regressions/README.md`](../receipts/2026-09-12-composed-regressions/README.md).
 
 ### Cooperative-matrix prefill output depends on which Mesa build provides the extension
@@ -730,4 +734,4 @@ Named `[omarchy] ... is not implemented` errors remain the honest failure mode. 
 
 ## f16 attention score cap (sdpa-f16-scores branch, unreleased)
 
-`fast::scaled_dot_product_attention` on float16 inputs stores attention scores in f16 with f32 accumulation inside the kernel, so scaled scores above 65504 saturate to inf and softmax turns the row into NaN, while the f32/bf16 composition stays finite: the trigger is extreme but valid f16 activations (an untuned fine-tune reaches it; normalised models do not). The additive causal/padding mask uses the f16 finite maximum (-65504), not -inf, so fully masked rows stay defined and match the f32 path. This matches upstream Metal's f16 SDPA, which has the same storage cap; run f32/bf16 if you need overflow-immune attention. Reproduction and tolerance evidence: [receipt](receipts/2026-09-04-sdpa-f16-scores-rework.md) and `scripts/sdpa_equivalence.py` (fully-masked-row and overflow-boundary cases).
+`fast::scaled_dot_product_attention` on float16 inputs stores attention scores in f16 with f32 accumulation inside the kernel, so scaled scores above 65504 saturate to inf and softmax turns the row into NaN, while the f32/bf16 composition stays finite: the trigger is extreme but valid f16 activations (an untuned fine-tune reaches it; normalised models do not). The additive causal/padding mask uses the f16 finite maximum (-65504), not -inf, so fully masked rows stay defined and match the f32 path. This matches upstream Metal's f16 SDPA, which has the same storage cap; run f32/bf16 if you need overflow-immune attention. Reproduction and tolerance evidence: [receipt](../receipts/2026-09-04-sdpa-f16-scores-rework.md) and `scripts/sdpa_equivalence.py` (fully-masked-row and overflow-boundary cases).
