@@ -1,0 +1,12 @@
+{"case": "sdpa_sq257", "sha256": "e0e30b10a29be414871ec7016a64ab98258fc87bd60b6fc2630abfc7c88592b2", "wheel": "cand"}
+{"case": "sdpa_s1k", "sha256": "a1e5f5d8363d5e8d97a14b829d19458f990d1c311c47ca6166a93ae73b7c6ab8", "wheel": "cand"}
+{"case": "sdpa_off", "sha256": "1eb76b9dcd98ed082acac316ab5f71e2be5fdc2f626b08aea04eba03f39cd9a1", "wheel": "cand"}
+{"case": "sdpa_ragged", "sha256": "80707e72ebc18aaf1fbf5c5a9a44e5d4c41d74be75fd10059f18376982c04e4f", "wheel": "cand"}
+{"case": "sdpa_dec", "sha256": "33dce505c38c8ca95844022ee55f8fdbc24fa1871cc3cb3b7f666ffd3dc0f287", "wheel": "cand"}
+{"case": "mm_bf16_aligned", "sha256": "42bc0fcbd37ed2b731a20d66b8e3af95284206ce89e8b548ebdce764ac59643d", "wheel": "cand"}
+{"case": "mm_bf16_off2", "sha256": "ffeba6817d8a26a7f5127ff53a63432d4ea876e81a7a235321c932efd8c084b8", "wheel": "cand"}
+{"case": "mm_bf16_gap894", "sha256": "c1c9dcd51b6be3edce61cf08f4b6550cfba74e672f7d6706f940a5659f2973d2", "wheel": "cand"}
+{"case": "mm_bf16_gate_up", "sha256": "26c617a105e506f0bf3d29e367a63a9eb87bd205cfa9dca254c79cda59d315ef", "wheel": "cand"}
+{"case": "mm_f32_ktail4", "sha256": "43e8850e0f578cd48afb02fed6ba98deb668cde05b05beac75aa9505314b0690", "wheel": "cand"}
+{"case": "mm_f32_kmod0", "sha256": "a34bb80c3c99cd305b7d8385a1af926bfb7c22609fd8778be35e3e1c001853c6", "wheel": "cand"}
+{"case": "mm_f32_ktail7", "sha256": "daaabc72645a627217403b00e4f22d505459ab2ff575b6c29e4004c8a170a261", "wheel": "cand"}
