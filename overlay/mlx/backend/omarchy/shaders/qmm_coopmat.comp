@@ -100,9 +100,30 @@ void main() {
          tile_col += gl_NumWorkGroups.x) {
       uint column = tile_col * TILE_N + w_column_local;
       bool column_ok = column < params.matrix_n;
-      uint w_row = w_slice + column * words_per_row;
-      uint scale_row = scale_slice + column * groups_per_row;
-      uint bias_row = bias_slice + column * groups_per_row;
+      uint column_clamped = min(column, params.matrix_n - 1u);
+      uint w_row = w_slice + column_clamped * words_per_row;
+      uint scale_row = scale_slice + column_clamped * groups_per_row;
+      uint bias_row = bias_slice + column_clamped * groups_per_row;
+      uint w_word_mask = column_ok ? 0xFFFFFFFFu : 0u;
+
+      // The staged-tile addressing and bounds masks are k-invariant, so
+      // they are built once per tile: every global load in the k loop is
+      // then unconditional (clamped address, masked result) and the loop
+      // body carries no divergent control flow between a load and its use.
+      uint xbase[4];
+      uint xmask[4];
+      uint xsoff[4];
+      for (uint j = 0u; j < 4u; ++j) {
+        uint i = lid + 64u * j;
+        uint local_row = i / 8u;
+        uint row = row_base + local_row;
+        bool row_ok = row < params.matrix_m;
+        uint row_clamped = min(row, params.matrix_m - 1u);
+        xbase[j] = x_slice + row_clamped * x_words_per_row + (i % 8u);
+        xmask[j] = row_ok ? 0xFFFFFFFFu : 0u;
+        xsoff[j] = local_row * STEP_K + 2u * (i % 8u);
+      }
+      uint w_base = 8u * w_part * TILE_N + w_column_local;
 
       coopmat<float, gl_ScopeSubgroup, MAT, MAT, gl_MatrixUseAccumulator>
           acc[2][4];
@@ -114,37 +135,24 @@ void main() {
       }
 
       for (uint chunk = 0u; chunk < k_chunks; ++chunk) {
-        float scale = 0.0;
-        float bias = 0.0;
-        if (column_ok) {
-          scale = float(scales.values[scale_row + chunk]);
-          bias = float(biases.values[bias_row + chunk]);
-        }
+        float scale_raw = float(scales.values[scale_row + chunk]);
+        float bias_raw = float(biases.values[bias_row + chunk]);
+        float scale = column_ok ? scale_raw : 0.0;
+        float bias = column_ok ? bias_raw : 0.0;
         for (uint step = 0u; step < CHUNK_K / STEP_K; ++step) {
           uint k_base = chunk * CHUNK_K + step * STEP_K;
-          // Four half2 loads per lane cover the 32x16 x tile.
+          // Four masked word loads per lane cover the 32x16 x tile.
           uint x_words[4];
+          for (uint j = 0u; j < 4u; ++j)
+            x_words[j] = input_x.values[xbase[j] + k_base / 2u] & xmask[j];
           for (uint j = 0u; j < 4u; ++j) {
-            uint i = lid + 64u * j;
-            uint local_row = i / 8u;
-            uint row = row_base + local_row;
-            x_words[j] = row < params.matrix_m
-                ? input_x.values[
-                      x_slice + row * x_words_per_row + k_base / 2u +
-                      (i % 8u)]
-                : 0u;
-          }
-          for (uint j = 0u; j < 4u; ++j) {
-            uint i = lid + 64u * j;
-            uint local_row = i / 8u;
             vec2 pair = unpackHalf2x16(x_words[j]);
-            x_s[local_row * STEP_K + 2u * (i % 8u)] = pair.x;
-            x_s[local_row * STEP_K + 2u * (i % 8u) + 1u] = pair.y;
+            x_s[xsoff[j]] = pair.x;
+            x_s[xsoff[j] + 1u] = pair.y;
           }
-          // One packed word per lane covers the 16x32 weight tile.
-          uint packed = column_ok
-              ? input_w.values[w_row + k_base / 8u + w_part] : 0u;
-          uint w_base = 8u * w_part * TILE_N + w_column_local;
+          // One masked word per lane covers the 16x32 weight tile.
+          uint packed = input_w.values[w_row + k_base / 8u + w_part]
+              & w_word_mask;
           w_s[w_base + 0u * TILE_N] = scale * float(packed & 0xFu) + bias;
           w_s[w_base + 1u * TILE_N] =
               scale * float((packed >> 4u) & 0xFu) + bias;
