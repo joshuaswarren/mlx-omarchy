@@ -1,0 +1,39 @@
+{
+  "receipt": "2026-09-12-coreml-inspector",
+  "inspector": "overlay/tools/coreml (official coremltools 9.0 schema, protobuf runtime)",
+  "model_source": "HF mweinbach1/parakeet-tdt-0.6b-v3-coreml @ b650695c2322ee5281dff48d7345b2f3a58ff018",
+  "packages": {
+    "encoder": {
+      "op_total": 3351,
+      "op_types": 29,
+      "constexpr_ops": 194,
+      "weights_sha256": {
+        "weight.bin": "23867a834223ee6484d0b7b9b703530e8606546efa8e710535163d51ed9aac04"
+      },
+      "strict_cli": "pass"
+    },
+    "decoder": {
+      "op_total": 69,
+      "op_types": 12,
+      "constexpr_ops": 0,
+      "weights_sha256": {
+        "weight.bin": "36cd656ebf1105ee5aa85d1e55c00f25669327aef8b39346333a19260ca78018"
+      },
+      "strict_cli": "pass"
+    },
+    "joint": {
+      "op_total": 21,
+      "op_types": 6,
+      "constexpr_ops": 0,
+      "weights_sha256": {
+        "weight.bin": "d83381f8a19ac296033554a7cfec355063b8f3225129cb8bed013c92f6ab141f"
+      },
+      "strict_cli": "pass"
+    }
+  },
+  "env": {
+    "python": "3.11.2",
+    "platform": "Linux-6.17.2-1-pve-x86_64-with-glibc2.36",
+    "protobuf": "7.36.0-probed"
+  }
+}
