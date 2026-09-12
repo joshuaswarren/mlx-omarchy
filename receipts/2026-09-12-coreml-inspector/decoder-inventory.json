@@ -101,16 +101,16 @@
       "author": "parakeet-coreml",
       "license": "CC-BY-4.0 (inherits nvidia/parakeet-tdt-0.6b-v3)",
       "user_defined": {
-        "minimum_deployment_target": "macOS15",
         "com.github.apple.coremltools.conversion_date": "2026-04-22",
-        "compute_units": "cpu_and_ne",
-        "experiment": "palettize-enc-4bit-pgc",
-        "com.github.apple.coremltools.version": "9.0",
-        "precision": "fp16",
         "com.github.apple.coremltools.source_dialect": "TorchScript",
+        "precision": "fp16",
+        "minimum_deployment_target": "macOS15",
+        "com.github.apple.coremltools.version": "9.0",
+        "compute_units": "cpu_and_ne",
+        "passes": "",
         "com.github.apple.coremltools.source": "torch==2.11.0",
-        "submodule": "decoder",
-        "passes": ""
+        "experiment": "palettize-enc-4bit-pgc",
+        "submodule": "decoder"
       }
     }
   },
@@ -3715,8 +3715,9 @@
   "validity": {
     "protobuf_parse": "ok",
     "model_type_set": true,
+    "unknown_schema_fields": 0,
     "notes": [],
-    "confidence": "full structure read through the official schema; unknown op types and unknown schema fields would be reported, none encountered"
+    "confidence": "full structure read through the official schema, zero unknown schema fields encountered"
   },
   "eligibility": {
     "assessed": false,

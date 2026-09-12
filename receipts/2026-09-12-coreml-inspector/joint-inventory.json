@@ -74,14 +74,14 @@
       "user_defined": {
         "com.github.apple.coremltools.conversion_date": "2026-04-22",
         "com.github.apple.coremltools.source": "torch==2.11.0",
-        "compute_units": "cpu_and_ne",
-        "com.github.apple.coremltools.source_dialect": "TorchScript",
-        "com.github.apple.coremltools.version": "9.0",
         "experiment": "palettize-enc-4bit-pgc",
-        "passes": "",
-        "minimum_deployment_target": "macOS15",
         "submodule": "joint",
-        "precision": "fp16"
+        "minimum_deployment_target": "macOS15",
+        "precision": "fp16",
+        "compute_units": "cpu_and_ne",
+        "com.github.apple.coremltools.version": "9.0",
+        "com.github.apple.coremltools.source_dialect": "TorchScript",
+        "passes": ""
       }
     }
   },
@@ -1213,8 +1213,9 @@
   "validity": {
     "protobuf_parse": "ok",
     "model_type_set": true,
+    "unknown_schema_fields": 0,
     "notes": [],
-    "confidence": "full structure read through the official schema; unknown op types and unknown schema fields would be reported, none encountered"
+    "confidence": "full structure read through the official schema, zero unknown schema fields encountered"
   },
   "eligibility": {
     "assessed": false,

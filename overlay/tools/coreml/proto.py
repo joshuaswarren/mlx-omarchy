@@ -119,6 +119,38 @@ def dimension_summary(dim: Any) -> dict[str, Any]:
     return {"unknown_kind": None}  # no oneof set: schema-legal but unnamed
 
 
+
+
+def count_unknown_fields(message: Any) -> int:
+    """Recursively count schema fields this vendored schema does not know.
+
+    A package written by a newer Core ML than the vendored schema
+    parses fine (protobuf forward compatibility) but its new fields
+    are invisible. This scan makes that visibility limit an explicit,
+    reported number instead of a silent blind spot.
+    """
+    from google.protobuf import unknown_fields as _unknown_fields
+    from google.protobuf.descriptor import FieldDescriptor as _FD
+
+    total = len(_unknown_fields.UnknownFieldSet(message))
+    for field, value in message.ListFields():
+        if field.type != _FD.TYPE_MESSAGE:
+            continue
+        entry = field.message_type
+        if entry.GetOptions().map_entry:
+            # Map field: scalar-valued maps cannot carry unknown
+            # fields; recurse only into message-valued entries.
+            if entry.fields_by_name["value"].type == _FD.TYPE_MESSAGE:
+                for item in value.values():
+                    total += count_unknown_fields(item)
+        elif field.is_repeated:
+            for item in value:
+                total += count_unknown_fields(item)
+        else:
+            total += count_unknown_fields(value)
+    return total
+
+
 def tensor_type_summary(t: Any) -> dict[str, Any]:
     """``MILSpec.TensorType`` → dtype name, rank, dimensions."""
     out: dict[str, Any] = {
