@@ -589,6 +589,22 @@ void CommandEncoder::synchronize(const char* reason) {
   join_last_completion(reason);
 }
 
+void CommandEncoder::wait_outstanding_submissions() {
+  // Timeline wait on the device completion semaphore at the newest
+  // reserved value: the next submission this encoder commits starts only
+  // after every submission reserved so far, on any stream, has completed.
+  // The wait rides that next submission, so no extra submission is
+  // created and the host never blocks. Reading the value here is safe
+  // against self-deadlock: this stream's own next completion value is
+  // reserved strictly later (at commit), so the waited value always
+  // belongs to a submission queued ahead of ours.
+  uint64_t value = device_.completions().last_reserved();
+  if (value == 0) {
+    return;
+  }
+  add_semaphore_wait(device_.completions().semaphore(), value, nullptr);
+}
+
 void CommandEncoder::submit() {
   auto& dt = vk::device_table();
   bool was_recording = recording_;
