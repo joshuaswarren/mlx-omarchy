@@ -10,33 +10,6 @@ Two of the worst v0.3.0 defects never appeared on a Linux development box. They 
 
 ## Open portability gaps
 
-### Affine quantized matmul mis-composes a non-zero storage offset at m=1
-
-Open, and older than it looked. `omarchy_primitive_tests` case "quantized
-matmul binds affine streams at storage offsets" fails on the M1 by 1.8% at a
-4e-3 epsilon - a wrong value, not a refusal. It reproduces at every checkpoint
-back through `bddc061f`, the case text is byte-identical across that range, and
-the affine dispatch block was untouched by the 2026-09-11 layout work, so an
-earlier report that this case was green on the M1 does not reproduce.
-
-Working hypothesis, not confirmed: `1f6a7bf8` (2026-09-06, binding affine
-scales and biases directly) composes `aux_offset` and `aux_size` from whole
-buffer bindings on the m=1 vector route, while the m>1 general route composes
-per-view offsets - which would explain why the suite case fails at m=1 with
-scale and bias bound at a non-zero storage offset. Investigation continues;
-the trigger surface beyond the suite case is not yet mapped. Owner review
-flags that application code binding affine streams at non-zero offsets (for
-example through sliced views) is potentially affected. The pinned models
-bind at offset zero, so every canonical digest holds; that is not evidence
-the defect is harmless elsewhere.
-
-No fix has landed. Candidate dispositions under investigation include
-deriving the view offset per stream rather than per buffer, and a narrow
-named refusal or guard for non-zero-offset affine streams on the m=1 route.
-Until one lands, the route keeps emitting values rather than refusing.
-Receipt:
-[`receipts/2026-09-12-composed-regressions/README.md`](../receipts/2026-09-12-composed-regressions/README.md).
-
 ### Cooperative-matrix prefill output depends on which Mesa build provides the extension
 
 Observed on the M1 on 2026-09-10. The Q4 prefill cooperative-matrix
@@ -575,6 +548,41 @@ This is the fifth distinct miscompile this project has isolated, and the first t
 ### The rope divergence: the probe, not the primitive
 
 A standalone probe reported `fast::rope` diverging from its host reference by 13.6 at position 12345, contradicting the `959c7a0` claim that rope matches its reference there. The probe hardcoded `offset=0` while computing its reference at the target position, so the two never computed the same function. With the offset set, rope is bit-exact at position 4 and within the documented trig band at 12345 and 100000 on Honeykrisp. The `959c7a0` claim stands.
+
+### The affine storage-offset failure: the epsilon, not the binding
+
+`omarchy_primitive_tests` case "quantized matmul binds affine streams at
+storage offsets" failed one CHECK per M1 run from 2026-09-06 to
+2026-09-12: m = 1, one output column at 0.416748 against a 0.409468
+oracle, epsilon 4e-3 (Item 2 of
+[the composed-regressions receipt](../receipts/2026-09-12-composed-regressions/README.md)).
+The working hypothesis was a mis-composed view offset in the vector
+route's aux bindings. That hypothesis is refuted: an exact transcription
+of the `QMM_VEC_Q4_WORD` arithmetic reproduces the failing value bit for
+bit with the documented aux bases, while every mis-binding variant (base
+dropped, doubled, or swapped) moves 18-20 of 20 columns by O(1)-O(100).
+The binding was always correct.
+
+The failure was the instrument. The decode (m = 1) leg runs the
+native-qmv arithmetic route - f16 x quad chain sums multiplied into the
+affine bias term - whose ~1e-2 rounding wobble cannot meet a 4e-3
+relative epsilon wherever the output nearly cancels (column 11 expected
+0.409). The m = 7 leg, an f32-ordered chain, passed the same oracle; the
+case tested two routes with one tolerance, and the arithmetic route never
+fit it. The case is reworked to the contract it always meant to test:
+the same logical streams bound once at non-zero storage offsets and once
+at zero must drive the identical dispatch to bit-identical output, with
+absolute values still pinned by the host-oracle cases. Mutation-checked
+(a forced `aux_offset = 0` fails it loudly) and green on the M1 with the
+full standing battery, 30/30
+([receipt](../receipts/2026-09-12-q4-gemv-offset-oracle/README.md)).
+
+The lesson joins this section's rule: a tolerance bound to a
+double-precision oracle is a claim about the oracle's route, not the
+device's. When a case exists to prove binding or layout invariance,
+assert invariance directly - identical dispatches on identical logical
+operands must agree bit for bit - and keep absolute-value coverage in
+the cases whose oracle matches the route they check.
 
 ## A correction on the record: compiled tapes do not bypass the trig gate
 

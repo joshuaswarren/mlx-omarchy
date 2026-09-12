@@ -11,11 +11,20 @@ arithmetic cannot meet on cancelling outputs. The case is reworked to its
 real contract — storage offset invariance, checked bitwise — with absolute
 values still pinned by the host-oracle cases.
 
-Provenance: mlx-omarchy worktree at commit `198cb7f4` plus the test-file
-diff described below (no backend file changes land in this receipt).
-x86 development box (AMD EPYC, software Vulkan via lavapipe), tests run
-with `MLX_OMARCHY_ALLOW_NON_APPLE=1`; binaries from `.work/build` after
-`scripts/prepare-mlx.sh`.
+M1 hardware confirmation (window of 2026-09-12, `drivers.txt`,
+`focused.log`, `battery/`): tree `49325af7` + this fix as the patch
+`1df2d9fec6efc7bb…`, driver mesa-honeykrisp-omarchy
+26.3.0.devel.hk6f6afc8-1, kernel 7.1.6-1-1-ARCH, Apple M1 (aarch64),
+glslc 2026.3. The reworked case passes (1 case, 166 assertions), and the
+full standing battery passes 30/30 (25 suites plus 5 capability-sim
+profiles); `omarchy_primitive_tests` runs 103/103 cases, 2,700,949
+assertions, zero failures — the suite that was 29/30 in
+`receipts/2026-09-12-parity-status` is green.
+
+Dev-box supporting evidence (x86, AMD EPYC, software Vulkan via lavapipe,
+`MLX_OMARCHY_ALLOW_NON_APPLE=1`, binaries from `.work/build` after
+`scripts/prepare-mlx.sh`) is in sections 1-4. It is supporting evidence
+only; the M1 run above is the hardware claim of record.
 
 ## 1. The old failure reproduces on the dev box, values identical
 
@@ -94,7 +103,7 @@ no longer needs an epsilon at all. Absolute correctness stays pinned by
 "quantized matmul matches dequant and host references" and "runs f16 and
 bf16 activations".
 
-Verification on the dev box:
+Dev-box verification:
 
 - Reworked case passes: 1 case, 166 assertions, 0 failed (lavapipe).
 - Mutation check: with `params.aux_offset` forced to 0 in the affine
@@ -104,11 +113,13 @@ Verification on the dev box:
 - Negative control: the pre-rework case fails on this box with the exact
   documented values (section 1).
 
-## 5. Status
+## 5. Status: closed
 
-- Dev-box verification: complete (this receipt).
-- M1 hardware confirmation: pending — rerun the case and the full standing
-  battery in an M1 window, then update the `docs/known-defects.md` affine
-  entry (currently filed under the refuted composition hypothesis) and mark
-  Item 2 of `receipts/2026-09-12-composed-regressions/README.md`
-  superseded by this receipt.
+- Dev-box verification: complete (sections 1-4).
+- M1 hardware confirmation: complete (header). Standing battery 30/30;
+  the previously failing case passes on the M1 under the installed
+  baseline driver.
+- `docs/known-defects.md` affine entry rewritten from the refuted
+  composition hypothesis to the oracle-miscalibration diagnosis in this
+  change; Item 2 of `receipts/2026-09-12-composed-regressions/README.md`
+  marked superseded by this receipt.

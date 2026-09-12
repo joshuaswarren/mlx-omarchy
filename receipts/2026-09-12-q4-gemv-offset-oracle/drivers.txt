@@ -1,0 +1,8 @@
+driver: mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1
+kernel: 7.1.6-1-1-ARCH
+machine: aarch64 unknown
+source-commit-base: 49325af7ebc84f4aae47d512aee5305dd41688db
+patch-sha256: 1df2d9fec6efc7bba677c097239e2c7e0342c43a948e1476337cc391c14dfa71
+dirty-files:  M overlay/tests/omarchy/test_primitives.cpp ?? receipts/2026-09-12-q4-gemv-offset-oracle/ 
+glslc: 2026.3
+none

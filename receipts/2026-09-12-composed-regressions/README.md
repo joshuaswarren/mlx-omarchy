@@ -91,6 +91,16 @@ reached is worse than a missing gate.
 
 ## Item 2 — affine storage-offset wrong value: PRE-EXISTING, filed
 
+**Superseded 2026-09-12: the offset-composition hypothesis below is
+refuted, and the case closes as a test-oracle miscalibration, not a
+backend defect.** The aux binding was correct on every route; the m = 1
+failure was the double-precision oracle's 4e-3 epsilon applied to the
+native-qmv f16 arithmetic route, and the case now checks storage-offset
+invariance bitwise instead. Diagnosis, exact-arithmetic replica,
+mutation check, and the M1 30/30 standing-battery confirmation:
+[`receipts/2026-09-12-q4-gemv-offset-oracle/README.md`](../2026-09-12-q4-gemv-offset-oracle/README.md).
+The text below is preserved as filed.
+
 `omarchy_primitive_tests` "quantized matmul binds affine streams at
 storage offsets", m=1, one output element off at eps 4e-3.
 
