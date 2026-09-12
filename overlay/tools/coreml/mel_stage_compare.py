@@ -122,7 +122,8 @@ def main(argv: list[str]) -> int:
     print(line); ok &= good
 
     # Stage 8: log on certified projection.
-    ref_lg = np.log(ref_mp.astype(np.float64) + float(np.float32(cfg.log_guard))).astype(np.float32)
+    guarded = (mac["melproj"] + np.float32(cfg.log_guard)).astype(np.float32)
+    ref_lg = np.log(guarded.astype(np.float64)).astype(np.float32)
     good, line = stage_diff("logmel", ref_lg, mac["logmel"])
     print(line); ok &= good
 

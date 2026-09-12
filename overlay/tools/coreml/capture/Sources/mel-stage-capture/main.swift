@@ -80,7 +80,7 @@ while let arg = it.next() {
     }
 }
 guard let outPath else {
-    FileHandle.standardError.write(Data("usage: [--waveform W.f32] --out DIR [--mode stages|probe-cosf|probe-logf|probe-dft] ...\n".utf8))
+    FileHandle.standardError.write(Data("usage: [--waveform W.f32] --out DIR [--mode stages|probe-cosf|probe-logf|probe-dft|probe-dft-core] ...\n".utf8))
     exit(2)
 }
 
@@ -115,48 +115,58 @@ if mode == "probe-cosf" || mode == "probe-logf" {
     exit(0)
 }
 
-if mode == "probe-dft" {
+if mode == "probe-dft" || mode == "probe-dft-core" {
     guard let wavePath else { exit(2) }
     let samples = readF32(wavePath)
     let nFFT = 512
+    let nComplex = nFFT / 2
     precondition(samples.count % nFFT == 0, "dft probe needs whole 512-sample frames")
     let numFrames = samples.count / nFFT
-    let numFreqBins = nFFT / 2 + 1
-    var realIn = [Float](repeating: 0, count: nFFT / 2)
-    var imagIn = [Float](repeating: 0, count: nFFT / 2)
-    var realOut = [Float](repeating: 0, count: nFFT / 2)
-    var imagOut = [Float](repeating: 0, count: nFFT / 2)
-    guard let fftSetup = vDSP_DFT_zrop_CreateSetup(nil, vDSP_Length(nFFT), .FORWARD) else {
-        fatalError("fft setup failed")
-    }
+    let coreOnly = mode == "probe-dft-core"
+    let outputCount = coreOnly ? nComplex : nComplex + 1
+    var realIn = [Float](repeating: 0, count: nComplex)
+    var imagIn = [Float](repeating: 0, count: nComplex)
+    var realOut = [Float](repeating: 0, count: nComplex)
+    var imagOut = [Float](repeating: 0, count: nComplex)
+    let fftSetup = coreOnly
+        ? vDSP_DFT_zop_CreateSetup(nil, vDSP_Length(nComplex), .FORWARD)
+        : vDSP_DFT_zrop_CreateSetup(nil, vDSP_Length(nFFT), .FORWARD)
+    guard let fftSetup else { fatalError("fft setup failed") }
     var allReal = [[Float]](), allImag = [[Float]]()
     for t in 0..<numFrames {
         let frame = Array(samples[t*nFFT..<(t+1)*nFFT])
-        for k in 0..<(nFFT / 2) {
+        for k in 0..<nComplex {
             realIn[k] = frame[2 * k]
             imagIn[k] = frame[2 * k + 1]
         }
         vDSP_DFT_Execute(fftSetup, realIn, imagIn, &realOut, &imagOut)
-        var real = [Float](repeating: 0, count: numFreqBins)
-        var imag = [Float](repeating: 0, count: numFreqBins)
-        real[0] = realOut[0] * 0.5
-        real[numFreqBins - 1] = imagOut[0] * 0.5
-        for k in 1..<(nFFT / 2) {
-            real[k] = realOut[k] * 0.5
-            imag[k] = imagOut[k] * 0.5
+        if coreOnly {
+            allReal.append(realOut)
+            allImag.append(imagOut)
+        } else {
+            var real = [Float](repeating: 0, count: outputCount)
+            var imag = [Float](repeating: 0, count: outputCount)
+            real[0] = realOut[0] * 0.5
+            real[outputCount - 1] = imagOut[0] * 0.5
+            for k in 1..<nComplex {
+                real[k] = realOut[k] * 0.5
+                imag[k] = imagOut[k] * 0.5
+            }
+            allReal.append(real)
+            allImag.append(imag)
         }
-        allReal.append(real); allImag.append(imag)
     }
     let outURL = URL(fileURLWithPath: outPath)
     try FileManager.default.createDirectory(at: outURL, withIntermediateDirectories: true)
     var manifest = [String: String]()
+    let prefix = coreOnly ? "probe_core" : "probe_dft"
     func flatten(_ rows: [[Float]]) -> [Float] { rows.flatMap { $0 } }
-    try dump(outURL, "probe_dft_real", flatten(allReal), shape: [numFrames, numFreqBins], manifest: &manifest)
-    try dump(outURL, "probe_dft_imag", flatten(allImag), shape: [numFrames, numFreqBins], manifest: &manifest)
+    try dump(outURL, "\(prefix)_real", flatten(allReal), shape: [numFrames, outputCount], manifest: &manifest)
+    try dump(outURL, "\(prefix)_imag", flatten(allImag), shape: [numFrames, outputCount], manifest: &manifest)
     try dump(outURL, "probe_in", samples, shape: [samples.count], manifest: &manifest)
     let manData = try JSONSerialization.data(withJSONObject: manifest, options: [.sortedKeys, .prettyPrinted])
     try manData.write(to: outURL.appendingPathComponent("manifest.json"))
-    print("probe dft: \(numFrames) frames")
+    print("probe \(mode): \(numFrames) frames")
     exit(0)
 }
 
