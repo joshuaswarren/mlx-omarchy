@@ -106,9 +106,26 @@ demonstrates the boundary precisely and independently.
 
 ## Unblock path (owner decision owed, discovery receipt §8.6)
 
-One-line v2 wording change: allow exactly-one workspace tensor with
-`byte_size 0` and `stride 0` when the producer emits no channel-3 surface
-(every other check retained). When that lands:
+Representing an absent workspace is NOT a one-line positivity flip. v2
+currently pins absence out through five coherent checks, and any unblock
+must address all of them as one representation-of-absent-workspace
+contract decision:
+
+- `require_positive_shape` (manifest.cpp:159): every shape dim must be
+  positive, so a zero-size tensor cannot even be shaped;
+- `require_positive_integer("byte_size")` (manifest.cpp:160);
+- `require_positive_integer("stride")` (manifest.cpp:161);
+- dtype geometry `byte_size == element_size * prod(shape)`
+  (manifest.cpp:163-173): with all dims >= 1, byte_size >= 1 is forced,
+  so shape [1] + byte_size 0 is geometrically impossible under v2;
+- the exactly-one workspace rule (manifest.cpp:355-357): the cleanest
+  absence representation, an empty `workspace: []`, is rejected outright.
+
+The owner decision is therefore "how does v2 represent an absent
+workspace": either an explicit zero-size tensor form (relaxing shape,
+byte_size, stride, and geometry together for exactly that form) or an
+empty-list form (dropping the exactly-one rule) — with every other check
+retained. When that lands:
 
 1. the honest manifests emitted by `demonstrate_blocker.py` pass
    `load_bundle` unchanged;
