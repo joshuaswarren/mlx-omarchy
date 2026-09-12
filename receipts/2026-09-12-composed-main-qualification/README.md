@@ -166,6 +166,34 @@ timings only; per-leg provenance gate (wheel RECORD vs loaded `libmlx.so`)
 green on every run. Digests re-asserted after the window over all six rep
 JSONs (`digest-matrix.json`).
 
+## Instrument verification (prefill fractions are protocol-clean)
+
+The composed prefill fractions were challenged as a possible protocol
+difference rather than a code regression. Verified, with evidence:
+
+- The measurement harness is byte-equivalent for timing across the whole
+  range: `git diff 711327ce..ab08be8b -- scripts/bench_decode.py
+  scripts/bench_matrix.py scripts/bench_matrix.json` contains only the
+  capability-simulation guard additions (`a5b8c4ab`), zero changes to
+  timing, token counting, warmup, or environment.
+- `prefill tok/s` = `prompt_tokens / (first-token time - t0)` where t0 is
+  taken after the per-leg 4-token warmup and model load, immediately
+  before the prefill iteration (`bench_decode.py:320-325`): the
+  time-to-first-token span, load excluded, warmup excluded, 3-decimal
+  print quantization. Identical definition on both sides of any
+  comparison in this receipt.
+- Warmup matrices (fork and stock) were run and discarded; the quiet gate
+  and load sampler ran throughout; the entry point, manifest, pins, and
+  assertion set are the canonical ones.
+- The six implied prefill-span deltas against the individually-claimed
+  values are +48/+66/+46 ms (Q4 short/long/1K) and +36/+42/+51 ms (BF16
+  short/long/1K): a roughly constant added cost per prefill call, whose
+  relative impact is largest on the shortest prefill. That signature is
+  consistent with one or more added synchronous drains in the prefill
+  path - matching the scalar-fill drain restored by `de780aa2` and the
+  copy_offset failure above - and inconsistent with rounding, warmup, or
+  contention artifacts.
+
 ## Provenance
 
 - Host placeholder `jwm1`; no private addresses, serials, or service
