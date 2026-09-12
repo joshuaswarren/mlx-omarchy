@@ -240,5 +240,4 @@ for shape, row in out.items():
               f"GFLOP/s ({row['delta_pct_ms']:+.1f}% ms) "
               f"digests {'OK' if b['digests'] == p['digests'] else 'DIFF'}")
 PYK
-kill $SAMPLER 2>/dev/null
 echo "$(date -u +%FT%TZ) window complete, elapsed $(( $(date +%s) - T0 ))s -- LOCK RELEASED"
