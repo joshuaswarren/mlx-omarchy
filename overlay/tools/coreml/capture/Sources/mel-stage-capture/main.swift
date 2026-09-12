@@ -59,11 +59,12 @@ func dump(_ dir: URL, _ name: String, _ data: [Float], shape: [Int],
     manifest[name] = SHA256.hash(data: bytes).map { String(format: "%02x", $0) }.joined()
 }
 
-// MARK: - args + input verification
+// MARK: - args
 
 var wavePath: String?
 var outPath: String?
 var expectSha: String?
+var mode = "stages"
 
 var it = CommandLine.arguments.makeIterator()
 _ = it.next()
@@ -72,17 +73,94 @@ while let arg = it.next() {
     case "--waveform": wavePath = it.next()
     case "--out": outPath = it.next()
     case "--expect-sha256": expectSha = it.next()
+    case "--mode": mode = it.next() ?? ""
     default:
         FileHandle.standardError.write(Data("unknown arg: \(arg)\n".utf8))
         exit(2)
     }
 }
-guard let wavePath, let outPath else {
-    FileHandle.standardError.write(Data("usage: --waveform W.f32 --out DIR [--expect-sha256 HEX]\n".utf8))
+guard let outPath else {
+    FileHandle.standardError.write(Data("usage: [--waveform W.f32] --out DIR [--mode stages|probe-cosf|probe-logf|probe-dft] ...\n".utf8))
     exit(2)
 }
 
-let inURL = URL(fileURLWithPath: wavePath)
+func readF32(_ path: String) -> [Float] {
+    let data = try! Data(contentsOf: URL(fileURLWithPath: path))
+    precondition(data.count % 4 == 0, "input not a f32 stream")
+    var out = [Float](repeating: 0, count: data.count / 4)
+    _ = out.withUnsafeMutableBufferPointer { dst in
+        data.withUnsafeBytes { raw in
+            UnsafeMutableRawPointer(dst.baseAddress!).copyMemory(
+                from: raw.baseAddress!, byteCount: data.count)
+        }
+    }
+    return out
+}
+
+if mode == "probe-cosf" || mode == "probe-logf" {
+    guard let wavePath else { exit(2) }
+    let x = readF32(wavePath)
+    let outURL = URL(fileURLWithPath: outPath)
+    try FileManager.default.createDirectory(at: outURL, withIntermediateDirectories: true)
+    var manifest = [String: String]()
+    if mode == "probe-cosf" {
+        try dump(outURL, "cosf_out", x.map { cosf($0) }, shape: [x.count], manifest: &manifest)
+    } else {
+        try dump(outURL, "logf_out", x.map { logf($0) }, shape: [x.count], manifest: &manifest)
+    }
+    try dump(outURL, "probe_in", x, shape: [x.count], manifest: &manifest)
+    let manData = try JSONSerialization.data(withJSONObject: manifest, options: [.sortedKeys, .prettyPrinted])
+    try manData.write(to: outURL.appendingPathComponent("manifest.json"))
+    print("probe \(mode): \(x.count) values")
+    exit(0)
+}
+
+if mode == "probe-dft" {
+    guard let wavePath else { exit(2) }
+    let samples = readF32(wavePath)
+    let nFFT = 512
+    precondition(samples.count % nFFT == 0, "dft probe needs whole 512-sample frames")
+    let numFrames = samples.count / nFFT
+    let numFreqBins = nFFT / 2 + 1
+    var realIn = [Float](repeating: 0, count: nFFT / 2)
+    var imagIn = [Float](repeating: 0, count: nFFT / 2)
+    var realOut = [Float](repeating: 0, count: nFFT / 2)
+    var imagOut = [Float](repeating: 0, count: nFFT / 2)
+    guard let fftSetup = vDSP_DFT_zrop_CreateSetup(nil, vDSP_Length(nFFT), .FORWARD) else {
+        fatalError("fft setup failed")
+    }
+    var allReal = [[Float]](), allImag = [[Float]]()
+    for t in 0..<numFrames {
+        let frame = Array(samples[t*nFFT..<(t+1)*nFFT])
+        for k in 0..<(nFFT / 2) {
+            realIn[k] = frame[2 * k]
+            imagIn[k] = frame[2 * k + 1]
+        }
+        vDSP_DFT_Execute(fftSetup, realIn, imagIn, &realOut, &imagOut)
+        var real = [Float](repeating: 0, count: numFreqBins)
+        var imag = [Float](repeating: 0, count: numFreqBins)
+        real[0] = realOut[0] * 0.5
+        real[numFreqBins - 1] = imagOut[0] * 0.5
+        for k in 1..<(nFFT / 2) {
+            real[k] = realOut[k] * 0.5
+            imag[k] = imagOut[k] * 0.5
+        }
+        allReal.append(real); allImag.append(imag)
+    }
+    let outURL = URL(fileURLWithPath: outPath)
+    try FileManager.default.createDirectory(at: outURL, withIntermediateDirectories: true)
+    var manifest = [String: String]()
+    func flatten(_ rows: [[Float]]) -> [Float] { rows.flatMap { $0 } }
+    try dump(outURL, "probe_dft_real", flatten(allReal), shape: [numFrames, numFreqBins], manifest: &manifest)
+    try dump(outURL, "probe_dft_imag", flatten(allImag), shape: [numFrames, numFreqBins], manifest: &manifest)
+    try dump(outURL, "probe_in", samples, shape: [samples.count], manifest: &manifest)
+    let manData = try JSONSerialization.data(withJSONObject: manifest, options: [.sortedKeys, .prettyPrinted])
+    try manData.write(to: outURL.appendingPathComponent("manifest.json"))
+    print("probe dft: \(numFrames) frames")
+    exit(0)
+}
+
+let inURL = URL(fileURLWithPath: wavePath!)
 let waveData = try Data(contentsOf: inURL)
 let inputSha = SHA256.hash(data: waveData).map { String(format: "%02x", $0) }.joined()
 if let expectSha {
@@ -309,8 +387,7 @@ for t in 0..<numFrames {
         std[i] += d * d
     }
 }
-for i in 0..<numMelFilters { std[i] = sqrt(std[i] / denom) }
-
+for i in 0..<numMelFilters { std[i] = Foundation.sqrt(std[i] / denom) }
 var normalized = logmelDump
 for t in 0..<numFrames {
     for i in 0..<numMelFilters {
