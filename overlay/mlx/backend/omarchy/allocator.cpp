@@ -4,6 +4,7 @@
 #include "mlx/backend/omarchy/allocator.h"
 
 #include <algorithm>
+#include <cstdio>
 #include <cstdint>
 #include <cstring>
 #include <mutex>
@@ -43,6 +44,33 @@ bool poison_freed() {
   return enabled;
 }
 
+// MLX_OMARCHY_BIG_UNCACHED (experiment, receipts/2026-09-12-weight-memory-
+// type): route allocations of 1 MiB and up to the coherent type WITHOUT
+// HOST_CACHED, when the driver exposes one. Honeykrisp on the M1 exposes
+// exactly two memory types, both DEVICE_LOCAL|HOST_VISIBLE|HOST_COHERENT,
+// differing only in HOST_CACHED; there is no non-host-visible DEVICE_LOCAL
+// type at all, so "stage weights into device-private memory" has no
+// destination on this driver. The uncached variant measured +6.2% on a
+// flat 256 MB GPU streaming read (3/3 paired legs) with no measurable
+// effect on the Q4 GEMV pattern; model weights are written once at load
+// and read every token, so they are the class that cannot benefit from a
+// host-side cached mapping. The 1 MiB floor keeps token-logit readbacks,
+// scalar fills and decode-scale activations on the host-cached default.
+// Both types are host-visible and coherent, so every mapped-memory path,
+// flush/invalidate rule and the reuse cache behave identically; a block
+// keeps its type through the cache and serves whatever class next fits.
+bool big_uncached() {
+  static const bool enabled = env_flag("MLX_OMARCHY_BIG_UNCACHED");
+  return enabled;
+}
+
+constexpr size_t kBigUncachedFloor = 1ull << 20;
+
+bool log_memtype() {
+  static const bool enabled = env_flag("MLX_OMARCHY_LOG_MEMTYPE");
+  return enabled;
+}
+
 void poison_freed_buffer(void* data, size_t size) {
   auto* words = static_cast<uint32_t*>(data);
   size_t count = size / sizeof(uint32_t);
@@ -53,7 +81,8 @@ void poison_freed_buffer(void* data, size_t size) {
 
 uint32_t VulkanAllocator::find_memory_type(
     uint32_t type_bits,
-    VkMemoryPropertyFlags required) const {
+    VkMemoryPropertyFlags required,
+    VkMemoryPropertyFlags excluded) const {
   const auto& mem = device().memory_properties();
   uint32_t fallback = UINT32_MAX;
   for (uint32_t i = 0; i < mem.memoryTypeCount; ++i) {
@@ -62,6 +91,9 @@ uint32_t VulkanAllocator::find_memory_type(
       continue;
     }
     if ((type.propertyFlags & required) != required) {
+      continue;
+    }
+    if ((type.propertyFlags & excluded) != 0) {
       continue;
     }
     bool device_local =
@@ -129,19 +161,36 @@ Buffer VulkanAllocator::malloc(size_t size) {
   VkMemoryRequirements reqs{};
   dt.GetBufferMemoryRequirements(device().handle(), buf->buffer, &reqs);
 
-  // Prefer host-visible coherent memory (unified memory on Apple GPUs). Fall
-  // back to plain host-visible memory with explicit cache maintenance; fail
-  // closed when even that is unavailable.
-  uint32_t type_index = find_memory_type(
-      reqs.memoryTypeBits,
-      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-          VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-  if (type_index != UINT32_MAX) {
-    buf->coherent = true;
-  } else {
+  // Big-uncached experiment first (env-gated, no-op by default): the
+  // coherent type without HOST_CACHED, when the driver exposes one and
+  // the allocation clears the size floor. Fall back silently when it
+  // does not (llvmpipe exposes a single cached type).
+  uint32_t type_index = UINT32_MAX;
+  if (size >= kBigUncachedFloor && big_uncached()) {
     type_index = find_memory_type(
-        reqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
-    buf->coherent = false;
+        reqs.memoryTypeBits,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+            VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+        VK_MEMORY_PROPERTY_HOST_CACHED_BIT);
+  }
+
+  // Default: prefer host-visible coherent memory (unified memory on
+  // Apple GPUs). Fall back to plain host-visible memory with explicit
+  // cache maintenance; fail closed when even that is unavailable.
+  if (type_index == UINT32_MAX) {
+    type_index = find_memory_type(
+        reqs.memoryTypeBits,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+            VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    if (type_index != UINT32_MAX) {
+      buf->coherent = true;
+    } else {
+      type_index = find_memory_type(
+          reqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+      buf->coherent = false;
+    }
+  } else {
+    buf->coherent = true;
   }
   if (type_index == UINT32_MAX) {
     dt.DestroyBuffer(device().handle(), buf->buffer, nullptr);
@@ -159,7 +208,14 @@ Buffer VulkanAllocator::malloc(size_t size) {
       dt.BindBufferMemory(device().handle(), buf->buffer, buf->memory, 0));
   VKX_CHECK(dt.MapMemory(
       device().handle(), buf->memory, 0, VK_WHOLE_SIZE, 0, &buf->data));
-
+  if (log_memtype()) {
+    const auto& ty = device().memory_properties().memoryTypes[type_index];
+    std::fprintf(
+        stderr,
+        "{\"k\":\"omarchy_alloc\",\"bytes\":%zu,\"type\":%u,"
+        "\"propertyFlags\":\"0x%04x\"}\n",
+        size, type_index, ty.propertyFlags);
+  }
   lk.lock();
   active_memory_ += buf->size;
   peak_memory_ = std::max(active_memory_, peak_memory_);
