@@ -1,12 +1,12 @@
 {
   "audio": {
-    "duration_seconds": 11.0,
-    "license": "Distributed in openai/whisper under MIT; separate source-recording rights are not documented in that repository",
-    "note": "Real speech: JFK inaugural address excerpt ('And so, my fellow Americans, ask not...'), 44.1 kHz stereo FLAC 24-bit, mirrored verbatim in openai/whisper at pinned commit; loaded by the reference AudioLoader to 16 kHz mono float32 [-1,1].",
-    "sample_rate": 44100,
-    "sha256": "63a4b1e4c1dc655ac70961ffbf518acd249df237e5a0152faae9a4a836949715",
-    "size": 1152693,
-    "url": "https://raw.githubusercontent.com/openai/whisper/86098128c0b4f24f0e2aa2994de830614b474227/tests/jfk.flac"
+    "duration_seconds": 10.435,
+    "license": "CC-BY-4.0 (LibriSpeech ASR corpus, OpenSLR SLR12)",
+    "note": "LibriSpeech test-clean/1089/134686/1089-134686-0000.flac; 16 kHz mono PCM16 FLAC. Byte-identical to the original OpenSLR test-clean archive member. Attribution: Vassil Panayotov, Guoguo Chen, Daniel Povey, Sanjeev Khudanpur. License: https://www.openslr.org/12/. Unmodified mirror bytes pinned below.",
+    "sample_rate": 16000,
+    "sha256": "30885601173f96b0d8ddd020dc959b055c6c1582b85a33e3fcab8c4b08ed94c2",
+    "size": 183318,
+    "url": "https://huggingface.co/datasets/Narsil/asr_dummy/resolve/8d141c84e3f84c54cd7bbaa851d24edd0f559734/1.flac"
   },
   "files": [
     {
@@ -80,17 +80,17 @@
     "swift_toolchain": "Apple Swift 6.3.3 (swiftlang-6.3.3.1.3 clang-2100.1.1.101)"
   },
   "macos_reference_paths": {
-    "crosscheck.json": "7fbbe500b0d51046befb001ca4dae801ef4be0a48fe664d1bfb8b0270aa32b92",
-    "encoder_hidden.npy": "033afc6723c8d38927a8a803ab3f1dba2a9d1815a65deaac0002b223b315d0f5",
-    "encoder_input_features.npy": "c5e3fe3facb01d0c62d16869854e21c1913d2658546252676463f746c5823829",
-    "encoder_input_mask.npy": "c780ba913d904568f82acc0e32e504819b6a2fa14ae11f6a6b6c374064d70a5a",
-    "encoder_mask.npy": "39421ec62b400096f0cf09aab6ec1e64c66c584f95e218701b0dce076565a521",
-    "environment.json": "a05f5080e4bf50701cce97b49b450593720ae1444e31e3940a0932ba5b3583d7",
-    "mel.npy": "8d278672e1678115040594c293ca0834e29a4d7fbbc4f46b453d71ea69d13836",
-    "mel_mask.npy": "268ca8090e08c716062f36e2f01e41b54dadba939b71c8b199a3c33ad063d875",
-    "token_ids.json": "7ddf2ec5b2c4c791c6fb1a8c583a8d30d62468d49a3fe3547c9aeece0dbf43aa",
-    "transcript.txt": "8c5b77a6658311e2b5a8f8a9abbbebf2f8dedb80909a7e4fee93036654f352e8",
-    "waveform.npy": "a85e2aed49aefa92b77905ca04ceecb2975f40374348d96e8b672571370b7bbd"
+    "crosscheck.json": "30c662e2eb2c31e257f3332e216b1e3d053f1f5e84fdd4d3dced47c277f3b266",
+    "encoder_hidden.npy": "7e442034cb42521f7b76ec9645e8d0082899a5f551ea8d046c62a9283cc6e4e5",
+    "encoder_input_features.npy": "638f1f22b36f33cdcf8cf5f63581497917fe2d8a9108da2f39dd1e99e9130731",
+    "encoder_input_mask.npy": "69afe545178dd33ed9f521b3934c77c687d64af3692a9f075b9e02c74516d804",
+    "encoder_mask.npy": "6c70a6a0b2f3f1d46846fb095cb178ceca7ccd2fec2d239de4516ccc79512d33",
+    "environment.json": "a8db84c279eae98de5e9a76be778daf0c5ed9ffc2ee668b1b1446d217410b913",
+    "mel.npy": "4ed24d7da64c17f58419ec45f15aa24ac9d1cfd93a4de51ee4f05e1d712b4d22",
+    "mel_mask.npy": "5f3d2d4f4c9ee6aaa0e1fa1268e518dcdc1356260a27b64e1a77957838fd7ed2",
+    "token_ids.json": "a175a5f9ce8c1e91fc28f6e1fce9deee29c24c3ef49e62ce4b144cc44f8401c8",
+    "transcript.txt": "db501a8c080380ea027ffa50a4b4956c39df77cb692c4fb78e556311a11a0790",
+    "waveform.npy": "9109d935561ce8972e5ca1bb126914e91111c3a51d9db60d54a5ecd65ee3d2bd"
   },
   "mel": {
     "epsilon": 1e-05,
@@ -107,7 +107,7 @@
   "model_repo": "mweinbach1/parakeet-tdt-0.6b-v3-coreml",
   "model_revision": "b650695c2322ee5281dff48d7345b2f3a58ff018",
   "numerical_contract": {
-    "derived_from": "Measured cross-compute-plan divergence of encoder_hidden [1,375,640] fp32 on Apple M1 Ultra / macOS 26.6.2 (25G83), CoreML 3520.5.1, pinned revision b650695c: ANE-vs-GPU max_abs=0.1148 mean_abs=0.00707 rel_l2=0.0386; ANE-vs-CPU max_abs=0.1313 mean_abs=0.00855 rel_l2=0.0471. Frozen bounds = 2x measured worst, rounded up. Waveform, mel, padded encoder inputs and encoder_mask bit-identical across compute plans; token IDs and transcript identical across ANE/GPU/CPU; duration/frame metadata differs at three indices each. 0 NaN/Inf. Golden capture unchanged: 20260912T135844Z-ane.",
+    "derived_from": "Encoder bounds unchanged from the prior JFK reference derivation (max=0.3, mean=0.02, relative L2=0.1). Licensed LibriSpeech capture 20260912T154759Z-librispeech/ane is the new golden input/output pair. ANE-vs-GPU max_abs=0.139700 mean_abs=0.003890 rel_l2=0.023345; ANE-vs-CPU max_abs=0.145203 mean_abs=0.004393 rel_l2=0.025172. All preprocessing and masks match exactly; all tensors finite. ANE and GPU emit identical 104 tokens including a repeated-punctuation/Cyrillic suffix; CPU emits 100 tokens and differs. Each capture matches its own pinned end-to-end transcriber. No text cleanup or tolerance change; this is a parity reference, not evidence of clean transcription.",
     "encoder_max_abs_err": 0.3,
     "encoder_mean_abs_err": 0.02,
     "encoder_rel_l2_err": 0.1,

@@ -8,6 +8,20 @@ The backend must refuse unsupported operations by name rather than return a wron
 
 Two of the worst v0.3.0 defects never appeared on a Linux development box. They are real-M1-only, and the full dev-box battery - 24 binaries, 407 cases, 828,139 assertions - was green the whole night they shipped. A Vulkan capability query, a shader miscompile, and a submit-thread ordering are all per-driver questions: llvmpipe, lavapipe, and Honeykrisp answer them differently. **A green run on a software driver is not proof about the Apple GPU, and this ledger now records where every defect was observed.** Anyone contributing: your llvmpipe battery passing is the start of verification on this project, not the end of it.
 
+
+## Pinned Parakeet reference emits an erroneous transcript suffix
+
+Observed on Apple M1 Ultra, macOS 26.6.2, Core ML 3520.5.1, with
+parakeet-coreml-swift `75aec2a1` and model revision `b650695c`.
+The licensed LibriSpeech `1089-134686-0000` clip produces 104 tokens on
+ANE and GPU, including repeated punctuation and a Cyrillic suffix after
+the English sentence. CPU produces 100 tokens and a different suffix.
+Every capture matches the pinned end-to-end transcriber for its compute
+plan. The cause is not established. No output cleanup is applied.
+
+The exact ANE output is retained as a native parity reference, not presented
+as clean ASR output. This is a macOS reference finding, not a demonstrated
+Linux backend defect. [Capture and exact outputs](../receipts/2026-09-12-licensed-parakeet-reference.json).
 ## Open portability gaps
 
 ### Cooperative-matrix prefill output depends on which Mesa build provides the extension
