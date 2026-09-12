@@ -1,0 +1,33 @@
+driver-fork: mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1
+driver-stock: mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1
+kernel: 7.1.6-1-1-ARCH
+machine: aarch64 unknown
+chip: Apple M1 (G13G B1)
+host-label: jwm1-linux (placeholder)
+stock-icd-sha256: 97bda66cb6dcd7c96479a835746535dbd96563c647d65251da569773ba230a4e
+wheel-candidate: mlx_omarchy-0.32.2.dev202609120833+877c2f1c-cp314-cp314-linux_aarch64.whl
+wheel-candidate-sha256: 449edd5f132506361ed69e202786bdea0d6211d459fcb6da8c536925497342a4
+wheel-base: mlx_omarchy-0.32.2.dev202609120737+a0775c37-cp314-cp314-linux_aarch64.whl
+wheel-base-sha256: 467da55fd5affd1ca7157115430ec7bf1c992c3898acfe8c50bfa75745d6b33d
+source-commit-candidate: 877c2f1c (branch wave/PrefillFmaQualify; overlay identical to 877c2f1c)
+source-commit-base: a0775c37
+--- fork driver identity + coopmat caps
+	driverName         = Honeykrisp
+	driverInfo         = Mesa 26.3.0-devel (git-6f6afc8968)
+	cooperativeMatrixSupportedStages: count = 1
+		SHADER_STAGE_COMPUTE_BIT
+
+VkPhysicalDeviceCustomBorderColorPropertiesEXT:
+-----------------------------------------------
+	maxCustomBorderColorSamplers = 4000
+
+--
+	cooperativeMatrix                   = true
+	cooperativeMatrixRobustBufferAccess = false
+
+VkPhysicalDeviceCustomBorderColorFeaturesEXT:
+---------------------------------------------
+	customBorderColors             = true
+--- stock driver identity + coopmat caps
+	driverName         = Honeykrisp
+	driverInfo         = Mesa 26.1.7

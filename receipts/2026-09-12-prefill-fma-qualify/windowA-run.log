@@ -1,0 +1,488 @@
+=== windowA start 2026-09-12T09:20:53Z pid 2960014
+2026-09-12T09:20:53Z waiting for m1-gpu.lock
+2026-09-12T09:20:53Z LOCK ACQUIRED (windowA announced start)
+driver-fork: mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1
+driver-stock: mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1
+kernel: 7.1.6-1-1-ARCH
+machine: aarch64 unknown
+chip: Apple M1 (G13G B1)
+host-label: jwm1-linux (placeholder)
+stock-icd-sha256: 97bda66cb6dcd7c96479a835746535dbd96563c647d65251da569773ba230a4e
+wheel-candidate: mlx_omarchy-0.32.2.dev202609120833+877c2f1c-cp314-cp314-linux_aarch64.whl
+wheel-candidate-sha256: 449edd5f132506361ed69e202786bdea0d6211d459fcb6da8c536925497342a4
+wheel-base: mlx_omarchy-0.32.2.dev202609120737+a0775c37-cp314-cp314-linux_aarch64.whl
+wheel-base-sha256: 467da55fd5affd1ca7157115430ec7bf1c992c3898acfe8c50bfa75745d6b33d
+source-commit-candidate: 877c2f1c (branch wave/PrefillFmaQualify; overlay identical to 877c2f1c)
+source-commit-base: a0775c37
+--- fork driver identity + coopmat caps
+	driverName         = Honeykrisp
+	driverInfo         = Mesa 26.3.0-devel (git-6f6afc8968)
+	cooperativeMatrixSupportedStages: count = 1
+		SHADER_STAGE_COMPUTE_BIT
+
+VkPhysicalDeviceCustomBorderColorPropertiesEXT:
+-----------------------------------------------
+	maxCustomBorderColorSamplers = 4000
+
+--
+	cooperativeMatrix                   = true
+	cooperativeMatrixRobustBufferAccess = false
+
+VkPhysicalDeviceCustomBorderColorFeaturesEXT:
+---------------------------------------------
+	customBorderColors             = true
+--- stock driver identity + coopmat caps
+	driverName         = Honeykrisp
+	driverInfo         = Mesa 26.1.7
+quiet-gate wait 1 load=0.86 2026-09-12T09:20:53Z
+quiet-gate wait 2 load=0.84 2026-09-12T09:21:13Z
+quiet-gate wait 3 load=3.44 2026-09-12T09:21:33Z
+quiet-gate wait 4 load=5.30 2026-09-12T09:21:53Z
+quiet-gate wait 5 load=6.70 2026-09-12T09:22:13Z
+quiet-gate wait 6 load=7.46 2026-09-12T09:22:33Z
+quiet-gate wait 7 load=6.10 2026-09-12T09:22:53Z
+quiet-gate wait 8 load=4.72 2026-09-12T09:23:13Z
+quiet-gate wait 9 load=3.66 2026-09-12T09:23:33Z
+quiet-gate wait 10 load=2.68 2026-09-12T09:23:53Z
+quiet-gate wait 11 load=1.92 2026-09-12T09:24:13Z
+quiet-gate wait 12 load=1.37 2026-09-12T09:24:33Z
+quiet-gate wait 13 load=0.98 2026-09-12T09:24:53Z
+quiet-gate wait 14 load=0.70 2026-09-12T09:25:13Z
+quiet gate done ok=3 load=0.58
+=== matrix run cand-fork-warmup 09:25:33 ===
+1789205133 0.58 2.59 2.30
+1789205143 0.65 2.54 2.29
+1789205153 0.62 2.47 2.27
+cand-fork-warmup exit=0 09:26:02
+6
+=== matrix run base-fork-warmup 09:26:02 ===
+1789205163 1.20 2.54 2.29
+1789205173 1.08 2.47 2.27
+1789205183 0.99 2.40 2.25
+base-fork-warmup exit=0 09:26:29
+6
+=== matrix run cand-stock-warmup 09:26:29 ===
+1789205193 0.99 2.36 2.24
+1789205203 0.91 2.30 2.22
+1789205213 0.93 2.25 2.21
+cand-stock-warmup exit=0 09:27:00
+6
+=== matrix run base-stock-warmup 09:27:00 ===
+1789205223 0.87 2.19 2.19
+1789205233 0.81 2.14 2.17
+1789205243 0.76 2.08 2.15
+1789205253 0.64 2.02 2.13
+base-stock-warmup exit=0 09:27:39
+6
+=== matrix run base-stock-r1 09:27:39 ===
+1789205263 1.34 2.11 2.16
+1789205273 1.21 2.06 2.14
+1789205283 1.69 2.14 2.17
+1789205293 1.43 2.07 2.14
+base-stock-r1 exit=0 09:28:19
+6
+=== matrix run cand-stock-r1 09:28:19 ===
+1789205303 1.29 2.02 2.12
+1789205313 1.24 1.98 2.11
+1789205323 1.12 1.93 2.09
+cand-stock-r1 exit=0 09:28:49
+6
+=== matrix run base-fork-r1 09:28:49 ===
+1789205333 1.59 2.00 2.11
+1789205343 1.57 1.99 2.11
+1789205353 1.41 1.94 2.09
+base-fork-r1 exit=0 09:29:16
+6
+=== matrix run cand-fork-r1 09:29:16 ===
+1789205363 1.19 1.87 2.07
+1789205373 1.09 1.83 2.05
+1789205383 1.07 1.80 2.04
+cand-fork-r1 exit=0 09:29:45
+6
+=== matrix run cand-fork-r2 09:29:45 ===
+1789205393 1.06 1.77 2.03
+1789205403 1.22 1.78 2.03
+1789205413 1.10 1.74 2.01
+cand-fork-r2 exit=0 09:30:14
+6
+=== matrix run base-fork-r2 09:30:14 ===
+1789205423 1.09 1.71 2.00
+1789205433 1.00 1.67 1.98
+base-fork-r2 exit=0 09:30:40
+6
+=== matrix run cand-stock-r2 09:30:40 ===
+1789205443 0.93 1.63 1.96
+1789205453 0.86 1.60 1.95
+1789205463 0.80 1.56 1.93
+cand-stock-r2 exit=0 09:31:10
+6
+=== matrix run base-stock-r2 09:31:10 ===
+1789205473 1.32 1.64 1.95
+1789205483 1.11 1.59 1.93
+1789205493 1.10 1.57 1.92
+1789205503 0.93 1.51 1.90
+base-stock-r2 exit=0 09:31:50
+6
+=== matrix run base-stock-r3 09:31:50 ===
+1789205513 0.86 1.48 1.89
+1789205523 0.81 1.45 1.87
+1789205533 0.76 1.42 1.86
+1789205543 0.64 1.37 1.83
+base-stock-r3 exit=0 09:32:30
+6
+=== matrix run cand-stock-r3 09:32:30 ===
+1789205553 0.62 1.34 1.82
+1789205563 0.53 1.30 1.80
+1789205573 0.60 1.29 1.79
+cand-stock-r3 exit=0 09:33:00
+6
+=== matrix run base-fork-r3 09:33:00 ===
+1789205583 0.59 1.26 1.78
+1789205593 0.65 1.25 1.77
+1789205603 0.71 1.24 1.76
+base-fork-r3 exit=0 09:33:27
+6
+=== matrix run cand-fork-r3 09:33:27 ===
+1789205613 0.68 1.22 1.75
+1789205623 0.65 1.19 1.73
+1789205633 0.63 1.17 1.72
+cand-fork-r3 exit=0 09:33:55
+6
+=== digest + provenance assertions 2026-09-12T09:33:55Z
+HELD  cand-fork-r1 qwen25-0.5b-4bit:short-decode-32 7fd25a869ff21678 want 7fd25a869ff21678
+      prov: mlx-omarchy 0.32.2.dev202609120833+877c2f1c mx=0.32.2.dev202609120833+87
+HELD  cand-fork-r1 qwen25-0.5b-4bit:long-decode-128 4cc08910089477fd want 4cc08910089477fd
+      prov: mlx-omarchy 0.32.2.dev202609120833+877c2f1c mx=0.32.2.dev202609120833+87
+HELD  cand-fork-r1 qwen25-0.5b-4bit:longctx-1024-decode-32 7da83f06ec9f001d want 7da83f06ec9f001d
+      prov: mlx-omarchy 0.32.2.dev202609120833+877c2f1c mx=0.32.2.dev202609120833+87
+HELD  cand-fork-r1 qwen25-0.5b-bf16:short-decode-32 f26175202f3dabe9 want f26175202f3dabe9
+      prov: mlx-omarchy 0.32.2.dev202609120833+877c2f1c mx=0.32.2.dev202609120833+87
+HELD  cand-fork-r1 qwen25-0.5b-bf16:long-decode-128 8690dc83246b39f8 want 8690dc83246b39f8
+      prov: mlx-omarchy 0.32.2.dev202609120833+877c2f1c mx=0.32.2.dev202609120833+87
+HELD  cand-fork-r1 qwen25-0.5b-bf16:longctx-1024-decode-32 ff502900d2a179a5 want ff502900d2a179a5
+      prov: mlx-omarchy 0.32.2.dev202609120833+877c2f1c mx=0.32.2.dev202609120833+87
+HELD  cand-fork-r2 qwen25-0.5b-4bit:short-decode-32 7fd25a869ff21678 want 7fd25a869ff21678
+      prov: mlx-omarchy 0.32.2.dev202609120833+877c2f1c mx=0.32.2.dev202609120833+87
+HELD  cand-fork-r2 qwen25-0.5b-4bit:long-decode-128 4cc08910089477fd want 4cc08910089477fd
+      prov: mlx-omarchy 0.32.2.dev202609120833+877c2f1c mx=0.32.2.dev202609120833+87
+HELD  cand-fork-r2 qwen25-0.5b-4bit:longctx-1024-decode-32 7da83f06ec9f001d want 7da83f06ec9f001d
+      prov: mlx-omarchy 0.32.2.dev202609120833+877c2f1c mx=0.32.2.dev202609120833+87
+HELD  cand-fork-r2 qwen25-0.5b-bf16:short-decode-32 f26175202f3dabe9 want f26175202f3dabe9
+      prov: mlx-omarchy 0.32.2.dev202609120833+877c2f1c mx=0.32.2.dev202609120833+87
+HELD  cand-fork-r2 qwen25-0.5b-bf16:long-decode-128 8690dc83246b39f8 want 8690dc83246b39f8
+      prov: mlx-omarchy 0.32.2.dev202609120833+877c2f1c mx=0.32.2.dev202609120833+87
+HELD  cand-fork-r2 qwen25-0.5b-bf16:longctx-1024-decode-32 ff502900d2a179a5 want ff502900d2a179a5
+      prov: mlx-omarchy 0.32.2.dev202609120833+877c2f1c mx=0.32.2.dev202609120833+87
+HELD  cand-fork-r3 qwen25-0.5b-4bit:short-decode-32 7fd25a869ff21678 want 7fd25a869ff21678
+      prov: mlx-omarchy 0.32.2.dev202609120833+877c2f1c mx=0.32.2.dev202609120833+87
+HELD  cand-fork-r3 qwen25-0.5b-4bit:long-decode-128 4cc08910089477fd want 4cc08910089477fd
+      prov: mlx-omarchy 0.32.2.dev202609120833+877c2f1c mx=0.32.2.dev202609120833+87
+HELD  cand-fork-r3 qwen25-0.5b-4bit:longctx-1024-decode-32 7da83f06ec9f001d want 7da83f06ec9f001d
+      prov: mlx-omarchy 0.32.2.dev202609120833+877c2f1c mx=0.32.2.dev202609120833+87
+HELD  cand-fork-r3 qwen25-0.5b-bf16:short-decode-32 f26175202f3dabe9 want f26175202f3dabe9
+      prov: mlx-omarchy 0.32.2.dev202609120833+877c2f1c mx=0.32.2.dev202609120833+87
+HELD  cand-fork-r3 qwen25-0.5b-bf16:long-decode-128 8690dc83246b39f8 want 8690dc83246b39f8
+      prov: mlx-omarchy 0.32.2.dev202609120833+877c2f1c mx=0.32.2.dev202609120833+87
+HELD  cand-fork-r3 qwen25-0.5b-bf16:longctx-1024-decode-32 ff502900d2a179a5 want ff502900d2a179a5
+      prov: mlx-omarchy 0.32.2.dev202609120833+877c2f1c mx=0.32.2.dev202609120833+87
+HELD  cand-stock-r1 qwen25-0.5b-4bit:short-decode-32 7fd25a869ff21678 want 7fd25a869ff21678
+      prov: mlx-omarchy 0.32.2.dev202609120833+877c2f1c mx=0.32.2.dev202609120833+87
+HELD  cand-stock-r1 qwen25-0.5b-4bit:long-decode-128 4cc08910089477fd want 4cc08910089477fd
+      prov: mlx-omarchy 0.32.2.dev202609120833+877c2f1c mx=0.32.2.dev202609120833+87
+HELD  cand-stock-r1 qwen25-0.5b-4bit:longctx-1024-decode-32 7da83f06ec9f001d want 7da83f06ec9f001d
+      prov: mlx-omarchy 0.32.2.dev202609120833+877c2f1c mx=0.32.2.dev202609120833+87
+HELD  cand-stock-r1 qwen25-0.5b-bf16:short-decode-32 7fc0f968789b1882 want 7fc0f968789b1882
+      prov: mlx-omarchy 0.32.2.dev202609120833+877c2f1c mx=0.32.2.dev202609120833+87
+HELD  cand-stock-r1 qwen25-0.5b-bf16:long-decode-128 46108ad71157cb4d want 46108ad71157cb4d
+      prov: mlx-omarchy 0.32.2.dev202609120833+877c2f1c mx=0.32.2.dev202609120833+87
+HELD  cand-stock-r1 qwen25-0.5b-bf16:longctx-1024-decode-32 ff502900d2a179a5 want ff502900d2a179a5
+      prov: mlx-omarchy 0.32.2.dev202609120833+877c2f1c mx=0.32.2.dev202609120833+87
+HELD  cand-stock-r2 qwen25-0.5b-4bit:short-decode-32 7fd25a869ff21678 want 7fd25a869ff21678
+      prov: mlx-omarchy 0.32.2.dev202609120833+877c2f1c mx=0.32.2.dev202609120833+87
+HELD  cand-stock-r2 qwen25-0.5b-4bit:long-decode-128 4cc08910089477fd want 4cc08910089477fd
+      prov: mlx-omarchy 0.32.2.dev202609120833+877c2f1c mx=0.32.2.dev202609120833+87
+HELD  cand-stock-r2 qwen25-0.5b-4bit:longctx-1024-decode-32 7da83f06ec9f001d want 7da83f06ec9f001d
+      prov: mlx-omarchy 0.32.2.dev202609120833+877c2f1c mx=0.32.2.dev202609120833+87
+HELD  cand-stock-r2 qwen25-0.5b-bf16:short-decode-32 7fc0f968789b1882 want 7fc0f968789b1882
+      prov: mlx-omarchy 0.32.2.dev202609120833+877c2f1c mx=0.32.2.dev202609120833+87
+HELD  cand-stock-r2 qwen25-0.5b-bf16:long-decode-128 46108ad71157cb4d want 46108ad71157cb4d
+      prov: mlx-omarchy 0.32.2.dev202609120833+877c2f1c mx=0.32.2.dev202609120833+87
+HELD  cand-stock-r2 qwen25-0.5b-bf16:longctx-1024-decode-32 ff502900d2a179a5 want ff502900d2a179a5
+      prov: mlx-omarchy 0.32.2.dev202609120833+877c2f1c mx=0.32.2.dev202609120833+87
+HELD  cand-stock-r3 qwen25-0.5b-4bit:short-decode-32 7fd25a869ff21678 want 7fd25a869ff21678
+      prov: mlx-omarchy 0.32.2.dev202609120833+877c2f1c mx=0.32.2.dev202609120833+87
+HELD  cand-stock-r3 qwen25-0.5b-4bit:long-decode-128 4cc08910089477fd want 4cc08910089477fd
+      prov: mlx-omarchy 0.32.2.dev202609120833+877c2f1c mx=0.32.2.dev202609120833+87
+HELD  cand-stock-r3 qwen25-0.5b-4bit:longctx-1024-decode-32 7da83f06ec9f001d want 7da83f06ec9f001d
+      prov: mlx-omarchy 0.32.2.dev202609120833+877c2f1c mx=0.32.2.dev202609120833+87
+HELD  cand-stock-r3 qwen25-0.5b-bf16:short-decode-32 7fc0f968789b1882 want 7fc0f968789b1882
+      prov: mlx-omarchy 0.32.2.dev202609120833+877c2f1c mx=0.32.2.dev202609120833+87
+HELD  cand-stock-r3 qwen25-0.5b-bf16:long-decode-128 46108ad71157cb4d want 46108ad71157cb4d
+      prov: mlx-omarchy 0.32.2.dev202609120833+877c2f1c mx=0.32.2.dev202609120833+87
+HELD  cand-stock-r3 qwen25-0.5b-bf16:longctx-1024-decode-32 ff502900d2a179a5 want ff502900d2a179a5
+      prov: mlx-omarchy 0.32.2.dev202609120833+877c2f1c mx=0.32.2.dev202609120833+87
+HELD  base-fork-r1 qwen25-0.5b-4bit:short-decode-32 7fd25a869ff21678 want 7fd25a869ff21678
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-fork-r1 qwen25-0.5b-4bit:long-decode-128 4cc08910089477fd want 4cc08910089477fd
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-fork-r1 qwen25-0.5b-4bit:longctx-1024-decode-32 7da83f06ec9f001d want 7da83f06ec9f001d
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-fork-r1 qwen25-0.5b-bf16:short-decode-32 f26175202f3dabe9 want f26175202f3dabe9
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-fork-r1 qwen25-0.5b-bf16:long-decode-128 8690dc83246b39f8 want 8690dc83246b39f8
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-fork-r1 qwen25-0.5b-bf16:longctx-1024-decode-32 ff502900d2a179a5 want ff502900d2a179a5
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-fork-r2 qwen25-0.5b-4bit:short-decode-32 7fd25a869ff21678 want 7fd25a869ff21678
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-fork-r2 qwen25-0.5b-4bit:long-decode-128 4cc08910089477fd want 4cc08910089477fd
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-fork-r2 qwen25-0.5b-4bit:longctx-1024-decode-32 7da83f06ec9f001d want 7da83f06ec9f001d
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-fork-r2 qwen25-0.5b-bf16:short-decode-32 f26175202f3dabe9 want f26175202f3dabe9
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-fork-r2 qwen25-0.5b-bf16:long-decode-128 8690dc83246b39f8 want 8690dc83246b39f8
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-fork-r2 qwen25-0.5b-bf16:longctx-1024-decode-32 ff502900d2a179a5 want ff502900d2a179a5
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-fork-r3 qwen25-0.5b-4bit:short-decode-32 7fd25a869ff21678 want 7fd25a869ff21678
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-fork-r3 qwen25-0.5b-4bit:long-decode-128 4cc08910089477fd want 4cc08910089477fd
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-fork-r3 qwen25-0.5b-4bit:longctx-1024-decode-32 7da83f06ec9f001d want 7da83f06ec9f001d
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-fork-r3 qwen25-0.5b-bf16:short-decode-32 f26175202f3dabe9 want f26175202f3dabe9
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-fork-r3 qwen25-0.5b-bf16:long-decode-128 8690dc83246b39f8 want 8690dc83246b39f8
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-fork-r3 qwen25-0.5b-bf16:longctx-1024-decode-32 ff502900d2a179a5 want ff502900d2a179a5
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-stock-r1 qwen25-0.5b-4bit:short-decode-32 7fd25a869ff21678 want 7fd25a869ff21678
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-stock-r1 qwen25-0.5b-4bit:long-decode-128 4cc08910089477fd want 4cc08910089477fd
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-stock-r1 qwen25-0.5b-4bit:longctx-1024-decode-32 7da83f06ec9f001d want 7da83f06ec9f001d
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-stock-r1 qwen25-0.5b-bf16:short-decode-32 7fc0f968789b1882 want 7fc0f968789b1882
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-stock-r1 qwen25-0.5b-bf16:long-decode-128 46108ad71157cb4d want 46108ad71157cb4d
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-stock-r1 qwen25-0.5b-bf16:longctx-1024-decode-32 ff502900d2a179a5 want ff502900d2a179a5
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-stock-r2 qwen25-0.5b-4bit:short-decode-32 7fd25a869ff21678 want 7fd25a869ff21678
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-stock-r2 qwen25-0.5b-4bit:long-decode-128 4cc08910089477fd want 4cc08910089477fd
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-stock-r2 qwen25-0.5b-4bit:longctx-1024-decode-32 7da83f06ec9f001d want 7da83f06ec9f001d
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-stock-r2 qwen25-0.5b-bf16:short-decode-32 7fc0f968789b1882 want 7fc0f968789b1882
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-stock-r2 qwen25-0.5b-bf16:long-decode-128 46108ad71157cb4d want 46108ad71157cb4d
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-stock-r2 qwen25-0.5b-bf16:longctx-1024-decode-32 ff502900d2a179a5 want ff502900d2a179a5
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-stock-r3 qwen25-0.5b-4bit:short-decode-32 7fd25a869ff21678 want 7fd25a869ff21678
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-stock-r3 qwen25-0.5b-4bit:long-decode-128 4cc08910089477fd want 4cc08910089477fd
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-stock-r3 qwen25-0.5b-4bit:longctx-1024-decode-32 7da83f06ec9f001d want 7da83f06ec9f001d
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-stock-r3 qwen25-0.5b-bf16:short-decode-32 7fc0f968789b1882 want 7fc0f968789b1882
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-stock-r3 qwen25-0.5b-bf16:long-decode-128 46108ad71157cb4d want 46108ad71157cb4d
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-stock-r3 qwen25-0.5b-bf16:longctx-1024-decode-32 ff502900d2a179a5 want ff502900d2a179a5
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+TOTAL 72 pinned cells, 0 failures
+=== kernel GFLOP/s probes 2026-09-12T09:33:55Z
+probe-fork-cand-fma-q4 exit=0 09:34:00
+{"side": "fma", "dtype": "q4", "shape": "262x896x128", "gflops": 110.1, "ms": 0.546, "sha": "648bba09719531a04d07ea578ab4acc33f4f2fee4e7fcdc269898615cb785f1d"}
+{"side": "fma", "dtype": "q4", "shape": "1053x896x128", "gflops": 148.1, "ms": 1.63, "sha": "c5aa2b92fa2111ee96ce23cf1afef27248b127a7c26ab579a74ec478f7ff47f0"}
+{"side": "fma", "dtype": "q4", "shape": "262x896x896", "gflops": 395.2, "ms": 1.064, "sha": "87f5f1f83ebade93308fdf47bb9b981928a6285860599839e664125ad3379808"}
+{"side": "fma", "dtype": "q4", "shape": "1053x896x896", "gflops": 293.9, "ms": 5.752, "sha": "bc9b8b7350dbe43c872299902d16db380379141203bfcb6842f6e8250fddf778"}
+{"side": "fma", "dtype": "q4", "shape": "262x896x4864", "gflops": 490.6, "ms": 4.655, "sha": "ed78d6b420299ea61f2a2a0e669bed8294bcb2c138f9768c5178ca335e7af850"}
+{"side": "fma", "dtype": "q4", "shape": "1053x896x4864", "gflops": 484.4, "ms": 18.948, "sha": "ec9c96ced1db7a3f9b0b0a304ea84700120e2cd740ada718e405b326f0801be3"}
+{"side": "fma", "dtype": "q4", "shape": "262x9728x896", "gflops": 493.3, "ms": 9.259, "sha": "ddc7a33e594f46baff1855ee046a76ecbd1f22fe66ed1654d1ea79fff1ce2fe6"}
+{"side": "fma", "dtype": "q4", "shape": "1053x9728x896", "gflops": 545.6, "ms": 33.642, "sha": "ddf73eb947967f4d38c269afecdb50b845d8f3d56cf3bea98e7ff823eeb2dd90"}
+JSON {"side": "fma", "dtype": "q4", "wheel": "unknown", "cells": {"262x896x128": {"gflops": 110.13525363448514, "ms": 0.5456609942484647, "sha": "648bba09719531a04d07ea578ab4acc33f4f2fee4e7fcdc269898615cb785f1d", "shape": [262, 896, 128]}, "1053x896x128": {"gflops": 148.14726336335517, "ms": 1.630357000976801, "sha": "c5aa2b92fa2111ee96ce23cf1afef27248b127a7c26ab579a74ec478f7ff47f0", "shape": [1053, 896, 128]}, "262x896x896": {"gflops": 395.20593598261786, "ms": 1.064446521922946, "sha": "87f5f1f83ebade93308fdf47bb9b981928a6285860599839e664125ad3379808", "shape": [262, 896, 896]}, "1053x896x896": {"gflops": 293.9155414335955, "ms": 5.752436525654048, "sha": "bc9b8b7350dbe43c872299902d16db380379141203bfcb6842f6e8250fddf778", "shape": [1053, 896, 896]}, "262x896x4864": {"gflops": 490.6308855616472, "ms": 4.654552991269156, "sha": "ed78d6b420299ea61f2a2a0e669bed8294bcb2c138f9768c5178ca335e7af850", "shape": [262, 896, 4864]}, "1053x896x4864": {"gflops": 484.39956095867774, "ms": 18.94768700003624, "sha": "ec9c96ced1db7a3f9b0b0a304ea84700120e2cd740ada718e405b326f0801be3", "shape": [1053, 896, 4864]}, "262x9728x896": {"gflops": 493.3069724480564, "ms": 9.258606034563854, "sha": "ddc7a33e594f46baff1855ee046a76ecbd1f22fe66ed1654d1ea79fff1ce2fe6", "shape": [262, 9728, 896]}, "1053x9728x896": {"gflops": 545.6345927560269, "ms": 33.642483031144366, "sha": "ddf73eb947967f4d38c269afecdb50b845d8f3d56cf3bea98e7ff823eeb2dd90", "shape": [1053, 9728, 896]}}}
+1789205643 0.53 1.13 1.70
+probe-fork-cand-coopmat-q4 exit=0 09:34:03
+{"side": "coopmat", "dtype": "q4", "shape": "262x896x128", "gflops": 124.3, "ms": 0.484, "sha": "648bba09719531a04d07ea578ab4acc33f4f2fee4e7fcdc269898615cb785f1d"}
+{"side": "coopmat", "dtype": "q4", "shape": "1053x896x128", "gflops": 286.7, "ms": 0.842, "sha": "c074d893932d20772148d285be01fa1939939c5d50b7f1fd0c5c15e1fd0f9b7f"}
+{"side": "coopmat", "dtype": "q4", "shape": "262x896x896", "gflops": 530.7, "ms": 0.793, "sha": "87f5f1f83ebade93308fdf47bb9b981928a6285860599839e664125ad3379808"}
+{"side": "coopmat", "dtype": "q4", "shape": "1053x896x896", "gflops": 721.3, "ms": 2.344, "sha": "dd4c9b965477350d5c195813bd71c142deb5110d52d81245668d0891ae622432"}
+{"side": "coopmat", "dtype": "q4", "shape": "262x896x4864", "gflops": 841.7, "ms": 2.713, "sha": "ed78d6b420299ea61f2a2a0e669bed8294bcb2c138f9768c5178ca335e7af850"}
+{"side": "coopmat", "dtype": "q4", "shape": "1053x896x4864", "gflops": 968.9, "ms": 9.473, "sha": "cdcd596cb80fdf049de8cc112ca3fd6c0eae45d9b8dca65084ac3e0e0e814420"}
+{"side": "coopmat", "dtype": "q4", "shape": "262x9728x896", "gflops": 480.9, "ms": 9.497, "sha": "ddc7a33e594f46baff1855ee046a76ecbd1f22fe66ed1654d1ea79fff1ce2fe6"}
+{"side": "coopmat", "dtype": "q4", "shape": "1053x9728x896", "gflops": 1034.6, "ms": 17.742, "sha": "65096bd394548af9de88b54c51171f908801676aa8110fc05f26c8115d8c8414"}
+JSON {"side": "coopmat", "dtype": "q4", "wheel": "unknown", "cells": {"262x896x128": {"gflops": 124.25863537757806, "ms": 0.483640527818352, "sha": "648bba09719531a04d07ea578ab4acc33f4f2fee4e7fcdc269898615cb785f1d", "shape": [262, 896, 128]}, "1053x896x128": {"gflops": 286.72442401276436, "ms": 0.8423870021943003, "sha": "c074d893932d20772148d285be01fa1939939c5d50b7f1fd0c5c15e1fd0f9b7f", "shape": [1053, 896, 128]}, "262x896x896": {"gflops": 530.7151081607911, "ms": 0.7926580146886408, "sha": "87f5f1f83ebade93308fdf47bb9b981928a6285860599839e664125ad3379808", "shape": [262, 896, 896]}, "1053x896x896": {"gflops": 721.315867837736, "ms": 2.343953005038202, "sha": "dd4c9b965477350d5c195813bd71c142deb5110d52d81245668d0891ae622432", "shape": [1053, 896, 896]}, "262x896x4864": {"gflops": 841.7461640337202, "ms": 2.7130120142828673, "sha": "ed78d6b420299ea61f2a2a0e669bed8294bcb2c138f9768c5178ca335e7af850", "shape": [262, 896, 4864]}, "1053x896x4864": {"gflops": 968.9045671785324, "ms": 9.47281246772036, "sha": "cdcd596cb80fdf049de8cc112ca3fd6c0eae45d9b8dca65084ac3e0e0e814420", "shape": [1053, 896, 4864]}, "262x9728x896": {"gflops": 480.9123700455128, "ms": 9.497229009866714, "sha": "ddc7a33e594f46baff1855ee046a76ecbd1f22fe66ed1654d1ea79fff1ce2fe6", "shape": [262, 9728, 896]}, "1053x9728x896": {"gflops": 1034.6480969784184, "ms": 17.741783492965624, "sha": "65096bd394548af9de88b54c51171f908801676aa8110fc05f26c8115d8c8414", "shape": [1053, 9728, 896]}}}
+probe-fork-base-coopmat-q4 exit=0 09:34:07
+{"side": "coopmat", "dtype": "q4", "shape": "262x896x128", "gflops": 123.9, "ms": 0.485, "sha": "648bba09719531a04d07ea578ab4acc33f4f2fee4e7fcdc269898615cb785f1d"}
+{"side": "coopmat", "dtype": "q4", "shape": "1053x896x128", "gflops": 229.4, "ms": 1.053, "sha": "c074d893932d20772148d285be01fa1939939c5d50b7f1fd0c5c15e1fd0f9b7f"}
+{"side": "coopmat", "dtype": "q4", "shape": "262x896x896", "gflops": 444.0, "ms": 0.948, "sha": "87f5f1f83ebade93308fdf47bb9b981928a6285860599839e664125ad3379808"}
+{"side": "coopmat", "dtype": "q4", "shape": "1053x896x896", "gflops": 645.8, "ms": 2.618, "sha": "dd4c9b965477350d5c195813bd71c142deb5110d52d81245668d0891ae622432"}
+{"side": "coopmat", "dtype": "q4", "shape": "262x896x4864", "gflops": 842.5, "ms": 2.711, "sha": "ed78d6b420299ea61f2a2a0e669bed8294bcb2c138f9768c5178ca335e7af850"}
+{"side": "coopmat", "dtype": "q4", "shape": "1053x896x4864", "gflops": 967.6, "ms": 9.485, "sha": "cdcd596cb80fdf049de8cc112ca3fd6c0eae45d9b8dca65084ac3e0e0e814420"}
+{"side": "coopmat", "dtype": "q4", "shape": "262x9728x896", "gflops": 484.0, "ms": 9.436, "sha": "ddc7a33e594f46baff1855ee046a76ecbd1f22fe66ed1654d1ea79fff1ce2fe6"}
+{"side": "coopmat", "dtype": "q4", "shape": "1053x9728x896", "gflops": 1032.1, "ms": 17.786, "sha": "65096bd394548af9de88b54c51171f908801676aa8110fc05f26c8115d8c8414"}
+JSON {"side": "coopmat", "dtype": "q4", "wheel": "unknown", "cells": {"262x896x128": {"gflops": 123.85861952398521, "ms": 0.4852025012951344, "sha": "648bba09719531a04d07ea578ab4acc33f4f2fee4e7fcdc269898615cb785f1d", "shape": [262, 896, 128]}, "1053x896x128": {"gflops": 229.44213279223254, "ms": 1.0526964906603098, "sha": "c074d893932d20772148d285be01fa1939939c5d50b7f1fd0c5c15e1fd0f9b7f", "shape": [1053, 896, 128]}, "262x896x896": {"gflops": 443.960649338751, "ms": 0.9475515107624233, "sha": "87f5f1f83ebade93308fdf47bb9b981928a6285860599839e664125ad3379808", "shape": [262, 896, 896]}, "1053x896x896": {"gflops": 645.7811013704342, "ms": 2.6181170251220465, "sha": "dd4c9b965477350d5c195813bd71c142deb5110d52d81245668d0891ae622432", "shape": [1053, 896, 896]}, "262x896x4864": {"gflops": 842.5160013032961, "ms": 2.710533037316054, "sha": "ed78d6b420299ea61f2a2a0e669bed8294bcb2c138f9768c5178ca335e7af850", "shape": [262, 896, 4864]}, "1053x896x4864": {"gflops": 967.6171573305284, "ms": 9.48541599791497, "sha": "cdcd596cb80fdf049de8cc112ca3fd6c0eae45d9b8dca65084ac3e0e0e814420", "shape": [1053, 896, 4864]}, "262x9728x896": {"gflops": 484.03613135176863, "ms": 9.435937972739339, "sha": "ddc7a33e594f46baff1855ee046a76ecbd1f22fe66ed1654d1ea79fff1ce2fe6", "shape": [262, 9728, 896]}, "1053x9728x896": {"gflops": 1032.0752339458277, "ms": 17.786012031137943, "sha": "65096bd394548af9de88b54c51171f908801676aa8110fc05f26c8115d8c8414", "shape": [1053, 9728, 896]}}}
+probe-stock-cand-fma-q4 exit=0 09:34:11
+{"side": "fma", "dtype": "q4", "shape": "262x896x128", "gflops": 111.1, "ms": 0.541, "sha": "648bba09719531a04d07ea578ab4acc33f4f2fee4e7fcdc269898615cb785f1d"}
+{"side": "fma", "dtype": "q4", "shape": "1053x896x128", "gflops": 149.7, "ms": 1.614, "sha": "650639a8197ff5083ea2ed36f156869d9d79b15bb55325c0e8e1b8cbee0559b0"}
+{"side": "fma", "dtype": "q4", "shape": "262x896x896", "gflops": 273.6, "ms": 1.537, "sha": "2a5fb9e410d160efccc3d3710c1e33ac6cc3e4abbb7dac8d06cde6314f192d9d"}
+{"side": "fma", "dtype": "q4", "shape": "1053x896x896", "gflops": 286.2, "ms": 5.908, "sha": "99dec472642908458e92a54ca5ff1f8b7b685640cecbe91a21f71de192563880"}
+{"side": "fma", "dtype": "q4", "shape": "262x896x4864", "gflops": 494.4, "ms": 4.619, "sha": "647c7ac43b219c96f3b93997f295565d07b51597c53dbdb8b57e7d4c24cdae1c"}
+{"side": "fma", "dtype": "q4", "shape": "1053x896x4864", "gflops": 484.5, "ms": 18.945, "sha": "4b849e6b0cc7b6afca5e0fc8a59d9952fbf07541d305c0f367c1365abf5c09d1"}
+{"side": "fma", "dtype": "q4", "shape": "262x9728x896", "gflops": 481.8, "ms": 9.479, "sha": "06fe03b344225f3e2f2a8fb79c5044c403cadc2bb39f454be5449a72ea1dcf49"}
+{"side": "fma", "dtype": "q4", "shape": "1053x9728x896", "gflops": 545.5, "ms": 33.651, "sha": "6f3094ea62f07afaad257db592798587bba8a6470be6ddaa8fdcca33fb3d55db"}
+JSON {"side": "fma", "dtype": "q4", "wheel": "unknown", "cells": {"262x896x128": {"gflops": 111.11524180996098, "ms": 0.540848501259461, "sha": "648bba09719531a04d07ea578ab4acc33f4f2fee4e7fcdc269898615cb785f1d", "shape": [262, 896, 128]}, "1053x896x128": {"gflops": 149.65417213359447, "ms": 1.6139404906425625, "sha": "650639a8197ff5083ea2ed36f156869d9d79b15bb55325c0e8e1b8cbee0559b0", "shape": [1053, 896, 128]}, "262x896x896": {"gflops": 273.64653405164023, "ms": 1.5372954949270934, "sha": "2a5fb9e410d160efccc3d3710c1e33ac6cc3e4abbb7dac8d06cde6314f192d9d", "shape": [262, 896, 896]}, "1053x896x896": {"gflops": 286.18667504552684, "ms": 5.907789018237963, "sha": "99dec472642908458e92a54ca5ff1f8b7b685640cecbe91a21f71de192563880", "shape": [1053, 896, 896]}, "262x896x4864": {"gflops": 494.39047241804917, "ms": 4.619157494744286, "sha": "647c7ac43b219c96f3b93997f295565d07b51597c53dbdb8b57e7d4c24cdae1c", "shape": [262, 896, 4864]}, "1053x896x4864": {"gflops": 484.47518160777645, "ms": 18.944729497889057, "sha": "4b849e6b0cc7b6afca5e0fc8a59d9952fbf07541d305c0f367c1365abf5c09d1", "shape": [1053, 896, 4864]}, "262x9728x896": {"gflops": 481.821324458462, "ms": 9.479312517214566, "sha": "06fe03b344225f3e2f2a8fb79c5044c403cadc2bb39f454be5449a72ea1dcf49", "shape": [262, 9728, 896]}, "1053x9728x896": {"gflops": 545.4957487463157, "ms": 33.651045989245176, "sha": "6f3094ea62f07afaad257db592798587bba8a6470be6ddaa8fdcca33fb3d55db", "shape": [1053, 9728, 896]}}}
+1789205653 0.45 1.09 1.68
+probe-stock-cand-coopmat-q4 exit=0 09:34:19
+{"side": "coopmat", "dtype": "q4", "shape": "262x896x128", "gflops": 59.5, "ms": 1.01, "sha": "648bba09719531a04d07ea578ab4acc33f4f2fee4e7fcdc269898615cb785f1d"}
+{"side": "coopmat", "dtype": "q4", "shape": "1053x896x128", "gflops": 93.4, "ms": 2.585, "sha": "650639a8197ff5083ea2ed36f156869d9d79b15bb55325c0e8e1b8cbee0559b0"}
+{"side": "coopmat", "dtype": "q4", "shape": "262x896x896", "gflops": 167.3, "ms": 2.514, "sha": "2a5fb9e410d160efccc3d3710c1e33ac6cc3e4abbb7dac8d06cde6314f192d9d"}
+{"side": "coopmat", "dtype": "q4", "shape": "1053x896x896", "gflops": 223.1, "ms": 7.578, "sha": "99dec472642908458e92a54ca5ff1f8b7b685640cecbe91a21f71de192563880"}
+{"side": "coopmat", "dtype": "q4", "shape": "262x896x4864", "gflops": 227.1, "ms": 10.058, "sha": "647c7ac43b219c96f3b93997f295565d07b51597c53dbdb8b57e7d4c24cdae1c"}
+{"side": "coopmat", "dtype": "q4", "shape": "1053x896x4864", "gflops": 267.5, "ms": 34.315, "sha": "4b849e6b0cc7b6afca5e0fc8a59d9952fbf07541d305c0f367c1365abf5c09d1"}
+{"side": "coopmat", "dtype": "q4", "shape": "262x9728x896", "gflops": 245.2, "ms": 18.631, "sha": "06fe03b344225f3e2f2a8fb79c5044c403cadc2bb39f454be5449a72ea1dcf49"}
+{"side": "coopmat", "dtype": "q4", "shape": "1053x9728x896", "gflops": 275.3, "ms": 66.683, "sha": "6f3094ea62f07afaad257db592798587bba8a6470be6ddaa8fdcca33fb3d55db"}
+JSON {"side": "coopmat", "dtype": "q4", "wheel": "unknown", "cells": {"262x896x128": {"gflops": 59.49233703620274, "ms": 1.0101555089931935, "sha": "648bba09719531a04d07ea578ab4acc33f4f2fee4e7fcdc269898615cb785f1d", "shape": [262, 896, 128]}, "1053x896x128": {"gflops": 93.42455481410977, "ms": 2.5853259721770883, "sha": "650639a8197ff5083ea2ed36f156869d9d79b15bb55325c0e8e1b8cbee0559b0", "shape": [1053, 896, 128]}, "262x896x896": {"gflops": 167.31560010411465, "ms": 2.5142639642581344, "sha": "2a5fb9e410d160efccc3d3710c1e33ac6cc3e4abbb7dac8d06cde6314f192d9d", "shape": [262, 896, 896]}, "1053x896x896": {"gflops": 223.09812309642632, "ms": 7.578416494652629, "sha": "99dec472642908458e92a54ca5ff1f8b7b685640cecbe91a21f71de192563880", "shape": [1053, 896, 896]}, "262x896x4864": {"gflops": 227.05895383353217, "ms": 10.05759701365605, "sha": "647c7ac43b219c96f3b93997f295565d07b51597c53dbdb8b57e7d4c24cdae1c", "shape": [262, 896, 4864]}, "1053x896x4864": {"gflops": 267.4721754956258, "ms": 34.31478899437934, "sha": "4b849e6b0cc7b6afca5e0fc8a59d9952fbf07541d305c0f367c1365abf5c09d1", "shape": [1053, 896, 4864]}, "262x9728x896": {"gflops": 245.15359509518998, "ms": 18.63050350220874, "sha": "06fe03b344225f3e2f2a8fb79c5044c403cadc2bb39f454be5449a72ea1dcf49", "shape": [262, 9728, 896]}, "1053x9728x896": {"gflops": 275.27933684884357, "ms": 66.68318348238245, "sha": "6f3094ea62f07afaad257db592798587bba8a6470be6ddaa8fdcca33fb3d55db", "shape": [1053, 9728, 896]}}}
+1789205663 0.38 1.06 1.66
+probe-stock-base-coopmat-q4 exit=0 09:34:26
+{"side": "coopmat", "dtype": "q4", "shape": "262x896x128", "gflops": 59.5, "ms": 1.01, "sha": "648bba09719531a04d07ea578ab4acc33f4f2fee4e7fcdc269898615cb785f1d"}
+{"side": "coopmat", "dtype": "q4", "shape": "1053x896x128", "gflops": 73.3, "ms": 3.296, "sha": "650639a8197ff5083ea2ed36f156869d9d79b15bb55325c0e8e1b8cbee0559b0"}
+{"side": "coopmat", "dtype": "q4", "shape": "262x896x896", "gflops": 124.4, "ms": 3.381, "sha": "2a5fb9e410d160efccc3d3710c1e33ac6cc3e4abbb7dac8d06cde6314f192d9d"}
+{"side": "coopmat", "dtype": "q4", "shape": "1053x896x896", "gflops": 211.5, "ms": 7.994, "sha": "99dec472642908458e92a54ca5ff1f8b7b685640cecbe91a21f71de192563880"}
+{"side": "coopmat", "dtype": "q4", "shape": "262x896x4864", "gflops": 227.0, "ms": 10.06, "sha": "647c7ac43b219c96f3b93997f295565d07b51597c53dbdb8b57e7d4c24cdae1c"}
+{"side": "coopmat", "dtype": "q4", "shape": "1053x896x4864", "gflops": 267.4, "ms": 34.324, "sha": "4b849e6b0cc7b6afca5e0fc8a59d9952fbf07541d305c0f367c1365abf5c09d1"}
+{"side": "coopmat", "dtype": "q4", "shape": "262x9728x896", "gflops": 245.6, "ms": 18.598, "sha": "06fe03b344225f3e2f2a8fb79c5044c403cadc2bb39f454be5449a72ea1dcf49"}
+{"side": "coopmat", "dtype": "q4", "shape": "1053x9728x896", "gflops": 275.6, "ms": 66.613, "sha": "6f3094ea62f07afaad257db592798587bba8a6470be6ddaa8fdcca33fb3d55db"}
+JSON {"side": "coopmat", "dtype": "q4", "wheel": "unknown", "cells": {"262x896x128": {"gflops": 59.513192308685184, "ms": 1.0098015191033483, "sha": "648bba09719531a04d07ea578ab4acc33f4f2fee4e7fcdc269898615cb785f1d", "shape": [262, 896, 128]}, "1053x896x128": {"gflops": 73.28421191400345, "ms": 3.2958385127130896, "sha": "650639a8197ff5083ea2ed36f156869d9d79b15bb55325c0e8e1b8cbee0559b0", "shape": [1053, 896, 128]}, "262x896x896": {"gflops": 124.42400981878546, "ms": 3.3809839806053787, "sha": "2a5fb9e410d160efccc3d3710c1e33ac6cc3e4abbb7dac8d06cde6314f192d9d", "shape": [262, 896, 896]}, "1053x896x896": {"gflops": 211.5127295247771, "ms": 7.9935165122151375, "sha": "99dec472642908458e92a54ca5ff1f8b7b685640cecbe91a21f71de192563880", "shape": [1053, 896, 896]}, "262x896x4864": {"gflops": 226.99828676353673, "ms": 10.060284985229373, "sha": "647c7ac43b219c96f3b93997f295565d07b51597c53dbdb8b57e7d4c24cdae1c", "shape": [262, 896, 4864]}, "1053x896x4864": {"gflops": 267.39782350468505, "ms": 34.32433048146777, "sha": "4b849e6b0cc7b6afca5e0fc8a59d9952fbf07541d305c0f367c1365abf5c09d1", "shape": [1053, 896, 4864]}, "262x9728x896": {"gflops": 245.5786998809033, "ms": 18.598253489471972, "sha": "06fe03b344225f3e2f2a8fb79c5044c403cadc2bb39f454be5449a72ea1dcf49", "shape": [262, 9728, 896]}, "1053x9728x896": {"gflops": 275.57059174062886, "ms": 66.61270497716032, "sha": "6f3094ea62f07afaad257db592798587bba8a6470be6ddaa8fdcca33fb3d55db", "shape": [1053, 9728, 896]}}}
+probe-fork-cand-fma-bf16 exit=0 09:34:30
+{"side": "fma", "dtype": "bf16", "shape": "262x896x128", "gflops": 115.0, "ms": 0.523, "sha": "15eb966c25741f127154cd544ea254003c3e914d067a812b10a6f0054ca8c98d"}
+{"side": "fma", "dtype": "bf16", "shape": "1053x896x128", "gflops": 200.2, "ms": 1.206, "sha": "72c1d0c1812ccd5d9f9116cbf4ef540b92971306b3d252189e35a50ee0766df3"}
+{"side": "fma", "dtype": "bf16", "shape": "262x896x896", "gflops": 444.8, "ms": 0.946, "sha": "8d56c365617892e14e5a8872cfcf29dfbed87478bf07577d0022c6dba963c6a1"}
+{"side": "fma", "dtype": "bf16", "shape": "1053x896x896", "gflops": 480.7, "ms": 3.517, "sha": "7f0c63b6c254321ea94b51b86986d3ca6447760bb90e68ae28c92bcbcc79e75e"}
+{"side": "fma", "dtype": "bf16", "shape": "262x896x4864", "gflops": 524.1, "ms": 4.357, "sha": "4229448978650c9ef530684714da9bff5808ac15647fad70598516627699a11e"}
+{"side": "fma", "dtype": "bf16", "shape": "1053x896x4864", "gflops": 557.8, "ms": 16.456, "sha": "329237fb441aa76208da089ffac1f1e02ba1b31baf7c057e1e6e1e9dba285af7"}
+{"side": "fma", "dtype": "bf16", "shape": "262x9728x896", "gflops": 432.4, "ms": 10.563, "sha": "c6f2b426377c9c2da033d3ec193306021a4a7211dbb3b7800f4187fc73af3ac9"}
+{"side": "fma", "dtype": "bf16", "shape": "1053x9728x896", "gflops": 629.9, "ms": 29.141, "sha": "d32bd8a2627284ac08698e954cf736c37b4de265a57f104c60231e4db9edf179"}
+JSON {"side": "fma", "dtype": "bf16", "wheel": "unknown", "cells": {"262x896x128": {"gflops": 114.99556753686065, "ms": 0.5225985078141093, "sha": "15eb966c25741f127154cd544ea254003c3e914d067a812b10a6f0054ca8c98d", "shape": [262, 896, 128]}, "1053x896x128": {"gflops": 200.1952212258005, "ms": 1.2064869806636125, "sha": "72c1d0c1812ccd5d9f9116cbf4ef540b92971306b3d252189e35a50ee0766df3", "shape": [1053, 896, 128]}, "262x896x896": {"gflops": 444.781875559927, "ms": 0.9458019922021776, "sha": "8d56c365617892e14e5a8872cfcf29dfbed87478bf07577d0022c6dba963c6a1", "shape": [262, 896, 896]}, "1053x896x896": {"gflops": 480.7019734070274, "ms": 3.517211473081261, "sha": "7f0c63b6c254321ea94b51b86986d3ca6447760bb90e68ae28c92bcbcc79e75e", "shape": [1053, 896, 896]}, "262x896x4864": {"gflops": 524.1408934055704, "ms": 4.356972494861111, "sha": "4229448978650c9ef530684714da9bff5808ac15647fad70598516627699a11e", "shape": [262, 896, 4864]}, "1053x896x4864": {"gflops": 557.7567499736989, "ms": 16.455652512377128, "sha": "329237fb441aa76208da089ffac1f1e02ba1b31baf7c057e1e6e1e9dba285af7", "shape": [1053, 896, 4864]}, "262x9728x896": {"gflops": 432.4057788976584, "ms": 10.562613024376333, "sha": "c6f2b426377c9c2da033d3ec193306021a4a7211dbb3b7800f4187fc73af3ac9", "shape": [262, 9728, 896]}, "1053x9728x896": {"gflops": 629.926150612657, "ms": 29.140721511794254, "sha": "d32bd8a2627284ac08698e954cf736c37b4de265a57f104c60231e4db9edf179", "shape": [1053, 9728, 896]}}}
+1789205673 0.84 1.14 1.68
+probe-fork-cand-coopmat-bf16 exit=0 09:34:34
+{"side": "coopmat", "dtype": "bf16", "shape": "262x896x128", "gflops": 101.0, "ms": 0.595, "sha": "15eb966c25741f127154cd544ea254003c3e914d067a812b10a6f0054ca8c98d"}
+{"side": "coopmat", "dtype": "bf16", "shape": "1053x896x128", "gflops": 187.3, "ms": 1.29, "sha": "72c1d0c1812ccd5d9f9116cbf4ef540b92971306b3d252189e35a50ee0766df3"}
+{"side": "coopmat", "dtype": "bf16", "shape": "262x896x896", "gflops": 409.7, "ms": 1.027, "sha": "8d56c365617892e14e5a8872cfcf29dfbed87478bf07577d0022c6dba963c6a1"}
+{"side": "coopmat", "dtype": "bf16", "shape": "1053x896x896", "gflops": 503.1, "ms": 3.361, "sha": "7f0c63b6c254321ea94b51b86986d3ca6447760bb90e68ae28c92bcbcc79e75e"}
+{"side": "coopmat", "dtype": "bf16", "shape": "262x896x4864", "gflops": 654.8, "ms": 3.487, "sha": "4229448978650c9ef530684714da9bff5808ac15647fad70598516627699a11e"}
+{"side": "coopmat", "dtype": "bf16", "shape": "1053x896x4864", "gflops": 761.5, "ms": 12.052, "sha": "329237fb441aa76208da089ffac1f1e02ba1b31baf7c057e1e6e1e9dba285af7"}
+{"side": "coopmat", "dtype": "bf16", "shape": "262x9728x896", "gflops": 409.4, "ms": 11.156, "sha": "c6f2b426377c9c2da033d3ec193306021a4a7211dbb3b7800f4187fc73af3ac9"}
+{"side": "coopmat", "dtype": "bf16", "shape": "1053x9728x896", "gflops": 783.7, "ms": 23.422, "sha": "d32bd8a2627284ac08698e954cf736c37b4de265a57f104c60231e4db9edf179"}
+JSON {"side": "coopmat", "dtype": "bf16", "wheel": "unknown", "cells": {"262x896x128": {"gflops": 100.98242440364423, "ms": 0.5951185303274542, "sha": "15eb966c25741f127154cd544ea254003c3e914d067a812b10a6f0054ca8c98d", "shape": [262, 896, 128]}, "1053x896x128": {"gflops": 187.2611041412142, "ms": 1.2898189888801426, "sha": "72c1d0c1812ccd5d9f9116cbf4ef540b92971306b3d252189e35a50ee0766df3", "shape": [1053, 896, 128]}, "262x896x896": {"gflops": 409.695335915798, "ms": 1.0268010082654655, "sha": "8d56c365617892e14e5a8872cfcf29dfbed87478bf07577d0022c6dba963c6a1", "shape": [262, 896, 896]}, "1053x896x896": {"gflops": 503.07119663495786, "ms": 3.3608175290282816, "sha": "7f0c63b6c254321ea94b51b86986d3ca6447760bb90e68ae28c92bcbcc79e75e", "shape": [1053, 896, 896]}, "262x896x4864": {"gflops": 654.8457400274432, "ms": 3.4873365075327456, "sha": "4229448978650c9ef530684714da9bff5808ac15647fad70598516627699a11e", "shape": [262, 896, 4864]}, "1053x896x4864": {"gflops": 761.5270343865434, "ms": 12.052429985487834, "sha": "329237fb441aa76208da089ffac1f1e02ba1b31baf7c057e1e6e1e9dba285af7", "shape": [1053, 896, 4864]}, "262x9728x896": {"gflops": 409.42133417998195, "ms": 11.155586020322517, "sha": "c6f2b426377c9c2da033d3ec193306021a4a7211dbb3b7800f4187fc73af3ac9", "shape": [262, 9728, 896]}, "1053x9728x896": {"gflops": 783.7335137381874, "ms": 23.421867517754436, "sha": "d32bd8a2627284ac08698e954cf736c37b4de265a57f104c60231e4db9edf179", "shape": [1053, 9728, 896]}}}
+probe-fork-base-coopmat-bf16 exit=0 09:34:38
+{"side": "coopmat", "dtype": "bf16", "shape": "262x896x128", "gflops": 101.4, "ms": 0.593, "sha": "15eb966c25741f127154cd544ea254003c3e914d067a812b10a6f0054ca8c98d"}
+{"side": "coopmat", "dtype": "bf16", "shape": "1053x896x128", "gflops": 195.8, "ms": 1.234, "sha": "72c1d0c1812ccd5d9f9116cbf4ef540b92971306b3d252189e35a50ee0766df3"}
+{"side": "coopmat", "dtype": "bf16", "shape": "262x896x896", "gflops": 425.2, "ms": 0.989, "sha": "8d56c365617892e14e5a8872cfcf29dfbed87478bf07577d0022c6dba963c6a1"}
+{"side": "coopmat", "dtype": "bf16", "shape": "1053x896x896", "gflops": 529.7, "ms": 3.192, "sha": "7f0c63b6c254321ea94b51b86986d3ca6447760bb90e68ae28c92bcbcc79e75e"}
+{"side": "coopmat", "dtype": "bf16", "shape": "262x896x4864", "gflops": 655.2, "ms": 3.486, "sha": "4229448978650c9ef530684714da9bff5808ac15647fad70598516627699a11e"}
+{"side": "coopmat", "dtype": "bf16", "shape": "1053x896x4864", "gflops": 761.0, "ms": 12.061, "sha": "329237fb441aa76208da089ffac1f1e02ba1b31baf7c057e1e6e1e9dba285af7"}
+{"side": "coopmat", "dtype": "bf16", "shape": "262x9728x896", "gflops": 489.7, "ms": 9.327, "sha": "c6f2b426377c9c2da033d3ec193306021a4a7211dbb3b7800f4187fc73af3ac9"}
+{"side": "coopmat", "dtype": "bf16", "shape": "1053x9728x896", "gflops": 781.8, "ms": 23.48, "sha": "d32bd8a2627284ac08698e954cf736c37b4de265a57f104c60231e4db9edf179"}
+JSON {"side": "coopmat", "dtype": "bf16", "wheel": "unknown", "cells": {"262x896x128": {"gflops": 101.35489954554848, "ms": 0.5929314938839525, "sha": "15eb966c25741f127154cd544ea254003c3e914d067a812b10a6f0054ca8c98d", "shape": [262, 896, 128]}, "1053x896x128": {"gflops": 195.77351405506846, "ms": 1.2337364896666259, "sha": "72c1d0c1812ccd5d9f9116cbf4ef540b92971306b3d252189e35a50ee0766df3", "shape": [1053, 896, 128]}, "262x896x896": {"gflops": 425.153293581979, "ms": 0.9894680115394294, "sha": "8d56c365617892e14e5a8872cfcf29dfbed87478bf07577d0022c6dba963c6a1", "shape": [262, 896, 896]}, "1053x896x896": {"gflops": 529.7420266883179, "ms": 3.1916110310703516, "sha": "7f0c63b6c254321ea94b51b86986d3ca6447760bb90e68ae28c92bcbcc79e75e", "shape": [1053, 896, 896]}, "262x896x4864": {"gflops": 655.1548751820196, "ms": 3.4856910060625523, "sha": "4229448978650c9ef530684714da9bff5808ac15647fad70598516627699a11e", "shape": [262, 896, 4864]}, "1053x896x4864": {"gflops": 760.9627414655577, "ms": 12.061367480782792, "sha": "329237fb441aa76208da089ffac1f1e02ba1b31baf7c057e1e6e1e9dba285af7", "shape": [1053, 896, 4864]}, "262x9728x896": {"gflops": 489.6993667740579, "ms": 9.326814004452899, "sha": "c6f2b426377c9c2da033d3ec193306021a4a7211dbb3b7800f4187fc73af3ac9", "shape": [262, 9728, 896]}, "1053x9728x896": {"gflops": 781.7906091882159, "ms": 23.480075498810038, "sha": "d32bd8a2627284ac08698e954cf736c37b4de265a57f104c60231e4db9edf179", "shape": [1053, 9728, 896]}}}
+probe-stock-cand-fma-bf16 exit=0 09:34:42
+{"side": "fma", "dtype": "bf16", "shape": "262x896x128", "gflops": 114.3, "ms": 0.526, "sha": "15eb966c25741f127154cd544ea254003c3e914d067a812b10a6f0054ca8c98d"}
+{"side": "fma", "dtype": "bf16", "shape": "1053x896x128", "gflops": 174.3, "ms": 1.386, "sha": "72c1d0c1812ccd5d9f9116cbf4ef540b92971306b3d252189e35a50ee0766df3"}
+{"side": "fma", "dtype": "bf16", "shape": "262x896x896", "gflops": 302.7, "ms": 1.39, "sha": "8d56c365617892e14e5a8872cfcf29dfbed87478bf07577d0022c6dba963c6a1"}
+{"side": "fma", "dtype": "bf16", "shape": "1053x896x896", "gflops": 383.5, "ms": 4.408, "sha": "7ce944eb1301e62d31688a8a389f13e60e0f19294845ffbdf3b3de198fdd6e24"}
+{"side": "fma", "dtype": "bf16", "shape": "262x896x4864", "gflops": 528.7, "ms": 4.319, "sha": "ecce3da707e217e3ec2ec16648db0f0c7711365dceffd3d8aa2846767079bb87"}
+{"side": "fma", "dtype": "bf16", "shape": "1053x896x4864", "gflops": 557.9, "ms": 16.452, "sha": "9727d150037331e91fc07233ba4e794e9bb65d740ec5aaa5bd5e730e4f09b1ff"}
+{"side": "fma", "dtype": "bf16", "shape": "262x9728x896", "gflops": 482.6, "ms": 9.463, "sha": "5cac52c5c191e5617891f789429024509641801bb7a7368d0664b2e58e5cb0cd"}
+{"side": "fma", "dtype": "bf16", "shape": "1053x9728x896", "gflops": 645.2, "ms": 28.452, "sha": "49be2a875d4008887aa75e73af93943bbb3a57d8b55b311c1aed4ad9ea2fdcb8"}
+JSON {"side": "fma", "dtype": "bf16", "wheel": "unknown", "cells": {"262x896x128": {"gflops": 114.2938603718528, "ms": 0.525807001395151, "sha": "15eb966c25741f127154cd544ea254003c3e914d067a812b10a6f0054ca8c98d", "shape": [262, 896, 128]}, "1053x896x128": {"gflops": 174.32309318340418, "ms": 1.3855475117452443, "sha": "72c1d0c1812ccd5d9f9116cbf4ef540b92971306b3d252189e35a50ee0766df3", "shape": [1053, 896, 128]}, "262x896x896": {"gflops": 302.7428569618916, "ms": 1.3895475130993873, "sha": "8d56c365617892e14e5a8872cfcf29dfbed87478bf07577d0022c6dba963c6a1", "shape": [262, 896, 896]}, "1053x896x896": {"gflops": 383.5401895910497, "ms": 4.4082225067541, "sha": "7ce944eb1301e62d31688a8a389f13e60e0f19294845ffbdf3b3de198fdd6e24", "shape": [1053, 896, 896]}, "262x896x4864": {"gflops": 528.7217591231553, "ms": 4.319223517086357, "sha": "ecce3da707e217e3ec2ec16648db0f0c7711365dceffd3d8aa2846767079bb87", "shape": [262, 896, 4864]}, "1053x896x4864": {"gflops": 557.8718631339866, "ms": 16.45225699758157, "sha": "9727d150037331e91fc07233ba4e794e9bb65d740ec5aaa5bd5e730e4f09b1ff", "shape": [1053, 896, 4864]}, "262x9728x896": {"gflops": 482.63488759518305, "ms": 9.463333524763584, "sha": "5cac52c5c191e5617891f789429024509641801bb7a7368d0664b2e58e5cb0cd", "shape": [262, 9728, 896]}, "1053x9728x896": {"gflops": 645.1725241698542, "ms": 28.452083497541025, "sha": "49be2a875d4008887aa75e73af93943bbb3a57d8b55b311c1aed4ad9ea2fdcb8", "shape": [1053, 9728, 896]}}}
+1789205683 0.78 1.11 1.67
+probe-stock-cand-coopmat-bf16 exit=0 09:34:51
+{"side": "coopmat", "dtype": "bf16", "shape": "262x896x128", "gflops": 45.0, "ms": 1.337, "sha": "15eb966c25741f127154cd544ea254003c3e914d067a812b10a6f0054ca8c98d"}
+{"side": "coopmat", "dtype": "bf16", "shape": "1053x896x128", "gflops": 50.2, "ms": 4.813, "sha": "72c1d0c1812ccd5d9f9116cbf4ef540b92971306b3d252189e35a50ee0766df3"}
+{"side": "coopmat", "dtype": "bf16", "shape": "262x896x896", "gflops": 113.4, "ms": 3.709, "sha": "8d56c365617892e14e5a8872cfcf29dfbed87478bf07577d0022c6dba963c6a1"}
+{"side": "coopmat", "dtype": "bf16", "shape": "1053x896x896", "gflops": 183.4, "ms": 9.218, "sha": "7ce944eb1301e62d31688a8a389f13e60e0f19294845ffbdf3b3de198fdd6e24"}
+{"side": "coopmat", "dtype": "bf16", "shape": "262x896x4864", "gflops": 185.4, "ms": 12.316, "sha": "ecce3da707e217e3ec2ec16648db0f0c7711365dceffd3d8aa2846767079bb87"}
+{"side": "coopmat", "dtype": "bf16", "shape": "1053x896x4864", "gflops": 196.4, "ms": 46.74, "sha": "9727d150037331e91fc07233ba4e794e9bb65d740ec5aaa5bd5e730e4f09b1ff"}
+{"side": "coopmat", "dtype": "bf16", "shape": "262x9728x896", "gflops": 184.4, "ms": 24.763, "sha": "5cac52c5c191e5617891f789429024509641801bb7a7368d0664b2e58e5cb0cd"}
+{"side": "coopmat", "dtype": "bf16", "shape": "1053x9728x896", "gflops": 194.8, "ms": 94.211, "sha": "49be2a875d4008887aa75e73af93943bbb3a57d8b55b311c1aed4ad9ea2fdcb8"}
+JSON {"side": "coopmat", "dtype": "bf16", "wheel": "unknown", "cells": {"262x896x128": {"gflops": 44.95067528420368, "ms": 1.336943474598229, "sha": "15eb966c25741f127154cd544ea254003c3e914d067a812b10a6f0054ca8c98d", "shape": [262, 896, 128]}, "1053x896x128": {"gflops": 50.187909438803885, "ms": 4.812572005903348, "sha": "72c1d0c1812ccd5d9f9116cbf4ef540b92971306b3d252189e35a50ee0766df3", "shape": [1053, 896, 128]}, "262x896x896": {"gflops": 113.43038632639254, "ms": 3.708667471073568, "sha": "8d56c365617892e14e5a8872cfcf29dfbed87478bf07577d0022c6dba963c6a1", "shape": [262, 896, 896]}, "1053x896x896": {"gflops": 183.40661622164822, "ms": 9.2184814857319, "sha": "7ce944eb1301e62d31688a8a389f13e60e0f19294845ffbdf3b3de198fdd6e24", "shape": [1053, 896, 896]}, "262x896x4864": {"gflops": 185.415443966709, "ms": 12.316489970544353, "sha": "ecce3da707e217e3ec2ec16648db0f0c7711365dceffd3d8aa2846767079bb87", "shape": [262, 896, 4864]}, "1053x896x4864": {"gflops": 196.3665388767599, "ms": 46.740403515286744, "sha": "9727d150037331e91fc07233ba4e794e9bb65d740ec5aaa5bd5e730e4f09b1ff", "shape": [1053, 896, 4864]}, "262x9728x896": {"gflops": 184.4383455695566, "ms": 24.763477995293215, "sha": "5cac52c5c191e5617891f789429024509641801bb7a7368d0664b2e58e5cb0cd", "shape": [262, 9728, 896]}, "1053x9728x896": {"gflops": 194.84391611175403, "ms": 94.21131998533383, "sha": "49be2a875d4008887aa75e73af93943bbb3a57d8b55b311c1aed4ad9ea2fdcb8", "shape": [1053, 9728, 896]}}}
+1789205693 0.73 1.09 1.65
+probe-stock-base-coopmat-bf16 exit=0 09:35:00
+{"side": "coopmat", "dtype": "bf16", "shape": "262x896x128", "gflops": 57.0, "ms": 1.055, "sha": "15eb966c25741f127154cd544ea254003c3e914d067a812b10a6f0054ca8c98d"}
+{"side": "coopmat", "dtype": "bf16", "shape": "1053x896x128", "gflops": 76.4, "ms": 3.162, "sha": "72c1d0c1812ccd5d9f9116cbf4ef540b92971306b3d252189e35a50ee0766df3"}
+{"side": "coopmat", "dtype": "bf16", "shape": "262x896x896", "gflops": 123.7, "ms": 3.401, "sha": "8d56c365617892e14e5a8872cfcf29dfbed87478bf07577d0022c6dba963c6a1"}
+{"side": "coopmat", "dtype": "bf16", "shape": "1053x896x896", "gflops": 184.0, "ms": 9.19, "sha": "7ce944eb1301e62d31688a8a389f13e60e0f19294845ffbdf3b3de198fdd6e24"}
+{"side": "coopmat", "dtype": "bf16", "shape": "262x896x4864", "gflops": 185.6, "ms": 12.307, "sha": "ecce3da707e217e3ec2ec16648db0f0c7711365dceffd3d8aa2846767079bb87"}
+{"side": "coopmat", "dtype": "bf16", "shape": "1053x896x4864", "gflops": 196.4, "ms": 46.728, "sha": "9727d150037331e91fc07233ba4e794e9bb65d740ec5aaa5bd5e730e4f09b1ff"}
+{"side": "coopmat", "dtype": "bf16", "shape": "262x9728x896", "gflops": 184.5, "ms": 24.755, "sha": "5cac52c5c191e5617891f789429024509641801bb7a7368d0664b2e58e5cb0cd"}
+{"side": "coopmat", "dtype": "bf16", "shape": "1053x9728x896", "gflops": 195.0, "ms": 94.158, "sha": "49be2a875d4008887aa75e73af93943bbb3a57d8b55b311c1aed4ad9ea2fdcb8"}
+JSON {"side": "coopmat", "dtype": "bf16", "wheel": "unknown", "cells": {"262x896x128": {"gflops": 56.95401760875239, "ms": 1.0551759914960712, "sha": "15eb966c25741f127154cd544ea254003c3e914d067a812b10a6f0054ca8c98d", "shape": [262, 896, 128]}, "1053x896x128": {"gflops": 76.38143932067122, "ms": 3.1621939851902425, "sha": "72c1d0c1812ccd5d9f9116cbf4ef540b92971306b3d252189e35a50ee0766df3", "shape": [1053, 896, 128]}, "262x896x896": {"gflops": 123.69613349384119, "ms": 3.4008790098596364, "sha": "8d56c365617892e14e5a8872cfcf29dfbed87478bf07577d0022c6dba963c6a1", "shape": [262, 896, 896]}, "1053x896x896": {"gflops": 183.9707926549781, "ms": 9.190211509121582, "sha": "7ce944eb1301e62d31688a8a389f13e60e0f19294845ffbdf3b3de198fdd6e24", "shape": [1053, 896, 896]}, "262x896x4864": {"gflops": 185.56265533046425, "ms": 12.306718999752775, "sha": "ecce3da707e217e3ec2ec16648db0f0c7711365dceffd3d8aa2846767079bb87", "shape": [262, 896, 4864]}, "1053x896x4864": {"gflops": 196.41888954833465, "ms": 46.727945999009535, "sha": "9727d150037331e91fc07233ba4e794e9bb65d740ec5aaa5bd5e730e4f09b1ff", "shape": [1053, 896, 4864]}, "262x9728x896": {"gflops": 184.5013586485107, "ms": 24.75502048037015, "sha": "5cac52c5c191e5617891f789429024509641801bb7a7368d0664b2e58e5cb0cd", "shape": [262, 9728, 896]}, "1053x9728x896": {"gflops": 194.9542340590109, "ms": 94.15800901479088, "sha": "49be2a875d4008887aa75e73af93943bbb3a57d8b55b311c1aed4ad9ea2fdcb8", "shape": [1053, 9728, 896]}}}
+=== NO_COOPMAT mechanism diagnostic (base wheel, tile fallback) 2026-09-12T09:35:00Z
+=== nocoopmat fork 09:35:00 ===
+1789205703 0.70 1.07 1.64
+1789205713 0.59 1.04 1.62
+1789205723 0.58 1.02 1.61
+1789205733 0.49 0.99 1.59
+nocoopmat-fork exit=0
+qwen25-0.5b-4bit:short-decode-32 7fd25a869ff21678
+qwen25-0.5b-4bit:long-decode-128 4cc08910089477fd
+qwen25-0.5b-4bit:longctx-1024-decode-32 7da83f06ec9f001d
+qwen25-0.5b-bf16:short-decode-32 f26175202f3dabe9
+qwen25-0.5b-bf16:long-decode-128 8690dc83246b39f8
+qwen25-0.5b-bf16:longctx-1024-decode-32 ff502900d2a179a5
+qwen25-7b-4bit:short-decode-32 null
+qwen25-7b-4bit:long-decode-128 null
+qwen25-7b-4bit:longctx-1024-decode-32 null
+qwen25-14b-4bit:short-decode-32 null
+qwen25-14b-4bit:long-decode-128 null
+qwen25-14b-4bit:longctx-1024-decode-32 null
+=== nocoopmat stock 09:35:39 ===
+1789205743 0.49 0.97 1.58
+1789205753 0.42 0.94 1.56
+1789205763 0.43 0.92 1.55
+1789205773 0.43 0.91 1.54
+nocoopmat-stock exit=0
+qwen25-0.5b-4bit:short-decode-32 7fd25a869ff21678
+qwen25-0.5b-4bit:long-decode-128 4cc08910089477fd
+qwen25-0.5b-4bit:longctx-1024-decode-32 7da83f06ec9f001d
+qwen25-0.5b-bf16:short-decode-32 7fc0f968789b1882
+qwen25-0.5b-bf16:long-decode-128 46108ad71157cb4d
+qwen25-0.5b-bf16:longctx-1024-decode-32 ff502900d2a179a5
+qwen25-7b-4bit:short-decode-32 null
+qwen25-7b-4bit:long-decode-128 null
+qwen25-7b-4bit:longctx-1024-decode-32 null
+qwen25-14b-4bit:short-decode-32 null
+qwen25-14b-4bit:long-decode-128 null
+qwen25-14b-4bit:longctx-1024-decode-32 null
+=== performance summary 2026-09-12T09:36:19Z
+--- fork
+qwen25-0.5b-4bit:short-decode-32: prefill cand 175.57 vs base 331.96 tok/s -> -47.11%  (native fraction 1.1287 -> 0.597)
+           decode cand 108.56 vs base 111.47 tok/s -> -2.61%
+qwen25-0.5b-4bit:long-decode-128: prefill cand 632.99 vs base 964.34 tok/s -> -34.36%  (native fraction 0.795 -> 0.5218)
+           decode cand 108.28 vs base 107.58 tok/s -> 0.65%
+qwen25-0.5b-4bit:longctx-1024-decode-32: prefill cand 661.61 vs base 1114.08 tok/s -> -40.61%  (native fraction 0.6052 -> 0.3594)
+           decode cand 95.97 vs base 96.82 tok/s -> -0.88%
+qwen25-0.5b-bf16:short-decode-32: prefill cand 131.94 vs base 131.96 tok/s -> -0.02%  (native fraction 0.5673 -> 0.5672)
+           decode cand 31.85 vs base 31.85 tok/s -> 0.0%
+qwen25-0.5b-bf16:long-decode-128: prefill cand 525.67 vs base 593.27 tok/s -> -11.39%  (native fraction 0.5887 -> 0.5217)
+           decode cand 30.48 vs base 30.6 tok/s -> -0.39%
+qwen25-0.5b-bf16:longctx-1024-decode-32: prefill cand 596.3 vs base 679.34 tok/s -> -12.22%  (native fraction 0.4103 -> 0.3601)
+           decode cand 24.93 vs base 24.97 tok/s -> -0.16%
+--- stock
+qwen25-0.5b-4bit:short-decode-32: prefill cand 192.44 vs base 169.46 tok/s -> 13.56%  (native fraction 0.5762 -> 0.6543)
+           decode cand 102.02 vs base 101.67 tok/s -> 0.34%
+qwen25-0.5b-4bit:long-decode-128: prefill cand 646.18 vs base 309.54 tok/s -> 108.75%  (native fraction 0.2552 -> 0.5327)
+           decode cand 81.11 vs base 81.35 tok/s -> -0.3%
+qwen25-0.5b-4bit:longctx-1024-decode-32: prefill cand 655.81 vs base 362.66 tok/s -> 80.83%  (native fraction 0.197 -> 0.3562)
+           decode cand 52.84 vs base 52.81 tok/s -> 0.06%
+qwen25-0.5b-bf16:short-decode-32: prefill cand 132.86 vs base 133.48 tok/s -> -0.46%  (native fraction 0.5739 -> 0.5712)
+           decode cand 32.13 vs base 32.25 tok/s -> -0.37%
+qwen25-0.5b-bf16:long-decode-128: prefill cand 488.82 vs base 233.15 tok/s -> 109.66%  (native fraction 0.2314 -> 0.4851)
+           decode cand 30.55 vs base 30.62 tok/s -> -0.23%
+qwen25-0.5b-bf16:longctx-1024-decode-32: prefill cand 494.62 vs base 233.63 tok/s -> 111.71%  (native fraction 0.1411 -> 0.2987)
+           decode cand 25.09 vs base 24.88 tok/s -> 0.84%
+2026-09-12T09:36:19Z windowA complete, elapsed 926s -- LOCK RELEASED
