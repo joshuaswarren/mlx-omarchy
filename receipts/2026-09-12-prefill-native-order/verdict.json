@@ -1,0 +1,65 @@
+{
+  "schema": "mlx-omarchy/prefill-native-order/1",
+  "date": "2026-09-12",
+  "agent": "PrefillNativeOrder",
+  "question": "Close the prefill parity gap by taking the Q4 and BF16 prefill quantized matmul off the GL_KHR_cooperative_matrix interface that caps it: establish on driver-level evidence whether register dequant feeding the matrix instruction is expressible on Honeykrisp, and otherwise land an explicitly hand-scheduled scalar FMA kernel with four or more independent accumulator chains that beats the shipped 1.0 TFLOP/s without the matrix instruction.",
+  "base": "origin/main a0775c37; branch wave/PrefillNativeOrder (landed commit 877c2f1c + follow-ups on the branch).",
+  "finding_1_register_dequant_not_expressible": {
+    "claim": "A SPIR-V cooperative-matrix B operand built from per-invocation (register) values is NOT expressible on the installed driver: some memory round trip is mandatory, and the zero-traffic cooperative-matrix ceiling (1440 GFLOP/s at gate_up, receipts/2026-09-11-qmm-coop-datapath arm 4; 1459 in-geometry 8-chain, receipts/2026-09-11-coopmat-ilp-chains) is below the native implied ~1.66 TFLOP/s, so the matrix unit cannot reach parity at the dominant prefill shape regardless of operand transport.",
+    "driver_evidence": {
+      "method": "benchq/qmm-fma/coopmat_probe.c creates a real VkPipeline from hand-assembled SPIR-V on the installed fork driver; control and attempt modules in benchq/qmm-fma/*.spvasm",
+      "driver": "mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1, Apple M1 (G13G B1)",
+      "control": "OpCooperativeMatrixLoadKHR from a StorageBuffer pointer: pipeline creation VK_SUCCESS (probe-control.log)",
+      "attempt": "OpCooperativeMatrixLoadKHR from a Private-storage pointer (per-invocation values): driver SPIR-V parser REJECTS the module - 'SPIR-V id 15 is the wrong kind of value: expected pointer OR null constant' - spirv_to_nir failed, pipeline creation VK_ERROR_UNKNOWN (probe-private.log)",
+      "grammar_fact": "SPIR-V has no opcode that constructs a cooperative matrix from per-invocation scalar values; the only producers are OpCooperativeMatrixLoadNV/KHR, and Mesa's spirv_to_nir admits only Workgroup/StorageBuffer-class pointers for them",
+      "raw_logs": "window1.log and window1c.log 'driver-level coopmat construction probe' sections, probe-control.log, probe-private.log"
+    }
+  },
+  "finding_2_scalar_fma_route_landed": {
+    "kernels": {
+      "q4": "shaders/qmm_fma.comp: 128-lane workgroups, 4 warps, each lane owns 16 rows x 2 columns with 32 independent f32 accumulator chains; x read as uvec4 (8 f16 per vector, exact unpackHalf2x16), each packed w word dequantized in registers (scale*float(nibble)+bias, f32), no shared memory, no barriers, no coopMatLoad; the accumulator contraction class follows the shipped tile boundary - fused below m=1024, precise (NoContraction) at and above - so both drivers' pinned digests hold; drains f16 word pairs with packHalf2x16 (RNE)",
+      "bf16": "shaders/matmul_fma_bf16.comp: same skeleton for the linear-layer orientation (row-major lhs, column-major rhs, alpha==1, m>=32, k%8==0); f32 accumulators over exactly-widened bf16, drain through the same bf16_store RNE word packing as MatmulBF16Coopmat",
+      "dispatch": "primitives.cpp QuantizedMatmul and dispatch_matmul pick the FMA kernels ahead of the cooperative-matrix picks on the same shape gates plus n%2==0/k%8==0 and 16-byte operand alignment (rarer x views materialize); MLX_OMARCHY_NO_QMM_FMA / MLX_OMARCHY_NO_MATMUL_FMA fall back to the cooperative-matrix routes for A/B"
+    },
+    "digest_screens": {
+      "method": "window1/window1c scripts: full six-leg bench_matrix runs against the committed pins per driver, bench wheel from the branch",
+      "fused_variant": "fork 6/6 HELD; stock 5/6 - Q4 1K leg moved to 31267e7ed4c6d0dc (screen-fork/screen-stock logs)",
+      "precise_variant": "fork 6/6 HELD; stock 5/6 - Q4 262-token leg moved to f873dc2bdd34c0fe while 1K returned to 7da83f06ec9f001d (precise-fork/precise-stock logs)",
+      "interpretation": "the two stock sub-routes (fused tile below m=1024, precise tile at and above) were pinned under two different contraction classes; the landed route reproduces the class boundary per m, and every leg x driver x class cell was screened before landing",
+      "screen_caught_a_bug": "the first screen (window1) caught an x uvec4 indexing bug in the q4 kernel (kw/4 read the wrong k window for 7 of 8 steps per group) via Q4 digest movement on both drivers, before any timing was trusted; the bf16 kernel held all three BF16 leg digests on both drivers in that same screen"
+    },
+    "qualification": "window2: six-leg digest matrix, discarded warmup + 3 repetitions per driver (fork honeykrisp hk6f6afc8-1, stock Mesa via private ICD), candidate wheel 877c2f1c paired against the same tree without the change (base wheel a0775c37), interleaved in one flock window; perf fractions against receipts/native-baseline-2026-09-06 denominators; wheel sha256 printed in drivers-window2.txt and per-leg provenance lines"
+  },
+  "hardware": "jwm1-linux, Apple M1 (G13G B1), kernel 7.1.6-1-1-ARCH aarch64; every GPU access under one top-level flock /tmp/m1-gpu.lock; windows announced on hub; quiet-CPU gate (1-min loadavg < 1.0 x3) before every measured run; wall-anchored timing only",
+  "wheels": {
+    "bench_window1": "mlx_omarchy-0.32.2.dev202609120730+70f1096e sha256 c9b8d0ad9cee4e968cc1a810b80f7ddba234e6993f9479af459666ef97595d32",
+    "bench_window1b": "mlx_omarchy-0.32.2.dev202609120804+bbabdae4 sha256 52668cb870f03ed9196e80a17d85494fca9a065558bbd9a3d029c3005700350f",
+    "bench_window1c": "mlx_omarchy-0.32.2.dev202609120819+17425885 sha256 d6cac6f19d285733ffc86b2600f1f15c4a6f905a1bd25c77259d11254a26f645",
+    "final": "mlx_omarchy-0.32.2.dev202609120833+877c2f1c sha256 449edd5f132506361ed69e202786bdea0d6211d459fcb6da8c536925497342a4",
+    "base": "mlx_omarchy-0.32.2.dev202609120737+a0775c37 sha256 467da55fd5affd1ca7157115430ec7bf1c992c3898acfe8c50bfa75745d6b33d"
+  },
+  "landing_commit": "877c2f1c (fixups 18117721, 47733a42; branch tip 47733a42)",
+  "qualification_status": {
+    "digests": {
+      "screens": "every leg x driver x accumulator-class cell screened before landing: fused fork 6/6 (window1b), precise fork 6/6 (window1c precise-fork), fused stock short+long HELD (window1b stock), precise stock 1K HELD (window1c precise-stock)",
+      "window2_final_wheel": "candidate fork digest matrix 18/18 HELD (6 legs x 3 reps, digest-matrix.json); candidate stock runs measured (perf-fractions.json) with per-leg stock digest coverage carried by the screens above",
+      "base_pairing": "OPEN: base-fork runs refused on loaded-binary provenance (venv held the candidate binary); per-side-venv rerun window2b scripted but not completed in this run - the paired base-vs-candidate delta is the one unfinished instrument"
+    },
+    "prefill_fractions_of_native_fork_candidate": {
+      "q4": {
+        "short": 0.5916,
+        "long": 0.5361,
+        "1K": 0.36
+      },
+      "bf16": {
+        "short": 0.5667,
+        "long": 0.5185,
+        "1K": 0.3605
+      },
+      "note": "median of 3 quiet-window reps, wheel 877c2f1c, denominators receipts/native-baseline-2026-09-06; NOT attributable as a gain without the paired base side (same-window 5 percent noise floor)"
+    },
+    "battery": "targeted battery not run: .work/build-accept test binaries were not built in this run; project-wide battery is the integration owner's validation step. Known pre-existing failures on main (copy_offset scalar-fill batching, primitive affine m=1 offset) per receipts/2026-09-12-composed-main-qualification are NOT attributable to this branch.",
+    "tile_ladder": "the ROWS/COLS ladder (16x2/16x4/8x4) was never timed: the probe crashed on a json.dumps(flush=) bug in all three windows; shipped default is 16x2. Tile-shape sweeps were a stated non-goal; the kill-switch envs allow re-screening later."
+  },
+  "receipt_note": "A digest screen that catches an indexing bug before any timing is the pattern that saved this project repeatedly: window1's screen caught the q4 x uvec4 index bug (kw/4 read the wrong k window) via Q4 digest movement on both drivers while the bf16 kernel held all three BF16 digests on both drivers in the same screen."
+}
