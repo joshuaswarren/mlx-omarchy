@@ -10,9 +10,9 @@ Usage:
 Reports the plan's section-14 checklist for one ``.mlpackage``:
 structure, model type, functions/ops (typed), weights and blob
 references, compression representation, versions, control flow, and
-parse validity. Compiler/deployment eligibility is explicitly **not**
-assessed (see ``eligibility`` in the JSON output). No ANE device, no
-GPU, and no compiler is opened; runs on any Linux host.
+parse validity. Optional source-matched static compiler coverage is reported
+with its provenance, never as proof of compilation. No ANE device, GPU,
+or compiler is opened; runs on any Linux host.
 
 Exit codes: 0 = inspected, 1 = invalid package or usage error,
 2 = ``--strict`` validation failure (missing weight files, unset
@@ -22,15 +22,73 @@ model type, opset inconsistencies).
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import re
 import sys
 from pathlib import Path
 
 if __package__ in (None, ""):  # plain-script execution
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from coreml.mlpackage import MlPackageError, inspect
+from coreml.mlpackage import MlPackage, MlPackageError, describe_package, open_mlpackage
 from coreml.proto import ModelSpecError, schema_info
+
+
+def coverage_evidence(path: Path, package: MlPackage, inv: dict) -> dict:
+    try:
+        report = json.loads(path.read_text(encoding="utf-8"))
+        with package.model_path.open("rb") as stream:
+            model_hash = hashlib.file_digest(stream, "sha256").hexdigest()
+        if report["model_sha256"] != model_hash:
+            raise ValueError("model SHA-256 does not match coverage evidence")
+        weights = {wf.relative: wf.sha256 for wf in package.weight_files}
+        if report["weights"] != weights:
+            raise ValueError("weight SHA-256 map does not match coverage evidence")
+        compiler = report["compiler"]
+        if (
+            not isinstance(compiler, dict)
+            or compiler.get("target") != "H13"
+            or not isinstance(compiler.get("repository"), str)
+            or not compiler["repository"].strip()
+            or not isinstance(compiler.get("commit"), str)
+            or not re.fullmatch(r"[0-9a-f]{40}", compiler["commit"])
+            or not isinstance(report["source"], str)
+            or not report["source"].strip()
+        ):
+            raise ValueError(
+                "coverage requires a source and exact H13 compiler identity"
+            )
+        counts = report["counts"]
+        categories = {
+            "direct",
+            "direct-alias",
+            "direct-const",
+            "normalization-needed",
+            "missing-envelope",
+            "missing",
+        }
+        if (
+            not isinstance(counts, dict)
+            or set(counts) != categories
+            or any(type(n) is not int or n < 0 for n in counts.values())
+            or sum(counts.values()) != inv["op_total"]
+            or inv["op_total"] == 0
+        ):
+            raise ValueError(
+                "coverage counts must be nonnegative and sum to the inventory operation count"
+            )
+    except (KeyError, TypeError, ValueError) as exc:
+        raise MlPackageError(f"{path}: invalid compiler coverage: {exc}") from exc
+    return {
+        "assessed": True,
+        "scope": "source-matched static report; classifier not executed",
+        "compiler": {key: compiler[key] for key in ("repository", "commit", "target")},
+        "source": report["source"],
+        "counts": counts,
+        "compilable": None,
+        "note": "Package bytes match the supplied report; its provenance is declared, not authenticated. Compilation and ANE execution are not proven.",
+    }
 
 
 def _fmt_type(t: dict) -> str:
@@ -99,7 +157,16 @@ def human_report(inv: dict) -> str:
     lines.append(f"Parse validity: {validity['protobuf_parse']}")
     for note in validity["notes"]:
         lines.append(f"  note: {note}")
-    lines.append("Compiler eligibility: not assessed (see JSON eligibility.note)")
+    eligibility = inv["eligibility"]
+    if eligibility["assessed"]:
+        compiler = eligibility["compiler"]
+        lines.append(f"H13 compiler coverage: static report for {compiler['commit']}")
+        for category, count in eligibility["counts"].items():
+            lines.append(f"  {category}: {count}")
+        lines.append(f"Evidence: {eligibility['source']}")
+        lines.append("ANE compilability: not proven (static report only)")
+    else:
+        lines.append("Compiler eligibility: not assessed (see JSON eligibility.note)")
     lines.append(
         f"Schema: official Core ML protobuf, vendored from {schema_info()['upstream']} "
         f"tag {schema_info()['tag']}"
@@ -123,10 +190,18 @@ def main(argv: list[str] | None = None) -> int:
         help="exit 2 if unresolved weight files, unset model type, or "
         "opset inconsistencies are found (parse validity is unaffected)",
     )
+    p_inspect.add_argument(
+        "--compiler-coverage",
+        type=Path,
+        help="attach source-matched static H13 coverage evidence (not a compiler run)",
+    )
     args = parser.parse_args(argv)
 
     try:
-        inv = inspect(args.path)
+        package = open_mlpackage(args.path)
+        inv = describe_package(package)
+        if args.compiler_coverage:
+            inv["eligibility"] = coverage_evidence(args.compiler_coverage, package, inv)
     except (MlPackageError, ModelSpecError, OSError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1

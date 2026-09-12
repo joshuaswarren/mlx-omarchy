@@ -15,7 +15,8 @@ Phase 2 ships the public ``.mlpackage`` inspector under this package:
   bindings and typed outputs, weight files + blob references,
   compression representation, versions, control flow, parse validity.
   Compiler eligibility is explicitly not assessed here.
-* :mod:`coreml.inspect_mlpackage` — CLI entry point::
+* :mod:`coreml.inspect_mlpackage` — CLI with optional source-matched static
+  H13 coverage evidence (`--compiler-coverage`), never a compilation claim::
 
       python3 overlay/tools/coreml/inspect_mlpackage.py inspect PATH [--json] [--strict]
 
