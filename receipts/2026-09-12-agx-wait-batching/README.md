@@ -115,8 +115,9 @@ patched @ 30ffef:
 ## Hardware-execution disclosure (honest record)
 
 The 13:09Z 2026-09-12 run on the modified driver @ `30ffef135e0` was a
-**real dispatch**, not compile-only. Exact command (jwm1, under
-`/tmp/m1-gpu.lock`):
+**real dispatch**, not compile-only. It ran inside the phase's single
+flock on `/tmp/m1-gpu.lock` (enclosing pattern in `window.sh`). Probe
+command:
 
 ```
 VK_DRIVER_FILES=~/benchq/qmm-coop-bench/icd-waitbatch-patched.json \
