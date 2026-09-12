@@ -194,6 +194,20 @@ difference rather than a code regression. Verified, with evidence:
   copy_offset failure above - and inconsistent with rounding, warmup, or
   contention artifacts.
 
+## Corrected instrument — supersedes the printed-line prefill values
+
+The reported prefill pipeline had a real reporting defect: spans were
+regex-parsed from bench_decode's 3-decimal printed line instead of the
+6-decimal `prefill_s` in its JSON result line (1 ms quantization, up to
+0.556 % on the Q4 short leg; the timer itself was never coarse). Fixed in
+`scripts/bench_matrix.py` (JSON field is the instrument; regex kept as
+fallback), and all twelve cells were re-measured on the same wheel with
+the corrected parser: `corrections/README.md`. The corrected cells differ
+from the window values above by at most ~3 % (Q4) / ~8 % (BF16) session
+drift and confirm the Q4 prefill regression: 224.0 tok/s = 0.762 of
+native, against a published 1.133 whose quantization bound is ±0.56 %.
+Where the two tables differ, the corrections table is authoritative.
+
 ## Provenance
 
 - Host placeholder `jwm1`; no private addresses, serials, or service
