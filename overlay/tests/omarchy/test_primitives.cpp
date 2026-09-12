@@ -5456,11 +5456,18 @@ TEST_CASE("quantized matmul binds affine streams at storage offsets") {
     std::vector<float> x_rounded = round_trip(x_values, float16);
     std::vector<float> scales_rounded = round_trip(host.scales, float16);
     std::vector<float> biases_rounded = round_trip(host.biases, float16);
-    HostQuantizedWeights rounded_host = host;
-    rounded_host.scales = scales_rounded;
-    rounded_host.biases = biases_rounded;
-    std::vector<float> expected = host_quantized_matmul(
-        rounded_host, x_rounded, m, n, k, group_size, bits);
+    // The contract under test is storage offset invariance: the same
+    // logical scale and bias streams, bound once as slices of padded
+    // f16 storages at item bases 1 and 3 and once as fresh zero-offset
+    // arrays, must drive the identical dispatch to bit-identical
+    // output. Absolute values stay pinned by the host-oracle cases
+    // above; this case only compares the two bindings, bitwise. A
+    // mis-composed scale or bias base moves every output column by
+    // O(1), which bitwise equality refuses. History: this case used to
+    // compare the decode leg against a double-precision oracle at a
+    // 4e-3 epsilon and failed as 0.416748 vs 0.409468 on the M1 - the
+    // f16 quad-sum arithmetic of the native qmv route, not an offset
+    // defect (receipts/2026-09-12-q4-gemv-offset-oracle).
 
     std::vector<float> scales_pad(1 + n * groups, 0.0f);
     std::vector<float> biases_pad(3 + n * groups, 0.0f);
@@ -5509,11 +5516,28 @@ TEST_CASE("quantized matmul binds affine streams at storage offsets") {
     std::string blocked = evaluation_error(out);
     REQUIRE(blocked.empty());
     std::vector<float> device_values = readback_f32(stream, out);
-    REQUIRE_EQ(device_values.size(), expected.size());
-    for (size_t index = 0; index < expected.size(); ++index) {
-      CHECK(
-          device_values[index] ==
-          doctest::Approx(expected[index]).epsilon(4e-3));
+    array scales_zero(scales_rounded.begin(), Shape{n, groups}, float32);
+    array biases_zero(biases_rounded.begin(), Shape{n, groups}, float32);
+    array out_zero = quantized_matmul(
+        astype(x, float16, stream),
+        w_words,
+        astype(scales_zero, float16, stream),
+        astype(biases_zero, float16, stream),
+        /*transpose=*/true,
+        group_size,
+        bits,
+        "affine",
+        stream);
+    std::string blocked_zero = evaluation_error(out_zero);
+    REQUIRE(blocked_zero.empty());
+    std::vector<float> zero_values = readback_f32(stream, out_zero);
+    REQUIRE_EQ(device_values.size(), zero_values.size());
+    // The two runs are the identical dispatch on identical logical
+    // operands, so the outputs must match bit for bit; any tolerance
+    // here would reintroduce the oracle route this case once
+    // miscalibrated.
+    for (size_t index = 0; index < device_values.size(); ++index) {
+      CHECK(device_values[index] == zero_values[index]);
     }
   }
 }
