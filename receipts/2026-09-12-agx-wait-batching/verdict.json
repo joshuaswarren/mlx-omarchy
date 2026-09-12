@@ -76,7 +76,17 @@
  },
  "qualification": {
   "plan": "conditionally approved by root: control digest gates first, then interleaved base/patched kernel probe 3 rounds, then interleaved bench_matrix (discarded warmup per driver + 3 rounds) on the unchanged a2e38c3 wheel with committed pins; any digest movement is a rejection, no re-pins",
-  "window_script": "window.sh",
+  "window_script": "window.sh (sha256 a289a5ae79b02b44feb3906652ca76fe77e89fe49f02ed10882bf441e98f092d)",
+  "attempts": [
+   {
+    "invocation": "bg_11 2026-09-12T13:41:07Z: `flock -w 7200 /tmp/m1-gpu.lock sh /tmp/wb_window.sh` (ssh)",
+    "outcome": "ABORTED - nested-lock failure: the script takes its own flock on the same path, so the outer wrapper deadlocked it; root terminated the inner waiter; script exited FATAL lock wait exceeded with zero measurements. No qualification run, no GPU results."
+   },
+   {
+    "invocation": "bg_33 2026-09-12T13:51Z: `bash /tmp/wb_window.sh` (ssh, no wrapping flock - script is sole lock owner), queues behind the staging-attribution build holding the lock",
+    "outcome": "PENDING"
+   }
+  ],
   "result": "PENDING"
  },
  "status": "PASS FIRES + ISA MOVED + DIGEST HELD; host tests running; paired qualification gated on host results"
