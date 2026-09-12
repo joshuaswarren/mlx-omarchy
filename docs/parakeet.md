@@ -33,7 +33,8 @@ joint:    encoder_frame f32 [1,640], decoder_state f32 [1,640]
   fixed 30 s chunks (3000 frames × hop 160), last chunk zero-padded.
 * Mel (matches HF `ParakeetFeatureExtractor`): preemphasis 0.97 (`y[0]=x[0]`);
   centred STFT, `n_fft=512`, `win_length=400` (symmetric Hann), hop 160,
-  zero pad-mode; `|STFT|²` via sqrt-then-square; Slaney mel, 128 bins,
+  zero pad-mode (Swift places the window 56 bins earlier than
+  `torch.stft` center framing; see portable-status section below);
   0–8000 Hz; `log(mel + 2^-24)`; per-bin mean/std over frames with Bessel
   correction and `eps=1e-5`: `(x - mean) / (std + eps)`.
 * Decode: greedy TDT, blank id 8192, durations `[0,1,2,3,4]`, vocab 8193,
@@ -42,6 +43,48 @@ joint:    encoder_frame f32 [1,640], decoder_state f32 [1,640]
 Every numerics-bearing step in the golden capture ran inside the pinned
 reference library (SwiftPM `exact revision` dependency); the capture harness
 (`overlay/tools/coreml/capture/`) only orchestrates and dumps `.npy`/JSON.
+
+## Portable mel frontend status (§62 stop, 2026-09-12)
+
+The golden `mel.npy` was produced by Accelerate `vDSP_DFT_zrop` (float32
+DFT) on macOS/arm64. A portable NumPy reimplementation of the same
+algorithm (`overlay/tools/coreml/mel_reference.py`, host scalar DSP only,
+per §43) reproduces every structural contract exactly but **not** the
+bit-exact values:
+
+```text
+pinned capture 20260912T154759Z-librispeech/ane, 13 precision variants tested:
+  best: 215401/384128 bit-identical (56.08%), max |diff| 4.77e-05,
+        mean |diff| 1.53e-07; first divergence frame 0 bin 0, 1 ulp.
+  variants: float64/float32-rounded spectra x float32/float64 mel dot
+            x float32/float64 log, scipy float32 pocketfft, and
+            FMA-emulated preemphasis (which matches strictly worse:
+            the pinned binary compiles the preemphasis loop without
+            FMA contraction).
+structural contracts that hold exactly: chunk pad to 480000 samples,
+3001 frames/chunk, all-ones mel mask, encoder slice = first 3000
+frames, silence tail rows identical from frame 1046.
+```
+
+Golden equality is required to be exact, so this ships as a
+first-divergence diagnostic only; no unqualified frontend lands. Exact
+parity requires reproducing Accelerate's internal float32 summation
+order, which is not portable. Run the diagnostic:
+
+```bash
+python3 overlay/tools/coreml/mel_reference.py \
+  ~/.cache/mlx-omarchy/parakeet-reference/captures/b650695c-75aec2a/20260912T154759Z-librispeech/ane
+```
+
+Framing semantics note (verified against the golden tail rows): the
+pinned Swift source windows `padded[t*hop .. t*hop+win-1]` and places
+the result at FFT bins `[56 .. 455]` — 56 samples earlier than
+`torch.stft(center=True)` would window the same frame. The golden
+silence-tail structure (identical rows from frame 1046, not 1044)
+confirms the Swift offset is what the capture recorded.
+
+Licensing: the Python port is derived from the pinned Apache-2.0
+`parakeet-coreml-swift` sources; attribution in the module header.
 
 ## Numerical comparison contract (frozen before Linux execution work)
 
