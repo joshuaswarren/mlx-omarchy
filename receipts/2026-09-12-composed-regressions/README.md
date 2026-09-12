@@ -70,6 +70,25 @@ wrong values: the conv/pool garbage came from fills losing to in-flight
 writes of a recycled block's previous occupant, and the timeline wait
 covers that ordering device-side.
 
+### 485404cf was dead code, and the sweep's verification never walked it
+
+Stated outright, because it reads as protection in review and is not:
+**485404cf's recycled-storage gate never executed on any real path.** It
+sits inside `fill_pattern`, which every scalar fill reaches only through
+`copy_gpu_inplace`'s Scalar branch — below the unconditional
+`synchronize()` that de780aa2 had just put there. The gate is evaluated
+only after the device has already been drained, so it can never observe
+an in-flight hazard and never changes behavior.
+
+Two consequences. First, 485404cf's receipt-reported "recovery" (decode
+within noise of main) was not evidence that the gate works — the gate
+did nothing; those numbers measured the decode path's low fill count,
+not gate recovery. Second, the wrong-value sweep's churn probe proved
+correctness through a code path the gate never took: the probe armed
+`copy_gpu_inplace`'s front door, and the gate lived behind the drain
+that the probe's own runs had just exercised. A gate that cannot be
+reached is worse than a missing gate.
+
 ## Item 2 — affine storage-offset wrong value: PRE-EXISTING, filed
 
 `omarchy_primitive_tests` "quantized matmul binds affine streams at
@@ -96,6 +115,41 @@ storage offsets", m=1, one output element off at eps 4e-3.
   fixed tonight; route left emitting values, because the failing case is
   a non-zero-offset view that real models do not produce and a refusal
   would break the passing m=7 general route.
+- DISPOSITION EXPECTED: a fix, not a refusal. The route is shipped and
+  reachable (any caller passing an offset affine view on the m=1 vec
+  route gets a silently wrong answer), so the end state must be a
+  corrected offset composition in the vec route's aux addressing; if
+  that proves impractical, the narrow named refusal is non-zero-storage-
+  offset affine streams on the vec route only — refusing the whole route
+  would regress every decode step of every quantized model. Owner: the
+  next qmm session; do not close this defect with the battery entry
+  alone.
+
+## Timeline wait — spin and liveness analysis (fix 69a01db3)
+
+The failure mode a host join avoids is spinning or deadlocking on work
+that was never submitted. `wait_outstanding_submissions()` has no such
+path:
+
+- It never polls. It attaches a VkSemaphore timeline wait to the
+  encoder's next submission; the host records it and returns, and only
+  the device blocks on the semaphore.
+- Every waited value is guaranteed to be signalled. `reserve()` runs
+  under the queue mutex inside `submit()`, atomically with `enqueue()`
+  and `QueueSubmit`; there is no reserved-but-unsubmitted value, and
+  even an empty submission (commandBufferCount = 0) signals the
+  completion semaphore. A waited value's owner is therefore always a
+  queued-ahead submission of this device.
+- Self-deadlock is impossible by construction: the wait value is read
+  before this stream's next value is reserved (reservation happens at
+  commit, strictly after the read), so the waited value always belongs
+  to an earlier submission.
+- `last_reserved() == 0` short-circuits (nothing ever submitted).
+- Residual limits, documented in the code: the wait orders
+  device-visible work only — host writes to mapped memory (fill edge
+  bytes, scalar scratch) keep a real drain — and it does not update the
+  encoder's `synchronized()` bookkeeping, which is correct because that
+  predicate reads drained values, not waits.
 
 ## Item 3 — submission-count test: contract decided, code fixed
 
