@@ -49,7 +49,12 @@ ops, bit-preserving by construction (identical integer values, identical
 guards), digest-gated, ISA-diffed, then paired-measured. (c) Driver-side
 root cause named with file:line — see H6.
 
-Result: MEASURED [fill: probe numbers]
+Result: MEASURED - FALSIFIED. Structure-pinned paired measurement
+(window 3): unrollbase 818.7 vs hoist 772.3 GFLOP/s at the dominant
+cell - hoisting the redundant address ops costs 5.7 percent rather
+than gaining anything, while the instrument simultaneously detects the
+dequant effect (point H1), so the null is real. See Measurement and
+Ranked conclusion 2.
 
 ### H1 - dequantization arithmetic is the cost
 
@@ -61,7 +66,10 @@ keeping loads, stores, guards, barriers, and the math phase unchanged.
 ATTRIBUTION PROBE: values are wrong, digests differ; never a landing
 candidate; global traffic unchanged (same packed word loads).
 
-Result: MEASURED [fill]
+Result: MEASURED. Removing the dequant chain buys ~+9 percent within
+the unrolled regime (nodequant 892.7 vs unrollbase 818.7) but changes
+values (digest 36fc742484148d3b); attribution only, never a landing
+candidate. See Measurement and Ranked conclusion 3.
 
 ### H2 - shared-memory bank conflicts on staging writes / fragment reads
 
@@ -136,7 +144,118 @@ discipline, ISA-diff against the committed classification.
 
 ## Ranked conclusion
 
-[fill after measurement]
+1. **The staging phase is structure-bound, not work-bound.** The single
+   largest term is the rolled step loop itself: unrolling with
+   bit-identical arithmetic costs -21.3 percent at the dominant cell
+   (unrollbase 818.7 vs base 1040.3). The shipped kernel's compact
+   229-instruction rolled body is the best measured form; every
+   restructure measured across this and prior receipts (TILE_M64,
+   STEP_K32, de-divergence -13..-26 percent, arms 1-3, both probe
+   families) is slower. This also retroactively explains the
+   de-divergence result: body-size perturbations flip
+   scheduling/unroll behavior worth more than the work they touch.
+2. **H0 (lane-invariant address-op redundancy) is FALSIFIED as a
+   performance cost.** In the structure-pinned comparison the
+   instrument is demonstrably sensitive (it sees the dequant effect,
+   point 3), and it reports that hoisting the ~40-50 redundant address
+   ops per step makes things ~4-5 percent WORSE, not better
+   (hoist 772.3 vs unrollbase 818.7). The redundant address work hides
+   under other constraints; it is not stealing issue slots from the
+   matrix pipe. Consequence for H6: a driver-side LICM pass would
+   remove the ~94 invariant ops but the measured expectation is ~zero
+   performance gain (possibly negative); LICM remains a code-size/
+   generality improvement for the AGX backend, not a prefill lever.
+   The window-2 timing of the probes was already dominated by the
+   unroll pathology, consistent across windows 1-3.
+3. **Dequant arithmetic is a real second-order cost (~+9 percent at
+   large shapes) with no bit-preserving removal** - the extract/cvt/
+   ffma chain matters (nodequant 892.7 vs unrollbase 818.7), but its
+   removal changes values, so it is only reachable through an
+   arithmetic change under docs/parity-id-policy.md (e.g. an
+   f16-operand kernel; see the known coopmat datapath receipt).
+4. **The residual 1040 -> 1459 gap to the zero-traffic ceiling is
+   phase organization** (barrier cadence + serialized-load latency the
+   wait-batching work targets, measured ~+1.5 percent unpaired), not
+   staging instruction count: neither removing address work (point 2),
+   removing dequant work (point 3, +9 percent, arithmetic-changing),
+   nor adding ILP (coopmat-ilp-chains ladder) closes it, and the
+   zero-traffic arm4 probe runs the same geometry with NO staging at
+   all.
+
+
+## Measurement (window 3, commit e21179eb, 2026-09-12)
+
+Structure pinning took three windows. Windows 1-2 (commits ca94dc0d,
+22b9c35e) are SUPERSEDED: both showed that tiny body-size deltas flip
+`nir_opt_loop_unroll` into restructured k regions (step loop unrolled,
+phase counts changed) that move the number -14 to -26 percent on their
+own, swamping the attribution; a min()-opaque trip count did not stop
+it and SPIR-V DontUnroll loop control is not honored end to end on this
+stack. Window 3 pins the structure in the SOURCE: all three probe paths
+expand the four 16-k steps via one macro (QMM_STEP_BODY), so they share
+identical structure by construction; `unrollbase` (shipped arithmetic
+verbatim, unrolled) is the structure control. Digest gate: hoist AND
+unrollbase bit-identical to base on all 8 cells x 3 rounds (PASS);
+nodequant value-wrong by design (digest 36fc742484148d3b).
+
+gate_up 1053x896x9728, median of 3 interleaved rounds (GFLOP/s):
+
+| arm | value | vs base |
+|---|---|---|
+| base (shipped, rolled step loop) | 1040.3 | - |
+| unrollbase (shipped arithmetic, unrolled) | 818.7 | **-21.3%** |
+| hoist (address ops hoisted, unrolled) | 772.3 | -25.8% (-5.7% vs unrollbase) |
+| nodequant (dequant arithmetic removed, unrolled) | 892.7 | -14.2% (+9.0% vs unrollbase) |
+
+All eight cells (base | hoist | nodequant | unrollbase, GFLOP/s; hoist%
+nodeq% unrb% vs base):
+
+| shape | base | hoist | nodequant | unrollbase | deltas |
+|---|---|---|---|---|---|
+| 1053x896x9728 | 1040.3 | 772.3 | 892.7 | 818.7 | -25.8 -14.2 -21.3 |
+| 1053x4864x896 | 981.0 | 738.8 | 841.1 | 778.2 | -24.7 -14.3 -20.7 |
+| 1053x896x896 | 848.0 | 672.3 | 752.4 | 711.7 | -20.7 -11.3 -16.1 |
+| 262x896x9728 | 900.2 | 677.7 | 776.6 | 724.9 | -24.7 -13.7 -19.5 |
+| 262x4864x896 | 841.1 | 580.9 | 615.2 | 579.8 | -30.9 -26.9 -31.1 |
+| 262x896x896 | 525.4 | 481.9 | 497.1 | 479.4 | -8.3 -5.4 -8.8 |
+| 1053x896x128 | 345.2 | 412.9 | 431.6 | 367.8 | +19.6 +25.0 +6.5 |
+| 262x896x128 | 86.2 | 109.5 | 90.5 | 93.1 | +27.0 +5.0 +8.0 |
+
+The large-shape pattern is uniform: unrolling the shipped rolled step
+loop costs 20-31 percent with IDENTICAL arithmetic; within the unrolled
+regime, removing dequant arithmetic buys back ~7-9 percent while
+hoisting the lane-invariant address ops LOSES a further ~4-5 percent.
+Only the tiny 128-wide-K cells flip sign (short k regions like
+unrolling).
+
+## Artifacts
+
+- Probe logs + digest gates: `logs/probe-{base,hoist,nodequant,
+  unrollbase}-{warmup,r1,r2,r3}.log` (JSON lines), `drivers.txt`
+  (wheel c9a1b621 -> e21179eb builds; window 3 wheel sha256 in
+  drivers.txt, source commit e21179eb).
+- Raw AGX shader dumps (about 1 MB each, kept on jwm1 at
+  `~/src/mlx-omarchy-qmmattr/receipts/2026-09-12-qmm-staging-attribution/logs/dump-*.log`,
+  sha256 in `dump-sha256.txt`): Mesa dumps every compiled variant per
+  run, so per-kernel extraction needs the section filter in
+  `analysis/extract2.py`; static counts quoted here are qualitative
+  (base = rolled step loop matching the committed 2026-09-12-agx-qmm-
+  codegen classification; probe paths = source-expanded straight-line
+  k region, structure identical across paths by construction).
+- Aggregator: `analysis/aggregate.py`; window script:
+  `analysis/qmm_dump_one.py` + `qmmattr_window.sh` (repo root of the
+  jwm1 tree).
+- Static classification (unchanged by measurement):
+  `analysis/isa-classification.md`.
+
+Probes vs candidates, restated: `hoist` and `unrollbase` are
+bit-preserving and REJECTED as performance candidates by measurement;
+`nodequant` is value-wrong and was never a candidate. No source change
+is proposed by this receipt; the shipped kernel stands as the best
+measured form and the structural levers that remain are
+arithmetic-changing (parity-id-policy territory) or driver-side
+(wait-batching, matrix lowering width).
+
 
 ## Probes vs candidates — explicitly
 

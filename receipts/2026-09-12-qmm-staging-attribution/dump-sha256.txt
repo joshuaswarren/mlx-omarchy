@@ -1,0 +1,4 @@
+ad3928210974e4d0af658a7f7b002c06d2115c902b23cf5d1ce42cc50835c3b8  logs/dump-base-stdout.log
+5866e988d13d34fe2bb496cb797674fa70730dd356f5129b70320a5fda38a763  logs/dump-hoist-stdout.log
+82d4e99d662f0d34a4d11925c6b9243bfb2cc903619b6ef068d770efe3e713cc  logs/dump-nodequant-stdout.log
+f249763a4647d7122a8e8d13a2b100304df838169704427df4516a7fc334cea6  logs/dump-unrollbase-stdout.log
