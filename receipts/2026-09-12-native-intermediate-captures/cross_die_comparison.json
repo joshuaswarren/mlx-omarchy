@@ -1,0 +1,565 @@
+{
+ "identical": [
+  "data/attention/dispatch/bf16_kv1023_k.npy",
+  "data/attention/dispatch/bf16_kv1023_v.npy",
+  "data/attention/dispatch/bf16_kv1024_k.npy",
+  "data/attention/dispatch/bf16_kv1024_v.npy",
+  "data/attention/dispatch/bf16_kv1053_k.npy",
+  "data/attention/dispatch/bf16_kv1053_v.npy",
+  "data/attention/dispatch/bf16_kv1054_k.npy",
+  "data/attention/dispatch/bf16_kv1054_v.npy",
+  "data/attention/dispatch/bf16_kv262_k.npy",
+  "data/attention/dispatch/bf16_kv262_v.npy",
+  "data/attention/dispatch/bf16_kv263_k.npy",
+  "data/attention/dispatch/bf16_kv263_v.npy",
+  "data/attention/dispatch/f16_kv1023_k.npy",
+  "data/attention/dispatch/f16_kv1023_v.npy",
+  "data/attention/dispatch/f16_kv1024_k.npy",
+  "data/attention/dispatch/f16_kv1024_v.npy",
+  "data/attention/dispatch/f16_kv1053_k.npy",
+  "data/attention/dispatch/f16_kv1053_v.npy",
+  "data/attention/dispatch/f16_kv1054_k.npy",
+  "data/attention/dispatch/f16_kv1054_v.npy",
+  "data/attention/dispatch/f16_kv262_k.npy",
+  "data/attention/dispatch/f16_kv262_v.npy",
+  "data/attention/dispatch/f16_kv263_k.npy",
+  "data/attention/dispatch/f16_kv263_v.npy",
+  "data/attention/dispatch/f32_kv1023_k.npy",
+  "data/attention/dispatch/f32_kv1023_v.npy",
+  "data/attention/dispatch/f32_kv1024_k.npy",
+  "data/attention/dispatch/f32_kv1024_v.npy",
+  "data/attention/dispatch/f32_kv1053_k.npy",
+  "data/attention/dispatch/f32_kv1053_v.npy",
+  "data/attention/dispatch/f32_kv1054_k.npy",
+  "data/attention/dispatch/f32_kv1054_v.npy",
+  "data/attention/dispatch/f32_kv262_k.npy",
+  "data/attention/dispatch/f32_kv262_v.npy",
+  "data/attention/dispatch/f32_kv263_k.npy",
+  "data/attention/dispatch/f32_kv263_v.npy",
+  "data/attention/exp_inputs_f32.npy",
+  "data/attention/fast_exp2_log2e_outputs.npy",
+  "data/attention/fast_exp_outputs.npy",
+  "data/attention/simd_sum_probe_inputs.npy",
+  "data/bf16/long/sdpa/prefill0_L0_k.npy",
+  "data/bf16/long/sdpa/prefill0_L0_out.npy",
+  "data/bf16/long/sdpa/prefill0_L0_q.npy",
+  "data/bf16/long/sdpa/prefill0_L0_v.npy",
+  "data/bf16/long/sdpa/step0_L0_k.npy",
+  "data/bf16/long/sdpa/step0_L0_v.npy",
+  "data/bf16/long/sdpa/step1_L0_k.npy",
+  "data/bf16/long/sdpa/step1_L0_v.npy",
+  "data/bf16/longctx/sdpa/prefill0_L0_k.npy",
+  "data/bf16/longctx/sdpa/prefill0_L0_out.npy",
+  "data/bf16/longctx/sdpa/prefill0_L0_q.npy",
+  "data/bf16/longctx/sdpa/prefill0_L0_v.npy",
+  "data/bf16/longctx/sdpa/step0_L0_k.npy",
+  "data/bf16/longctx/sdpa/step0_L0_v.npy",
+  "data/bf16/longctx/sdpa/step1_L0_k.npy",
+  "data/bf16/longctx/sdpa/step1_L0_v.npy",
+  "data/bf16/short/sdpa/prefill0_L0_out.npy",
+  "data/bf16/short/sdpa/prefill0_L0_q.npy",
+  "data/q4/long/qmm/down_biases.npy",
+  "data/q4/long/qmm/down_scales.npy",
+  "data/q4/long/qmm/down_w_dequant_f32.npy",
+  "data/q4/long/qmm/down_w_packed_u32.npy",
+  "data/q4/long/qmm/down_x.npy",
+  "data/q4/long/qmm/down_y.npy",
+  "data/q4/long/qmm/gate_biases.npy",
+  "data/q4/long/qmm/gate_scales.npy",
+  "data/q4/long/qmm/gate_w_dequant_f32.npy",
+  "data/q4/long/qmm/gate_w_packed_u32.npy",
+  "data/q4/long/qmm/gate_x.npy",
+  "data/q4/long/qmm/gate_y.npy",
+  "data/q4/long/qmm/k_w_dequant_f32.npy",
+  "data/q4/long/qmm/k_x.npy",
+  "data/q4/long/qmm/k_y.npy",
+  "data/q4/long/qmm/o_w_dequant_f32.npy",
+  "data/q4/long/qmm/o_w_packed_u32.npy",
+  "data/q4/long/qmm/o_x.npy",
+  "data/q4/long/qmm/o_y.npy",
+  "data/q4/long/qmm/q_w_dequant_f32.npy",
+  "data/q4/long/qmm/q_w_packed_u32.npy",
+  "data/q4/long/qmm/q_x.npy",
+  "data/q4/long/qmm/q_y.npy",
+  "data/q4/long/qmm/up_biases.npy",
+  "data/q4/long/qmm/up_scales.npy",
+  "data/q4/long/qmm/up_w_dequant_f32.npy",
+  "data/q4/long/qmm/up_w_packed_u32.npy",
+  "data/q4/long/qmm/up_x.npy",
+  "data/q4/long/qmm/up_y.npy",
+  "data/q4/long/qmm/v_w_dequant_f32.npy",
+  "data/q4/long/qmm/v_x.npy",
+  "data/q4/long/qmm/v_y.npy",
+  "data/q4/long/sdpa/prefill0_L0_k.npy",
+  "data/q4/long/sdpa/prefill0_L0_out.npy",
+  "data/q4/long/sdpa/prefill0_L0_q.npy",
+  "data/q4/long/sdpa/prefill0_L0_v.npy",
+  "data/q4/long/sdpa/step0_L0_k.npy",
+  "data/q4/long/sdpa/step0_L0_v.npy",
+  "data/q4/long/sdpa/step1_L0_k.npy",
+  "data/q4/long/sdpa/step1_L0_v.npy",
+  "data/q4/longctx/qmm/down_biases.npy",
+  "data/q4/longctx/qmm/down_scales.npy",
+  "data/q4/longctx/qmm/down_w_dequant_f32.npy",
+  "data/q4/longctx/qmm/down_w_packed_u32.npy",
+  "data/q4/longctx/qmm/down_x.npy",
+  "data/q4/longctx/qmm/down_y.npy",
+  "data/q4/longctx/qmm/gate_biases.npy",
+  "data/q4/longctx/qmm/gate_scales.npy",
+  "data/q4/longctx/qmm/gate_w_dequant_f32.npy",
+  "data/q4/longctx/qmm/gate_w_packed_u32.npy",
+  "data/q4/longctx/qmm/gate_x.npy",
+  "data/q4/longctx/qmm/gate_y.npy",
+  "data/q4/longctx/qmm/k_w_dequant_f32.npy",
+  "data/q4/longctx/qmm/k_x.npy",
+  "data/q4/longctx/qmm/k_y.npy",
+  "data/q4/longctx/qmm/o_w_dequant_f32.npy",
+  "data/q4/longctx/qmm/o_w_packed_u32.npy",
+  "data/q4/longctx/qmm/o_x.npy",
+  "data/q4/longctx/qmm/o_y.npy",
+  "data/q4/longctx/qmm/q_w_dequant_f32.npy",
+  "data/q4/longctx/qmm/q_w_packed_u32.npy",
+  "data/q4/longctx/qmm/q_x.npy",
+  "data/q4/longctx/qmm/q_y.npy",
+  "data/q4/longctx/qmm/up_biases.npy",
+  "data/q4/longctx/qmm/up_scales.npy",
+  "data/q4/longctx/qmm/up_w_dequant_f32.npy",
+  "data/q4/longctx/qmm/up_w_packed_u32.npy",
+  "data/q4/longctx/qmm/up_x.npy",
+  "data/q4/longctx/qmm/up_y.npy",
+  "data/q4/longctx/qmm/v_w_dequant_f32.npy",
+  "data/q4/longctx/qmm/v_x.npy",
+  "data/q4/longctx/qmm/v_y.npy",
+  "data/q4/longctx/sdpa/prefill0_L0_k.npy",
+  "data/q4/longctx/sdpa/prefill0_L0_out.npy",
+  "data/q4/longctx/sdpa/prefill0_L0_q.npy",
+  "data/q4/longctx/sdpa/prefill0_L0_v.npy",
+  "data/q4/longctx/sdpa/step0_L0_k.npy",
+  "data/q4/longctx/sdpa/step0_L0_v.npy",
+  "data/q4/longctx/sdpa/step1_L0_k.npy",
+  "data/q4/longctx/sdpa/step1_L0_v.npy",
+  "data/q4/short/qmm/down_biases.npy",
+  "data/q4/short/qmm/down_scales.npy",
+  "data/q4/short/qmm/down_w_dequant_f32.npy",
+  "data/q4/short/qmm/down_w_packed_u32.npy",
+  "data/q4/short/qmm/gate_biases.npy",
+  "data/q4/short/qmm/gate_scales.npy",
+  "data/q4/short/qmm/gate_w_dequant_f32.npy",
+  "data/q4/short/qmm/gate_w_packed_u32.npy",
+  "data/q4/short/qmm/k_w_dequant_f32.npy",
+  "data/q4/short/qmm/k_x.npy",
+  "data/q4/short/qmm/o_w_dequant_f32.npy",
+  "data/q4/short/qmm/o_w_packed_u32.npy",
+  "data/q4/short/qmm/q_w_dequant_f32.npy",
+  "data/q4/short/qmm/q_w_packed_u32.npy",
+  "data/q4/short/qmm/q_x.npy",
+  "data/q4/short/qmm/up_biases.npy",
+  "data/q4/short/qmm/up_scales.npy",
+  "data/q4/short/qmm/up_w_dequant_f32.npy",
+  "data/q4/short/qmm/up_w_packed_u32.npy",
+  "data/q4/short/qmm/v_w_dequant_f32.npy",
+  "data/q4/short/qmm/v_x.npy"
+ ],
+ "different": {
+  "data/attention/dump/bf16_kv1023_exps.npy": {
+   "expected": "65a1fc762c2a2a276ac4796ce4fe39040e1fbffbe68b1ef54ea66727db3b5347",
+   "got": "8849f76546e2c372e6675345606c80f7e8cc25e86b7e96bf9c69721b56fbf0b9"
+  },
+  "data/attention/dump/bf16_kv1023_factors.npy": {
+   "expected": "a2a47622c222937a27f03cdc22f7d9f0038f6bcbce0a2c93951e606bc1f154c8",
+   "got": "ff9c5b3d6240519d73b6bad30a9f226e9489fb572d42e10fd114bee25486ecd1"
+  },
+  "data/attention/dump/bf16_kv1023_maxrun.npy": {
+   "expected": "49efa2d3d87c7b06f2a34bcbe63f67c325ffe42d6976beb3dcb53c8c1b47e70d",
+   "got": "16b4fc7899f7e96f99a12592e1cd4f17719625b83d8434086d0d7bc1ebfae154"
+  },
+  "data/attention/dump/bf16_kv1023_o_accum.npy": {
+   "expected": "765552026fb4e72a4bccb76f3b2e270068f67be58bcd649e015124aba9a54985",
+   "got": "10842292c138b0fee9cea166435f053828f21aa2c938f394196efc43667582fb"
+  },
+  "data/attention/dump/bf16_kv1023_scores.npy": {
+   "expected": "a2a47622c222937a27f03cdc22f7d9f0038f6bcbce0a2c93951e606bc1f154c8",
+   "got": "ff9c5b3d6240519d73b6bad30a9f226e9489fb572d42e10fd114bee25486ecd1"
+  },
+  "data/attention/dump/bf16_kv1023_sumrun.npy": {
+   "expected": "d6fdd79768758592fec7cef9c2594e4eff367da11f586698f54a9621e256538e",
+   "got": "216ee56b47d0e62bb203463bb652fc3c0fe020f6e1895f2b09f7f55ea9717f95"
+  },
+  "data/attention/dump/bf16_kv1024_exps.npy": {
+   "expected": "e38646be1d1f9e36dbdb72b5cf8e520e6e959deba24f82ce2609682e6fb9b696",
+   "got": "fae3e4c4fcda59a022f9214f43c45395e8ffbade9a43d76e5fd9f4a120b086b9"
+  },
+  "data/attention/dump/bf16_kv1024_factors.npy": {
+   "expected": "5291d080c8f52b7c69d79e1059678ec1fe83de0cd48770df4460891af49c8d0a",
+   "got": "df863eab0a6daed062924e61ed59d8f3b8456bccf0395a3ac3dc5037a8feed17"
+  },
+  "data/attention/dump/bf16_kv1024_maxrun.npy": {
+   "expected": "ba7d060071bd7ca18f14f4418e459b400088890230f54af33355446094d01743",
+   "got": "5d361ae9e170294db8ec9c9352ee4f0ef12c1f5a28c5d61eb346428fe4d323ba"
+  },
+  "data/attention/dump/bf16_kv1024_o_accum.npy": {
+   "expected": "9f35c5300440781e0c1c414ef015608381f395d29ab1c5c94ec04ae836f72076",
+   "got": "14c26ee67bba1f50902fdb5ef2a68cb813dd69f9122147b40cbc9905f7eaabbf"
+  },
+  "data/attention/dump/bf16_kv1024_scores.npy": {
+   "expected": "5291d080c8f52b7c69d79e1059678ec1fe83de0cd48770df4460891af49c8d0a",
+   "got": "df863eab0a6daed062924e61ed59d8f3b8456bccf0395a3ac3dc5037a8feed17"
+  },
+  "data/attention/dump/bf16_kv1024_sumrun.npy": {
+   "expected": "d8914b870d47e64af35d68241e905bd5e40e9a480fee8023897ca0a806e8e67c",
+   "got": "70b69a819c4b70abfe7e2e129fac7d96eb4c79c4a0a0415b8dd5cd20a1be7847"
+  },
+  "data/attention/dump/bf16_kv1053_exps.npy": {
+   "expected": "0993a1edb65f2460ee37e991fbad7c3721353ae93f93590ba0a6038f39d55c94",
+   "got": "cc62362d49bfec7c2dadd9a0d8f5772af093c1293ff2422efdd63380f02b46fb"
+  },
+  "data/attention/dump/bf16_kv1053_factors.npy": {
+   "expected": "d638e2ae13094749b48348b96f06dd2ae2763462c84262a2be8d6f8ae2991c6e",
+   "got": "ea1be9a8d198d426e7c529701b0e1e1bdddee6ce7763cff549f410d85facfbac"
+  },
+  "data/attention/dump/bf16_kv1053_maxrun.npy": {
+   "expected": "420b121cae335147f971c8347dce05b04edfa4ea650a90971df9773a34c7eaf4",
+   "got": "cbfc7d02e236b0359db404212710257550122bdacc16b4a28e8377bddbff895f"
+  },
+  "data/attention/dump/bf16_kv1053_o_accum.npy": {
+   "expected": "e3e0513f8c56ebc69363f490d056eda99f2d1c68cf692ca5cdece3dc007d563a",
+   "got": "4696825060cc845e74beacb0cc7877cb25bf791b33e929dd37410b50aefe47b2"
+  },
+  "data/attention/dump/bf16_kv1053_scores.npy": {
+   "expected": "d638e2ae13094749b48348b96f06dd2ae2763462c84262a2be8d6f8ae2991c6e",
+   "got": "ea1be9a8d198d426e7c529701b0e1e1bdddee6ce7763cff549f410d85facfbac"
+  },
+  "data/attention/dump/bf16_kv1053_sumrun.npy": {
+   "expected": "2894c7548412c6d77c2e0d8f7a44555a940dd3f3395af8efa7cdb01e218a08ff",
+   "got": "0b77bf8803215f273afe760059ab5b04cb9ebc719317596162549b03fd9ddf8c"
+  },
+  "data/attention/dump/bf16_kv1054_exps.npy": {
+   "expected": "a71719d2e37074f38ce97254a4ff18518ed73120febad8b2e552864a0d7a1c67",
+   "got": "d3131e317214aa24f33c914e7d71f10fdcfc7518d454f74b998bcc25ebe728c4"
+  },
+  "data/attention/dump/bf16_kv1054_factors.npy": {
+   "expected": "4c64577822cc8ff27a50022b7959fb6d75398884e8eca6406e00a6828e6f3120",
+   "got": "c1c2e588331a35efcfe45fb4e2bbcf9f7c597d57b583ef2ef6648727606eb541"
+  },
+  "data/attention/dump/bf16_kv1054_maxrun.npy": {
+   "expected": "9d515797e17df8cd4672614205edd6aa35b11ac2f81cdc36262bf4af2e94d671",
+   "got": "705826db810432e6a575bff7f718ef1ce0f2b8d8ad8de38664a5594035d9bd15"
+  },
+  "data/attention/dump/bf16_kv1054_o_accum.npy": {
+   "expected": "8a3ffe4ec26dd1bbbc5f241cfbfcc259116ee62b4e261ea9e316262bef78a350",
+   "got": "73c1a8661e545a1f2f57c06093dc075def4bb5ea48ed6d023eaa43ba9c01a8bc"
+  },
+  "data/attention/dump/bf16_kv1054_scores.npy": {
+   "expected": "4c64577822cc8ff27a50022b7959fb6d75398884e8eca6406e00a6828e6f3120",
+   "got": "c1c2e588331a35efcfe45fb4e2bbcf9f7c597d57b583ef2ef6648727606eb541"
+  },
+  "data/attention/dump/bf16_kv1054_sumrun.npy": {
+   "expected": "0f339b7a665fd58ab2841085b1351310210f7a0b08e8f5eab8b7d2bc561d4750",
+   "got": "86a643fe353f84e18250c8dc3998f57cecf66639b51f764c35e6c3cf7a5a6f64"
+  },
+  "data/attention/dump/bf16_kv262_exps.npy": {
+   "expected": "14b689a1e0fe6a77a26e13b9c38c38ad807756672bdcc6f44f573055c402b6e1",
+   "got": "ffb9f599c9ece663f18e6dca6167b3360091fe6290d07923eb42eb9af19f5d3a"
+  },
+  "data/attention/dump/bf16_kv262_factors.npy": {
+   "expected": "2ade192985fd3bfdbae3144d02983500c4f0cc429846a56a4588b3b4abcdd786",
+   "got": "82be41431eee90eb0d8ed0360e6fd6c2c51bbd4f3d00f45ade3370f8d4a75805"
+  },
+  "data/attention/dump/bf16_kv262_maxrun.npy": {
+   "expected": "a805c1c24feba027fc4e6e233f81f737332703a9df8882bd8a88ccb4320d32c1",
+   "got": "86091bd4307ad014f79957aafe0196e73f3effdf0b87f1b4d4b42b6c9474d186"
+  },
+  "data/attention/dump/bf16_kv262_o_accum.npy": {
+   "expected": "42b8772a789c7b3b233ca8eb7c43183a63be4568d0b00acd1c80b404210645fe",
+   "got": "a160081dcdf054eec24067e419775416014bba40de3471138cb38869cd50a0bd"
+  },
+  "data/attention/dump/bf16_kv262_scores.npy": {
+   "expected": "2ade192985fd3bfdbae3144d02983500c4f0cc429846a56a4588b3b4abcdd786",
+   "got": "82be41431eee90eb0d8ed0360e6fd6c2c51bbd4f3d00f45ade3370f8d4a75805"
+  },
+  "data/attention/dump/bf16_kv262_sumrun.npy": {
+   "expected": "dde60f21302e919344f63258de60abfc0240df3932736ba1a03cba56c49d4c90",
+   "got": "6a6a5a8b138f27bce3864dbfd55087efa651c7a5254e2338f5062f9dacee95d3"
+  },
+  "data/attention/dump/bf16_kv30_o_accum.npy": {
+   "expected": "ef9345ad611d45f1abfab83fb5c43b87b1a56372503c770847a9a213643676c5",
+   "got": "4f5c8eaed06889ff019523b5eb194977819fb9881226a8642d8b56aa7ef1a9e1"
+  },
+  "data/attention/dump/bf16_kv31_o_accum.npy": {
+   "expected": "a211a62324e73434333461fbe5f1e25d9a7cc5f4fe8fc36c6321b13f124b6a94",
+   "got": "ab0ac2b72d26acecf06f0f90730797082692b8717922678ecf473384100240b9"
+  },
+  "data/attention/dump/bf16_kv32_o_accum.npy": {
+   "expected": "b94b4eeb1cefc1dd012ddde5a3c6a00b2c8d6674e03c8aa7fea9df0671f4c290",
+   "got": "255879a5a907bb32c6ba6d12a02ba7740c19ff87530470f5ad4e961fa7d5f41f"
+  },
+  "data/attention/dump/bf16_kv64_exps.npy": {
+   "expected": "f0bee86608b0df03034102d8ca47ebe198a660e12cc6dee5f5605911eb6449ba",
+   "got": "40a98244f752db2cff8bb0591302f9611979bf323f1aae21fb99948ee4da3492"
+  },
+  "data/attention/dump/bf16_kv64_factors.npy": {
+   "expected": "827189f145865ac7ab2c1a9a8f7f41afd8ea251083f329783b7a42368a73788a",
+   "got": "41e80d8287d361f35ed34af1709a44b36e26767461dd1b6d83dd3a6dc6e4ce09"
+  },
+  "data/attention/dump/bf16_kv64_maxrun.npy": {
+   "expected": "75bfab976a7b43e7d47a1e7469a58d931a280562c636ad6913eb94be6235f967",
+   "got": "bbcc7b98e7c19211e25c04f2e84e02979fb583febf129f01404a8c6776382112"
+  },
+  "data/attention/dump/bf16_kv64_o_accum.npy": {
+   "expected": "888b7d908503a7ea1f61782f4c1c624b69af9f8f61f6553286794f599faba41e",
+   "got": "d81032579c1d51e36cbc5376f6b2d212a95665bf28d6069df3c9d0d989eff1d0"
+  },
+  "data/attention/dump/bf16_kv64_scores.npy": {
+   "expected": "827189f145865ac7ab2c1a9a8f7f41afd8ea251083f329783b7a42368a73788a",
+   "got": "41e80d8287d361f35ed34af1709a44b36e26767461dd1b6d83dd3a6dc6e4ce09"
+  },
+  "data/attention/dump/bf16_kv64_sumrun.npy": {
+   "expected": "3462383417c631be67ae33a4d902aaddf54c5efda865caf3bf6c723639379382",
+   "got": "9c5a4bb3854184ea5b16bed0259eecdeaa632406371c37ec20a1ed22287c7d49"
+  },
+  "data/attention/dump/bf16_kv8_o_accum.npy": {
+   "expected": "100071dbf480ee866c454e260cb9a26a8775d79d083ad6324571950f1b09af72",
+   "got": "7d75059daff018b55e8451ed0315a61bea6c969edacc6357f312a3d8e0b84906"
+  },
+  "data/attention/dump/f16_kv1023_exps.npy": {
+   "expected": "8e1960186a2cde5dbc79f89f625c109f607675766f66835511dfbd3985f20652",
+   "got": "f2bbd6a6de5afe884ddc79c50b1fd5eaa04e3d80d8545bfed69d4d6c10163fc3"
+  },
+  "data/attention/dump/f16_kv1023_factors.npy": {
+   "expected": "87c17a25f420ed88d799d778e9771a62857fd98207cd46b1a0a860ab3e6234b5",
+   "got": "e0a1648d30a6bb2996fe371393f44f3f88a06dd79585471b5855a54ca44647c3"
+  },
+  "data/attention/dump/f16_kv1023_maxrun.npy": {
+   "expected": "d84705c1d2dc4c10e0e566153afb7d69e599c49a2e0644f0dac9f5621b6467bf",
+   "got": "55dd7579d09d9ff457a95ccc18b5c3b6047fac26b16960b855a3f683268b57d5"
+  },
+  "data/attention/dump/f16_kv1023_o_accum.npy": {
+   "expected": "d8331716dec659376a60ee66cdcfbb20c9770ceeb51ca245962a206c016003b5",
+   "got": "8f8d61df3c9f19ffd172fd92fd61fbb522d966227f255c58a732f9baa79b043d"
+  },
+  "data/attention/dump/f16_kv1023_scores.npy": {
+   "expected": "87c17a25f420ed88d799d778e9771a62857fd98207cd46b1a0a860ab3e6234b5",
+   "got": "e0a1648d30a6bb2996fe371393f44f3f88a06dd79585471b5855a54ca44647c3"
+  },
+  "data/attention/dump/f16_kv1023_sumrun.npy": {
+   "expected": "6eb1b6f0c51d5c3380e2f29b7e3ec18e65edc142c3ee0d6744f5e8218a8707aa",
+   "got": "f898e36ebec1b01c34aa205d294b31ec52f23ba359e546a44b215f431f0650ed"
+  },
+  "data/attention/dump/f16_kv1024_exps.npy": {
+   "expected": "d1dede9d7df9038588ffc50a15fa694f42db1469c51b46a36e0934ea94d26ed7",
+   "got": "c460e6778c4dd61cd8b5801533fe4067e9bc2423634456bef4c431c459bfb0bd"
+  },
+  "data/attention/dump/f16_kv1024_factors.npy": {
+   "expected": "b6bd3d042e436fbe804dd8405586b891883e601333a1ac755326e5f90d2c3592",
+   "got": "3aac3ed166a1a00e314754a2b4bd08aa9959cdc02e1a5e43f04b0f66a566bebd"
+  },
+  "data/attention/dump/f16_kv1024_maxrun.npy": {
+   "expected": "5fba60159ee7ada416b650e51dcaa17b0ab848ccd87e1134563194ec47a7ab3c",
+   "got": "20397908f7a65c92d19eee9b1c16780a238fdfd5c6c76aee3c0f49ce6f9bf266"
+  },
+  "data/attention/dump/f16_kv1024_o_accum.npy": {
+   "expected": "7de57b2ec11343de4e1d46a40e753e1548f32974f89d9350572f3492c055e230",
+   "got": "075090a9b628f206d25a17c68d4baeadd8fdcf0662c93db193bb616bd01a1e51"
+  },
+  "data/attention/dump/f16_kv1024_scores.npy": {
+   "expected": "b6bd3d042e436fbe804dd8405586b891883e601333a1ac755326e5f90d2c3592",
+   "got": "3aac3ed166a1a00e314754a2b4bd08aa9959cdc02e1a5e43f04b0f66a566bebd"
+  },
+  "data/attention/dump/f16_kv1024_sumrun.npy": {
+   "expected": "95185382ca21097a6954ec8d060450e12d243a5941d3d64aaf417293f34db728",
+   "got": "c45a361ae74f6a1dc82188485446953674c946c8af79d0e9f0fdb615d5c24967"
+  },
+  "data/attention/dump/f16_kv1053_exps.npy": {
+   "expected": "223b436d171802379825c5c26d6ae4a6618cb938670d4e7477289de9c4ad0e6d",
+   "got": "f3229558f932abfc75e2c3708338903227235633a90e3c0806d2c9d032aa193c"
+  },
+  "data/attention/dump/f16_kv1053_factors.npy": {
+   "expected": "fd76469a2177be542a39367dddc1fe56ad85a607bfcef12fcbd22c3b81194e48",
+   "got": "9976cdfb6d7056326e1ae2d8ad7b3d3efbbf531a7e191dff7d4d6f33f08d68ce"
+  },
+  "data/attention/dump/f16_kv1053_maxrun.npy": {
+   "expected": "793d3cceb462466757906448c17d9557077f0f9b4ec09edef2ac6aa2553ac7ae",
+   "got": "900e466ec02fe85914d6141946af0ab1cba64e21bb9ea4cde741c778489143f9"
+  },
+  "data/attention/dump/f16_kv1053_o_accum.npy": {
+   "expected": "1a5fe79b210b9296707a9cff8bb3d6058b1273e7f5d7a76bd3605cdef153c836",
+   "got": "d3db2cd8d1fb3a718edce2bee1ba92fd73b8380ef876aa79c3d37deebfd42134"
+  },
+  "data/attention/dump/f16_kv1053_scores.npy": {
+   "expected": "fd76469a2177be542a39367dddc1fe56ad85a607bfcef12fcbd22c3b81194e48",
+   "got": "9976cdfb6d7056326e1ae2d8ad7b3d3efbbf531a7e191dff7d4d6f33f08d68ce"
+  },
+  "data/attention/dump/f16_kv1053_sumrun.npy": {
+   "expected": "02eb49df43e9330b7e8e52f1ad7fe0c659b1eee7999e23c13fcac1d52dd6be0f",
+   "got": "d8423b5fc6dcf01c1e8b0488946a5c5fa840ee9d0cbb5627661950bb643a3b39"
+  },
+  "data/attention/dump/f16_kv1054_exps.npy": {
+   "expected": "636e24c2a12b666ab35b1a418083aa3caca6a2e7233ceac500f180d0067d3e45",
+   "got": "de75dcf296b87f0e53c025b7017791efb95727b2c908fb619e176ea44148e058"
+  },
+  "data/attention/dump/f16_kv1054_factors.npy": {
+   "expected": "693a4fd7b9a9c63710e62677a3ece741d1cdce3017ec26e2372ff9909f650338",
+   "got": "11cb5f6c2a0730bdac76616b2c6d313714371b1b24200b124bca0f5bd98ab05d"
+  },
+  "data/attention/dump/f16_kv1054_maxrun.npy": {
+   "expected": "c9258caaa2ea8ddeb1ae74c2476afd92772eda0cfc43b4f0511369af743c9ee4",
+   "got": "3f8bc23d2c575a3af2a243c97af8b72813c06751dd27ccefb5fb96bb0e38ba43"
+  },
+  "data/attention/dump/f16_kv1054_o_accum.npy": {
+   "expected": "8469771d0bf9472ceac8ea89b79ac20f2b456156b952aa538b332cade567196a",
+   "got": "04d620cf27122e1de046755d78f665f7f3ba5e4c5dd5b83be36792b2bfe99c55"
+  },
+  "data/attention/dump/f16_kv1054_scores.npy": {
+   "expected": "693a4fd7b9a9c63710e62677a3ece741d1cdce3017ec26e2372ff9909f650338",
+   "got": "11cb5f6c2a0730bdac76616b2c6d313714371b1b24200b124bca0f5bd98ab05d"
+  },
+  "data/attention/dump/f16_kv1054_sumrun.npy": {
+   "expected": "57c562a5e9a35c8688f8cf2b43277586e0410c2a1182be776405ac0cff2e3e31",
+   "got": "e02ddd1a8a7699418426c79dc1cb52c3441db138156acb57cc56a2c62b00e990"
+  },
+  "data/attention/dump/f16_kv262_exps.npy": {
+   "expected": "6f51d1f34883d5f41a003a647f71d2293eb652e5b224bce15a84edbdda1630a8",
+   "got": "8abf6f539627c2e8b1b2b238a35250b02c42acd84dae2151f6977f67a0064058"
+  },
+  "data/attention/dump/f16_kv262_factors.npy": {
+   "expected": "4b4063016374d7ca7547120bb73ca0a345a00005d97565a632af8ba228b0793c",
+   "got": "a27d6e0ccd163a57434fd2abd63cc5a6325f0c5589f9371f1353e0e447fcb74c"
+  },
+  "data/attention/dump/f16_kv262_maxrun.npy": {
+   "expected": "667f18be4760ac7db492ada7a01a3d0ade16369e2ac6ec75a7eb28bd38a04f23",
+   "got": "9b0ff0145a933907e08c046c5bb3dfb32370f4d9ded75266e047eceb03848071"
+  },
+  "data/attention/dump/f16_kv262_o_accum.npy": {
+   "expected": "5aa091f33dcde7aa618f3f8331d3f8be6379299bfa89a383dafd685d98967efd",
+   "got": "14a3268161806b4ff892cda69d7c1363fd44b97e2ea23ece1f6b89eb394ef7f4"
+  },
+  "data/attention/dump/f16_kv262_scores.npy": {
+   "expected": "4b4063016374d7ca7547120bb73ca0a345a00005d97565a632af8ba228b0793c",
+   "got": "a27d6e0ccd163a57434fd2abd63cc5a6325f0c5589f9371f1353e0e447fcb74c"
+  },
+  "data/attention/dump/f16_kv262_sumrun.npy": {
+   "expected": "6bf6efebe47c78a6da9b57e4d3d38b2ad862f548ea4937f16633401b02f848dd",
+   "got": "68c72ae5b8ed0dba1744d41fc2618021163d6c46986a419e1c5355f57a932877"
+  },
+  "data/attention/dump/f16_kv30_o_accum.npy": {
+   "expected": "4487bb76e2c7ca3f3495ee1952eedbb2e1f549fbd794ca5cc4984f2c7b018a0e",
+   "got": "d1067672b56e6d7e6d096dd623f8479f28c042583c84f9e871d055343cb95e51"
+  },
+  "data/attention/dump/f16_kv31_o_accum.npy": {
+   "expected": "b79d6336e69b89b6d5ffc569a585062ab94ca1524980ecd4f553319ff55884b5",
+   "got": "e2733ac09958c788ea03245b8827ac8a5a4e20ff2985044198f48d5b130f45bd"
+  },
+  "data/attention/dump/f16_kv32_o_accum.npy": {
+   "expected": "256ae7691c3471c7c15751283709cfcc5ef2ab52db1b2cee9fa37c8731f4c8d5",
+   "got": "cd5b7f5577cedefa6a9d12c702c0cddfe3e75e66a8efc601b6ec165279286e82"
+  },
+  "data/attention/dump/f16_kv64_exps.npy": {
+   "expected": "b7596476966fe10cd2e725c93378121cd321ba3f496072909a25393433316100",
+   "got": "e54bed59fe607201d247abc20b845a79321f16c08cf27a7c6189ed73edcb9cfd"
+  },
+  "data/attention/dump/f16_kv64_factors.npy": {
+   "expected": "60829c3521fd648fa75219b95abc4df957d1839d890d46a69c8a85a0374d2c67",
+   "got": "323400715db4d56b89e950fcdbebc484ddc427bec26ce398bc438938bd24fb3a"
+  },
+  "data/attention/dump/f16_kv64_maxrun.npy": {
+   "expected": "2228973ce82666802211b5c2efe079e2ce9b6912a0ae0b367f73c382c0db779e",
+   "got": "2374387da86b066c309888fc9c24276ead105d761ec73c8e1b8ee73a173b48ec"
+  },
+  "data/attention/dump/f16_kv64_o_accum.npy": {
+   "expected": "054d06c96f06382066fca6a8a5b2caa5270073a8efede781753a8c943ca75e4b",
+   "got": "245538eae2ca330da279fe0bf84e02a54b08e5da5427aee61d06c3978beb13dc"
+  },
+  "data/attention/dump/f16_kv64_scores.npy": {
+   "expected": "60829c3521fd648fa75219b95abc4df957d1839d890d46a69c8a85a0374d2c67",
+   "got": "323400715db4d56b89e950fcdbebc484ddc427bec26ce398bc438938bd24fb3a"
+  },
+  "data/attention/dump/f16_kv64_sumrun.npy": {
+   "expected": "800e823f05911b8e303c4274fe968b2b25da9402aadce7ab06df1d7175baefed",
+   "got": "4c86e222a74910db5fadb643a26e238a5817e9c9fd806e91a96d635c8dca3b3f"
+  },
+  "data/attention/dump/f16_kv8_o_accum.npy": {
+   "expected": "56010805d1c5a620aa6447fb4c141566dae47ac12df1005b55af1c77834e2c7b",
+   "got": "9acacf397814ed45aca2b1920bc8af9d5e7cabb154b8db39b7768d95eaa2fdb2"
+  },
+  "data/manifest_model.json": {
+   "expected": "900f20b1452208801e0c70b25267bab95ebc64df74c4b3a0bb236ed4ead46fd9",
+   "got": "ad9c90331c334da54e710b63df012afb50897be7b3383962a98834a789075f63"
+  },
+  "data/q4/short/qmm/down_x.npy": {
+   "expected": "91daff1757061a9f5e677f29b545bd9f754b06693129a8bfc77b91016b915a02",
+   "got": "868a881f591c69e4da5a2f259f6955d6bc25c8d35986f6330f10b5cc30561865"
+  },
+  "data/q4/short/qmm/down_y.npy": {
+   "expected": "082fbeed36426c0b767b90ef3015bef3f3d74d06c841dcd424d39bbc8f975591",
+   "got": "6f9cae4e03494b35f267ff692f325e93ba6690742d8c00880e7f42941e7d1930"
+  },
+  "data/q4/short/qmm/gate_x.npy": {
+   "expected": "bfabb735f77599e5f913cbfc60dbcd514ac1a4178ed06a60e721957be890f0a0",
+   "got": "c2e88ee23f921aa599ba9eba30b87be5edd3585654188bc5c1415835c9db1ebe"
+  },
+  "data/q4/short/qmm/gate_y.npy": {
+   "expected": "b7fa1ba3e2304bb14916b350a92283a2bf7c4872ce7632a3de8236a200f905d3",
+   "got": "43d31f48a04ccc2c2069a55e8292b8aa3222c9025bca455fd2f4cd75c7ecdde2"
+  },
+  "data/q4/short/qmm/o_x.npy": {
+   "expected": "9149b2eed8ca38d70bed6ce88b3f0598fd4261aceae5867986799135594213f1",
+   "got": "4077328dc8b484ea9cae91c033b6e09455f918285ab5cc87062a9dfc7ce7b988"
+  },
+  "data/q4/short/qmm/o_y.npy": {
+   "expected": "281afc9f90c07b86462923e5af353fa20e66887ed0346134ee7ecb2e914df107",
+   "got": "73ce6b6efb317a7a19812964e630198c3ddfa8c6fbf9d001bd0b53b62237ebb9"
+  },
+  "data/q4/short/qmm/q_y.npy": {
+   "expected": "c74928111674013ae477c172b38856716509ecef504cb3f67f7b6d8cdb0e8c03",
+   "got": "4c1568ad3142f129f81d9688bf405f97ae6776a46a5aff52111d7a4a30ee9cee"
+  },
+  "data/q4/short/qmm/up_x.npy": {
+   "expected": "bfabb735f77599e5f913cbfc60dbcd514ac1a4178ed06a60e721957be890f0a0",
+   "got": "c2e88ee23f921aa599ba9eba30b87be5edd3585654188bc5c1415835c9db1ebe"
+  },
+  "data/q4/short/qmm/up_y.npy": {
+   "expected": "fa3018a61a08ba6432ba4bfb8ebfb226f8b03eccacdd80503d00dcac30cc5055",
+   "got": "b1cb70577420f351e4e0b90b25259ac7169ad3ec1a0fafa830d35a54db2c27b8"
+  },
+  "data/q4/short/sdpa/prefill0_L0_out.npy": {
+   "expected": "6a5d1fca08000f594a5bf4f3eafc3d603e17e02fe10504fa0642865962bc2607",
+   "got": "69ffa5c39e070654e84bc0b68eb81bdfd96a9352f81485b0f266383ce1ab7e92"
+  },
+  "data/q4/short/sdpa/prefill0_L0_q.npy": {
+   "expected": "a0036849513aa3391e00434f81ff926d8488a817705df759382be1148750b72c",
+   "got": "af090d49b255ded3eed83f500ed34f5622a0e233205c7991ae0ab13a4be3a73e"
+  }
+ },
+ "absent": [
+  "data/attention/dump/bf16_kv1023_lane_o.npy",
+  "data/attention/dump/bf16_kv1024_lane_o.npy",
+  "data/attention/dump/bf16_kv1053_lane_o.npy",
+  "data/attention/dump/bf16_kv1054_lane_o.npy",
+  "data/attention/dump/bf16_kv262_lane_o.npy",
+  "data/attention/dump/bf16_kv30_lane_o.npy",
+  "data/attention/dump/bf16_kv31_lane_o.npy",
+  "data/attention/dump/bf16_kv32_lane_o.npy",
+  "data/attention/dump/bf16_kv64_lane_o.npy",
+  "data/attention/dump/bf16_kv8_lane_o.npy",
+  "data/attention/dump/f16_kv1023_lane_o.npy",
+  "data/attention/dump/f16_kv1024_lane_o.npy",
+  "data/attention/dump/f16_kv1053_lane_o.npy",
+  "data/attention/dump/f16_kv1054_lane_o.npy",
+  "data/attention/dump/f16_kv262_lane_o.npy",
+  "data/attention/dump/f16_kv30_lane_o.npy",
+  "data/attention/dump/f16_kv31_lane_o.npy",
+  "data/attention/dump/f16_kv32_lane_o.npy",
+  "data/attention/dump/f16_kv64_lane_o.npy",
+  "data/attention/dump/f16_kv8_lane_o.npy",
+  "data/attention/f16_kv30_lane_o.npy",
+  "data/attention/f16_kv30_o_accum.npy",
+  "data/attention/simd_order_triple_inputs.npy"
+ ],
+ "new_files": [],
+ "summary": {
+  "identical": 159,
+  "different": 92,
+  "absent": 23,
+  "new_files": 0
+ }
+}
