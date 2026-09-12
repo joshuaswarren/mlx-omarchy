@@ -3,8 +3,9 @@
 Pad and concat filled whole regions with recycled garbage after
 `3f7e549a` ("omarchy: order recycled scalar fills through the completion
 timeline"). First failing commit named by run, not assumed. Fix:
-`pad-fill-ordering` commit `182a02bb` — one gated drain in
-`copy_gpu_inplace`'s Scalar branch; the prefill restoration stands.
+`pad-fill-ordering` commits `182a02bb` + `88508d9e` — no drain on the
+hot path; unpublished GPU-produced fill values are consumed on the
+device. The prefill restoration stands.
 
 ## Three commits, one path, two shipped wrong values
 
@@ -161,18 +162,68 @@ pad correctness do not tension under this fix — the drain splits
 submissions only for GPU-produced values, which the contract test does
 not exercise and real decode/prefill paths do not produce.
 
-## M1 window (jwm1, fork honeykrisp-26.3.0-devel, /tmp/m1-gpu.lock)
+## Fix history within this item
+
+`182a02bb` gated the drain on `completion > drained_value`. It is
+correct — every digest and suite held — but the M1 A/B measured it at
+216-227 tok/s on the Q4 short prefill: the prefill path has
+GPU-produced scalar fills of its own, so the gate drained per call and
+re-introduced de780aa2's cost. `88508d9e` replaces the drain with the
+broadcast branch above and is the shipping fix; 182a02bb remains as the
+commit that proved the gate was still too coarse.
+
+## M1 window (jwm1, fork honeykrisp-26.3.0-devel, /tmp/m1-gpu.lock,
+one session, interleaved)
 
 Wheels (built on jwm1, same session, same build host):
 - baseline d389c24f: `mlx_omarchy-0.32.2.dev202609120916+d389c24f`
-- fix 182a02bb: `mlx_omarchy-0.32.2.dev202609120913+182a02bb`
+- fix 88508d9e: `mlx_omarchy-0.32.2.dev202609121008+88508d9e`
 
-(FILLED AFTER WINDOW: interleaved A/B prefill table, digest gates, C++
-suites on M1, churn probes.)
+### Paired interleaved Q4 short prefill (warmup discarded, 4 reps each,
+A/B alternating in one window)
 
-## Host-read audit (the bug class: host dereferences mapped memory whose
-bytes a pending submission produces)
+| wheel | prefill_s median | tok/s median | of native 294.1 | digest |
+|---|---|---|---|---|
+| A baseline d389c24f | 0.090275 | 332.3 | 1.130 | 7fd25a869ff21678 |
+| **B fix 88508d9e** | **0.090441** | **331.7** | **1.128** | 7fd25a869ff21678 |
 
+The fix is 0.17% off the baseline — an order of magnitude inside the
+session noise floor (about 5 percent). The prefill restoration is kept
+in full, with pad and concat correct.
+
+### Digest gates (fix wheel 88508d9e)
+
+3 reps x both drivers, canonical manifest: every measured leg of every
+rep reproduced the published pins exactly — fork Q4
+`7fd25a869ff21678` / `4cc08910089477fd` / `7da83f06ec9f001d`, fork bf16
+`f26175202f3dabe9` / `8690dc83246b39f8` / `ff502900d2a179a5`, stock Q4
+`7fd25a869ff21678` / `4cc08910089477fd` / `7da83f06ec9f001d`, stock
+bf16 `7fc0f968789b1882` / `46108ad71157cb4d` / `ff502900d2a179a5`.
+Baseline wheel fork rep matched as well. (7b/14b models not in the
+local HF cache: skipped by the runner's no-fetch rule, same as
+window3.)
+
+### M1 battery (fix tree 88508d9e test binaries, fork driver)
+
+- `omarchy_shape_ops_tests` exit=0 (incl. the new regression case)
+- `omarchy_complex_ops_tests` exit=0
+- `omarchy_copy_offset_tests` exit=0 — as written, single-submission
+  assertion included
+
+### Churn probes (40 iterations each, fix wheel vs baseline wheel)
+
+| probe | baseline d389c24f | fix 88508d9e |
+|---|---|---|
+| convolve same-mode (`conv_probe3.py`) | bad idx [0, 1, 23] — the known wrong-value signature | bad idx [] — clean |
+| MaxPool1d k2 s2 p1 (`maxpool_probe.py`) | 0/40 | 0/40 |
+
+MaxPool1d did not discriminate on either wheel tonight (its padded
+window did not land on contested storage in 40 iterations); convolve
+did, and the fix clears it. Raw logs and per-run JSONs:
+jwm1:/home/joshuawarren/src/bisreg-padfill/ (window.log; earlier
+aborted attempts are window.log.aborted-race and
+window.log.fix1-182a02bb — the latter holds the 182a02bb A/B rows that
+motivated 88508d9e).
 Every site found, with verdict. "Safe (drained)" = an explicit
 synchronize/join orders the read; "safe (host-written)" = the bytes were
 written by the host before any submission could touch them.
