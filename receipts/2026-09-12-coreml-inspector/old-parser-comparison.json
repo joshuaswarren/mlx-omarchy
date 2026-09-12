@@ -1,0 +1,211 @@
+{
+  "note": "comparison of the deleted hand-written parser's artifact (/tmp/parakeet-inventory/inventory.json) against the official-schema inspector; the old artifact is a sanity cross-check, not an oracle",
+  "packages": {
+    "encoder": {
+      "op_total_old": 3351,
+      "op_total_new": 3351,
+      "op_histogram_match": true,
+      "old_boundary_dtype_shape": "None fields (old parser could not read them)",
+      "new_boundary_inputs": [
+        {
+          "name": "input_features",
+          "kind": "multiArrayType",
+          "feature_dtype": "FLOAT32",
+          "shape": [
+            1,
+            3000,
+            128
+          ],
+          "shape_flexibility": {
+            "kind": "static"
+          }
+        },
+        {
+          "name": "attention_mask",
+          "kind": "multiArrayType",
+          "feature_dtype": "INT32",
+          "shape": [
+            1,
+            3000
+          ],
+          "shape_flexibility": {
+            "kind": "static"
+          }
+        }
+      ],
+      "new_boundary_outputs": [
+        {
+          "name": "encoder_hidden",
+          "kind": "multiArrayType",
+          "feature_dtype": "FLOAT32",
+          "shape": [
+            1,
+            375,
+            640
+          ],
+          "shape_flexibility": {
+            "kind": "static"
+          }
+        },
+        {
+          "name": "encoder_mask",
+          "kind": "multiArrayType",
+          "feature_dtype": "INT32",
+          "shape": [
+            1,
+            375
+          ],
+          "shape_flexibility": {
+            "kind": "static"
+          }
+        }
+      ]
+    },
+    "decoder": {
+      "op_total_old": 69,
+      "op_total_new": 69,
+      "op_histogram_match": true,
+      "old_boundary_dtype_shape": "None fields (old parser could not read them)",
+      "new_boundary_inputs": [
+        {
+          "name": "input_ids",
+          "kind": "multiArrayType",
+          "feature_dtype": "INT32",
+          "shape": [
+            1,
+            1
+          ],
+          "shape_flexibility": {
+            "kind": "static"
+          }
+        },
+        {
+          "name": "hidden",
+          "kind": "multiArrayType",
+          "feature_dtype": "FLOAT32",
+          "shape": [
+            2,
+            1,
+            640
+          ],
+          "shape_flexibility": {
+            "kind": "static"
+          }
+        },
+        {
+          "name": "cell",
+          "kind": "multiArrayType",
+          "feature_dtype": "FLOAT32",
+          "shape": [
+            2,
+            1,
+            640
+          ],
+          "shape_flexibility": {
+            "kind": "static"
+          }
+        }
+      ],
+      "new_boundary_outputs": [
+        {
+          "name": "decoder_hidden",
+          "kind": "multiArrayType",
+          "feature_dtype": "FLOAT32",
+          "shape": [
+            1,
+            1,
+            640
+          ],
+          "shape_flexibility": {
+            "kind": "static"
+          }
+        },
+        {
+          "name": "next_hidden",
+          "kind": "multiArrayType",
+          "feature_dtype": "FLOAT32",
+          "shape": [
+            2,
+            1,
+            640
+          ],
+          "shape_flexibility": {
+            "kind": "static"
+          }
+        },
+        {
+          "name": "next_cell",
+          "kind": "multiArrayType",
+          "feature_dtype": "FLOAT32",
+          "shape": [
+            2,
+            1,
+            640
+          ],
+          "shape_flexibility": {
+            "kind": "static"
+          }
+        }
+      ]
+    },
+    "joint": {
+      "op_total_old": 21,
+      "op_total_new": 21,
+      "op_histogram_match": true,
+      "old_boundary_dtype_shape": "None fields (old parser could not read them)",
+      "new_boundary_inputs": [
+        {
+          "name": "encoder_frame",
+          "kind": "multiArrayType",
+          "feature_dtype": "FLOAT32",
+          "shape": [
+            1,
+            640
+          ],
+          "shape_flexibility": {
+            "kind": "static"
+          }
+        },
+        {
+          "name": "decoder_state",
+          "kind": "multiArrayType",
+          "feature_dtype": "FLOAT32",
+          "shape": [
+            1,
+            640
+          ],
+          "shape_flexibility": {
+            "kind": "static"
+          }
+        }
+      ],
+      "new_boundary_outputs": [
+        {
+          "name": "token_logits",
+          "kind": "multiArrayType",
+          "feature_dtype": "FLOAT32",
+          "shape": [
+            1,
+            8193
+          ],
+          "shape_flexibility": {
+            "kind": "static"
+          }
+        },
+        {
+          "name": "duration_logits",
+          "kind": "multiArrayType",
+          "feature_dtype": "FLOAT32",
+          "shape": [
+            1,
+            5
+          ],
+          "shape_flexibility": {
+            "kind": "static"
+          }
+        }
+      ]
+    }
+  },
+  "conclusion": "op counts and histograms agree (the old 3351/69/21 histogram is now verified by the official parser); boundary dtype/shape, MIL dtypes, compression, weight hashes and shape flexibility were blank or absent in the old artifact and are now exact (official FeatureType vs MIL enums preserved)"
+}

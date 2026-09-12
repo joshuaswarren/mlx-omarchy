@@ -2,23 +2,27 @@
 # SPDX-License-Identifier: MIT
 """Core ML frontend tools for mlx-omarchy.
 
-Phase 1 (reference freeze) and Phase 2 (Linux .mlpackage inspection)
-ship under this package. Phase 3 (compiler integration) and later
-phases belong to the canonical compiler/runtime repositories.
+Phase 2 ships the public ``.mlpackage`` inspector under this package:
 
-Layout:
+* :mod:`coreml.schema` — the officially vendored Core ML protobuf
+  schema (Apple coremltools 9.0 generated bindings plus ``.proto``
+  sources; provenance and hashes in ``schema/VENDORED.json``).
+* :mod:`coreml.proto` — schema access: loads model specifications
+  through the generated bindings and names dtypes/shapes from the
+  official enums (FeatureType and MIL dtype enums stay distinct).
+* :mod:`coreml.mlpackage` — .mlpackage reader and typed inventory:
+  manifest validation, function/block/operation enumeration with
+  bindings and typed outputs, weight files + blob references,
+  compression representation, versions, control flow, parse validity.
+  Compiler eligibility is explicitly not assessed here.
+* :mod:`coreml.inspect_mlpackage` — CLI entry point::
 
-* :mod:`proto` — minimal protobuf wire-format reader.
-* :mod:`mlpackage` — .mlpackage directory reader: manifest, model
-  specification, function/block/operation inventory, weight discovery.
-* :mod:`reference` — parakeet-reference.lock schema and cache
-  verification (hash-pinned files, predictable cache, reuse, mismatch
-  refusal).
-* :mod:`fetch_parakeet_reference` — CLI entry point:
-  ``python -m mlx_omarchy.coreml.fetch_parakeet_reference download``.
-* :mod:`inspect_mlpackage` — CLI entry point:
-  ``python -m mlx_omarchy.coreml.inspect_mlpackage inspect PATH``.
+      python3 overlay/tools/coreml/inspect_mlpackage.py inspect PATH [--json] [--strict]
 
-Inspector output is both human-readable and ``--json`` machine-readable.
-Inspection never opens the ANE device.
+* :mod:`coreml.reference` — parakeet-reference lock and cache
+  verification (owned with the reference freeze; see docs/parakeet.md).
+
+Inspection never opens the ANE device, never imports coremltools or
+MLX, and never reads or computes tensor data. It runs on any Linux
+host with ``protobuf`` installed.
 """

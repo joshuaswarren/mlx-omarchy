@@ -1,0 +1,1223 @@
+{
+  "inventory_schema": "mlx-omarchy.coreml.inventory/1",
+  "package": {
+    "path": "/home/joshuawarren/.cache/mlx-omarchy/parakeet-reference/mweinbach1/parakeet-tdt-0.6b-v3-coreml/b650695c2322ee5281dff48d7345b2f3a58ff018/joint.mlpackage",
+    "format": "mlpackage",
+    "file_format_version": "1.0.0",
+    "root_model_identifier": "504DD035-F1AC-4E95-BC11-20E30CE7FB24"
+  },
+  "model": {
+    "specification_version": 9,
+    "type": "mlProgram",
+    "is_updatable": false,
+    "has_ml_program": true,
+    "description": {
+      "inputs": [
+        {
+          "name": "encoder_frame",
+          "kind": "multiArrayType",
+          "feature_dtype": "FLOAT32",
+          "shape": [
+            1,
+            640
+          ],
+          "shape_flexibility": {
+            "kind": "static"
+          }
+        },
+        {
+          "name": "decoder_state",
+          "kind": "multiArrayType",
+          "feature_dtype": "FLOAT32",
+          "shape": [
+            1,
+            640
+          ],
+          "shape_flexibility": {
+            "kind": "static"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "token_logits",
+          "kind": "multiArrayType",
+          "feature_dtype": "FLOAT32",
+          "shape": [
+            1,
+            8193
+          ],
+          "shape_flexibility": {
+            "kind": "static"
+          }
+        },
+        {
+          "name": "duration_logits",
+          "kind": "multiArrayType",
+          "feature_dtype": "FLOAT32",
+          "shape": [
+            1,
+            5
+          ],
+          "shape_flexibility": {
+            "kind": "static"
+          }
+        }
+      ],
+      "state": []
+    },
+    "metadata": {
+      "short_description": "Parakeet TDT joint (palettize-enc-4bit-pgc, fp16)",
+      "version_string": null,
+      "author": "parakeet-coreml",
+      "license": "CC-BY-4.0 (inherits nvidia/parakeet-tdt-0.6b-v3)",
+      "user_defined": {
+        "com.github.apple.coremltools.conversion_date": "2026-04-22",
+        "com.github.apple.coremltools.source": "torch==2.11.0",
+        "compute_units": "cpu_and_ne",
+        "com.github.apple.coremltools.source_dialect": "TorchScript",
+        "com.github.apple.coremltools.version": "9.0",
+        "experiment": "palettize-enc-4bit-pgc",
+        "passes": "",
+        "minimum_deployment_target": "macOS15",
+        "submodule": "joint",
+        "precision": "fp16"
+      }
+    }
+  },
+  "program": {
+    "version": 1,
+    "functions": [
+      {
+        "name": "main",
+        "opset": "CoreML8",
+        "program_version": 1,
+        "inputs": [
+          {
+            "name": "encoder_frame",
+            "type": {
+              "kind": "tensor",
+              "dtype": "FLOAT32",
+              "rank": 2,
+              "dimensions": [
+                {
+                  "constant": 1
+                },
+                {
+                  "constant": 640
+                }
+              ]
+            }
+          },
+          {
+            "name": "decoder_state",
+            "type": {
+              "kind": "tensor",
+              "dtype": "FLOAT32",
+              "rank": 2,
+              "dimensions": [
+                {
+                  "constant": 1
+                },
+                {
+                  "constant": 640
+                }
+              ]
+            }
+          }
+        ],
+        "outputs": [
+          "token_logits",
+          "duration_logits"
+        ],
+        "block_specializations": {
+          "CoreML8": {
+            "inputs": [],
+            "outputs": [
+              "token_logits",
+              "duration_logits"
+            ],
+            "operations": [
+              {
+                "index": 0,
+                "type": "const",
+                "bindings": {},
+                "outputs": [
+                  {
+                    "name": "encoder_frame_to_fp16_dtype_0",
+                    "type": {
+                      "kind": "tensor",
+                      "dtype": "STRING",
+                      "rank": 0,
+                      "dimensions": []
+                    }
+                  }
+                ],
+                "attributes": {
+                  "name": {
+                    "type": {
+                      "kind": "tensor",
+                      "dtype": "STRING",
+                      "rank": 0,
+                      "dimensions": []
+                    },
+                    "storage": {
+                      "immediate": true
+                    }
+                  },
+                  "val": {
+                    "type": {
+                      "kind": "tensor",
+                      "dtype": "STRING",
+                      "rank": 0,
+                      "dimensions": []
+                    },
+                    "storage": {
+                      "immediate": true
+                    }
+                  }
+                },
+                "blocks": []
+              },
+              {
+                "index": 1,
+                "type": "const",
+                "bindings": {},
+                "outputs": [
+                  {
+                    "name": "decoder_state_to_fp16_dtype_0",
+                    "type": {
+                      "kind": "tensor",
+                      "dtype": "STRING",
+                      "rank": 0,
+                      "dimensions": []
+                    }
+                  }
+                ],
+                "attributes": {
+                  "name": {
+                    "type": {
+                      "kind": "tensor",
+                      "dtype": "STRING",
+                      "rank": 0,
+                      "dimensions": []
+                    },
+                    "storage": {
+                      "immediate": true
+                    }
+                  },
+                  "val": {
+                    "type": {
+                      "kind": "tensor",
+                      "dtype": "STRING",
+                      "rank": 0,
+                      "dimensions": []
+                    },
+                    "storage": {
+                      "immediate": true
+                    }
+                  }
+                },
+                "blocks": []
+              },
+              {
+                "index": 2,
+                "type": "cast",
+                "bindings": {
+                  "dtype": [
+                    {
+                      "name": "decoder_state_to_fp16_dtype_0"
+                    }
+                  ],
+                  "x": [
+                    {
+                      "name": "decoder_state"
+                    }
+                  ]
+                },
+                "outputs": [
+                  {
+                    "name": "decoder_state_to_fp16",
+                    "type": {
+                      "kind": "tensor",
+                      "dtype": "FLOAT16",
+                      "rank": 2,
+                      "dimensions": [
+                        {
+                          "constant": 1
+                        },
+                        {
+                          "constant": 640
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "attributes": {
+                  "name": {
+                    "type": {
+                      "kind": "tensor",
+                      "dtype": "STRING",
+                      "rank": 0,
+                      "dimensions": []
+                    },
+                    "storage": {
+                      "immediate": true
+                    }
+                  }
+                },
+                "blocks": []
+              },
+              {
+                "index": 3,
+                "type": "cast",
+                "bindings": {
+                  "dtype": [
+                    {
+                      "name": "encoder_frame_to_fp16_dtype_0"
+                    }
+                  ],
+                  "x": [
+                    {
+                      "name": "encoder_frame"
+                    }
+                  ]
+                },
+                "outputs": [
+                  {
+                    "name": "encoder_frame_to_fp16",
+                    "type": {
+                      "kind": "tensor",
+                      "dtype": "FLOAT16",
+                      "rank": 2,
+                      "dimensions": [
+                        {
+                          "constant": 1
+                        },
+                        {
+                          "constant": 640
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "attributes": {
+                  "name": {
+                    "type": {
+                      "kind": "tensor",
+                      "dtype": "STRING",
+                      "rank": 0,
+                      "dimensions": []
+                    },
+                    "storage": {
+                      "immediate": true
+                    }
+                  }
+                },
+                "blocks": []
+              },
+              {
+                "index": 4,
+                "type": "add",
+                "bindings": {
+                  "x": [
+                    {
+                      "name": "encoder_frame_to_fp16"
+                    }
+                  ],
+                  "y": [
+                    {
+                      "name": "decoder_state_to_fp16"
+                    }
+                  ]
+                },
+                "outputs": [
+                  {
+                    "name": "input_1_cast_fp16",
+                    "type": {
+                      "kind": "tensor",
+                      "dtype": "FLOAT16",
+                      "rank": 2,
+                      "dimensions": [
+                        {
+                          "constant": 1
+                        },
+                        {
+                          "constant": 640
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "attributes": {
+                  "name": {
+                    "type": {
+                      "kind": "tensor",
+                      "dtype": "STRING",
+                      "rank": 0,
+                      "dimensions": []
+                    },
+                    "storage": {
+                      "immediate": true
+                    }
+                  }
+                },
+                "blocks": []
+              },
+              {
+                "index": 5,
+                "type": "relu",
+                "bindings": {
+                  "x": [
+                    {
+                      "name": "input_1_cast_fp16"
+                    }
+                  ]
+                },
+                "outputs": [
+                  {
+                    "name": "input_cast_fp16",
+                    "type": {
+                      "kind": "tensor",
+                      "dtype": "FLOAT16",
+                      "rank": 2,
+                      "dimensions": [
+                        {
+                          "constant": 1
+                        },
+                        {
+                          "constant": 640
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "attributes": {
+                  "name": {
+                    "type": {
+                      "kind": "tensor",
+                      "dtype": "STRING",
+                      "rank": 0,
+                      "dimensions": []
+                    },
+                    "storage": {
+                      "immediate": true
+                    }
+                  }
+                },
+                "blocks": []
+              },
+              {
+                "index": 6,
+                "type": "const",
+                "bindings": {},
+                "outputs": [
+                  {
+                    "name": "head_weight_to_fp16",
+                    "type": {
+                      "kind": "tensor",
+                      "dtype": "FLOAT16",
+                      "rank": 2,
+                      "dimensions": [
+                        {
+                          "constant": 8198
+                        },
+                        {
+                          "constant": 640
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "attributes": {
+                  "name": {
+                    "type": {
+                      "kind": "tensor",
+                      "dtype": "STRING",
+                      "rank": 0,
+                      "dimensions": []
+                    },
+                    "storage": {
+                      "immediate": true
+                    }
+                  },
+                  "val": {
+                    "type": {
+                      "kind": "tensor",
+                      "dtype": "FLOAT16",
+                      "rank": 2,
+                      "dimensions": [
+                        {
+                          "constant": 8198
+                        },
+                        {
+                          "constant": 640
+                        }
+                      ]
+                    },
+                    "storage": {
+                      "blob_file": "@model_path/weights/weight.bin",
+                      "offset": 64
+                    }
+                  }
+                },
+                "blocks": []
+              },
+              {
+                "index": 7,
+                "type": "const",
+                "bindings": {},
+                "outputs": [
+                  {
+                    "name": "head_bias_to_fp16",
+                    "type": {
+                      "kind": "tensor",
+                      "dtype": "FLOAT16",
+                      "rank": 1,
+                      "dimensions": [
+                        {
+                          "constant": 8198
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "attributes": {
+                  "name": {
+                    "type": {
+                      "kind": "tensor",
+                      "dtype": "STRING",
+                      "rank": 0,
+                      "dimensions": []
+                    },
+                    "storage": {
+                      "immediate": true
+                    }
+                  },
+                  "val": {
+                    "type": {
+                      "kind": "tensor",
+                      "dtype": "FLOAT16",
+                      "rank": 1,
+                      "dimensions": [
+                        {
+                          "constant": 8198
+                        }
+                      ]
+                    },
+                    "storage": {
+                      "blob_file": "@model_path/weights/weight.bin",
+                      "offset": 10493568
+                    }
+                  }
+                },
+                "blocks": []
+              },
+              {
+                "index": 8,
+                "type": "linear",
+                "bindings": {
+                  "bias": [
+                    {
+                      "name": "head_bias_to_fp16"
+                    }
+                  ],
+                  "weight": [
+                    {
+                      "name": "head_weight_to_fp16"
+                    }
+                  ],
+                  "x": [
+                    {
+                      "name": "input_cast_fp16"
+                    }
+                  ]
+                },
+                "outputs": [
+                  {
+                    "name": "linear_0_cast_fp16",
+                    "type": {
+                      "kind": "tensor",
+                      "dtype": "FLOAT16",
+                      "rank": 2,
+                      "dimensions": [
+                        {
+                          "constant": 1
+                        },
+                        {
+                          "constant": 8198
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "attributes": {
+                  "name": {
+                    "type": {
+                      "kind": "tensor",
+                      "dtype": "STRING",
+                      "rank": 0,
+                      "dimensions": []
+                    },
+                    "storage": {
+                      "immediate": true
+                    }
+                  }
+                },
+                "blocks": []
+              },
+              {
+                "index": 9,
+                "type": "const",
+                "bindings": {},
+                "outputs": [
+                  {
+                    "name": "var_14_begin_0",
+                    "type": {
+                      "kind": "tensor",
+                      "dtype": "INT32",
+                      "rank": 1,
+                      "dimensions": [
+                        {
+                          "constant": 2
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "attributes": {
+                  "name": {
+                    "type": {
+                      "kind": "tensor",
+                      "dtype": "STRING",
+                      "rank": 0,
+                      "dimensions": []
+                    },
+                    "storage": {
+                      "immediate": true
+                    }
+                  },
+                  "val": {
+                    "type": {
+                      "kind": "tensor",
+                      "dtype": "INT32",
+                      "rank": 1,
+                      "dimensions": [
+                        {
+                          "constant": 2
+                        }
+                      ]
+                    },
+                    "storage": {
+                      "immediate": true
+                    }
+                  }
+                },
+                "blocks": []
+              },
+              {
+                "index": 10,
+                "type": "const",
+                "bindings": {},
+                "outputs": [
+                  {
+                    "name": "var_14_end_0",
+                    "type": {
+                      "kind": "tensor",
+                      "dtype": "INT32",
+                      "rank": 1,
+                      "dimensions": [
+                        {
+                          "constant": 2
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "attributes": {
+                  "name": {
+                    "type": {
+                      "kind": "tensor",
+                      "dtype": "STRING",
+                      "rank": 0,
+                      "dimensions": []
+                    },
+                    "storage": {
+                      "immediate": true
+                    }
+                  },
+                  "val": {
+                    "type": {
+                      "kind": "tensor",
+                      "dtype": "INT32",
+                      "rank": 1,
+                      "dimensions": [
+                        {
+                          "constant": 2
+                        }
+                      ]
+                    },
+                    "storage": {
+                      "immediate": true
+                    }
+                  }
+                },
+                "blocks": []
+              },
+              {
+                "index": 11,
+                "type": "const",
+                "bindings": {},
+                "outputs": [
+                  {
+                    "name": "var_14_end_mask_0",
+                    "type": {
+                      "kind": "tensor",
+                      "dtype": "BOOL",
+                      "rank": 1,
+                      "dimensions": [
+                        {
+                          "constant": 2
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "attributes": {
+                  "name": {
+                    "type": {
+                      "kind": "tensor",
+                      "dtype": "STRING",
+                      "rank": 0,
+                      "dimensions": []
+                    },
+                    "storage": {
+                      "immediate": true
+                    }
+                  },
+                  "val": {
+                    "type": {
+                      "kind": "tensor",
+                      "dtype": "BOOL",
+                      "rank": 1,
+                      "dimensions": [
+                        {
+                          "constant": 2
+                        }
+                      ]
+                    },
+                    "storage": {
+                      "immediate": true
+                    }
+                  }
+                },
+                "blocks": []
+              },
+              {
+                "index": 12,
+                "type": "slice_by_index",
+                "bindings": {
+                  "begin": [
+                    {
+                      "name": "var_14_begin_0"
+                    }
+                  ],
+                  "end": [
+                    {
+                      "name": "var_14_end_0"
+                    }
+                  ],
+                  "end_mask": [
+                    {
+                      "name": "var_14_end_mask_0"
+                    }
+                  ],
+                  "x": [
+                    {
+                      "name": "linear_0_cast_fp16"
+                    }
+                  ]
+                },
+                "outputs": [
+                  {
+                    "name": "var_14_cast_fp16",
+                    "type": {
+                      "kind": "tensor",
+                      "dtype": "FLOAT16",
+                      "rank": 2,
+                      "dimensions": [
+                        {
+                          "constant": 1
+                        },
+                        {
+                          "constant": 8193
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "attributes": {
+                  "name": {
+                    "type": {
+                      "kind": "tensor",
+                      "dtype": "STRING",
+                      "rank": 0,
+                      "dimensions": []
+                    },
+                    "storage": {
+                      "immediate": true
+                    }
+                  }
+                },
+                "blocks": []
+              },
+              {
+                "index": 13,
+                "type": "const",
+                "bindings": {},
+                "outputs": [
+                  {
+                    "name": "var_14_cast_fp16_to_fp32_dtype_0",
+                    "type": {
+                      "kind": "tensor",
+                      "dtype": "STRING",
+                      "rank": 0,
+                      "dimensions": []
+                    }
+                  }
+                ],
+                "attributes": {
+                  "name": {
+                    "type": {
+                      "kind": "tensor",
+                      "dtype": "STRING",
+                      "rank": 0,
+                      "dimensions": []
+                    },
+                    "storage": {
+                      "immediate": true
+                    }
+                  },
+                  "val": {
+                    "type": {
+                      "kind": "tensor",
+                      "dtype": "STRING",
+                      "rank": 0,
+                      "dimensions": []
+                    },
+                    "storage": {
+                      "immediate": true
+                    }
+                  }
+                },
+                "blocks": []
+              },
+              {
+                "index": 14,
+                "type": "const",
+                "bindings": {},
+                "outputs": [
+                  {
+                    "name": "var_19_begin_0",
+                    "type": {
+                      "kind": "tensor",
+                      "dtype": "INT32",
+                      "rank": 1,
+                      "dimensions": [
+                        {
+                          "constant": 2
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "attributes": {
+                  "name": {
+                    "type": {
+                      "kind": "tensor",
+                      "dtype": "STRING",
+                      "rank": 0,
+                      "dimensions": []
+                    },
+                    "storage": {
+                      "immediate": true
+                    }
+                  },
+                  "val": {
+                    "type": {
+                      "kind": "tensor",
+                      "dtype": "INT32",
+                      "rank": 1,
+                      "dimensions": [
+                        {
+                          "constant": 2
+                        }
+                      ]
+                    },
+                    "storage": {
+                      "immediate": true
+                    }
+                  }
+                },
+                "blocks": []
+              },
+              {
+                "index": 15,
+                "type": "const",
+                "bindings": {},
+                "outputs": [
+                  {
+                    "name": "var_19_end_0",
+                    "type": {
+                      "kind": "tensor",
+                      "dtype": "INT32",
+                      "rank": 1,
+                      "dimensions": [
+                        {
+                          "constant": 2
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "attributes": {
+                  "name": {
+                    "type": {
+                      "kind": "tensor",
+                      "dtype": "STRING",
+                      "rank": 0,
+                      "dimensions": []
+                    },
+                    "storage": {
+                      "immediate": true
+                    }
+                  },
+                  "val": {
+                    "type": {
+                      "kind": "tensor",
+                      "dtype": "INT32",
+                      "rank": 1,
+                      "dimensions": [
+                        {
+                          "constant": 2
+                        }
+                      ]
+                    },
+                    "storage": {
+                      "immediate": true
+                    }
+                  }
+                },
+                "blocks": []
+              },
+              {
+                "index": 16,
+                "type": "const",
+                "bindings": {},
+                "outputs": [
+                  {
+                    "name": "var_19_end_mask_0",
+                    "type": {
+                      "kind": "tensor",
+                      "dtype": "BOOL",
+                      "rank": 1,
+                      "dimensions": [
+                        {
+                          "constant": 2
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "attributes": {
+                  "name": {
+                    "type": {
+                      "kind": "tensor",
+                      "dtype": "STRING",
+                      "rank": 0,
+                      "dimensions": []
+                    },
+                    "storage": {
+                      "immediate": true
+                    }
+                  },
+                  "val": {
+                    "type": {
+                      "kind": "tensor",
+                      "dtype": "BOOL",
+                      "rank": 1,
+                      "dimensions": [
+                        {
+                          "constant": 2
+                        }
+                      ]
+                    },
+                    "storage": {
+                      "immediate": true
+                    }
+                  }
+                },
+                "blocks": []
+              },
+              {
+                "index": 17,
+                "type": "slice_by_index",
+                "bindings": {
+                  "begin": [
+                    {
+                      "name": "var_19_begin_0"
+                    }
+                  ],
+                  "end": [
+                    {
+                      "name": "var_19_end_0"
+                    }
+                  ],
+                  "end_mask": [
+                    {
+                      "name": "var_19_end_mask_0"
+                    }
+                  ],
+                  "x": [
+                    {
+                      "name": "linear_0_cast_fp16"
+                    }
+                  ]
+                },
+                "outputs": [
+                  {
+                    "name": "var_19_cast_fp16",
+                    "type": {
+                      "kind": "tensor",
+                      "dtype": "FLOAT16",
+                      "rank": 2,
+                      "dimensions": [
+                        {
+                          "constant": 1
+                        },
+                        {
+                          "constant": 5
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "attributes": {
+                  "name": {
+                    "type": {
+                      "kind": "tensor",
+                      "dtype": "STRING",
+                      "rank": 0,
+                      "dimensions": []
+                    },
+                    "storage": {
+                      "immediate": true
+                    }
+                  }
+                },
+                "blocks": []
+              },
+              {
+                "index": 18,
+                "type": "const",
+                "bindings": {},
+                "outputs": [
+                  {
+                    "name": "var_19_cast_fp16_to_fp32_dtype_0",
+                    "type": {
+                      "kind": "tensor",
+                      "dtype": "STRING",
+                      "rank": 0,
+                      "dimensions": []
+                    }
+                  }
+                ],
+                "attributes": {
+                  "name": {
+                    "type": {
+                      "kind": "tensor",
+                      "dtype": "STRING",
+                      "rank": 0,
+                      "dimensions": []
+                    },
+                    "storage": {
+                      "immediate": true
+                    }
+                  },
+                  "val": {
+                    "type": {
+                      "kind": "tensor",
+                      "dtype": "STRING",
+                      "rank": 0,
+                      "dimensions": []
+                    },
+                    "storage": {
+                      "immediate": true
+                    }
+                  }
+                },
+                "blocks": []
+              },
+              {
+                "index": 19,
+                "type": "cast",
+                "bindings": {
+                  "dtype": [
+                    {
+                      "name": "var_19_cast_fp16_to_fp32_dtype_0"
+                    }
+                  ],
+                  "x": [
+                    {
+                      "name": "var_19_cast_fp16"
+                    }
+                  ]
+                },
+                "outputs": [
+                  {
+                    "name": "duration_logits",
+                    "type": {
+                      "kind": "tensor",
+                      "dtype": "FLOAT32",
+                      "rank": 2,
+                      "dimensions": [
+                        {
+                          "constant": 1
+                        },
+                        {
+                          "constant": 5
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "attributes": {
+                  "name": {
+                    "type": {
+                      "kind": "tensor",
+                      "dtype": "STRING",
+                      "rank": 0,
+                      "dimensions": []
+                    },
+                    "storage": {
+                      "immediate": true
+                    }
+                  }
+                },
+                "blocks": []
+              },
+              {
+                "index": 20,
+                "type": "cast",
+                "bindings": {
+                  "dtype": [
+                    {
+                      "name": "var_14_cast_fp16_to_fp32_dtype_0"
+                    }
+                  ],
+                  "x": [
+                    {
+                      "name": "var_14_cast_fp16"
+                    }
+                  ]
+                },
+                "outputs": [
+                  {
+                    "name": "token_logits",
+                    "type": {
+                      "kind": "tensor",
+                      "dtype": "FLOAT32",
+                      "rank": 2,
+                      "dimensions": [
+                        {
+                          "constant": 1
+                        },
+                        {
+                          "constant": 8193
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "attributes": {
+                  "name": {
+                    "type": {
+                      "kind": "tensor",
+                      "dtype": "STRING",
+                      "rank": 0,
+                      "dimensions": []
+                    },
+                    "storage": {
+                      "immediate": true
+                    }
+                  }
+                },
+                "blocks": []
+              }
+            ],
+            "op_count": 21,
+            "op_types": [
+              "add",
+              "cast",
+              "const",
+              "linear",
+              "relu",
+              "slice_by_index"
+            ],
+            "attributes": {}
+          }
+        },
+        "active_block": "CoreML8",
+        "opset_consistency": "ok",
+        "op_histogram": {
+          "add": 1,
+          "cast": 4,
+          "const": 12,
+          "linear": 1,
+          "relu": 1,
+          "slice_by_index": 2
+        },
+        "op_total": 21,
+        "control_flow_ops": []
+      }
+    ]
+  },
+  "weights": {
+    "files": [
+      {
+        "file": "Data/com.apple.CoreML/weights/weight.bin",
+        "size": 10510028,
+        "sha256": "d83381f8a19ac296033554a7cfec355063b8f3225129cb8bed013c92f6ab141f"
+      }
+    ],
+    "blob_references": []
+  },
+  "compression": {
+    "representation": "none observed",
+    "constexpr_ops": [],
+    "constexpr_op_count": 0
+  },
+  "op_histogram": {
+    "add": 1,
+    "cast": 4,
+    "const": 12,
+    "linear": 1,
+    "relu": 1,
+    "slice_by_index": 2
+  },
+  "op_total": 21,
+  "control_flow": {
+    "present": false,
+    "ops": []
+  },
+  "validity": {
+    "protobuf_parse": "ok",
+    "model_type_set": true,
+    "notes": [],
+    "confidence": "full structure read through the official schema; unknown op types and unknown schema fields would be reported, none encountered"
+  },
+  "eligibility": {
+    "assessed": false,
+    "note": "compiler/deployment eligibility is not assessed by this inspector; it requires the target compiler's coverage data. Only parse validity and the typed inventory above are claims."
+  }
+}
