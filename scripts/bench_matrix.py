@@ -487,7 +487,15 @@ def parse_bench_output(stdout):
          "prefill_s": None, "decode_mean_per_token_ms": None,
          "provenance_line": None, "generated_ids_sha256_16": None,
          "generated_ids_n": None, "prompt_tokens": None}
+    result_json = None
     for line in stdout.splitlines():
+        if result_json is None and line.startswith("{"):
+            try:
+                data = json.loads(line)
+            except ValueError:
+                data = None
+            if isinstance(data, dict) and data.get("prefill_s"):
+                result_json = data
         for regex, key, cast in ((DECODE_RE, None, float),
                                  (PREFILL_RE, "prefill_s", float),
                                  (PER_TOKEN_RE, "decode_mean_per_token_ms", float),
@@ -508,6 +516,14 @@ def parse_bench_output(stdout):
                 m["prompt_tokens"] = int(hit.group(1))
             else:
                 m[key] = cast(hit.group(1))
+    if result_json is not None:
+        # bench_decode's JSON result line is the instrument for the
+        # prefill span: prefill_s there is the monotonic-ns measurement
+        # rounded to 6 decimals. The human "prefill" line is printed at
+        # 3 decimals (1 ms), which on a 30-token prefill (~0.1 s) is up
+        # to half a percent of pure rounding. Never re-derive timings
+        # from printed output when the JSON beside it carries them.
+        m["prefill_s"] = float(result_json["prefill_s"])
     return m
 
 
@@ -792,6 +808,18 @@ def self_test():
     assert m["provenance_line"].startswith("mlx-omarchy")
     assert m["generated_ids_sha256_16"] == "0123456789abcdef"
     assert m["generated_ids_n"] == 64
+
+    # The JSON result line overrides the 3-decimal printed span: the
+    # printed "prefill 0.512s" would quantize a 0.512345 s span.
+    out_json = out + '{"decode_tps": 1.97, "generated": 64, ' \
+        '"ids_sha256_16": "0123456789abcdef", ' \
+        '"prefill_s": 0.512345, "prompt_tokens": 30, ' \
+        '"prefill_tps": 58.5549, "device": "gpu", ' \
+        '"engine": "bench_decode", "ids_first": [1, 2], ' \
+        '"ids_last": [3, 4]}\n'
+    mj = parse_bench_output(out_json)
+    assert mj["prefill_s"] == 0.512345, mj["prefill_s"]
+    assert mj["decode_tok_s"] == 1.97 and mj["decode_tokens"] == 64
 
     # 4-token fixture: the shape a tokens=4 leg actually produces.
     out4 = "decode 7.88 tok/s over 3 tokens (4 requested, EOS suppressed)\n" \
