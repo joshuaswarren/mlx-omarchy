@@ -5,8 +5,13 @@ OpCapability Shader
 OpCapability CooperativeMatrixKHR
 OpExtension "SPV_KHR_cooperative_matrix"
 OpMemoryModel Logical GLSL450
-OpEntryPoint GLCompute %main "main"
+OpEntryPoint GLCompute %main "main" %buf
 OpExecutionMode %main LocalSize 32 1 1
+OpDecorate %rtarr ArrayStride 4
+OpDecorate %strct Block
+OpMemberDecorate %strct 0 Offset 0
+OpDecorate %buf DescriptorSet 0
+OpDecorate %buf Binding 0
 %void = OpTypeVoid
 %fn = OpTypeFunction %void
 %u32 = OpTypeInt 32 0

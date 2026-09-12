@@ -13,6 +13,16 @@
 #include <string.h>
 #include <vulkan/vulkan.h>
 
+static VkInstance g_instance;
+static VKAPI_ATTR VkBool32 VKAPI_CALL debug_cb(
+    VkDebugUtilsMessageSeverityFlagBitsEXT sev,
+    VkDebugUtilsMessageTypeFlagsEXT types,
+    const VkDebugUtilsMessengerCallbackDataEXT *data, void *ud) {
+  (void)sev; (void)types; (void)ud;
+  fprintf(stderr, "[driver] %s\n", data->pMessage);
+  return VK_FALSE;
+}
+
 static const char *result_name(VkResult r) {
   switch (r) {
 #define C(x)                                                                   \
@@ -27,7 +37,6 @@ static const char *result_name(VkResult r) {
     C(VK_ERROR_DEVICE_LOST);
     C(VK_ERROR_EXTENSION_NOT_PRESENT);
     C(VK_ERROR_FEATURE_NOT_PRESENT);
-    C(VK_ERROR_INVALID_EXTENSION);
     C(VK_ERROR_LAYER_NOT_PRESENT);
     C(VK_ERROR_INCOMPATIBLE_DRIVER);
     C(VK_ERROR_TOO_MANY_OBJECTS);
@@ -71,10 +80,32 @@ int main(int argc, char **argv) {
 
   VkApplicationInfo app = {VK_STRUCTURE_TYPE_APPLICATION_INFO};
   app.apiVersion = VK_API_VERSION_1_3;
+  VkDebugUtilsMessengerCreateInfoEXT dmci = {
+      VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT};
+  dmci.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT |
+      VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+      VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+  dmci.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+      VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT;
+  dmci.pfnUserCallback = debug_cb;
+  const char *iexts[] = {"VK_EXT_debug_utils"};
   VkInstanceCreateInfo ici = {VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO};
   ici.pApplicationInfo = &app;
+  ici.enabledExtensionCount = 1;
+  ici.ppEnabledExtensionNames = iexts;
+  ici.pNext = &dmci;
   VkInstance instance;
   VkResult r = vkCreateInstance(&ici, NULL, &instance);
+  if (r == VK_SUCCESS) {
+    VkDebugUtilsMessengerEXT messenger;
+    PFN_vkCreateDebugUtilsMessengerEXT create_messenger =
+        (PFN_vkCreateDebugUtilsMessengerEXT)
+            vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
+    if (create_messenger &&
+        create_messenger(instance, &dmci, NULL, &messenger) == VK_SUCCESS) {
+      printf("[messenger attached]\n");
+    }
+  }
   if (r != VK_SUCCESS) {
     printf("create-instance %s\n", result_name(r));
     return 1;
@@ -85,8 +116,20 @@ int main(int argc, char **argv) {
     printf("no-physical-device\n");
     return 1;
   }
-  VkPhysicalDevice pdev;
-  vkEnumeratePhysicalDevices(instance, &ndev, &pdev);
+  VkPhysicalDevice devs[8];
+  vkEnumeratePhysicalDevices(instance, &ndev, devs);
+  VkPhysicalDevice pdev = VK_NULL_HANDLE;
+  for (uint32_t i = 0; i < ndev && i < 8; ++i) {
+    VkPhysicalDeviceProperties props;
+    vkGetPhysicalDeviceProperties(devs[i], &props);
+    printf("device[%u]: %s\n", i, props.deviceName);
+    if (strstr(props.deviceName, "Apple") != NULL) {
+      pdev = devs[i];
+    }
+  }
+  if (pdev == VK_NULL_HANDLE) {
+    pdev = devs[0];
+  }
 
   float prio = 1.0f;
   VkDeviceQueueCreateInfo qci = {VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO};
@@ -121,7 +164,23 @@ int main(int argc, char **argv) {
   }
   free(avail);
 
+  VkPhysicalDeviceCooperativeMatrixFeaturesKHR cmfeat = {
+      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_MATRIX_FEATURES_KHR};
+  int have_cm_ext = 0;
+  for (uint32_t i = 0; i < nwant; ++i) {
+    if (strcmp(want[i], "VK_KHR_cooperative_matrix") == 0) {
+      have_cm_ext = 1;
+    }
+  }
+  VkPhysicalDeviceFeatures2 feats = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
+  feats.pNext = &cmfeat;
+  vkGetPhysicalDeviceFeatures2(pdev, &feats);
+  printf("cooperativeMatrix feature supported: %d ext: %d\n",
+         (int)cmfeat.cooperativeMatrix, have_cm_ext);
+  cmfeat.cooperativeMatrix = VK_TRUE;
+
   VkDeviceCreateInfo dci = {VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO};
+  dci.pNext = have_cm_ext ? (void *)&cmfeat : NULL;
   dci.queueCreateInfoCount = 1;
   dci.pQueueCreateInfos = &qci;
   dci.enabledExtensionCount = nwant;
