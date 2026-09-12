@@ -1,112 +1,103 @@
-# Q4 long-context scaling: prefill 0.61 / decode 0.69 of native
+# Q4 long-context scaling: receipt-only negative for decode, decomposition for prefill
 
-Receipt for 2026-09-11, agent Q4LongCtxScaling. Host: jwm1-linux, Apple M1
-(G13G B1), Honeykrisp fork driver. Base: origin/main 63c9a8d8 + branch
-q4/longctx-scaling (d89c4e9f). Wheel:
-mlx_omarchy-0.32.2.dev202609112326+d89c4e9f-cp314-cp314-linux_aarch64.whl.
+Receipt for 2026-09-11/12, agent Q4LongCtxScaling. Host: jwm1-linux, Apple M1
+(G13G B1), Honeykrisp fork driver. Base measured: origin/main 63c9a8d8 +
+branch q4/longctx-scaling (d89c4e9f, shader rewrite) — wheel
+mlx_omarchy-0.32.2.dev202609112326+d89c4e9f-cp314-cp314-linux_aarch64.whl,
+installed libmlx sha256 71308bd0e8b61620... == wheel member (provenance
+recorded in every leg JSON as `match`).
 
-## The question
+## Verdict up front
 
-The Q4 short legs sit at or past native (prefill 1.13, decode 0.74) but the
-1K-context legs fall to prefill 0.61 / decode 0.69. What does CONTEXT do to
-the Q4 path, and can the scaling part be closed bit-preservingly?
+**The packed-load/prefetch decode shader is NOT landing.** The falsified
+theory, stated so it cannot mislead the next reader:
 
-## Decode: the deficit growth is one kernel, and it is fixed
+> The Q4 decode deficit's growth with context (+0.9 ms/token from 30 to
+> 1053 keys) coincides with the decode-SDPA kernel's growth, and the
+> kernel's incremental KV streaming rate (~10 GB/s vs native's ~26) looks
+> like a memory-latency problem. IT IS NOT. Batched loads + packed 32-bit
+> pair loads — a 4x increase in loads in flight — measured ZERO on
+> production legs at 1K (-0.2%) and NEUTRAL-TO-WORSE on the isolated
+> kernel (-27% at k=511, -17% at k=1023). The ~10 GB/s figure does not
+> mean load timing is the constraint; do not re-run load-timing or
+> prefetch levers on this kernel.
 
-Per-token decode walls (committed denominators, receipts/
-native-baseline-2026-09-06 vs fork):
+What remains true and is the durable lead: the kernel's cost is ~54-69
+cycles PER KEY, serial, in every stream — one subgroupAdd + exp + fma
+update per key in an online-softmax chain whose each step depends on the
+previous. Native pays ~20 ns/key for the same algorithm (~2.7x less).
+Closing that requires breaking the serial per-key dependency (chunked /
+blocked online softmax with per-chunk local maxima), which reorders
+accumulation and MOVES the rule-2 pinned Q4 short and 1K-context digests.
+That path needs native intermediate captures under policy rule 1 and is a
+new design, not a tweak. Nothing of it is in this branch.
 
-| leg (k range)   | native ms/tok | fork ms/tok (b6d662a) | fork-native |
-|-----------------|---------------|-----------------------|-------------|
-| short (30-61)   | 6.64          | 8.89                  | +2.25       |
-| 262 (262-389)   | 6.81          | 9.16                  | +2.35       |
-| 1K (1053-1084)  | 7.12          | 10.28                 | +3.16       |
+## What was measured (all artifacts in this directory)
 
-Fork's deficit grows +0.91 ms/token from short to 1K while native's whole
-wall grows only +0.48 ms over the same k range. The only decode component
-whose work grows with k is attention: the 24-layer sdpa chain microbench
-(receipts/2026-09-10-decode-attribution) grows 0.80 -> 2.12 ms from k=16 to
-k=1024, i.e. +1.3 ms — the entire fork growth. That chain streams
-12.6 MB more KV per token at ~10 GB/s effective, against the 68 GB/s part
-roof and the ~41 GB/s the Q4 GEMV already achieves. The mechanism inside
-SdpaDecodeNativeF16: one 1024-thread workgroup owns one query head; each
-subgroup holds its online-softmax state and issues only ~4 scalar 2-byte
-loads per key iteration, with the per-key subgroupAdd fencing the AGX
-scheduler from hoisting later loads across iterations. Against ~700 ns DRAM
-latency that is ~a few KB in flight per core -> single-digit GB/s. Native's
-sdpa_vector pays the same algorithm at ~26 GB/s effective (its 0.48 ms
-growth), i.e. native hides latency better but is itself not at the roof.
+1. **Bit-identity gate: PASS, 17/17.** `sdpa_equiv_sweep.py` /
+   `equiv.json`: packed (aux_size==1) vs frozen scalar
+   (MLX_OMARCHY_SDPA_DECODE_SCALAR=1) uint16-exact at k = 1, 2, 31, 32,
+   33, 61, 262, 320, 511, 1023, 1024, 1025, 1053, 1084, 1500, 2048, 2049
+   — covering one-pass, 64-block two-pass, 128-block two-pass, strided
+   capacity-4096 cache slices. SPIR-V opcode histogram vs the released
+   kernel: additions only in loads/control-flow/index math.
+2. **Production legs, paired, digest-gated: 12/12 canonical pins hold on
+   BOTH arms** (`leg-*.json`; short 7fd25a869ff21678, 262 4cc08910089477fd,
+   1K 7da83f06ec9f001d; provenance `match` in every run). Medians:
+   packed 111.42/108.01/96.03 tok/s vs scalar 110.20/107.35/96.19 —
+   +1.1% / +0.6% / **-0.2%**. The 1K leg, the leg the whole lever aimed
+   at, shows ZERO gain.
+3. **Kernel-isolated paired chain micro** (`sdpa_chain.json`,
+   harness mirroring receipts/2026-09-10-decode-attribution:
+   inputs built once and memoized, serial 24-call chain, per-rep
+   perturbation, 25 reps): scalar 0.671/0.752/1.018/2.082/1.956/1.629 ms
+   vs packed 0.688/0.756/1.294/2.433/2.162/1.606 ms at
+   k=30/262/511/1023/1053/1084. Packed is up to 27% WORSE mid-range.
+   The batch arrays cost registers; the driver's own scheduling was
+   already covering the loads.
+4. Prefill qmm at the missing rung (`qmm_m262_probe.py` /
+   `qmm_m262.json`, quiet machine load 0.50): **233.3 ms/model of the
+   270 ms fork leg = 86% share** at m=262 (gate_up 892.7 GFLOP/s).
 
-### The fix (bit-preserving, landed on q4/longctx-scaling)
+## Prefill: receipt-only negative, three-rung decomposition
 
-aux_size==1 selects packed 32-bit loads of adjacent f16 pairs through
-aliasing word views (bindings 4/5/6) and 8-key batched load software
-pipelining in both the one-pass and two-pass loops: 32 loads in flight per
-subgroup instead of 4. The primitive selects it only when every indexed row
-base and row stride is even, so the packed loads address exactly the values
-the scalar loads read. The per-key fma/exp/subgroup order, the
-key-to-subgroup mapping, and both merge epilogues are the frozen legacy
-order verbatim; the legacy scalar loops remain in the kernel and remain
-reachable via MLX_OMARCHY_SDPA_DECODE_SCALAR=1, which is the paired A/B
-arm. No arithmetic changes, so the rule-2 pinned Q4 short and 1K-context
-digests cannot move by construction. SPIR-V evidence: opcode histogram vs
-the released kernel shows additions only in loads/control-flow/index math;
-no new arithmetic or rounding op kinds.
+Fork qmm share and rate vs native (m=1053 and m=30 from
+receipts/2026-09-10-qmm-prefill-tile; m=262 from this receipt):
 
-Window evidence (this receipt): 17-k_len bit-identity sweep (one-pass, 64-
-and 128-block two-pass regimes, strided capacity-4096 cache slices) packed
-vs scalar uint16-exact; paired sdpa chain micro at k=30/262/1053; three Q4
-legs x {packed, scalar} x 2 reps, every run asserting the canonical
-generated-id pins on both arms. Results in verdict.json.
+| rung | fork leg | qmm ms/model | qmm share | fork qmm GFLOP/s | native leg |
+|------|----------|--------------|-----------|------------------|------------|
+| m=30   | 90.6 ms | ~40-45 | ~45% | ~480 (latency-bound) | 102 ms |
+| m=262  | 270 ms  | 233.3  | 86%  | ~760                 | 216 ms |
+| m=1053 | 946 ms  | 725.7  | 77%  | ~982                 | 572 ms |
 
-## Prefill: receipt-only negative — the mechanism does not scale, it saturates
+Named mechanism: the growing prefill deficit is not anything
+context-specific (mask, KV traffic, recomputation are all under 16% of
+the leg). It is the qmm coopmat kernel asymptoting at ~1.0 TFLOP/s
+against native's implied ~1.66, times a qmm share that grows linearly
+with context. Deficit: -11 ms (m=30, fork ahead) -> +54 (262) -> +374
+(1053). Why no bit-preserving lever exists: GL_KHR_cooperative_matrix
+can only build a B matrix via coopMatLoad from memory — every
+dequantized f32 weight does a shared-memory round trip with two barriers
+per 16-k step; TILE_M 64 / STEP_K 32 are measured dead
+(receipts/2026-09-10-qmm-prefill-tile); every arithmetic restructure
+moves the rule-2 pinned digests. Future path: native-order kernel that
+dequantizes to registers and feeds simdgroup-matrix FMA directly outside
+GLSL coopmat (the fma-ceiling harness already emits such SPIR-V),
+qualified against the oracle captures.
 
-Three-rung qmm decomposition (fork, component-isolated probes; m=1053 and
-m=30 from receipts/2026-09-10-qmm-prefill-tile, m=262 from
-qmm_m262_probe.py in this receipt):
+## Branch status
 
-| rung | fork leg | qmm ms/model | qmm share | fork qmm GFLOP/s | native leg (implied native qmm) |
-|------|----------|--------------|-----------|------------------|---------------------------------|
-| m=30   | 90.6 ms | ~40-45  | ~45% | ~480 (latency-bound) | 102 ms |
-| m=262  | 270 ms  | 219.8   | 81%  | ~806                 | 216 ms |
-| m=1053 | 946 ms  | 725.7   | 77%  | ~982                 | 572 ms |
-
-Named mechanism: the deficit does NOT come from anything context-specific
-(mask handling, KV traffic, recomputation — all measured or bounded below
-16% of the leg). It is the qmm coopmat kernel's asymptote: ~1.0 TFLOP/s
-versus native's implied ~1.66 TFLOP/s, multiplied by a qmm share that
-grows linearly with context. The absolute deficit goes -11 ms (m=30, fork
-already ahead) -> +54 ms (m=262) -> +374 ms (m=1053), exactly tracking the
-qmm share.
-
-Why the kernel saturates, and why no bit-preserving lever exists:
-
-1. GL_KHR_cooperative_matrix can only build a B matrix via coopMatLoad from
-   memory; there is no per-lane register construction. Every dequantized
-   f32 weight value therefore does a shared-memory round trip per 16-k
-   step, with two workgroup barriers per step. The AGX simdgroup-matrix MMA
-   itself sustains 93% of the 2303 GFLOP/s scalar ceiling in isolation
-   (receipts/2026-09-11-fma-ceiling); the staging chain, not the MMA, caps
-   the composed kernel.
-2. Schedule variants are measured dead (receipts/2026-09-10-qmm-prefill-tile):
-   TILE_M 64 -2.7% on the dominant shape; STEP_K 32 -40..-50% plus a
-   digest-changing Honeykrisp coopmat anomaly. Both rejected there.
-3. Every arithmetic restructure (f16 staging, reordered accumulation) moves
-   the rule-2 pinned Q4 short and 1K prefill digests; the policy path
-   requires proving native's exact intermediate arithmetic, which needs
-   native captures of the Metal qmm kernel's dequant order. Not available
-   tonight; not attempted.
-
-Path named for a future candidate (a new design, not a schedule tweak):
-dequantize into registers and feed simdgroup-matrix FMA directly, outside
-GLSL cooperative matrix (explicit AGX simdgroup-matrix SPIR-V, the
-fma-ceiling harness already emits such instructions), reproducing native
-Metal's accumulation order and qualifying it against the oracle captures.
-Alternatively natively-captured intermediates could unlock the f16-staging
-route under policy rule 1.
+q4/longctx-scaling (d89c4e9f) carries the shader rewrite and is the
+measured artifact for this receipt. It is DO NOT MERGE: no measured gain.
+FusedDecodeAdjudicate should continue from MAIN's sdpa_decode_native.comp
+(not this branch's). The sweep harness (`sdpa_equiv_sweep.py`) and chain
+harness (`sdpa_chain_micro.py`) are generic and stand alone from the
+shader — reuse them.
 
 ## Verdict
 
-- Decode: bit-preserving packed/batched KV loads land with the sweep,
-  paired timings, and unchanged canonical digests on all legs (verdict.json).
-- Prefill: receipt-only negative on the kernel; decomposition above.
+- Decode: receipt-only negative. Bit-identity evidence intact so nobody
+  re-runs packed loads or prefetch on SdpaDecodeNativeF16.
+- Prefill: receipt-only negative + three-rung decomposition above.
+- Evidence integrity: summarize.py gate PASS (bit-identity 17/17, all 12
+  leg digest pins hold both arms).
