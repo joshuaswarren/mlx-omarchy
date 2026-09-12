@@ -10,18 +10,10 @@ installed NumPy only.
 
 Status: DIAGNOSTIC, not a qualified frontend (plan §62 stop, 2026-09-12).
 
-Per plan §43 this is host scalar/preprocessing DSP; no tensor primitive
-runs here and none of this is model inference. The golden capture
-(``mel.npy``) was produced by Apple Accelerate ``vDSP_DFT_zrop``
-(float32 DFT) on macOS/arm64. The portable NumPy pipeline below computes
-the same mathematical transform but cannot reproduce Accelerate's
-internal float32 summation order bit-for-bit: across 13 tested precision
-variants (float64/float32 FFT, float32-rounded spectra, float32 vs
-float64 mel dot, float32 vs float64 log, FMA-emulated preemphasis) the
-best reaches 56% bit-identical values with max |Δ| 4.8e-5 on the pinned
-LibriSpeech capture. Golden equality is required to be exact, so this
-module ships as a first-divergence diagnostic only; no unqualified
-frontend lands on main. Run the diagnostic:
+This is a host-preprocessing diagnostic, not model inference or a shipping
+frontend. The tested NumPy pipeline differs from the pinned macOS capture.
+The experiment does not isolate that difference to Accelerate, the FFT,
+FMA contraction, or any other single stage. Run the diagnostic:
 
     python3 overlay/tools/coreml/mel_reference.py <capture-dir>
 
@@ -35,22 +27,16 @@ capture's silence-tail structure (identical rows from frame 1046, not
 
 from __future__ import annotations
 
+import hashlib
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
-
 from reference import MelConfig, ReferenceLock
 
 CHUNK_SAMPLES = 3000 * 160  # 30 s chunk, as chunked by ParakeetTranscriber
 ENCODER_MAX_TIME = 3000     # encoder input frames per chunk (traced shape)
-
-
-def load_mel_config(lock_path: Path | None = None) -> MelConfig:
-    """Mel config from the pinned lock (never hardcoded here)."""
-    lock = ReferenceLock.load(lock_path or Path(__file__).parent / "parakeet-reference.lock")
-    return lock.mel
 
 
 def hann_window(win_length: int) -> np.ndarray:
@@ -219,21 +205,32 @@ def compare_capture(capture_dir: Path, lock_path: Path | None = None) -> Diverge
     Structural contracts are checked exactly; value equality is reported
     honestly (expected: not bit-exact, see module docstring / §62).
     """
-    cfg = load_mel_config(lock_path)
+    lock = ReferenceLock.load(lock_path or Path(__file__).parent / "parakeet-reference.lock")
+    cfg = lock.mel
+    for name in ("waveform.npy", "mel.npy", "mel_mask.npy",
+                 "encoder_input_features.npy", "encoder_input_mask.npy"):
+        with (capture_dir / name).open("rb") as stream:
+            digest = hashlib.file_digest(stream, "sha256").hexdigest()
+        if digest != lock.macos_reference_paths.get(name):
+            raise ValueError(f"{name}: capture SHA-256 does not match the reference lock")
     wave = np.load(capture_dir / "waveform.npy")
     golden = np.load(capture_dir / "mel.npy")
     ours, mask = extract_chunk_features(wave, cfg)
 
+    if ours.shape != golden.shape or ours.dtype != np.float32 or golden.dtype != np.float32:
+        raise ValueError("mel comparison requires matching shapes and float32 arrays")
+    if not np.isfinite(ours).all() or not np.isfinite(golden).all():
+        raise ValueError("mel comparison requires finite arrays")
+    same = ours.view(np.uint32) == golden.view(np.uint32)
     diff = np.abs(ours.astype(np.float64) - golden.astype(np.float64))
-    bad = np.argwhere(diff > 0)
+    bad = np.argwhere(~same)
     first = None
     if bad.size:
         f, b = bad[0]
         golden_v = np.float32(golden[f, b])
-        ulps = abs(np.float32(ours[f, b]) - golden_v) / np.spacing(golden_v)
+        ulps = abs(np.float32(ours[f, b]) - golden_v) / abs(np.spacing(golden_v))
         first = (int(f), int(b), float(golden_v), float(ours[f, b]), float(ulps))
 
-    # Structural contracts that must hold exactly regardless of FFT rounding.
     g_mask = np.load(capture_dir / "mel_mask.npy")
     g_eif = np.load(capture_dir / "encoder_input_features.npy")
     g_eim = np.load(capture_dir / "encoder_input_mask.npy")
@@ -250,10 +247,10 @@ def compare_capture(capture_dir: Path, lock_path: Path | None = None) -> Diverge
     }
 
     return DivergenceReport(
-        exact=bool(np.array_equal(ours, golden)),
+        exact=bool(same.all()),
         shape_expected=golden.shape,
         shape_actual=ours.shape,
-        bit_exact_count=int((diff == 0).sum()),
+        bit_exact_count=int(same.sum()),
         total=int(diff.size),
         max_abs=float(diff.max()),
         mean_abs=float(diff.mean()),
