@@ -283,6 +283,75 @@ static uint32_t find_memtype(uint32_t bits, VkMemoryPropertyFlags want,
   return UINT32_MAX;
 }
 
+// Memory-type override (--memtype N): allocate every bench buffer from
+// memory type N instead of the allocator-style first
+// HOST_VISIBLE|HOST_COHERENT match. Used to A/B the memory-type
+// bandwidth question on the M1 (both honeykrisp types are
+// DEVICE_LOCAL|HOST_VISIBLE|HOST_COHERENT; type 0 adds HOST_CACHED).
+static uint32_t g_memtype_override = UINT32_MAX;
+
+static const char* memflag_name(VkMemoryPropertyFlags f) {
+  switch (f) {
+    case VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT: return "DEVICE_LOCAL";
+    case VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT: return "HOST_VISIBLE";
+    case VK_MEMORY_PROPERTY_HOST_COHERENT_BIT: return "HOST_COHERENT";
+    case VK_MEMORY_PROPERTY_HOST_CACHED_BIT: return "HOST_CACHED";
+    case VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT:
+      return "LAZILY_ALLOCATED";
+    default: return nullptr;
+  }
+}
+
+static void print_memtable(const VkPhysicalDeviceMemoryProperties& mp) {
+  std::printf(
+      "{\"k\":\"memtable\",\"heap_count\":%u,\"type_count\":%u}\n",
+      mp.memoryHeapCount, mp.memoryTypeCount);
+  for (uint32_t h = 0; h < mp.memoryHeapCount; ++h) {
+    const auto& heap = mp.memoryHeaps[h];
+    std::printf(
+        "{\"k\":\"heap\",\"index\":%u,\"size\":%llu,\"flags\":\"%s\"}\n",
+        h, (unsigned long long)heap.size,
+        (heap.flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT) ? "DEVICE_LOCAL"
+                                                       : "0");
+  }
+  for (uint32_t t = 0; t < mp.memoryTypeCount; ++t) {
+    const auto& ty = mp.memoryTypes[t];
+    std::string names;
+    for (uint32_t bit = 0; bit < 8; ++bit) {
+      VkMemoryPropertyFlags f = 1u << bit;
+      if (ty.propertyFlags & f) {
+        if (const char* n = memflag_name(f)) {
+          if (!names.empty()) names += "|";
+          names += n;
+        }
+      }
+    }
+    std::printf(
+        "{\"k\":\"memtype\",\"index\":%u,\"heap\":%u,\"propertyFlags\":"
+        "\"0x%04x\",\"props\":\"%s\"}\n",
+        t, ty.heapIndex, ty.propertyFlags, names.c_str());
+  }
+  // Mirror the production allocator's selection rule for a large
+  // read-mostly buffer: first type satisfying
+  // HOST_VISIBLE|HOST_COHERENT whose heap is DEVICE_LOCAL.
+  uint32_t all = UINT32_MAX;
+  uint32_t picked = find_memtype(all,
+      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+          VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+      mp);
+  if (picked != UINT32_MAX) {
+    const auto& ty = mp.memoryTypes[picked];
+    std::printf(
+        "{\"k\":\"allocator_pick\",\"type\":%u,\"propertyFlags\":"
+        "\"0x%04x\",\"heap_device_local\":%s}\n",
+        picked, ty.propertyFlags,
+        (mp.memoryHeaps[ty.heapIndex].flags &
+            VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)
+            ? "true"
+            : "false");
+  }
+  fflush(stdout);
+}
 static Buf make_buf(VkDevice dev, const VkPhysicalDeviceMemoryProperties& mp,
     VkDeviceSize size, bool zero) {
   Buf b;
@@ -296,11 +365,32 @@ static Buf make_buf(VkDevice dev, const VkPhysicalDeviceMemoryProperties& mp,
     die("CreateBuffer");
   VkMemoryRequirements req;
   g_vk.GetBufferMemoryRequirements(dev, b.buf, &req);
-  uint32_t mt = find_memtype(req.memoryTypeBits,
-      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-          VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-      mp);
+  uint32_t mt = g_memtype_override;
+  if (mt == UINT32_MAX) {
+    mt = find_memtype(req.memoryTypeBits,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+            VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+        mp);
+  } else if (!(req.memoryTypeBits & (1u << mt))) {
+    die("memtype %u not supported by buffer", mt);
+  }
   if (mt == UINT32_MAX) die("no host-visible memtype");
+  // Provenance: print each distinct bound memory type once, so the
+  // receipt can prove the override actually reached the allocations.
+  static std::vector<uint32_t> seen_types;
+  if (std::find(seen_types.begin(), seen_types.end(), mt) ==
+      seen_types.end()) {
+    seen_types.push_back(mt);
+    std::printf(
+        "{\"k\":\"make_buf_memtype\",\"type\":%u,\"propertyFlags\":"
+        "\"0x%04x\",\"heap_device_local\":%s}\n",
+        mt, mp.memoryTypes[mt].propertyFlags,
+        (mp.memoryHeaps[mp.memoryTypes[mt].heapIndex].flags &
+            VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)
+            ? "true"
+            : "false");
+    fflush(stdout);
+  }
   VkMemoryAllocateInfo ai{};
   ai.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
   ai.allocationSize = req.size;
@@ -1325,13 +1415,14 @@ static void run_gap_mode(const DeviceCtx& ctx, bool quick) {
       uint32_t columns;
     };
     const CandSpec cands[] = {
-        {"unroll", "tools/q4-bw-bench/shaders/qmm_vec_cand_unroll.comp",
-            "/tmp/q4gap_cand_u.spv", 8u},
-        {"loadfirst",
-            "tools/q4-bw-bench/shaders/qmm_vec_cand_loadfirst.comp",
-            "/tmp/q4gap_cand_l.spv", 8u},
         {"wg128", "tools/q4-bw-bench/shaders/qmm_vec_cand_wg128.comp",
             "/tmp/q4gap_cand_w.spv", 4u},
+        {"pf2", "tools/q4-bw-bench/shaders/qmm_vec_cand_pf2.comp",
+            "/tmp/q4gap_cand_pf2.spv", 8u},
+        {"pf4", "tools/q4-bw-bench/shaders/qmm_vec_cand_pf4.comp",
+            "/tmp/q4gap_cand_pf4.spv", 8u},
+        {"pf8", "tools/q4-bw-bench/shaders/qmm_vec_cand_pf8.comp",
+            "/tmp/q4gap_cand_pf8.spv", 8u},
     };
     for (const CandSpec& c : cands) {
       if (compile_shader(c.src, q4_defines, c.spv) != 0)
@@ -1682,7 +1773,6 @@ static void run_roof_mode(const DeviceCtx& ctx, bool quick,
         bytes, (unsigned long long)med, bytes / (double)med,
         (double)med / 1000.0, 24.0 * (double)med / 1e6,
         1000.0 / (24.0 * (double)med / 1e9));
-    fflush(stdout);
   }
 }
 
@@ -1691,11 +1781,18 @@ int main(int argc, char** argv) {
   bool quick = false;
   bool gap_mode = false;
   bool roof_mode = false;
+  bool dumpmem = false;
+  uint32_t memtype_arg = UINT32_MAX;
   for (int i = 1; i < argc; ++i) {
     if (std::string(argv[i]) == "--tree") tree_mode = true;
     if (std::string(argv[i]) == "--quick") quick = true;
     if (std::string(argv[i]) == "--gap") gap_mode = true;
     if (std::string(argv[i]) == "--roof") roof_mode = true;
+    if (std::string(argv[i]) == "--dumpmem") dumpmem = true;
+    if (std::string(argv[i]) == "--memtype" && i + 1 < argc) {
+      memtype_arg = (uint32_t)std::strtoul(argv[++i], nullptr, 10);
+      g_memtype_override = memtype_arg;
+    }
   }
   const int reps = quick ? 7 : 21;
 
@@ -1720,8 +1817,14 @@ int main(int argc, char** argv) {
           "/tmp/q4cand_l.spv", 8u},
       {"wg128", "tools/q4-bw-bench/shaders/qmm_vec_cand_wg128.comp",
           "/tmp/q4cand_w.spv", 4u},
+      {"pf2", "tools/q4-bw-bench/shaders/qmm_vec_cand_pf2.comp",
+          "/tmp/q4cand_pf2.spv", 8u},
+      {"pf4", "tools/q4-bw-bench/shaders/qmm_vec_cand_pf4.comp",
+          "/tmp/q4cand_pf4.spv", 8u},
+      {"pf8", "tools/q4-bw-bench/shaders/qmm_vec_cand_pf8.comp",
+          "/tmp/q4cand_pf8.spv", 8u},
   };
-  const int num_sides = 4;
+  const int num_sides = 7;
   for (int i = 0; i < num_sides; ++i) {
     if (compile_shader(specs[i].src, variant_defines, specs[i].spv) != 0)
       die("compile %s", specs[i].tag);
@@ -1729,9 +1832,23 @@ int main(int argc, char** argv) {
 
   if (vk_init() != 0) return 1;
   DeviceCtx ctx = setup_device();
+  const auto& mp = ctx.mp;
   std::printf(
-      "{\"k\":\"mode\",\"variant\":\"%s\",\"reps\":%d}\n",
-      tree_mode ? "tree" : "subgroup", reps);
+      "{\"k\":\"mode\",\"variant\":\"%s\",\"reps\":%d,"
+      "\"memtype_override\":%s,\"memtype\":%u}\n",
+      tree_mode ? "tree" : "subgroup", reps,
+      memtype_arg == UINT32_MAX
+          ? "null"
+          : std::to_string(memtype_arg).c_str(),
+      memtype_arg == UINT32_MAX
+          ? find_memtype(UINT32_MAX,
+                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                    VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                mp)
+          : memtype_arg);
+  if (dumpmem) {
+    print_memtable(mp);
+  }
   if (gap_mode) {
     run_gap_mode(ctx, quick);
     std::printf("{\"k\":\"done\"}\n");
