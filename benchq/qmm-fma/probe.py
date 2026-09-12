@@ -64,13 +64,13 @@ def bench(m, n, k, dtype, warmup, timed, seed):
     if dtype == "q4":
         x = x.astype(mx.float16)
         wq = mx.quantize(w.astype(mx.float16), group_size=64, bits=4)
+        scales = wq.scales.astype(mx.float16)
+        biases = wq.biases.astype(mx.float16)
 
         def run():
             return mx.quantized_matmul(
-                x, wq.weight, wq.scales, wq.biases, True, 64, 4, "affine"
+                x, wq.weight, scales, biases, True, 64, 4, "affine"
             )
-
-        assert wq.scales.dtype == mx.float16, wq.scales.dtype
     else:
         x = x.astype(mx.bfloat16)
         wt = w.astype(mx.bfloat16).T
