@@ -1,0 +1,125 @@
+{
+  "schema": "mlx-omarchy/prefill-fma-qualify/1",
+  "date": "2026-09-12",
+  "agent": "PrefillFmaQualify",
+  "question": "Finish the scalar-FMA prefill route: explain the stock digest movement precisely, make the route hold both drivers' committed pins, and measure what the route is worth paired against the same tree without it.",
+  "base": "wave/PrefillNativeOrder tip 47733a42 (overlay identical to landing commit 877c2f1c; diff 877c2f1c..47733a42 touches only benchq and receipts). Landing commit on this branch: b1805b19.",
+  "decision": "LAND GATED. The scalar-FMA prefill routes are reserved for drivers whose cooperative-matrix route is absent (b1805b19: qmm_fma_reachable gains !coopmat_reachable; bf16_fma gains !coopmat). On a coopmat-capable driver the dispatch falls through to the shipped cooperative-matrix pick by name; on a driver without the extension the FMA kernel becomes the prefill path and doubles to triples the shipped tile fallback. Digests hold on both drivers.",
+  "mechanism": {
+    "one_line": "Stock Mesa contracts a*b+c and the fork does not; the committed Q4 pins sit on opposite sides of that contraction axis split at the shipped per-m class boundary (fused below m=1024, precise at and above), so any fixed-contraction FMA build moves exactly one stock leg, and reproducing the class per m reproduces both pins.",
+    "evidence": {
+      "fork_is_contraction_class_blind": "Pure fused and pure precise FMA builds produce identical digests on the fork for all six legs (screen-fork 6/6, precise-fork 6/6) - the PRECISE_ACCUM define changes nothing there, which is why this axis went unnoticed.",
+      "stock_is_contraction_class_sensitive": "On stock the two builds differ: fused holds the 262-token leg and moves the 1K leg; precise holds the 1K leg and moves the 262-token leg.",
+      "stock_pins_are_tile_fallback_products": "Stock Mesa 26.1.7 advertises no cooperative matrix at all (vulkaninfo carries no cooperativeMatrix section - drivers-windowA.txt), so the shipped tree serves it the register-blocked tile fallback whose fused/precise classes split at matrix_m >= 1024. The v0.4.1 release receipt already recorded that stock's 1K digest is a 'prefill fallback accumulation order' product.",
+      "pin_class_assignment": "Q4 262-token pin 4cc08910089477fd = contracted (fused) bits: FMA-fused matches it, FMA-precise moves it to f873dc2bdd34c0fe. Q4 1K pin 7da83f06ec9f001d = uncontracted (precise) bits: FMA-precise matches it, FMA-fused moves it to 31267e7ed4c6d0dc.",
+      "simdmats_corroboration": "The fused build's 1K value 31267e7ed4c6d0dc is literally the AGX_SIMDMAT cooperative-matrix digest from docs/known-defects.md (Cooperative-matrix prefill output depends on which Mesa build provides the extension; receipts/2026-09-10-prefill-qmm-isa). Two independent producers of contracted-chain arithmetic agreeing on one digest resolves which value belongs to which path: the contracted lowering is the matrix unit's own arithmetic, and the pinned 1K stream is the uncontracted tile product.",
+      "closed_loop": "NO_COOPMAT diagnostic on the base wheel (tile fallback forced): all six legs reproduce each driver's committed pins on BOTH drivers (nocoopmat-fork.json, nocoopmat-stock.json). The pins never required the coopmat route; the per-m tile classes are the canonical bit producers, and the FMA route reproduces those classes per m."
+    }
+  },
+  "digest_results": {
+    "protocol": "Six canonical legs x {candidate, base} x {fork, stock}, discarded warmup + 3 repetitions, interleaved in one flock window (windowA.sh). Digest asserted per run against the committed per-driver pins.",
+    "result": "72/72 pinned cells HELD, 0 failures - candidate and base, fork and stock, all repetitions (windowA-run.log TOTAL line; per-run JSONs). The per-m class boundary in the landed dispatch reproduces stock's two sub-route pins exactly; no per-shape gating was needed for digests.",
+    "pins": {
+      "q4_both_drivers": {
+        "short-decode-32": "7fd25a869ff21678",
+        "long-decode-128": "4cc08910089477fd",
+        "longctx-1024-decode-32": "7da83f06ec9f001d"
+      },
+      "bf16_fork": {
+        "short-decode-32": "f26175202f3dabe9",
+        "long-decode-128": "8690dc83246b39f8",
+        "longctx-1024-decode-32": "ff502900d2a179a5"
+      },
+      "bf16_stock": {
+        "short-decode-32": "7fc0f968789b1882",
+        "long-decode-128": "46108ad71157cb4d",
+        "longctx-1024-decode-32": "ff502900d2a179a5"
+      }
+    }
+  },
+  "kernel_probes": {
+    "protocol": "benchq/qmm-fma/probe.py through the real dispatch stack, 4 warmup + 30 timed reps, median wall, sha256 of output bytes per cell, all sides interleaved in the same window. 'coopmat' side = MLX_OMARCHY_NO_*_FMA=1 (shipped route); on stock that resolves to the tile fallback because the driver has no extension.",
+    "dominant_cell_gate_up_1053x9728x896_gflops": {
+      "fork_fma": 545.6,
+      "fork_coopmat_shipped": 1034.6,
+      "stock_fma": 545.5,
+      "stock_tile_shipped": 275.6,
+      "stock_tile_bf16_shipped": 195.0,
+      "stock_fma_bf16": 645.2,
+      "fork_coopmat_bf16_shipped": 783.7,
+      "fork_fma_bf16": 629.9
+    },
+    "full_cells": "probe-*.log in this receipt; FMA output shas are identical across drivers (scalar deterministic arithmetic); candidate kill-switch shas equal base shas exactly (the A/B arithmetic identity).",
+    "reading": "The hand-scheduled 32-chain FMA kernel reaches ~0.55 TFLOP/s q4 / ~0.65 TFLOP/s bf16 at the dominant shape - 1.98x the shipped tile fallback, 3.3x on bf16, but 0.53x the fork's cooperative-matrix route and ~0.24x of the 2303 GFLOP/s register-FMA ceiling (receipts/2026-09-11-fma-ceiling, a zero-traffic probe). The real kernel is bound by x/weight traffic and register dequant, not by the FMA chains, so the ceiling is not reachable by this shape of kernel. The matrix unit wins where it exists; the prefill wall on the matrix-unit path is the coopmat interface's ~1.03 TFLOP/s vs native's implied ~1.66, and on non-coopmat drivers the wall was the scalar tile at ~0.28 TFLOP/s - which the FMA kernel moves to ~0.55."
+  },
+  "paired_prefill_performance": {
+    "protocol": "Same window, interleaved candidate/base x fork/stock, median of 3 reps after discarded warmup; wheel sha256 printed in drivers-windowA.txt and in every leg's provenance line.",
+    "fork_candidate_vs_base_prefill_delta_pct": {"q4_short": -47.11, "q4_long": -34.36, "q4_1k": -40.61, "bf16_short": -0.02, "bf16_long": -11.39, "bf16_1k": -12.22},
+    "stock_candidate_vs_base_prefill_delta_pct": {"q4_short": 13.56, "q4_long": 108.75, "q4_1k": 80.83, "bf16_short": -0.46, "bf16_long": 109.66, "bf16_1k": 111.71},
+    "stock_prefill_tok_s": {
+      "q4_short": {"base": 169.46, "cand": 192.44},
+      "q4_long": {"base": 309.54, "cand": 646.18},
+      "q4_1k": {"base": 362.66, "cand": 655.81},
+      "bf16_short": {"base": 133.48, "cand": 132.86},
+      "bf16_long": {"base": 233.15, "cand": 488.82},
+      "bf16_1k": {"base": 233.63, "cand": 494.62}
+    },
+    "stock_native_fractions_base_to_candidate": {
+      "q4_short": [0.5762, 0.6543],
+      "q4_long": [0.2552, 0.5327],
+      "q4_1k": [0.197, 0.3562],
+      "bf16_short": [0.5739, 0.5712],
+      "bf16_long": [0.2314, 0.4851],
+      "bf16_1k": [0.1411, 0.2987]
+    },
+    "why_landing_is_gated": "On fork the ungated route regresses prefill by 34-47% against the shipped coopmat route; on stock it wins by 81-112% on the long legs. b1805b19 keeps the fork on the shipped route by name and gives stock the FMA route, so every driver takes the faster of the two while holding its own pins."
+  },
+  "window_b_gated_qualification": {
+    "protocol": "Same six-leg matrix, candidate = the GATED wheel built from b1805b19 vs base, fork + stock, discarded warmup + 3 reps, interleaved; stock kernel probes on the gated wheel; windowB.sh. Artifacts in windowB/ (windowB-run.log, drivers-windowB.txt, perf-fma-qualify-gated.json, probeB-*.log, and the per-run {cand,base}-{fork,stock}-{warmup,r1..r3}.{json,log} files; top-level run files of the same names are window A's).",
+    "digests": "72/72 pinned cells HELD, 0 failures (candidate and base x fork and stock x 3 reps).",
+    "fork_parity": "Candidate vs base prefill deltas: +0.99/+1.88/+0.53% (Q4), +0.13/-0.25/+0.16% (BF16) - the gate keeps the fork on the shipped cooperative-matrix route and nothing regresses.",
+    "stock_wins": "Q4 long +105.0% (309.39 -> 634.24 tok/s), Q4 1K +80.68% (365.01 -> 659.51), BF16 long +109.86% (233.25 -> 489.49), BF16 1K +110.0% (232.75 -> 488.77); Q4 short -2.22% and BF16 short -0.51% are parity legs (m=30 < the m>=32 bf16 gate; q4 short m=30 uses the fused class on both sides).",
+    "stock_native_fractions_base_to_candidate": {
+      "q4_short": [0.5934, 0.5802],
+      "q4_long": [0.2551, 0.5229],
+      "q4_1k": [0.1983, 0.3583],
+      "bf16_short": [0.5772, 0.5742],
+      "bf16_long": [0.2315, 0.4857],
+      "bf16_1k": [0.1406, 0.2952]
+    },
+    "stock_probe_dominant_cell_gflops": {
+      "gated_fma_q4": 545.7,
+      "base_tile_q4": 276.9,
+      "gated_fma_bf16": 642.6,
+      "base_tile_bf16": 195.2
+    },
+    "bit_identity": "The FMA kernel's output sha256 equals the shipped tile fallback's output sha256 on every probe cell (q4 and bf16, both windows) - the FMA route is a byte-exact drop-in for the tile fallback, not merely digest-equal.",
+    "decode_note": "All decode deltas within noise (route untouched) except one bf16 1K cell at +4.91%, inside this machine's session-to-session floor."
+  },
+  "instruments": {
+    "pairing": "Candidate kill-switch arithmetic identity proven at byte level: probe output shas of the NO_*_FMA side on the candidate equal the base wheel's shas exactly. Session noise floor ~5% (receipts native-order window2 note); intra-side rep spread under 1%; all deltas quoted above exceed the floor by 7x or are marked parity.",
+    "window2_estimate_error": "The per-run estimate inherited from window2 (timeout 1500 per matrix run) was wrong: window2's first run paid one-time HF snapshot resolution and cold page cache per leg; in windowA/B the six-leg matrix runs complete in 27-45 s each (16 runs in ~9 min). Window time estimates for the lock schedule should use the warm-tree per-run cost, not the cold first run - our scheduling estimates were wrong in both directions today."
+  },
+  "the_negative": {
+    "claim": "A hand-scheduled 32-independent-chain scalar FMA kernel with register dequant, no shared memory, no barriers, and no cooperative-matrix interface reaches 545.5-545.7 GFLOP/s at the dominant prefill cell (gate_up 1053x9728x896) - roughly HALF the shipped cooperative-matrix kernel (1034.6 on the fork) and a QUARTER of the 2303 GFLOP/s scalar-FMA microbenchmark ceiling (receipts/2026-09-11-fma-ceiling, a zero-traffic probe).",
+    "consequence": "The cooperative-matrix INTERFACE is not the prefill wall on the fork, and neither is the shared-memory round trip it forces: whatever limits the shipped kernel at ~1.03 TFLOP/s also limits a kernel with none of those constraints, at half the rate. The real kernel is bound by operand traffic and register dequant, not by the FMA chains or by any matrix-unit interface.",
+    "driver_insensitivity": "The FMA kernel measures 545.5 (fork) vs 545.6 (stock) vs 545.7 (stock, gated wheel) GFLOP/s - identical to within noise across drivers and builds - while the shipped routes differ wildly between drivers (fork coopmat 1034.6 vs stock tile 275.6-276.9). The scalar path is driver-insensitive here; the entire fork/stock prefill difference lives in the matrix path.",
+    "stock_user_note": "The project's published prefill fractions are fork-driver numbers. A reader on stock Mesa - which has no cooperative matrix at all - sees their own prefill move from 0.20-0.26 of native to 0.36-0.53 on the long/1K Q4 legs and 0.14-0.23 to 0.30-0.49 on BF16, the largest single-leg improvement landed today, with digests pinned per driver as always."
+  },
+  "hardware": "jwm1-linux, Apple M1 (G13G B1), kernel 7.1.6-1-1-ARCH aarch64; every GPU access under one top-level flock /tmp/m1-gpu.lock (windowA 09:20:53-09:36:19Z, windowB 09:49:07-10:11:26Z); quiet-CPU gate before measurement; wall-anchored timing only.",
+  "drivers": {
+    "fork": "mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1 (Mesa 26.3.0-devel git-6f6afc8968), cooperativeMatrix = true",
+    "stock": "Mesa 26.1.7 Honeykrisp via private ICD (stock-icd.json sha256 97bda66cb6dcd7c96479a835746535dbd96563c647d65251da569773ba230a4e), no cooperativeMatrix section",
+    "host_label": "jwm1-linux (placeholder; public receipt)"
+  },
+  "wheels": {
+    "candidate_windowA": "mlx_omarchy-0.32.2.dev202609120833+877c2f1c sha256 449edd5f132506361ed69e202786bdea0d6211d459fcb6da8c536925497342a4 (overlay identical to branch tip 47733a42)",
+    "base": "mlx_omarchy-0.32.2.dev202609120737+a0775c37 sha256 467da55fd5affd1ca7157115430ec7bf1c992c3898acfe8c50bfa75745d6b33d",
+    "gated_landing": "mlx_omarchy-0.32.2.dev202609120944+b1805b19 sha256 7a40416a31f2f6978fa7a766063f609512a8480c4c307a95ee45ef002e43ff45 (built on jwm1 from the landing commit; windowB re-proved 72/72 pins and the paired stock delta on this exact wheel)"
+  },
+  "notes": {
+    "raw_bits_vs_digest": "On fork, FMA-route raw layer outputs differ in low bits from coopmat outputs (probe shas differ) while all six generated-id digests hold across 3 reps x warmup; the digest contract is the generated-id stream, and it holds.",
+    "no_coopmat_env_semantics": "With the gate, MLX_OMARCHY_NO_COOPMAT=1 on a coopmat driver now selects the FMA route (not the tile); tile remains reachable as NO_COOPMAT=1 + NO_QMM_FMA=1.",
+    "kill_switches": "MLX_OMARCHY_NO_QMM_FMA / MLX_OMARCHY_NO_MATMUL_FMA still force the shipped pick per route for A/B."
+  }
+}

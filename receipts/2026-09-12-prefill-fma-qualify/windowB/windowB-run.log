@@ -1,0 +1,311 @@
+=== windowB start 2026-09-12T10:01:48Z pid 2982352
+2026-09-12T10:01:48Z waiting for m1-gpu.lock
+2026-09-12T10:01:48Z LOCK ACQUIRED (windowB announced start)
+driver-fork: 	driverInfo         = Mesa 26.3.0-devel (git-6f6afc8968)
+driver-stock: 	driverInfo         = Mesa 26.1.7
+kernel: 7.1.6-1-1-ARCH  machine: aarch64
+chip: Apple M1 (G13G B1)  host-label: jwm1-linux (placeholder)
+wheel-gated: mlx_omarchy-0.32.2.dev202609120944+b1805b19-cp314-cp314-linux_aarch64.whl
+wheel-gated-sha256: 7a40416a31f2f6978fa7a766063f609512a8480c4c307a95ee45ef002e43ff45
+wheel-base: mlx_omarchy-0.32.2.dev202609120737+a0775c37-cp314-cp314-linux_aarch64.whl
+wheel-base-sha256: 467da55fd5affd1ca7157115430ec7bf1c992c3898acfe8c50bfa75745d6b33d
+source-commit-gated: b1805b1912b0af1042a6ae3af55c21fa400e3117
+source-commit-base: a0775c37
+quiet gate done ok=3 load=0.02
+1789207349 0.02 0.41 0.83
+=== matrix run cand-fork-warmup 10:02:29 ===
+1789207359 0.09 0.41 0.82
+1789207369 0.08 0.40 0.81
+cand-fork-warmup exit=0 10:02:55
+=== matrix run base-fork-warmup 10:02:55 ===
+1789207379 0.15 0.40 0.81
+1789207389 0.52 0.47 0.83
+1789207399 0.59 0.49 0.83
+base-fork-warmup exit=0 10:03:22
+=== matrix run cand-stock-warmup 10:03:22 ===
+1789207409 0.57 0.49 0.83
+1789207419 0.49 0.47 0.82
+1789207429 0.48 0.47 0.81
+cand-stock-warmup exit=0 10:03:52
+=== matrix run base-stock-warmup 10:03:52 ===
+1789207439 0.49 0.47 0.81
+1789207449 0.41 0.46 0.80
+1789207459 0.51 0.48 0.80
+1789207469 0.43 0.46 0.80
+base-stock-warmup exit=0 10:04:32
+=== matrix run base-stock-r1 10:04:32 ===
+1789207479 0.43 0.46 0.79
+1789207489 0.37 0.45 0.78
+1789207499 0.47 0.47 0.79
+1789207509 0.39 0.45 0.78
+base-stock-r1 exit=0 10:05:11
+=== matrix run cand-stock-r1 10:05:11 ===
+1789207519 0.41 0.45 0.78
+1789207529 0.34 0.44 0.77
+1789207539 0.36 0.44 0.76
+cand-stock-r1 exit=0 10:05:42
+=== matrix run base-fork-r1 10:05:42 ===
+1789207549 0.38 0.44 0.76
+1789207559 0.40 0.44 0.76
+base-fork-r1 exit=0 10:06:08
+=== matrix run cand-fork-r1 10:06:08 ===
+1789207569 0.49 0.46 0.76
+1789207579 0.57 0.48 0.76
+1789207589 0.55 0.48 0.76
+cand-fork-r1 exit=0 10:06:35
+=== matrix run cand-fork-r2 10:06:35 ===
+1789207599 0.55 0.48 0.76
+1789207609 0.62 0.50 0.76
+1789207619 0.68 0.51 0.76
+cand-fork-r2 exit=0 10:07:01
+=== matrix run base-fork-r2 10:07:01 ===
+1789207629 0.73 0.53 0.77
+1789207639 0.69 0.53 0.76
+base-fork-r2 exit=0 10:07:28
+=== matrix run cand-stock-r2 10:07:28 ===
+1789207649 0.66 0.53 0.76
+1789207659 0.63 0.53 0.76
+1789207669 0.69 0.54 0.76
+cand-stock-r2 exit=0 10:07:58
+=== matrix run base-stock-r2 10:07:58 ===
+1789207679 0.66 0.54 0.76
+1789207689 0.71 0.56 0.76
+1789207699 0.68 0.56 0.76
+1789207709 0.73 0.57 0.76
+base-stock-r2 exit=0 10:08:38
+=== matrix run base-stock-r3 10:08:38 ===
+1789207719 0.70 0.57 0.76
+1789207729 0.82 0.60 0.77
+1789207739 2.08 0.88 0.85
+1789207749 3.07 1.13 0.94
+1789207759 3.83 1.36 1.01
+base-stock-r3 exit=0 10:09:22
+=== matrix run cand-stock-r3 10:09:22 ===
+1789207769 4.47 1.57 1.09
+1789207779 5.08 1.80 1.17
+1789207789 6.06 2.12 1.28
+1789207799 6.43 2.33 1.36
+cand-stock-r3 exit=0 10:10:04
+=== matrix run base-fork-r3 10:10:04 ===
+1789207809 6.76 2.54 1.43
+1789207819 6.78 2.68 1.50
+1789207829 6.27 2.71 1.52
+base-fork-r3 exit=0 10:10:38
+=== matrix run cand-fork-r3 10:10:38 ===
+1789207839 5.62 2.69 1.52
+1789207849 4.98 2.65 1.52
+1789207859 4.37 2.59 1.52
+cand-fork-r3 exit=0 10:11:05
+=== kernel probes on gated wheel (stock only; fork cand==base by gate) 10:11:05 ===
+1789207869 4.01 2.57 1.52
+probeB-stock-cand-fma-q4 exit=0
+{"side": "fma", "dtype": "q4", "shape": "1053x896x128", "gflops": 147.3, "ms": 1.64, "sha": "650639a8197ff5083ea2ed36f156869d9d79b15bb55325c0e8e1b8cbee0559b0"}
+{"side": "fma", "dtype": "q4", "shape": "262x896x896", "gflops": 400.2, "ms": 1.051, "sha": "2a5fb9e410d160efccc3d3710c1e33ac6cc3e4abbb7dac8d06cde6314f192d9d"}
+{"side": "fma", "dtype": "q4", "shape": "1053x896x896", "gflops": 485.0, "ms": 3.486, "sha": "99dec472642908458e92a54ca5ff1f8b7b685640cecbe91a21f71de192563880"}
+{"side": "fma", "dtype": "q4", "shape": "262x896x4864", "gflops": 487.7, "ms": 4.682, "sha": "647c7ac43b219c96f3b93997f295565d07b51597c53dbdb8b57e7d4c24cdae1c"}
+{"side": "fma", "dtype": "q4", "shape": "1053x896x4864", "gflops": 483.9, "ms": 18.967, "sha": "4b849e6b0cc7b6afca5e0fc8a59d9952fbf07541d305c0f367c1365abf5c09d1"}
+{"side": "fma", "dtype": "q4", "shape": "262x9728x896", "gflops": 465.6, "ms": 9.81, "sha": "06fe03b344225f3e2f2a8fb79c5044c403cadc2bb39f454be5449a72ea1dcf49"}
+{"side": "fma", "dtype": "q4", "shape": "1053x9728x896", "gflops": 545.7, "ms": 33.636, "sha": "6f3094ea62f07afaad257db592798587bba8a6470be6ddaa8fdcca33fb3d55db"}
+JSON {"side": "fma", "dtype": "q4", "wheel": "unknown", "cells": {"262x896x128": {"gflops": 113.62794541134872, "ms": 0.5288884858600795, "sha": "648bba09719531a04d07ea578ab4acc33f4f2fee4e7fcdc269898615cb785f1d", "shape": [262, 896, 128]}, "1053x896x128": {"gflops": 147.30621962022084, "ms": 1.6396655119024217, "sha": "650639a8197ff5083ea2ed36f156869d9d79b15bb55325c0e8e1b8cbee0559b0", "shape": [1053, 896, 128]}, "262x896x896": {"gflops": 400.204140368801, "ms": 1.0511525033507496, "sha": "2a5fb9e410d160efccc3d3710c1e33ac6cc3e4abbb7dac8d06cde6314f192d9d", "shape": [262, 896, 896]}, "1053x896x896": {"gflops": 484.9544760600107, "ms": 3.48636950366199, "sha": "99dec472642908458e92a54ca5ff1f8b7b685640cecbe91a21f71de192563880", "shape": [1053, 896, 896]}, "262x896x4864": {"gflops": 487.7243751116338, "ms": 4.682291008066386, "sha": "647c7ac43b219c96f3b93997f295565d07b51597c53dbdb8b57e7d4c24cdae1c", "shape": [262, 896, 4864]}, "1053x896x4864": {"gflops": 483.91817563854704, "ms": 18.966535513754934, "sha": "4b849e6b0cc7b6afca5e0fc8a59d9952fbf07541d305c0f367c1365abf5c09d1", "shape": [1053, 896, 4864]}, "262x9728x896": {"gflops": 465.5630562064776, "ms": 9.810346527956426, "sha": "06fe03b344225f3e2f2a8fb79c5044c403cadc2bb39f454be5449a72ea1dcf49", "shape": [262, 9728, 896]}, "1053x9728x896": {"gflops": 545.7396779627119, "ms": 33.636004984145984, "sha": "6f3094ea62f07afaad257db592798587bba8a6470be6ddaa8fdcca33fb3d55db", "shape": [1053, 9728, 896]}}}
+probeB-stock-base-coopmat-q4 exit=0
+{"side": "coopmat", "dtype": "q4", "shape": "1053x896x128", "gflops": 100.9, "ms": 2.394, "sha": "650639a8197ff5083ea2ed36f156869d9d79b15bb55325c0e8e1b8cbee0559b0"}
+{"side": "coopmat", "dtype": "q4", "shape": "262x896x896", "gflops": 211.2, "ms": 1.992, "sha": "2a5fb9e410d160efccc3d3710c1e33ac6cc3e4abbb7dac8d06cde6314f192d9d"}
+{"side": "coopmat", "dtype": "q4", "shape": "1053x896x896", "gflops": 263.3, "ms": 6.421, "sha": "99dec472642908458e92a54ca5ff1f8b7b685640cecbe91a21f71de192563880"}
+{"side": "coopmat", "dtype": "q4", "shape": "262x896x4864", "gflops": 232.0, "ms": 9.845, "sha": "647c7ac43b219c96f3b93997f295565d07b51597c53dbdb8b57e7d4c24cdae1c"}
+{"side": "coopmat", "dtype": "q4", "shape": "1053x896x4864", "gflops": 270.2, "ms": 33.963, "sha": "4b849e6b0cc7b6afca5e0fc8a59d9952fbf07541d305c0f367c1365abf5c09d1"}
+{"side": "coopmat", "dtype": "q4", "shape": "262x9728x896", "gflops": 250.5, "ms": 18.23, "sha": "06fe03b344225f3e2f2a8fb79c5044c403cadc2bb39f454be5449a72ea1dcf49"}
+{"side": "coopmat", "dtype": "q4", "shape": "1053x9728x896", "gflops": 276.9, "ms": 66.293, "sha": "6f3094ea62f07afaad257db592798587bba8a6470be6ddaa8fdcca33fb3d55db"}
+JSON {"side": "coopmat", "dtype": "q4", "wheel": "unknown", "cells": {"262x896x128": {"gflops": 75.62786531354892, "ms": 0.7946345140226185, "sha": "648bba09719531a04d07ea578ab4acc33f4f2fee4e7fcdc269898615cb785f1d", "shape": [262, 896, 128]}, "1053x896x128": {"gflops": 100.89404525292201, "ms": 2.3939264938235283, "sha": "650639a8197ff5083ea2ed36f156869d9d79b15bb55325c0e8e1b8cbee0559b0", "shape": [1053, 896, 128]}, "262x896x896": {"gflops": 211.1699583479949, "ms": 1.992118515772745, "sha": "2a5fb9e410d160efccc3d3710c1e33ac6cc3e4abbb7dac8d06cde6314f192d9d", "shape": [262, 896, 896]}, "1053x896x896": {"gflops": 263.2999544820031, "ms": 6.421309488359839, "sha": "99dec472642908458e92a54ca5ff1f8b7b685640cecbe91a21f71de192563880", "shape": [1053, 896, 896]}, "262x896x4864": {"gflops": 231.9525224111798, "ms": 9.84540901845321, "sha": "647c7ac43b219c96f3b93997f295565d07b51597c53dbdb8b57e7d4c24cdae1c", "shape": [262, 896, 4864]}, "1053x896x4864": {"gflops": 270.2391611439688, "ms": 33.9634389965795, "sha": "4b849e6b0cc7b6afca5e0fc8a59d9952fbf07541d305c0f367c1365abf5c09d1", "shape": [1053, 896, 4864]}, "262x9728x896": {"gflops": 250.5388511211502, "ms": 18.230046523967758, "sha": "06fe03b344225f3e2f2a8fb79c5044c403cadc2bb39f454be5449a72ea1dcf49", "shape": [262, 9728, 896]}, "1053x9728x896": {"gflops": 276.899269492607, "ms": 66.2930695398245, "sha": "6f3094ea62f07afaad257db592798587bba8a6470be6ddaa8fdcca33fb3d55db", "shape": [1053, 9728, 896]}}}
+probeB-stock-cand-fma-bf16 exit=0
+{"side": "fma", "dtype": "bf16", "shape": "1053x896x128", "gflops": 166.6, "ms": 1.45, "sha": "72c1d0c1812ccd5d9f9116cbf4ef540b92971306b3d252189e35a50ee0766df3"}
+{"side": "fma", "dtype": "bf16", "shape": "262x896x896", "gflops": 403.9, "ms": 1.042, "sha": "8d56c365617892e14e5a8872cfcf29dfbed87478bf07577d0022c6dba963c6a1"}
+{"side": "fma", "dtype": "bf16", "shape": "1053x896x896", "gflops": 640.1, "ms": 2.641, "sha": "7ce944eb1301e62d31688a8a389f13e60e0f19294845ffbdf3b3de198fdd6e24"}
+{"side": "fma", "dtype": "bf16", "shape": "262x896x4864", "gflops": 560.5, "ms": 4.074, "sha": "ecce3da707e217e3ec2ec16648db0f0c7711365dceffd3d8aa2846767079bb87"}
+{"side": "fma", "dtype": "bf16", "shape": "1053x896x4864", "gflops": 570.5, "ms": 16.088, "sha": "9727d150037331e91fc07233ba4e794e9bb65d740ec5aaa5bd5e730e4f09b1ff"}
+{"side": "fma", "dtype": "bf16", "shape": "262x9728x896", "gflops": 540.0, "ms": 8.459, "sha": "5cac52c5c191e5617891f789429024509641801bb7a7368d0664b2e58e5cb0cd"}
+{"side": "fma", "dtype": "bf16", "shape": "1053x9728x896", "gflops": 642.6, "ms": 28.566, "sha": "49be2a875d4008887aa75e73af93943bbb3a57d8b55b311c1aed4ad9ea2fdcb8"}
+JSON {"side": "fma", "dtype": "bf16", "wheel": "unknown", "cells": {"262x896x128": {"gflops": 116.26118809739793, "ms": 0.5169094947632402, "sha": "15eb966c25741f127154cd544ea254003c3e914d067a812b10a6f0054ca8c98d", "shape": [262, 896, 128]}, "1053x896x128": {"gflops": 166.57425802094164, "ms": 1.4500015240628272, "sha": "72c1d0c1812ccd5d9f9116cbf4ef540b92971306b3d252189e35a50ee0766df3", "shape": [1053, 896, 128]}, "262x896x896": {"gflops": 403.91047235815864, "ms": 1.0415069991722703, "sha": "8d56c365617892e14e5a8872cfcf29dfbed87478bf07577d0022c6dba963c6a1", "shape": [262, 896, 896]}, "1053x896x896": {"gflops": 640.108531894182, "ms": 2.6413184823468328, "sha": "7ce944eb1301e62d31688a8a389f13e60e0f19294845ffbdf3b3de198fdd6e24", "shape": [1053, 896, 896]}, "262x896x4864": {"gflops": 560.5427571956523, "ms": 4.074029013281688, "sha": "ecce3da707e217e3ec2ec16648db0f0c7711365dceffd3d8aa2846767079bb87", "shape": [262, 896, 4864]}, "1053x896x4864": {"gflops": 570.4987527193517, "ms": 16.088118019979447, "sha": "9727d150037331e91fc07233ba4e794e9bb65d740ec5aaa5bd5e730e4f09b1ff", "shape": [1053, 896, 4864]}, "262x9728x896": {"gflops": 539.9584814572581, "ms": 8.458677970338613, "sha": "5cac52c5c191e5617891f789429024509641801bb7a7368d0664b2e58e5cb0cd", "shape": [262, 9728, 896]}, "1053x9728x896": {"gflops": 642.5965446101562, "ms": 28.566139488248155, "sha": "49be2a875d4008887aa75e73af93943bbb3a57d8b55b311c1aed4ad9ea2fdcb8", "shape": [1053, 9728, 896]}}}
+1789207879 3.55 2.52 1.52
+probeB-stock-base-coopmat-bf16 exit=0
+{"side": "coopmat", "dtype": "bf16", "shape": "1053x896x128", "gflops": 91.8, "ms": 2.631, "sha": "72c1d0c1812ccd5d9f9116cbf4ef540b92971306b3d252189e35a50ee0766df3"}
+{"side": "coopmat", "dtype": "bf16", "shape": "262x896x896", "gflops": 172.4, "ms": 2.44, "sha": "8d56c365617892e14e5a8872cfcf29dfbed87478bf07577d0022c6dba963c6a1"}
+{"side": "coopmat", "dtype": "bf16", "shape": "1053x896x896", "gflops": 190.7, "ms": 8.866, "sha": "7ce944eb1301e62d31688a8a389f13e60e0f19294845ffbdf3b3de198fdd6e24"}
+{"side": "coopmat", "dtype": "bf16", "shape": "262x896x4864", "gflops": 187.3, "ms": 12.19, "sha": "ecce3da707e217e3ec2ec16648db0f0c7711365dceffd3d8aa2846767079bb87"}
+{"side": "coopmat", "dtype": "bf16", "shape": "1053x896x4864", "gflops": 197.8, "ms": 46.401, "sha": "9727d150037331e91fc07233ba4e794e9bb65d740ec5aaa5bd5e730e4f09b1ff"}
+{"side": "coopmat", "dtype": "bf16", "shape": "262x9728x896", "gflops": 186.3, "ms": 24.51, "sha": "5cac52c5c191e5617891f789429024509641801bb7a7368d0664b2e58e5cb0cd"}
+{"side": "coopmat", "dtype": "bf16", "shape": "1053x9728x896", "gflops": 195.2, "ms": 94.061, "sha": "49be2a875d4008887aa75e73af93943bbb3a57d8b55b311c1aed4ad9ea2fdcb8"}
+JSON {"side": "coopmat", "dtype": "bf16", "wheel": "unknown", "cells": {"262x896x128": {"gflops": 57.24006184634719, "ms": 1.0499029885977507, "sha": "15eb966c25741f127154cd544ea254003c3e914d067a812b10a6f0054ca8c98d", "shape": [262, 896, 128]}, "1053x896x128": {"gflops": 91.81846622462314, "ms": 2.6305484934709966, "sha": "72c1d0c1812ccd5d9f9116cbf4ef540b92971306b3d252189e35a50ee0766df3", "shape": [1053, 896, 128]}, "262x896x896": {"gflops": 172.42208858446563, "ms": 2.4398009991273284, "sha": "8d56c365617892e14e5a8872cfcf29dfbed87478bf07577d0022c6dba963c6a1", "shape": [262, 896, 896]}, "1053x896x896": {"gflops": 190.6940561967861, "ms": 8.866193995345384, "sha": "7ce944eb1301e62d31688a8a389f13e60e0f19294845ffbdf3b3de198fdd6e24", "shape": [1053, 896, 896]}, "262x896x4864": {"gflops": 187.3441631113697, "ms": 12.189690984087065, "sha": "ecce3da707e217e3ec2ec16648db0f0c7711365dceffd3d8aa2846767079bb87", "shape": [262, 896, 4864]}, "1053x896x4864": {"gflops": 197.8010732733276, "ms": 46.40142296557315, "sha": "9727d150037331e91fc07233ba4e794e9bb65d740ec5aaa5bd5e730e4f09b1ff", "shape": [1053, 896, 4864]}, "262x9728x896": {"gflops": 186.3490468442125, "ms": 24.509569484507665, "sha": "5cac52c5c191e5617891f789429024509641801bb7a7368d0664b2e58e5cb0cd", "shape": [262, 9728, 896]}, "1053x9728x896": {"gflops": 195.15581719222598, "ms": 94.06074997968972, "sha": "49be2a875d4008887aa75e73af93943bbb3a57d8b55b311c1aed4ad9ea2fdcb8", "shape": [1053, 9728, 896]}}}
+=== digest + provenance assertions 2026-09-12T10:11:26Z
+HELD  cand-fork-r1 qwen25-0.5b-4bit:short-decode-32 7fd25a869ff21678 want 7fd25a869ff21678
+      prov: mlx-omarchy 0.32.2.dev202609120944+b1805b19 mx=0.32.2.dev202609120944+b1
+HELD  cand-fork-r1 qwen25-0.5b-4bit:long-decode-128 4cc08910089477fd want 4cc08910089477fd
+      prov: mlx-omarchy 0.32.2.dev202609120944+b1805b19 mx=0.32.2.dev202609120944+b1
+HELD  cand-fork-r1 qwen25-0.5b-4bit:longctx-1024-decode-32 7da83f06ec9f001d want 7da83f06ec9f001d
+      prov: mlx-omarchy 0.32.2.dev202609120944+b1805b19 mx=0.32.2.dev202609120944+b1
+HELD  cand-fork-r1 qwen25-0.5b-bf16:short-decode-32 f26175202f3dabe9 want f26175202f3dabe9
+      prov: mlx-omarchy 0.32.2.dev202609120944+b1805b19 mx=0.32.2.dev202609120944+b1
+HELD  cand-fork-r1 qwen25-0.5b-bf16:long-decode-128 8690dc83246b39f8 want 8690dc83246b39f8
+      prov: mlx-omarchy 0.32.2.dev202609120944+b1805b19 mx=0.32.2.dev202609120944+b1
+HELD  cand-fork-r1 qwen25-0.5b-bf16:longctx-1024-decode-32 ff502900d2a179a5 want ff502900d2a179a5
+      prov: mlx-omarchy 0.32.2.dev202609120944+b1805b19 mx=0.32.2.dev202609120944+b1
+HELD  cand-fork-r2 qwen25-0.5b-4bit:short-decode-32 7fd25a869ff21678 want 7fd25a869ff21678
+      prov: mlx-omarchy 0.32.2.dev202609120944+b1805b19 mx=0.32.2.dev202609120944+b1
+HELD  cand-fork-r2 qwen25-0.5b-4bit:long-decode-128 4cc08910089477fd want 4cc08910089477fd
+      prov: mlx-omarchy 0.32.2.dev202609120944+b1805b19 mx=0.32.2.dev202609120944+b1
+HELD  cand-fork-r2 qwen25-0.5b-4bit:longctx-1024-decode-32 7da83f06ec9f001d want 7da83f06ec9f001d
+      prov: mlx-omarchy 0.32.2.dev202609120944+b1805b19 mx=0.32.2.dev202609120944+b1
+HELD  cand-fork-r2 qwen25-0.5b-bf16:short-decode-32 f26175202f3dabe9 want f26175202f3dabe9
+      prov: mlx-omarchy 0.32.2.dev202609120944+b1805b19 mx=0.32.2.dev202609120944+b1
+HELD  cand-fork-r2 qwen25-0.5b-bf16:long-decode-128 8690dc83246b39f8 want 8690dc83246b39f8
+      prov: mlx-omarchy 0.32.2.dev202609120944+b1805b19 mx=0.32.2.dev202609120944+b1
+HELD  cand-fork-r2 qwen25-0.5b-bf16:longctx-1024-decode-32 ff502900d2a179a5 want ff502900d2a179a5
+      prov: mlx-omarchy 0.32.2.dev202609120944+b1805b19 mx=0.32.2.dev202609120944+b1
+HELD  cand-fork-r3 qwen25-0.5b-4bit:short-decode-32 7fd25a869ff21678 want 7fd25a869ff21678
+      prov: mlx-omarchy 0.32.2.dev202609120944+b1805b19 mx=0.32.2.dev202609120944+b1
+HELD  cand-fork-r3 qwen25-0.5b-4bit:long-decode-128 4cc08910089477fd want 4cc08910089477fd
+      prov: mlx-omarchy 0.32.2.dev202609120944+b1805b19 mx=0.32.2.dev202609120944+b1
+HELD  cand-fork-r3 qwen25-0.5b-4bit:longctx-1024-decode-32 7da83f06ec9f001d want 7da83f06ec9f001d
+      prov: mlx-omarchy 0.32.2.dev202609120944+b1805b19 mx=0.32.2.dev202609120944+b1
+HELD  cand-fork-r3 qwen25-0.5b-bf16:short-decode-32 f26175202f3dabe9 want f26175202f3dabe9
+      prov: mlx-omarchy 0.32.2.dev202609120944+b1805b19 mx=0.32.2.dev202609120944+b1
+HELD  cand-fork-r3 qwen25-0.5b-bf16:long-decode-128 8690dc83246b39f8 want 8690dc83246b39f8
+      prov: mlx-omarchy 0.32.2.dev202609120944+b1805b19 mx=0.32.2.dev202609120944+b1
+HELD  cand-fork-r3 qwen25-0.5b-bf16:longctx-1024-decode-32 ff502900d2a179a5 want ff502900d2a179a5
+      prov: mlx-omarchy 0.32.2.dev202609120944+b1805b19 mx=0.32.2.dev202609120944+b1
+HELD  cand-stock-r1 qwen25-0.5b-4bit:short-decode-32 7fd25a869ff21678 want 7fd25a869ff21678
+      prov: mlx-omarchy 0.32.2.dev202609120944+b1805b19 mx=0.32.2.dev202609120944+b1
+HELD  cand-stock-r1 qwen25-0.5b-4bit:long-decode-128 4cc08910089477fd want 4cc08910089477fd
+      prov: mlx-omarchy 0.32.2.dev202609120944+b1805b19 mx=0.32.2.dev202609120944+b1
+HELD  cand-stock-r1 qwen25-0.5b-4bit:longctx-1024-decode-32 7da83f06ec9f001d want 7da83f06ec9f001d
+      prov: mlx-omarchy 0.32.2.dev202609120944+b1805b19 mx=0.32.2.dev202609120944+b1
+HELD  cand-stock-r1 qwen25-0.5b-bf16:short-decode-32 7fc0f968789b1882 want 7fc0f968789b1882
+      prov: mlx-omarchy 0.32.2.dev202609120944+b1805b19 mx=0.32.2.dev202609120944+b1
+HELD  cand-stock-r1 qwen25-0.5b-bf16:long-decode-128 46108ad71157cb4d want 46108ad71157cb4d
+      prov: mlx-omarchy 0.32.2.dev202609120944+b1805b19 mx=0.32.2.dev202609120944+b1
+HELD  cand-stock-r1 qwen25-0.5b-bf16:longctx-1024-decode-32 ff502900d2a179a5 want ff502900d2a179a5
+      prov: mlx-omarchy 0.32.2.dev202609120944+b1805b19 mx=0.32.2.dev202609120944+b1
+HELD  cand-stock-r2 qwen25-0.5b-4bit:short-decode-32 7fd25a869ff21678 want 7fd25a869ff21678
+      prov: mlx-omarchy 0.32.2.dev202609120944+b1805b19 mx=0.32.2.dev202609120944+b1
+HELD  cand-stock-r2 qwen25-0.5b-4bit:long-decode-128 4cc08910089477fd want 4cc08910089477fd
+      prov: mlx-omarchy 0.32.2.dev202609120944+b1805b19 mx=0.32.2.dev202609120944+b1
+HELD  cand-stock-r2 qwen25-0.5b-4bit:longctx-1024-decode-32 7da83f06ec9f001d want 7da83f06ec9f001d
+      prov: mlx-omarchy 0.32.2.dev202609120944+b1805b19 mx=0.32.2.dev202609120944+b1
+HELD  cand-stock-r2 qwen25-0.5b-bf16:short-decode-32 7fc0f968789b1882 want 7fc0f968789b1882
+      prov: mlx-omarchy 0.32.2.dev202609120944+b1805b19 mx=0.32.2.dev202609120944+b1
+HELD  cand-stock-r2 qwen25-0.5b-bf16:long-decode-128 46108ad71157cb4d want 46108ad71157cb4d
+      prov: mlx-omarchy 0.32.2.dev202609120944+b1805b19 mx=0.32.2.dev202609120944+b1
+HELD  cand-stock-r2 qwen25-0.5b-bf16:longctx-1024-decode-32 ff502900d2a179a5 want ff502900d2a179a5
+      prov: mlx-omarchy 0.32.2.dev202609120944+b1805b19 mx=0.32.2.dev202609120944+b1
+HELD  cand-stock-r3 qwen25-0.5b-4bit:short-decode-32 7fd25a869ff21678 want 7fd25a869ff21678
+      prov: mlx-omarchy 0.32.2.dev202609120944+b1805b19 mx=0.32.2.dev202609120944+b1
+HELD  cand-stock-r3 qwen25-0.5b-4bit:long-decode-128 4cc08910089477fd want 4cc08910089477fd
+      prov: mlx-omarchy 0.32.2.dev202609120944+b1805b19 mx=0.32.2.dev202609120944+b1
+HELD  cand-stock-r3 qwen25-0.5b-4bit:longctx-1024-decode-32 7da83f06ec9f001d want 7da83f06ec9f001d
+      prov: mlx-omarchy 0.32.2.dev202609120944+b1805b19 mx=0.32.2.dev202609120944+b1
+HELD  cand-stock-r3 qwen25-0.5b-bf16:short-decode-32 7fc0f968789b1882 want 7fc0f968789b1882
+      prov: mlx-omarchy 0.32.2.dev202609120944+b1805b19 mx=0.32.2.dev202609120944+b1
+HELD  cand-stock-r3 qwen25-0.5b-bf16:long-decode-128 46108ad71157cb4d want 46108ad71157cb4d
+      prov: mlx-omarchy 0.32.2.dev202609120944+b1805b19 mx=0.32.2.dev202609120944+b1
+HELD  cand-stock-r3 qwen25-0.5b-bf16:longctx-1024-decode-32 ff502900d2a179a5 want ff502900d2a179a5
+      prov: mlx-omarchy 0.32.2.dev202609120944+b1805b19 mx=0.32.2.dev202609120944+b1
+HELD  base-fork-r1 qwen25-0.5b-4bit:short-decode-32 7fd25a869ff21678 want 7fd25a869ff21678
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-fork-r1 qwen25-0.5b-4bit:long-decode-128 4cc08910089477fd want 4cc08910089477fd
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-fork-r1 qwen25-0.5b-4bit:longctx-1024-decode-32 7da83f06ec9f001d want 7da83f06ec9f001d
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-fork-r1 qwen25-0.5b-bf16:short-decode-32 f26175202f3dabe9 want f26175202f3dabe9
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-fork-r1 qwen25-0.5b-bf16:long-decode-128 8690dc83246b39f8 want 8690dc83246b39f8
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-fork-r1 qwen25-0.5b-bf16:longctx-1024-decode-32 ff502900d2a179a5 want ff502900d2a179a5
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-fork-r2 qwen25-0.5b-4bit:short-decode-32 7fd25a869ff21678 want 7fd25a869ff21678
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-fork-r2 qwen25-0.5b-4bit:long-decode-128 4cc08910089477fd want 4cc08910089477fd
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-fork-r2 qwen25-0.5b-4bit:longctx-1024-decode-32 7da83f06ec9f001d want 7da83f06ec9f001d
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-fork-r2 qwen25-0.5b-bf16:short-decode-32 f26175202f3dabe9 want f26175202f3dabe9
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-fork-r2 qwen25-0.5b-bf16:long-decode-128 8690dc83246b39f8 want 8690dc83246b39f8
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-fork-r2 qwen25-0.5b-bf16:longctx-1024-decode-32 ff502900d2a179a5 want ff502900d2a179a5
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-fork-r3 qwen25-0.5b-4bit:short-decode-32 7fd25a869ff21678 want 7fd25a869ff21678
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-fork-r3 qwen25-0.5b-4bit:long-decode-128 4cc08910089477fd want 4cc08910089477fd
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-fork-r3 qwen25-0.5b-4bit:longctx-1024-decode-32 7da83f06ec9f001d want 7da83f06ec9f001d
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-fork-r3 qwen25-0.5b-bf16:short-decode-32 f26175202f3dabe9 want f26175202f3dabe9
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-fork-r3 qwen25-0.5b-bf16:long-decode-128 8690dc83246b39f8 want 8690dc83246b39f8
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-fork-r3 qwen25-0.5b-bf16:longctx-1024-decode-32 ff502900d2a179a5 want ff502900d2a179a5
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-stock-r1 qwen25-0.5b-4bit:short-decode-32 7fd25a869ff21678 want 7fd25a869ff21678
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-stock-r1 qwen25-0.5b-4bit:long-decode-128 4cc08910089477fd want 4cc08910089477fd
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-stock-r1 qwen25-0.5b-4bit:longctx-1024-decode-32 7da83f06ec9f001d want 7da83f06ec9f001d
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-stock-r1 qwen25-0.5b-bf16:short-decode-32 7fc0f968789b1882 want 7fc0f968789b1882
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-stock-r1 qwen25-0.5b-bf16:long-decode-128 46108ad71157cb4d want 46108ad71157cb4d
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-stock-r1 qwen25-0.5b-bf16:longctx-1024-decode-32 ff502900d2a179a5 want ff502900d2a179a5
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-stock-r2 qwen25-0.5b-4bit:short-decode-32 7fd25a869ff21678 want 7fd25a869ff21678
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-stock-r2 qwen25-0.5b-4bit:long-decode-128 4cc08910089477fd want 4cc08910089477fd
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-stock-r2 qwen25-0.5b-4bit:longctx-1024-decode-32 7da83f06ec9f001d want 7da83f06ec9f001d
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-stock-r2 qwen25-0.5b-bf16:short-decode-32 7fc0f968789b1882 want 7fc0f968789b1882
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-stock-r2 qwen25-0.5b-bf16:long-decode-128 46108ad71157cb4d want 46108ad71157cb4d
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-stock-r2 qwen25-0.5b-bf16:longctx-1024-decode-32 ff502900d2a179a5 want ff502900d2a179a5
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-stock-r3 qwen25-0.5b-4bit:short-decode-32 7fd25a869ff21678 want 7fd25a869ff21678
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-stock-r3 qwen25-0.5b-4bit:long-decode-128 4cc08910089477fd want 4cc08910089477fd
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-stock-r3 qwen25-0.5b-4bit:longctx-1024-decode-32 7da83f06ec9f001d want 7da83f06ec9f001d
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-stock-r3 qwen25-0.5b-bf16:short-decode-32 7fc0f968789b1882 want 7fc0f968789b1882
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-stock-r3 qwen25-0.5b-bf16:long-decode-128 46108ad71157cb4d want 46108ad71157cb4d
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+HELD  base-stock-r3 qwen25-0.5b-bf16:longctx-1024-decode-32 ff502900d2a179a5 want ff502900d2a179a5
+      prov: mlx-omarchy 0.32.2.dev202609120737+a0775c37 mx=0.32.2.dev202609120737+a0
+TOTAL 72 pinned cells, 0 failures
+=== performance summary 2026-09-12T10:11:26Z
+--- fork
+qwen25-0.5b-4bit:short-decode-32: prefill cand 333.65 vs base 330.37 tok/s -> 0.99%  (native fraction 1.1233 -> 1.1345)
+           decode cand 111.38 vs base 109.88 tok/s -> 1.37%
+qwen25-0.5b-4bit:long-decode-128: prefill cand 965.77 vs base 947.98 tok/s -> 1.88%  (native fraction 0.7815 -> 0.7962)
+           decode cand 108.13 vs base 108.32 tok/s -> -0.18%
+qwen25-0.5b-4bit:longctx-1024-decode-32: prefill cand 1121.37 vs base 1115.45 tok/s -> 0.53%  (native fraction 0.6059 -> 0.6091)
+           decode cand 97.24 vs base 96.23 tok/s -> 1.05%
+qwen25-0.5b-bf16:short-decode-32: prefill cand 132.59 vs base 132.42 tok/s -> 0.13%  (native fraction 0.5693 -> 0.57)
+           decode cand 31.8 vs base 31.79 tok/s -> 0.03%
+qwen25-0.5b-bf16:long-decode-128: prefill cand 591.02 vs base 592.53 tok/s -> -0.25%  (native fraction 0.588 -> 0.5865)
+           decode cand 30.57 vs base 30.31 tok/s -> 0.86%
+qwen25-0.5b-bf16:longctx-1024-decode-32: prefill cand 680.55 vs base 679.44 tok/s -> 0.16%  (native fraction 0.4104 -> 0.411)
+           decode cand 24.94 vs base 24.95 tok/s -> -0.04%
+--- stock
+qwen25-0.5b-4bit:short-decode-32: prefill cand 170.63 vs base 174.51 tok/s -> -2.22%  (native fraction 0.5934 -> 0.5802)
+           decode cand 101.21 vs base 102.11 tok/s -> -0.88%
+qwen25-0.5b-4bit:long-decode-128: prefill cand 634.24 vs base 309.39 tok/s -> 105.0%  (native fraction 0.2551 -> 0.5229)
+           decode cand 81.28 vs base 81.03 tok/s -> 0.31%
+qwen25-0.5b-4bit:longctx-1024-decode-32: prefill cand 659.51 vs base 365.01 tok/s -> 80.68%  (native fraction 0.1983 -> 0.3583)
+           decode cand 52.92 vs base 52.69 tok/s -> 0.44%
+qwen25-0.5b-bf16:short-decode-32: prefill cand 133.57 vs base 134.26 tok/s -> -0.51%  (native fraction 0.5772 -> 0.5742)
+           decode cand 32.1 vs base 32.14 tok/s -> -0.12%
+qwen25-0.5b-bf16:long-decode-128: prefill cand 489.49 vs base 233.25 tok/s -> 109.86%  (native fraction 0.2315 -> 0.4857)
+           decode cand 30.55 vs base 30.54 tok/s -> 0.03%
+qwen25-0.5b-bf16:longctx-1024-decode-32: prefill cand 488.77 vs base 232.75 tok/s -> 110.0%  (native fraction 0.1406 -> 0.2952)
+           decode cand 25.0 vs base 23.83 tok/s -> 4.91%
+2026-09-12T10:11:26Z windowB complete, elapsed 578s -- LOCK RELEASED

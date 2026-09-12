@@ -1,0 +1,10 @@
+driver-fork: 	driverInfo         = Mesa 26.3.0-devel (git-6f6afc8968)
+driver-stock: 	driverInfo         = Mesa 26.1.7
+kernel: 7.1.6-1-1-ARCH  machine: aarch64
+chip: Apple M1 (G13G B1)  host-label: jwm1-linux (placeholder)
+wheel-gated: mlx_omarchy-0.32.2.dev202609120944+b1805b19-cp314-cp314-linux_aarch64.whl
+wheel-gated-sha256: 7a40416a31f2f6978fa7a766063f609512a8480c4c307a95ee45ef002e43ff45
+wheel-base: mlx_omarchy-0.32.2.dev202609120737+a0775c37-cp314-cp314-linux_aarch64.whl
+wheel-base-sha256: 467da55fd5affd1ca7157115430ec7bf1c992c3898acfe8c50bfa75745d6b33d
+source-commit-gated: b1805b1912b0af1042a6ae3af55c21fa400e3117
+source-commit-base: a0775c37
