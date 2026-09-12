@@ -39,6 +39,11 @@ def probe_cases() -> list[tuple[str, list[int], list[int]]]:
             [1065353216, 1069547520],
         ),
         (
+            "overflow-midpoint-boundary",
+            [2373976064, 1526202368],
+            [1065353216, 1677992200],
+        ),
+        (
             "vector-four",
             [0x4115B804, 0x3DBE3ACE, 0xBD94FC9D, 0x42EED71E],
             [0xBBA12958, 0x40C6ADFD, 0xC05058A1, 0x3EC6EFA3],
