@@ -194,7 +194,14 @@ void fill_pattern(
   }
   if (words_bytes > 0) {
     if (needs_drain) {
-      encoder.synchronize();
+      // The recycled block's previous occupant may still have writes in
+      // flight on another stream; order this fill's submission after all
+      // submitted work through the device completion timeline. Unlike the
+      // host drain this replaces, the wait rides the fill's own
+      // submission: no host stall, and back-to-back fills land in one
+      // submission. The host-written edge bytes above still need the
+      // full drain and keep it.
+      encoder.wait_outstanding_submissions();
     }
     encoder.add_temporary(out);
     encoder.fill_buffer(
@@ -434,7 +441,6 @@ void copy_gpu_inplace(
     if (in.has_primitive()) {
       omarchy::unsupported("GPU-in-flight scalar fill", out);
     }
-    encoder.synchronize();
     if (scalar_is_zero(in, i_offset)) {
       fill_pattern(s, out, o_offset, 0);
       return;
@@ -447,6 +453,15 @@ void copy_gpu_inplace(
       }
       array scalar({1}, in.dtype(), nullptr, {});
       scalar.set_data(omarchy::allocator().malloc(scalar.nbytes()));
+      auto* scalar_buffer =
+          static_cast<omarchy::VulkanBuffer*>(scalar.buffer().ptr());
+      if (scalar_buffer->recycled) {
+        // Host write into freshly recycled storage: only a host drain
+        // orders it against the block's in-flight previous writes. The
+        // malloc hands recycled blocks out, so this stays reachable; the
+        // common fresh-allocation case skips the stall entirely.
+        encoder.synchronize();
+      }
       std::memcpy(
           scalar.data<char>(),
           in.data<char>() + i_offset * in.itemsize(),
