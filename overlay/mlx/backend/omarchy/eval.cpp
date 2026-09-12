@@ -126,6 +126,15 @@ mlx_omarchy_trace_snapshot(
   out->commit_calls_noop = c.commit_calls_noop.load();
 }
 
+extern "C" __attribute__((visibility("default"))) void
+mlx_omarchy_trace_barriers(
+    mlx::core::omarchy::trace::MlxOmarchyTraceBarriers* out) {
+  auto& c = mlx::core::omarchy::trace::counters();
+  out->barriers_emitted = c.barriers_emitted.load();
+  out->barriers_skipped = c.barriers_skipped.load();
+  out->post_barriers_deferred = c.post_barriers_deferred.load();
+}
+
 #ifdef MLX_OMARCHY_GPU_PROFILING
 extern "C" __attribute__((visibility("default"))) void
 mlx_omarchy_prim_dump(const char* path) {

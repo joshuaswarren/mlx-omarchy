@@ -55,6 +55,18 @@ that memory-domain transfer. The mode defaults off pending the M1 A/B (`docs/pla
 TOP-1); skip and emit counts appear in the GPU profile and in the
 runtime-test trace counters.
 
+`MLX_OMARCHY_DEFERRED_POST_BARRIERS=1` keeps the default pre barrier but
+defers each dispatch's post barrier until a non-compute consumer needs
+it: a copy, a fill, a diagnostic dependency barrier, or the end of the
+open batch. A following compute dispatch's pre barrier already provides
+the full compute-to-compute execution dependency (including WAR) and
+makes the earlier shader writes visible, so interior dispatch pairs
+record one barrier instead of two with identical RAW/WAR/WAW and
+host-visibility semantics. Deferred counts appear in the runtime-test
+trace counters (`post_barriers_deferred`); flushed barriers are counted
+in `barriers_emitted` at flush time. The mode defaults off pending the
+M1 qualification.
+
 ## Build the wheel
 
 1. Install the build tools: Python 3.10 or newer with `venv`, `cmake` 3.25 or

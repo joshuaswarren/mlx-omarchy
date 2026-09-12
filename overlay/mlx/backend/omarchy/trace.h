@@ -35,6 +35,10 @@ struct Counters {
   // diagnostic barriers.
   std::atomic<uint64_t> barriers_emitted{0};
   std::atomic<uint64_t> barriers_skipped{0};
+  // Post-dispatch barriers deferred under MLX_OMARCHY_DEFERRED_POST_BARRIERS
+  // (flushed later by flush_pending_post_barrier, which counts them in
+  // barriers_emitted; with the gate off this stays zero).
+  std::atomic<uint64_t> post_barriers_deferred{0};
   // Number of gpu::finalize calls (throttle points and graph ends).
   std::atomic<uint64_t> omarchy_finalize_calls{0};
   // Commits that submitted a real batch (work, semaphores, or handlers).
@@ -72,6 +76,20 @@ struct MlxOmarchyTraceSnapshot {
   uint64_t commit_calls_noop;
 };
 
+// Barrier-deferral diagnostics, deliberately NOT part of
+// MlxOmarchyTraceSnapshot: that struct's field list is a published
+// ctypes ABI (scripts/fragmentation_probe.py) and must not grow.
+struct MlxOmarchyTraceBarriers {
+  // Dependency barriers recorded (deferred ones at flush time).
+  uint64_t barriers_emitted;
+  // Barriers the gated tracker decided against.
+  uint64_t barriers_skipped;
+  // Post-dispatch barriers deferred under MLX_OMARCHY_DEFERRED_POST_BARRIERS
+  // (flushed later by flush_pending_post_barrier, which counts them in
+  // barriers_emitted; with the gate off this stays zero).
+  uint64_t post_barriers_deferred;
+};
+
 #ifdef MLX_OMARCHY_GPU_PROFILING
 // Per-primitive-name gpu::eval counts for fragmentation attribution.
 // Written on the evaluator thread only; the names are static string
@@ -93,6 +111,10 @@ inline std::unordered_map<std::string_view, std::uint64_t>& prim_counts() {
 extern "C" __attribute__((visibility("default"))) void
 mlx_omarchy_trace_snapshot(
     mlx::core::omarchy::trace::MlxOmarchyTraceSnapshot* out);
+
+extern "C" __attribute__((visibility("default"))) void
+mlx_omarchy_trace_barriers(
+    mlx::core::omarchy::trace::MlxOmarchyTraceBarriers* out);
 
 #ifdef MLX_OMARCHY_GPU_PROFILING
 extern "C" __attribute__((visibility("default"))) void

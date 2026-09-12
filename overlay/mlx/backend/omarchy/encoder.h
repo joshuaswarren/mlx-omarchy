@@ -38,6 +38,11 @@ namespace mlx::core::omarchy {
 // between them. Temporaries and completion handlers released per
 // submission still release exactly when that submission's GPU work
 // finishes, via the device completion timeline.
+// MLX_OMARCHY_DEFERRED_POST_BARRIERS=1 defers that post barrier until a
+// non-compute consumer (copy/fill/diagnostic barrier/batch close) needs
+// it: a following dispatch's pre barrier already orders and exposes the
+// dispatch's writes, so interior dispatch pairs record one barrier
+// instead of two with identical RAW/WAR/WAW coverage.
 //
 // Command buffers come from a small ring so the device can execute one
 // batch while the host records the next; the host blocks only when every
@@ -300,6 +305,11 @@ class MLX_API CommandEncoder {
     VkDeviceSize end;
   };
   static bool gated_barriers();
+  static bool deferred_post_barriers();
+  // Record the open batch's owed post-dispatch barrier, if any (see
+  // deferred_post_barriers): before transfer commands, diagnostic
+  // dependency barriers, and EndCommandBuffer at batch close.
+  void flush_pending_post_barrier();
   bool batch_needs_barrier(
       std::span<const TrackedRange> reads,
       std::span<const TrackedRange> writes) const;
@@ -308,6 +318,8 @@ class MLX_API CommandEncoder {
   std::vector<TrackedRange> tracked_reads_;
   std::vector<TrackedRange> tracked_writes_;
   bool head_synced_{false};
+  // Open batch owes one post-dispatch barrier (deferred-post mode).
+  bool post_barrier_pending_{false};
 
   Device& device_;
   VkCommandPool pool_{VK_NULL_HANDLE};
