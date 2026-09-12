@@ -8,6 +8,11 @@ mlx-omarchy is MLX with the Omarchy Vulkan backend. The distribution name is
 Apple-silicon Honeykrisp GPUs are the supported target. The wheel builds on
 Linux only.
 
+The repository installer, `install.sh`, exposes `mlx-omarchy-info` in
+`~/.local/bin`. It launches the native capability reporter from the installed
+wheel; uninstall removes the launcher. Command presence records installation,
+not a working GPU or qualified ANE support.
+
 ## Development override
 
 `MLX_OMARCHY_ALLOW_NON_APPLE=1` allows a desktop or software Vulkan driver,
