@@ -696,16 +696,13 @@ void dispatch_matmul(
     return;
   }
   if (bf16_fma) {
-    omarchy::ComputeKernel fma_kernel = matmul_fma_cfg == 1u
-        ? omarchy::ComputeKernel::MatmulBf16FmaL16C4
-        : omarchy::ComputeKernel::MatmulBf16Fma;
+    omarchy::ComputeKernel fma_kernel = omarchy::ComputeKernel::MatmulBf16Fma;
     encoder.dispatch_compute(
         fma_kernel,
         bindings,
         params,
         matrix_group_count(params.matrix_n, 128u),
-        matrix_group_count(
-            params.matrix_m, matmul_fma_cfg == 1u ? 64u : 32u),
+        matrix_group_count(params.matrix_m, 32u),
         checked_u32(batch_count, name, out));
     return;
   }
