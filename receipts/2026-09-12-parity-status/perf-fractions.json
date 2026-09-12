@@ -1,0 +1,198 @@
+{
+ "fork": {
+  "qwen25-0.5b-4bit:short-decode-32": {
+   "decode_tok_s_median": 111.31,
+   "prefill_tok_s_median": 331.43,
+   "decode_fraction": 0.7393,
+   "prefill_fraction": 1.1269,
+   "decode_reps": [
+    110.21,
+    111.44,
+    111.31
+   ],
+   "prefill_reps": [
+    330.63,
+    331.433,
+    333.03
+   ]
+  },
+  "qwen25-0.5b-4bit:long-decode-128": {
+   "decode_tok_s_median": 108.04,
+   "prefill_tok_s_median": 967.39,
+   "decode_fraction": 0.7361,
+   "prefill_fraction": 0.7975,
+   "decode_reps": [
+    108.2,
+    107.55,
+    108.04
+   ],
+   "prefill_reps": [
+    967.389,
+    969.247,
+    967.157
+   ]
+  },
+  "qwen25-0.5b-4bit:longctx-1024-decode-32": {
+   "decode_tok_s_median": 96.4,
+   "prefill_tok_s_median": 1110.37,
+   "decode_fraction": 0.6867,
+   "prefill_fraction": 0.6032,
+   "decode_reps": [
+    96.56,
+    96.4,
+    95.62
+   ],
+   "prefill_reps": [
+    1112.017,
+    1110.368,
+    1109.437
+   ]
+  },
+  "qwen25-0.5b-bf16:short-decode-32": {
+   "decode_tok_s_median": 31.68,
+   "prefill_tok_s_median": 131.55,
+   "decode_fraction": 0.5614,
+   "prefill_fraction": 0.5656,
+   "decode_reps": [
+    31.68,
+    31.76,
+    31.63
+   ],
+   "prefill_reps": [
+    131.554,
+    136.098,
+    130.989
+   ]
+  },
+  "qwen25-0.5b-bf16:long-decode-128": {
+   "decode_tok_s_median": 30.37,
+   "prefill_tok_s_median": 588.53,
+   "decode_fraction": 0.545,
+   "prefill_fraction": 0.584,
+   "decode_reps": [
+    30.37,
+    30.51,
+    30.35
+   ],
+   "prefill_reps": [
+    589.412,
+    566.12,
+    588.534
+   ]
+  },
+  "qwen25-0.5b-bf16:longctx-1024-decode-32": {
+   "decode_tok_s_median": 24.88,
+   "prefill_tok_s_median": 677.37,
+   "decode_fraction": 0.4561,
+   "prefill_fraction": 0.4091,
+   "decode_reps": [
+    23.46,
+    24.88,
+    24.92
+   ],
+   "prefill_reps": [
+    678.278,
+    677.276,
+    677.365
+   ]
+  }
+ },
+ "stock": {
+  "qwen25-0.5b-4bit:short-decode-32": {
+   "decode_tok_s_median": 101.08,
+   "prefill_tok_s_median": 170.41,
+   "decode_fraction": 0.6713,
+   "prefill_fraction": 0.5794,
+   "decode_reps": [
+    101.71,
+    101.08,
+    100.76
+   ],
+   "prefill_reps": [
+    170.885,
+    170.294,
+    170.408
+   ]
+  },
+  "qwen25-0.5b-4bit:long-decode-128": {
+   "decode_tok_s_median": 81.29,
+   "prefill_tok_s_median": 632.38,
+   "decode_fraction": 0.5539,
+   "prefill_fraction": 0.5213,
+   "decode_reps": [
+    81.3,
+    81.27,
+    81.29
+   ],
+   "prefill_reps": [
+    632.384,
+    631.257,
+    645.099
+   ]
+  },
+  "qwen25-0.5b-4bit:longctx-1024-decode-32": {
+   "decode_tok_s_median": 52.9,
+   "prefill_tok_s_median": 656.68,
+   "decode_fraction": 0.3768,
+   "prefill_fraction": 0.3567,
+   "decode_reps": [
+    52.9,
+    52.77,
+    53.08
+   ],
+   "prefill_reps": [
+    656.682,
+    658.507,
+    655.417
+   ]
+  },
+  "qwen25-0.5b-bf16:short-decode-32": {
+   "decode_tok_s_median": 32.13,
+   "prefill_tok_s_median": 132.83,
+   "decode_fraction": 0.5694,
+   "prefill_fraction": 0.5711,
+   "decode_reps": [
+    32.17,
+    32.13,
+    31.86
+   ],
+   "prefill_reps": [
+    132.827,
+    133.045,
+    132.791
+   ]
+  },
+  "qwen25-0.5b-bf16:long-decode-128": {
+   "decode_tok_s_median": 30.58,
+   "prefill_tok_s_median": 484.4,
+   "decode_fraction": 0.5488,
+   "prefill_fraction": 0.4807,
+   "decode_reps": [
+    30.65,
+    30.58,
+    30.54
+   ],
+   "prefill_reps": [
+    504.879,
+    483.614,
+    484.396
+   ]
+  },
+  "qwen25-0.5b-bf16:longctx-1024-decode-32": {
+   "decode_tok_s_median": 25.05,
+   "prefill_tok_s_median": 492.79,
+   "decode_fraction": 0.4592,
+   "prefill_fraction": 0.2976,
+   "decode_reps": [
+    25.07,
+    25.05,
+    24.97
+   ],
+   "prefill_reps": [
+    497.484,
+    492.647,
+    492.791
+   ]
+  }
+ }
+}

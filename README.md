@@ -127,15 +127,28 @@ repeated the gain in all six cells ([receipt](receipts/2026-09-11-bf16-prefill/v
 
 Performance parity is still open, and the remaining distance is now specific. The denominator is the committed macOS MLX 0.32.2 baseline on an Apple M1, five repetitions with stable digests ([receipt](receipts/native-baseline-2026-09-06/native-2026-09-06-summary.json)): Q4 decode 150.57 / 146.77 / 140.38 tok/s and prefill 294.1 / 1213.0 / 1840.9; BF16 decode 56.43 / 55.72 / 54.55 and prefill 232.6 / 1007.7 / 1655.7. The fork build reaches these fractions of native:
 
+
 | Model | Prompt / generated tokens | Decode vs native | Prefill vs native |
 |---|---|---:|---:|
-| Q4 | 30 / 32 | 0.71 | 1.14 |
-| Q4 | 262 / 128 | 0.73 | 0.65 |
-| Q4 | 1053 / 32 | 0.69 | 0.59 |
-| BF16 | 30 / 32 | 0.57 | 0.53 |
-| BF16 | 262 / 128 | 0.52 | 0.58 |
-| BF16 | 1053 / 32 | 0.44 | 0.39 |
+| Q4 | 30 / 32 | 0.74 | 1.13 |
+| Q4 | 262 / 128 | 0.74 | 0.80 |
+| Q4 | 1053 / 32 | 0.69 | 0.60 |
+| BF16 | 30 / 32 | 0.56 | 0.57 |
+| BF16 | 262 / 128 | 0.55 | 0.58 |
+| BF16 | 1053 / 32 | 0.46 | 0.41 |
 
+Stock driver (same wheel, same protocol; the FMA prefill route engages
+only on drivers without cooperative matrix, so these are the numbers stock
+users see):
+
+| Model | Prompt / generated tokens | Decode vs native | Prefill vs native |
+|---|---|---:|---:|
+| Q4 | 30 / 32 | 0.67 | 0.58 |
+| Q4 | 262 / 128 | 0.55 | 0.52 |
+| Q4 | 1053 / 32 | 0.38 | 0.36 |
+| BF16 | 30 / 32 | 0.57 | 0.57 |
+| BF16 | 262 / 128 | 0.55 | 0.48 |
+| BF16 | 1053 / 32 | 0.46 | 0.30 |
 Every cell above is measured on one wheel built from the composed tree, fork driver, median of three repetitions after a discarded warmup, with all six canonical digests held on both drivers ([receipt](receipts/2026-09-12-composed-main-qualification/README.md)). Earlier tables published the sum of per-change measurements taken on different predecessor wheels; this one replaces them. Two corrections came out of it. Prefill spans were being re-parsed from a print rounded to the millisecond instead of read from the nanosecond span the harness already emits, which inflated the short legs by up to 0.55 percent; the harness now reads the JSON field. And Q4 short prefill, which the composed tree measured at 0.76 against a previously published 1.13, was a real regression: an unconditional host drain before every scalar fill (`de780aa2`) cost 51 ms per prefill call. Ordering those fills through the device completion timeline instead of a host join restores the leg to 1.14 of native with no submission split ([receipt](receipts/2026-09-12-composed-regressions/README.md)). No digest moved anywhere, on any of tonight's work. Short-prompt Q4 prefill is the one leg already past native. The BF16 prefill 262-token and 1K legs moved tonight (+30.7% and +48.1%) through three bit-preserving changes: the f32-composition causal attention now uses the softmax's causal mode instead of materializing and adding a 0/-1e30 mask, the coopmat shader masks k tails so a k that is not a multiple of eight no longer falls off the cooperative-matrix path onto a 0.09 TFLOP/s tile, and the bf16 coopmat path was widened ([receipt](receipts/2026-09-11-bf16-prefill-gap/README.md)). All six canonical digests hold on both drivers. Dense BF16 decode now runs a native-order vector kernel (2.2-2.8x decode, no float64-accuracy cost: both kernels are RNE(f64)-exact on the captured decode projections), and its remaining distance is measured against the committed native baseline above. Cross-OS timings do not establish numerical parity: the Q4 short and 1024-context token-ID digests match native, while the Q4 long-prompt digest differs (native `254d73fd93164b98`, Linux `4cc08910089477fd`). The BF16 262-token mismatch was root-caused to macOS-side rounding, with the Linux result bit-exact to a float64 round-to-nearest-even reference ([receipt](receipts/2026-09-10-bf16-rootcause/README.md)), and the BF16 short/262 pins now carry the measured per-driver Linux values under the [policy amendment](docs/parity-id-policy.md).
 
 To reproduce a leg, use the fixed-length runner, which suppresses EOS:
