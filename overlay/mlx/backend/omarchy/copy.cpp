@@ -441,6 +441,24 @@ void copy_gpu_inplace(
     if (in.has_primitive()) {
       omarchy::unsupported("GPU-in-flight scalar fill", out);
     }
+    // The scalar's bytes are read on the host below (the zero check, the
+    // value read, the dtype-converting scratch copy). When those bytes
+    // are GPU-produced - a pad's astype(pad_value) cast is the common
+    // case - the host read races the producer unless the host joins it:
+    // the buffer carries kPendingCompletion while its producer sits in
+    // an open batch, and its submission value until that drains. A
+    // timeline wait cannot publish bytes to the host, and it never
+    // covers an uncommitted open batch (3f7e549a regression: pad and
+    // concat filled whole regions with recycled garbage read as the
+    // fill value). Host-written scalars have completion == 0 - the
+    // decode and prefill hot path - and skip the drain entirely.
+    const auto* in_buffer =
+        static_cast<const omarchy::VulkanBuffer*>(in.buffer().ptr());
+    if (in_buffer->completion != 0 &&
+        in_buffer->completion >
+            encoder.device().completions().drained_value()) {
+      encoder.synchronize();
+    }
     if (scalar_is_zero(in, i_offset)) {
       fill_pattern(s, out, o_offset, 0);
       return;

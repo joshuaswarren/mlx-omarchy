@@ -416,6 +416,48 @@ TEST_CASE("Pad fills multidimensional boundaries with exact values") {
        -7.0f, -7.0f, -7.0f, -7.0f, -7.0f});
 }
 
+TEST_CASE("Pad constant survives recycled storage with a pending value cast") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  array a = array({1.0f, 2.0f}, float32);
+  array square = array({1.0f, 2.0f, 3.0f, 4.0f}, {2, 2}, float32);
+  // The convolve churn shape (2026-09-11-wrong-value-sweep): flood, eval,
+  // and free so the reuse cache hands out a block whose bytes are a
+  // non-zero sentinel, then pad without ever evaluating in between. The
+  // pad's int32 -> float32 pad-value cast is recorded into the open batch
+  // against recycled storage, and the scalar fill reads that value on the
+  // host while the cast is still pending. Every readback joins the whole
+  // graph, so each padded region must hold exact zeros - not a stale
+  // sentinel read as the fill value.
+  for (int iter = 0; iter < 16; ++iter) {
+    float sentinel = 0.25f + static_cast<float>(iter);
+    array flood = full(Shape({1024}), sentinel, stream);
+    eval(flood);
+    // The pad value rides an int32 -> float32 cast, so its bytes are
+    // GPU-produced. A stale read shows a different value than 3.0f -
+    // recycled zeros collapse the fill to zeros; recycled sentinel bytes
+    // poison the region outright.
+    array padded =
+        pad(a, std::pair<int, int>{1, 2}, array(3), "constant", stream);
+    check_values(padded, {3.0f, 1.0f, 2.0f, 3.0f, 3.0f});
+    array padded_square = pad(
+        square,
+        std::vector<std::pair<int, int>>{{1, 1}, {2, 1}},
+        array(3),
+        "constant",
+        stream);
+    check_values(
+        padded_square,
+        {3.0f, 3.0f, 3.0f, 3.0f, 3.0f,
+         3.0f, 3.0f, 1.0f, 2.0f, 3.0f,
+         3.0f, 3.0f, 3.0f, 4.0f, 3.0f,
+         3.0f, 3.0f, 3.0f, 3.0f, 3.0f});
+  }
+}
+
+
 TEST_CASE("Reshape shares buffers and copies strided views") {
   if (!compute_available()) {
     return;
