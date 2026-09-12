@@ -37,6 +37,40 @@ depends on rather than the extension's presence: assert the lowering we
 need with an on-device probe at device creation and fall back to the
 composed path when it does not match.
 
+## Measurement instruments that distort what they measure
+
+Three independent instances landed on 2026-09-11, each one redirecting real
+work before it was caught. Treat this as a defect class, not three anecdotes:
+**diagnostic wheels are for dispatch counts and structure; release wheels are
+for time.**
+
+1. **The profiler's isolation barrier inflates device time.** With the
+   `ALL_COMMANDS` isolation barrier in place, per-dispatch device time reads
+   57.6 us mean and the token's "GPU busy" total reaches 14.35 ms - against a
+   release-path wall of 8.99 ms for the same binary on the same quiet GPU,
+   which is impossible. With the barrier removed the profiler's own host cost
+   starves the GPU instead and manufactures 17.10 ms of "gap" at 68.9 us
+   mean. The two modes bracket the lie from both sides. Release attribution
+   therefore rests on payload ablation (GEMV -5.63 ms + skeleton 2.37 ms
+   ~ 8.0 ms ~ the wall, leaving 0.3-0.6 ms of slack), not on profiled gaps.
+   Receipt:
+   [`receipts/2026-09-11-q4-fused-projection-state/gap-verdict.json`](../receipts/2026-09-11-q4-fused-projection-state/gap-verdict.json).
+2. **Device timestamps undercounted by 2.07x.** A per-layer cost summed from
+   honeykrisp device-timestamp intervals implied 86 GB/s on a part whose
+   measured roof is 58.5 GB/s - again physically impossible, and it had been
+   read as a 2.4x in-model-versus-isolated penalty. Receipt:
+   `receipts/2026-09-11-decode-gap`.
+3. **Host-path accounting bucketed waiting as work.** A "6.4 ms of Python per
+   token" figure turned out to be wall-clock occupancy while the GPU ran, not
+   CPU time, and it survived because nothing cross-checked it against a
+   release-path wall. Receipt: `receipts/2026-09-11-pyenv-parity`.
+
+The shared shape: an instrument reported a number that violated a physical
+bound already measured elsewhere in the project, and nobody checked it against
+that bound. Before a profiled number becomes a premise, compare it against the
+release-path wall and the measured memory roof; a device-time total exceeding
+the wall, or a bandwidth exceeding the roof, means the instrument is wrong.
+
 ## Open native precision gaps
 
 ### Float32 log differs from the host by one ULP
