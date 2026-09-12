@@ -1,0 +1,194 @@
+{
+ "patched-r1": {
+  "qwen25-0.5b-4bit:short-decode-32": {
+   "digest": "7fd25a869ff21678",
+   "expected": "7fd25a869ff21678",
+   "held": true
+  },
+  "qwen25-0.5b-4bit:long-decode-128": {
+   "digest": "4cc08910089477fd",
+   "expected": "4cc08910089477fd",
+   "held": true
+  },
+  "qwen25-0.5b-4bit:longctx-1024-decode-32": {
+   "digest": "7da83f06ec9f001d",
+   "expected": "7da83f06ec9f001d",
+   "held": true
+  },
+  "qwen25-0.5b-bf16:short-decode-32": {
+   "digest": "f26175202f3dabe9",
+   "expected": "f26175202f3dabe9",
+   "held": true
+  },
+  "qwen25-0.5b-bf16:long-decode-128": {
+   "digest": "8690dc83246b39f8",
+   "expected": "8690dc83246b39f8",
+   "held": true
+  },
+  "qwen25-0.5b-bf16:longctx-1024-decode-32": {
+   "digest": "ff502900d2a179a5",
+   "expected": "ff502900d2a179a5",
+   "held": true
+  }
+ },
+ "patched-r2": {
+  "qwen25-0.5b-4bit:short-decode-32": {
+   "digest": "7fd25a869ff21678",
+   "expected": "7fd25a869ff21678",
+   "held": true
+  },
+  "qwen25-0.5b-4bit:long-decode-128": {
+   "digest": "4cc08910089477fd",
+   "expected": "4cc08910089477fd",
+   "held": true
+  },
+  "qwen25-0.5b-4bit:longctx-1024-decode-32": {
+   "digest": "7da83f06ec9f001d",
+   "expected": "7da83f06ec9f001d",
+   "held": true
+  },
+  "qwen25-0.5b-bf16:short-decode-32": {
+   "digest": "f26175202f3dabe9",
+   "expected": "f26175202f3dabe9",
+   "held": true
+  },
+  "qwen25-0.5b-bf16:long-decode-128": {
+   "digest": "8690dc83246b39f8",
+   "expected": "8690dc83246b39f8",
+   "held": true
+  },
+  "qwen25-0.5b-bf16:longctx-1024-decode-32": {
+   "digest": "ff502900d2a179a5",
+   "expected": "ff502900d2a179a5",
+   "held": true
+  }
+ },
+ "patched-r3": {
+  "qwen25-0.5b-4bit:short-decode-32": {
+   "digest": "7fd25a869ff21678",
+   "expected": "7fd25a869ff21678",
+   "held": true
+  },
+  "qwen25-0.5b-4bit:long-decode-128": {
+   "digest": "4cc08910089477fd",
+   "expected": "4cc08910089477fd",
+   "held": true
+  },
+  "qwen25-0.5b-4bit:longctx-1024-decode-32": {
+   "digest": "7da83f06ec9f001d",
+   "expected": "7da83f06ec9f001d",
+   "held": true
+  },
+  "qwen25-0.5b-bf16:short-decode-32": {
+   "digest": "f26175202f3dabe9",
+   "expected": "f26175202f3dabe9",
+   "held": true
+  },
+  "qwen25-0.5b-bf16:long-decode-128": {
+   "digest": "8690dc83246b39f8",
+   "expected": "8690dc83246b39f8",
+   "held": true
+  },
+  "qwen25-0.5b-bf16:longctx-1024-decode-32": {
+   "digest": "ff502900d2a179a5",
+   "expected": "ff502900d2a179a5",
+   "held": true
+  }
+ },
+ "base-r1": {
+  "qwen25-0.5b-4bit:short-decode-32": {
+   "digest": "7fd25a869ff21678",
+   "expected": "7fd25a869ff21678",
+   "held": true
+  },
+  "qwen25-0.5b-4bit:long-decode-128": {
+   "digest": "4cc08910089477fd",
+   "expected": "4cc08910089477fd",
+   "held": true
+  },
+  "qwen25-0.5b-4bit:longctx-1024-decode-32": {
+   "digest": "7da83f06ec9f001d",
+   "expected": "7da83f06ec9f001d",
+   "held": true
+  },
+  "qwen25-0.5b-bf16:short-decode-32": {
+   "digest": "f26175202f3dabe9",
+   "expected": "f26175202f3dabe9",
+   "held": true
+  },
+  "qwen25-0.5b-bf16:long-decode-128": {
+   "digest": "8690dc83246b39f8",
+   "expected": "8690dc83246b39f8",
+   "held": true
+  },
+  "qwen25-0.5b-bf16:longctx-1024-decode-32": {
+   "digest": "ff502900d2a179a5",
+   "expected": "ff502900d2a179a5",
+   "held": true
+  }
+ },
+ "base-r2": {
+  "qwen25-0.5b-4bit:short-decode-32": {
+   "digest": "7fd25a869ff21678",
+   "expected": "7fd25a869ff21678",
+   "held": true
+  },
+  "qwen25-0.5b-4bit:long-decode-128": {
+   "digest": "4cc08910089477fd",
+   "expected": "4cc08910089477fd",
+   "held": true
+  },
+  "qwen25-0.5b-4bit:longctx-1024-decode-32": {
+   "digest": "7da83f06ec9f001d",
+   "expected": "7da83f06ec9f001d",
+   "held": true
+  },
+  "qwen25-0.5b-bf16:short-decode-32": {
+   "digest": "f26175202f3dabe9",
+   "expected": "f26175202f3dabe9",
+   "held": true
+  },
+  "qwen25-0.5b-bf16:long-decode-128": {
+   "digest": "8690dc83246b39f8",
+   "expected": "8690dc83246b39f8",
+   "held": true
+  },
+  "qwen25-0.5b-bf16:longctx-1024-decode-32": {
+   "digest": "ff502900d2a179a5",
+   "expected": "ff502900d2a179a5",
+   "held": true
+  }
+ },
+ "base-r3": {
+  "qwen25-0.5b-4bit:short-decode-32": {
+   "digest": "7fd25a869ff21678",
+   "expected": "7fd25a869ff21678",
+   "held": true
+  },
+  "qwen25-0.5b-4bit:long-decode-128": {
+   "digest": "4cc08910089477fd",
+   "expected": "4cc08910089477fd",
+   "held": true
+  },
+  "qwen25-0.5b-4bit:longctx-1024-decode-32": {
+   "digest": "7da83f06ec9f001d",
+   "expected": "7da83f06ec9f001d",
+   "held": true
+  },
+  "qwen25-0.5b-bf16:short-decode-32": {
+   "digest": "f26175202f3dabe9",
+   "expected": "f26175202f3dabe9",
+   "held": true
+  },
+  "qwen25-0.5b-bf16:long-decode-128": {
+   "digest": "8690dc83246b39f8",
+   "expected": "8690dc83246b39f8",
+   "held": true
+  },
+  "qwen25-0.5b-bf16:longctx-1024-decode-32": {
+   "digest": "ff502900d2a179a5",
+   "expected": "ff502900d2a179a5",
+   "held": true
+  }
+ }
+}

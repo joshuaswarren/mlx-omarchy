@@ -1,0 +1,9 @@
+{"arm": 0, "shape": "262x896x128", "median_ms": 0.6988, "f16_digest": "6a31dc466db80a40", "tflops": 86.0}
+{"arm": 0, "shape": "1053x896x128", "median_ms": 0.6703, "f16_digest": "e9218e07c9c13e5e", "tflops": 360.4}
+{"arm": 0, "shape": "262x896x896", "median_ms": 0.7603, "f16_digest": "5c42552b5320472e", "tflops": 553.3}
+{"arm": 0, "shape": "1053x896x896", "median_ms": 1.9781, "f16_digest": "2df9480de6e511ec", "tflops": 854.7}
+{"arm": 0, "shape": "262x4864x896", "median_ms": 2.7132, "f16_digest": "ecd08c8841ecd105", "tflops": 841.7}
+{"arm": 0, "shape": "1053x4864x896", "median_ms": 9.3548, "f16_digest": "3e79733f76ed9d37", "tflops": 981.1}
+{"arm": 0, "shape": "262x896x9728", "median_ms": 5.0635, "f16_digest": "4e29e2dbdf33b57b", "tflops": 902.0}
+{"arm": 0, "shape": "1053x896x9728", "median_ms": 17.6715, "f16_digest": "5179630cd4a7c3f9", "tflops": 1038.8}
+PROBE-DONE
