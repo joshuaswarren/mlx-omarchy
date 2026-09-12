@@ -10,6 +10,26 @@ Two of the worst v0.3.0 defects never appeared on a Linux development box. They 
 
 ## Open portability gaps
 
+### Affine quantized matmul mis-composes a non-zero storage offset at m=1
+
+Open, and older than it looked. `omarchy_primitive_tests` case "quantized
+matmul binds affine streams at storage offsets" fails on the M1 by 1.8% at a
+4e-3 epsilon - a wrong value, not a refusal. It reproduces at every checkpoint
+back through `bddc061f`, the case text is byte-identical across that range, and
+the affine dispatch block was untouched by the 2026-09-11 layout work, so an
+earlier report that this case was green on the M1 does not reproduce.
+
+The mechanism points at `1f6a7bf8` (2026-09-06, binding affine scales and
+biases directly): the m=1 vector route composes `aux_offset` from the scale
+base item and `aux_size` from the bias base item over whole-buffer bindings,
+while the m>1 general route composes the same view offsets correctly - which is
+why the failure is m=1 only. Impact is synthetic: real models pass scale and
+bias arrays at offset zero, and every canonical digest holds. It is left
+emitting values rather than refusing because a refusal at that site would also
+take down the passing general route; the fix is to derive the view offset per
+stream rather than per buffer. Receipt:
+[`receipts/2026-09-12-composed-regressions/README.md`](../receipts/2026-09-12-composed-regressions/README.md).
+
 ### Cooperative-matrix prefill output depends on which Mesa build provides the extension
 
 Observed on the M1 on 2026-09-10. The Q4 prefill cooperative-matrix
