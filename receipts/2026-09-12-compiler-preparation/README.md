@@ -101,10 +101,10 @@ No script or lock in this change references `~/src/mil-hwx-compiler`.
   The pinned commit `a0ce354` was pushed as branch `ane-parity` and tagged
   `ane-parity-a0ce354`, and the locked archive was published as the
   immutable release asset above.
-- From this host, the anonymous asset URL answered 404 while an
-  authenticated `gh release download` of the same asset returned the
-  locked bytes; prepare falls back to `gh` in that case. The SHA-256 check
-  gates either path.
+- The initial archive URL misspelled the repository owner as
+  `joshuawarren`. The canonical public owner is `joshuaswarren`; its
+  anonymous release URL answers successfully. The incorrect authenticated
+  fallback was removed. The locked SHA-256 still gates every build.
 
 ## Not established by this receipt
 

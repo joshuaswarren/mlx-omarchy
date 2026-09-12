@@ -1,7 +1,7 @@
 {
   "audio": {
     "duration_seconds": 11.0,
-    "license": "CC-BY-4.0 (LibriSpeech test-clean utterance 1089-134686-0001)",
+    "license": "Distributed in openai/whisper under MIT; separate source-recording rights are not documented in that repository",
     "note": "Real speech: JFK inaugural address excerpt ('And so, my fellow Americans, ask not...'), 44.1 kHz stereo FLAC 24-bit, mirrored verbatim in openai/whisper at pinned commit; loaded by the reference AudioLoader to 16 kHz mono float32 [-1,1].",
     "sample_rate": 44100,
     "sha256": "63a4b1e4c1dc655ac70961ffbf518acd249df237e5a0152faae9a4a836949715",
@@ -107,7 +107,7 @@
   "model_repo": "mweinbach1/parakeet-tdt-0.6b-v3-coreml",
   "model_revision": "b650695c2322ee5281dff48d7345b2f3a58ff018",
   "numerical_contract": {
-    "derived_from": "Measured cross-compute-plan divergence of encoder_hidden [1,375,640] fp32 on Apple M1 Ultra / macOS 26.6.2 (25G83), CoreML 3520.5.1, pinned revision b650695c: ANE-vs-GPU max_abs=0.1148 mean_abs=0.00707 rel_l2=0.0386; ANE-vs-CPU max_abs=0.1313 mean_abs=0.00855 rel_l2=0.0471. Frozen bounds = 2x measured worst, rounded up. Waveform, mel, padded encoder inputs and encoder_mask bit-identical across compute plans; token/duration/frame sequences and transcript exactly identical across ANE/GPU/CPU; 0 NaN/Inf. Golden capture: 20260912T135844Z-ane.",
+    "derived_from": "Measured cross-compute-plan divergence of encoder_hidden [1,375,640] fp32 on Apple M1 Ultra / macOS 26.6.2 (25G83), CoreML 3520.5.1, pinned revision b650695c: ANE-vs-GPU max_abs=0.1148 mean_abs=0.00707 rel_l2=0.0386; ANE-vs-CPU max_abs=0.1313 mean_abs=0.00855 rel_l2=0.0471. Frozen bounds = 2x measured worst, rounded up. Waveform, mel, padded encoder inputs and encoder_mask bit-identical across compute plans; token IDs and transcript identical across ANE/GPU/CPU; duration/frame metadata differs at three indices each. 0 NaN/Inf. Golden capture unchanged: 20260912T135844Z-ane.",
     "encoder_max_abs_err": 0.3,
     "encoder_mean_abs_err": 0.02,
     "encoder_rel_l2_err": 0.1,

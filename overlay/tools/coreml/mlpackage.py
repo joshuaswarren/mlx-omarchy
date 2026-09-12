@@ -1,56 +1,25 @@
 # Copyright © 2026 Joshua Warren / mlx-omarchy contributors.
 # SPDX-License-Identifier: MIT
-""".mlpackage reader and typed model inventory.
+"""Inspect Core ML packages using the vendored official protobuf schema.
 
-Reads a Core ML ``.mlpackage`` directory (manifest, model
-specification, weight files) and produces a JSON-ready inventory that
-answers the plan's inspector checklist (section 14 of
-``docs/plans/2026-09-12-coreml-parakeet-ane-plan.md``):
-
-* package format and file-format version,
-* model/spec type (which ``Model.Type`` oneof is set),
-* functions, blocks, and every operation with its parameter bindings,
-  typed outputs, and nested blocks,
-* input/output/state names, dtypes (FeatureType enum), and shapes
-  including symbolic/flexible shape declarations,
-* MIL-level tensor dtypes (the distinct MIL enum),
-* external weight files with sizes and sha-256 hashes, plus every
-  blob reference (file + offset) and which ops reference them,
-* compression representation (``constexpr_*`` ops such as
-  ``constexpr_lut_to_dense`` with their palettization/lut metadata),
-* program/function versions and opset names,
-* control flow (operations with nested blocks),
-* operation histogram and total op counts,
-* parse validity and confidence (unknown constructs are explicit),
-* compiler eligibility: explicitly **not assessed** here — that
-  belongs to the compiler's coverage data, never to guessed rules.
-
-The model specification is parsed with the officially vendored Core ML
-protobuf schema (:mod:`coreml.schema`, provenance in
-``schema/VENDORED.json``). No tensor data is read or computed. No ANE
-device, no GPU, no compiler is touched: this module is pure file and
-protobuf reading, safe on any Linux host.
-
-Everything that used to be hand-guessed here (varint wire walking,
-hand-written dtype tables that labeled MIL ``BOOL=1`` as ``float16``)
-was deleted, not patched: the official schema is the single source.
+Inventories describe types, bindings, nested operations, and blob references.
+Weights are streamed for hashing, not decoded. Compiler eligibility is
+assessed separately against the target compiler, never inferred here.
 """
 
 from __future__ import annotations
 
 import hashlib
 import json
-import re
 from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 from . import proto
-from .proto import ModelSpecError, load_model
+from .proto import load_model
 
 INVENTORY_SCHEMA = "mlx-omarchy.coreml.inventory/1"
-
-_IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_.]*$")
 
 
 class MlPackageError(RuntimeError):
@@ -73,7 +42,7 @@ class WeightFile:
 @dataclass
 class MlPackage:
     path: Path
-    file_format_version: str
+    file_format_version: str | None
     root_identifier: str | None
     manifest: dict
     model_path: Path
@@ -89,7 +58,7 @@ def _check_manifest_path(raw: object, package: Path) -> str:
     """
     if not isinstance(raw, str) or not raw:
         raise MlPackageError(f"{package}: Manifest.json entry has no path")
-    if raw.startswith("/") or raw.startswith("\\") or Path(raw).is_absolute():
+    if raw.startswith(("/", "\\")) or Path(raw).is_absolute():
         raise MlPackageError(
             f"{package}: Manifest.json entry path is absolute: {raw!r}"
         )
@@ -99,6 +68,13 @@ def _check_manifest_path(raw: object, package: Path) -> str:
             f"{package}: Manifest.json entry path escapes the package: {raw!r}"
         )
     return raw
+
+
+def _contained(path: Path, package: Path) -> Path:
+    resolved = path.resolve()
+    if not resolved.is_relative_to(package):
+        raise MlPackageError(f"{path}: path escapes the package")
+    return resolved
 
 
 def open_mlpackage(path: Path) -> MlPackage:
@@ -113,7 +89,7 @@ def open_mlpackage(path: Path) -> MlPackage:
     if not p.is_dir():
         raise MlPackageError(f"{p}: not a directory (mlpackages are directories)")
 
-    manifest_path = p / "Manifest.json"
+    manifest_path = _contained(p / "Manifest.json", p)
     if not manifest_path.is_file():
         raise MlPackageError(f"{p}: missing Manifest.json")
     try:
@@ -127,7 +103,12 @@ def open_mlpackage(path: Path) -> MlPackage:
     if not isinstance(entries, dict) or not entries:
         raise MlPackageError(f"{manifest_path}: no itemInfoEntries")
 
-    model_rel: list[str] = []
+    root_id = manifest.get("rootModelIdentifier")
+    if not isinstance(root_id, str) or root_id not in entries:
+        raise MlPackageError(
+            f"{manifest_path}: rootModelIdentifier has no matching entry"
+        )
+    paths = {}
     weights_rel: list[str] = []
     for entry_id, info in entries.items():
         if not isinstance(info, dict):
@@ -135,21 +116,10 @@ def open_mlpackage(path: Path) -> MlPackage:
                 f"{manifest_path}: itemInfoEntries[{entry_id!r}] is not an object"
             )
         rel = _check_manifest_path(info.get("path"), p)
-        name = info.get("name")
-        if name == "model.mlmodel":
-            model_rel.append(rel)
-        elif name == "weights":
+        paths[entry_id] = _contained(p / "Data" / rel, p)
+        if info.get("name") == "weights":
             weights_rel.append(rel)
-
-    if not model_rel:
-        raise MlPackageError(f"{p}: manifest does not name a model.mlmodel")
-    if len(model_rel) > 1:
-        raise MlPackageError(
-            f"{p}: manifest names {len(model_rel)} model.mlmodel entries "
-            f"({', '.join(sorted(model_rel))}); refusing ambiguity"
-        )
-
-    model_path = p / "Data" / model_rel[0]
+    model_path = paths[root_id]
     if not model_path.is_file():
         raise MlPackageError(f"{model_path}: model file named by manifest is missing")
 
@@ -159,19 +129,21 @@ def open_mlpackage(path: Path) -> MlPackage:
             raise MlPackageError(
                 f"{p}: manifest names {len(weights_rel)} weights entries"
             )
-        weights_dir = p / "Data" / weights_rel[0]
+        weights_dir = _contained(p / "Data" / weights_rel[0], p)
 
     weight_files: list[WeightFile] = []
     if weights_dir is not None and weights_dir.is_dir():
         for wf in sorted(weights_dir.rglob("*")):
-            if wf.is_file():
-                data = wf.read_bytes()
+            target = _contained(wf, p)
+            if target.is_file():
+                with target.open("rb") as stream:
+                    digest = hashlib.file_digest(stream, "sha256").hexdigest()
                 weight_files.append(
                     WeightFile(
-                        path=wf,
+                        path=target,
                         relative=wf.relative_to(p).as_posix(),
-                        size=len(data),
-                        sha256=hashlib.sha256(data).hexdigest(),
+                        size=target.stat().st_size,
+                        sha256=digest,
                     )
                 )
 
@@ -206,9 +178,7 @@ def _argument_summary(argument: Any) -> list[dict]:
 
 
 def _named_types_summary(named: list[Any]) -> list[dict]:
-    return [
-        {"name": t.name, "type": proto.value_type_summary(t.type)} for t in named
-    ]
+    return [{"name": t.name, "type": proto.value_type_summary(t.type)} for t in named]
 
 
 def _op_summary(op: Any, index: int) -> dict:
@@ -243,13 +213,7 @@ def _function_summary(name: str, function: Any) -> dict:
     specializations = function.block_specializations
     blocks = {k: _block_summary(b) for k, b in sorted(specializations.items())}
     active = function.opset if function.opset in blocks else None
-    histogram: Counter = Counter()
-    for block in blocks.values():
-        for op in block["operations"]:
-            histogram[op["type"]] += 1
-            for nested in op["blocks"]:
-                for nested_op in nested["operations"]:
-                    histogram[nested_op["type"]] += 1
+    histogram = Counter(op["type"] for op in _walk_ops(blocks.values()))
     opset_note = None
     if active is None:
         opset_note = (
@@ -258,7 +222,7 @@ def _function_summary(name: str, function: Any) -> dict:
             if function.opset
             else "function.opset is empty and has no default specialization"
         )
-    active_block = blocks.get(active) or next(iter(blocks.values()), None)
+    active_block = blocks.get(active)
     return {
         "name": name,
         "opset": function.opset or None,
@@ -270,28 +234,31 @@ def _function_summary(name: str, function: Any) -> dict:
         "opset_consistency": opset_note or "ok",
         "op_histogram": dict(sorted(histogram.items())),
         "op_total": sum(histogram.values()),
-        "control_flow_ops": _control_flow_ops(blocks),
+        "control_flow_ops": sorted(
+            {op["type"] for op in _walk_ops(blocks.values()) if op["blocks"]}
+        ),
     }
 
 
-def _control_flow_ops(blocks: dict) -> list[str]:
-    """Op types that carry nested blocks (while/cond/pattern forms)."""
-    found: list[str] = []
-    for block in blocks.values():
+def _walk_ops(blocks):
+    for block in blocks:
         for op in block["operations"]:
-            if op["blocks"]:
-                found.append(op["type"])
-    return found
+            yield op
+            yield from _walk_ops(op["blocks"])
 
 
-def _const_op_blob_refs(op: dict) -> list[dict]:
-    refs = []
-    for values in op["bindings"].values():
-        for binding in values:
-            storage = binding.get("value", {}).get("storage", {})
-            if "blob_file" in storage:
-                refs.append(storage)
-    return refs
+def _const_op_blob_refs(op: dict):
+    values = list(op["attributes"].values())
+    values.extend(
+        binding["value"]
+        for bindings in op["bindings"].values()
+        for binding in bindings
+        if "value" in binding
+    )
+    for value in values:
+        storage = value.get("storage", {})
+        if "blob_file" in storage:
+            yield storage
 
 
 def describe_package(package: MlPackage) -> dict:
@@ -314,32 +281,29 @@ def describe_package(package: MlPackage) -> dict:
     outputs = [proto.feature_description_summary(f) for f in model.description.output]
     state = [proto.feature_description_summary(f) for f in model.description.state]
 
-    # Weight references and compression representation.
     blob_refs: dict[str, dict] = {}
     constexpr_ops: list[dict] = []
     for fn in functions:
-        for block in fn["block_specializations"].values():
-            for op in block["operations"]:
-                if op["type"].startswith("constexpr_"):
-                    constexpr_ops.append(
-                        {
-                            "function": fn["name"],
-                            "op": op["type"],
-                            "op_index": op["index"],
-                            "inputs": sorted(op["bindings"]),
-                            "value_types": {
-                                k: v[0].get("value", {}).get("type")
-                                for k, v in op["bindings"].items()
-                                if v and "value" in v[0]
-                            },
-                        }
-                    )
-                for ref in _const_op_blob_refs(op):
-                    entry = blob_refs.setdefault(
-                        ref["blob_file"],
-                        {"blob_file": ref["blob_file"], "offsets": []},
-                    )
-                    entry["offsets"].append(ref["offset"])
+        for op in _walk_ops(fn["block_specializations"].values()):
+            if op["type"].startswith("constexpr_"):
+                constexpr_ops.append(
+                    {
+                        "function": fn["name"],
+                        "op": op["type"],
+                        "op_index": op["index"],
+                        "inputs": sorted(op["bindings"]),
+                        "value_types": {
+                            k: v[0]["value"].get("type")
+                            for k, v in op["bindings"].items()
+                            if v and "value" in v[0]
+                        },
+                    }
+                )
+            for ref in _const_op_blob_refs(op):
+                entry = blob_refs.setdefault(
+                    ref["blob_file"], {"blob_file": ref["blob_file"], "offsets": []}
+                )
+                entry["offsets"].append(ref["offset"])
 
     weight_summary = []
     for wf in package.weight_files:
@@ -352,17 +316,22 @@ def describe_package(package: MlPackage) -> dict:
         )
 
     referenced_blobs = []
+    weights_by_path = {wf.path: wf for wf in package.weight_files}
     for entry in sorted(blob_refs.values(), key=lambda e: e["blob_file"]):
         name = entry["blob_file"]
-        # Resolve @model_path/... aliases against the package contents.
-        tail = name.split("@model_path/", 1)[-1] if "@model_path/" in name else name
-        match = [wf for wf in package.weight_files if wf.relative.endswith(tail)]
+        tail = name.removeprefix("@model_path/")
+        rel = _check_manifest_path(tail, package.path)
+        target = _contained(package.model_path.parent / rel, package.path)
+        match = weights_by_path.get(target)
+        offsets = sorted(set(entry["offsets"]))
         referenced_blobs.append(
             {
                 "blob_file": name,
-                "distinct_offsets": len(sorted(set(entry["offsets"]))),
-                "resolved_file": match[0].relative if match else None,
-                "resolved": bool(match),
+                "distinct_offsets": len(offsets),
+                "offsets": offsets,
+                "resolved_file": match.relative if match else None,
+                "resolved": match is not None
+                and all(0 <= offset < match.size for offset in offsets),
             }
         )
 

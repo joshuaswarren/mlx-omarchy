@@ -9,8 +9,9 @@ Read these files before changing code:
 3. `docs/roadmap.md`
 4. `docs/compatibility.md`
 5. `docs/plans/2026-08-29-mlx-omarchy-ane-compatibility-plan.md`
-6. `docs/plans/2026-09-12-coreml-parakeet-ane-plan.md` (the planned Core
-   ML/Parakeet ANE lane; plan only, nothing from it is implemented yet)
+6. `docs/plans/2026-09-12-coreml-parakeet-ane-plan.md` (Core ML/Parakeet
+   plan; package inspection, reference capture, and compiler preparation
+   exist in source. Linux encoder execution remains unqualified.)
 
 Run `scripts/prepare-mlx.sh` before inspecting the pinned MLX source.
 Inspect the affected backend under `.work/mlx`.

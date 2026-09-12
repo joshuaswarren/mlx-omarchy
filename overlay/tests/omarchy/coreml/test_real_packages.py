@@ -34,18 +34,23 @@ def _cache_root() -> Path | None:
     candidates = []
     if root:
         candidates.append(
-            Path(root) / "parakeet-reference" / "mweinbach1"
+            Path(root)
+            / "parakeet-reference"
+            / "mweinbach1"
             / "parakeet-tdt-0.6b-v3-coreml"
         )
     candidates.append(
-        Path.home() / ".cache" / "mlx-omarchy" / "parakeet-reference"
-        / "mweinbach1" / "parakeet-tdt-0.6b-v3-coreml"
+        Path.home()
+        / ".cache"
+        / "mlx-omarchy"
+        / "parakeet-reference"
+        / "mweinbach1"
+        / "parakeet-tdt-0.6b-v3-coreml"
     )
     for base in candidates:
-        if base.is_dir():
-            revs = sorted(p for p in base.iterdir() if p.is_dir())
-            if revs:
-                return revs[0]
+        pinned = base / _HF_REVISION
+        if pinned.is_dir():
+            return pinned
     return None
 
 

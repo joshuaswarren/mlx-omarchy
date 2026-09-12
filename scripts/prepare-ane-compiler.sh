@@ -29,24 +29,8 @@ mkdir -p "$COMPILER_WORK"
 
 download_archive() {
   if [[ ! -f "$ARCHIVE" ]]; then
-    if ! curl --fail --location --retry 5 --retry-all-errors --retry-delay 10 \
-        --output "$ARCHIVE" "$ANE_COMPILER_ARCHIVE_URL" \
-        || [[ "$(head -c2 "$ARCHIVE" | od -An -tx1 | tr -d ' \n')" != "1f8b" ]]; then
-      # Some hosts answer the anonymous asset URL with 404 while logged-in
-      # fetches work; same immutable asset, same bytes, hash still enforced.
-      rm -f "$ARCHIVE"
-      command -v gh >/dev/null 2>&1 \
-        || { echo "archive download failed: $ANE_COMPILER_ARCHIVE_URL" >&2; exit 1; }
-      gh release download "$ANE_COMPILER_RELEASE_TAG" --repo "$ANE_COMPILER_REPOSITORY" \
-        --pattern "$(basename "$ANE_COMPILER_ARCHIVE_URL")" --output "$ARCHIVE"
-    fi
-  fi
-  # Fail fast on non-archive bytes (GitHub sometimes answers with a short
-  # "404: Not Found" body while its archive cache is still cold).
-  if [[ "$(head -c2 "$ARCHIVE" | od -An -tx1 | tr -d ' \n')" != "1f8b" ]]; then
-    rm -f "$ARCHIVE"
-    echo "downloaded file is not a gzip archive: $ANE_COMPILER_ARCHIVE_URL" >&2
-    exit 1
+    curl --fail --location --connect-timeout 10 --max-time 120 --retry 3 \
+      --remove-on-error --output "$ARCHIVE" "$ANE_COMPILER_ARCHIVE_URL"
   fi
 }
 

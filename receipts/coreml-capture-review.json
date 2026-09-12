@@ -1,0 +1,71 @@
+{
+  "capture": "20260912T144331Z-review",
+  "golden_capture_unchanged": "20260912T135844Z-ane",
+  "scope": "macOS reference only; no Linux ANE inference",
+  "plans": {
+    "ane": {
+      "crosscheck": {
+        "e2e_token_count": 52,
+        "e2e_transcript": "And so, my fellow Americans, ask not what your country can do for you ask what you can do for your country................",
+        "tokens_match": true,
+        "transcript_match": true
+      },
+      "all_arrays_finite": true,
+      "host_preprocessing_and_mask_exact": true,
+      "token_ids_and_transcript_exact": true,
+      "encoder_max_abs": 0,
+      "encoder_mean_abs": 0,
+      "encoder_rel_l2": 0,
+      "duration_mismatch_indices": [],
+      "frame_mismatch_indices": []
+    },
+    "gpu": {
+      "crosscheck": {
+        "e2e_token_count": 52,
+        "e2e_transcript": "And so, my fellow Americans, ask not what your country can do for you ask what you can do for your country................",
+        "tokens_match": true,
+        "transcript_match": true
+      },
+      "all_arrays_finite": true,
+      "host_preprocessing_and_mask_exact": true,
+      "token_ids_and_transcript_exact": true,
+      "encoder_max_abs": 0.11483418941497803,
+      "encoder_mean_abs": 0.007074137196006389,
+      "encoder_rel_l2": 0.038580824193243206,
+      "duration_mismatch_indices": [
+        21,
+        27,
+        28
+      ],
+      "frame_mismatch_indices": [
+        22,
+        23,
+        28
+      ]
+    },
+    "cpu": {
+      "crosscheck": {
+        "e2e_token_count": 52,
+        "e2e_transcript": "And so, my fellow Americans, ask not what your country can do for you ask what you can do for your country................",
+        "tokens_match": true,
+        "transcript_match": true
+      },
+      "all_arrays_finite": true,
+      "host_preprocessing_and_mask_exact": true,
+      "token_ids_and_transcript_exact": true,
+      "encoder_max_abs": 0.13128662109375,
+      "encoder_mean_abs": 0.008552762866516909,
+      "encoder_rel_l2": 0.0471107978093358,
+      "duration_mismatch_indices": [
+        21,
+        27,
+        28
+      ],
+      "frame_mismatch_indices": [
+        22,
+        23,
+        28
+      ]
+    }
+  }
+}

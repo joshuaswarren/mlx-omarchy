@@ -1,0 +1,77 @@
+{
+  "schema": "mlx-omarchy.coreml.integration-review/1",
+  "date": "2026-09-12",
+  "scope": "source tooling and host qualification only; not a feature release",
+  "checks": [
+    {
+      "command": "python3 -m pytest tests/coreml/ overlay/tests/omarchy/coreml/ -q",
+      "result": "68 passed in 8.28s"
+    },
+    {
+      "command": "python3 overlay/tools/coreml/fetch_parakeet_reference.py verify",
+      "result": "12 pinned model files verified"
+    },
+    {
+      "command": "python3 overlay/tools/coreml/inspect_mlpackage.py inspect <pinned-cache>/encoder.mlpackage --strict",
+      "result": "3351 operations; 194 constexpr operations; 814 resolved blob offsets; parse validity ok; eligibility not assessed"
+    },
+    {
+      "command": "bash -n scripts/prepare-ane-compiler.sh scripts/verify-ane-compiler.sh && shellcheck scripts/prepare-ane-compiler.sh scripts/verify-ane-compiler.sh",
+      "result": "exit 0"
+    },
+    {
+      "command": "MLX_OMARCHY_WORK_DIR=<isolated-work-dir> scripts/verify-ane-compiler.sh all",
+      "result": "verify-ane-compiler: PASS; wrong archive rejected; software tests and hygiene passed; known conv_relu emitted 4097 H13 ANEC programs",
+      "compiler_commit": "a0ce354cf800011a84420da4e12013eb8140b2a5",
+      "archive_sha256": "12bfbcd0049849dba18ee5fd3556762bf3313459c8ca5a65ae962f507a5b6d64",
+      "device_access": "none"
+    },
+    {
+      "command": "cmake --build <isolated-build> --target omarchy_primitive_tests -j 8",
+      "result": "build completed; x86_64 host, CPU backend enabled for development only"
+    },
+    {
+      "command": "ctest --test-dir <isolated-build> -R ^omarchy_primitive_tests$ --output-on-failure --timeout 180",
+      "result": "exit 0, but Vulkan paths self-skipped; only 9 host assertions; NOT GPU qualification"
+    },
+    {
+      "command": "python3 /tmp/check-capture-strides.py",
+      "result": "strided MLMultiArray serialized exactly; NPY newline and 64-byte alignment valid; malformed arguments exit 2"
+    }
+  ],
+  "capture_receipt": "coreml-capture-review.json",
+  "capture_npy_reproducer": "On macOS: python3 receipts/2026-09-12-capture-npy-check.py overlay/tools/coreml/capture/Sources/parakeet-reference-capture/main.swift; executed successfully against the corrected Mac source",
+  "compiler_coverage": {
+    "receipt": "https://github.com/joshuaswarren/ane-linux-experiments/tree/5476d1763c1d89845bc66f92924e5bb9660dfa15/receipts/2026-09-12-parakeet-compiler-coverage",
+    "scope": "static classification, not measured execution coverage",
+    "counts": {
+      "direct": 294,
+      "direct-alias": 158,
+      "direct-const": 1783,
+      "normalization-needed": 427,
+      "missing-envelope": 250,
+      "missing": 439
+    },
+    "rows_verified": 3351
+  },
+  "stopped_at": {
+    "plan_section": 62,
+    "layer": "H13 compiler representation and qualified operation coverage",
+    "reasons": [
+      "Runtime attention masking has no qualified encoder path.",
+      "Required attention, convolution, unary and softmax geometries are outside current templates.",
+      "Single-return fp16 bindings do not preserve the public mixed-type, two-output encoder contract."
+    ],
+    "not_claimed": [
+      "Linux Parakeet encoder compilation or execution",
+      "ANE bundle adapter qualification",
+      "M1 GPU regression qualification by the local CTest run",
+      "100 warm runs",
+      "fresh installation",
+      "full native MLX performance parity"
+    ]
+  },
+  "audio_license": "Separate rights for the pinned JFK recording remain undocumented; public licensed-fixture gate remains open.",
+  "performance_receipt": "2026-09-12-bf16-vector-mapping/verdict.json",
+  "performance_result": "negative; load widening is not bit preserving; no shader change landed"
+}

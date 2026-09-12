@@ -62,8 +62,10 @@ crosscheck: tokens_match=true transcript_match=true   (composed run vs
             pinned end-to-end ParakeetTranscriber)
 ```
 
-GPU and CPU captures produce the **identical** token/duration/frame sequences
-and transcript. Cross-plan comparison (numpy, in session log):
+GPU and CPU captures produce identical token IDs and transcript, not identical
+duration/frame sequences. Review capture confirms three differences in each
+of those diagnostic fields; see coreml-capture-review.json in this receipt
+directory. Cross-plan encoder comparison:
 
 ```text
 waveform/mel/mel_mask/encoder_input_features/encoder_input_mask: bit-identical
@@ -75,8 +77,8 @@ NaN/Inf: 0
 
 Frozen contract (lock `numerical_contract`): encoder max_abs ≤ 0.30,
 mean_abs ≤ 0.02, rel_l2 ≤ 0.10 (= 2× measured worst, rounded up), NaN/Inf = 0,
-token/duration/frame sequences + transcript exact. Host preprocessing
-compared exactly (bit-identical observed).
+token IDs + transcript exact (plan section 40, layers 6–7). Host preprocessing
+is compared exactly. Duration/frame equality was an erroneous extra claim.
 
 Note: the encoder input is 3000 frames (spec maxTime); the reference mel of a
 padded 30 s chunk yields 3001 frames and the reference input construction
@@ -126,6 +128,6 @@ no downloader→inspector dependency; their `proto.py`/`mlpackage.py`/
   address excerpt ("ask not…"), not the "man in the arena" passage first
   assumed; lock note fixed before commit. Model transcript (with the model's
   emitted trailing periods) is the pinned expectation.
-* Joint-logit tensor bounds are `None` in the contract by design: logits are
-  internal to the reference decode loop; the enforced observable is exact
-  token/duration/frame sequence equality.
+Joint-logit tensor bounds remain None: plan section 40, layer 6 compares
+emitted token IDs. Duration/frame metadata is retained for diagnosis, not
+asserted equal across compute plans.

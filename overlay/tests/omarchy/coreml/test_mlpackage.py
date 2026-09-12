@@ -4,6 +4,7 @@
 schema (validation, type semantics, flexibility, failures) plus the
 consumer contract."""
 
+import atexit
 import hashlib
 import json
 import tempfile
@@ -16,10 +17,9 @@ except ImportError:  # package discovery (omarchy.coreml.*)
     from ._bootstrap import _TOOLS  # noqa: F401
 
 from coreml import proto
-from coreml.mlpackage import INVENTORY_SCHEMA, MlPackageError, inspect
 from coreml.inspect_mlpackage import main
+from coreml.mlpackage import INVENTORY_SCHEMA, MlPackageError, inspect
 from coreml.schema import MIL_pb2, Model_pb2
-
 
 # ---------------------------------------------------------------------------
 # Synthetic package builder (official bindings only — no wire handiwork)
@@ -114,9 +114,7 @@ def build_model() -> Model_pb2.Model:
     return model
 
 
-def write_package(
-    root: Path, model: Model_pb2.Model, *, weights: bool = True
-) -> Path:
+def write_package(root: Path, model: Model_pb2.Model, *, weights: bool = True) -> Path:
     (root / "Data" / "com.apple.CoreML" / "weights").mkdir(parents=True)
     (root / "Data" / "com.apple.CoreML" / "model.mlmodel").write_bytes(
         model.SerializeToString()
@@ -146,10 +144,9 @@ def write_package(
 
 
 def make_package(model: Model_pb2.Model, **kwargs) -> Path:
-    # mkdtemp dirs are cleaned when the test process exits; the tests
-    # are short-lived, so no explicit holder is needed.
-    return write_package(Path(tempfile.mkdtemp()) / "model.mlpackage", model, **kwargs)
-
+    tmp = tempfile.TemporaryDirectory()
+    atexit.register(tmp.cleanup)
+    return write_package(Path(tmp.name) / "model.mlpackage", model, **kwargs)
 
 
 def walk_bindings(inv: dict, *, expect_error: bool) -> None:
@@ -172,12 +169,13 @@ def walk_bindings(inv: dict, *, expect_error: bool) -> None:
                                 f"function {fn['name']}: op #{op['index']} "
                                 f"{op['type']!r} param {param!r} consumes "
                                 f"undefined value {name!r}"
-                        )
+                            )
                 for out in op["outputs"]:
                     defined.add(out["name"])
     if expect_error:
         raise ValueError(errors[0])
     assert not errors, errors
+
 
 # ---------------------------------------------------------------------------
 # Tests
@@ -325,15 +323,6 @@ class PackageValidationTest(unittest.TestCase):
             inspect(pkg)
         self.assertIn("model file named by manifest is missing", str(ctx.exception))
 
-    def test_missing_model_entry_refused(self):
-        pkg = make_package(build_model())
-        manifest = json.loads((pkg / "Manifest.json").read_text())
-        del manifest["itemInfoEntries"]["model-id"]
-        (pkg / "Manifest.json").write_text(json.dumps(manifest))
-        with self.assertRaises(MlPackageError) as ctx:
-            inspect(pkg)
-        self.assertIn("does not name a model.mlmodel", str(ctx.exception))
-
     def test_truncated_model_spec_is_parse_error_not_crash(self):
         pkg = make_package(build_model())
         model_file = pkg / "Data" / "com.apple.CoreML" / "model.mlmodel"
@@ -367,6 +356,70 @@ class MissingWeightsTest(unittest.TestCase):
         inv = inspect(pkg)
         expected = hashlib.sha256(b"\x00" * 128).hexdigest()
         self.assertEqual(inv["weights"]["files"][0]["sha256"], expected)
+
+
+class CompleteInventoryTest(unittest.TestCase):
+    def test_nested_attribute_weights_and_operations_are_inventoried(self):
+        model = build_model()
+        block = model.mlProgram.functions["main"].block_specializations["CoreML8"]
+        outer = block.operations.add()
+        outer.type = "while_loop"
+        inner = outer.blocks.add().operations.add()
+        inner.type = "cond"
+        const = inner.blocks.add().operations.add()
+        const.type = "const"
+        value = const.attributes["val"]
+        value.blobFileValue.fileName = "@model_path/weights/weight.bin"
+        value.blobFileValue.offset = 96
+        with tempfile.TemporaryDirectory() as tmp:
+            inv = inspect(write_package(Path(tmp), model))
+        self.assertEqual(inv["op_total"], 5)
+        self.assertEqual(inv["op_histogram"]["const"], 2)
+        self.assertEqual(inv["control_flow"]["ops"], ["cond", "while_loop"])
+        self.assertEqual(inv["weights"]["blob_references"][0]["offsets"], [64, 96])
+
+    def test_manifest_root_selects_model_independent_of_filename(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            pkg = write_package(Path(tmp), build_model())
+            old = pkg / "Data/com.apple.CoreML/model.mlmodel"
+            old.rename(old.with_name("encoder.mlmodel"))
+            manifest = json.loads((pkg / "Manifest.json").read_text())
+            manifest["itemInfoEntries"]["model-id"].update(
+                path="com.apple.CoreML/encoder.mlmodel", name="encoder.mlmodel"
+            )
+            (pkg / "Manifest.json").write_text(json.dumps(manifest))
+            self.assertEqual(inspect(pkg)["op_total"], 2)
+
+    def test_unknown_root_identifier_is_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            pkg = write_package(Path(tmp), build_model())
+            manifest = json.loads((pkg / "Manifest.json").read_text())
+            manifest["rootModelIdentifier"] = "missing-id"
+            (pkg / "Manifest.json").write_text(json.dumps(manifest))
+            with self.assertRaises(MlPackageError):
+                inspect(pkg)
+
+    def test_blob_resolution_requires_exact_path_and_valid_offset(self):
+        model = build_model()
+        value = (
+            model.mlProgram.functions["main"]
+            .block_specializations["CoreML8"]
+            .operations[1]
+            .inputs["lut"]
+            .arguments[0]
+            .value
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            pkg = write_package(Path(tmp), model)
+            weight = pkg / "Data/com.apple.CoreML/weights/weight.bin"
+            weight.rename(weight.with_name("wrongweight.bin"))
+            self.assertFalse(inspect(pkg)["weights"]["blob_references"][0]["resolved"])
+            weight.with_name("wrongweight.bin").rename(weight)
+            value.blobFileValue.offset = 128
+            (pkg / "Data/com.apple.CoreML/model.mlmodel").write_bytes(
+                model.SerializeToString()
+            )
+            self.assertFalse(inspect(pkg)["weights"]["blob_references"][0]["resolved"])
 
 
 if __name__ == "__main__":

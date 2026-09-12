@@ -12,7 +12,7 @@ reference Mac and pinned by hash in
 | Public model | [`mweinbach1/parakeet-tdt-0.6b-v3-coreml`](https://huggingface.co/mweinbach1/parakeet-tdt-0.6b-v3-coreml) @ `b650695c2322ee5281dff48d7345b2f3a58ff018` (CC-BY-4.0, inherits `nvidia/parakeet-tdt-0.6b-v3`) |
 | Package files | 12 files pinned by size + SHA-256 (HF LFS oids verified against the live tree at download time) |
 | Quantization | fp16 compute; encoder 4-bit palettized (kmeans, per-grouped-channel, conv excluded); decoder/joint fp16 |
-| Audio fixture | LibriSpeech test-clean `1089-134686-0001` (JFK inaugural excerpt), mirrored verbatim in `openai/whisper@86098128c0b4f24f0e2aa2994de830614b474227:tests/jfk.flac`, SHA-256 `63a4b1e4…949715` |
+| Audio fixture | JFK inaugural excerpt in openai/whisper@86098128c0b4f24f0e2aa2994de830614b474227:tests/jfk.flac, SHA-256 63a4b1e4…949715 |
 | Golden outputs | `waveform`, `mel`, `mel_mask`, padded `encoder_input_*`, `encoder_hidden`, `encoder_mask`, `token_ids`, `transcript`, `environment`, `crosscheck` — SHA-256 in the lock |
 
 Model spec facts (official `coremltools` 9.0 schema inspection, ML Program,
@@ -58,14 +58,19 @@ encoder_hidden (vs golden ANE capture):
   mean |Δ|           ≤ 0.02      (measured 0.00855)
   relative L2        ≤ 0.10      (measured 0.0471)
   NaN / Inf          = 0
-decoder/joint: token, duration and frame sequences must match exactly
-  (joint logits are internal to the reference loop; the sequences are the
-  observable contract, and they are identical across ANE/GPU/CPU runs)
+decoder/joint: emitted token IDs must match exactly
+  (plan section 40, layer 6; duration/frame metadata remains diagnostic)
 transcript: must match exactly
 ```
 
 Host-side preprocessing (waveform, mel, padded inputs, mask) was
 **bit-identical** across all three compute plans, so it is compared exactly.
+
+The corrected capture confirms exact token IDs and transcript across ANE,
+GPU, and CPU. Duration choices at indices 21, 27, and 28 differ, as do
+frame indices 22, 23, and 28. They were incorrectly described as identical
+in the first receipt. Neither the encoder tolerances nor the pinned ANE
+golden artifacts have changed.
 
 ## Downloader
 
@@ -113,9 +118,10 @@ checks its composed run against the reference end-to-end `ParakeetTranscriber`
 * `parakeet-coreml-swift` source: Apache-2.0 (repo `LICENSE`).
 * Model packages + tokenizer: CC-BY-4.0, inherited from
   `nvidia/parakeet-tdt-0.6b-v3` (recorded in package spec metadata and HF card).
-* Audio fixture: LibriSpeech is CC-BY-4.0 (Vassil Panayotov, Daniel Povey);
-  the `openai/whisper` repository (MIT) redistributes this one utterance as a
-  test fixture. Attribution: LibriSpeech corpus, `test-clean`, speaker 1089.
+* Audio fixture: the pinned [Whisper repository LICENSE](https://github.com/openai/whisper/blob/86098128c0b4f24f0e2aa2994de830614b474227/LICENSE)
+  is MIT. Its JFK sample is not a LibriSpeech utterance; the repository
+  does not document the source recording's separate rights. No claim of
+  CC-BY-4.0 or public-domain status is made for those exact audio bytes.
 * `coremltools` (schema inspection + vendored proto schema under
   `overlay/tools/coreml/schema/`): BSD-3-Clause (`LICENSES/coremltools.txt`).
 * No third-party weights are committed to `mlx-omarchy`; the downloader

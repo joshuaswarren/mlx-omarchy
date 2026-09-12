@@ -50,12 +50,23 @@ func writeNpy(_ path: URL, mlArray: MLMultiArray) throws {
     case .float16: descr = "<f2"
     default: throw CaptureError.unsupportedDtype(mlArray.dataType)
     }
-    let count = mlArray.count
-    // contiguous copy out of the MLMultiArray
-    let byteCount = count * (descr == "<f4" ? 4 : descr == "<i4" ? 4 : 2)
-    let bytes = mlArray.dataPointer.assumingMemoryBound(to: UInt8.self)
-    try writeNpy(path, bytes: Data(bytes: bytes, count: byteCount),
-                 descr: descr, shape: shape)
+    let itemSize = mlArray.dataType == .float16 ? 2 : 4
+    let strides = mlArray.strides.map { $0.intValue }
+    let source = mlArray.dataPointer.assumingMemoryBound(to: UInt8.self)
+    var bytes = Data(count: mlArray.count * itemSize)
+    bytes.withUnsafeMutableBytes { destination in
+        for linear in 0..<mlArray.count {
+            var remaining = linear
+            var offset = 0
+            for axis in shape.indices.reversed() {
+                offset += (remaining % shape[axis]) * strides[axis]
+                remaining /= shape[axis]
+            }
+            destination.baseAddress!.advanced(by: linear * itemSize)
+                .copyMemory(from: source.advanced(by: offset * itemSize), byteCount: itemSize)
+        }
+    }
+    try writeNpy(path, bytes: bytes, descr: descr, shape: shape)
 }
 
 func writeNpy(_ path: URL, bytes: Data, descr: String, shape: [Int]) throws {
@@ -64,7 +75,7 @@ func writeNpy(_ path: URL, bytes: Data, descr: String, shape: [Int]) throws {
     // pad header so magic(6) + version(2) + len(2) + header is a multiple of 64
     let base = 6 + 2 + 2 + header.utf8.count + 1
     let padded = ((base + 63) / 64) * 64
-    header += String(repeating: " ", count: padded - base)
+    header += String(repeating: " ", count: padded - base) + "\n"
     var out = Data([0x93, 0x4E, 0x55, 0x4D, 0x50, 0x59] as [UInt8])  // \x93NUMPY
     out.append(contentsOf: [1, 0] as [UInt8])                        // version 1.0
     out.append(contentsOf: withUnsafeBytes(of: UInt16(header.utf8.count).littleEndian) { Array($0) })
@@ -99,10 +110,10 @@ var it = CommandLine.arguments.makeIterator()
 _ = it.next()
 while let arg = it.next() {
     switch arg {
-    case "--audio": audioPath = it.next()!
-    case "--models": modelsPath = it.next()!
-    case "--out": outPath = it.next()!
-    case "--compute-units": computeUnits = it.next()!
+    case "--audio": audioPath = it.next()
+    case "--models": modelsPath = it.next()
+    case "--out": outPath = it.next()
+    case "--compute-units": computeUnits = it.next() ?? ""
     case "--expect":
         guard let spec = it.next(), let eq = spec.firstIndex(of: "=") else {
             throw CaptureError.badExpectFormat("missing '='")
@@ -115,6 +126,11 @@ while let arg = it.next() {
 
 guard let audioPath, let modelsPath, let outPath else {
     FileHandle.standardError.write(Data("usage: --audio A --models M --out O [--compute-units ane] [--expect P=S]...\n".utf8))
+    exit(2)
+}
+
+guard let selectedComputeUnits = ParakeetComputeUnits(rawValue: computeUnits) else {
+    FileHandle.standardError.write(Data("--compute-units must be ane, gpu, cpu, or all\n".utf8))
     exit(2)
 }
 
@@ -185,6 +201,10 @@ while cursor < waveform.count {
     cursor += chunkSamples
 }
 print("chunks: \(chunks.count)")
+guard chunks.count == 1 else {
+    FileHandle.standardError.write(Data("reference capture requires one nonempty audio chunk (at most 30 seconds)\n".utf8))
+    exit(2)
+}
 
 // MARK: - mel (reference MelFeatureExtractor)
 
@@ -197,7 +217,7 @@ print("mel: \(features.numFrames) frames x 128 bins")
 // MARK: - Core ML models + runner (same construction as ParakeetTranscriber)
 
 let config = MLModelConfiguration()
-config.computeUnits = ParakeetComputeUnits(rawValue: computeUnits)!.mlComputeUnits
+config.computeUnits = selectedComputeUnits.mlComputeUnits
 
 func loadModel(_ name: String) throws -> MLModel {
     // Same compile step the reference ModelCache performs (no-numerics
@@ -274,7 +294,7 @@ print("tokens: \(decoded.tokenIds.count)  transcript: \(transcript)")
 // MARK: - cross-check with the reference end-to-end transcriber
 
 let transcriber = try ParakeetTranscriber(
-    modelsRoot: modelsURL, computeUnits: ParakeetComputeUnits(rawValue: computeUnits)!,
+    modelsRoot: modelsURL, computeUnits: selectedComputeUnits,
     decoderWorkers: 1
 )
 let e2e = try transcriber.transcribe(audioURL: audioURL)
@@ -287,6 +307,10 @@ let crosscheck: [String: Any] = [
 let ccData = try JSONSerialization.data(withJSONObject: crosscheck, options: [.prettyPrinted, .sortedKeys])
 try ccData.write(to: outURL.appendingPathComponent("crosscheck.json"))
 print("crosscheck: tokens_match=\(e2e.tokenIds == decoded.tokenIds) transcript_match=\(e2e.text == transcript)")
+guard e2e.tokenIds == decoded.tokenIds && e2e.text == transcript else {
+    FileHandle.standardError.write(Data("reference capture crosscheck failed; outputs are not a golden reference\n".utf8))
+    exit(4)
+}
 
 // MARK: - environment + manifest
 
