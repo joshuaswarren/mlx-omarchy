@@ -147,7 +147,13 @@ void main() {
           scale = float(scales.values[scale_row + chunk]);
           bias = float(biases.values[bias_row + chunk]);
         }
-        for (uint step = 0u; step < CHUNK_K / STEP_K; ++step) {
+        // Opaque trip count: min() against the runtime matrix_k keeps
+        // nir_opt_loop_unroll from flipping this constant-trip-4 loop
+        // into four straight-line copies, which restructures the whole
+        // k region and confounds attribution (matrix_k >= 64 by the
+        // dispatch gate, so the value is always 4).
+        uint step_count = min(CHUNK_K / STEP_K, params.matrix_k);
+        for (uint step = 0u; step < step_count; ++step) {
           uint k_base = chunk * CHUNK_K + step * STEP_K;
 #if QMM_COOP_PROBE_PATH == 1
           uint x_word_k = k_base / 2u;
