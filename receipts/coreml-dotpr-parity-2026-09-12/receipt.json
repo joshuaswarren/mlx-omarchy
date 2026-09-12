@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "scope": "Portable unit-stride arm64 vDSP_dotpr accumulation order for Parakeet mel projection",
+  "implementation_base_commit": "98312f172499c565e82acb1d4a4acbb40c75b228",
+  "reference": {
+    "repository": "mweinbach/parakeet-coreml-swift",
+    "commit": "75aec2a1c991319657ff4dec5f602c12da6c5012",
+    "model_repository": "mweinbach1/parakeet-tdt-0.6b-v3-coreml",
+    "model_revision": "b650695c2322ee5281dff48d7345b2f3a58ff018",
+    "environment": "macOS 26.6.2 (25G83), arm64, Apple Swift 6.3.3",
+    "execution": "CPU-only Accelerate probe; no model, ANE, or GPU load"
+  },
+  "probe": {
+    "api": "vDSP_dotpr",
+    "source_sha256": "6af2b2203aa8e058b6d9718bb8d06dc57b45a79e69bcd26652698e07e31478bf",
+    "input_sha256": "ad7ddb64f9630092edbb25568cd1b6d24ca8ccb64f1624efe572929801c6ba66",
+    "report_sha256": "9ccd47c61225f1859479f4fcf07685c7e20d28050ede92def4dc51863e28ebf9",
+    "offset_pairs": [[0, 0], [1, 0], [0, 1], [1, 1], [4, 0], [0, 4], [4, 4]],
+    "results": {
+      "fma-two-term": "bde9787b",
+      "vector-four": "423cabe1",
+      "association-eight": "450c31fc",
+      "vector-tail-seventeen": "44252851",
+      "production-length-257": "c7d65df8",
+      "signed-zero": "00000000"
+    },
+    "alignment_result": "Each case produced one result bit pattern across all seven tested offset pairs."
+  },
+  "certified_stage_capture": {
+    "mel_filterbank_sha256": "0705f27885970556c6b84628a2bff08c3c672a325119b03e3195c00abd28e2cc",
+    "power_sha256": "f821f1cc193581f1b8198c59e30951ece515db747b0e4bf3629f94fe2b504994",
+    "mel_projection_sha256": "00797ea1f6d63bcac4dcb7d68b9be9534788a130e46b55fd9a4e3705ac132a07",
+    "golden_mel_sha256": "4ed24d7da64c17f58419ec45f15aa24ac9d1cfd93a4de51ee4f05e1d712b4d22"
+  },
+  "verification": [
+    {
+      "command": "python3 -m pytest -q tests/coreml/test_dotpr.py",
+      "result": "11 passed in 0.13s"
+    },
+    {
+      "command": "python3 overlay/tools/coreml/mel_stage_compare.py $CAPTURE/20260912T154759Z-librispeech/ane $CAPTURE/mel-stage-probes/stage-capture",
+      "result": "The manifest gate passed; mel_pinned equaled golden mel.npy; melproj was exact for 384128 values; certified-input logmel was exact for 384128 values. The command exited 1 because the independently owned Hann and DFT stages remained divergent."
+    }
+  ],
+  "boundary": "This receipt proves the six recorded dot-product inputs, seven offset pairs, and the certified 3001-by-128 mel-projection stage. It does not qualify the full frontend or make a performance claim."
+}
