@@ -164,23 +164,30 @@ void main() {
 
         // Stage A (32 rows x width k): load words first, then unpack
         // and store unconditionally - the qmm_coopmat shape. flags
-        // bit 8 with a row-major lhs takes one uvec2 load per two
-        // bf16 pairs; staged words are identical to the scalar path.
-        uint a_words[4];
+        // bit 8 with a row-major lhs stages two bf16 pairs per uvec2
+        // load and unpacks in the same (row, du) coordinates; staged
+        // values are identical to the scalar path.
         if (pair_ok && !a_colmaj && width == STEP_K) {
           for (uint j = 0u; j < 2u; ++j) {
             uint i2 = lid + 64u * j;
-            uint row = row_base + i2 / 4u;
+            uint rl = i2 / 4u;
             uint du = i2 % 4u;
-            uvec2 w = row < params.matrix_m
+            uvec2 w = row_base + rl < params.matrix_m
                 ? input_a2.values2[
-                      (a_slice + row * (params.lhs_gap / 2u) +
+                      (a_slice + (row_base + rl) * (params.lhs_gap / 2u) +
                        k_base / 2u + 2u * du) / 2u]
                 : uvec2(0u);
-            a_words[2u * j] = w.x;
-            a_words[2u * j + 1u] = w.y;
+            a_s[rl * STEP_K + 4u * du + 0u] =
+                uintBitsToFloat(w.x << 16u);
+            a_s[rl * STEP_K + 4u * du + 1u] =
+                uintBitsToFloat(w.x & 0xFFFF0000u);
+            a_s[rl * STEP_K + 4u * du + 2u] =
+                uintBitsToFloat(w.y << 16u);
+            a_s[rl * STEP_K + 4u * du + 3u] =
+                uintBitsToFloat(w.y & 0xFFFF0000u);
           }
         } else {
+          uint a_words[4];
           for (uint j = 0u; j < 4u; ++j) {
             uint i = lid + 64u * j;
             uint row = row_base + i / 8u;
@@ -196,32 +203,38 @@ void main() {
                                        k_base / 2u + pair])
                 : 0u;
           }
-        }
-        for (uint j = 0u; j < 4u; ++j) {
-          uint i = lid + 64u * j;
-          uint row_local = i / 8u;
-          uint kk = 2u * (i % 8u);
-          a_s[row_local * STEP_K + kk] =
-              uintBitsToFloat(a_words[j] << 16u);
-          a_s[row_local * STEP_K + kk + 1u] =
-              uintBitsToFloat(a_words[j] & 0xFFFF0000u);
+          for (uint j = 0u; j < 4u; ++j) {
+            uint i = lid + 64u * j;
+            uint row_local = i / 8u;
+            uint kk = 2u * (i % 8u);
+            a_s[row_local * STEP_K + kk] =
+                uintBitsToFloat(a_words[j] << 16u);
+            a_s[row_local * STEP_K + kk + 1u] =
+                uintBitsToFloat(a_words[j] & 0xFFFF0000u);
+          }
         }
         // Stage B (width k x 32 columns), same shape.
-        uint b_words[4];
         if (pair_ok && b_colmaj && width == STEP_K) {
           for (uint j = 0u; j < 2u; ++j) {
             uint i2 = lid + 64u * j;
-            uint col = col_base + i2 / 4u;
+            uint cl = i2 / 4u;
             uint du = i2 % 4u;
-            uvec2 w = col < params.matrix_n
+            uvec2 w = col_base + cl < params.matrix_n
                 ? input_b2.values2[
-                      (b_slice + col * (params.rhs_gap / 2u) +
+                      (b_slice + (col_base + cl) * (params.rhs_gap / 2u) +
                        k_base / 2u + 2u * du) / 2u]
                 : uvec2(0u);
-            b_words[2u * j] = w.x;
-            b_words[2u * j + 1u] = w.y;
+            b_s[(4u * du + 0u) * TILE_N + cl] =
+                uintBitsToFloat(w.x << 16u);
+            b_s[(4u * du + 1u) * TILE_N + cl] =
+                uintBitsToFloat(w.x & 0xFFFF0000u);
+            b_s[(4u * du + 2u) * TILE_N + cl] =
+                uintBitsToFloat(w.y << 16u);
+            b_s[(4u * du + 3u) * TILE_N + cl] =
+                uintBitsToFloat(w.y & 0xFFFF0000u);
           }
         } else {
+          uint b_words[4];
           for (uint j = 0u; j < 4u; ++j) {
             uint i = lid + 64u * j;
             uint col = col_base + i / 8u;
@@ -237,15 +250,15 @@ void main() {
                           params.rhs_gap))
                 : 0u;
           }
-        }
-        for (uint j = 0u; j < 4u; ++j) {
-          uint i = lid + 64u * j;
-          uint col_local = i / 8u;
-          uint kk = 2u * (i % 8u);
-          b_s[kk * TILE_N + col_local] =
-              uintBitsToFloat(b_words[j] << 16u);
-          b_s[(kk + 1u) * TILE_N + col_local] =
-              uintBitsToFloat(b_words[j] & 0xFFFF0000u);
+          for (uint j = 0u; j < 4u; ++j) {
+            uint i = lid + 64u * j;
+            uint col_local = i / 8u;
+            uint kk = 2u * (i % 8u);
+            b_s[kk * TILE_N + col_local] =
+                uintBitsToFloat(b_words[j] << 16u);
+            b_s[(kk + 1u) * TILE_N + col_local] =
+                uintBitsToFloat(b_words[j] & 0xFFFF0000u);
+          }
         }
         barrier();
 
