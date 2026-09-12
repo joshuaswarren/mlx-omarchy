@@ -8,21 +8,28 @@
 // Staging-attribution probes for the Q4/group-64 f16 prefill
 // cooperative matrix kernel (shaders/qmm_coopmat.comp), for
 // receipts/2026-09-12-qmm-staging-attribution. Selected only through
-// MLX_OMARCHY_QMM_COOP_PROBE; unset keeps the shipped dispatch. Both
-// paths keep the shipped dispatch geometry, shared layout, guard
-// structure, and math phase unchanged.
+// MLX_OMARCHY_QMM_COOP_PROBE; unset keeps the shipped dispatch.
+//
+// The four 16-k steps are expanded in the SOURCE (QMM_STEP_BODY x4)
+// rather than left to nir_opt_loop_unroll: measurement windows 1-2
+// showed that tiny body-size deltas flip the constant-trip step loop
+// into compiler-restructured forms that swamp the attribution signal,
+// and DontUnroll loop control is not honored end to end. Manual
+// expansion pins identical structure across paths by construction;
+// per-output accumulation order is unchanged (still ascending k), so
+// the hoist path remains bit-preserving and the digest gate still
+// proves it against the shipped kernel.
 //
 // Paths (compiled via -DQMM_COOP_PROBE_PATH):
-//   1  hoist: the per-lane staging addresses (x global word addresses
-//      minus the per-step k term, x_s element addresses, w_s base, w
-//      word address minus k/8) are computed once per output tile
-//      instead of once per 16-k step. Integer values are identical to
-//      the shipped kernel's per-step computation, so this path is
-//      bit-preserving by construction; the digest gate must confirm.
-//   2  nodequant: the eight dequant stores become raw u32->f32 casts
-//      of the packed word. Output values are WRONG; this is a timing
-//      attribution probe (does removing the extract/cvt/ffma staging
-//      arithmetic move the number?) and must never land.
+//   1  hoist: per-lane staging addresses computed once per output tile
+//      (identical integer values to the shipped per-step computation).
+//   2  nodequant: dequant stores become raw u32->f32 casts of the
+//      packed word. Output values are WRONG; timing attribution probe,
+//      never a landing candidate.
+//   3  unrollbase: shipped staging arithmetic verbatim, manually
+//      unrolled - the structure control for paths 1 and 2.
+
+#define QMM_PATH QMM_COOP_PROBE_PATH
 
 const uint TILE_M = 32u;
 const uint TILE_N = 32u;
@@ -75,6 +82,112 @@ layout(push_constant) uniform Params {
 shared float x_s[TILE_M * STEP_K];
 shared float w_s[STEP_K * TILE_N];
 
+// One 16-k step: stage x and w into shared, then the two ascending
+// 8-wide coopmat updates. (S) is the step index within the 64-k chunk;
+// k_base is its only use. See the file header for the path contract.
+#define QMM_STEP_BODY(S) { \
+  uint k_base = chunk * CHUNK_K + (S) * STEP_K; \
+  uint xw0, xw1, xw2, xw3; \
+  if (QMM_PATH == 1u) { \
+    uint x_word_k = k_base / 2u; \
+    xw0 = x_row_ok[0] ? input_x.values[x_row_addr[0] + x_word_k] : 0u; \
+    xw1 = x_row_ok[1] ? input_x.values[x_row_addr[1] + x_word_k] : 0u; \
+    xw2 = x_row_ok[2] ? input_x.values[x_row_addr[2] + x_word_k] : 0u; \
+    xw3 = x_row_ok[3] ? input_x.values[x_row_addr[3] + x_word_k] : 0u; \
+  } else { \
+    uint i0 = lid; uint r0 = row_base + i0 / 8u; \
+    uint i1 = lid + 64u; uint r1 = row_base + i1 / 8u; \
+    uint i2 = lid + 128u; uint r2 = row_base + i2 / 8u; \
+    uint i3 = lid + 192u; uint r3 = row_base + i3 / 8u; \
+    xw0 = r0 < params.matrix_m \
+        ? input_x.values[x_slice + r0 * x_words_per_row + k_base / 2u \
+                         + (i0 % 8u)] : 0u; \
+    xw1 = r1 < params.matrix_m \
+        ? input_x.values[x_slice + r1 * x_words_per_row + k_base / 2u \
+                         + (i1 % 8u)] : 0u; \
+    xw2 = r2 < params.matrix_m \
+        ? input_x.values[x_slice + r2 * x_words_per_row + k_base / 2u \
+                         + (i2 % 8u)] : 0u; \
+    xw3 = r3 < params.matrix_m \
+        ? input_x.values[x_slice + r3 * x_words_per_row + k_base / 2u \
+                         + (i3 % 8u)] : 0u; \
+  } \
+  if (QMM_PATH == 1u) { \
+    vec2 p0 = unpackHalf2x16(xw0); \
+    x_s[x_s_addr[0]] = p0.x; x_s[x_s_addr[0] + 1u] = p0.y; \
+    vec2 p1 = unpackHalf2x16(xw1); \
+    x_s[x_s_addr[1]] = p1.x; x_s[x_s_addr[1] + 1u] = p1.y; \
+    vec2 p2 = unpackHalf2x16(xw2); \
+    x_s[x_s_addr[2]] = p2.x; x_s[x_s_addr[2] + 1u] = p2.y; \
+    vec2 p3 = unpackHalf2x16(xw3); \
+    x_s[x_s_addr[3]] = p3.x; x_s[x_s_addr[3] + 1u] = p3.y; \
+  } else { \
+    vec2 p0 = unpackHalf2x16(xw0); \
+    x_s[(lid / 8u) * STEP_K + 2u * (lid % 8u)] = p0.x; \
+    x_s[(lid / 8u) * STEP_K + 2u * (lid % 8u) + 1u] = p0.y; \
+    vec2 p1 = unpackHalf2x16(xw1); \
+    x_s[((lid + 64u) / 8u) * STEP_K + 2u * ((lid + 64u) % 8u)] = p1.x; \
+    x_s[((lid + 64u) / 8u) * STEP_K + 2u * ((lid + 64u) % 8u) + 1u] = p1.y; \
+    vec2 p2 = unpackHalf2x16(xw2); \
+    x_s[((lid + 128u) / 8u) * STEP_K + 2u * ((lid + 128u) % 8u)] = p2.x; \
+    x_s[((lid + 128u) / 8u) * STEP_K + 2u * ((lid + 128u) % 8u) + 1u] = p2.y; \
+    vec2 p3 = unpackHalf2x16(xw3); \
+    x_s[((lid + 192u) / 8u) * STEP_K + 2u * ((lid + 192u) % 8u)] = p3.x; \
+    x_s[((lid + 192u) / 8u) * STEP_K + 2u * ((lid + 192u) % 8u) + 1u] = p3.y; \
+  } \
+  uint packed; \
+  if (QMM_PATH == 1u) { \
+    packed = column_ok ? input_w.values[w_word_addr + k_base / 8u] : 0u; \
+  } else { \
+    packed = column_ok \
+        ? input_w.values[w_row + k_base / 8u + w_part] : 0u; \
+  } \
+  uint w_base_q = (QMM_PATH == 1u) \
+      ? w_s_base : 8u * w_part * TILE_N + w_column_local; \
+  if (QMM_PATH == 2u) { \
+    float fpacked = float(packed); \
+    w_s[w_base_q + 0u * TILE_N] = fpacked; \
+    w_s[w_base_q + 1u * TILE_N] = fpacked; \
+    w_s[w_base_q + 2u * TILE_N] = fpacked; \
+    w_s[w_base_q + 3u * TILE_N] = fpacked; \
+    w_s[w_base_q + 4u * TILE_N] = fpacked; \
+    w_s[w_base_q + 5u * TILE_N] = fpacked; \
+    w_s[w_base_q + 6u * TILE_N] = fpacked; \
+    w_s[w_base_q + 7u * TILE_N] = fpacked; \
+  } else { \
+    w_s[w_base_q + 0u * TILE_N] = scale * float(packed & 0xFu) + bias; \
+    w_s[w_base_q + 1u * TILE_N] = scale * float((packed >> 4u) & 0xFu) + bias; \
+    w_s[w_base_q + 2u * TILE_N] = scale * float((packed >> 8u) & 0xFu) + bias; \
+    w_s[w_base_q + 3u * TILE_N] = scale * float((packed >> 12u) & 0xFu) + bias; \
+    w_s[w_base_q + 4u * TILE_N] = scale * float((packed >> 16u) & 0xFu) + bias; \
+    w_s[w_base_q + 5u * TILE_N] = scale * float((packed >> 20u) & 0xFu) + bias; \
+    w_s[w_base_q + 6u * TILE_N] = scale * float((packed >> 24u) & 0xFu) + bias; \
+    w_s[w_base_q + 7u * TILE_N] = scale * float(packed >> 28u) + bias; \
+  } \
+  barrier(); \
+  for (uint ks = 0u; ks < STEP_K / MAT; ++ks) { \
+    coopmat<float, gl_ScopeSubgroup, MAT, MAT, gl_MatrixUseA> mat_a[2]; \
+    coopmat<float, gl_ScopeSubgroup, MAT, MAT, gl_MatrixUseB> mat_b[4]; \
+    for (uint rb = 0u; rb < 2u; ++rb) { \
+      coopMatLoad(mat_a[rb], x_s, \
+          (sub_rb + rb) * MAT * STEP_K + ks * MAT, STEP_K, \
+          gl_CooperativeMatrixLayoutRowMajor); \
+    } \
+    for (uint cb = 0u; cb < 4u; ++cb) { \
+      coopMatLoad(mat_b[cb], w_s, \
+          ks * MAT * TILE_N + cb * MAT, TILE_N, \
+          gl_CooperativeMatrixLayoutRowMajor); \
+    } \
+    for (uint rb = 0u; rb < 2u; ++rb) { \
+      for (uint cb = 0u; cb < 4u; ++cb) { \
+        acc[rb][cb] = \
+            coopMatMulAdd(mat_a[rb], mat_b[cb], acc[rb][cb]); \
+      } \
+    } \
+  } \
+  barrier(); \
+}
+
 void main() {
   uint lid = gl_LocalInvocationID.x;
   uint sub = gl_SubgroupID;
@@ -110,11 +223,10 @@ void main() {
       uint scale_row = scale_slice + column * groups_per_row;
       uint bias_row = bias_slice + column * groups_per_row;
 
-#if QMM_COOP_PROBE_PATH == 1
-      // Hoisted staging addresses: lane- and tile-invariant terms
-      // computed once. (lid + 64j)/8 == lid/8 + 8j and
-      // (lid + 64j) % 8 == lid % 8; the shipped kernel writes these
-      // as one composite expression per use inside the step loop.
+      // Hoisted staging addresses for path 1: lane- and tile-invariant
+      // terms computed once. (lid + 64j)/8 == lid/8 + 8j and
+      // (lid + 64j) % 8 == lid % 8; the shipped kernel writes these as
+      // one composite expression per use inside the step loop.
       uint x_col8 = lid % 8u;
       uint x_row_addr[4];
       uint x_s_addr[4];
@@ -129,7 +241,6 @@ void main() {
       }
       uint w_s_base = 8u * w_part * TILE_N + w_column_local;
       uint w_word_addr = w_row + w_part;
-#endif
 
       coopmat<float, gl_ScopeSubgroup, MAT, MAT, gl_MatrixUseAccumulator>
           acc[2][4];
@@ -147,123 +258,10 @@ void main() {
           scale = float(scales.values[scale_row + chunk]);
           bias = float(biases.values[bias_row + chunk]);
         }
-        // The shipped kernel's step loop stays rolled in the final ISA.
-        // Both probe variants perturbed the body enough that
-        // nir_opt_loop_unroll flipped it into straight-line copies,
-        // restructuring the whole k region and swamping attribution,
-        // and a min()-opaque trip count did not stop it. Pin the
-        // shipped structure explicitly; the loop is semantically
-        // identical either way.
-        uint step_count = CHUNK_K / STEP_K;
-#pragma DONT_UNROLL
-        for (uint step = 0u; step < step_count; ++step) {
-          uint k_base = chunk * CHUNK_K + step * STEP_K;
-#if QMM_COOP_PROBE_PATH == 1
-          uint x_word_k = k_base / 2u;
-          uint x_words[4];
-          for (uint j = 0u; j < 4u; ++j) {
-            x_words[j] = x_row_ok[j]
-                ? input_x.values[x_row_addr[j] + x_word_k] : 0u;
-          }
-          for (uint j = 0u; j < 4u; ++j) {
-            vec2 pair = unpackHalf2x16(x_words[j]);
-            x_s[x_s_addr[j]] = pair.x;
-            x_s[x_s_addr[j] + 1u] = pair.y;
-          }
-          uint packed = column_ok
-              ? input_w.values[w_word_addr + k_base / 8u] : 0u;
-          w_s[w_s_base + 0u * TILE_N] = scale * float(packed & 0xFu) + bias;
-          w_s[w_s_base + 1u * TILE_N] =
-              scale * float((packed >> 4u) & 0xFu) + bias;
-          w_s[w_s_base + 2u * TILE_N] =
-              scale * float((packed >> 8u) & 0xFu) + bias;
-          w_s[w_s_base + 3u * TILE_N] =
-              scale * float((packed >> 12u) & 0xFu) + bias;
-          w_s[w_s_base + 4u * TILE_N] =
-              scale * float((packed >> 16u) & 0xFu) + bias;
-          w_s[w_s_base + 5u * TILE_N] =
-              scale * float((packed >> 20u) & 0xFu) + bias;
-          w_s[w_s_base + 6u * TILE_N] =
-              scale * float((packed >> 24u) & 0xFu) + bias;
-          w_s[w_s_base + 7u * TILE_N] =
-              scale * float(packed >> 28u) + bias;
-#else
-          // Four half2 loads per lane cover the 32x16 x tile.
-          uint x_words[4];
-          for (uint j = 0u; j < 4u; ++j) {
-            uint i = lid + 64u * j;
-            uint local_row = i / 8u;
-            uint row = row_base + local_row;
-            x_words[j] = row < params.matrix_m
-                ? input_x.values[
-                      x_slice + row * x_words_per_row + k_base / 2u +
-                      (i % 8u)]
-                : 0u;
-          }
-          for (uint j = 0u; j < 4u; ++j) {
-            uint i = lid + 64u * j;
-            uint local_row = i / 8u;
-            vec2 pair = unpackHalf2x16(x_words[j]);
-            x_s[local_row * STEP_K + 2u * (i % 8u)] = pair.x;
-            x_s[local_row * STEP_K + 2u * (i % 8u) + 1u] = pair.y;
-          }
-          // One packed word per lane covers the 16x32 weight tile.
-          uint packed = column_ok
-              ? input_w.values[w_row + k_base / 8u + w_part] : 0u;
-          uint w_base = 8u * w_part * TILE_N + w_column_local;
-#if QMM_COOP_PROBE_PATH == 2
-          // PROBE (nodequant): value-wrong timing attribution only.
-          float fpacked = float(packed);
-          w_s[w_base + 0u * TILE_N] = fpacked;
-          w_s[w_base + 1u * TILE_N] = fpacked;
-          w_s[w_base + 2u * TILE_N] = fpacked;
-          w_s[w_base + 3u * TILE_N] = fpacked;
-          w_s[w_base + 4u * TILE_N] = fpacked;
-          w_s[w_base + 5u * TILE_N] = fpacked;
-          w_s[w_base + 6u * TILE_N] = fpacked;
-          w_s[w_base + 7u * TILE_N] = fpacked;
-#else
-          w_s[w_base + 0u * TILE_N] = scale * float(packed & 0xFu) + bias;
-          w_s[w_base + 1u * TILE_N] =
-              scale * float((packed >> 4u) & 0xFu) + bias;
-          w_s[w_base + 2u * TILE_N] =
-              scale * float((packed >> 8u) & 0xFu) + bias;
-          w_s[w_base + 3u * TILE_N] =
-              scale * float((packed >> 12u) & 0xFu) + bias;
-          w_s[w_base + 4u * TILE_N] =
-              scale * float((packed >> 16u) & 0xFu) + bias;
-          w_s[w_base + 5u * TILE_N] =
-              scale * float((packed >> 20u) & 0xFu) + bias;
-          w_s[w_base + 6u * TILE_N] =
-              scale * float((packed >> 24u) & 0xFu) + bias;
-          w_s[w_base + 7u * TILE_N] = scale * float(packed >> 28u) + bias;
-#endif
-#endif
-          barrier();
-
-          for (uint ks = 0u; ks < STEP_K / MAT; ++ks) {
-            coopmat<float, gl_ScopeSubgroup, MAT, MAT, gl_MatrixUseA> mat_a[2];
-            coopmat<float, gl_ScopeSubgroup, MAT, MAT, gl_MatrixUseB> mat_b[4];
-            for (uint rb = 0u; rb < 2u; ++rb) {
-              coopMatLoad(
-                  mat_a[rb], x_s,
-                  (sub_rb + rb) * MAT * STEP_K + ks * MAT, STEP_K,
-                  gl_CooperativeMatrixLayoutRowMajor);
-            }
-            for (uint cb = 0u; cb < 4u; ++cb) {
-              coopMatLoad(
-                  mat_b[cb], w_s, ks * MAT * TILE_N + cb * MAT, TILE_N,
-                  gl_CooperativeMatrixLayoutRowMajor);
-            }
-            for (uint rb = 0u; rb < 2u; ++rb) {
-              for (uint cb = 0u; cb < 4u; ++cb) {
-                acc[rb][cb] =
-                    coopMatMulAdd(mat_a[rb], mat_b[cb], acc[rb][cb]);
-              }
-            }
-          }
-          barrier();
-        }
+        QMM_STEP_BODY(0u)
+        QMM_STEP_BODY(1u)
+        QMM_STEP_BODY(2u)
+        QMM_STEP_BODY(3u)
       }
 
       // One subgroup stores each 16-row half; duplicated column lanes

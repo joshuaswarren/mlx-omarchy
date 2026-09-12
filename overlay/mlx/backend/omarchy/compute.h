@@ -619,6 +619,7 @@ enum class ComputeKernel : uint16_t {
   // env-selected reroutes of QmmPrefillCoopmatF16 for measurement only.
   QmmCoopProbeHoistF16,
   QmmCoopProbeNodequantF16,
+  QmmCoopProbeUnrollbaseF16,
   Custom,
   Count,
 };

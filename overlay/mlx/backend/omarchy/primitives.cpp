@@ -6977,6 +6977,8 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
         if (probe_env != nullptr) {
           if (std::strcmp(probe_env, "hoist") == 0) {
             qmm_kernel = omarchy::ComputeKernel::QmmCoopProbeHoistF16;
+          } else if (std::strcmp(probe_env, "unrollbase") == 0) {
+            qmm_kernel = omarchy::ComputeKernel::QmmCoopProbeUnrollbaseF16;
           } else if (std::strcmp(probe_env, "nodequant") == 0) {
             qmm_kernel = omarchy::ComputeKernel::QmmCoopProbeNodequantF16;
           }
