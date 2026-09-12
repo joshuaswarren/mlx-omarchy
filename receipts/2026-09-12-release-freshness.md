@@ -6,13 +6,10 @@ and the delta versus qualified main. It does not cut a release.
 
 ## Verdict
 
-**v0.4.2 remains the adequate shipping release. No new release is
-required.** By the observed release triggers below, no post-release
-commit qualifies as a repair of a defect shipped in v0.4.2's wheels;
-the two known-issue ledger entries affecting v0.4.2 users are unchanged
-in qualified main. This rests on ancestor checks plus a read of each
-named fix commit (limits stated in the delta section), not an exhaustive
-causal audit of all 195 commits.
+The project has a recent release: v0.4.2, published September 10. Its
+uploaded artifacts pass the release-asset verifier. No replacement is
+needed solely to satisfy release recency. This does not establish full
+correctness or qualify current main; the affine-offset repair remains open.
 
 ## Shipped release: v0.4.2
 
@@ -59,48 +56,26 @@ Only the scheduled community-data mirror (green, latest run 2026-09-12)
 and gh-pages deployment. Releases are hand-cut per `docs/release.md`;
 there is no release workflow to inspect.
 
-## Delta versus qualified main
+## Delta versus measured main
 
-`v0.4.2..f365d5b5` is 195 commits; qualified main per
-`receipts/2026-09-12-parity-status` is `a2e38c3e` (battery 29/30 - the
-one failure is the documented pre-existing affine m=1 offset defect; not
-rerun here). Lineage of every post-release fix commit, checked with
-`git merge-base --is-ancestor` - **none is in v0.4.2**. Limits: the
-"not a shipped defect" column rests on each commit's own message and
-diff read together with the ancestor check. A defect that exists in
-v0.4.2 and was fixed incidentally inside an unrelated post-release
-commit would not be excluded by this method; no such commit was
-observed, and the known-issue ledger names no other open wrong-value
-defect on shipped paths:
+`v0.4.2..f365d5b5` contains 195 commits. The latest composed hardware
+receipt, `receipts/2026-09-12-parity-status`, measures `a2e38c3e` and
+records battery 29/30. The failing affine-offset case was not rerun in
+this audit. Main is not fully qualified.
 
-| commit | subject | role |
-|---|---|---|
-| `6eaad2b0` | native-order decode SDPA kernel | performance (fork driver) |
-| `286ef729` | install: add openblas | installer only; already live on main |
-| `e189610f` | scalar-FMA prefill qualification receipts | main-only broken window (conflict markers), pushed and repaired 2026-09-12, never reachable from the tag |
-| `f03e7ee1` | land qualified FMA route state, repair `e189610f` | repairs `e189610f`; not a shipped defect |
-| `f433007e` | fill unpublished GPU scalars by broadcast | fixes `e189610f`-generation code; not in v0.4.2 |
-| `a2e38c3e` | register three FMA prefill shaders | fixes `f03e7ee1`'s route; not in v0.4.2 |
-
-The remaining delta is performance work (native decode SDPA, grouped
-GEMV follow-ups), tests, bench harnesses, and receipts/docs.
+The audit checked named post-release fixes and their ancestry, not every
+change for incidental correctness effects. An ancestor check proves
+whether a commit shipped; it does not prove whether an older release
+contains the defect that commit fixes.
 
 ## Open defects affecting v0.4.2 users
 
-Documented in `docs/known-defects.md`; both present equally in
-qualified main. Non-blocking in the observed-shipping sense only -
-neither blocks the release pipeline, and #1 is a real wrong-value
-defect an arbitrary caller can hit:
+The current known-defect ledger lists these unresolved behaviors:
 
-1. Affine quantized matmul mis-composes a non-zero storage offset at m=1
-   (the battery's 29/30 failure): a silent wrong value, not a refusal,
-   on the m=1 vector route whenever a caller binds affine scale/bias
-   streams at a non-zero storage offset. Current canonical models pass
-   offsets at zero, so shipped workflows do not hit it and every
-   canonical digest holds - that is why it does not trigger a release,
-   not evidence the defect is unreachable. Reproduces back through
-   `bddc061f`; expected disposition per the ledger is deriving the view
-   offset per stream.
+1. Affine quantized matmul produces a wrong value in the non-zero-offset
+   m=1 test. Applications using affine scale/bias views can exercise this
+   contract. Passing canonical model digests does not make it harmless or
+   unreachable. The root cause and fix are being investigated separately.
 2. Cooperative-matrix prefill output depends on which Mesa build provides
    the extension. Releases are digest-checked on the installed driver,
    which produces the required values; noted "not yet fixed" with a
@@ -108,9 +83,7 @@ defect an arbitrary caller can hit:
 
 ## CoreML and ANE content of the stable release
 
-The experimental CoreML/MIL compiler work lives outside this repository
-(`ane-linux-experiments`, `mil-hwx-compiler`). Checks on the shipped
-artifacts and their tagged source this session:
+Checks on the v0.4.2 artifacts and tagged source, performed this session:
 
 - Wheel file inventories (both wheels, full `namelist`): only the
   documented `mlx` package - python modules, `core.*.so`, `libmlx.so`,
@@ -143,13 +116,10 @@ byte pattern inside `libmlx.so`; the authoritative statement is that
 the wheels' gate-verified stamped commit (`b3e977b4`) contains no
 CoreML code, and the binaries link nothing beyond the libraries above.
 
-## Why no new release
+## Next release decision
 
-Cutting one now would ship main's performance work, which per protocol
-requires a fresh aarch64 wheel built on the M1 from the new tag, the full
-gate, and a pinned decode receipt - a deliberate release cut, not a
-freshness repair. By the observed triggers, nothing in the delta repairs
-v0.4.2 for shipped users, and the documented failure modes are unchanged.
-Triggers that WOULD require a new release: any correctness fix landing in
-a wheel-consumed path, a broken install pin, or a gate failure on the
-live assets.
+A new GPU release must build the exact candidate, pass the standing
+battery and canonical model checks, and verify the uploaded artifacts.
+The affine-offset correction is a reason to prepare that release once
+verified. Unqualified Mesa experiments and Core ML work must not be
+presented as stable shipped capabilities.
