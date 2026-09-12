@@ -273,6 +273,9 @@ omarchy_shader(qmm_tile_rb_precise_f16 shaders/qmm_tile.comp -DUSE_FP16=1 -DREGI
 # device capability in primitives.cpp, MLX_OMARCHY_NO_COOPMAT=1 forces
 # the register-blocked tile.
 omarchy_shader(qmm_coopmat_f16 shaders/qmm_coopmat.comp)
+omarchy_shader(qmm_fma_f16 shaders/qmm_fma.comp)
+omarchy_shader(qmm_fma_precise_f16 shaders/qmm_fma.comp -DPRECISE_ACCUM=1)
+omarchy_shader(matmul_fma_bf16 shaders/matmul_fma_bf16.comp)
 omarchy_shader(binary_vec_f16 shaders/binary_vec.comp -DUSE_FP16=1)
 omarchy_shader(binary_vec_bf16 shaders/binary_vec.comp -DUSE_BF16=1)
 omarchy_shader(matmul_rb_f16 shaders/matmul_rb.comp)
