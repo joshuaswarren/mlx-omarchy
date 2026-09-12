@@ -74,7 +74,7 @@ python -m mlx_lm generate \
 
 ## Performance
 
-Published v0.4.0 aarch64 wheel, installed by `install.sh`, on an Apple M1 with the stock Omarchy Mesa 26.1.7 Honeykrisp driver, AC power, the pinned Qwen2.5-0.5B-Instruct-4bit snapshot, greedy decoding, fixed output lengths, one run each ([receipt](receipts/2026-09-09-v0.4.0-release.md)):
+Historic release measurement, kept for reference — the published v0.4.0 aarch64 wheel, installed by `install.sh`, on an Apple M1 with the stock Omarchy Mesa 26.1.7 Honeykrisp driver, AC power, the pinned Qwen2.5-0.5B-Instruct-4bit snapshot, greedy decoding, fixed output lengths, one run each ([receipt](receipts/2026-09-09-v0.4.0-release.md)):
 
 | Prompt / generated tokens | Decode tok/s | Prefill tok/s |
 |---|---:|---:|
@@ -82,51 +82,11 @@ Published v0.4.0 aarch64 wheel, installed by `install.sh`, on an Apple M1 with t
 | 262 / 128 | 64.79 | 255.9 |
 | 1053 / 32 | 44.95 | 272.9 |
 
-Since that wheel, main carries the paired-verified performance work, with every generated token unchanged on every measured leg: the exact SwiGLU chain fused into one dispatch by default ([receipt](receipts/2026-09-09-fused-chain-default/verdict.json)), the Q4 GEMV rewritten to native Metal's arithmetic order ([receipt](receipts/2026-09-09-q4-gemv-order/verdict.json)), the prefill wave of four-wide 16-bit binary kernels, a register-blocked f16 attention matmul, causal softmax without a materialized mask, and a straight-line SwiGLU kernel ([receipt](receipts/2026-09-09-prefill-speed/verdict.json)), the prefill quantized matmul retiled toward native `qmm_t` ([receipt](receipts/2026-09-09-prefill-qmm/verdict.json)), grouped Q4 decode GEMVs ([receipt](receipts/2026-09-09-decode-fusion/verdict.json)), native-order decode attention, paired KV cache updates, and the scalar-drain removal.
+### Current main: measured, not qualified
 
-Current main at `b6d662a8`, measured by the canonical 12-leg matrix: two drivers, both models, three workloads, 12 repetitions per driver after a discarded warmup, alternating drivers, AC power, every generated-id digest and token count checked, 144 of 144 legs valid ([receipt](receipts/2026-09-10-main-parity-12-matrix/verdict.md)). `fork` is the optional [Honeykrisp fork build](docs/install-omarchy.md#honeykrisp-driver-with-the-fork-fixes) with the cooperative matrix; `stock` is Omarchy's Mesa 26.1.7, which has no cooperative matrix and therefore falls back on prefill.
+The composed tree at `a2e38c3e` was measured as a single unit on 2026-09-12 (later commits carry receipts and documentation only at this writing). All 36 canonical digest cells hold on both drivers. The standing M1 battery passes 29 of 30 targets; the one failure is the [ledgered, still-open quantized-matmul affine-offset wrong value](docs/known-defects.md), so the baseline gate stays open and neither the tree nor these numbers are a qualification ([receipt](receipts/2026-09-12-parity-status/README.md)).
 
-| Model | Prompt / generated tokens | Decode tok/s (fork / stock) | Prefill tok/s (fork / stock) |
-|---|---|---:|---:|
-| Q4 | 30 / 32 | 112.2 / 102.5 | 331.5 / 170.9 |
-| Q4 | 262 / 128 | 108.9 / 81.9 | 970.4 / 310.1 |
-| Q4 | 1053 / 32 | 96.1 / 52.9 | 1112.5 / 361.7 |
-| BF16 | 30 / 32 | 11.70 / 11.73 | 86.0 / 83.8 |
-| BF16 | 262 / 128 | 11.25 / 11.29 | 317.8 / 210.8 |
-| BF16 | 1053 / 32 | 10.03 / 10.12 | 364.8 / 220.1 |
-
-With the dense BF16 decode GEMV landed at `9737c36e` + `480a1ef4`, the same
-matrix measured fresh with paired wheels built from that one source base
-(3 reps per driver after a discarded warmup, AC, clean, provenance gates
-green, all six canonical Q4 digests unchanged) ([receipt](receipts/2026-09-10-bf16-decode-gemv-land/verdict.json)):
-
-| Model | Prompt / generated tokens | Decode tok/s (fork / stock) | Prefill tok/s (fork / stock) |
-|---|---|---:|---:|
-| BF16 | 30 / 32 | 31.4 / 27.3 | 147.1 / 137.6 |
-| BF16 | 262 / 128 | 28.2 / 24.6 | 383.6 / 229.8 |
-| BF16 | 1053 / 32 | 22.8 / 17.9 | 380.3 / 168.6 |
-
-Decode medians are the new per-leg values; the BF16 short and 262-token
-generated-id digests were re-pinned to the measured per-driver values under
-the [2026-09-10 policy amendment](docs/parity-id-policy.md), and the accuracy
-contract moved into a regression test that values every decode projection
-shape against a float64 reference.
-
-Then the BF16 prefill cooperative-matrix kernel was restructured to the staging
-form that won the Q4 bakeoff — bit-identical to the previous kernel on every
-production cell, with all twelve digest gates unchanged — and the paired matrix
-repeated the gain in all six cells ([receipt](receipts/2026-09-11-bf16-prefill/verdict.json)):
-
-| Model | Prompt / generated tokens | Prefill tok/s before (fork / stock) | Prefill tok/s after (fork / stock) |
-|---|---|---:|---:|
-| BF16 | 30 / 32 | 86.0 / 83.8 | 131.6 / 132.2 |
-| BF16 | 262 / 128 | 318.0 / 210.8 | 447.9 / 230.0 |
-| BF16 | 1053 / 32 | 364.4 / 220.4 | 453.3 / 224.3 |
-
-`MLX_OMARCHY_FUSED_CHAIN=0`, `MLX_OMARCHY_QMM_VEC_Q4_WORD=0`, and `MLX_OMARCHY_QMM_TILE_RB=0` disable the fused chain, the decode kernel, and the prefill kernel for comparison.
-
-Performance parity is still open, and the remaining distance is now specific. The denominator is the committed macOS MLX 0.32.2 baseline on an Apple M1, five repetitions with stable digests ([receipt](receipts/native-baseline-2026-09-06/native-2026-09-06-summary.json)): Q4 decode 150.57 / 146.77 / 140.38 tok/s and prefill 294.1 / 1213.0 / 1840.9; BF16 decode 56.43 / 55.72 / 54.55 and prefill 232.6 / 1007.7 / 1655.7. The fork build reaches these fractions of native:
-
+Measured on one wheel built from this tree, fork driver, median of three fresh-process repetitions per driver after a discarded warmup, AC power. The denominator is the committed macOS MLX 0.32.2 baseline on an Apple M1, five repetitions with stable digests ([receipt](receipts/native-baseline-2026-09-06/native-2026-09-06-summary.json)): Q4 decode 150.57 / 146.77 / 140.38 tok/s and prefill 294.1 / 1213.0 / 1840.9; BF16 decode 56.43 / 55.72 / 54.55 and prefill 232.6 / 1007.7 / 1655.7. The fork build reaches these fractions of native:
 
 | Model | Prompt / generated tokens | Decode vs native | Prefill vs native |
 |---|---|---:|---:|
@@ -149,7 +109,10 @@ users see):
 | BF16 | 30 / 32 | 0.57 | 0.57 |
 | BF16 | 262 / 128 | 0.55 | 0.48 |
 | BF16 | 1053 / 32 | 0.46 | 0.30 |
-Every cell above is measured on one wheel built from the composed tree, fork driver, median of three repetitions after a discarded warmup, with all six canonical digests held on both drivers ([receipt](receipts/2026-09-12-composed-main-qualification/README.md)). Earlier tables published the sum of per-change measurements taken on different predecessor wheels; this one replaces them. Two corrections came out of it. Prefill spans were being re-parsed from a print rounded to the millisecond instead of read from the nanosecond span the harness already emits, which inflated the short legs by up to 0.55 percent; the harness now reads the JSON field. And Q4 short prefill, which the composed tree measured at 0.76 against a previously published 1.13, was a real regression: an unconditional host drain before every scalar fill (`de780aa2`) cost 51 ms per prefill call. Ordering those fills through the device completion timeline instead of a host join restores the leg to 1.14 of native with no submission split ([receipt](receipts/2026-09-12-composed-regressions/README.md)). No digest moved anywhere, on any of tonight's work. Short-prompt Q4 prefill is the one leg already past native. The BF16 prefill 262-token and 1K legs moved tonight (+30.7% and +48.1%) through three bit-preserving changes: the f32-composition causal attention now uses the softmax's causal mode instead of materializing and adding a 0/-1e30 mask, the coopmat shader masks k tails so a k that is not a multiple of eight no longer falls off the cooperative-matrix path onto a 0.09 TFLOP/s tile, and the bf16 coopmat path was widened ([receipt](receipts/2026-09-11-bf16-prefill-gap/README.md)). All six canonical digests hold on both drivers. Dense BF16 decode now runs a native-order vector kernel (2.2-2.8x decode, no float64-accuracy cost: both kernels are RNE(f64)-exact on the captured decode projections), and its remaining distance is measured against the committed native baseline above. Cross-OS timings do not establish numerical parity: the Q4 short and 1024-context token-ID digests match native, while the Q4 long-prompt digest differs (native `254d73fd93164b98`, Linux `4cc08910089477fd`). The BF16 262-token mismatch was root-caused to macOS-side rounding, with the Linux result bit-exact to a float64 round-to-nearest-even reference ([receipt](receipts/2026-09-10-bf16-rootcause/README.md)), and the BF16 short/262 pins now carry the measured per-driver Linux values under the [policy amendment](docs/parity-id-policy.md).
+
+`MLX_OMARCHY_FUSED_CHAIN=0`, `MLX_OMARCHY_QMM_VEC_Q4_WORD=0`, and `MLX_OMARCHY_QMM_TILE_RB=0` disable the fused chain, the decode kernel, and the prefill kernel for comparison.
+
+The step-by-step path, with its predecessor tables and per-change receipts, is history: the 2026-09-10 canonical 12-leg matrix ([receipt](receipts/2026-09-10-main-parity-12-matrix/verdict.md)); the paired-verified kernel work — SwiGLU chain fusion, native-order Q4 GEMV, the prefill wave, the retiled prefill `qmm_t`, grouped decode GEMVs, native-order decode attention, and paired KV-cache updates ([fused chain](receipts/2026-09-09-fused-chain-default/verdict.json), [Q4 GEMV](receipts/2026-09-09-q4-gemv-order/verdict.json), [prefill wave](receipts/2026-09-09-prefill-speed/verdict.json), [prefill qmm](receipts/2026-09-09-prefill-qmm/verdict.json), [decode fusion](receipts/2026-09-09-decode-fusion/verdict.json)); the dense BF16 decode GEMV with digest re-pins under the [2026-09-10 policy amendment](docs/parity-id-policy.md) ([receipt](receipts/2026-09-10-bf16-decode-gemv-land/verdict.json)); the BF16 prefill staging form ([receipt](receipts/2026-09-11-bf16-prefill/verdict.json)); and the composed-tree qualification with its two corrections — prefill-span parsing and the scalar-fill ordering fix ([qualification](receipts/2026-09-12-composed-main-qualification/README.md), [corrections](receipts/2026-09-12-composed-regressions/README.md), [prefill gap](receipts/2026-09-11-bf16-prefill-gap/README.md)).
 
 To reproduce a leg, use the fixed-length runner, which suppresses EOS:
 
@@ -209,6 +172,8 @@ The full list of open defects, with the platform each was observed on, is in [do
 ## Neural Engine
 
 The Apple Neural Engine is a planned internal accelerator for static graph regions, not a user-facing device. The open-source [MIL-to-HWX compiler](https://github.com/joshuaswarren/mil-hwx-compiler) builds on Linux and emits HWX programs without Apple's toolchain. Its M1 backend now has partial native operation and program-chain receipts; connected MLX graph integration remains unqualified. Design and bundle contract: [docs/architecture.md](docs/architecture.md), [docs/ane-bundles.md](docs/ane-bundles.md).
+
+A Core ML / Parakeet compatibility lane is [planned](docs/plans/2026-09-12-coreml-parakeet-ane-plan.md) on this stack: a pinned public Parakeet Core ML model, its encoder compiled by the pinned MIL-to-HWX compiler and executed on the ANE, decoder and joint on the GPU, no inference server and no CPU tensor fallback. It is planned, not shipped — no Core ML or Parakeet capability exists in any release today.
 
 ## Contributing
 

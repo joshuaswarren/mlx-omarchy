@@ -297,7 +297,7 @@ query commands under "Community hardware data" in `AGENTS.md`.
 ## Driver changes
 
 Test early driver work in [`ane-linux-experiments`](https://github.com/joshuaswarren/ane-linux-experiments).
-Send stable DRM and `libane` changes to [`eiln/ane`](https://github.com/eiln/ane).
+Send stable DRM and `libane` changes to [`joshuaswarren/omarchy-ane`](https://github.com/joshuaswarren/omarchy-ane), our maintained fork of the `eiln/ane` lineage.
 Do not copy a private driver fork into this repository.
 
 ## License

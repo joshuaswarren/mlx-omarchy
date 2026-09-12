@@ -245,7 +245,7 @@ end for what we can lift directly versus what we cannot.
 - **Reconciled with our work:** our existing perf budgets and the
   dispatch-floor model both line up. On M1, the per-op dispatch floor
   is unknown; the Linux-side path bypasses CoreML/XPC entirely
-  (`eiln/ane`), so the 90 µs floor is macOS-specific. We should treat
+  (`joshuaswarren/omarchy-ane`), so the 90 µs floor is macOS-specific. We should treat
   the M1 floor as an open measurement, not assume the same number.
 
 ### Compiler pipeline inside the ANE compiler (Part 4b)
