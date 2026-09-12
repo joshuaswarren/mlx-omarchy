@@ -1,0 +1,37 @@
+# trimmed receipt log: per-file sha256 listing, compiler invocations, curl progress bars, and the
+# full inspect_anec JSON report are omitted; summarized in h13-package-sha256.txt. exit=0.
+=== clean work area ===
+=== source hash rejection before build ===
+wrong archive rejected before extraction and build: PASS
+=== prepare pinned compiler ===
+curl: (22) The requested URL returned error: 404
+operation graph: PASS
+HWX object writer: PASS
+program composition: PASS
+H13_ENCODING_OK
+H13 MIL-to-ANEC/HWX CLI: PASS (device-free)
+HWX inspection: PASS (multi-task H13 plus source-derived H14 fixtures)
+linux compiler software tests: PASS
+linux compiler hygiene: PASS
+compiler provenance
+  repository:            https://github.com/joshuaswarren/mil-hwx-compiler
+  commit:                a0ce354cf800011a84420da4e12013eb8140b2a5
+  archive URL:           https://github.com/joshuawarren/mil-hwx-compiler/releases/download/ane-parity-a0ce354/mil-hwx-compiler-a0ce354.tar.gz
+  archive SHA-256:       12bfbcd0049849dba18ee5fd3556762bf3313459c8ca5a65ae962f507a5b6d64
+  package schema:        mil-hwxc.h13-anec-package.v1
+  qualified target:      H13
+  gnustep prefix:        /home/joshuawarren/.local/mil-hwx-gnustep
+  toolchain pins:        objc_commit=a1faad66cee79f29c4ca268b004111edc33a2ae2 make_commit=d0349cc83a23367acdc53df364f73504c281b26c base_commit=3d7013e144b153abcd6c088dc8d6c64ebd43bc4b 
+  binary:                /home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/CompilerPreparation/.work/ane-compiler/bin/mil-hwxc
+  binary SHA-256:        fff9f8fde5eb97bc08098980ec647594013ee3dec0e2893ec2e3bb572ab7b9dd
+  host tests:            software-tests, hygiene (scripts/verify-linux-compiler.sh)
+prepare-ane-compiler: PASS
+=== known H13 graph host qualification ===
+compiled target=H13 artifacts=4097 format=anec output=/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/CompilerPreparation/.work/ane-compiler/h13-qualification/conv_relu
+manifest: schema=mil-hwxc.h13-anec-package.v1 target=H13 format=anec programs=4097
+  "validation": "container, tensor, binding, slice, and dispatch consistency only"
+=== scope ===
+provenance: commit=a0ce354cf800011a84420da4e12013eb8140b2a5 schema=mil-hwxc.h13-anec-package.v1 qualified-target=H13
+device access: none (host compilation and device-free package inspection only)
+not exercised: bundle adaptation (load_bundle), ANE submission, runtime qualification
+verify-ane-compiler: PASS
