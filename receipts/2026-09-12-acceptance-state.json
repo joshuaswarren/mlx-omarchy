@@ -563,7 +563,7 @@
       "task": "Use durable stack command for installed state",
       "status": "blocked",
       "evidence": "https://github.com/omacom/omarchy-mac/pull/425; receipts/2026-09-12-durable-installed-state-key/receipt.md",
-      "reason": "Installer support is on main at 0545dc7f; platform migration and menu cutover are submitted in upstream PR 425, awaiting owner review and adoption. No live installation or graphical menu qualification is claimed."
+      "reason": "Installer support is on main at 0545dc7f; platform migration and menu cutover are submitted in upstream PR 425. Review found no blocking bugs; three CI checks pass, but ARM install CI fails on package-owned Neovim metadata, reproduced on base and PR. Upstream adoption and supported-device graphical acceptance remain open. See https://github.com/omacom/omarchy-mac/pull/425#issuecomment-5648115917."
     },
     {
       "phase": "Core ML requirements",
