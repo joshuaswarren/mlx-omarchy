@@ -6911,12 +6911,15 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
           omarchy::unsupported(tag + " fma operand alignment", out);
         }
         uint32_t fma_rows = qmm_fma_cfg == 2u ? 32u : 64u;
-        uint32_t fma_cols = qmm_fma_cfg == 0u ? 64u : 128u;
+        uint32_t fma_cols =
+            (qmm_fma_cfg == 1u || qmm_fma_cfg == 2u) ? 128u : 64u;
         omarchy::ComputeKernel fma_kernel =
             qmm_fma_cfg == 1u
                 ? omarchy::ComputeKernel::QmmPrefillFmaL16C4F16
             : qmm_fma_cfg == 2u
                 ? omarchy::ComputeKernel::QmmPrefillFmaL8C4F16
+            : qmm_fma_cfg == 3u
+                ? omarchy::ComputeKernel::QmmPrefillFmaPreciseF16
                 : omarchy::ComputeKernel::QmmPrefillFmaF16;
         encoder.dispatch_compute(
             fma_kernel,

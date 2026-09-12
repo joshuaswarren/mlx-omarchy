@@ -613,6 +613,7 @@ enum class ComputeKernel : uint16_t {
   // shape is picked.
   QmmPrefillFmaL16C4F16,
   QmmPrefillFmaL8C4F16,
+  QmmPrefillFmaPreciseF16,
   MatmulBf16FmaL16C4,
   Custom,
   Count,

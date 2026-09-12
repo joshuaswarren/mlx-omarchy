@@ -152,6 +152,24 @@ void main() {
               float x6 = unpackHalf2x16(xw.w).x;
               float x7 = unpackHalf2x16(xw.w).y;
               for (uint c = 0u; c < COLS_U; ++c) {
+#ifdef PRECISE_ACCUM
+                precise float p0 = x0 * wv[c][0];
+                acc[r][c] += p0;
+                precise float p1 = x1 * wv[c][1];
+                acc[r][c] += p1;
+                precise float p2 = x2 * wv[c][2];
+                acc[r][c] += p2;
+                precise float p3 = x3 * wv[c][3];
+                acc[r][c] += p3;
+                precise float p4 = x4 * wv[c][4];
+                acc[r][c] += p4;
+                precise float p5 = x5 * wv[c][5];
+                acc[r][c] += p5;
+                precise float p6 = x6 * wv[c][6];
+                acc[r][c] += p6;
+                precise float p7 = x7 * wv[c][7];
+                acc[r][c] += p7;
+#else
                 acc[r][c] += x0 * wv[c][0];
                 acc[r][c] += x1 * wv[c][1];
                 acc[r][c] += x2 * wv[c][2];
@@ -160,6 +178,7 @@ void main() {
                 acc[r][c] += x5 * wv[c][5];
                 acc[r][c] += x6 * wv[c][6];
                 acc[r][c] += x7 * wv[c][7];
+#endif
               }
             }
           }
