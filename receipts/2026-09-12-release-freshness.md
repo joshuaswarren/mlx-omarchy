@@ -7,8 +7,12 @@ and the delta versus qualified main. It does not cut a release.
 ## Verdict
 
 **v0.4.2 remains the adequate shipping release. No new release is
-required.** Every post-release commit is an improvement or a main-only
-repair; none fixes a defect shipped in v0.4.2's wheels.
+required.** By the observed release triggers below, no post-release
+commit qualifies as a repair of a defect shipped in v0.4.2's wheels;
+the two known-issue ledger entries affecting v0.4.2 users are unchanged
+in qualified main. This rests on ancestor checks plus a read of each
+named fix commit (limits stated in the delta section), not an exhaustive
+causal audit of all 195 commits.
 
 ## Shipped release: v0.4.2
 
@@ -41,11 +45,13 @@ release notes fetches it from `main`):
 - downloads `$base/SHA256SUMS` from the tag URL and enforces
   `sha256sum -c --ignore-missing` before installing the wheel;
 - requires cp314, matching the aarch64 wheel;
-- installs `lapack blas openblas` - `openblas` provides
-  `libopenblas.so.0` which the wheel's BLAS calls resolve at import time
-  (commit `286ef729`, after the release: fresh installs between
-  2026-09-10 03:59Z and 08:05-0500 would have failed to import; the live
-  installer fixes that today without a new release).
+- installs `lapack blas openblas` - the aarch64 wheel's `libmlx.so`
+  declares `NEEDED libopenblas.so.0` (checked with `readelf -d` on the
+  extracted binary this session), so without `openblas` installed
+  `import mlx.core` fails on a fresh install. Commit `286ef729` (after
+  the release): fresh installs between 2026-09-10 03:59Z and 08:05-0500
+  would have failed to import; the live installer fixes that today
+  without a new release.
 
 ## GitHub Actions
 
@@ -59,7 +65,13 @@ there is no release workflow to inspect.
 `receipts/2026-09-12-parity-status` is `a2e38c3e` (battery 29/30 - the
 one failure is the documented pre-existing affine m=1 offset defect; not
 rerun here). Lineage of every post-release fix commit, checked with
-`git merge-base --is-ancestor` - **none is in v0.4.2**:
+`git merge-base --is-ancestor` - **none is in v0.4.2**. Limits: the
+"not a shipped defect" column rests on each commit's own message and
+diff read together with the ancestor check. A defect that exists in
+v0.4.2 and was fixed incidentally inside an unrelated post-release
+commit would not be excluded by this method; no such commit was
+observed, and the known-issue ledger names no other open wrong-value
+defect on shipped paths:
 
 | commit | subject | role |
 |---|---|---|
@@ -75,24 +87,69 @@ GEMV follow-ups), tests, bench harnesses, and receipts/docs.
 
 ## Open defects affecting v0.4.2 users
 
-Both are documented in `docs/known-defects.md` and present equally in
-qualified main - neither is release-blocking:
+Documented in `docs/known-defects.md`; both present equally in
+qualified main. Non-blocking in the observed-shipping sense only -
+neither blocks the release pipeline, and #1 is a real wrong-value
+defect an arbitrary caller can hit:
 
 1. Affine quantized matmul mis-composes a non-zero storage offset at m=1
-   (the battery's 29/30 failure). Reproduces back through `bddc061f`;
-   impact synthetic - real models pass offsets at zero and every
-   canonical digest holds.
+   (the battery's 29/30 failure): a silent wrong value, not a refusal,
+   on the m=1 vector route whenever a caller binds affine scale/bias
+   streams at a non-zero storage offset. Current canonical models pass
+   offsets at zero, so shipped workflows do not hit it and every
+   canonical digest holds - that is why it does not trigger a release,
+   not evidence the defect is unreachable. Reproduces back through
+   `bddc061f`; expected disposition per the ledger is deriving the view
+   offset per stream.
 2. Cooperative-matrix prefill output depends on which Mesa build provides
    the extension. Releases are digest-checked on the installed driver,
    which produces the required values; noted "not yet fixed" with a
    candidate fix.
+
+## CoreML and ANE content of the stable release
+
+The experimental CoreML/MIL compiler work lives outside this repository
+(`ane-linux-experiments`, `mil-hwx-compiler`). Checks on the shipped
+artifacts and their tagged source this session:
+
+- Wheel file inventories (both wheels, full `namelist`): only the
+  documented `mlx` package - python modules, `core.*.so`, `libmlx.so`,
+  `mlx/bin/mlx-omarchy-info`, 250 upstream `mlx/include/**` headers,
+  dist-info. No `coreml`-named member in either wheel; the only
+  `ane`-named members are `mlx/include/mlx/backend/omarchy/ane/{bundle,manifest}.h`,
+  headers of the qualified ANE bundle parser.
+- Tagged source tree (`git ls-tree -r v0.4.2`): zero files matching
+  coreml/`core_ml`/`core-ml`; `git grep -il coreml v0.4.2 -- overlay/
+  patches/` is empty.
+- Byte-scan of shipped `libmlx.so`: the three `coreml` sequences are
+  substrings of mangled `mlx::core::ml*` symbols (namespace `core`,
+  function `mul` - verified with surrounding context), not Apple
+  CoreML. The two `libane` sequences are the ANE bundle validator's
+  error strings ("ANEC file is smaller than libane header", ...),
+  compiled from `overlay/mlx/backend/omarchy/ane/`, which is qualified
+  pre-release work covered by the standing battery's
+  `omarchy_ane_bundle_tests` - per `AGENTS.md` ANE is the internal
+  graph-region accelerator this repository owns, not the experimental
+  CoreML compiler.
+- Dynamic dependencies (`readelf -d` on both extracted binaries): only
+  `libopenblas.so.0` (aarch64) / `liblapack.so.3`+`libblas.so.3`
+  (x86_64) plus base system libs. No `libane`, no Apple framework, no
+  CoreML linkage.
+
+Limits: this establishes no CoreML files, no CoreML-referencing source
+in the stamped tree, and no CoreML-linked dependency in the shipped
+binaries. It does not prove absence of every conceivable compiled-in
+byte pattern inside `libmlx.so`; the authoritative statement is that
+the wheels' gate-verified stamped commit (`b3e977b4`) contains no
+CoreML code, and the binaries link nothing beyond the libraries above.
 
 ## Why no new release
 
 Cutting one now would ship main's performance work, which per protocol
 requires a fresh aarch64 wheel built on the M1 from the new tag, the full
 gate, and a pinned decode receipt - a deliberate release cut, not a
-freshness repair. Nothing in the delta repairs v0.4.2 for shipped users,
-and the documented failure modes are unchanged. Triggers that WOULD
-require a new release: any correctness fix landing in a wheel-consumed
-path, a broken install pin, or a gate failure on the live assets.
+freshness repair. By the observed triggers, nothing in the delta repairs
+v0.4.2 for shipped users, and the documented failure modes are unchanged.
+Triggers that WOULD require a new release: any correctness fix landing in
+a wheel-consumed path, a broken install pin, or a gate failure on the
+live assets.
