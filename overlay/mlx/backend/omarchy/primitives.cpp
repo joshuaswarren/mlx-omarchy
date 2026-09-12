@@ -6965,6 +6965,23 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
           : params.matrix_m >= 1024u
           ? omarchy::ComputeKernel::QmmTileRbPreciseF16
           : omarchy::ComputeKernel::QmmTileRbF16;
+      // Staging-attribution probes
+      // (receipts/2026-09-12-qmm-staging-attribution): reroutes ONLY the
+      // coopmat leg of the qmm prefill dispatch when
+      // MLX_OMARCHY_QMM_COOP_PROBE selects a probe, for paired
+      // kernel-isolated measurement. Unset keeps dispatch unchanged.
+      // "hoist" is bit-preserving by construction; "nodequant" is a
+      // value-wrong timing probe that must never land.
+      if (coopmat) {
+        const char* probe_env = std::getenv("MLX_OMARCHY_QMM_COOP_PROBE");
+        if (probe_env != nullptr) {
+          if (std::strcmp(probe_env, "hoist") == 0) {
+            qmm_kernel = omarchy::ComputeKernel::QmmCoopProbeHoistF16;
+          } else if (std::strcmp(probe_env, "nodequant") == 0) {
+            qmm_kernel = omarchy::ComputeKernel::QmmCoopProbeNodequantF16;
+          }
+        }
+      }
       encoder.dispatch_compute(
           qmm_kernel,
           bindings,

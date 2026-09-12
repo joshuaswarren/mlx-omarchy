@@ -615,6 +615,10 @@ enum class ComputeKernel : uint16_t {
   QmmPrefillFmaL8C4F16,
   QmmPrefillFmaPreciseF16,
   MatmulBf16FmaL16C4,
+  // Staging-attribution probes (receipts/2026-09-12-qmm-staging-attribution);
+  // env-selected reroutes of QmmPrefillCoopmatF16 for measurement only.
+  QmmCoopProbeHoistF16,
+  QmmCoopProbeNodequantF16,
   Custom,
   Count,
 };
