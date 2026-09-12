@@ -18,6 +18,7 @@ from generate_dotpr_probes import probe_cases
 MACOS_RESULTS = {
     "fma-two-term": 0xBDE9787B,
     "double-rounding-boundary": 0x3FC00005,
+    "overflow-midpoint-boundary": 0x7F7FFFFF,
     "vector-four": 0x423CABE1,
     "association-eight": 0x450C31FC,
     "vector-tail-seventeen": 0x44252851,

@@ -13,12 +13,13 @@
   "probe": {
     "api": "vDSP_dotpr",
     "source_sha256": "6af2b2203aa8e058b6d9718bb8d06dc57b45a79e69bcd26652698e07e31478bf",
-    "input_sha256": "af719f4c3e031270f5f973c5100941322bb2701ecf820ce8d60d3a322d9d517a",
-    "report_sha256": "eb310e65cf5efacb8ee4a4c30de33e9448a3d1f8367c74db3a4c2b42ec57f167",
+    "input_sha256": "f2507203d172b06d1fc2306059e8ed5b0e668c8a7e4bc8c2d06fcc0b847d0922",
+    "report_sha256": "4518b0869df78f7b28d84a5f8771e23abbf4aabd5e736d709f8eba6ab33ead5e",
     "offset_pairs": [[0, 0], [1, 0], [0, 1], [1, 1], [4, 0], [0, 4], [4, 4]],
     "results": {
       "fma-two-term": "bde9787b",
       "double-rounding-boundary": "3fc00005",
+      "overflow-midpoint-boundary": "7f7fffff",
       "vector-four": "423cabe1",
       "association-eight": "450c31fc",
       "vector-tail-seventeen": "44252851",
@@ -41,16 +42,20 @@
   "verification": [
     {
       "command": "python3 -m pytest -q tests/coreml/test_dotpr.py",
-      "result": "12 passed"
+      "result": "13 passed"
     },
     {
-      "command": "Deterministic 20000-case raw-float32 comparison of dotpr._fma32 against native libm fmaf",
-      "result": "19752 finite cases; 0 result-bit mismatches"
+      "command": "Deterministic 100000-case raw-float32 comparison of dotpr._fma32 against native libm fmaf",
+      "result": "98789 finite cases; 0 result-bit mismatches"
+    },
+    {
+      "command": "Deterministic 30000-case underflow-focused comparison of dotpr._fma32 against native libm fmaf",
+      "result": "0 result-bit mismatches; signed-zero, infinity, invalid-product, and infinity-cancellation cases also matched native classifications and bits"
     },
     {
       "command": "python3 overlay/tools/coreml/mel_stage_compare.py $CAPTURE/20260912T154759Z-librispeech/ane $CAPTURE/mel-stage-probes/stage-capture",
       "result": "The manifest gate passed; mel_pinned equaled golden mel.npy; melproj was exact for 384128 values; certified-input logmel was exact for 384128 values. The command exited 1 because the independently owned Hann and DFT stages remained divergent."
     }
   ],
-  "boundary": "This receipt proves the seven recorded dot-product inputs, seven offset pairs, a 19752-case finite float32 fused-rounding cross-check, and the certified 3001-by-128 mel-projection stage. It does not qualify the full frontend or make a performance claim."
+  "boundary": "This receipt proves the eight recorded dot-product inputs, seven offset pairs, 98789 finite raw-float32 fused triples, 30000 underflow-focused triples, special infinity and signed-zero cases, and the certified 3001-by-128 mel-projection stage. It does not qualify the full frontend or make a performance claim."
 }
