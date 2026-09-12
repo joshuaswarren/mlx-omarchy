@@ -10,7 +10,10 @@
   "8f3169a4342": "lazy merge resolution at else-arrival (inherited, unbuilt)",
   "c3cebc011bd": "first firing proof: 75 ACCEPT / 0 close-shaped merges resolved, 25 FOLDs (fallthrough shapes have no jump to resolve from); dispatched before qualification, disclosed",
   "30ffef135e0": "conservative rewrite: AGX_NUM_SLOTS=2 (1-bit IR field, _Static_assert pinned), sum-carry at else arrivals with overflow drain, pop_exec-lazy region close, per-instruction wait_mask",
-  "f11106ddfb0": "host capacity/hazard gtests"
+  "93a3bcf78f0": "guard entry print for bare test contexts (no codegen change)",
+  "29020ee569c": "restore exit-block drain skip (rewrite had regressed it: pointless end-of-shader waits)",
+  "14eb6778a69": "final qualified driver commit (host gtests green here; test-file fix on top of 29020ee)",
+  "f11106ddfb0": "host capacity/hazard gtests (superseded by 14eb6778a69 for the run)"
  },
  "root_causes": [
   "eager merge resolution against unvisited blocks (the named inert cause); deeper: AGX if/else guards are fallthrough shapes with no jump to resolve a merge from - regions now close lazily on a pop_exec-predecessor (emit_if appends pop_exec after every region's last else-arm block)",
@@ -19,7 +22,7 @@
  ],
  "firing_proof": {
   "instrumentation": "temporary unconditional prints: pass entry, per-site ACCEPT/reject-with-reason, else-arrival, close, carry, drain, overflow-drain",
-  "patched_driver_commit": "30ffef135e0",
+  "patched_driver_commit": "30ffef135e0 (ISA) and 14eb6778a69 (final; kernel ISA identical - exit-drain fix touches only the shader end)",
   "all_shaders": {"agxwaits_lines": 469, "accept": 75, "else_arrivals": 75, "close": 75, "folds": 0, "overflow_drains": 4},
   "coopmat_kernel_log": "logs/waits-firing-coopmat-kernel.log",
   "full_dump": "logs/full-dump-patched-30ffef.log.gz"
@@ -67,9 +70,9 @@
   "still_draining": "real branches, loop back-edges, barriers"
  },
  "host_tests": {
-  "commit": "f11106ddfb0",
+  "commit": "f11106ddfb0 (cases) run on 14eb6778a69",
   "cases": ["RawHazardWaitsAtUse", "SlotCapacityWaitsBeforeIssue", "DivergentWawWaitsInElseArm", "MergeReaderSeesCarriedPending"],
-  "result": "PENDING-RUN"
+  "result": "PASS 4/4, gtest rc=0, 2026-09-12T13:39Z on jwm1 CPU"
  },
  "qualification": {
   "plan": "conditionally approved by root: control digest gates first, then interleaved base/patched kernel probe 3 rounds, then interleaved bench_matrix (discarded warmup per driver + 3 rounds) on the unchanged a2e38c3 wheel with committed pins; any digest movement is a rejection, no re-pins",
