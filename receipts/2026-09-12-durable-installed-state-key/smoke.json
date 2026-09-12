@@ -1,0 +1,27 @@
+{
+  "fresh_launcher": {
+    "exit": 1,
+    "stdout": "",
+    "stderr": "[mlx-omarchy-info] backend unavailable:\n  [omarchy] device 'llvmpipe (LLVM 15.0.6, 256 bits)' is not an Apple GPU running Omarchy Honeykrisp. Set MLX_OMARCHY_ALLOW_NON_APPLE=1 to use it for development only.\n"
+  },
+  "native_reporter": "/tmp/v0342/lib/python3.11/site-packages/mlx/bin/mlx-omarchy-info",
+  "migration": {
+    "exit": 0,
+    "stdout": "Add the MLX capability reporter to existing installations\n",
+    "stderr": ""
+  },
+  "migration_without_optional_demo": true,
+  "repeat_preserves_mtime": true,
+  "absent_install": {
+    "exit": 0,
+    "stdout": "Add the MLX capability reporter to existing installations\n",
+    "stderr": ""
+  },
+  "missing_package": {
+    "exit": 1,
+    "stdout": "Add the MLX capability reporter to existing installations\n",
+    "stderr": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'mlx'\n"
+  },
+  "existing_reporter_preserved": true,
+  "working_directory_package_ignored": true
+}
