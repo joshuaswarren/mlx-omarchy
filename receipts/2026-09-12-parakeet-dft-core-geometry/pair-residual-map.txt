@@ -1,0 +1,48 @@
+distance=  1 base= 0 residual_values=116/512
+distance=  1 base= 1 residual_values=115/512
+distance=  1 base= 3 residual_values=111/512
+distance=  1 base= 5 residual_values=127/512
+distance=  1 base= 7 residual_values= 96/512
+distance=  1 base=15 residual_values=112/512
+distance=  2 base= 0 residual_values=108/512
+distance=  2 base= 1 residual_values=256/512
+distance=  2 base= 3 residual_values=224/512
+distance=  2 base= 5 residual_values=236/512
+distance=  2 base= 7 residual_values=238/512
+distance=  2 base=15 residual_values=244/512
+distance=  4 base= 0 residual_values=120/512
+distance=  4 base= 1 residual_values=252/512
+distance=  4 base= 3 residual_values=308/512
+distance=  4 base= 5 residual_values=264/512
+distance=  4 base= 7 residual_values=324/512
+distance=  4 base=15 residual_values=308/512
+distance=  8 base= 0 residual_values=128/512
+distance=  8 base= 1 residual_values=280/512
+distance=  8 base= 3 residual_values=280/512
+distance=  8 base= 5 residual_values=308/512
+distance=  8 base= 7 residual_values=304/512
+distance=  8 base=15 residual_values=340/512
+distance= 16 base= 0 residual_values=112/512
+distance= 16 base= 1 residual_values=280/512
+distance= 16 base= 3 residual_values=264/512
+distance= 16 base= 5 residual_values=300/512
+distance= 16 base= 7 residual_values=292/512
+distance= 16 base=15 residual_values=340/512
+distance= 32 base= 0 residual_values=  0/512
+distance= 32 base= 1 residual_values=236/512
+distance= 32 base= 3 residual_values=252/512
+distance= 32 base= 5 residual_values=272/512
+distance= 32 base= 7 residual_values=304/512
+distance= 32 base=15 residual_values=316/512
+distance= 64 base= 0 residual_values=  0/512
+distance= 64 base= 1 residual_values=196/512
+distance= 64 base= 3 residual_values=232/512
+distance= 64 base= 5 residual_values=216/512
+distance= 64 base= 7 residual_values=216/512
+distance= 64 base=15 residual_values=264/512
+distance=128 base= 0 residual_values=  0/512
+distance=128 base= 1 residual_values=104/512
+distance=128 base= 3 residual_values=140/512
+distance=128 base= 5 residual_values=132/512
+distance=128 base= 7 residual_values=152/512
+distance=128 base=15 residual_values=172/512

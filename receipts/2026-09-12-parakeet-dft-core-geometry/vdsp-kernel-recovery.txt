@@ -1,0 +1,113 @@
+CPU-only host: macstudio
+Framework: /System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/libvDSP.dylib
+No CoreML model, ANE, or GPU was loaded. No Apple binary or implementation code is stored in this receipt.
+
+1. Cancellation association probe
+
+Command:
+  swiftc /tmp/vdsp_codelet.swift -o /tmp/vdsp_codelet -framework Accelerate && /tmp/vdsp_codelet
+
+Observed output:
+  length=4 association=acbd k0_exact=16384/16384 k2_exact=16384/16384
+  length=4 association=adjacent k0_exact=10826/16384 k2_exact=14160/16384
+  length=4 association=sequential k0_exact=9971/16384 k2_exact=11555/16384
+  length=4 association=reverse-sequential k0_exact=9489/16384 k2_exact=11255/16384
+  length=4 association=outer-inner k0_exact=11716/16384 k2_exact=11310/16384
+
+2. Small-length DC composition probe
+
+Command:
+  swiftc /tmp/vdsp_composition.swift -o /tmp/vdsp_composition -framework Accelerate && /tmp/vdsp_composition
+
+Observed output:
+  length=4 radices=[4] k0_exact=16384/16384
+  length=8 radices=[4, 2] k0_exact=16384/16384
+  length=8 radices=[2, 4] k0_exact=16384/16384
+  length=16 radices=[4, 4] k0_exact=16384/16384
+  length=32 radices=[4, 4, 2] k0_exact=16384/16384
+  length=32 radices=[4, 2, 4] k0_exact=16384/16384
+  length=32 radices=[2, 4, 4] k0_exact=16384/16384
+  length=64 radices=[4, 4, 4] k0_exact=16384/16384
+  length=128 radices=[4, 4, 4, 2] k0_exact=2048/2048
+  length=128 radices=[4, 4, 2, 4] k0_exact=2048/2048
+  length=128 radices=[4, 2, 4, 4] k0_exact=2048/2048
+  length=128 radices=[2, 4, 4, 4] k0_exact=2048/2048
+  length=256 radices=[4, 4, 4, 4] k0_exact=2047/2048
+
+3. Same-architecture portable radix-4 candidates
+
+Commands:
+  swiftc /tmp/vdsp_radix4.swift -o /tmp/vdsp_radix4 -framework Accelerate && /tmp/vdsp_radix4
+  swiftc /tmp/vdsp_radix4_dif.swift -o /tmp/vdsp_radix4_dif -framework Accelerate && /tmp/vdsp_radix4_dif
+  swiftc /tmp/vdsp_observed_roots.swift -o /tmp/vdsp_observed_roots -framework Accelerate && /tmp/vdsp_observed_roots
+
+Observed output:
+  length=4 radix4_dit_exact=2048/2048 max_abs=0.0
+  length=16 radix4_dit_exact=4511/8192 max_abs=6.1035156e-05
+  length=64 radix4_dit_exact=11296/32768 max_abs=0.00024414062
+  length=256 radix4_dit_exact=7838/32768 max_abs=0.00048828125
+  length=4 radix4_dif_exact=2048/2048 max_abs=0.0
+  length=16 radix4_dif_exact=4511/8192 max_abs=6.1035156e-05
+  length=64 radix4_dif_exact=11124/32768 max_abs=0.00024414062
+  length=256 radix4_dif_exact=7787/32768 max_abs=0.00048828125
+  length=4 observed_roots_exact=2048/2048 max_abs=0.0
+  length=16 observed_roots_exact=4585/8192 max_abs=6.1035156e-05
+  length=64 observed_roots_exact=11854/32768 max_abs=0.00018310547
+  length=256 observed_roots_exact=8582/32768 max_abs=0.00048828125
+
+4. Public kernel dispatch and arithmetic recovery
+
+Commands:
+  xcrun dyld_info -exports .../libvDSP.dylib
+  xcrun dyld_info -function_starts .../libvDSP.dylib
+  xcrun dyld_info -disassemble .../libvDSP.dylib
+  clang /tmp/vdsp_dispatch.c -o /tmp/vdsp_dispatch -framework Accelerate && /tmp/vdsp_dispatch
+  clang /tmp/vdsp_weights.c -o /tmp/vdsp_weights -framework Accelerate && /tmp/vdsp_weights
+
+Observed dispatch offsets relative to the libvDSP image base:
+  length=4   outer=0x1106a4 inner-final=0x11082c
+  length=16  outer=0x1106a4 inner-final=0x110e44
+  length=64  outer=0x1106a4 inner-final=0x110e44
+  length=256 outer=0x1106a4 inner-aligned=0x110fb4 inner-final=0x110e44
+
+The generic final entry at image offset 0x110e44 dispatches a radix-4 DIF first pass, optional middle passes, and an FMA-fused final pass. Its 24-float final table is six four-lane blocks: cos(theta), tan(theta), cos(2 theta), tan(2 theta), cos(3 theta)/cos(theta), and tan(3 theta). The observed instructions fuse the tangent rotations and cosine scaling directly into the final butterflies instead of materializing independently rounded complex products.
+
+5. Exact translated N=16 schedule
+
+Command:
+  clang -O0 /tmp/vdsp_fused16.c -o /tmp/vdsp_fused16 -framework Accelerate && /tmp/vdsp_fused16
+
+Observed output after translating the public runtime's N=16 first and final pass arithmetic:
+  length=16 fused_schedule_exact=262144/262144 max_abs=0
+
+The comparison covers 8,192 deterministic dense/cancellation complex inputs, 16 complex outputs each, and both float32 components. The temporary inspection and comparison programs remain outside the repository. The remaining work is the N=256 middle and penultimate FMA schedules; they are now localized rather than blocked on an external kernel specification.
+
+6. Independent coefficient construction and fused codelets
+
+Commands:
+  clang -O0 /tmp/vdsp_weight_formula.c -o /tmp/vdsp_weight_formula -framework Accelerate && /tmp/vdsp_weight_formula
+  clang -O0 /tmp/vdsp_codelet8.c -o /tmp/vdsp_codelet8 -framework Accelerate && /tmp/vdsp_codelet8
+  clang -O0 /tmp/vdsp_fused_dit.c -o /tmp/vdsp_fused_dit -framework Accelerate && /tmp/vdsp_fused_dit
+
+Observed coefficient-formula matches against setup tables:
+  length=16 formula_exact block0=4/4 block1=4/4 block2=4/4 block3=4/4 block4=4/4 block5=4/4
+  length=64 formula_exact block0=16/16 block1=16/16 block2=16/16 block3=16/16 block4=16/16 block5=16/16
+  length=256 formula_exact block0=20/64 block1=20/64 block2=20/64 block3=20/64 block4=20/64 block5=20/64
+
+The length-256 count reflects table storage order, not different values. Matching complete six-value tuples recovered this slot-to-angle-index permutation:
+  0,1,2,3,4,5,6,7,32,33,34,35,36,37,38,39,8,9,10,11,16,17,18,19,40,41,42,43,20,21,22,23,24,25,26,27,12,13,14,15,48,49,50,51,44,45,46,47,52,53,54,55,28,29,30,31,56,57,58,59,60,61,62,63
+
+The six coefficients at every logical index are reproduced by double-precision libm followed by a float32 cast. No captured coefficient table is required.
+
+Observed length-8 codelet result:
+  length=8 separate_exact=106341/131072 max_abs=3.05176e-05 fused_exact=131072/131072 max_abs=0
+
+The exact length-8 candidate uses two radix-4 codelets and tangent-form FMA for the sqrt(1/2) rotations. This identifies both public base codelets without retaining implementation data.
+
+Observed independent tangent-FMA radix-4 DIT candidate using formula-built coefficients:
+  length=4 fused_dit_exact=8192/8192 max_abs=0
+  length=16 fused_dit_exact=32768/32768 max_abs=0
+  length=64 fused_dit_exact=120960/131072 max_abs=0.00012207
+  length=256 fused_dit_exact=20869/131072 max_abs=0.000732422
+
+At length 64, both components are exact for every tested input in 48 of 64 bins; the 16 exceptions are exactly the bins congruent to 2 modulo 4. That localizes the remaining length-64 difference to one internal codelet family. Length 256 still requires its distinct middle-stage ordering; the generic fused radix-4 schedule is not a valid replacement.
