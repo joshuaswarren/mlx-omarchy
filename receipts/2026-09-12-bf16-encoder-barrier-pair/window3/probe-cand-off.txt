@@ -1,0 +1,1 @@
+PROBE {"barriers": {"barriers_emitted": 400, "barriers_skipped": 0, "post_barriers_deferred": 0}, "dispatches": {"commit_calls_noop": 100, "commit_calls_with_work": 100, "gpu_primitive_dispatches": 300, "omarchy_finalize_calls": 100, "vk_buffer_copies": 0, "vk_buffer_fills": 0, "vk_compute_dispatches": 200, "vk_submissions": 100}}

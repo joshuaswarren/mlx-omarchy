@@ -1,0 +1,1 @@
+DECODEPROBE {"barriers_available": false, "per_token": {"commit_calls_noop": 1.0833333333333333, "commit_calls_with_work": 4.333333333333333, "gpu_primitive_dispatches": 1403.3333333333333, "omarchy_finalize_calls": 1.0833333333333333, "vk_buffer_copies": 52.0, "vk_buffer_fills": 0.0, "vk_compute_dispatches": 790.5, "vk_submissions": 4.333333333333333}, "tokens": 12}

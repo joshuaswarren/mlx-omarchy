@@ -1,0 +1,9 @@
+Traceback (most recent call last):
+  File "/home/joshuawarren/enc-ab-window3/probe.py", line 52, in <module>
+    lib.mlx_omarchy_trace_barriers.argtypes = [ctypes.POINTER(Barriers)]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/ctypes/__init__.py", line 486, in __getattr__
+    func = self.__getitem__(name)
+  File "/usr/lib/python3.14/ctypes/__init__.py", line 491, in __getitem__
+    func = self._FuncPtr((name_or_ordinal, self))
+AttributeError: /home/joshuawarren/src/mlx-enc-base/.work/venv-base/lib/python3.14/site-packages/mlx/lib/libmlx.so: undefined symbol: mlx_omarchy_trace_barriers. Did you mean: 'mlx_omarchy_trace_snapshot'?

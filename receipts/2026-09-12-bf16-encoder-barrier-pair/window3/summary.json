@@ -1,0 +1,390 @@
+{
+ "summary": {
+  "base-warmup": {
+   "qwen25-0.5b-4bit:short-decode-32": {
+    "decode_tok_s": 111.51,
+    "prefill_tok_s": 333.444
+   },
+   "qwen25-0.5b-4bit:long-decode-128": {
+    "decode_tok_s": 108.12,
+    "prefill_tok_s": 964.427
+   },
+   "qwen25-0.5b-4bit:longctx-1024-decode-32": {
+    "decode_tok_s": 96.31,
+    "prefill_tok_s": 1114.302
+   },
+   "qwen25-0.5b-bf16:short-decode-32": {
+    "decode_tok_s": 31.71,
+    "prefill_tok_s": 131.185
+   },
+   "qwen25-0.5b-bf16:long-decode-128": {
+    "decode_tok_s": 30.41,
+    "prefill_tok_s": 587.675
+   },
+   "qwen25-0.5b-bf16:longctx-1024-decode-32": {
+    "decode_tok_s": 24.82,
+    "prefill_tok_s": 677.543
+   }
+  },
+  "cand-warmup": {
+   "qwen25-0.5b-4bit:short-decode-32": {
+    "decode_tok_s": 111.32,
+    "prefill_tok_s": 333.574
+   },
+   "qwen25-0.5b-4bit:long-decode-128": {
+    "decode_tok_s": 107.98,
+    "prefill_tok_s": 944.25
+   },
+   "qwen25-0.5b-4bit:longctx-1024-decode-32": {
+    "decode_tok_s": 95.68,
+    "prefill_tok_s": 1110.64
+   },
+   "qwen25-0.5b-bf16:short-decode-32": {
+    "decode_tok_s": 31.77,
+    "prefill_tok_s": 132.079
+   },
+   "qwen25-0.5b-bf16:long-decode-128": {
+    "decode_tok_s": 30.42,
+    "prefill_tok_s": 581.902
+   },
+   "qwen25-0.5b-bf16:longctx-1024-decode-32": {
+    "decode_tok_s": 24.91,
+    "prefill_tok_s": 677.942
+   }
+  },
+  "base-aa1": {
+   "qwen25-0.5b-4bit:short-decode-32": {
+    "decode_tok_s": 111.82,
+    "prefill_tok_s": 331.375
+   },
+   "qwen25-0.5b-4bit:long-decode-128": {
+    "decode_tok_s": 108.12,
+    "prefill_tok_s": 969.025
+   },
+   "qwen25-0.5b-4bit:longctx-1024-decode-32": {
+    "decode_tok_s": 96.93,
+    "prefill_tok_s": 1118.286
+   },
+   "qwen25-0.5b-bf16:short-decode-32": {
+    "decode_tok_s": 31.79,
+    "prefill_tok_s": 130.702
+   },
+   "qwen25-0.5b-bf16:long-decode-128": {
+    "decode_tok_s": 30.63,
+    "prefill_tok_s": 590.705
+   },
+   "qwen25-0.5b-bf16:longctx-1024-decode-32": {
+    "decode_tok_s": 24.96,
+    "prefill_tok_s": 678.208
+   }
+  },
+  "base-aa2": {
+   "qwen25-0.5b-4bit:short-decode-32": {
+    "decode_tok_s": 107.08,
+    "prefill_tok_s": 330.757
+   },
+   "qwen25-0.5b-4bit:long-decode-128": {
+    "decode_tok_s": 108.22,
+    "prefill_tok_s": 968.473
+   },
+   "qwen25-0.5b-4bit:longctx-1024-decode-32": {
+    "decode_tok_s": 96.31,
+    "prefill_tok_s": 1113.755
+   },
+   "qwen25-0.5b-bf16:short-decode-32": {
+    "decode_tok_s": 31.86,
+    "prefill_tok_s": 130.881
+   },
+   "qwen25-0.5b-bf16:long-decode-128": {
+    "decode_tok_s": 30.39,
+    "prefill_tok_s": 588.42
+   },
+   "qwen25-0.5b-bf16:longctx-1024-decode-32": {
+    "decode_tok_s": 24.97,
+    "prefill_tok_s": 673.773
+   }
+  },
+  "base-r1": {
+   "qwen25-0.5b-4bit:short-decode-32": {
+    "decode_tok_s": 111.93,
+    "prefill_tok_s": 331.921
+   },
+   "qwen25-0.5b-4bit:long-decode-128": {
+    "decode_tok_s": 107.79,
+    "prefill_tok_s": 941.951
+   },
+   "qwen25-0.5b-4bit:longctx-1024-decode-32": {
+    "decode_tok_s": 96.5,
+    "prefill_tok_s": 1113.291
+   },
+   "qwen25-0.5b-bf16:short-decode-32": {
+    "decode_tok_s": 31.86,
+    "prefill_tok_s": 130.104
+   },
+   "qwen25-0.5b-bf16:long-decode-128": {
+    "decode_tok_s": 30.48,
+    "prefill_tok_s": 590.138
+   },
+   "qwen25-0.5b-bf16:longctx-1024-decode-32": {
+    "decode_tok_s": 25.02,
+    "prefill_tok_s": 678.639
+   }
+  },
+  "cand-r1": {
+   "qwen25-0.5b-4bit:short-decode-32": {
+    "decode_tok_s": 111.69,
+    "prefill_tok_s": 331.785
+   },
+   "qwen25-0.5b-4bit:long-decode-128": {
+    "decode_tok_s": 107.29,
+    "prefill_tok_s": 967.018
+   },
+   "qwen25-0.5b-4bit:longctx-1024-decode-32": {
+    "decode_tok_s": 96.13,
+    "prefill_tok_s": 1115.966
+   },
+   "qwen25-0.5b-bf16:short-decode-32": {
+    "decode_tok_s": 31.86,
+    "prefill_tok_s": 131.988
+   },
+   "qwen25-0.5b-bf16:long-decode-128": {
+    "decode_tok_s": 30.43,
+    "prefill_tok_s": 589.928
+   },
+   "qwen25-0.5b-bf16:longctx-1024-decode-32": {
+    "decode_tok_s": 24.95,
+    "prefill_tok_s": 677.749
+   }
+  },
+  "cand-r2": {
+   "qwen25-0.5b-4bit:short-decode-32": {
+    "decode_tok_s": 110.87,
+    "prefill_tok_s": 331.668
+   },
+   "qwen25-0.5b-4bit:long-decode-128": {
+    "decode_tok_s": 106.96,
+    "prefill_tok_s": 941.796
+   },
+   "qwen25-0.5b-4bit:longctx-1024-decode-32": {
+    "decode_tok_s": 96.08,
+    "prefill_tok_s": 1111.552
+   },
+   "qwen25-0.5b-bf16:short-decode-32": {
+    "decode_tok_s": 32.16,
+    "prefill_tok_s": 126.2
+   },
+   "qwen25-0.5b-bf16:long-decode-128": {
+    "decode_tok_s": 30.45,
+    "prefill_tok_s": 588.389
+   },
+   "qwen25-0.5b-bf16:longctx-1024-decode-32": {
+    "decode_tok_s": 25.0,
+    "prefill_tok_s": 679.443
+   }
+  },
+  "base-r2": {
+   "qwen25-0.5b-4bit:short-decode-32": {
+    "decode_tok_s": 111.37,
+    "prefill_tok_s": 327.093
+   },
+   "qwen25-0.5b-4bit:long-decode-128": {
+    "decode_tok_s": 107.83,
+    "prefill_tok_s": 956.882
+   },
+   "qwen25-0.5b-4bit:longctx-1024-decode-32": {
+    "decode_tok_s": 96.27,
+    "prefill_tok_s": 1112.386
+   },
+   "qwen25-0.5b-bf16:short-decode-32": {
+    "decode_tok_s": 31.71,
+    "prefill_tok_s": 131.826
+   },
+   "qwen25-0.5b-bf16:long-decode-128": {
+    "decode_tok_s": 30.32,
+    "prefill_tok_s": 588.255
+   },
+   "qwen25-0.5b-bf16:longctx-1024-decode-32": {
+    "decode_tok_s": 24.98,
+    "prefill_tok_s": 678.269
+   }
+  },
+  "base-r3": {
+   "qwen25-0.5b-4bit:short-decode-32": {
+    "decode_tok_s": 111.59,
+    "prefill_tok_s": 333.048
+   },
+   "qwen25-0.5b-4bit:long-decode-128": {
+    "decode_tok_s": 107.53,
+    "prefill_tok_s": 959.479
+   },
+   "qwen25-0.5b-4bit:longctx-1024-decode-32": {
+    "decode_tok_s": 96.27,
+    "prefill_tok_s": 1117.683
+   },
+   "qwen25-0.5b-bf16:short-decode-32": {
+    "decode_tok_s": 31.99,
+    "prefill_tok_s": 130.814
+   },
+   "qwen25-0.5b-bf16:long-decode-128": {
+    "decode_tok_s": 30.64,
+    "prefill_tok_s": 585.145
+   },
+   "qwen25-0.5b-bf16:longctx-1024-decode-32": {
+    "decode_tok_s": 24.96,
+    "prefill_tok_s": 676.75
+   }
+  },
+  "cand-r3": {
+   "qwen25-0.5b-4bit:short-decode-32": {
+    "decode_tok_s": 112.28,
+    "prefill_tok_s": 332.06
+   },
+   "qwen25-0.5b-4bit:long-decode-128": {
+    "decode_tok_s": 108.55,
+    "prefill_tok_s": 963.668
+   },
+   "qwen25-0.5b-4bit:longctx-1024-decode-32": {
+    "decode_tok_s": 95.93,
+    "prefill_tok_s": 1114.632
+   },
+   "qwen25-0.5b-bf16:short-decode-32": {
+    "decode_tok_s": 31.72,
+    "prefill_tok_s": 131.498
+   },
+   "qwen25-0.5b-bf16:long-decode-128": {
+    "decode_tok_s": 30.53,
+    "prefill_tok_s": 567.998
+   },
+   "qwen25-0.5b-bf16:longctx-1024-decode-32": {
+    "decode_tok_s": 24.93,
+    "prefill_tok_s": 680.236
+   }
+  },
+  "base-stock": {
+   "qwen25-0.5b-4bit:short-decode-32": {
+    "decode_tok_s": 100.66,
+    "prefill_tok_s": 194.645
+   },
+   "qwen25-0.5b-4bit:long-decode-128": {
+    "decode_tok_s": 81.46,
+    "prefill_tok_s": 645.153
+   },
+   "qwen25-0.5b-4bit:longctx-1024-decode-32": {
+    "decode_tok_s": 53.18,
+    "prefill_tok_s": 656.366
+   },
+   "qwen25-0.5b-bf16:short-decode-32": {
+    "decode_tok_s": 32.19,
+    "prefill_tok_s": 132.057
+   },
+   "qwen25-0.5b-bf16:long-decode-128": {
+    "decode_tok_s": 30.64,
+    "prefill_tok_s": 502.721
+   },
+   "qwen25-0.5b-bf16:longctx-1024-decode-32": {
+    "decode_tok_s": 25.1,
+    "prefill_tok_s": 494.207
+   }
+  },
+  "cand-stock": {
+   "qwen25-0.5b-4bit:short-decode-32": {
+    "decode_tok_s": 102.42,
+    "prefill_tok_s": 171.069
+   },
+   "qwen25-0.5b-4bit:long-decode-128": {
+    "decode_tok_s": 81.08,
+    "prefill_tok_s": 634.761
+   },
+   "qwen25-0.5b-4bit:longctx-1024-decode-32": {
+    "decode_tok_s": 52.86,
+    "prefill_tok_s": 654.519
+   },
+   "qwen25-0.5b-bf16:short-decode-32": {
+    "decode_tok_s": 32.27,
+    "prefill_tok_s": 134.389
+   },
+   "qwen25-0.5b-bf16:long-decode-128": {
+    "decode_tok_s": 30.84,
+    "prefill_tok_s": 487.576
+   },
+   "qwen25-0.5b-bf16:longctx-1024-decode-32": {
+    "decode_tok_s": 25.09,
+    "prefill_tok_s": 494.429
+   }
+  }
+ },
+ "paired": {
+  "qwen25-0.5b-4bit:short-decode-32": {
+   "base": [
+    111.93,
+    111.37,
+    111.59
+   ],
+   "cand": [
+    111.69,
+    110.87,
+    112.28
+   ]
+  },
+  "qwen25-0.5b-4bit:long-decode-128": {
+   "base": [
+    107.79,
+    107.83,
+    107.53
+   ],
+   "cand": [
+    107.29,
+    106.96,
+    108.55
+   ]
+  },
+  "qwen25-0.5b-4bit:longctx-1024-decode-32": {
+   "base": [
+    96.5,
+    96.27,
+    96.27
+   ],
+   "cand": [
+    96.13,
+    96.08,
+    95.93
+   ]
+  },
+  "qwen25-0.5b-bf16:short-decode-32": {
+   "base": [
+    31.86,
+    31.71,
+    31.99
+   ],
+   "cand": [
+    31.86,
+    32.16,
+    31.72
+   ]
+  },
+  "qwen25-0.5b-bf16:long-decode-128": {
+   "base": [
+    30.48,
+    30.32,
+    30.64
+   ],
+   "cand": [
+    30.43,
+    30.45,
+    30.53
+   ]
+  },
+  "qwen25-0.5b-bf16:longctx-1024-decode-32": {
+   "base": [
+    25.02,
+    24.98,
+    24.96
+   ],
+   "cand": [
+    24.95,
+    25.0,
+    24.93
+   ]
+  }
+ }
+}
