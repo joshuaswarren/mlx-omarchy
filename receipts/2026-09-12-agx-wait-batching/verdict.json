@@ -52,9 +52,10 @@
   {
    "commit": "30ffef135e0",
    "time_utc": "2026-09-12T13:09:32Z",
-   "command": "flock /tmp/m1-gpu.lock; VK_DRIVER_FILES=~/benchq/qmm-coop-bench/icd-waitbatch-patched.json AGX_SIMDMAT=1 MESA_SHADER_CACHE_DISABLE=true MESA_SHADER_CACHE_DIR=$(mktemp -d) AGX_MESA_DEBUG=shaders ~/venv-qmmcoop/bin/python ~/benchq/qmm-coop-bench/qmm_dump_probe.py",
+   "command_scope": "inside the phase's single flock on /tmp/m1-gpu.lock (lock held for the whole phase; enclosing pattern in window.sh)",
+   "command": "VK_DRIVER_FILES=~/benchq/qmm-coop-bench/icd-waitbatch-patched.json AGX_SIMDMAT=1 MESA_SHADER_CACHE_DISABLE=true MESA_SHADER_CACHE_DIR=$(mktemp -d) AGX_MESA_DEBUG=shaders ~/venv-qmmcoop/bin/python ~/benchq/qmm-coop-bench/qmm_dump_probe.py",
    "nature": "real kernel dispatch (5 warmup + 6 timed + 1 digest eval) on driver qualified only by reviewer static analysis at that point; digest held",
-   "result": {"median_ms": 17.2814, "tflops": 1062.2, "f16_digest": "5179630cd4a7c3f9"},
+   "result": {"median_ms": 17.2814, "gflops": 1062.2, "f16_digest": "5179630cd4a7c3f9"},
    "caveat": "single unpaired run in a different window from the stock reference (17.5371 ms / 1046.7 GFLOP/s) - continuity only, not a performance claim"
   }
  ],
