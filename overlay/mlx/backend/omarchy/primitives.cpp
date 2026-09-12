@@ -582,10 +582,6 @@ void dispatch_matmul(
   // tile-shape variant.
   static const bool matmul_fma_disabled =
       omarchy::env_flag("MLX_OMARCHY_NO_MATMUL_FMA");
-  static const uint32_t matmul_fma_cfg = []() {
-    const char* env = std::getenv("MLX_OMARCHY_MATMUL_FMA_CFG");
-    return (env == nullptr) ? 0u : uint32_t(std::atoi(env)) % 2u;
-  }();
   bool bf16_fma_aligned = ((params.lhs_offset | params.rhs_offset |
       params.output_offset | a_gap | b_gap) % 8u) == 0u;
   for (uint32_t axis = 0; bf16_fma_aligned && axis < params.dims; ++axis) {
@@ -6717,10 +6713,6 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
   // MLX_OMARCHY_QMM_FMA_CFG selects the bench tile-shape variant.
   static const bool qmm_fma_disabled =
       omarchy::env_flag("MLX_OMARCHY_NO_QMM_FMA");
-  static const uint32_t qmm_fma_cfg = []() {
-    const char* env = std::getenv("MLX_OMARCHY_QMM_FMA_CFG");
-    return (env == nullptr) ? 0u : uint32_t(std::atoi(env)) % 4u;
-  }();
   const char* tile_env = std::getenv("MLX_OMARCHY_QMM_TILE");
   bool tile_path = tile_env == nullptr || std::strcmp(tile_env, "0") != 0;
   const char* rb_env = std::getenv("MLX_OMARCHY_QMM_TILE_RB");
@@ -6910,32 +6902,28 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
             (params.output_offset & 1u) != 0u) {
           omarchy::unsupported(tag + " fma operand alignment", out);
         }
-        uint32_t fma_rows = qmm_fma_cfg == 2u ? 32u : 64u;
-        uint32_t fma_cols =
-            (qmm_fma_cfg == 1u || qmm_fma_cfg == 2u) ? 128u : 64u;
+        // The accumulator contraction class follows the shipped tile
+        // boundary: fused below m=1024, precise (NoContraction) at and
+        // above - the classes the composed tree's digests were pinned
+        // against on both drivers (window1/window1c screens).
         omarchy::ComputeKernel fma_kernel =
-            qmm_fma_cfg == 1u
-                ? omarchy::ComputeKernel::QmmPrefillFmaL16C4F16
-            : qmm_fma_cfg == 2u
-                ? omarchy::ComputeKernel::QmmPrefillFmaL8C4F16
-            : qmm_fma_cfg == 3u
+            params.matrix_m >= 1024u
                 ? omarchy::ComputeKernel::QmmPrefillFmaPreciseF16
                 : omarchy::ComputeKernel::QmmPrefillFmaF16;
         encoder.dispatch_compute(
             fma_kernel,
             bindings,
             params,
-            std::min(
-                (params.matrix_n + fma_cols - 1u) / fma_cols,
-                omarchy::kMaxComputeGroupCountX),
-            std::min(
-                (params.matrix_m + fma_rows - 1u) / fma_rows,
-                omarchy::kMaxComputeGroupCountX),
+            std::min((params.matrix_n + 63u) / 64u,
+                     omarchy::kMaxComputeGroupCountX),
+            std::min((params.matrix_m + 63u) / 64u,
+                     omarchy::kMaxComputeGroupCountX),
             1u);
         return;
       }
-      // Same layout on the 8x8x8 fp32 cooperative matrix when the
-      // device advertises it (shaders/qmm_coopmat.comp: 32x32 output
+      // The 8x8x8 fp32 cooperative matrix (shaders/qmm_coopmat.comp)
+      // remains the route when the scalar-FMA kernel declines (odd n or
+      // unaligned operands): a 32x32 output
       // tile per two-subgroup workgroup, 4 KiB shared staging; x is
       // read as 32-bit word pairs). The materialization above stages any
       // odd-offset x view and out is a fresh offset-0 allocation, so

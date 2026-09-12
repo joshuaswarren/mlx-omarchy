@@ -274,11 +274,8 @@ omarchy_shader(qmm_tile_rb_precise_f16 shaders/qmm_tile.comp -DUSE_FP16=1 -DREGI
 # the register-blocked tile.
 omarchy_shader(qmm_coopmat_f16 shaders/qmm_coopmat.comp)
 omarchy_shader(qmm_fma_f16 shaders/qmm_fma.comp)
-omarchy_shader(qmm_fma_l16c4_f16 shaders/qmm_fma.comp -DROWS=16 -DCOLS=4)
-omarchy_shader(qmm_fma_l8c4_f16 shaders/qmm_fma.comp -DROWS=8 -DCOLS=4)
 omarchy_shader(qmm_fma_precise_f16 shaders/qmm_fma.comp -DPRECISE_ACCUM=1)
 omarchy_shader(matmul_fma_bf16 shaders/matmul_fma_bf16.comp)
-omarchy_shader(matmul_fma_l16c4_bf16 shaders/matmul_fma_bf16.comp -DROWS=16 -DCOLS=4)
 omarchy_shader(binary_vec_f16 shaders/binary_vec.comp -DUSE_FP16=1)
 omarchy_shader(binary_vec_bf16 shaders/binary_vec.comp -DUSE_BF16=1)
 omarchy_shader(matmul_rb_f16 shaders/matmul_rb.comp)
