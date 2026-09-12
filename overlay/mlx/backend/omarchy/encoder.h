@@ -213,6 +213,13 @@ class MLX_API CommandEncoder {
   // Submit pending work and block (bounded) until it completes.
   void synchronize(const char* reason = "explicit");
 
+  // Order this stream's next submission after every submission reserved so
+  // far on any stream, without a host join: the ordering rides the next
+  // submission as a timeline wait on the device completion semaphore. This
+  // is the device-visible equivalent of a drain for GPU work. It cannot
+  // order host writes to mapped memory, which still need synchronize().
+  void wait_outstanding_submissions();
+
   // True when every submission queued through this encoder has completed
   // and its handlers have run, and no batch is open with un-submitted
   // work. Host reads of input bytes are then sound.
@@ -222,15 +229,12 @@ class MLX_API CommandEncoder {
          device_.completions().drained_value() >= last_completion_);
   }
 
-  // Completion timeline value of the newest submission this encoder has
-  // on the queue (0 when none). Event signal paths capture it so waiters
-  // can join the handler boundary of the generation that signaled them.
-  uint64_t last_submitted_completion() const {
-    return last_completion_;
-  }
-
   Device& device() {
     return device_;
+  }
+
+  uint64_t last_submitted_completion() const {
+    return last_completion_;
   }
 
  private:
