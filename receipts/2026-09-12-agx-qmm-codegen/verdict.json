@@ -87,7 +87,8 @@
   "change": "agx_insert_waits.c rewritten: scoreboard slots 2->4 (2-bit packed immediate), pending state carried across exec-mask fallthrough edges of divergent if/else regions with merge seeding (union of both arms), waits inserted at first use; only real branches, back-edges and barriers drain. Well-formedness guards fall back to the old conservative per-block drain on any unexpected CFG shape.",
   "reproducibility": "branch pushed to origin; A/B via explicit ICD JSON files, never an install over the system driver",
   "icd_base": "~/benchq/qmm-coop-bench/icd-waitbatch-base.json -> ~/src/mesa-wt-waitbatch-base/build/src/asahi/vulkan/libvulkan_asahi.so (6f6afc89684, debugoptimized)",
-  "icd_patched": "~/benchq/qmm-coop-bench/icd-waitbatch-patched.json -> ~/src/mesa-wt-waitbatch/build/src/asahi/vulkan/libvulkan_asahi.so (84fcd220de1, debugoptimized)"
+  "icd_patched": "~/benchq/qmm-coop-bench/icd-waitbatch-patched.json -> ~/src/mesa-wt-waitbatch/build/src/asahi/vulkan/libvulkan_asahi.so (84fcd220de1, debugoptimized)",
+  "named_fix_commit": "hk/agx-wait-batching @ 8f3169a4342 (committed UNBUILT, UNVERIFIED, on top of WIP debug commits; first action on pickup: build, dump the shipped qmm coopmat kernel, confirm the five guard-load waits move to first use)"
  },
  "ab_measurement": {
   "protocol": "paired interleaved, same stock driver hk6f6afc8, 3 rounds x 8 shapes, wheel 48ea34dd (shipped kernel) vs wheel 8f6de34c (uniform-load shader), 4 warmups + 30 timed medians per run; digests compared per shape",
@@ -124,5 +125,30 @@
   "dump_kernel": "dumps/coopmat-kernel-dump.txt.gz (the 64-lane coopmat kernel section only)",
   "isa_final": "dumps/coopmat-kernel-final-isa.txt.gz (final packed disassembly)"
  },
- "status": "ANALYSIS COMPLETE + DRIVER PATCH ROOT-CAUSED INERT + SHADER RESTRUCTURE MEASURED NEGATIVE; nothing landed as a perf change"
+ "status": "ANALYSIS COMPLETE + DRIVER PATCH ROOT-CAUSED INERT + SHADER RESTRUCTURE MEASURED NEGATIVE; nothing landed as a perf change",
+ "reconciliation": "The de-diverged staging result must be read precisely: it FALSIFIES the simple form of the drain theory ('remove the exec-mask block exits the driver drains at, and the serialization disappears') - removing every drain site from the staging phase made the kernel 13-26 percent slower, bit-exactly, on the stock driver. What survives is the narrower claim: the driver's wait placement costs real latency in the staging phase (the stock ISA shows five load->wait pairs the source does not ask for), but the cost is a property of how the AGX scheduler places waits and loads for a given CFG, not of the presence of block exits per se. A source-level CFG change is confounded: it also changes scheduler decisions, RA and array promotion (the de-diverged shader needs its hoisted per-tile arrays promoted to registers, which requires unrolling the backend refuses on this shape - the same cliff as the 2026-09-11 forced-unroll receipt). The two findings are consistent; neither alone identifies the dominant term.",
+ "handoff_open_questions": {
+  "question": "What is the actual dominant term of the 1034-vs-2148 GFLOP/s gap, given: zero issue waste, zero spills, zero-traffic ladder caps at 1459 inside the real dispatch geometry (68 percent of flat), barrier-free scalar kernel is worse (545), de-diverged staging is worse on the stock driver?",
+  "H1_dispatch_geometry_ceiling": {
+   "claim": "The 64-lane workgroup / 16 KiB-shared / tile-looped geometry caps the matrix pipe near 1459 regardless of kernel body; the shipped kernel is close to that cap once its own latency costs are counted.",
+   "discriminator": "Rerun the receipts/2026-09-11-fma-ceiling zero-traffic coopmat ladder with three geometry arms: 4 KiB shared skeleton (matches shipped), 128-lane workgroups (two tiles per WG), and no tile loop (flat per-tile dispatch). If 4 KiB alone recovers ~1900+, shared footprint/occupancy is the wall; if 128-lane recovers, subgroup residency is.",
+   "instrument": "Existing fma_bench.c + sweep.py harness, no mlx, one GPU window, ~20 min."
+  },
+  "H2_wait_placement_at_barrier": {
+   "claim": "The scheduler sinks load waits to the barrier drain rather than first use even without block exits, so staged-load latency lands on the barrier path; the block-exit drain is one instance of a general wait-placement weakness.",
+   "discriminator": "Dump the de-diverged kernel (wheel 8f6de34c) with AGX_MESA_DEBUG=shaders on the stock driver and diff wait placement against the shipped kernel: if the waits sit immediately before the threadgroup_barrier instead of at first use, H2 is confirmed and the driver fix target moves from block exits to barrier-drain + scoreboard allocation.",
+   "instrument": "One dump run + ISA diff, ~5 min, no new build."
+  },
+  "H3_shared_bank_aliasing": {
+   "claim": "w_s pitch 32 f32 cycles the full bank set on every fragment lload and staging lstore (flagged in receipts/2026-09-11-qmm-coop-datapath: upstream pads, we do not); bank-conflict serialization, not scoreboard waits, is the staging cost.",
+   "discriminator": "Step-level padding variant: w_s[16][34], x_s[34][16] (shared layout only, arithmetic untouched, bit-preserving). The qmm-coop-datapath arm 2 padded at chunk granularity and lost; step-level 32->34 was never isolated.",
+   "instrument": "One shader variant + kernel probe with digest gate, ~30 min including wheel build."
+  },
+  "H4_runtime_effective_chains": {
+   "claim": "Even with perfect staging, the 8-fmadd bursts are too short (8 ops x ~15 clk = 120 clk) for the pipe to ramp between long idle phases, so time-averaged chains stay near 1 (the ilp-chains 1-chain rung at 1014 matches the shipped 1043).",
+   "discriminator": "A bit-preserving schedule that doubles burst length without growing shared memory: stage 32-k of A fragments in registers per subgroup (2 f32/lane each) and issue 16-fmadd bursts; digests must hold. If GFLOP/s lands near the 2-chain rung (~1360), burst length is the binding term.",
+   "instrument": "One arm on the wave/CoopmatIlpChains bench skeleton, digest-gated, ~1 h."
+  },
+  "order_of_attack": "H2 first (5 min, pure read - it also settles whether the committed-but-unbuilt 8f3169a4342 targets the right site); then H1 (20 min, existing harness); then H3/H4 as shader arms if H1 leaves a gap unexplained."
+ }
 }
