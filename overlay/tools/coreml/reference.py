@@ -133,17 +133,12 @@ class TdtConfig:
 
 @dataclass
 class AudioFixture:
-    """Pinned deterministic speech input for the reference capture.
-
-    JFK inaugural-address excerpt from the pinned openai/whisper
-    tests/jfk.flac file (44.1 kHz stereo). It is not a LibriSpeech
-    utterance. See the lock for the distribution and rights record.
-    """
+    """Pinned speech input; the lock records its identity and license."""
 
     url: str                 # exact-revision source URL
     sha256: str
     size: int
-    sample_rate: int         # source sample rate (44100)
+    sample_rate: int
     duration_seconds: float
     license: str
     note: str

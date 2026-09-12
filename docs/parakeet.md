@@ -12,7 +12,7 @@ reference Mac and pinned by hash in
 | Public model | [`mweinbach1/parakeet-tdt-0.6b-v3-coreml`](https://huggingface.co/mweinbach1/parakeet-tdt-0.6b-v3-coreml) @ `b650695c2322ee5281dff48d7345b2f3a58ff018` (CC-BY-4.0, inherits `nvidia/parakeet-tdt-0.6b-v3`) |
 | Package files | 12 files pinned by size + SHA-256 (HF LFS oids verified against the live tree at download time) |
 | Quantization | fp16 compute; encoder 4-bit palettized (kmeans, per-grouped-channel, conv excluded); decoder/joint fp16 |
-| Audio fixture | JFK inaugural excerpt in openai/whisper@86098128c0b4f24f0e2aa2994de830614b474227:tests/jfk.flac, SHA-256 63a4b1e4…949715 |
+| Audio fixture | LibriSpeech test-clean, 1089-134686-0000, CC-BY-4.0; Narsil/asr_dummy@8d141c84e3f84c54cd7bbaa851d24edd0f559734:1.flac; SHA-256 30885601…ed94c2 |
 | Golden outputs | `waveform`, `mel`, `mel_mask`, padded `encoder_input_*`, `encoder_hidden`, `encoder_mask`, `token_ids`, `transcript`, `environment`, `crosscheck` — SHA-256 in the lock |
 
 Model spec facts (official `coremltools` 9.0 schema inspection, ML Program,
@@ -49,14 +49,14 @@ Golden reference host: **Apple M1 Ultra** (Mac13,2), macOS 26.6.2 (25G83),
 CoreML framework 3520.5.1, compute units `cpuAndNeuralEngine`. It is never
 labelled as any other SoC.
 
-The contract is derived from measured divergence between compute plans on the
-same host and pinned model — not invented:
+The numerical limits remain those frozen from the original reference. The
+licensed replacement clip passes them without adjustment:
 
 ```text
 encoder_hidden (vs golden ANE capture):
-  max |Δ|            ≤ 0.30      (measured ANE-vs-CPU 0.1313, ANE-vs-GPU 0.1148)
-  mean |Δ|           ≤ 0.02      (measured 0.00855)
-  relative L2        ≤ 0.10      (measured 0.0471)
+  max |Δ|            ≤ 0.30      (licensed clip: CPU 0.145203, GPU 0.139700)
+  mean |Δ|           ≤ 0.02      (licensed clip worst: 0.004393)
+  relative L2        ≤ 0.10      (licensed clip worst: 0.025172)
   NaN / Inf          = 0
 decoder/joint: emitted token IDs must match exactly
   (plan section 40, layer 6; duration/frame metadata remains diagnostic)
@@ -66,11 +66,13 @@ transcript: must match exactly
 Host-side preprocessing (waveform, mel, padded inputs, mask) was
 **bit-identical** across all three compute plans, so it is compared exactly.
 
-The corrected capture confirms exact token IDs and transcript across ANE,
-GPU, and CPU. Duration choices at indices 21, 27, and 28 differ, as do
-frame indices 22, 23, and 28. They were incorrectly described as identical
-in the first receipt. Neither the encoder tolerances nor the pinned ANE
-golden artifacts have changed.
+The licensed clip produces identical 104-token outputs on ANE and GPU.
+The pinned reference emits repeated punctuation and a Cyrillic suffix; these
+remain in the golden transcript. CPU emits 100 tokens and does not match that
+transcript. Each compute plan matches its own end-to-end reference transcriber.
+This freeze records native behavior, not clean transcription quality. See the
+[licensed reference receipt](../receipts/2026-09-12-licensed-parakeet-reference.json)
+for exact text, token counts, and duration/frame differences.
 
 ## Downloader
 
@@ -97,15 +99,15 @@ Cache layout: `$MLX_OMARCHY_CACHE_DIR|~/.cache/mlx-omarchy/parakeet-reference/<m
 Bulk capture data lives **outside git** at
 `~/.cache/mlx-omarchy/parakeet-reference/captures/b650695c-75aec2a/` with
 `manifest.sha256` per capture; the lock pins each artifact's SHA-256.
-Primary golden: `20260912T135844Z-ane` (ANE); cross-plan captures
-`20260912T140057Z-gpu`, `20260912T140106Z-cpu` exist for the tolerance
-derivation. Reproduce on any Apple Silicon Mac with:
+Primary golden: `20260912T154759Z-librispeech/ane`. Matched GPU and CPU
+captures are sibling directories in that run. Earlier JFK captures are historical
+evidence, not the current golden. Reproduce on an Apple Silicon Mac with:
 
 ```bash
 cd overlay/tools/coreml/capture
 swift build -c release
 .build/release/parakeet-reference-capture \
-  --audio jfk.flac --models <model-dir> --out <capture-dir> \
+  --audio 1089-134686-0000.flac --models <model-dir> --out <capture-dir> \
   --compute-units ane --expect <path>=<sha256> ...
 ```
 
@@ -118,10 +120,12 @@ checks its composed run against the reference end-to-end `ParakeetTranscriber`
 * `parakeet-coreml-swift` source: Apache-2.0 (repo `LICENSE`).
 * Model packages + tokenizer: CC-BY-4.0, inherited from
   `nvidia/parakeet-tdt-0.6b-v3` (recorded in package spec metadata and HF card).
-* Audio fixture: the pinned [Whisper repository LICENSE](https://github.com/openai/whisper/blob/86098128c0b4f24f0e2aa2994de830614b474227/LICENSE)
-  is MIT. Its JFK sample is not a LibriSpeech utterance; the repository
-  does not document the source recording's separate rights. No claim of
-  CC-BY-4.0 or public-domain status is made for those exact audio bytes.
+* Audio fixture: [LibriSpeech ASR corpus, SLR12](https://www.openslr.org/12/),
+  CC-BY-4.0. Attribution: Vassil Panayotov, Guoguo Chen, Daniel Povey, Sanjeev
+  Khudanpur. The pinned mirror is byte-identical to
+  `LibriSpeech/test-clean/1089/134686/1089-134686-0000.flac` in the official
+  test-clean archive. Mirror bytes are unmodified; reference preprocessing
+  converts them to float32 and zero-pads the chunk as specified above.
 * `coremltools` (schema inspection + vendored proto schema under
   `overlay/tools/coreml/schema/`): BSD-3-Clause (`LICENSES/coremltools.txt`).
 * No third-party weights are committed to `mlx-omarchy`; the downloader

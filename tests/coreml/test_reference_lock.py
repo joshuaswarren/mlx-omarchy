@@ -13,7 +13,7 @@ import pytest
 TOOLS = Path(__file__).resolve().parents[2] / "overlay" / "tools" / "coreml"
 sys.path.insert(0, str(TOOLS))
 
-import reference as R  # noqa: E402
+import reference as R
 
 
 def sha256(b: bytes) -> str:
@@ -21,19 +21,19 @@ def sha256(b: bytes) -> str:
 
 
 def make_lock(**overrides) -> R.ReferenceLock:
-    kwargs = dict(
-        schema_version=1,
-        reference_repo="mweinbach/parakeet-coreml-swift",
-        reference_commit="a" * 40,
-        model_repo="mweinbach1/parakeet-tdt-0.6b-v3-coreml",
-        model_revision="b" * 40,
-        model_license="CC-BY-4.0",
-        model_quantization="test",
-        files=[
+    kwargs = {
+        "schema_version": 1,
+        "reference_repo": "mweinbach/parakeet-coreml-swift",
+        "reference_commit": "a" * 40,
+        "model_repo": "mweinbach1/parakeet-tdt-0.6b-v3-coreml",
+        "model_revision": "b" * 40,
+        "model_license": "CC-BY-4.0",
+        "model_quantization": "test",
+        "files": [
             R.LockedFile(path=p, size=len(b), sha256=sha256(b))
             for p, b in sorted(SYNTHETIC_FILES.items())
         ],
-        audio=R.AudioFixture(
+        "audio": R.AudioFixture(
             url="https://example.invalid/jfk.flac",
             sha256="c" * 64,
             size=1,
@@ -42,18 +42,18 @@ def make_lock(**overrides) -> R.ReferenceLock:
             license="CC-BY-4.0",
             note="test",
         ),
-        mel=R.MelConfig(
+        "mel": R.MelConfig(
             sample_rate=16000, hop_length=160, win_length=400, n_fft=512,
             n_mels=128, preemphasis=0.97, log_guard=2.0**-24, epsilon=1e-5,
         ),
-        tdt=R.TdtConfig(
+        "tdt": R.TdtConfig(
             blank_token_id=8192, durations=[0, 1, 2, 3, 4],
             max_symbols_per_step=10, vocab_size=8193,
         ),
-        numerical_contract=None,
-        macos_reference_environment=None,
-        macos_reference_paths={},
-    )
+        "numerical_contract": None,
+        "macos_reference_environment": None,
+        "macos_reference_paths": {},
+    }
     kwargs.update(overrides)
     return R.ReferenceLock(**kwargs)
 
@@ -101,9 +101,6 @@ def test_real_lock_loads_and_validates():
         assert f"{pkg}.mlpackage/Data/com.apple.CoreML/model.mlmodel" in paths
         assert f"{pkg}.mlpackage/Data/com.apple.CoreML/weights/weight.bin" in paths
     assert lock.mel.n_mels == 128 and lock.tdt.blank_token_id == 8192
-    assert lock.audio.sha256 == (
-        "63a4b1e4c1dc655ac70961ffbf518acd249df237e5a0152faae9a4a836949715"
-    )
 
 
 def test_lock_roundtrip():

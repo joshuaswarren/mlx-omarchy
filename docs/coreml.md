@@ -163,8 +163,9 @@ are missing, and the mixed-type, two-output contract is not represented by
 the current compiler program model. Execution work stops at plan section 62;
 no CPU fallback or altered model contract substitutes for these gaps.
 
-The [capture review](../receipts/coreml-capture-review.json) confirms exact
-reference token IDs and transcript across macOS compute plans. Duration
-and frame metadata differ at three positions. The recording rights for
-the pinned audio remain undocumented; the licensed public-fixture gate
-is still open. No Core ML feature release is claimed.
+The [licensed reference receipt](../receipts/2026-09-12-licensed-parakeet-reference.json)
+replaces the undocumented-rights JFK clip with a byte-verified CC-BY-4.0
+LibriSpeech utterance. ANE and GPU emit the same 104 tokens, including the
+pinned reference's erroneous suffix; CPU emits 100. Encoder tensors pass the
+unchanged tolerances. This is reference capture, not Linux ANE execution or
+evidence of clean transcription. No Core ML feature release is claimed.
