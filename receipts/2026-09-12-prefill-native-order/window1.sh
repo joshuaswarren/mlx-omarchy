@@ -48,6 +48,16 @@ echo "quiet gate done ok=$ok load=$(cut -d' ' -f1 /proc/loadavg)"
 SAMPLER=$!
 trap 'kill $SAMPLER 2>/dev/null' EXIT
 
+echo "=== driver-level coopmat construction probe $(date -u +%H:%M:%S) ==="
+PB="$ROOT/benchq/qmm-fma"
+gcc -O2 -o "$R/coopmat_probe" "$PB/coopmat_probe.c" -lvulkan
+spirv-as --target-env vulkan1.3 "$PB/coopmat_sb_load.spvasm" -o "$R/sb_load.spv"
+spirv-as --target-env vulkan1.3 "$PB/coopmat_private_load.spvasm" -o "$R/private_load.spv"
+"$R/coopmat_probe" "$R/sb_load.spv" success > "$R/coopmat-probe-control.log" 2>&1
+tail -3 "$R/coopmat-probe-control.log"
+"$R/coopmat_probe" "$R/private_load.spv" failure > "$R/coopmat-probe-private.log" 2>&1
+grep -E "SPIR-V|pipeline-creation|expect" "$R/coopmat-probe-private.log"
+
 probe_run() {  # side dtype cfg tag
   local side="$1" dtype="$2" cfg="$3" tag="$4"
   local -a CFG=()
