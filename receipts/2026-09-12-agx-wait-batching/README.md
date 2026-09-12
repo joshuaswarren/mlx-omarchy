@@ -176,6 +176,14 @@ serialization. Address ops and loop structure (see
 `receipts/2026-09-12-qmm-staging-attribution` and the no-LICM gap) remain
 the live hypotheses.
 
+The 262x896x128 regression has a named candidate mechanism:
+`receipts/2026-09-12-qmm-staging-attribution` (final numbers @
+`e7bb45c6`) measures rolled->unrolled loop flips alone at −21.3% on this
+kernel family, and this pass changes instruction counts, so a
+loop-structure flip is the leading suspect over wait placement itself.
+Untested here (would need a per-leg ISA dump window); the negative
+headline does not depend on it.
+
 NOT LANDED as a performance change. The branch keeps the correctness
 fixes (per-instruction `wait_mask` scoping, exit-block drain skip
 restored, 2-slot field discipline with static assert, conservative
