@@ -604,6 +604,17 @@ enum class ComputeKernel : uint16_t {
   // widening, RNE stores, f32 internals, composition-exact arm); appended
   // to keep profile kernel ids stable.
   SdpaDecodeNativeBF16,
+  // Scalar-FMA prefill kernels that leave the 8x8x8 cooperative matrix
+  // (shaders/qmm_fma.comp, shaders/matmul_fma_bf16.comp); append-only
+  // profile id.
+  QmmPrefillFmaF16,
+  MatmulBf16Fma,
+  // Bench ladder variants of the FMA tile shape; removed once the
+  // shape is picked.
+  QmmPrefillFmaL16C4F16,
+  QmmPrefillFmaL8C4F16,
+  QmmPrefillFmaPreciseF16,
+  MatmulBf16FmaL16C4,
   Custom,
   Count,
 };

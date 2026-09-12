@@ -279,6 +279,10 @@
 #include "qmm_tile_rb_f16.h"
 #include "qmm_tile_rb_precise_f16.h"
 #include "qmm_coopmat_f16.h"
+#include "qmm_fma_precise_f16.h"
+#include "matmul_fma_bf16.h"
+#include "qmm_fma_f16.h"
+#include "matmul_fma_bf16.h"
 #include "binary_vec_f16.h"
 #include "binary_vec_bf16.h"
 #include "matmul_rb_f16.h"
@@ -1204,8 +1208,14 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {qmm_tile_rb_precise_f16, qmm_tile_rb_precise_f16_size};
     case ComputeKernel::QmmPrefillCoopmatF16:
       return {qmm_coopmat_f16, qmm_coopmat_f16_size};
+    case ComputeKernel::QmmPrefillFmaF16:
+      return {qmm_fma_f16, qmm_fma_f16_size};
     case ComputeKernel::MatmulBF16Coopmat:
       return {matmul_f32_coopmat_bf16, matmul_f32_coopmat_bf16_size};
+    case ComputeKernel::QmmPrefillFmaPreciseF16:
+      return {qmm_fma_precise_f16, qmm_fma_precise_f16_size};
+    case ComputeKernel::MatmulBf16Fma:
+      return {matmul_fma_bf16, matmul_fma_bf16_size};
     case ComputeKernel::QmmTileBF16:
       return {qmm_tile_bf16, qmm_tile_bf16_size};
     case ComputeKernel::FusedChainF32:

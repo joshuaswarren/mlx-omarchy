@@ -5,8 +5,8 @@
 
 #include <algorithm>
 #include <array>
-#include <cmath>
 #include <cstdint>
+#include <cstdlib>
 #include <cstdio>
 #include <cstring>
 #include <initializer_list>
@@ -573,8 +573,6 @@ void dispatch_matmul(
     bf16_aligned = ((params.in_strides[axis] |
         params.out_strides[axis]) & 1u) == 0u;
   }
-<<<<<<< HEAD
-=======
   // Scalar-FMA bf16 route (shaders/matmul_fma_bf16.comp): the
   // linear-layer orientation (row-major lhs, column-major rhs, alpha 1)
   // leaves the 8x8x8 matrix unit. uvec4 operand reads need 8-byte
@@ -594,7 +592,6 @@ void dispatch_matmul(
       b_transposed && !a_transposed && !use_c &&
       params.matrix_m >= 32u && (params.matrix_k % 8u) == 0u &&
       (params.matrix_n & 1u) == 0u && bf16_fma_aligned;
->>>>>>> b1805b19 (fix: reserve the scalar-FMA prefill routes for drivers without the cooperative matrix)
   // The staged bf16 tile shares qmm_coopmat's 4 KiB staging footprint
   // (a 32x16 A patch and a 16x32 B patch); gate on the device limit the
   // same way the qmm route does instead of assuming it.
@@ -701,6 +698,17 @@ void dispatch_matmul(
         params,
         matrix_group_count(params.matrix_n, 4u),
         1u,
+        checked_u32(batch_count, name, out));
+    return;
+  }
+  if (bf16_fma) {
+    omarchy::ComputeKernel fma_kernel = omarchy::ComputeKernel::MatmulBf16Fma;
+    encoder.dispatch_compute(
+        fma_kernel,
+        bindings,
+        params,
+        matrix_group_count(params.matrix_n, 128u),
+        matrix_group_count(params.matrix_m, 32u),
         checked_u32(batch_count, name, out));
     return;
   }
@@ -6702,15 +6710,12 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
   // unaligned view.
   static const bool coopmat_disabled =
       omarchy::env_flag("MLX_OMARCHY_NO_COOPMAT");
-<<<<<<< HEAD
-=======
   // Scalar-FMA prefill route (shaders/qmm_fma.comp): no matrix unit, no
   // shared memory. Reserved for drivers whose cooperative-matrix route is
   // absent (gate at qmm_fma_reachable below); MLX_OMARCHY_NO_QMM_FMA=1
   // falls back to the shipped pick for A/B measurement.
   static const bool qmm_fma_disabled =
       omarchy::env_flag("MLX_OMARCHY_NO_QMM_FMA");
->>>>>>> b1805b19 (fix: reserve the scalar-FMA prefill routes for drivers without the cooperative matrix)
   const char* tile_env = std::getenv("MLX_OMARCHY_QMM_TILE");
   bool tile_path = tile_env == nullptr || std::strcmp(tile_env, "0") != 0;
   const char* rb_env = std::getenv("MLX_OMARCHY_QMM_TILE_RB");
@@ -6724,8 +6729,6 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
       coopmat_caps.cooperative_matrix_f32_8 &&
       coopmat_caps.subgroup_size == 32u && !coopmat_disabled &&
       kQmmCoopmatSharedBytes <= coopmat_caps.max_compute_shared_memory_size;
-<<<<<<< HEAD
-=======
   bool qmm_fma_reachable = false;
   // Driver split, measured (receipts/2026-09-12-prefill-fma-qualify): the
   // scalar-FMA kernel loses to the 8x8x8 cooperative-matrix route wherever
@@ -6742,7 +6745,6 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
     int fma_n = transpose_ ? w.shape(-2) : w.shape(-1) * 32 / bits_;
     qmm_fma_reachable = (fma_k % 8 == 0) && (fma_n % 2 == 0);
   }
->>>>>>> b1805b19 (fix: reserve the scalar-FMA prefill routes for drivers without the cooperative matrix)
   // The f16 Q4 shader reads eight halves as one uvec4. Materialize only the
   // rare row-contiguous view whose element offset is not 16-byte aligned;
   // the coopmat word-pair reader extends the same rule to a 2-byte
@@ -6751,7 +6753,8 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
       (x.ndim() < 2 || x.shape(-2) == 1);
   bool x_dense = x.flags().row_contiguous &&
       (!packed_q4_x || x.offset() % (8 * x.itemsize()) == 0) &&
-      (!coopmat_reachable || x.offset() % (2 * x.itemsize()) == 0);
+      (!coopmat_reachable || x.offset() % (2 * x.itemsize()) == 0) &&
+      (!qmm_fma_reachable || x.offset() % (8 * x.itemsize()) == 0);
   std::optional<array> x_temp;
   std::optional<array> w_temp;
   std::optional<array> scales_temp;
@@ -6899,8 +6902,40 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
   if (tile_path) {
     if (rb_enabled && out.dtype() == float16 && transpose_ && bits_ == 4 &&
         group_size_ == 64) {
-      // Same layout on the 8x8x8 fp32 cooperative matrix when the
-      // device advertises it (shaders/qmm_coopmat.comp: 32x32 output
+      if (qmm_fma_reachable) {
+        // Scalar-FMA route: the kernel's per-output arithmetic is the
+        // same ascending-k f32 chain the tile and coopmat kernels
+        // produce, so the route is digest-preserving by construction
+        // and verified per leg. uvec4 x reads need the 16-byte x
+        // alignment materialized above; the output is a fresh
+        // offset-0 allocation, so the odd-offset tripwire below
+        // mirrors the coopmat one.
+        if ((params.lhs_offset & 7u) != 0u ||
+            (params.output_offset & 1u) != 0u) {
+          omarchy::unsupported(tag + " fma operand alignment", out);
+        }
+        // The accumulator contraction class follows the shipped tile
+        // boundary: fused below m=1024, precise (NoContraction) at and
+        // above - the classes the composed tree's digests were pinned
+        // against on both drivers (window1/window1c screens).
+        omarchy::ComputeKernel fma_kernel =
+            params.matrix_m >= 1024u
+                ? omarchy::ComputeKernel::QmmPrefillFmaPreciseF16
+                : omarchy::ComputeKernel::QmmPrefillFmaF16;
+        encoder.dispatch_compute(
+            fma_kernel,
+            bindings,
+            params,
+            std::min((params.matrix_n + 63u) / 64u,
+                     omarchy::kMaxComputeGroupCountX),
+            std::min((params.matrix_m + 63u) / 64u,
+                     omarchy::kMaxComputeGroupCountX),
+            1u);
+        return;
+      }
+      // The 8x8x8 fp32 cooperative matrix (shaders/qmm_coopmat.comp)
+      // remains the route when the scalar-FMA kernel declines (odd n or
+      // unaligned operands): a 32x32 output
       // tile per two-subgroup workgroup, 4 KiB shared staging; x is
       // read as 32-bit word pairs). The materialization above stages any
       // odd-offset x view and out is a fresh offset-0 allocation, so
