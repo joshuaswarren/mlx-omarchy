@@ -1,0 +1,30 @@
+{
+  "schema": "mlx-omarchy/q4-longctx/qmm-m262/1",
+  "rows": [
+    {
+      "shape": "262x896x128",
+      "median_ms": 0.501,
+      "f16_digest": "6a31dc466db80a40",
+      "gflops": 120.0
+    },
+    {
+      "shape": "262x896x896",
+      "median_ms": 0.7349,
+      "f16_digest": "5c42552b5320472e",
+      "gflops": 572.5
+    },
+    {
+      "shape": "262x4864x896",
+      "median_ms": 3.3698,
+      "f16_digest": "ecd08c8841ecd105",
+      "gflops": 677.7
+    },
+    {
+      "shape": "262x896x9728",
+      "median_ms": 5.1165,
+      "f16_digest": "4e29e2dbdf33b57b",
+      "gflops": 892.7
+    }
+  ],
+  "per_model_x24_ms": 233.3
+}

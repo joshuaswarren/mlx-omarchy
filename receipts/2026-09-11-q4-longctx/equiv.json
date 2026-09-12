@@ -1,0 +1,8 @@
+{
+  "schema": "mlx-omarchy/q4-longctx/sdpa-equiv/1",
+  "bit_exact_all": true,
+  "cases": 17,
+  "failures": [],
+  "host": "aarch64",
+  "note": "scalar arm = frozen legacy kernel loops via MLX_OMARCHY_SDPA_DECODE_SCALAR=1; packed arm = aux_size==1 batched word loads. Pass requires uint16 equality."
+}
