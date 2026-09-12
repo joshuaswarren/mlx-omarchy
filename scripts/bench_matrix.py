@@ -488,6 +488,23 @@ def parse_bench_output(stdout):
          "provenance_line": None, "generated_ids_sha256_16": None,
          "generated_ids_n": None, "prompt_tokens": None}
     for line in stdout.splitlines():
+        # The instrument of record is bench_decode's result_line JSON:
+        # its prefill_s carries six decimals while the human-readable
+        # "prefill 0.090s" print beside it rounds to whole milliseconds.
+        # Parsing that print discarded precision the engine already had
+        # (2026-09-12 instrument finding); the print regexes below stay
+        # only as a fallback for output that predates the JSON line.
+        # Never re-derive timings from printed output again.
+        try:
+            row = json.loads(line)
+        except ValueError:
+            row = None
+        if isinstance(row, dict) and row.get("engine") == "bench_decode":
+            if row.get("prefill_s") is not None:
+                m["prefill_s"] = float(row["prefill_s"])
+            if row.get("decode_tps") is not None:
+                m["decode_tok_s"] = float(row["decode_tps"])
+            continue
         for regex, key, cast in ((DECODE_RE, None, float),
                                  (PREFILL_RE, "prefill_s", float),
                                  (PER_TOKEN_RE, "decode_mean_per_token_ms", float),
