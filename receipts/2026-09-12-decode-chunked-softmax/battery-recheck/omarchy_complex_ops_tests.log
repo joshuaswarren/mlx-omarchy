@@ -1,0 +1,34 @@
+[doctest] doctest version is "2.4.12"
+[doctest] run with "--help" for options
+===============================================================================
+/home/joshuawarren/src/mlx-ChunkedSoftmaxDecode/.work/mlx/tests/omarchy/test_complex_ops.cpp:418:
+TEST CASE:  complex pad and concatenate transport
+
+/home/joshuawarren/src/mlx-ChunkedSoftmaxDecode/.work/mlx/tests/omarchy/test_complex_ops.cpp:131: ERROR: CHECK_EQ( got[i].real(), want_re ) is NOT correct!
+  values: CHECK_EQ( -0.402478, 0 )
+  logged: index 0 got (-0.402478, -0.0108201) ref (0, 0)
+
+/home/joshuawarren/src/mlx-ChunkedSoftmaxDecode/.work/mlx/tests/omarchy/test_complex_ops.cpp:132: ERROR: CHECK_EQ( got[i].imag(), want_im ) is NOT correct!
+  values: CHECK_EQ( -0.0108201, 0 )
+  logged: index 0 got (-0.402478, -0.0108201) ref (0, 0)
+
+/home/joshuawarren/src/mlx-ChunkedSoftmaxDecode/.work/mlx/tests/omarchy/test_complex_ops.cpp:131: ERROR: CHECK_EQ( got[i].real(), want_re ) is NOT correct!
+  values: CHECK_EQ( -0.402478, 0 )
+  logged: index 1 got (-0.402478, -0.0108201) ref (0, 0)
+
+/home/joshuawarren/src/mlx-ChunkedSoftmaxDecode/.work/mlx/tests/omarchy/test_complex_ops.cpp:132: ERROR: CHECK_EQ( got[i].imag(), want_im ) is NOT correct!
+  values: CHECK_EQ( -0.0108201, 0 )
+  logged: index 1 got (-0.402478, -0.0108201) ref (0, 0)
+
+/home/joshuawarren/src/mlx-ChunkedSoftmaxDecode/.work/mlx/tests/omarchy/test_complex_ops.cpp:131: ERROR: CHECK_EQ( got[i].real(), want_re ) is NOT correct!
+  values: CHECK_EQ( -0.402478, 0 )
+  logged: index 8 got (-0.402478, -0.0108201) ref (0, 0)
+
+/home/joshuawarren/src/mlx-ChunkedSoftmaxDecode/.work/mlx/tests/omarchy/test_complex_ops.cpp:132: ERROR: CHECK_EQ( got[i].imag(), want_im ) is NOT correct!
+  values: CHECK_EQ( -0.0108201, 0 )
+  logged: index 8 got (-0.402478, -0.0108201) ref (0, 0)
+
+===============================================================================
+[doctest] test cases:   34 |   33 passed | 1 failed | 0 skipped
+[doctest] assertions: 1715 | 1709 passed | 6 failed |
+[doctest] Status: FAILURE!

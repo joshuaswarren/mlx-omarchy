@@ -1,0 +1,102 @@
+=== wrapper start 2026-09-12T08:11:24Z pid 2914766
+baseline wheel: mlx_omarchy-0.32.2.dev202609120039+ab08be8b-cp314-cp314-linux_aarch64.whl 2584d5f1b8dc947f
+candidate wheel: mlx_omarchy-0.32.2.dev202609120754+7a41cdcc-cp314-cp314-linux_aarch64.whl 8f845762d3efffb8
+2026-09-12T08:11:24Z waiting for m1-gpu.lock
+2026-09-12T08:11:44Z LOCK ACQUIRED
+quiet-gate wait 1 load=0.45 2026-09-12T08:11:44Z
+quiet-gate wait 2 load=0.32 2026-09-12T08:12:04Z
+quiet gate done ok=3 load=0.29
+=== matrix run ab-base-warmup 08:12:24 ===
+1789200744 0.29 1.28 1.52
+1789200754 0.32 1.25 1.50
+1789200764 0.34 1.23 1.49
+ab-base-warmup exit=0 08:12:51
+=== matrix run ab-cand-warmup 08:12:51 ===
+1789200774 0.36 1.20 1.48
+1789200784 0.38 1.18 1.47
+1789200794 0.48 1.17 1.46
+ab-cand-warmup exit=0 08:13:17
+=== matrix run ab-base-r1 08:13:17 ===
+1789200804 0.40 1.14 1.45
+1789200814 0.50 1.13 1.44
+1789200824 0.49 1.11 1.43
+ab-base-r1 exit=0 08:13:44
+=== matrix run ab-cand-r1 08:13:44 ===
+1789200834 1.01 1.20 1.46
+1789200844 0.93 1.18 1.45
+ab-cand-r1 exit=0 08:14:11
+=== matrix run ab-base-r2 08:14:11 ===
+1789200854 1.45 1.29 1.48
+1789200864 1.30 1.26 1.47
+1789200874 1.26 1.25 1.46
+ab-base-r2 exit=0 08:14:38
+=== matrix run ab-cand-r2 08:14:38 ===
+1789200884 1.14 1.23 1.45
+1789200894 1.12 1.22 1.45
+1789200904 1.10 1.21 1.44
+ab-cand-r2 exit=0 08:15:05
+=== matrix run ab-base-r3 08:15:05 ===
+1789200914 1.24 1.24 1.45
+1789200924 1.20 1.23 1.45
+ab-base-r3 exit=0 08:15:32
+=== matrix run ab-cand-r3 08:15:32 ===
+1789200934 1.02 1.19 1.43
+1789200944 0.93 1.17 1.42
+1789200954 0.87 1.14 1.41
+ab-cand-r3 exit=0 08:15:59
+=== matrix run cand-stock-warmup 08:15:59 ===
+1789200964 0.82 1.12 1.40
+1789200974 0.76 1.10 1.39
+1789200984 0.72 1.08 1.38
+1789200994 0.61 1.04 1.36
+cand-stock-warmup exit=0 08:16:38
+=== matrix run cand-stock-r1 08:16:38 ===
+1789201004 0.60 1.03 1.35
+1789201014 0.58 1.01 1.34
+1789201024 0.64 1.01 1.34
+1789201034 0.62 0.99 1.33
+cand-stock-r1 exit=0 08:17:18
+=== matrix run cand-stock-r2 08:17:18 ===
+1789201044 0.60 0.97 1.32
+1789201054 0.58 0.96 1.31
+1789201064 0.57 0.94 1.30
+1789201074 0.55 0.93 1.29
+cand-stock-r2 exit=0 08:17:58
+=== matrix run cand-stock-r3 08:17:58 ===
+1789201084 0.47 0.90 1.28
+1789201094 0.47 0.88 1.27
+1789201104 0.40 0.85 1.26
+1789201114 0.41 0.84 1.25
+cand-stock-r3 exit=0 08:18:37
+=== exactness verify (candidate) 2026-09-12T08:18:37Z
+exactness exit=0
+
+      "elements": 896,
+      "mismatches": 0,
+      "max_error": 0.0
+    },
+    "263": {
+      "elements": 896,
+      "mismatches": 0,
+      "max_error": 0.0
+    },
+    "1053": {
+      "elements": 896,
+      "mismatches": 0,
+      "max_error": 0.0
+    }
+  },
+  "fixed_mismatches": 0,
+  "random_cases": 800,
+  "random_element_comparisons": 716800,
+  "random_mismatches": 0,
+  "first_failure": null
+}
+=== A/B comparison 2026-09-12T08:18:38Z
+qwen25-0.5b-4bit:short-decode-32: base 109.42 (0.7267) cand 106.73 (0.7088) delta -2.46%
+qwen25-0.5b-4bit:long-decode-128: base 107.53 (0.7326) cand 106.00 (0.7222) delta -1.42%
+qwen25-0.5b-4bit:longctx-1024-decode-32: base 97.71 (0.6960) cand 93.70 (0.6675) delta -4.10%
+qwen25-0.5b-bf16:short-decode-32: base 31.90 (0.5653) cand 31.72 (0.5621) delta -0.56%
+qwen25-0.5b-bf16:long-decode-128: base 30.82 (0.5531) cand 30.51 (0.5476) delta -1.01%
+qwen25-0.5b-bf16:longctx-1024-decode-32: base 24.94 (0.4572) cand 24.95 (0.4574) delta +0.04%
+=== window end 2026-09-12T08:18:38Z

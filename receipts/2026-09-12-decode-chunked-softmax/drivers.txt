@@ -1,0 +1,9 @@
+driver-fork: mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1
+driver-stock: mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1
+kernel: 7.1.6-1-1-ARCH
+machine: aarch64 unknown
+chip: Apple M1 G13G B1
+stock-icd-sha256: 97bda66cb6dcd7c96479a835746535dbd96563c647d65251da569773ba230a4e
+wheel: mlx_omarchy-0.32.2.dev202609120722+3b1aeda1-cp314-cp314-linux_aarch64.whl
+wheel-sha256: 7b39eed1bb7f7f67a4b453802499706ac22e7544c58ed5ba33b21af80e4a28ad
+source-commit: 3b1aeda10c9d53488d8726e10fbb4b73bba0491f

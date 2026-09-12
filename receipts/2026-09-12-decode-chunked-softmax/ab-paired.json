@@ -1,0 +1,128 @@
+{
+ "qwen25-0.5b-4bit:short-decode-32": {
+  "base": {
+   "reps": [
+    109.42,
+    109.62,
+    109.26
+   ],
+   "median": 109.42
+  },
+  "cand": {
+   "reps": [
+    106.73,
+    108.12,
+    106.14
+   ],
+   "median": 106.73
+  },
+  "delta_pct": -2.46,
+  "base_fraction": 0.7267,
+  "cand_fraction": 0.7088
+ },
+ "qwen25-0.5b-4bit:long-decode-128": {
+  "base": {
+   "reps": [
+    107.53,
+    107.71,
+    107.14
+   ],
+   "median": 107.53
+  },
+  "cand": {
+   "reps": [
+    106.0,
+    106.04,
+    105.72
+   ],
+   "median": 106.0
+  },
+  "delta_pct": -1.42,
+  "base_fraction": 0.7326,
+  "cand_fraction": 0.7222
+ },
+ "qwen25-0.5b-4bit:longctx-1024-decode-32": {
+  "base": {
+   "reps": [
+    97.64,
+    97.98,
+    97.71
+   ],
+   "median": 97.71
+  },
+  "cand": {
+   "reps": [
+    90.1,
+    94.65,
+    93.7
+   ],
+   "median": 93.7
+  },
+  "delta_pct": -4.1,
+  "base_fraction": 0.696,
+  "cand_fraction": 0.6675
+ },
+ "qwen25-0.5b-bf16:short-decode-32": {
+  "base": {
+   "reps": [
+    31.88,
+    31.91,
+    31.9
+   ],
+   "median": 31.9
+  },
+  "cand": {
+   "reps": [
+    31.72,
+    31.66,
+    31.74
+   ],
+   "median": 31.72
+  },
+  "delta_pct": -0.56,
+  "base_fraction": 0.5653,
+  "cand_fraction": 0.5621
+ },
+ "qwen25-0.5b-bf16:long-decode-128": {
+  "base": {
+   "reps": [
+    30.82,
+    30.82,
+    30.76
+   ],
+   "median": 30.82
+  },
+  "cand": {
+   "reps": [
+    30.39,
+    30.51,
+    30.54
+   ],
+   "median": 30.51
+  },
+  "delta_pct": -1.01,
+  "base_fraction": 0.5531,
+  "cand_fraction": 0.5476
+ },
+ "qwen25-0.5b-bf16:longctx-1024-decode-32": {
+  "base": {
+   "reps": [
+    24.94,
+    25.0,
+    24.85
+   ],
+   "median": 24.94
+  },
+  "cand": {
+   "reps": [
+    24.95,
+    24.98,
+    24.27
+   ],
+   "median": 24.95
+  },
+  "delta_pct": 0.04,
+  "base_fraction": 0.4572,
+  "cand_fraction": 0.4574
+ }
+}

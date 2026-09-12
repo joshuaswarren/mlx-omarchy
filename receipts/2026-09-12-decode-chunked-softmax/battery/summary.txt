@@ -1,0 +1,26 @@
+PASS omarchy_runtime_tests
+FAIL omarchy_primitive_tests rc=1
+PASS omarchy_matmul_family_tests
+PASS omarchy_fast_ops_tests
+PASS omarchy_kv_ops_tests
+PASS omarchy_indexing_ops_tests
+PASS omarchy_reduce_ops_tests
+FAIL omarchy_shape_ops_tests rc=1
+PASS omarchy_linalg_ops_tests
+PASS omarchy_copy_offset_tests
+PASS omarchy_distributed_tests
+PASS omarchy_compiled_tape_tests
+PASS omarchy_fft_ops_tests
+PASS omarchy_fft_general_tests
+PASS omarchy_eig_ops_tests
+PASS omarchy_take_fill_tests
+PASS omarchy_conv_tests
+FAIL omarchy_complex_ops_tests rc=1
+PASS omarchy_select_layout_tests
+PASS omarchy_fast_regression_tests
+PASS omarchy_scatter_determinism_tests
+PASS omarchy_eq_math_tests
+PASS omarchy_fused_chain_tests
+PASS omarchy_error_contract_tests
+PASS omarchy_ane_bundle_tests
+PASS omarchy_sdpa_decode_fused_tests
