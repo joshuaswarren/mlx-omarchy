@@ -74,11 +74,49 @@ can exercise the bf16 route for real.
 
 ## Hardware gates and measurement (window C, M1 jwm1-linux, Apple M1 G13G B1,
 driver mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1, one flock window;
-wheel dev20260911<...>+<sha> sha256 <...>; stock runs via the stock Mesa ICD
+wheel 0.32.2.dev202609120006+148356d7 sha256 a327f759e45257659f8a7fc6fcecaf8
+c012b0f4d352b0a4d3c44e78ac9acff62; stock runs via the stock Mesa ICD
 override; warmup discarded, 3 reps per leg per driver, every rep's digest
-asserted)
+asserted; stock warmup run separately, rc=0)
 
-<!-- WINDOW-C RESULTS -->
+Bit-identity on real in-stream inputs: every one of the 3,888 captured
+decode-attention calls (2,774,016 long-leg + 709,632 short-leg output
+elements) stored the same words from the fused route and from the
+composition route on the fork driver, with the replayed composition also
+bit-identical to the in-stream original (controls clean).
+
+Digests (every rep identical per cell; Q4 short/long/1K and all BF16 legs):
+
+| leg | driver | base (pre-fusion) | this wheel | native |
+|---|---|---|---|---|
+| Q4 short/long/1K | fork + stock | 7fd25a869ff21678 / 4cc08910089477fd / 7da83f06ec9f001d | same | short+1K = native |
+| BF16 short | fork | f26175202f3dabe9 | **f26175202f3dabe9** | 7fc0f968789b1882 |
+| BF16 short | stock | 7fc0f968789b1882 | **7fc0f968789b1882** | = native, held |
+| BF16 long | fork | 8690dc83246b39f8 | **8690dc83246b39f8** | 407b7624ed1b3b29 |
+| BF16 long | stock | 46108ad71157cb4d | **46108ad71157cb4d** | 407b7624ed1b3b29 |
+| BF16 1K | fork + stock | ff502900d2a179a5 | **ff502900d2a179a5** | = native, held |
+
+Zero digest movement on either driver. Because both routes are bit-identical
+per call, the 256-key perf gate added on top is digest-invariant; window C's
+short-leg cells exercised the composition side and its long/1K cells the
+fused side, exactly the post-gate routing.
+
+ms/token (median of 3, fork, bf16): short 34.1 (base 31.2 - the gate routes
+the short leg to the composition, so shipped short-leg timing is the base
+31.2), long 34.4 (base 34.7, +0.9%), 1K 39.9 (base 43.3, +8.5%). Fractions
+of the committed native baseline with the gate: short 0.566 (unchanged),
+long 0.522, 1K 0.475.
+
+## Follow-up (stated, not started)
+
+1. The online-softmax variant of the arm measured 29.0/29.6/29.8 ms/token
+   (fractions 0.613/0.607/0.618) but moved digests; its adoption is blocked
+   on reproducing the composition's matmul accumulation order in-kernel
+   faster than the serial order used here, or on an owner re-pin.
+2. Window C's digest matrix was measured on main 5aab281f + this stack;
+   the branch has since been rebased onto f425f46f with the dev-box
+   bit-identity gate re-proven (10,773 assertions). A short confirmatory
+   digest window on the f425f46f-based wheel is the only open check.
 
 ## Provenance
 
