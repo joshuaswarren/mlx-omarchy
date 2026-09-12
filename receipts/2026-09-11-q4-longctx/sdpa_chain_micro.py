@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """Paired decode-SDPA chain microbench: packed batched vs scalar in-kernel.
 
-24 serial mx.fast.scaled_dot_product_attention calls (one per Qwen2.5-0.5B
-layer) at q [1,14,1,64] over a growing KV cache slice, timed as eval-sync
-walls with the graph rebuilt per rep (perturbed V) to force real GPU work.
-Runs both MLX_OMARCHY_SDPA_DECODE_SCALAR arms alternately per rep.
+Mirrors receipts/2026-09-10-decode-attribution/chain_microbench.py: inputs
+are built once per k_len and memoized after the first eval; each rep rebuilds
+a 24-call serial chain from a perturbed q (fresh graph nodes force real GPU
+work); the timed window is mx.eval of the outputs. Two arms alternate,
+selected by MLX_OMARCHY_SDPA_DECODE_SCALAR.
 
-  MLX_DISABLE_COMPILE=1 python3 sdpa_chain_micro.py --out chain.json --reps 20
+  MLX_DISABLE_COMPILE=1 python3 sdpa_chain_micro.py --out chain.json
 """
 import argparse
 import json
@@ -20,59 +21,62 @@ HEADS, KVH, HD, L = 14, 2, 64, 24
 CAP = 4096
 
 
-def build_chain(k_len, delta):
-    rs = mx.random.key(7)
-    q = mx.random.normal((1, HEADS, 1, HD), key=rs).astype(mx.float16)
-    rs = mx.random.key(8)
-    k_cache = mx.random.normal((1, KVH, CAP, HD), key=rs).astype(mx.float16)
-    rs = mx.random.key(9)
-    v_cache = mx.random.normal((1, KVH, CAP, HD), key=rs).astype(mx.float16)
-    k = k_cache[:, :, :k_len, :]
-    v = v_cache[:, :, :k_len, :]
-    outs = []
-    for _ in range(L):
-        outs.append(mx.fast.scaled_dot_product_attention(
-            q, k, v + delta, scale=1.0 / (HD ** 0.5)))
-    return outs
+def make_chain(k_len):
+    q0 = mx.random.normal((1, HEADS, 1, HD),
+                          key=mx.random.key(7)).astype(mx.float16)
+    kc = mx.random.normal((1, KVH, CAP, HD),
+                          key=mx.random.key(8)).astype(mx.float16)
+    vc = mx.random.normal((1, KVH, CAP, HD),
+                          key=mx.random.key(9)).astype(mx.float16)
+    k = kc[:, :, :k_len, :]
+    v = vc[:, :, :k_len, :]
 
+    def build(d):
+        q = q0 + d
+        outs = []
+        for _ in range(L):
+            q = mx.fast.scaled_dot_product_attention(
+                q, k, v, scale=1.0 / (HD ** 0.5))
+            outs.append(q)
+        return outs
 
-def time_chain(k_len, reps):
-    walls = []
-    for r in range(reps):
-        delta = mx.array([float(r)], dtype=mx.float16)
-        outs = build_chain(k_len, delta)  # build outside the timed window
-        t0 = time.perf_counter()
-        mx.eval(*outs)
-        walls.append((time.perf_counter() - t0) * 1e3)
-    return walls
+    return build
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default="chain.json")
-    ap.add_argument("--reps", type=int, default=20)
-    ap.add_argument("--k-lens", default="30,262,511,1023,1053,1084")
+    ap.add_argument("--reps", type=int, default=25)
+    ap.add_argument("--warmup", type=int, default=5)
+    ap.add_argument("--k-lens", type=int, nargs="*",
+                    default=[30, 262, 511, 1023, 1053, 1084])
     args = ap.parse_args()
 
     rows = []
-    for k_len in [int(x) for x in args.k_lens.split(",")]:
+    for k_len in args.k_lens:
+        build = make_chain(k_len)
         arms = {}
         for name, env in [("scalar", "1"), ("packed", "0")]:
             os.environ["MLX_OMARCHY_SDPA_DECODE_SCALAR"] = env
-            walls = time_chain(k_len, args.reps)
-            arms[name] = {
-                "median_ms": statistics.median(walls),
-                "min_ms": min(walls),
-                "max_ms": max(walls),
-            }
+            evals = []
+            for rep in range(args.warmup + args.reps):
+                d = mx.array(float(rep % 17) * 1e-3, mx.float16)
+                outs = build(d)  # host graph build, outside the timed window
+                t0 = time.perf_counter()
+                mx.eval(outs)
+                evals.append((time.perf_counter() - t0) * 1e3)
+            sample = evals[args.warmup:]
+            arms[name] = {"median_ms": round(statistics.median(sample), 4),
+                          "min_ms": round(min(sample), 4),
+                          "max_ms": round(max(sample), 4)}
         gain = arms["scalar"]["median_ms"] - arms["packed"]["median_ms"]
-        rows.append({"k_len": k_len, **arms,
-                     "gain_ms": gain,
-                     "gain_pct": 100.0 * gain / arms["scalar"]["median_ms"]})
+        rows.append({"k_len": k_len, **arms, "gain_ms": round(gain, 4),
+                     "gain_pct": round(100.0 * gain /
+                                       arms["scalar"]["median_ms"], 2)})
         print(rows[-1], flush=True)
 
     with open(args.out, "w") as f:
-        json.dump({"schema": "mlx-omarchy/q4-longctx/sdpa-chain/1",
+        json.dump({"schema": "mlx-omarchy/q4-longctx/sdpa-chain/2",
                    "reps": args.reps, "rows": rows}, f, indent=2)
 
 
