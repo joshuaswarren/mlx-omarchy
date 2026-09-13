@@ -666,13 +666,6 @@ bool is_op(const array* node, const std::type_info& op) {
   return node && node->has_primitive() && typeid(node->primitive()) == op;
 }
 
-const array& dense_gemv_source(const array& x) {
-  if (is_op(&x, typeid(Flatten)) && x.inputs().size() == 1 &&
-      x.dtype() == x.inputs()[0].dtype() && x.size() == x.inputs()[0].size()) {
-    return x.inputs()[0];
-  }
-  return x;
-}
 
 // Producer-direct KV write planning. Classification of one SliceUpdate
 // pair member's update producer: the keys member's producer is a RoPE
@@ -909,6 +902,14 @@ DirectPlan plan_values_window(
 }
 
 } // namespace
+
+const array& dense_gemv_source(const array& x) {
+  if (is_op(&x, typeid(Flatten)) && x.inputs().size() == 1 &&
+      x.dtype() == x.inputs()[0].dtype() && x.size() == x.inputs()[0].size()) {
+    return x.inputs()[0];
+  }
+  return x;
+}
 
 EagerFusionScope::EagerFusionScope(const std::deque<array>& tape)
     : previous_(eager_state) {
