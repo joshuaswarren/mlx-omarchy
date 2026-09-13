@@ -1,0 +1,76 @@
+{
+  "schema": "bf16-grouped-gemv-qualification/1",
+  "verdict": "qualified",
+  "implementation": {
+    "base_commit": "b41e2b74c330f910b24cab0e7516e306527858f0",
+    "candidate_commit": "6b1ac0296ba65a8e0075171ca9451e222ddff06b",
+    "description": "Group two or three independent dense BF16 decode GEMVs that share one evaluated input into one ordinary-binding Vulkan dispatch while preserving each output's existing accumulation and BF16 rounding order.",
+    "bindings": 7,
+    "buffer_device_address": false,
+    "model_shape_specialization": false
+  },
+  "execution_model": "openai-codex/gpt-5.6-sol",
+  "hardware": {
+    "host_label": "jwm1",
+    "device": "Apple M1 (G13G B1)",
+    "memory_bytes": 16228417536,
+    "drivers": ["Honeykrisp", "Mesa 26.1.7 stock ICD"]
+  },
+  "benchmark_models": {
+    "qwen25-0.5b-4bit": "mlx-community/Qwen2.5-0.5B-Instruct-4bit@a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+    "qwen25-0.5b-bf16": "mlx-community/Qwen2.5-0.5B-Instruct-bf16@56d07e766edd7159fbe12ed12d9cf114bf38bf1e"
+  },
+  "wheels": {
+    "baseline": {
+      "version": "0.32.2.dev202609122355+b41e2b74",
+      "sha256": "81743cd1a631f6c5d8aa7ff9538d1ec4ddcb2a57c184da7c55345e48d349a240"
+    },
+    "candidate": {
+      "version": "0.32.2.dev202609130004+6b1ac029",
+      "sha256": "fb4b96b0e52de3a07d62fea6766baa24f409b0b6b32afef1fd5f365e246e1c50"
+    }
+  },
+  "focused_m1": {
+    "dense_cases": 2,
+    "dense_assertions_passed": 11154,
+    "dispatches": {
+      "qkv": {"baseline": 3, "candidate": 1},
+      "gate_up": {"baseline": 2, "candidate": 1},
+      "partial_row_n130_fallback": {"baseline": 2, "candidate": 2}
+    },
+    "outputs": "bit-exact",
+    "q4_grouping_assertions_passed": 18974,
+    "compiled_bf16_refusal_assertions_passed": 1
+  },
+  "matrix": {
+    "discarded_warmup_runs": 4,
+    "measured_runs": 12,
+    "measured_legs": 72,
+    "repetitions_per_driver_cell": 3,
+    "all_exit_zero": true,
+    "all_uncontended": true,
+    "all_provenance_match": true,
+    "baseline_candidate_digests_match": true,
+    "bf16_median_decode_delta_percent": {
+      "honeykrisp": {
+        "short_decode_32": 0.12566760917374076,
+        "long_decode_128": 0.8245382585752026,
+        "longctx_1024_decode_32": 0.28123744475692103
+      },
+      "stock_mesa": {
+        "short_decode_32": 0.4063769928102534,
+        "long_decode_128": 0.7518796992481258,
+        "longctx_1024_decode_32": 0.03987240829346206
+      }
+    },
+    "interpretation": "The candidate preserved output identity and produced a small positive BF16 median decode change in every measured driver/workload cell. The result does not reuse or add the historical dispatch and bandwidth attributions."
+  },
+  "receipts": {
+    "focused_tests": "bf16-grouped-gemv-cpu-20260912.test.log",
+    "q4_guard": "bf16-grouped-gemv-cpu-20260912.q4.log",
+    "compiled_bf16_guard": "bf16-grouped-gemv-cpu-20260912.compiled-guard.log",
+    "matrix_summary": "matrix-summary.json",
+    "matrix_raw": "bf16-grouped-gemv-cpu-20260912.matrix/",
+    "shader_validation": "shader-validation.log"
+  }
+}
