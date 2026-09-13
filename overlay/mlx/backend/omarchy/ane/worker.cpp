@@ -304,15 +304,21 @@ void write_outputs(
   }
 }
 
-void execute_program(LoadedProgram& program,
-                     std::map<std::string, std::vector<uint8_t>>& dense) {
+void execute_program(
+    LoadedProgram& program,
+    std::map<std::string, std::vector<uint8_t>>& dense,
+    Clock::time_point deadline,
+    bool& submitted) {
   for (size_t i = 0; i < program.manifest->inputs.size(); ++i) {
     const auto& binding = program.manifest->inputs[i];
     auto& packed = program.inputs[i];
     pack_binding(binding, dense.at(binding.tensor), packed);
+    ensure_worker_before(deadline, "ANE input transfer");
     __ane_send(program.handle.get(), packed.data(), static_cast<uint32_t>(i));
   }
 
+  ensure_worker_before(deadline, "ANE program execution submission");
+  submitted = true;
   errno = 0;
   int result = ane_exec(program.handle.get());
   if (result != 0) {
@@ -443,18 +449,13 @@ int run_worker(
         break;
       }
 
+      bool submitted = false;
       try {
         const auto deadline = Clock::time_point(
             std::chrono::nanoseconds(command.deadline_monotonic_nanoseconds));
         read_inputs(bundle.manifest, staging, dense);
         for (auto& program : programs) {
-          if (Clock::now() >= deadline) {
-            throw runtime_error(
-                "deadline expired before program " +
-                std::to_string(program.manifest_index) +
-                "; no further ANE work was submitted");
-          }
-          execute_program(program, dense);
+          execute_program(program, dense, deadline, submitted);
         }
         write_outputs(bundle.manifest, staging, dense);
         reply.kind = WorkerReplyKind::executed;
@@ -468,7 +469,9 @@ int run_worker(
         send_reply(control_fd, reply);
         break;
       } catch (const std::exception& error) {
-        reply.kind = WorkerReplyKind::failed;
+        reply.kind = submitted
+            ? WorkerReplyKind::uncertain
+            : WorkerReplyKind::failed;
         set_detail(reply, error_reason(error.what()));
         send_reply(control_fd, reply);
         break;

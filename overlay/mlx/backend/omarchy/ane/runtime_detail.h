@@ -20,12 +20,38 @@ namespace mlx::core::omarchy::ane::detail {
 constexpr int kWorkerControlFd = 3;
 constexpr int kWorkerStagingFd = 4;
 constexpr int kWorkerManifestFd = 5;
+constexpr int kWorkerHardwareLockFd = 6;
+constexpr const char* kRuntimeOwnershipLockPath =
+    "/run/lock/mlx-omarchy-ane.lock";
+constexpr const char* kRuntimeQuarantinePath =
+    "/run/lock/mlx-omarchy-ane.quarantine";
 constexpr int kWorkerPayloadFdBase = 16;
 constexpr size_t kWorkerDetailBytes = 1024;
 constexpr uint32_t kWorkerProtocolVersion = 1;
 
 inline std::runtime_error runtime_error(const std::string& reason) {
   return std::runtime_error("[omarchy-ane] runtime: " + reason + ".");
+}
+
+inline int worker_source_fd_floor(
+    size_t payload_count,
+    uint64_t descriptor_limit) {
+  const uint64_t payloads = payload_count;
+  if (payloads > std::numeric_limits<uint64_t>::max() - kWorkerPayloadFdBase) {
+    throw runtime_error("bundle payload count exceeds worker descriptor limit");
+  }
+  const uint64_t highest_destination = payloads == 0
+      ? uint64_t{kWorkerHardwareLockFd}
+      : uint64_t{kWorkerPayloadFdBase} + payloads - 1;
+  const uint64_t source_floor = highest_destination + 1;
+  const uint64_t source_count = payloads + 5;
+  const uint64_t integer_limit = std::numeric_limits<int>::max();
+  const uint64_t effective_limit = std::min(descriptor_limit, integer_limit);
+  if (source_floor >= effective_limit ||
+      source_count > effective_limit - source_floor) {
+    throw runtime_error("bundle payload count exceeds worker descriptor limit");
+  }
+  return static_cast<int>(source_floor);
 }
 
 using RuntimeClock = std::chrono::steady_clock;
@@ -57,6 +83,14 @@ inline CheckedDeadline checked_deadline(std::chrono::milliseconds duration) {
     throw std::invalid_argument("[omarchy-ane] runtime: deadline is not representable.");
   }
   return {deadline, nanoseconds};
+}
+
+inline void ensure_worker_before(
+    RuntimeClock::time_point deadline,
+    const std::string& phase) {
+  if (RuntimeClock::now() >= deadline) {
+    throw runtime_error("deadline expired before " + phase);
+  }
 }
 
 inline size_t checked_size(uint64_t value, const std::string& label) {

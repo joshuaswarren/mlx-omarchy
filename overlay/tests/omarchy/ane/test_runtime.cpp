@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 #include "mlx/backend/omarchy/ane/runtime_detail.h"
+#include "mlx/backend/omarchy/ane/runtime_ownership.h"
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "doctest/doctest.h"
@@ -10,7 +11,13 @@
 #include <array>
 #include <chrono>
 #include <cstdint>
+#include <fcntl.h>
+#include <filesystem>
+#include <fstream>
+#include <limits>
 #include <vector>
+#include <unistd.h>
+#include <sys/wait.h>
 
 using namespace mlx::core::omarchy::ane;
 
@@ -89,9 +96,9 @@ TEST_CASE("ANE runtime honors plane stride for multiple channels") {
   binding.shape = {1, 2, 2, 2};
   binding.nchw = {1, 2, 2, 2, 32, 8};
   binding.logical_bytes = 16;
-  binding.allocation_bytes = 64;
+  binding.allocation_bytes = 0x4000;
   binding.element_count = 8;
-  binding.physical_elements = 32;
+  binding.physical_elements = 8;
   const auto dense = dense_values(8);
 
   const auto packed = detail::pack_binding(binding, dense);
@@ -121,4 +128,122 @@ TEST_CASE("ANE runtime rejects invalid staging and deadlines before device work"
       detail::checked_deadline(std::chrono::milliseconds::max()),
       "[omarchy-ane] runtime: deadline exceeds the monotonic clock range.",
       std::invalid_argument);
+}
+
+TEST_CASE("ANE worker descriptors stay above every fixed child destination") {
+  CHECK(detail::worker_source_fd_floor(0, 64) == 7);
+  CHECK(detail::worker_source_fd_floor(3, 64) == 19);
+  CHECK_THROWS_WITH_AS(
+      detail::worker_source_fd_floor(3, 24),
+      "[omarchy-ane] runtime: bundle payload count exceeds worker descriptor limit.",
+      std::runtime_error);
+}
+
+TEST_CASE("ANE child receives each payload through a collision-free descriptor") {
+  const auto root = std::filesystem::temp_directory_path() /
+      ("mlx-omarchy-ane-descriptors-" + std::to_string(::getpid()));
+  std::filesystem::remove_all(root);
+  std::filesystem::create_directory(root);
+  constexpr size_t payload_count = 3;
+  const int floor = detail::worker_source_fd_floor(payload_count, 64);
+  std::array<int, payload_count> sources{};
+  for (size_t i = 0; i < payload_count; ++i) {
+    const auto path = root / std::to_string(i);
+    std::ofstream(path) << static_cast<char>('A' + i);
+    const int original = ::open(path.c_str(), O_RDONLY | O_CLOEXEC);
+    REQUIRE(original >= 0);
+    sources[i] = ::fcntl(original, F_DUPFD_CLOEXEC, floor);
+    ::close(original);
+    REQUIRE(sources[i] >= floor);
+  }
+
+  const pid_t child = ::fork();
+  REQUIRE(child >= 0);
+  if (child == 0) {
+    for (size_t i = 0; i < payload_count; ++i) {
+      if (::dup2(
+              sources[i],
+              detail::kWorkerPayloadFdBase + static_cast<int>(i)) < 0) {
+        ::_exit(10);
+      }
+    }
+    for (size_t i = 0; i < payload_count; ++i) {
+      char value = 0;
+      const int fd = detail::kWorkerPayloadFdBase + static_cast<int>(i);
+      if (::lseek(fd, 0, SEEK_SET) < 0 || ::read(fd, &value, 1) != 1 ||
+          value != static_cast<char>('A' + i)) {
+        ::_exit(20 + static_cast<int>(i));
+      }
+    }
+    ::_exit(0);
+  }
+  int status = 0;
+  REQUIRE(::waitpid(child, &status, 0) == child);
+  for (int fd : sources) {
+    ::close(fd);
+  }
+  CHECK(WIFEXITED(status));
+  CHECK(WEXITSTATUS(status) == 0);
+  std::filesystem::remove_all(root);
+}
+
+TEST_CASE("ANE worker rejects a deadline at the hardware submission boundary") {
+  CHECK_THROWS_WITH_AS(
+      detail::ensure_worker_before(
+          detail::RuntimeClock::now() - std::chrono::milliseconds(1),
+          "ANE program execution submission"),
+      "[omarchy-ane] runtime: deadline expired before ANE program execution submission.",
+      std::runtime_error);
+}
+TEST_CASE("ANE ownership excludes peers and preserves a same-boot quarantine") {
+  const auto root = std::filesystem::temp_directory_path() /
+      ("mlx-omarchy-ane-ownership-" + std::to_string(::getpid()));
+  std::filesystem::remove_all(root);
+  std::filesystem::create_directory(root);
+  const auto lock = root / "runtime.lock";
+  const auto state = root / "quarantine";
+  const std::string boot_a = "11111111-1111-1111-1111-111111111111";
+  const std::string boot_b = "22222222-2222-2222-2222-222222222222";
+
+  {
+    auto owner = detail::RuntimeOwnership::acquire_at(lock, state, boot_a);
+    CHECK_THROWS_WITH_AS(
+        detail::RuntimeOwnership::acquire_at(lock, state, boot_a),
+        "[omarchy-ane] runtime: another ANE runtime owns the host device.",
+        std::runtime_error);
+    const pid_t peer = ::fork();
+    REQUIRE(peer >= 0);
+    if (peer == 0) {
+      try {
+        auto second = detail::RuntimeOwnership::acquire_at(lock, state, boot_a);
+        (void)second;
+        ::_exit(2);
+      } catch (const std::runtime_error& error) {
+        ::_exit(std::string(error.what()) ==
+                "[omarchy-ane] runtime: another ANE runtime owns the host device."
+            ? 0
+            : 3);
+      }
+    }
+    int peer_status = 0;
+    REQUIRE(::waitpid(peer, &peer_status, 0) == peer);
+    CHECK(WIFEXITED(peer_status));
+    CHECK(WEXITSTATUS(peer_status) == 0);
+    owner.release_cleanly();
+  }
+  {
+    auto owner = detail::RuntimeOwnership::acquire_at(lock, state, boot_a);
+    owner.arm();
+    owner.quarantine();
+  }
+  CHECK_THROWS_WITH_AS(
+      detail::RuntimeOwnership::acquire_at(lock, state, boot_a),
+      "[omarchy-ane] runtime: ANE runtime is quarantined for this boot; reboot is required.",
+      std::runtime_error);
+  {
+    auto owner = detail::RuntimeOwnership::acquire_at(lock, state, boot_b);
+    owner.release_cleanly();
+  }
+  CHECK_FALSE(std::filesystem::exists(state));
+  std::filesystem::remove_all(root);
 }
