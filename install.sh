@@ -2,11 +2,11 @@
 # mlx-omarchy installer for Omarchy on Apple M1 (Asahi Linux, Honeykrisp Vulkan).
 #
 #   curl -fsSL https://raw.githubusercontent.com/joshuaswarren/mlx-omarchy/main/install.sh | bash
+#   bash install.sh --ane
 #   bash install.sh --uninstall
 #
-# Writes only under $HOME (venv, launchers, one .desktop entry) and installs the
-# two runtime packages the wheel needs (lapack, blas) through pacman. It never
-# replaces Mesa, touches Hyprland, or edits Omarchy files.
+# The default install writes only under $HOME, except for runtime packages
+# installed through pacman. --ane also provisions host-global ANE ownership.
 set -euo pipefail
 
 REPO=joshuaswarren/mlx-omarchy
@@ -17,18 +17,29 @@ BIN="$HOME/.local/bin"
 APPS="$HOME/.local/share/applications"
 MLX_LM_VERSION=0.31.3
 TRANSFORMERS_VERSION=5.16.1
-
+ANE=0
 say() { printf '\033[1;32m==>\033[0m %s\n' "$*"; }
 die() { printf '\033[1;31merror:\033[0m %s\n' "$*" >&2; exit 1; }
 
-if [[ "${1:-}" == "--uninstall" ]]; then
-  rm -rf "$PREFIX" "$BIN/mlx-omarchy" "$BIN/mlx-omarchy-demo" "$BIN/mlx-omarchy-info" "$APPS/mlx-omarchy-demo.desktop"
-  say "mlx-omarchy removed. Model downloads stay in ~/.cache/huggingface; delete them yourself if you want the space back."
-  exit 0
-fi
+case "${1:-}" in
+  --ane) ANE=1 ;;
+  --uninstall)
+    rm -rf "$PREFIX" "$BIN/mlx-omarchy" "$BIN/mlx-omarchy-demo" "$BIN/mlx-omarchy-info" "$APPS/mlx-omarchy-demo.desktop"
+    say "mlx-omarchy removed. Model downloads stay in ~/.cache/huggingface; delete them yourself if you want the space back."
+    exit 0
+    ;;
+  "") ;;
+  *) die "unknown option: $1 (supported: --ane, --uninstall)" ;;
+esac
 
 # 1. Hardware and interpreter checks. The release wheel is cp314 linux_aarch64
 #    and is verified on the M1 (apple,t8103) only.
+if (( ANE )); then
+  [[ -c /dev/accel/accel0 ]] || die "ANE installation requires /dev/accel/accel0."
+  command -v sudo >/dev/null || die "ANE installation requires sudo."
+  command -v systemd-tmpfiles >/dev/null || die "ANE installation requires systemd-tmpfiles."
+  getent group render >/dev/null || die "ANE installation requires the render group."
+fi
 [[ "$(uname -m)" == aarch64 ]] || die "mlx-omarchy runs on Apple Silicon (aarch64); this machine is $(uname -m)."
 if [[ -r /proc/device-tree/compatible ]] && ! tr '\0' ' ' </proc/device-tree/compatible | grep -q 'apple,t8103'; then
   echo "warning: this is not an Apple M1 (t8103). Only the M1 is verified; later chips are untested." >&2
@@ -59,6 +70,60 @@ wheel="$(grep -o 'mlx_omarchy-[^ ]*cp314-cp314-linux_aarch64\.whl' "$tmp/SHA256S
 say "Fetching $wheel"
 curl -fsSL "$base/$wheel" -o "$tmp/$wheel"
 (cd "$tmp" && sha256sum -c --ignore-missing --quiet SHA256SUMS) || die "checksum mismatch for $wheel"
+
+if (( ANE )); then
+  ane_conf="$tmp/mlx-omarchy-ane.conf"
+  python3 - "$tmp/$wheel" "$ane_conf" <<'PY'
+import sys
+import zipfile
+from pathlib import Path
+
+wheel, destination = sys.argv[1:]
+with zipfile.ZipFile(wheel) as archive:
+    names = archive.namelist()
+    configs = [name for name in names if name.endswith("lib/tmpfiles.d/mlx-omarchy-ane.conf")]
+    workers = [name for name in names if name.endswith("bin/mlx-omarchy-ane-worker")]
+    if len(configs) != 1 or len(workers) != 1:
+        raise SystemExit("wheel does not contain exactly one ANE worker and tmpfiles policy")
+    Path(destination).write_bytes(archive.read(configs[0]))
+PY
+  say "Provisioning host-global ANE ownership"
+  sudo install -D -m0644 "$ane_conf" /usr/lib/tmpfiles.d/mlx-omarchy-ane.conf
+  sudo systemd-tmpfiles --create /usr/lib/tmpfiles.d/mlx-omarchy-ane.conf
+
+  install_user="${SUDO_USER:-$(id -un)}"
+  render_gid="$(getent group render | cut -d: -f3)"
+  if [[ " $(id -G "$install_user") " != *" $render_gid "* ]]; then
+    sudo usermod -aG render "$install_user"
+    echo "note: $install_user was added to render; open a new login session before using ANE."
+  fi
+
+  sudo python3 - <<'PY'
+import os
+import stat
+
+device = os.stat("/dev/accel/accel0", follow_symlinks=False)
+if not stat.S_ISCHR(device.st_mode):
+    raise SystemExit("/dev/accel/accel0 is not a character device")
+expected = (
+    ("/run/lock/mlx-omarchy-ane", stat.S_ISDIR, 0o750, False),
+    ("/run/lock/mlx-omarchy-ane/device.lock", stat.S_ISREG, 0o660, True),
+    ("/run/lock/mlx-omarchy-ane/quarantine", stat.S_ISREG, 0o660, True),
+)
+for path, type_check, mode, single_link in expected:
+    status = os.stat(path, follow_symlinks=False)
+    valid = (
+        type_check(status.st_mode)
+        and status.st_uid == 0
+        and status.st_gid == device.st_gid
+        and stat.S_IMODE(status.st_mode) == mode
+        and (not single_link or status.st_nlink == 1)
+    )
+    if not valid:
+        raise SystemExit(f"invalid ANE ownership path: {path}")
+    print(f"  {status.st_uid}:{status.st_gid} {mode:o} {path}")
+PY
+fi
 
 # 4. Private venv. Nothing is installed into the system Python.
 say "Creating $VENV"
