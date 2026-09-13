@@ -17,7 +17,7 @@
   "contract": {
     "input": "One non-empty float32 waveform at 16 kHz, no longer than 480000 samples",
     "output": "float32 mel [3001,128], all-one int32 mask [3001], float32 encoder features [1,3000,128], and int32 encoder mask [1,3000]",
-    "execution": "Every waveform-dependent stage uses workload-owned mx.fast.metal_kernel calls on stream=mx.gpu. The runtime extraction path performs no NumPy or CPU tensor arithmetic; the host comparator imports NumPy before dispatch and uses it only to inspect completed GPU outputs.",
+    "execution": "Every waveform-dependent stage uses workload-owned mx.fast.metal_kernel calls on stream=mx.gpu. The runtime extraction path performs no NumPy or CPU tensor arithmetic. The host comparator materializes and validates the completed int32 API mask, converts only its comparison copy to the frozen float32 stage dtype, and takes its final trace snapshot after every comparison.",
     "success": "All five final capture hashes, all 14 stage hashes, and all 18 stage/final comparisons must match; the expected stage set must be exact; GPU primitive and submission counters must be positive; Vulkan compute dispatches must equal the frozen count of eight."
   },
   "immutable_constants": {
@@ -25,14 +25,14 @@
     "sha256": "753fda5580a1fdc8c1535cc291a962c3be3207e819d42b2eb6869b731a7ebf62"
   },
   "source_sha256": {
-    "overlay/tools/coreml/vulkan_mel.py": "b7a0eb37c6f79a9a9275bdd15ef3762d94f1188e9155dbdf1c35f5b899167d84",
+    "overlay/tools/coreml/vulkan_mel.py": "13ac9d04af0d0248d6f667dd84bdd4dbb5faec509b989a158c04f5cafe63d3df",
     "overlay/tools/coreml/mel_stage_compare.py": "210b38995c1491890fd71a7ae6c5c79b79c6d8d583289e3b3831a86b7066b7f8",
     "overlay/tools/coreml/vulkan_mel_constants.py": "caad0ac74d60a4d7378326d5c6d2e0f0fa7d1fd807157f9d203e7348874d258f",
     "tests/coreml/test_vulkan_mel.py": "4dfa53690fdb5790423e37f12121ce5d3dd8c7ce484c8b81ea658829b9e291df",
     "tests/coreml/test_vulkan_mel_arithmetic.py": "c76ad7c35353b6a62bea665795a4f8da82d9590ad88b228a563432f65ddf341c",
-    "tests/coreml/test_vulkan_mel_qualification.py": "4d0fd763828a4f7ddb8b5ed15a54a7e0fa2d2c299586a5f504a9c2b10fa5ad65",
-    "docs/parakeet.md": "e55823b3e128b3f36bf3143cde0f3bca5099811c82390b8e17a31a82edeceefe",
-    "docs/coreml.md": "f7d6de41833f6df715094375e6ced78b2889f5551289b3ab4899d297aaf8b3ab"
+    "tests/coreml/test_vulkan_mel_qualification.py": "631a6074d5f4cad44f3bd71281fc7e9e2ccbe0e0a0abe04e2d1ca5ea98011bdb",
+    "docs/parakeet.md": "0377b9a7cc4951e283b8a691bfa22c86320f3b797ef9bfe3daa037fa2d6ceed8",
+    "docs/coreml.md": "39183adb24530101dce9d7590f177702402c1b9be71204b7ae0cb0bf89061fa5"
   },
   "local_runtime": {
     "source_commit": "e4d079c883b8606dddef7720bd302c5756be0692",
@@ -139,7 +139,8 @@
     "status": "qualified on local software Vulkan; corrected source awaits Apple rerun",
     "source_commits": [
       "2f08632097d21342924ea74b598607746af10dc6",
-      "a5b209e4b45f26d809d0e7d3ab6539f33b243777"
+      "a5b209e4b45f26d809d0e7d3ab6539f33b243777",
+      "9438a06fd3394b30834976dcc8af322bd1b05493"
     ],
     "root_cause": "The former unscaled Dekker split multiplied finite operands by 4097, which overflowed at large magnitudes and lost subnormal products. It did not implement the declared finite binary32 FMA contract.",
     "native_fma_limit": {
@@ -149,6 +150,7 @@
       "broader_probe": "4371 mismatches in 200000 finite triples"
     },
     "implementation": "The replacement combines unpacked binary32 significands in a 96-bit uint32 magnitude with sticky state, then rounds once to binary32. It does not clamp or narrow legal finite inputs.",
+    "comparison_boundary": "The real API mask stays int32. After mx.eval completes the outputs, the comparator materializes and validates mask dtype and shape on the host, creates the float32-only stage copy with NumPy, completes every comparison, and only then reads the final trace snapshot. No comparison operation is outside the measured dispatch window.",
     "local_verification": [
       {
         "command": "200000 deterministic finite binary32 triples across all exponents through the replacement custom-kernel fma32",
@@ -156,14 +158,15 @@
       },
       {
         "command": "python3 -m pytest -q tests/coreml/test_vulkan_mel.py tests/coreml/test_vulkan_mel_arithmetic.py tests/coreml/test_vulkan_mel_qualification.py",
-        "result": "19 passed in 4.27s"
+        "result": "22 passed in 4.37s"
       },
       {
         "command": "python3 overlay/tools/coreml/vulkan_mel.py <pinned-capture> <certified-stage-capture> --json-out .work/vulkan-mel-review-correction.json",
-        "result": "qualified=true; all 18 comparisons bit-exact; exact expected stage set; Device(gpu, 0); 15 GPU primitives, 8 Vulkan computes, and 1 Vulkan submission"
+        "result": "qualified=true; all 18 comparisons bit-exact; exact expected stage set; Device(gpu, 0); final trace captured after every comparison; 15 GPU primitives, 8 Vulkan computes, and 1 Vulkan submission",
+        "artifact_sha256": "3a87ee5f83377b4da64656c56a0f4afdb65f2af1cb09e113b13aeb592e49df78"
       }
     ],
-    "negative_gates": "Missing or extra stage keys reject qualification. Vulkan compute counts 1, 7, and 9 reject qualification. Tampering any of the five final capture files fails the named SHA-256 gate.",
+    "negative_gates": "Missing or extra stage keys reject qualification. Vulkan compute counts 1, 7, and 9 reject qualification. Non-int32 or non-[3001] API masks reject comparison. Tampering any of the five final capture files fails the named SHA-256 gate.",
     "apple_rerun": "pending; the historical Apple run is not reused as general full-domain qualification"
   },
   "qualification_boundary": {
