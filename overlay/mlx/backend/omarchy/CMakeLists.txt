@@ -10,6 +10,10 @@ target_compile_definitions(mlx PRIVATE MLX_OMARCHY_BACKEND)
 set(MLX_OMARCHY_ANE_SOURCE_DIR "" CACHE PATH
     "Qualified joshuaswarren/omarchy-ane checkout for the private ANE runtime")
 if(MLX_OMARCHY_ANE_SOURCE_DIR)
+  if(NOT BUILD_SHARED_LIBS)
+    message(FATAL_ERROR
+            "MLX_OMARCHY_ANE_SOURCE_DIR requires BUILD_SHARED_LIBS=ON")
+  endif()
   execute_process(
     COMMAND git -C "${MLX_OMARCHY_ANE_SOURCE_DIR}" rev-parse HEAD
     OUTPUT_VARIABLE MLX_OMARCHY_ANE_SOURCE_COMMIT
