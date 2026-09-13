@@ -93,3 +93,11 @@ def test_loader_rejects_extra_physical_package_file(tmp_path):
 
     with pytest.raises(ValueError, match="files differ"):
         load_pinned_component(target, "joint")
+
+
+def test_loader_rejects_dangling_package_symlink(tmp_path):
+    target = _package_copy(tmp_path)
+    (target / "unlisted.bin").symlink_to("/definitely/not/a/pinned/package/file")
+
+    with pytest.raises(ValueError, match="symbolic link"):
+        load_pinned_component(target, "joint")

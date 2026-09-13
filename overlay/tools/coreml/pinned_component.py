@@ -122,6 +122,10 @@ def _verify_package_files(package: Any, component: str, lock: ReferenceLock) -> 
     expected = {entry.path[len(prefix) :]: entry for entry in lock.files if entry.path.startswith(prefix)}
     actual = {}
     for path in package.path.rglob("*"):
+        if path.is_symlink():
+            raise PinnedComponentError(
+                f"{component}.mlpackage contains a symbolic link"
+            )
         if not path.is_file():
             continue
         resolved = path.resolve()
