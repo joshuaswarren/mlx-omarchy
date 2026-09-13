@@ -1,8 +1,8 @@
 {
   "files": {
     "analyze.py": {
-      "bytes": 9994,
-      "sha256": "0bbc273a093bfee84f8c1c6baa0654da6f329912a49f84e247743d3080b763f8"
+      "bytes": 11174,
+      "sha256": "7a08ffabfd4b0110707e7941bf1c1a59dba35a5c8c7451920e23b8b9e849e50d"
     },
     "analyze_window.py": {
       "bytes": 5399,
@@ -48,6 +48,14 @@
       "bytes": 4531,
       "sha256": "549d9f7c74332c7c730b9d62182e5bea65c7c5679b7be81f622cf63a61f03da6"
     },
+    "phase-audit.json": {
+      "bytes": 2908,
+      "sha256": "4c885473169ed34db4e152a9f2961f8464d851b36133830603076c3a801c6566"
+    },
+    "phase_audit.py": {
+      "bytes": 6787,
+      "sha256": "6aa6b37b93468665f1eb1375856e6df2b21da90919754866c73b7fd4ca913ab4"
+    },
     "post-release-readback.txt": {
       "bytes": 630,
       "sha256": "f57b4b0ae8134ab70dfe645f4ed3709ed794632a2e6897877789e450f42d3bb9"
@@ -69,8 +77,8 @@
       "sha256": "26f4648469cc740a1ddc4de6de18200bb5d9fdc74c274ac793e7ac4f3f5c4e06"
     },
     "verdict.json": {
-      "bytes": 6871,
-      "sha256": "97c7104728cec3ac24d40510cade19d65ed2974766ee7f527a8fb30bb8c2475c"
+      "bytes": 10337,
+      "sha256": "c9bffc1d2e380cf5e3e91a725c060ad511fad2b4a7ced12cabdb26cfef8ab1cd"
     },
     "window-final/analysis.log": {
       "bytes": 675,
@@ -188,6 +196,5 @@
       "bytes": 7968,
       "sha256": "ad6e73bc135ae0684847fe4b506f12472faabd80cba73a57ae5840466dbdb32e"
     }
-  },
-  "schema": "receipt-manifest/1"
+  }
 }

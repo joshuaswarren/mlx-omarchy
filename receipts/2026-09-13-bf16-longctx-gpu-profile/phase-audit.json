@@ -1,0 +1,54 @@
+{
+  "schema": "bf16-longctx-gpu-phase-audit/1",
+  "phase_scope": "decode_only",
+  "capture_scope": "whole process captured; decode selected by markers",
+  "reset_used": false,
+  "bench_decode_sha256": "f5062d88f34b0845c1e59b0b35d2e33ae02180f636a0f65c543a4366ec2bef7f",
+  "warmup_contract": "window.sh passes --warmup-tokens 4. bench_decode consumes that iterator before calling the measured run_generation wrapper, so all warmup submissions precede prefill_start and are excluded.",
+  "marker_contract": "The wrapped measured iterator pulls the first generated item before emitting prefill_done, decode_start, and the first token marker. That item contains measured-run prefill and first-token work and is excluded. The selected window covers the following 31 token intervals.",
+  "dispatch_filter": "A dispatch is included only when its linked submission monotonic timestamp is at or after the first token marker and before decode_done.",
+  "whole_process_totals_used_for_decode_attribution": false,
+  "dispatch_comparison": {
+    "short_decode_dispatches_per_token": 726.0,
+    "longctx_decode_dispatches_per_token": 510.0,
+    "longctx_minus_short_dispatches_per_token": -216,
+    "meaning": "The delta compares only phase-filtered dispatches over the same 31 steady-state decode intervals: 510 long-context minus 726 short."
+  },
+  "cost_categories": {
+    "gpu_busy": "sum of selected decode dispatch GPU durations",
+    "submit_host": "reported separately; not added to GPU busy",
+    "begin_wait": "reported separately; not added to GPU busy",
+    "join_wait": "reported separately; not added to GPU busy",
+    "wall": "reported separately; not added to asynchronous components"
+  },
+  "profiles": {
+    "short": {
+      "whole_process_dispatches": 29222,
+      "pre_decode_dispatches_excluded": 6716,
+      "decode_dispatches_included": 22506,
+      "post_decode_dispatches_excluded": 0,
+      "decode_submissions_included": 124,
+      "first_decode_submit_id": 37,
+      "last_decode_submit_id": 160,
+      "decode_submit_ids_contiguous": true,
+      "first_decode_submit_after_first_token_marker_ns": 24590887,
+      "last_decode_submit_before_decode_done_ns": 505785,
+      "pre_decode_gpu_end_to_decode_gpu_start_ns": 217916,
+      "pre_decode_gpu_work_overlaps_selected_decode": false
+    },
+    "longctx": {
+      "whole_process_dispatches": 21014,
+      "pre_decode_dispatches_excluded": 5204,
+      "decode_dispatches_included": 15810,
+      "post_decode_dispatches_excluded": 0,
+      "decode_submissions_included": 93,
+      "first_decode_submit_id": 42,
+      "last_decode_submit_id": 134,
+      "decode_submit_ids_contiguous": true,
+      "first_decode_submit_after_first_token_marker_ns": 9547708,
+      "last_decode_submit_before_decode_done_ns": 473910,
+      "pre_decode_gpu_end_to_decode_gpu_start_ns": 450791,
+      "pre_decode_gpu_work_overlaps_selected_decode": false
+    }
+  }
+}

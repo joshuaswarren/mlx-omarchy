@@ -10,6 +10,7 @@ summary = json.loads((WINDOW / "gpu-summary.json").read_text())
 identity = summary["identity"]
 profiles = summary["profiles"]
 comparison = summary["comparison"]
+phase_isolation = json.loads((ROOT / "phase-audit.json").read_text())
 build_launcher = (ROOT / "build-launcher.log").read_text()
 measurement_launcher = (ROOT / "measurement-launcher.log").read_text()
 build_log = (ROOT / "build-attempt" / "build.log").read_text()
@@ -37,6 +38,17 @@ for label, digest in PINS.items():
     assert profiles[label]["decode"]["intervals"] == 31
     assert profiles[label]["valid_bits"] == 64
     assert profiles[label]["period_ns"] > 0
+
+assert phase_isolation["phase_scope"] == "decode_only"
+assert phase_isolation["whole_process_totals_used_for_decode_attribution"] is False
+for label in PINS:
+    phase = phase_isolation["profiles"][label]
+    assert phase["decode_dispatches_included"] == profiles[label]["decode"]["dispatches"]
+    assert phase["decode_submit_ids_contiguous"] is True
+    assert phase["first_decode_submit_after_first_token_marker_ns"] >= 0
+    assert phase["last_decode_submit_before_decode_done_ns"] > 0
+    assert phase["pre_decode_gpu_end_to_decode_gpu_start_ns"] >= 0
+    assert phase["pre_decode_gpu_work_overlaps_selected_decode"] is False
 
 assert "build_wait_rc=0" in build_launcher
 assert "FATAL expected one exact diagnostic wheel, got 0" in build_launcher
@@ -117,6 +129,7 @@ verdict = {
         "provenance_match": True,
         "profiles_dropped_records": 0,
     },
+    "phase_isolation": phase_isolation,
     "attribution": {
         "release_control_wall_delta_ms_per_token": release_delta,
         "diagnostic_wall_delta_ms_per_token": diag_delta,
@@ -151,7 +164,8 @@ verdict = {
         "candidate_selected": False,
         "implementation_commit": None,
         "reason": "The trace identifies the only new long-context GPU kernel, but the profiling perturbation is larger than the release wall penalty and the route already replaces a slower exact composition. No numerically safe source edit is supported by this evidence alone.",
-        "next_evidence": "Measure a composition-exact SdpaDecodeNativeBF16 shader candidate against this release control without per-dispatch timestamp barriers. Retain strict ID digests and the existing k_len boundary; do not disable the current route as a shortcut.",
+        "next_source_investigation": "Evaluate a BF16-only 256-thread composition-exact arm: the current score phase uses 1024 threads, but the max, sum, normalize, and output phases use at most 256 while threads 256..1023 only cross barriers. A 256-thread score loop can retain each key's ascending 64-term f32 accumulation and every later reduction/store order without disabling the exactness route.",
+        "next_evidence": "Build that composition-exact SdpaDecodeNativeBF16 shader candidate, prove word identity, then compare it against this release control without per-dispatch timestamp barriers. Retain strict ID digests and the existing k_len boundary.",
     },
     "invalid_attempts": [
         {
@@ -166,6 +180,7 @@ verdict = {
             "window-final/profile-short.analysis.txt",
             "window-final/profile-longctx.analysis.txt"],
         "paired_summary": "window-final/gpu-summary.json",
+        "phase_audit": "phase-audit.json",
         "artifact_reconciliation": "artifact-reconciliation.txt",
         "exact_source": "source-attribution.txt",
         "release_readback": "post-release-readback.txt",
