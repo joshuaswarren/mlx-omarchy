@@ -1,0 +1,58 @@
+{
+  "schema": "jwm1-schema4-shape-aware-submit/1",
+  "date": "2026-09-13",
+  "status": "harness-gap-closed-execute-timeout",
+  "host": "jwm1-linux",
+  "source_commit": "a9f14124e3e23b3eb5c538a1b99e9a72b74fa892",
+  "device": "/dev/accel/accel0",
+  "fixture": {
+    "path": "/var/tmp/Jwm1AneMoreFixtures-a9f14124/adapted/ane-add-fp16-1x896",
+    "name": "ane-add-fp16-1x896",
+    "manifest_version": 4,
+    "graph_hash": "9048326d6335b6bec29296d0ce521fa528c09c4558d93e15bf1830d7ec777da1",
+    "contract_sha256": "fd1e3ca6529afab00d96e875224aa142067c3c7a79ba0d48f89541c0075ee419",
+    "model_sha256": "86203b99cb4d530d6bb99986e4d2b3351d3b04afb3253c7655e2f8b6ce9e1919",
+    "anec_sha256": "79d307207318285d9e2aa8a52b9ac06a3460c09c6628c26dfa14a9acd01a8271",
+    "weights_sha256": "41aa2b92c429c8790c55c37015e02d719c28eb7aa4ca26064fec95fae40dc0bb",
+    "weights": "896 fp16 values, all 0x3400 (0.25)",
+    "input": "t1 float16 [1,896], 1792 logical bytes, 65536 allocation bytes",
+    "output": "t2 float16 [1,896], 1792 logical bytes, 65536 allocation bytes",
+    "encoder_claim": false
+  },
+  "one_shot_harness": {
+    "source_path": "/var/tmp/AnePlanJwm1-shape-aware/ane-shape-aware-smoke.cpp",
+    "source_sha256": "5773b67b1bddb7dc03625c0f76ef79b09eebae79cd08dee329acaf29663fd9bd",
+    "binary_path": "/var/tmp/AnePlanJwm1-shape-aware/ane-shape-aware-smoke",
+    "binary_sha256": "3067424d8db3887b50a68f36bcdba75e541a0d3bb84bffcd0cb6538566c36466",
+    "command": "/var/tmp/AnePlanJwm1-shape-aware/ane-shape-aware-smoke /var/tmp/Jwm1AneMoreFixtures-a9f14124/adapted/ane-add-fp16-1x896 0x3c00 0x3d00 10000",
+    "input_contract": "Reads the single input name and byte size from manifest.json and supplies exactly 896 fp16 values under key t1.",
+    "output_contract": "Requires one 1792-byte fp16 result and would compare all 896 values to 0x3d00. No output was returned after the device timeout."
+  },
+  "result": {
+    "host_validation": "pass",
+    "current_operation_submitted": true,
+    "execute": "ane_exec failed for program 0 with result -1 errno=110",
+    "exact_fp16": "not observed",
+    "worker_pid": 3441588,
+    "worker_released": true,
+    "ane_lock_reacquire": "pass",
+    "gpu_lock": "not acquired",
+    "quarantine_after_timeout_bytes": 37
+  },
+  "recovery": {
+    "required": "reboot after uncertain submitted operation",
+    "stale_grub_incident": "An obsolete helper selected the explicitly stale whole-tree ANE entry, which exposed only CPU 0. No fixture was submitted in that boot. The machine was returned to the stock eight-core boot; the stale entry was not made persistent.",
+    "final_boot_id": "95872130-fd28-4d67-8247-03a0e8b61202",
+    "final_uptime_start": "2026-09-13 09:43:25",
+    "nproc": 8,
+    "cpu_online": "0-7",
+    "platform_node": "/sys/devices/platform/soc/26bc04000.ane",
+    "module_version": "f2a3e5e+lifecycle6",
+    "module_srcversion": "DD43701FCB506056A340587",
+    "device_type": "character special file",
+    "device_mode": "crw-rw-rw- root render",
+    "quarantine_bytes": 0,
+    "workers": "none"
+  },
+  "scope": "Shape-aware schema-4 host validation and real program submission only. The 1x896 fixture did not complete, numerical output was not observed, and this is not an encoder claim."
+}
