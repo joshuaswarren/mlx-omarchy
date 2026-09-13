@@ -770,6 +770,10 @@ AneBufferMap AneRuntime::execute(
   return outputs;
 }
 
+const std::vector<AneLogicalResult>& AneRuntime::output_layout() const {
+  return implementation_->bundle.manifest.logical_results;
+}
+
 AneShutdownReceipt AneRuntime::shutdown(
     std::chrono::milliseconds deadline_duration) {
   const auto checked_deadline = detail::checked_deadline(deadline_duration);

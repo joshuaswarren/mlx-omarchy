@@ -21,6 +21,7 @@
 #include <limits>
 #include <string>
 #include <type_traits>
+#include <utility>
 #include <vector>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -89,7 +90,7 @@ std::string runtime_binding(const std::string& name, uint32_t channel) {
 
 class RuntimeBundle {
  public:
-  RuntimeBundle() {
+  explicit RuntimeBundle(int manifest_version = 4) {
     std::string path_template =
         (std::filesystem::temp_directory_path() / "mlx-omarchy-runtime-XXXXXX").string();
     char* created = ::mkdtemp(path_template.data());
@@ -108,12 +109,13 @@ class RuntimeBundle {
     const std::string model_sha = sha256_hex(
         reinterpret_cast<const uint8_t*>(payload_record.data()), payload_record.size());
     const std::string manifest =
-        "{\"manifest_version\":3,\"name\":\"runtime-directory-test\","
-        "\"graph_hash\":\"" + std::string(64, '1') +
-        "\",\"task_descriptors\":1,\"inputs\":[" +
+        R"json({"manifest_version":)json" + std::to_string(manifest_version) +
+        R"json(,"name":"runtime-directory-test","graph_hash":")json" +
+        std::string(64, '1') +
+        R"json(","task_descriptors":1,"inputs":[)json" +
         runtime_tensor("a", 0) + "," + runtime_tensor("b", 1) +
-        "],\"outputs\":[" + runtime_tensor("y", 0) +
-        "],\"state\":[],\"intermediates\":[],\"programs\":[{"
+        R"json(],"outputs":[)json" + runtime_tensor("y", 0) +
+        R"json(],"logical_results":[{"name":"y","dtype":"float16","shape":[1,64,1,1],"tensor":"y","element_offset":0,"element_count":64,"conversion":"identity"}],"state":[],"intermediates":[],"programs":[{)json"
         "\"payload\":\"program-0.anec\",\"operation\":\"add\","
         "\"encoder\":\"h13-oracle-parity\",\"task_descriptors\":1,"
         "\"scratch_bytes\":0,\"inputs\":[" + runtime_binding("a", 5) + "," +
@@ -287,6 +289,20 @@ TEST_CASE("ANE runtime validates every bundle directory entry before device work
         "ANE diagnostic path must not be empty",
         std::invalid_argument);
   }
+}
+
+TEST_CASE("ANE runtime rejects old schema before worker initialization") {
+  RuntimeBundle bundle(3);
+  CHECK_THROWS_WITH_AS(
+      AneRuntime::load(bundle.path(), std::chrono::seconds(1), {}),
+      "[omarchy-ane] manifest: unsupported manifest_version (expected 4).",
+      std::runtime_error);
+}
+
+TEST_CASE("ANE output layout API is an immutable runtime-lifetime view") {
+  CHECK((std::is_same_v<
+         decltype(std::declval<const AneRuntime&>().output_layout()),
+         const std::vector<AneLogicalResult>&>));
 }
 
 TEST_CASE("ANE installed worker follows the loaded library prefix") {

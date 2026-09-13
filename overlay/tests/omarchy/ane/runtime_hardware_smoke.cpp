@@ -18,6 +18,7 @@
 
 using mlx::core::omarchy::ane::AneBuffer;
 using mlx::core::omarchy::ane::AneBufferMap;
+using mlx::core::omarchy::ane::AneLogicalResult;
 using mlx::core::omarchy::ane::AneRuntime;
 
 namespace {
@@ -31,18 +32,37 @@ AneBuffer filled_fp16(size_t elements, uint16_t bits) {
   return result;
 }
 
-void require_fp16(const AneBuffer& output, uint16_t expected) {
-  if (output.size() != 128) {
-    throw std::runtime_error("output is not 64 fp16 values");
+void require_logical_fp16(
+    const AneBufferMap& outputs,
+    const AneLogicalResult& result,
+    uint16_t expected) {
+  if (result.dtype != "float16" || result.conversion != "identity") {
+    throw std::runtime_error(
+        "smoke requires identity float16 logical results");
   }
-  for (size_t i = 0; i < output.size(); i += 2) {
-    uint16_t actual = static_cast<uint16_t>(output[i]) |
-        (static_cast<uint16_t>(output[i + 1]) << 8);
+  auto found = outputs.find(result.tensor);
+  if (found == outputs.end()) {
+    throw std::runtime_error(
+        "logical result references missing physical output '" +
+        result.tensor + "'");
+  }
+  const AneBuffer& output = found->second;
+  if (output.size() % 2 != 0) {
+    throw std::runtime_error("physical fp16 output has an odd byte count");
+  }
+  const uint64_t physical_elements = output.size() / 2;
+  if (result.element_offset > physical_elements ||
+      result.element_count > physical_elements - result.element_offset) {
+    throw std::runtime_error("logical result slice exceeds physical output");
+  }
+  for (uint64_t logical = 0; logical < result.element_count; ++logical) {
+    const size_t byte = static_cast<size_t>(result.element_offset + logical) * 2;
+    uint16_t actual = static_cast<uint16_t>(output[byte]) |
+        (static_cast<uint16_t>(output[byte + 1]) << 8);
     if (actual != expected) {
       throw std::runtime_error(
-          "wrong fp16 output at element " + std::to_string(i / 2) +
-          ": expected 0x" + std::to_string(expected) +
-          " found 0x" + std::to_string(actual));
+          "wrong fp16 output for logical result '" + result.name +
+          "' at element " + std::to_string(logical));
     }
   }
 }
@@ -70,6 +90,17 @@ int main(int argc, char** argv) {
   try {
     const auto deadline = std::chrono::milliseconds(positive_long(argv[3]));
     auto runtime = AneRuntime::load(argv[1], deadline, argv[4]);
+    const auto& output_layout = runtime->output_layout();
+    if (output_layout.empty()) {
+      throw std::runtime_error("bundle has no logical results");
+    }
+    for (size_t index = 0; index < output_layout.size(); ++index) {
+      const auto& result = output_layout[index];
+      std::cout << "logical_result " << index << " name=" << result.name
+                << " tensor=" << result.tensor
+                << " element_offset=" << result.element_offset
+                << " element_count=" << result.element_count << '\n';
+    }
     const int worker = runtime->worker_pid();
     std::cout << "runtime_identity " << runtime->runtime_identity() << '\n';
     std::cout << "worker_executable "
@@ -86,12 +117,12 @@ int main(int argc, char** argv) {
         std::string(argv[2]) == "add" ? uint16_t{0x4200} : uint16_t{0x4600};
     for (int iteration = 0; iteration < 2; ++iteration) {
       auto outputs = runtime->execute(inputs, deadline);
-      if (outputs.size() != 1) {
-        throw std::runtime_error("bundle did not return exactly one output");
+      for (const auto& result : output_layout) {
+        require_logical_fp16(outputs, result, expected);
       }
-      require_fp16(outputs.begin()->second, expected);
-      std::cout << "iteration " << iteration << " exact_fp16=PASS bytes="
-                << outputs.begin()->second.size() << '\n';
+      std::cout << "iteration " << iteration << " exact_fp16=PASS"
+                << " physical_buffers=" << outputs.size()
+                << " logical_results=" << output_layout.size() << '\n';
     }
 
     auto receipt = runtime->shutdown(deadline);

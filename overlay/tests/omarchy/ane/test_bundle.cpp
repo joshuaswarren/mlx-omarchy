@@ -80,6 +80,22 @@ nlohmann::json tensor(const std::string& name, uint64_t index) {
       {"stride", kAllocationBytes},
   };
 }
+nlohmann::json logical_result(
+    const std::string& name,
+    const std::string& tensor_name,
+    std::vector<uint64_t> shape = {1, 64, 1, 1},
+    uint64_t element_offset = 0,
+    uint64_t element_count = 64) {
+  return {
+      {"name", name},
+      {"dtype", "float16"},
+      {"shape", std::move(shape)},
+      {"tensor", tensor_name},
+      {"element_offset", element_offset},
+      {"element_count", element_count},
+      {"conversion", "identity"},
+  };
+}
 
 nlohmann::json binding(const std::string& name, uint64_t channel) {
   return {
@@ -166,12 +182,16 @@ struct Fixture {
 
   Fixture() {
     manifest = {
-        {"manifest_version", 3},
+        {"manifest_version", 4},
         {"name", "h13-chain-add-mul"},
         {"graph_hash", hex(64, '1')},
         {"task_descriptors", 2},
         {"inputs", {tensor("a", 0), tensor("b", 1)}},
         {"outputs", {tensor("y", 0)}},
+        {"logical_results",
+         {logical_result("matrix", "y", {2, 32}),
+          logical_result("tail", "y", {8}, 56, 8),
+          logical_result("tail", "y", {8}, 56, 8)}},
         {"state", nlohmann::json::array()},
         {"intermediates", {tensor("sum", 0)}},
         {"programs",
@@ -240,12 +260,19 @@ TEST_CASE("valid multi-program bundle preserves dispatch and bindings") {
   fixture.write();
   AneBundle bundle = load_bundle(fixture.dir.path());
   REQUIRE(bundle.programs.size() == 2);
-  CHECK(bundle.manifest.manifest_version == 3);
+  CHECK(bundle.manifest.manifest_version == 4);
   CHECK(bundle.manifest.driver_abi_major == 1);
   CHECK(bundle.manifest.dispatch_plan == std::vector<uint64_t>{0, 1});
   CHECK(bundle.manifest.programs[bundle.programs[0].manifest_index].inputs[0].tensor == "a");
   CHECK(bundle.manifest.programs[bundle.programs[1].manifest_index].inputs[0].tensor == "sum");
   CHECK(bundle.programs[1].anec_header.source_count == 2);
+  REQUIRE(bundle.manifest.logical_results.size() == 3);
+  CHECK(bundle.manifest.logical_results[0].name == "matrix");
+  CHECK(bundle.manifest.logical_results[0].shape == std::vector<uint64_t>{2, 32});
+  CHECK(bundle.manifest.logical_results[1].name == "tail");
+  CHECK(bundle.manifest.logical_results[1].element_offset == 56);
+  CHECK(bundle.manifest.logical_results[2].name == "tail");
+  CHECK(bundle.manifest.logical_results[2].tensor == "y");
 }
 
 TEST_CASE("snapshot loader uses supplied immutable payload paths") {
@@ -291,11 +318,115 @@ TEST_CASE("release identity uses the producer's canonical payload byte domain") 
   }
 }
 
-TEST_CASE("schema 2 is rejected without compatibility shim") {
+TEST_CASE("old schemas are rejected without compatibility shim") {
   Fixture fixture;
-  fixture.manifest["manifest_version"] = 2;
+  fixture.manifest["manifest_version"] = 3;
   fixture.write();
   check_error([&] { load_bundle(fixture.dir.path()); }, "unsupported manifest_version");
+}
+TEST_CASE("manifest v4 requires strict ordered logical results") {
+  SUBCASE("missing list") {
+    Fixture fixture;
+    fixture.manifest.erase("logical_results");
+    fixture.write();
+    check_error(
+        [&] { load_bundle(fixture.dir.path()); },
+        "missing field 'logical_results'");
+  }
+  SUBCASE("empty list") {
+    Fixture fixture;
+    fixture.manifest["logical_results"] = nlohmann::json::array();
+    fixture.write();
+    check_error(
+        [&] { load_bundle(fixture.dir.path()); },
+        "field 'logical_results' must be a non-empty array");
+  }
+  SUBCASE("missing member") {
+    Fixture fixture;
+    fixture.manifest["logical_results"][0].erase("conversion");
+    fixture.write();
+    check_error([&] { load_bundle(fixture.dir.path()); }, "missing field 'conversion'");
+  }
+  SUBCASE("unknown member") {
+    Fixture fixture;
+    fixture.manifest["logical_results"][0]["physical_elements"] = 64;
+    fixture.write();
+    check_error(
+        [&] { load_bundle(fixture.dir.path()); },
+        "unknown field 'physical_elements'");
+  }
+}
+
+TEST_CASE("logical results reject invalid physical views") {
+  SUBCASE("unknown physical tensor") {
+    Fixture fixture;
+    fixture.manifest["logical_results"][0]["tensor"] = "missing";
+    fixture.write();
+    check_error(
+        [&] { load_bundle(fixture.dir.path()); },
+        "references unknown physical output tensor 'missing'");
+  }
+  SUBCASE("dtype mismatch") {
+    Fixture fixture;
+    fixture.manifest["logical_results"][0]["dtype"] = "bfloat16";
+    fixture.write();
+    check_error(
+        [&] { load_bundle(fixture.dir.path()); },
+        "dtype does not match physical output tensor 'y'");
+  }
+  SUBCASE("zero element count") {
+    Fixture fixture;
+    fixture.manifest["logical_results"][0]["element_count"] = 0;
+    fixture.write();
+    check_error([&] { load_bundle(fixture.dir.path()); }, "field 'element_count' must be positive");
+  }
+  SUBCASE("zero shape dimension") {
+    Fixture fixture;
+    fixture.manifest["logical_results"][0]["shape"] = {0, 64};
+    fixture.write();
+    check_error([&] { load_bundle(fixture.dir.path()); }, "must contain positive integers");
+  }
+  SUBCASE("shape product overflow") {
+    Fixture fixture;
+    fixture.manifest["logical_results"][0]["shape"] = {
+        std::numeric_limits<uint64_t>::max(), 2};
+    fixture.write();
+    check_error([&] { load_bundle(fixture.dir.path()); }, "geometry overflows uint64");
+  }
+  SUBCASE("shape product differs from slice") {
+    Fixture fixture;
+    fixture.manifest["logical_results"][0]["shape"] = {8};
+    fixture.write();
+    check_error(
+        [&] { load_bundle(fixture.dir.path()); },
+        "shape does not match element_count");
+  }
+  SUBCASE("maximal offset cannot wrap past storage") {
+    Fixture fixture;
+    fixture.manifest["logical_results"][0]["element_offset"] =
+        std::numeric_limits<uint64_t>::max();
+    fixture.write();
+    check_error(
+        [&] { load_bundle(fixture.dir.path()); },
+        "range exceeds physical output tensor 'y'");
+  }
+  SUBCASE("out of bounds") {
+    Fixture fixture;
+    fixture.manifest["logical_results"][0] =
+        logical_result("bad", "y", {8}, 60, 8);
+    fixture.write();
+    check_error(
+        [&] { load_bundle(fixture.dir.path()); },
+        "range exceeds physical output tensor 'y'");
+  }
+  SUBCASE("unsupported conversion") {
+    Fixture fixture;
+    fixture.manifest["logical_results"][0]["conversion"] = "cast";
+    fixture.write();
+    check_error(
+        [&] { load_bundle(fixture.dir.path()); },
+        "unsupported conversion 'cast'");
+  }
 }
 
 TEST_CASE("removed firmware field is rejected") {

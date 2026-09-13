@@ -14,7 +14,7 @@
 namespace mlx::core::omarchy::ane {
 
 constexpr uint64_t kAneTileAlignment = 0x4000;
-constexpr int kAneManifestVersion = 3;
+constexpr int kAneManifestVersion = 4;
 constexpr uint64_t kAneDriverAbiMajor = 1;
 
 struct AneTensor {
@@ -24,6 +24,15 @@ struct AneTensor {
   std::vector<uint64_t> shape;
   uint64_t byte_size{0};
   uint64_t stride{0};
+};
+struct AneLogicalResult {
+  std::string name;
+  std::string dtype;
+  std::vector<uint64_t> shape;
+  std::string tensor;
+  uint64_t element_offset{0};
+  uint64_t element_count{0};
+  std::string conversion;
 };
 
 struct AneProgramBinding {
@@ -80,6 +89,7 @@ struct AneManifest {
   uint64_t task_descriptors{0};
   std::vector<AneTensor> inputs;
   std::vector<AneTensor> outputs;
+  std::vector<AneLogicalResult> logical_results;
   std::vector<AneTensor> state;
   std::vector<AneTensor> intermediates;
   std::vector<AneProgram> programs;
