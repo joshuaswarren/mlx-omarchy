@@ -1,0 +1,33 @@
+[doctest] doctest version is "2.4.12"
+[doctest] run with "--help" for options
+===============================================================================
+/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/LongContextCostAttribution/.work/exp-cache-source/.work/mlx/tests/omarchy/test_sdpa_decode_fused.cpp:399:
+TEST CASE:  fused bf16 decode is bit-identical to the f32 composition
+
+/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/LongContextCostAttribution/.work/exp-cache-source/.work/mlx/tests/omarchy/test_sdpa_decode_fused.cpp:411: MESSAGE: keys 1 dispatches 10
+  logged: keys := 1
+
+/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/LongContextCostAttribution/.work/exp-cache-source/.work/mlx/tests/omarchy/test_sdpa_decode_fused.cpp:411: MESSAGE: keys 5 dispatches 10
+  logged: keys := 5
+
+/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/LongContextCostAttribution/.work/exp-cache-source/.work/mlx/tests/omarchy/test_sdpa_decode_fused.cpp:411: MESSAGE: keys 16 dispatches 10
+  logged: keys := 16
+
+/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/LongContextCostAttribution/.work/exp-cache-source/.work/mlx/tests/omarchy/test_sdpa_decode_fused.cpp:411: MESSAGE: keys 17 dispatches 10
+  logged: keys := 17
+
+/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/LongContextCostAttribution/.work/exp-cache-source/.work/mlx/tests/omarchy/test_sdpa_decode_fused.cpp:411: MESSAGE: keys 64 dispatches 10
+  logged: keys := 64
+
+/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/LongContextCostAttribution/.work/exp-cache-source/.work/mlx/tests/omarchy/test_sdpa_decode_fused.cpp:411: MESSAGE: keys 256 dispatches 1
+  logged: keys := 256
+
+/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/LongContextCostAttribution/.work/exp-cache-source/.work/mlx/tests/omarchy/test_sdpa_decode_fused.cpp:382: FATAL ERROR: REQUIRE( a == b ) is NOT correct!
+  values: REQUIRE( 1066991616 == 1021444096 )
+  logged: keys := 256
+          bit mismatch at 0: got 1.19531 want 0.0275879
+
+===============================================================================
+[doctest] test cases:    1 |    0 passed | 1 failed | 2 skipped
+[doctest] assertions: 4493 | 4492 passed | 1 failed |
+[doctest] Status: FAILURE!

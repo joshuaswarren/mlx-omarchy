@@ -1,0 +1,14 @@
+{
+  "files": {
+    "base-bf16.spv": "daa432ed514b05b2dbfa9adcab64a3b464e037f2f4271a6c962598c3ffef9b15",
+    "base-f16.spv": "a301a801f73640c3c2fe11888bb85526618f1cc4ac839f4557d4143b0e3a6e60",
+    "baseline-exact.log": "86a3c393616fb63a460f5d03ff9d95901b252347ff5cc19c3706c2b24eadf0e3",
+    "candidate-bf16.spv": "d8edeeb952599a2e280d9cfc9a3d54be5e8993a565236751b9489a4ffffde973",
+    "candidate-exact.log": "86a3c393616fb63a460f5d03ff9d95901b252347ff5cc19c3706c2b24eadf0e3",
+    "candidate-f16.spv": "a301a801f73640c3c2fe11888bb85526618f1cc4ac839f4557d4143b0e3a6e60",
+    "candidate-full.log": "46e019bf2240c62ff217c92144fbe43488d8f5d501124e60d0c87fe82d6513b7",
+    "negative-exact.log": "8947e8ba175a6b66051589726506f70837557cd96160127d79dca22ca384e95c",
+    "verification.json": "209620a70a82c678f4419e36b9567e20d996753599d7ecf6eb4688d2903bd04a",
+    "verify.py": "9d5985e8bba7b7169bdb3ab19a89fd2576d753cbe0792c3c2818020485a8d409"
+  }
+}
