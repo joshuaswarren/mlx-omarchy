@@ -5,13 +5,13 @@
 // Dense<->tile element placement shared by the libane device backend.
 //
 // Hardware-proven layout (a9f14124 smoke runtime): linear element index
-// maps to plane * plane_stride + row * row_stride + column * element_size
-// bytes inside the allocation, with NCHW[6] = [N, C, H, W, plane_stride,
-// row_stride]. element_size is 2 for fp16 surfaces; the 2026-09-13 ABI
-// extension adds 1-byte bool surfaces (elementDtype field, default
-// fp16): logical_bytes stay bytes — a bool surface of N elements is N
-// bytes — and only element-derived arithmetic widens from the fp16
-// assumption.
+// NCHW[6] = [N, C, H, W, plane_stride, row_stride] (same layout
+// contract as the validated a9f14124 smoke runtime). element_size is 2
+// for fp16 surfaces; the 2026-09-13 ABI extension adds 1-byte bool
+// surfaces via the existing per-binding dtype field (compiler yield:
+// no separate elementDtype field): logical_bytes stay bytes — a bool
+// surface of N elements is N bytes — and only element-derived
+// arithmetic widens from the fp16 assumption.
 
 #include "mlx/backend/omarchy/ane/manifest.h"
 

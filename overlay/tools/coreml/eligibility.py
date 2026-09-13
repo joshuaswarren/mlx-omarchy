@@ -52,8 +52,9 @@ SUPPORTED_PENDING_RELEASE = "SUPPORTED-PENDING-COMPILER-RELEASE"
 _PENDING_RELEASE_OPS = {
     "less": \
         "registry entry + exact rejection on compiler branch feature/h13-registry-boolean-ops "
-        "(b4f4da9); 1-byte bool surface (elementDtype ABI extension) captured by the "
-        "compiler lane; the pinned release 83a4434 has neither",
+        "(b4f4da9); 1-byte bool surface via the existing per-binding "
+        "dtype field (compiler yield: no separate elementDtype field); "
+        "the pinned release 83a4434 has neither",
     "floor": \
         "registry entry + exact rejection on compiler branch feature/h13-registry-boolean-ops "
         "(b4f4da9); 1-byte bool surface captured by the compiler lane; pinned "
@@ -207,8 +208,9 @@ def classify_spec(spec, histogram: dict[str, int]) -> list[OpDisposition]:
                 )
             if blocking:
                 # The -inf-fill select encoder is captured on the
-                # compiler branch (3-in/out7 bool surface, elementDtype
-                # ABI extension); only the release is pending.
+                # compiler branch (3-in/out7 bool surface via the
+                # existing per-binding dtype field); only the release
+                # is pending.
                 dispositions.append(
                     OpDisposition(
                         op_type,
