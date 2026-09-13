@@ -130,7 +130,9 @@ the Linux collector. No models are downloaded.
 
 The report hashes the loaded Python extension and MLX dynamic libraries.
 It checks RECORD hashes from `mlx` and its native backend packages when
-available. A hash or compiled-version mismatch refuses measurements.
+available. A hash mismatch, a compiled-version mismatch, or a native
+backend package (`mlx-metal`, `mlx-cpu`) whose version differs from
+`mlx` refuses measurements.
 Homebrew or source installations without RECORD hashes produce
 `verified: unverified`, with binary fingerprints retained.
 

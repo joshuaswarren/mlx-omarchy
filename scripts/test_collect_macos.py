@@ -237,6 +237,15 @@ class NativeProvenanceTests(unittest.TestCase):
         result = self.inspect({"mlx": self.distribution([], version="0.30.0")})
         self.assertEqual(result["verified"], "mismatch")
 
+    def test_stale_backend_package_version_refuses(self):
+        # Each binary matches its own RECORD, yet mlx-metal lags mlx.
+        result = self.inspect({"mlx": self.distribution([self.extension]),
+                               "mlx-metal": self.distribution([self.library], version="0.31.0")})
+        self.assertEqual(result["verified"], "mismatch")
+        self.assertFalse(result["version_match"])
+        self.assertIn("mlx-metal==0.31.0", result["mismatch"])
+        self.assertTrue(all(entry["match"] for entry in result["files"]))
+
     def test_source_install_has_hashes_but_no_verification_claim(self):
         result = self.inspect({})
         self.assertEqual(result["verified"], "unverified")

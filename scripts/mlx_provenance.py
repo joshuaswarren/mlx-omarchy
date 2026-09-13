@@ -306,6 +306,20 @@ def native_provenance():
         result["version_match"] = result["dist_version"] == result["mx_version"]
         if not result["version_match"]:
             result["mismatch"] = "Compiled MLX version differs from installed mlx version"
+    # Each backend binary can match its own RECORD while the backend package
+    # is stale relative to mlx. A mixed native stack must not verify as a match.
+    stale = sorted(
+        f"{name}=={info['version']}"
+        for name, info in result["packages"].items()
+        if name != "mlx" and result["dist_version"] is not None
+        and info["version"] != result["dist_version"]
+    )
+    if stale:
+        result["version_match"] = False
+        result["mismatch"] = (
+            f"Native backend package version differs from mlx=="
+            f"{result['dist_version']}: {', '.join(stale)}"
+        )
     if result["mismatch"]:
         result["verified"] = "mismatch"
     elif (result["version_match"] is True and result["files"]
