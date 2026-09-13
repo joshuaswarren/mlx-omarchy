@@ -1,0 +1,18 @@
+frames=512 values=262144 zip_numeric=512 zip_bits=512 zip_max=6.123234e-17 zop_numeric=512 zop_bits=512 zop_max=6.123234e-17
+frames=48 values=24576 zip_numeric=0 zip_bits=0 zip_max=0.0 zop_numeric=0 zop_bits=0 zop_max=0.0
+setup_log2=8 frames=13 numeric=75 bits=75 max_abs=2.0861626e-06
+setup_log2=9 frames=13 numeric=75 bits=75 max_abs=2.0861626e-06
+setup_log2=10 frames=13 numeric=75 bits=75 max_abs=2.0861626e-06
+setup_log2=11 frames=13 numeric=75 bits=75 max_abs=2.0861626e-06
+setup_log2=12 frames=13 numeric=75 bits=75 max_abs=2.0861626e-06
+setup_log2=8 frames=3001 numeric=87858 bits=87858 max_abs=2.3841858e-07
+setup_log2=9 frames=3001 numeric=87858 bits=87858 max_abs=2.3841858e-07
+setup_log2=10 frames=3001 numeric=87858 bits=87858 max_abs=2.3841858e-07
+setup_log2=11 frames=3001 numeric=87858 bits=87858 max_abs=2.3841858e-07
+setup_log2=12 frames=3001 numeric=87858 bits=87858 max_abs=2.3841858e-07
+double-libm mismatched_complex=136/256 max_abs=5.9604645e-08
+cosf-double-angle mismatched_complex=225/256 max_abs=2.3841858e-07
+cosf-float-angle mismatched_complex=242/256 max_abs=5.066395e-07
+double-libm-f32-angleA mismatched_complex=224/256 max_abs=2.3841858e-07
+double-libm-f32-angleB mismatched_complex=243/256 max_abs=5.066395e-07
+foundation-double mismatched_complex=136/256 max_abs=5.9604645e-08

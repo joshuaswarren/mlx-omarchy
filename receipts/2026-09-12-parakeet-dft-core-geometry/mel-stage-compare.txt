@@ -1,0 +1,13 @@
+gate: dump manifest verified; mel_pinned == golden mel.npy
+preemph   : EXACT (480000 values)
+hann      : DIVERGE n_diff=243/400 max|d|=4.768e-07 first=(16,) truth=0.015786827 portable=0.015786856
+mel_fb    : EXACT (32896 values)
+frames    : EXACT (1536512 values)
+dft_real  : DIVERGE n_diff=225133/771257 max|d|=4.768e-07 first=(0, 2) truth=-0.00051124685 portable=-0.00051124673
+dft_imag  : DIVERGE n_diff=222670/771257 max|d|=4.768e-07 first=(0, 3) truth=0.00055403064 portable=0.0005540306
+power     : EXACT (771257 values)
+melproj   : DIVERGE n_diff=29426/384128 max|d|=5.960e-08 first=(0, 12) truth=1.3810501e-08 portable=1.38105e-08
+logmel    : EXACT (384128 values)
+mean      : EXACT (128 values)
+std       : EXACT (128 values)
+VERDICT: divergent stages listed above (first divergent preprocessing stage is the earliest DIVERGE line whose upstream inputs were certified)

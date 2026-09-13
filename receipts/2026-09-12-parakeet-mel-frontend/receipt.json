@@ -1,0 +1,111 @@
+{
+  "schema": "mlx-omarchy.parakeet-mel-frontend/1",
+  "date": "2026-09-12",
+  "branch": "wave/CoremlFrontendIntegration",
+  "integration_base": "b41e2b74c330f910b24cab0e7516e306527858f0",
+  "scope": "Exact portable CPU reference for the pinned Parakeet audio-to-mel frontend; not installed-runtime qualification",
+  "source_lineage": {
+    "shared_mel_history": [
+      "57be042a733389aad4e88ef9700dd11253d78b9b",
+      "3fedbd456d28cb14635f3986e8d7b9d65a794b47",
+      "adce37f1f3e715cacf409693e3b8e64d2fa2f03e",
+      "04255fd5a75ff8e51ba3d1ddf0f6bcb1726af918",
+      "18248be2a7299548770d1b058be558c49db4a99f"
+    ],
+    "dot_product": [
+      "12d98dab3920a794400a073bf99ea2a1f2a0b357",
+      "39cec9b6e8913f7d1fad4b44c6aa9ee8a9c54749",
+      "91345abc0b152025cf719e0fee72da4c4947eedc"
+    ],
+    "dft": [
+      "830aa8ac743e770ff1fb4900564cb13babf701f1",
+      "0db8584f0ceffd5069136810fa4f0696a0ba88e8"
+    ],
+    "excluded_duplicate": {
+      "commit": "9e59d77d223a98ecee9cc7ed6d709ba92ff192d4",
+      "reason": "Unreferenced older evidence sibling of 830aa8ac; both have parent 18248be2, and 830aa8ac adds the later recovery evidence used by 0db8584f. It contains no frontend source."
+    }
+  },
+  "reference": {
+    "repository": "mweinbach/parakeet-coreml-swift",
+    "commit": "75aec2a1c991319657ff4dec5f602c12da6c5012",
+    "model_repository": "mweinbach1/parakeet-tdt-0.6b-v3-coreml",
+    "model_revision": "b650695c2322ee5281dff48d7345b2f3a58ff018",
+    "audio": "LibriSpeech test-clean/1089/134686/1089-134686-0000.flac",
+    "audio_license": "CC-BY-4.0",
+    "audio_sha256": "30885601173f96b0d8ddd020dc959b055c6c1582b85a33e3fcab8c4b08ed94c2",
+    "macos_fixture": "20260912T154759Z-librispeech/ane",
+    "macos_environment": "Apple M1 Ultra (Mac13,2), macOS 26.6.2 (25G83), Core ML 3520.5.1, cpuAndNeuralEngine",
+    "golden_mel_sha256": "4ed24d7da64c17f58419ec45f15aa24ac9d1cfd93a4de51ee4f05e1d712b4d22",
+    "stage_manifest_sha256": "67ecd46384c33040869093cde9b0615e0a0e7aaaa8450212c46a366405c61a14",
+    "pinned_stage_tensor_count": 14
+  },
+  "consumer_contract": {
+    "input": "One non-empty float32 waveform at 16 kHz, no longer than 480000 samples",
+    "padding": "Zero-pad to one 30-second chunk",
+    "configuration": {
+      "sample_rate": 16000,
+      "hop_length": 160,
+      "win_length": 400,
+      "n_fft": 512,
+      "n_mels": 128,
+      "preemphasis": 0.97
+    },
+    "output": "float32 mel [3001,128] and all-one int32 mask [3001]",
+    "encoder_slice": "first 3000 rows, exact against encoder_input_features.npy and encoder_input_mask.npy",
+    "failure_contract": "Empty or multi-chunk input and non-400 Hann lengths raise ValueError; DFT inputs must be float32 [batch,512]; structural, shape, dtype, signed-zero, capture-hash, stage-manifest, and stage-content mismatches fail closed"
+  },
+  "source_sha256": {
+    "overlay/tools/coreml/mel_reference.py": "10e458b390898492f33fe6fbf69a1baae94ad48fd8436cab46003e8723ac17a0",
+    "overlay/tools/coreml/mel_stage_compare.py": "fe49f08eb0d1ab9a7bef38816eefe184e7fa07f65c58493dc1b350f224265035",
+    "overlay/tools/coreml/dft_geometry_probe.py": "f5b6d5d5d86dc2c18a32dcdd076f250b29f82dea8322aa181b0a65755c46ef65",
+    "overlay/tools/coreml/dotpr.py": "39f55b662d752d577ca33ef51ddc201c1ef01bc32e5e3077de3b1721f5056881",
+    "overlay/tools/coreml/parakeet-reference.lock": "63415836246175d34748c1c44f2c8d00c79affc5be0f4d7da058eb7d5328f8d1",
+    "tests/coreml/test_mel_frontend.py": "aca6d30d7a01a90a3904cf832caf45f1f22cc48fc4ce93c414c9f417736139c5",
+    "docs/coreml.md": "f04c48e8903cd3e76f23e1f5c64dd5b22660a9f042ee65151788513936998259"
+  },
+  "red_evidence": {
+    "command": "python3 overlay/tools/coreml/mel_stage_compare.py ~/.cache/mlx-omarchy/parakeet-reference/captures/b650695c-75aec2a/20260912T154759Z-librispeech/ane ~/.cache/mlx-omarchy/parakeet-reference/captures/b650695c-75aec2a/mel-stage-probes/stage-capture",
+    "result": "exit 1 before integration: Hann 243/400 mismatches; DFT real 225133/771257 and DFT imag 222670/771257 mismatches. Other captured stages were exact."
+  },
+  "verification": [
+    {
+      "command": "timeout 45s python3 -m pytest -q tests/coreml/test_mel_frontend.py tests/coreml/test_dotpr.py tests/coreml/test_reference_lock.py",
+      "result": "47 passed in 6.33s after the root structural dtype/bit-exactness correction"
+    },
+    {
+      "command": "timeout 30s python3 -m pytest -q tests/coreml/test_reference_lock.py",
+      "result": "20 passed in 1.58s"
+    },
+    {
+      "command": "timeout 30s python3 overlay/tools/coreml/mel_stage_compare.py ~/.cache/mlx-omarchy/parakeet-reference/captures/b650695c-75aec2a/20260912T154759Z-librispeech/ane ~/.cache/mlx-omarchy/parakeet-reference/captures/b650695c-75aec2a/mel-stage-probes/stage-capture",
+      "result": "exit 0; pinned capture, manifest, and all 14 stage hashes verified; all 11 recomputed stages byte-identical"
+    },
+    {
+      "command": "timeout 30s python3 overlay/tools/coreml/mel_reference.py ~/.cache/mlx-omarchy/parakeet-reference/captures/b650695c-75aec2a/20260912T154759Z-librispeech/ane",
+      "result": "exit 0; 384128/384128 mel values bit-identical with zero maximum and mean difference; all seven structural gates true"
+    },
+    {
+      "command": "timeout 30s python3 overlay/tools/coreml/dft_geometry_probe.py compare --impulse-dump /tmp/coreml-dft-impulses-18248be2 --core-dump /tmp/coreml-dft-core-impulses-18248be2 --general-dump ~/.cache/mlx-omarchy/parakeet-reference/captures/b650695c-75aec2a/mel-stage-probes/dft --stage-dump ~/.cache/mlx-omarchy/parakeet-reference/captures/b650695c-75aec2a/mel-stage-probes/stage-capture --json-out /tmp/coreml-dft-comparison-cfi.json",
+      "result": "exit 0; vdsp-radix4-dif had zero bit, numeric, and signed-zero mismatches on 262144 complex-core, 263168 impulse, 6682 general, and 1542514 stage scalar values"
+    },
+    {
+      "command": "bounded native-fmaf, finite-frame, signed-zero, and invalid-shape Python probes",
+      "result": "native/shared FMA both 0x3fb16287; finite frame real bin 1 was 0x3ecb7a0f; signed-zero output had zero mismatches against separate-component packing; [1,2048] and [512] rejected with named ValueError diagnostics"
+    }
+  ],
+  "qualification_boundary": {
+    "reference_algorithm": "qualified for exact comparison against the pinned fixture",
+    "installed_runtime": "not qualified",
+    "reason": "The oracle performs NumPy tensor work on CPU. It does not execute through Vulkan or ANE and produces no backend trace, so it does not satisfy plan section 3.3 or the zero-CPU-tensor-dispatch gate.",
+    "encoder_and_full_plan": "not claimed; Linux H13 compile, physical runtime execution, encoder numerical parity, local decoder/joint, TDT output, stability, and packaging remain separate gates"
+  },
+  "review_remediation": [
+    "The mel CLI returns failure when any structural gate is false. Root reproduced a boolean mask passing all seven gates before requiring int32 mask identity and float32 encoder bit identity; test_mel_cli_rejects_wrong_mask_dtype now rejects that case. Both real CLIs passed after the correction.",
+    "Stage equality requires matching shape, dtype, and bytes; signed-zero-only differences report a bitwise divergence without crashing.",
+    "The repository lock authenticates waveform.npy, mel.npy, the exact stage manifest, and all 14 required stage tensors.",
+    "The recovered DFT imports the certified single-rounded float32 FMA from dotpr instead of keeping a double-rounding duplicate.",
+    "Complex DFT inputs assign real and imaginary components separately so negative-zero bits survive packing.",
+    "The fixed DFT frontend rejects inputs outside float32 [batch,512]."
+  ]
+}
