@@ -108,6 +108,8 @@
     },
     "independent_numpy_reference": {
       "method": "Independent NumPy implementation of the official MIL IFOC equations with float16 casts at the package boundaries",
+      "gate_provenance": "The 0.005 maximum and 0.0002 mean bounds were selected after the first exploratory software-Vulkan-to-NumPy comparison exposed the observed error scale. They are post-hoc regression bounds, not precommitted numerical acceptance limits.",
+      "qualification_role": "These bounds guard the software Vulkan implementation against regression only. They are not native CoreML qualification gates and will remain unchanged when authentic CoreML decoder captures become available.",
       "tolerances": {
         "max_abs_error": 0.005,
         "mean_abs_error": 0.0002
