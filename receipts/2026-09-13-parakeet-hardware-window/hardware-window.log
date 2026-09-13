@@ -1,0 +1,30 @@
+host=jwm1-linux
+started_at=2026-09-13T10:18:41-05:00
+source_commit=a9f14124e3e23b3eb5c538a1b99e9a72b74fa892
+preflight_device=char
+preflight_module=loaded
+preflight_power=on-active
+preflight_gpu_lock=free
+preflight_workers=clear
+h13_package_to_bundle: PASS programs=2 payloads=2 output=/var/tmp/ParakeetCoreml-hardware-window/schema4-add-mul
+adapted_bundle=validated
+logical_result 0 name=y tensor=y element_offset=0 element_count=64
+runtime_identity graph_hash=5584d0fd8d40027229890408e924e6f7930cd5f02516466a442193408482ce76
+contract_sha256=c6dd3ce5a1c5f684a665406106937a455957f61c61d95a2c0eeeb6e7fd2698bd
+model_sha256=eddf1f251990ee72d24f53f9bf72eb1e8f71966af5551118fe4c2d0c1e32a5a5
+host=jwm1-linux kernel=7.1.6-1-1-ARCH machine=aarch64 dt_node=ane@26bc04000 dt_compatible=apple,t8103-ane driver_version=f2a3e5e+lifecycle6 driver_srcversion=DD43701FCB506056A340587 runtime_pm=on/active libane_commit=f261a6cb537aca62f267ad3d01beda0d6877544c driver_abi=1
+worker_executable "/var/tmp/Jwm1AneAccelSmoke2-a9f14124/.work/build-ane-runtime/mlx/backend/omarchy/mlx-omarchy-ane-worker"
+worker_pid 4766
+iteration 0 exact_fp16=PASS physical_buffers=1 logical_results=1
+iteration 1 exact_fp16=PASS physical_buffers=1 logical_results=1
+shutdown worker_pid=4766 released_programs=2 process_released=true
+hardware_command_exit=0
+post_device=character special file
+post_module=loaded
+post_power_control=on
+post_runtime_status=active
+post_workers_released=true
+post_device_lock_reacquired=true
+post_quarantine_bytes=0
+finished_at=2026-09-13T10:18:41-05:00
+result=PASS
