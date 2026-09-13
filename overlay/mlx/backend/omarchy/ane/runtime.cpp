@@ -532,6 +532,10 @@ struct AneRuntime::Impl {
 
     std::string size = std::to_string(implementation->staging_bytes);
     char* arguments[] = {executable.data(), size.data(), nullptr};
+    if (Clock::now() >= deadline) {
+      destroy_actions();
+      throw detail::runtime_error("deadline expired before worker spawn");
+    }
     spawn_error = ::posix_spawn(
         &implementation->pid,
         executable.c_str(),
