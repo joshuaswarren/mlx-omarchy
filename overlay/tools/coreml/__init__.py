@@ -41,6 +41,11 @@ The package currently provides:
   values are appended to MIL blob storage. The gather copies raw payload
   bytes, so materialization is byte-exact; vector palettization is
   rejected with a named error.
+* :mod:`coreml.mask_lowering` — the H13 fp16 0/1 boolean/mask
+  representation (see ``docs/2026-09-13-h13-boolean-mask-fp16.md``):
+  classifies every boolean/mask op and rewrites the algebraically exact
+  subset onto existing ops; the ``-inf`` select fill is refused with the
+  named counterexample.
 
 Inspection never opens the ANE device, never imports coremltools or
 MLX, and never reads or computes tensor data. It runs on any Linux
