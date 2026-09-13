@@ -33,12 +33,22 @@ let package = Package(
             name: "mel-stage-capture",
             dependencies: [
                 .product(name: "ParakeetTDT", package: "parakeet-coreml-swift"),
+                "MelCaptureSupport",
             ],
             path: "Sources/mel-stage-capture"
         ),
         .executableTarget(
             name: "mel-dotpr-probe",
             path: "Sources/mel-dotpr-probe"
+        ),
+        .target(
+            name: "MelCaptureSupport",
+            path: "Sources/MelCaptureSupport"
+        ),
+        .executableTarget(
+            name: "mel-capture-no-model-check",
+            dependencies: ["MelCaptureSupport"],
+            path: "Sources/mel-capture-no-model-check"
         ),
     ]
 )

@@ -33,6 +33,7 @@
 
 import CryptoKit
 import Foundation
+import MelCaptureSupport
 import ParakeetTDT
 import Accelerate
 
@@ -417,11 +418,7 @@ func flatten(_ rows: [[Float]], cols: Int) -> [Float] {
 let stepwiseFlat = flatten(normalized, cols: numMelFilters)
 let pinnedFlat = flatten(pinnedFeatures.mel, cols: numMelFilters)
 precondition(stepwiseFlat.count == pinnedFlat.count)
-var mismatch = -1
-for i in 0..<stepwiseFlat.count where stepwiseFlat[i] != pinnedFlat[i] {
-    mismatch = i
-    break
-}
+let mismatch = MelCaptureSupport.firstFloatBitPatternMismatch(stepwiseFlat, pinnedFlat) ?? -1
 guard mismatch < 0 else {
     FileHandle.standardError.write(Data("FATAL: stepwise != pinned at flat index \(mismatch)\n".utf8))
     exit(4)
@@ -459,14 +456,11 @@ let env: [String: String] = [
     "reference_commit": "75aec2a1c991319657ff4dec5f602c12da6c5012",
     "input_sha256": inputSha,
     "macos": ProcessInfo.processInfo.operatingSystemVersionString,
-    "swift": "6.3.3",
+    "swiftc_version": try MelCaptureSupport.swiftcVersion(),
     "compute": "cpu-vdsp-only",
     "byte_equality_gate": "passed",
 ]
-var envData = Data()
-for (k, v) in env.sorted(by: { $0.key < $1.key }) {
-    envData.append(Data("\"\(k)\": \"\(v)\",\n".utf8))
-}
+let envData = try JSONSerialization.data(withJSONObject: env, options: [.sortedKeys, .prettyPrinted])
 try envData.write(to: outURL.appendingPathComponent("environment.txt"))
 let manData = try JSONSerialization.data(withJSONObject: manifest, options: [.sortedKeys, .prettyPrinted])
 try manData.write(to: outURL.appendingPathComponent("manifest.json"))
