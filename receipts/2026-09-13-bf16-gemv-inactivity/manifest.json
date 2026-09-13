@@ -1,0 +1,8 @@
+{
+  "schema": "receipt-manifest/1",
+  "source_commit": "6b1ac0296ba65a8e0075171ca9451e222ddff06b",
+  "files": {
+    "analyze.py": "cc05aaeaada6237505fa5813482c1824e1476ba801b0027006f6b5659423036f",
+    "verdict.json": "c78b2abbd67e04811ef6da3f389cc7545d22cbe90a0cdd70332b305b9c536624"
+  }
+}

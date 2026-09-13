@@ -1,0 +1,79 @@
+{
+  "execution_model": "openai-codex/gpt-5.6-sol",
+  "fallback_model": null,
+  "grouped_route_observation": {
+    "adjacent_same_input_binding_pairs": 744,
+    "matmul_vec_dispatches_each_interval": [
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97
+    ],
+    "matmul_vec_multi_dispatches_whole_profile": 0,
+    "pair_internal_positive_gap_ms_per_token": 0.7021072903225806,
+    "paired_dispatch_record_host_ms_per_token": 0.10975532258064517,
+    "paired_gpu_busy_ms_per_token": 8.552684290322581,
+    "pairs_in_same_submission": 744,
+    "pairs_per_token": 24.0,
+    "singleton_gpu_busy_ms_per_token": 10.021226741935484
+  },
+  "input_provenance": {
+    "compute_h_sha256": "314f5b021363ae933cbc245042bd2f2c1e48e5223402a4dd8765ef2b72c228ad",
+    "decode_intervals": 31,
+    "dropped_profile_records": 0,
+    "gpu_summary_sha256": "3ea6c1b2565fae1a7f6404d9b7b164086b395f9b62349b6a7b3c5d516f7f2385",
+    "markers_sha256": "37ba014729a379d1327304131839ecc4b170672bae4e12e29f6be137bf2c3b50",
+    "profile_sha256": "2fe58f97041b6e2f61b9a1f6f1b0311367111bd7683a5fd734a4bf47ab14e8db"
+  },
+  "interpretation": {
+    "boundary": "A repeated Vulkan binding proves physical input-buffer reuse, not the array-id equality required by the source matcher. Instrument the planner and record fusion environment gates before changing source.",
+    "finding": "MatmulVecBF16 is the largest measured decode GPU-time category, while the grouped MatmulVecMultiBF16 route emitted zero dispatches.",
+    "next_measurement": "With hardware ownership restored, record MLX_OMARCHY_FUSED_CHAIN and MLX_OMARCHY_FUSED_GEMV, emit planner candidate/rejection counts, then run an alternating release-control matrix only if the real model produces grouped dispatches.",
+    "performance_claim": "No speedup is claimed. The GPU profile is instrumented, and grouped execution was not measured in this workload."
+  },
+  "measured_bottleneck": {
+    "dispatches_per_token": 97.0,
+    "gpu_busy_ms_per_token": 18.573911032258064,
+    "kernel": "MatmulVecBF16",
+    "next_two_gpu_busy_ms_per_token": [
+      {
+        "kernel": "SdpaDecodeNativeBF16",
+        "value": 11.081529064516129
+      },
+      {
+        "kernel": "MatmulBF16",
+        "value": 10.328594
+      }
+    ],
+    "share_of_decode_gpu_busy_percent": 38.84211800858815
+  },
+  "schema": "bf16-gemv-inactivity/1",
+  "source_commit": "6b1ac0296ba65a8e0075171ca9451e222ddff06b"
+}
