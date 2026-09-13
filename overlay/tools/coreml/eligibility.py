@@ -25,6 +25,7 @@ from pathlib import Path
 from .mlpackage import inspect as inspect_package
 from .mlpackage import open_mlpackage
 from .mask_lowering import plan_mask_lowering
+from .pad_elimination import plan_pad_elimination
 from .proto import load_model
 
 # H13 lowering surface, mil-hwx-compiler 83a4434810b0981d1764e6231f6a679df6f35241
@@ -83,6 +84,44 @@ def classify_spec(spec, histogram: dict[str, int]) -> list[OpDisposition]:
                     "(receipts/2026-09-13-depalettize)",
                 )
             )
+            continue
+        if op_type == "pad":
+            pad_entries = plan_pad_elimination(spec)
+            eliminable = sum(
+                1 for e in pad_entries if e.disposition == "ELIMINABLE"
+            )
+            rejected = sum(
+                1 for e in pad_entries if e.disposition == "REJECTED"
+            )
+            if eliminable + rejected != count:
+                raise EligibilityError(
+                    f"pad plan accounts {eliminable + rejected} ops, "
+                    f"histogram says {count}"
+                )
+            if eliminable:
+                dispositions.append(
+                    OpDisposition(
+                        op_type,
+                        eliminable,
+                        LOWERABLE_VIA_FRONTEND,
+                        "depthwise identity-conv rewrite carrying the "
+                        "amounts as native conv padding — bit-exact "
+                        "(1.0 * v = v for every fp16 lane); Apple's own "
+                        "ANE tool rejects pad in all forms "
+                        "(OracleMint2, 2026-09-13)",
+                    )
+                )
+            if rejected:
+                reasons = "; ".join(
+                    e.reason
+                    for e in pad_entries
+                    if e.disposition == "REJECTED"
+                )
+                dispositions.append(
+                    OpDisposition(
+                        op_type, rejected, NEEDS_COMPILER_OP, reasons
+                    )
+                )
             continue
         entries = mask_entries.get(op_type, [])
         if entries:
@@ -203,6 +242,8 @@ def eligibility_report(package: Path) -> dict:
                 del post[entry.op_type]
             if entry.op_type == "constexpr_lut_to_dense":
                 post["const"] = post.get("const", 0) + entry.count
+            if entry.op_type == "pad":
+                post["conv"] = post.get("conv", 0) + entry.count
     return {
         "schema": ELIGIBILITY_SCHEMA,
         "package": str(package),
