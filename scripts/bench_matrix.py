@@ -310,12 +310,15 @@ def power_state():
         except (OSError, subprocess.SubprocessError):
             return None
         pct = re.search(r"(\d+)%", out)
+        state = re.search(r"\d+%;\s*([^;]+);", out)
         return {
             "raw": " ".join(out.split())[:200],
             "source": "AC Power" if "AC Power" in out else
                       ("Battery" if "Battery Power" in out else None),
             "percent": int(pct.group(1)) if pct else None,
-            "charging": "charging" in out and "discharging" not in out,
+            "charging": {"charging": True, "discharging": False,
+                         "not charging": False, "charged": False}.get(
+                             state.group(1).strip()) if state else None,
         }
     for ps in sorted(Path("/sys/class/power_supply").glob("*")):
         try:

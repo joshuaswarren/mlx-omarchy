@@ -135,7 +135,8 @@ Homebrew or source installations without RECORD hashes produce
 `verified: unverified`, with binary fingerprints retained.
 
 Mac reports are labeled as native macOS references in the public summary
-and cover text. Mesa, Linux ANE visibility, the kernel spike binary, and
+and cover text, including when the quick section is skipped or unavailable.
+Mesa, Linux ANE visibility, the kernel spike binary, and
 Omarchy dispatch profiling are not applicable. Temperature is not collected.
 The benchmark records power state and counts of known model processes
 before and after execution. It excludes process names, IDs, and raw power

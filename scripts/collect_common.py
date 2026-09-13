@@ -68,7 +68,10 @@ class Redactor:
     # octets; redact every other dotted quad.
     _VERSION_CONTEXT = re.compile(r"(?i)(?:version\s*[:=]\s*|\d+\.)$")
 
-    def _ipv4_sub(self, match):
+    def _ipv4_sub(self, match, field=None):
+        if (isinstance(field, str) and field.lower().endswith("version")
+                and not match.string[:match.start()].strip()):
+            return match.group(0)
         line_start = match.string.rfind("\n", 0, match.start()) + 1
         prefix = match.string[line_start:match.start()]
         if self._VERSION_CONTEXT.search(prefix):
@@ -138,22 +141,25 @@ class Redactor:
             ))
         return rules
 
-    def apply_value(self, value):
+    def apply_value(self, value, field=None):
         """Redact structured observations without changing their types."""
         if isinstance(value, str):
-            return self.apply(value)
+            return self.apply(value, field=field)
         if isinstance(value, dict):
-            return {self.apply(key): self.apply_value(item)
+            return {key: self.apply_value(item, field=key)
                     for key, item in value.items()}
         if isinstance(value, list):
             return [self.apply_value(item) for item in value]
         return value
 
-    def apply(self, text):
+    def apply(self, text, *, field=None):
         if not isinstance(text, str):
             text = str(text)
         for pattern, repl in self._rules:
-            text = pattern.sub(repl, text)
+            if repl == self._ipv4_sub:
+                text = pattern.sub(lambda match: self._ipv4_sub(match, field), text)
+            else:
+                text = pattern.sub(repl, text)
         return text
 
 
@@ -340,7 +346,7 @@ def build_payload(kind, quick, manifest, generated_at=None, benchmark=None):
             "tflops": row.get("tflops"),
             "median_ms": row.get("median_ms"),
         })
-    native = host.get("system") == "Darwin"
+    native = (host.get("system") or manifest.get("system")) == "Darwin"
     kernel = host.get("kernel_release")
     if native:
         shortfall_flag = None

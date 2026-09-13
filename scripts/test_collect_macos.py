@@ -20,6 +20,7 @@ import collect_deep as cd
 import collect_macos as cm
 import collect_quick as cq
 import mlx_provenance as prov
+import test_collect as legacy_tests
 
 
 class MacHostTests(unittest.TestCase):
@@ -101,6 +102,67 @@ class MacHostTests(unittest.TestCase):
         self.assertNotIn("private-user", output)
         self.assertNotIn("private-host", output)
         self.assertIn("[home]/data", output)
+
+
+class ReviewRegressionTests(unittest.TestCase):
+    def test_structured_redaction_preserves_schema_keys(self):
+        red = cc.Redactor(username="cpu", hostname="model", home="/Users/cpu")
+        facts = {"cpu": {"present": 8}, "model": "Mac14,2",
+                 "notes": ["cpu on model", "/Users/cpu/data"]}
+        result = red.apply_value(facts)
+        self.assertEqual(result["cpu"]["present"], 8)
+        self.assertEqual(result["model"], "Mac14,2")
+        self.assertEqual(result["notes"], ["[user] on [host]", "[home]/data"])
+
+    def test_linux_collection_preserves_vulkan_versions(self):
+        probes = {name: lambda red: {"available": False} for name in cq.DEFAULT_PROBES}
+        probes["mesa"] = cq.probe_mesa
+        with patch("platform.system", return_value="Linux"), \
+                patch.object(cq, "run_tool", return_value={
+                    "available": True, "exit_code": 0,
+                    "stdout": legacy_tests.PrimaryGpuSelection.SUMMARY}):
+            result = cq.collect(probes)
+        self.assertEqual(result["mesa"]["gpu"]["conformanceVersion"], "1.4.0.0")
+        self.assertEqual(result["mesa"]["devices"][0]["conformanceVersion"], "1.4.0.0")
+
+    def test_version_context_does_not_exempt_other_addresses(self):
+        result = cc.Redactor().apply_value({
+            "conformanceVersion": "1.4.0.0 contact 198.51.100.7",
+            "address": "198.51.100.7",
+        })
+        self.assertEqual(result["conformanceVersion"], "1.4.0.0 contact [redacted-ip4]")
+        self.assertEqual(result["address"], "[redacted-ip4]")
+
+    def test_power_status_matches_the_complete_state(self):
+        for state, charging in (("charging", True), ("discharging", False),
+                                ("not charging", False), ("charged", False),
+                                ("unknown", None)):
+            with self.subTest(state=state), patch("platform.system", return_value="Darwin"), \
+                    patch.object(cm.bench_matrix.subprocess, "run", return_value=types.SimpleNamespace(
+                        stdout=f"Now drawing from 'AC Power'\n -InternalBattery-0 80%; {state}; 0:00 remaining")):
+                result = cm.measurement_context()
+            self.assertIs(result["power"]["charging"], charging)
+
+    def test_missing_battery_status_is_unknown(self):
+        with patch("platform.system", return_value="Darwin"), \
+                patch.object(cm.bench_matrix.subprocess, "run", return_value=types.SimpleNamespace(stdout="")):
+            result = cm.measurement_context()
+        self.assertIsNone(result["power"]["charging"])
+
+    def test_skipped_quick_section_keeps_native_labels(self):
+        files = {"quick.json": cc.json_bytes({"available": False}),
+                 "correctness.json": cc.json_bytes({"available": True, "mlx_version": "0.32.1"}),
+                 "benchmark.json": cc.json_bytes({"python": {"matmul": [{"n": 256, "median_ms": 1.0}]}})}
+        with patch("platform.system", return_value="Darwin"):
+            manifest, archive, payload = cd.finalize(files, ["quick"], {}, "mac.tar.gz", cd.REPO)
+        self.assertEqual(manifest["system"], "Darwin")
+        self.assertIn("macOS", payload["kernel"])
+        self.assertEqual(payload["benchmark"][0]["median_ms"], 1.0)
+        cover = files["submission.md"].decode()
+        self.assertIn("Native macOS reference", cover)
+        self.assertIn("Native MLX: 0.32.1", cover)
+        self.assertNotIn("Vulkan:", cover)
+        self.assertTrue(archive)
 
 
 class NativeProvenanceTests(unittest.TestCase):

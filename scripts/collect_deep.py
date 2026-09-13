@@ -502,11 +502,11 @@ def build_submission(manifest, files, archive_name):
     correctness = _member(files, "correctness.json")
     ops = correctness.get("ops", [])
     lines = ["## mlx-omarchy hardware report", ""]
-    if host.get("system") == "Darwin":
+    if (host.get("system") or manifest.get("system")) == "Darwin":
         lines += [
             f"Machine: {host.get('model') or 'unknown'} / {host.get('chip') or 'unknown'}"
             f" ({host.get('os') or 'macOS'}, Darwin {host.get('kernel_release')})",
-            f"Native MLX: {mlx.get('mlx_version') or 'not installed'}, "
+            f"Native MLX: {mlx.get('mlx_version') or correctness.get('mlx_version') or 'unknown'}, "
             f"Metal available: {mlx.get('metal_available')}",
             "Native macOS reference only. This does not prove Linux support, "
             "ANE execution, or performance parity.",
@@ -563,6 +563,7 @@ def finalize(files, unavailable, redaction, archive_name, repo):
     manifest = build_manifest(archive_name, listed, extra={
         "source_commit": commit,
         "repo_dirty": dirty,
+        "system": platform.system(),
         "sections_unavailable": unavailable,
         "redaction_summary": dict(sorted(redaction.items())),
         "schema_note": "one file per section; probe records carry argv, "
