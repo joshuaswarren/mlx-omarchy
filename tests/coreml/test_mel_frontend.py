@@ -60,6 +60,19 @@ def test_mel_cli_fails_when_a_structural_gate_fails(monkeypatch):
     assert mel_reference.main(["mel_reference.py", "capture"]) == 1
 
 
+def test_mel_cli_rejects_wrong_mask_dtype(monkeypatch):
+    if not CAPTURE.is_dir():
+        pytest.skip(f"pinned macOS capture is not installed at {CAPTURE}")
+    extract = mel_reference.extract_chunk_features
+
+    def boolean_mask(waveform, config):
+        features, mask = extract(waveform, config)
+        return features, mask.astype(np.bool_)
+
+    monkeypatch.setattr(mel_reference, "extract_chunk_features", boolean_mask)
+    assert mel_reference.main(["mel_reference.py", str(CAPTURE)]) == 1
+
+
 @pytest.mark.parametrize(
     "computed,golden,diagnostic",
     [

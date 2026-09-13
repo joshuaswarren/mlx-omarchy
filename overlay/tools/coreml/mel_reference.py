@@ -256,15 +256,15 @@ def compare_capture(capture_dir: Path, lock_path: Path | None = None) -> Diverge
     g_mask = np.load(capture_dir / "mel_mask.npy")
     g_eif = np.load(capture_dir / "encoder_input_features.npy")
     g_eim = np.load(capture_dir / "encoder_input_mask.npy")
-    tail_identical = (golden[1046:] == golden[1046]).all() if golden.shape[0] > 1046 else False
+    tail_identical = (golden[1046:].view(np.uint32) == golden[1046].view(np.uint32)).all() if golden.shape[0] > 1046 else False
     es, em = encoder_slice(ours, mask)
     structural = {
         "shape_matches": ours.shape == golden.shape,
         "mask_all_ones": bool((mask == 1).all()) and mask.shape == g_mask.shape,
-        "mask_equals_golden": bool(np.array_equal(mask, g_mask)),
-        "encoder_slice_shape": es.shape == tuple(g_eif.shape[1:]),
-        "encoder_slice_mask_equals_golden": bool(np.array_equal(em, g_eim[0])),
-        "encoder_slice_features_exact": bool(np.array_equal(es, g_eif[0])),
+        "mask_equals_golden": mask.dtype == g_mask.dtype == np.int32 and bool(np.array_equal(mask, g_mask)),
+        "encoder_slice_shape": g_eif.shape == (1, *es.shape),
+        "encoder_slice_mask_equals_golden": g_eim.shape == (1, *em.shape) and em.dtype == g_eim.dtype == np.int32 and bool(np.array_equal(em, g_eim[0])),
+        "encoder_slice_features_exact": g_eif.shape == (1, *es.shape) and es.dtype == g_eif.dtype == np.float32 and es.tobytes() == g_eif[0].tobytes(),
         "silence_tail_identical_rows_from_1046": bool(tail_identical),
     }
 
