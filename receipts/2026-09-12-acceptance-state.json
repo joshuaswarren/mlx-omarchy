@@ -1,11 +1,10 @@
 {
-  "source_commit": "0545dc7f8678c9d25800d37f96ab7262cb07fc2b",
+  "source_commit": "9e22a534",
   "scope": "Current task state, not full feature qualification; completed policy invariants describe this source scope only",
   "stop_conditions": [
-    "Plan §62: absent-workspace compiler output cannot safely satisfy strict bundle-v2.",
     "Plan §62: required encoder semantics/geometries and mixed-type multi-output representation remain unavailable.",
-    "Qualified driver/firmware applicability remains unresolved.",
-    "Plan §62: exact mel preprocessing remains unmatched; stage-level cause is not isolated.",
+    "Explicit H13 ANEC schema-3 host adaptation is qualified; integrated MLX worker execution and host applicability are not. Standalone base-M1 compiler qualification remains separately scoped to source aa688df.",
+    "Pinned CPU audio-to-mel reference is bit-exact; installed Vulkan/ANE preprocessing, backend trace, and full transcription remain unqualified.",
     "Installed-state platform adoption awaits upstream review in omacom/omarchy-mac PR 425."
   ],
   "tasks": [
@@ -190,16 +189,16 @@
     {
       "phase": "Core ML requirements",
       "task": "Adapt compiler output into strict ANE bundles",
-      "status": "blocked",
-      "evidence": "receipts/2026-09-12-h13-adapter-review.json (absent-workspace boundary; adapter deliberately unimplemented); docs/coreml.md 'the adapter remains unimplemented pending an explicit absent-workspace contract'",
-      "reason": "Identical root to the Compiler-integration adapter task: §62 stop at bundle-v2 representation; no schema decision yet, and neither fabrication nor validator weakening is permitted."
+      "status": "completed",
+      "evidence": "receipts/2026-09-12-coreml-h13-joint-integration.json; receipts/2026-09-12-h13-bundle-schema3/receipt.md",
+      "reason": "Host package-adaptation criterion met for receipt-bound explicit H13 ANEC output at aa688df: real two-program loader and four migrated fixtures accepted; 19 C++ cases / 1706 assertions passed. No runtime, compiler-wide, full-encoder, or installed-frontend qualification is implied."
     },
     {
       "phase": "Core ML requirements",
       "task": "Preserve ordered multi program package execution",
       "status": "blocked",
-      "evidence": "E-H13 + E-NORT",
-      "reason": "§62 stop 'compiler output cannot be reconciled with runtime safely': emitted package is 4097 no-workspace programs that cannot pass strict bundle v2; no multi-program execution exists on main to preserve or extend."
+      "evidence": "Historical compiler package contains 4,097 ordered programs; zero-workspace contract landed in 309cd745. Standalone compiler qualification: mil-hwx-compiler f4ad09066b560818a9dcc1f5f4f53273d941bd1e, executable source aa688df66cbc2110e0df94f0d50fb72c7fa30a18.; receipts/2026-09-12-coreml-h13-joint-integration.json; receipts/2026-09-12-h13-bundle-schema3/receipt.md",
+      "reason": "Schema 3 and the strict loader preserve ordered multi-program packages. Actual ordered execution through the private MLX runtime remains unqualified; AneRuntimeBridge owns the implementation."
     },
     {
       "phase": "Core ML requirements",
@@ -218,9 +217,9 @@
     {
       "phase": "Core ML requirements",
       "task": "Implement bounded ANE worker resource ownership",
-      "status": "blocked",
-      "evidence": "E-NORT",
-      "reason": "Worker (plan §24) has no source on main; blocked behind bundle-contract resolution and driver qualification."
+      "status": "in_progress",
+      "evidence": "receipts/2026-09-12-coreml-h13-joint-integration.json; receipts/2026-09-12-h13-bundle-schema3/receipt.md; active owner AneRuntimeBridge",
+      "reason": "Schema-3 host package gate is complete. The private runtime/worker and separate base-M1 numerical/deadline/resource qualification are in progress, not accepted."
     },
     {
       "phase": "Core ML requirements",
@@ -281,9 +280,9 @@
     {
       "phase": "Core ML requirements",
       "task": "Match exact reference mel preprocessing values",
-      "status": "blocked",
-      "evidence": "https://github.com/joshuaswarren/mlx-omarchy/commit/3fedbd456d28cb14635f3986e8d7b9d65a794b47",
-      "reason": "Plan §62 numerical stop: hash-verified portable mel comparison is not exact (215401/384128 bit patterns match; max absolute error 4.769862e-05). The cause is not isolated; no approximate frontend is qualified."
+      "status": "in_progress",
+      "evidence": "CoremlFrontendIntegration b7ff5c2c: receipts/2026-09-12-parakeet-mel-frontend/receipt.json; root ran 47 focused tests and both real CLIs after review corrections. All 11 captured stages and 384128/384128 final mel values remain byte-identical, with all seven structural gates true. Joint integration with schema 3 is pending; no installed-runtime qualification.",
+      "reason": "CPU reference exactness is proven for the pinned fixture. Installed Vulkan/ANE preprocessing and its no-CPU-tensor backend trace remain outstanding; reference arithmetic alone does not qualify the deployed frontend."
     },
     {
       "phase": "Core ML requirements",
@@ -317,8 +316,8 @@
       "phase": "Core ML requirements",
       "task": "Report precise frontend compiler and runtime errors",
       "status": "blocked",
-      "evidence": "E-NORT; bundle.cpp already yields precise first-rejection messages (E-H13 quotes 'workspace byte_size must be positive')",
-      "reason": "Bundle-layer error contracts exist and are precise; the frontend-compiler and runtime error layers of §38 have no runtime to report from."
+      "evidence": "Historical workspace error is superseded by canonical zero-workspace acceptance in 309cd745; existing strict bundle errors remain enforced.; receipts/2026-09-12-coreml-h13-joint-integration.json; receipts/2026-09-12-h13-bundle-schema3/receipt.md",
+      "reason": "Frontend and explicit ANEC adapter diagnostics have real host verification. Runtime-specific errors still require the actual private worker and hardware execution."
     },
     {
       "phase": "Core ML requirements",
@@ -373,8 +372,8 @@
       "phase": "Core ML requirements",
       "task": "Qualify known H13 graph through full integration",
       "status": "blocked",
-      "evidence": "E-H13 (host boundary tests 5 cases/76 assertions pass; execution through omarchy-ane blocked by absent-workspace representation)",
-      "reason": "Gate 6 requirement: host-only qualification done, full integration blocked at the bundle-contract boundary."
+      "evidence": "E-H13 (historical host boundary tests); receipts/2026-09-12-zero-workspace-contract.json (host-only zero-workspace consumer qualification); receipts/2026-09-12-coreml-h13-joint-integration.json; receipts/2026-09-12-h13-bundle-schema3/receipt.md",
+      "reason": "Standalone base-M1 compiler rungs 1-8 passed at source aa688df; the explicit two-program package now passes the schema-3 MLX loader. Integrated device eligibility, worker execution, and numerical qualification remain outstanding."
     },
     {
       "phase": "Core ML requirements",
@@ -386,9 +385,9 @@
     {
       "phase": "Core ML requirements",
       "task": "Validate generated packages before any device access",
-      "status": "blocked",
-      "evidence": "§48 discipline implemented: strict device-free validation precedes any device access (bundle.cpp validator; boundary suites 5+25 cases / 2795 assertions pass per h13-adapter-review); the actual generated package was validated and rejected at the first workspace check; device_access: none throughout",
-      "reason": "The validation gate exists, runs before device access, and fails closed — but no generated package can currently pass it: blocked on the same absent-workspace schema decision as Gate 5. The discipline is proven; the passing state is unreachable without the schema decision."
+      "status": "completed",
+      "evidence": "receipts/2026-09-12-coreml-h13-joint-integration.json; receipts/2026-09-12-h13-bundle-schema3/receipt.md",
+      "reason": "Host package-adaptation criterion met for receipt-bound explicit H13 ANEC output at aa688df: real two-program loader and four migrated fixtures accepted; 19 C++ cases / 1706 assertions passed. No runtime, compiler-wide, full-encoder, or installed-frontend qualification is implied."
     },
     {
       "phase": "Core ML requirements",
@@ -436,8 +435,8 @@
       "phase": "Core ML requirements",
       "task": "Pin narrow licensed Linux aarch64 dependencies",
       "status": "blocked",
-      "evidence": "ane-compiler.lock; docs/plans/2026-09-12-coreml-parakeet-ane-plan.md §54,§62",
-      "reason": "Source/schema/compiler pins exist; final runtime, libane ABI and shipping dependencies cannot be qualified before the driver and bundle schema prerequisites."
+      "evidence": "ane-compiler.lock; docs/plans/2026-09-12-coreml-parakeet-ane-plan.md §54,§62; receipts/2026-09-12-coreml-h13-joint-integration.json; receipts/2026-09-12-h13-bundle-schema3/receipt.md",
+      "reason": "Source/schema/compiler pins exist and schema-3 host adaptation is qualified. Final runtime, libane ABI applicability, and shipping dependencies remain unqualified."
     },
     {
       "phase": "Core ML requirements",
@@ -478,8 +477,8 @@
       "phase": "Core ML requirements",
       "task": "Execute ten implementation phases in required order",
       "status": "blocked",
-      "evidence": "Phases 1-3 landed (E-REF; receipts/2026-09-12-coreml-inspector/; receipts/2026-09-12-compiler-preparation/); phase 4 (ANE runtime) blocked at §62 (E-H13)",
-      "reason": "Order preserved so far; execution cannot advance past phase 4 until the absent-workspace bundle contract is resolved."
+      "evidence": "Phases 1-3 landed (E-REF; receipts/2026-09-12-coreml-inspector/; receipts/2026-09-12-compiler-preparation/); phase 4 (ANE runtime) blocked at §62 (E-H13); receipts/2026-09-12-coreml-h13-joint-integration.json; receipts/2026-09-12-h13-bundle-schema3/receipt.md",
+      "reason": "Phase 3 explicit ANEC package adaptation passes strict host validation. Phase 4 integrated ANE runtime is now assigned to AneRuntimeBridge and remains unqualified. Reference arithmetic does not qualify installed preprocessing or later phases."
     },
     {
       "phase": "Core ML requirements",
@@ -814,22 +813,22 @@
       "phase": "Compiler integration",
       "task": "Compile known qualified H13 graph fixture",
       "status": "completed",
-      "evidence": "verify-all.log: tests/fixtures/conv_relu.mil --target H13 → 4097 ANEC programs; manifest asserts schema/target/format, all programs non-empty; research/inspect_anec.py device-free consistency PASS; receipts/2026-09-12-compiler-preparation/h13-package-sha256.txt (4096× 3d73787c… + 1× 63462dec…), package-size 19M",
-      "reason": "Known H13 graph compiles deterministically on Linux; 'known-good' is host/device-free container-tensor-binding-slice-dispatch consistency only — downstream strict-bundle reconciliation is precisely where it fails (see adapter tasks)."
+      "evidence": "verify-all.log: tests/fixtures/conv_relu.mil --target H13 → 4097 ANEC programs; manifest asserts schema/target/format, all programs non-empty; research/inspect_anec.py device-free consistency PASS; receipts/2026-09-12-compiler-preparation/h13-package-sha256.txt (4096× 3d73787c… + 1× 63462dec…), package-size 19M; receipts/2026-09-12-coreml-h13-joint-integration.json; receipts/2026-09-12-h13-bundle-schema3/receipt.md",
+      "reason": "Known H13 graph compilation has its original device-free qualification. A separately receipt-bound explicit ANEC two-program graph at source aa688df now also passes strict schema-3 adaptation; this does not update the compiler pin or establish compiler-wide qualification."
     },
     {
       "phase": "Compiler integration",
       "task": "Adapt compiler package to existing bundle contract",
-      "status": "blocked",
-      "evidence": "receipts/2026-09-12-h13-adapter-review.json: all 4097 programs have zero workspace tiles (channel-3 uint32 at ANEC offset 52 = 0 for every program); bundle-v2 first rejection 'workspace byte_size must be positive' plus shape>0, stride>0, byte_size=dtype×product constraints; diagnostic one-line byte_size change proven insufficient; decision: no fabricated workspace, no validator change; main-branch changes were receipt+docs only (4560c7b1)",
-      "reason": "Plan §62 stop: compiler output cannot be reconciled with the runtime artifact contract safely. An absent-workspace representation needs an explicit bundle-schema decision (shape/stride/size/channel consistent); fabricating geometry or weakening load_bundle() is prohibited by plan §20 and the no-bypass rule."
+      "status": "completed",
+      "evidence": "receipts/2026-09-12-coreml-h13-joint-integration.json; receipts/2026-09-12-h13-bundle-schema3/receipt.md",
+      "reason": "Host package-adaptation criterion met for receipt-bound explicit H13 ANEC output at aa688df: real two-program loader and four migrated fixtures accepted; 19 C++ cases / 1706 assertions passed. No runtime, compiler-wide, full-encoder, or installed-frontend qualification is implied."
     },
     {
       "phase": "Compiler integration",
       "task": "Validate adapted bundle before runtime access",
-      "status": "blocked",
-      "evidence": "Same receipt: strict validation rejects the package at the first workspace check; host checks that did run (h13 boundary tests 5 cases/76 assertions; bundle tests 25 cases/2719 assertions, 0 failed) prove the validator and the rejection, not an accepted bundle; no device access occurred (device_access: none)",
-      "reason": "Validation-before-device-access discipline is honored and tooling exists, but no adapted bundle can pass strict validation until the absent-workspace schema decision lands; the known-graph package fails closed as designed."
+      "status": "completed",
+      "evidence": "receipts/2026-09-12-coreml-h13-joint-integration.json; receipts/2026-09-12-h13-bundle-schema3/receipt.md",
+      "reason": "Host package-adaptation criterion met for receipt-bound explicit H13 ANEC output at aa688df: real two-program loader and four migrated fixtures accepted; 19 C++ cases / 1706 assertions passed. No runtime, compiler-wide, full-encoder, or installed-frontend qualification is implied."
     },
     {
       "phase": "ANE runtime",
@@ -841,9 +840,9 @@
     {
       "phase": "ANE runtime",
       "task": "Implement bounded private worker lifecycle",
-      "status": "blocked",
-      "evidence": "E-NORT; plan §24",
-      "reason": "Worker lifecycle unimplemented; blocked behind bundle contract and driver qualification."
+      "status": "in_progress",
+      "evidence": "receipts/2026-09-12-coreml-h13-joint-integration.json; receipts/2026-09-12-h13-bundle-schema3/receipt.md; active owner AneRuntimeBridge",
+      "reason": "Schema-3 host package gate is complete. The private runtime/worker and separate base-M1 numerical/deadline/resource qualification are in progress, not accepted."
     },
     {
       "phase": "ANE runtime",
@@ -856,8 +855,8 @@
       "phase": "ANE runtime",
       "task": "Execute ordered compiler dispatch plan safely",
       "status": "blocked",
-      "evidence": "E-H13 (4097 no-workspace programs cannot pass strict validation, so no dispatch plan is executable)",
-      "reason": "§62 'compiler output cannot be reconciled with runtime safely'."
+      "evidence": "Workspace validation now accepts canonical absence at 309cd745. Standalone compiler rung8 executed 77 programs under the bounded runner; receipt f4ad09066b560818a9dcc1f5f4f53273d941bd1e in mil-hwx-compiler.; receipts/2026-09-12-coreml-h13-joint-integration.json; receipts/2026-09-12-h13-bundle-schema3/receipt.md",
+      "reason": "Schema 3 preserves the compiler dispatch order, but standalone execution does not prove execution through the MLX private worker. AneRuntimeBridge owns that implementation and separate hardware qualification."
     },
     {
       "phase": "ANE runtime",
@@ -919,8 +918,8 @@
       "phase": "Transcription",
       "task": "Implement exact public reference mel frontend",
       "status": "blocked",
-      "evidence": "https://github.com/joshuaswarren/mlx-omarchy/commit/3fedbd456d28cb14635f3986e8d7b9d65a794b47",
-      "reason": "Plan §62 numerical stop: hash-verified portable mel comparison is not exact (215401/384128 bit patterns match; max absolute error 4.769862e-05). The cause is not isolated; no approximate frontend is qualified."
+      "evidence": "CoremlFrontendIntegration b7ff5c2c: receipts/2026-09-12-parakeet-mel-frontend/receipt.json; review corrections verified locally, joint integration pending.",
+      "reason": "The old numerical mismatch is resolved for the pinned CPU oracle: all 384128 mel values match exactly. This remains blocked as an installed frontend because the NumPy implementation performs CPU tensor work and provides no Vulkan/ANE backend trace."
     },
     {
       "phase": "Transcription",
@@ -1058,16 +1057,16 @@
     {
       "phase": "Acceptance gates",
       "task": "Gate five package adapter passes strict validation",
-      "status": "blocked",
-      "evidence": "receipts/2026-09-12-h13-adapter-review.json stop_condition (plan §62, layer 'bundle-v2 representation of absent workspace', first_rejection 'workspace byte_size must be positive'); no adapter exists on main; validator untouched",
-      "reason": "Strict validation fails closed on the pinned compiler's output and must keep failing until an explicit absent-workspace schema decision lands; fabricating workspace or relaxing the validator is prohibited (no-bypass rule, plan §20). Unblock path: owner schema decision in the bundle contract, then adapter + strict pass, then Gate 6."
+      "status": "completed",
+      "evidence": "receipts/2026-09-12-coreml-h13-joint-integration.json; receipts/2026-09-12-h13-bundle-schema3/receipt.md",
+      "reason": "Host package-adaptation criterion met for receipt-bound explicit H13 ANEC output at aa688df: real two-program loader and four migrated fixtures accepted; 19 C++ cases / 1706 assertions passed. No runtime, compiler-wide, full-encoder, or installed-frontend qualification is implied."
     },
     {
       "phase": "Acceptance gates",
       "task": "Gate six known graph executes correctly",
       "status": "blocked",
-      "evidence": "E-H13",
-      "reason": "Known H13 graph passes strict host validation only; execution through omarchy-ane with matching output is blocked by the absent-workspace representation."
+      "evidence": "mil-hwx-compiler research/results/h13-base-m1-20260912-rung6/receipt.json at f4ad09066b560818a9dcc1f5f4f53273d941bd1e proves standalone rungs 1-8 for executable source aa688df.; receipts/2026-09-12-coreml-h13-joint-integration.json; receipts/2026-09-12-h13-bundle-schema3/receipt.md",
+      "reason": "Standalone execution is qualified at its stated geometries and thresholds, and the explicit package adapter is host-qualified. This gate still requires correct execution through the integrated MLX runtime."
     },
     {
       "phase": "Acceptance gates",
@@ -1150,8 +1149,8 @@
       "phase": "Final shipping criteria",
       "task": "Pass strict validation for every compiled artifact",
       "status": "blocked",
-      "evidence": "E-H13",
-      "reason": "The only compiler-emitted package cannot pass strict validation (absent workspace); validator bypass forbidden."
+      "evidence": "E-H13 historical rejection; receipts/2026-09-12-zero-workspace-contract.json proves the host-only zero-workspace contract; receipts/2026-09-12-coreml-h13-joint-integration.json; receipts/2026-09-12-h13-bundle-schema3/receipt.md",
+      "reason": "The explicit ANEC adapter and generated two-program package pass strict validation. The full encoder cannot yet compile, so validation of every required encoder artifact remains blocked; no validator bypass is allowed."
     },
     {
       "phase": "Final shipping criteria",
@@ -1243,5 +1242,5 @@
       "status": "completed"
     }
   ],
-  "verification": "Current integrated host check: python3 -m pytest tests/coreml/ overlay/tests/omarchy/coreml/ tests/test_install_sh_contract.py -q: 73 passed, 3 subtests passed in 9.36s. Historical M1 battery evidence is not a fresh hardware run. Exact mel diagnostic on separate commit 3fedbd456d28cb14635f3986e8d7b9d65a794b47 remains negative."
+  "verification": "Joint local integration 9e22a534: CoremlH13IntegrationBuild exit 0; 19 C++ cases / 1706 assertions passed. Real mlx-omarchy-info --check-bundle accepted the receipt-bound explicit two-program H13 ANEC package and all four migrated fixtures. See receipts/2026-09-12-coreml-h13-joint-integration.json. Exact CPU frontend evidence remains receipts/2026-09-12-parakeet-mel-frontend/receipt.json. Runtime, firmware applicability, installed frontend, full encoder, and end-to-end Parakeet remain unqualified."
 }
