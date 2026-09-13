@@ -1,0 +1,11 @@
+scanner_failure_case_rc=125 lease_retained=true lock=free
+guardian_identity=true guardian_pid=3622710 comm=timeout pgid=3622710
+lock_acquired=true pid=3622714 pgid=3622710 guardian_pid=3622710 work_deadline_epoch=1789296927 session_deadline_epoch=1789296987
+workload_ok=true
+workload_complete=true run_label=scanner-failure
+clearance=false outer_lock=free process_group_scan=failed process_group=empty descendant_cleanup=none lease_present=true finished_epoch=1789296922 session_deadline_epoch=1789296987 cleanup_deadline=within exit_rc=0
+exit_124_case_rc=124 lease_removed=true lock=free
+guardian_identity=true guardian_pid=3622763 comm=timeout pgid=3622763
+lock_acquired=true pid=3622764 pgid=3622763 guardian_pid=3622763 work_deadline_epoch=1789296927 session_deadline_epoch=1789296987
+workload_exit_124=true
+clearance=true outer_lock=free process_group_scan=pass process_group=empty descendant_cleanup=none lease=removed finished_epoch=1789296922 session_deadline_epoch=1789296987 cleanup_deadline=within exit_rc=124

@@ -44,7 +44,11 @@
   },
   "selected_candidate": {
     "name": "cache the BF16 SDPA denominator exponent for normalization",
-    "status": "source_proposal_not_implemented",
+    "status": "offline_exact_word_qualified_pending_hardware_grant",
+    "candidate_commit": "2278ca259618c51cd5ec99fa68c272ffe55b69a5",
+    "candidate_receipt": "receipts/2026-09-13-bf16-sdpa-exp-cache-local/verification.json",
+    "shader_source_sha256": "b58a0b9c80cf01d0520ef66ee5fbbc2f16ddb22aefd2efec41c1f80557db5f5c",
+    "candidate_bf16_spv_sha256": "d8edeeb952599a2e280d9cfc9a3d54be5e8993a565236751b9489a4ffffde973",
     "target": "overlay/mlx/backend/omarchy/shaders/sdpa_decode_native.comp",
     "qualified_base_behavior": {
       "bf16_local_size_x": 1024,

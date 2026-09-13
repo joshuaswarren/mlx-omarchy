@@ -17,7 +17,29 @@ def sha256(name: str) -> str:
 proposal = json.loads((ROOT / "proposal.json").read_text())
 assert proposal["execution_model"] == "openai-codex/gpt-5.6-sol"
 assert proposal["fallback_model"] is None
-assert proposal["selected_candidate"]["status"] == "source_proposal_not_implemented"
+candidate = proposal["selected_candidate"]
+assert candidate["status"] == "offline_exact_word_qualified_pending_hardware_grant"
+assert candidate["candidate_commit"] == "2278ca259618c51cd5ec99fa68c272ffe55b69a5"
+candidate_shader = subprocess.check_output(
+    [
+        "git",
+        "show",
+        candidate["candidate_commit"]
+        + ":overlay/mlx/backend/omarchy/shaders/sdpa_decode_native.comp",
+    ],
+    cwd=REPO,
+)
+assert hashlib.sha256(candidate_shader).hexdigest() == candidate["shader_source_sha256"]
+candidate_spv = subprocess.check_output(
+    [
+        "git",
+        "show",
+        candidate["candidate_commit"]
+        + ":receipts/2026-09-13-bf16-sdpa-exp-cache-local/candidate-bf16.spv",
+    ],
+    cwd=REPO,
+)
+assert hashlib.sha256(candidate_spv).hexdigest() == candidate["candidate_bf16_spv_sha256"]
 assert proposal["offline_acceptance"]["hardware_allowed"] is False
 
 protocol = proposal["protocol"]
@@ -91,6 +113,16 @@ for marker in (
 ):
     assert marker in smoke, marker
 assert f"payload_sha256={protocol['payload_sha256']}" in smoke
+failure_smoke = (ROOT / "failure-smoke-receipt.txt").read_text()
+for marker in (
+    "scanner_failure_case_rc=125 lease_retained=true lock=free",
+    "clearance=false outer_lock=free process_group_scan=failed",
+    "lease_present=true",
+    "exit_124_case_rc=124 lease_removed=true lock=free",
+    "process_group_scan=pass process_group=empty descendant_cleanup=none lease=removed",
+    "cleanup_deadline=within exit_rc=124",
+):
+    assert marker in failure_smoke, marker
 
 launcher = (ROOT / "launch-exact-run.sh").read_text()
 payload = (ROOT / "exact-run-payload.sh").read_text()
@@ -111,16 +143,23 @@ verdict = {
     "execution_model": proposal["execution_model"],
     "fallback_model": None,
     "candidate": proposal["selected_candidate"]["name"],
-    "candidate_status": "proposal_only_pending_exact_word_offline_qualification",
+    "candidate_status": proposal["selected_candidate"]["status"],
     "hardware_grant": False,
     "protocol_ready": True,
     "payload_sha256": protocol["payload_sha256"],
     "launcher_sha256": protocol["launcher_sha256"],
     "fake_child_detected_and_cleared": True,
+    "scanner_failure_preserves_uncertainty": True,
+    "exit_124_propagated": True,
     "guardian_and_workload_process_group_match": True,
     "cleanup_reserve_seconds": 60,
     "remote_hash_check_immediately_before_exec": True,
     "optimization_claim": None,
 }
 (ROOT / "verdict.json").write_text(json.dumps(verdict, indent=2, sort_keys=True) + "\n")
+manifest = json.loads((ROOT / "manifest.json").read_text())["files"]
+actual_names = sorted(path.name for path in ROOT.iterdir() if path.name != "manifest.json")
+assert sorted(manifest) == actual_names
+for name, expected in manifest.items():
+    assert sha256(name) == expected
 print(json.dumps(verdict, indent=2, sort_keys=True))

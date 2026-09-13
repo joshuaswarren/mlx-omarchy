@@ -1,9 +1,9 @@
-guardian_identity=true guardian_pid=3497860 comm=timeout pgid=3497860
-lock_acquired=true pid=3497861 pgid=3497860 guardian_pid=3497860 work_deadline_epoch=1789294417 session_deadline_epoch=1789294477
-fake_child_detected=true pid=3497879
-fake_child_left_for_cleanup=true pid=3497879
-smoke_workload=true pid=3497886 pgid=3497860
+guardian_identity=true guardian_pid=3622606 comm=timeout pgid=3622606
+lock_acquired=true pid=3622607 pgid=3622606 guardian_pid=3622606 work_deadline_epoch=1789296926 session_deadline_epoch=1789296986
+fake_child_detected=true pid=3622624
+fake_child_left_for_cleanup=true pid=3622624
+smoke_workload=true pid=3622631 pgid=3622606
 workload_complete=true run_label=bounded-fake-child-smoke
-clearance=true outer_lock=free process_group_scan=pass process_group=empty descendant_cleanup=terminated_descendants=3497879 lease=removed finished_epoch=1789294412 session_deadline_epoch=1789294477 cleanup_deadline=within exit_rc=0
-independent_clearance=true guardian=absent pgid=3497860 process_group=empty lease=absent lock=free
+clearance=true outer_lock=free process_group_scan=pass process_group=empty descendant_cleanup=terminated_descendants=3622624 lease=removed finished_epoch=1789296921 session_deadline_epoch=1789296986 cleanup_deadline=within exit_rc=0
+independent_clearance=true guardian=absent pgid=3622606 process_group=empty lease=absent lock=free
 payload_sha256=5f74d4cd7afd81875b54cf33b777ff1028219c6139928dae3293b0fd71bf7726 workload_sha256=815110faeadaf8b3966389de10dabdcdeeade403e50de7ed41fe24c4ba42f67f run_rc=0
