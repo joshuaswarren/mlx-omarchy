@@ -1,0 +1,18 @@
+{
+  "classification": "planner_candidate_gate",
+  "counts": {
+    "accepted_candidates": 0,
+    "candidate_rejections": {},
+    "dispatcher_results": {},
+    "matmul_vec_multi_bf16": 0,
+    "planned_groups": 0,
+    "scopes": 5
+  },
+  "device": "llvmpipe (LLVM 15.0.6, 256 bits)",
+  "execution_model": "openai-codex/gpt-5.6-sol",
+  "fallback_model": null,
+  "profile_label": "local-plan-smoke",
+  "schema": "bf16-gemv-diagnostic/1",
+  "source_commit": "8a241d9c066e24a933c87b85d3530b6b8f6da5d8",
+  "speedup_claim": null
+}

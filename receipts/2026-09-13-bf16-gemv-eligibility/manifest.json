@@ -1,0 +1,11 @@
+{
+  "schema": "receipt-manifest/1",
+  "files": {
+    "analyze.py": "0c696e3a3047d5790daf90e5c68feaf3d82e0b944f472ba2feba0339116feda6",
+    "analyze_diagnostic.py": "c95eb8e266b3c9516f5349b9557cde8012450d5e6a9eee81fab6fba6008733cc",
+    "verdict.json": "c685646ec61086d6da1c87388df245fcb303dbbe7280ee7ff61430ab3dc77e7e",
+    "local-plan-smoke.jsonl": "21e584cb88de1d3b5a760f24c9df68e9603befea0672a544ca7e8194f7371612",
+    "local-plan-smoke-verdict.json": "c9147f923841e7c3eef07d8cb6260fa451bd0c21636ee0186e2c37b22693c7e5",
+    "diagnostic-verification.json": "f931376b2eddda8ca1f89b45683ead3dd939148ae4e752e4414dd1f62b07e131"
+  }
+}

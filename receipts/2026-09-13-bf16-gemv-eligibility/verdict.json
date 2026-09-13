@@ -1,0 +1,134 @@
+{
+  "eligibility_matrix": [
+    {
+      "basis": "The MatmulVecBF16 route is selected only for bfloat16 output after both inputs pass same-dtype validation.",
+      "fact": "dtype",
+      "status": "proven",
+      "value": "bfloat16 inputs and output"
+    },
+    {
+      "basis": "MatmulVecBF16 requires matrix_m=1; every pair member recorded groups_z=1.",
+      "fact": "matrix_m_and_batch_count",
+      "status": "proven",
+      "value": "matrix_m=1 and one batch"
+    },
+    {
+      "basis": "Every member recorded count=4864 and groups_x=1216; the route uses ceil(matrix_n/4), and batch count is one.",
+      "fact": "output_width",
+      "status": "proven",
+      "value": 4864
+    },
+    {
+      "basis": "Every weight descriptor range is exactly 4864*896*2 bytes. The trace does not record logical matrix_k directly.",
+      "fact": "matrix_k",
+      "status": "strongly_inferred",
+      "value": 896
+    },
+    {
+      "basis": "These are necessary conditions of the exact MatmulVecBF16 source branch that emitted each record.",
+      "fact": "single_dispatch_layout_and_alignment",
+      "status": "proven",
+      "value": "B transposed, A not transposed, alpha=1, no C, K multiple 128, N multiple 4; lhs/rhs offsets, rhs gap, and batch strides four-element aligned"
+    },
+    {
+      "basis": "The single route's B-transposed classification proves stride[-2]=1 for K=896, but the trace omits rhs_gap and cannot prove the group route's exact stride[-1]==K gate.",
+      "fact": "group_weight_stride",
+      "status": "partially_proven",
+      "value": "stride[-2]=1 proven; stride[-1]==K unknown"
+    },
+    {
+      "basis": "The emitting branch checks alignment but the existing trace stores descriptor offsets, which are zero, not ComputeParams logical offsets.",
+      "fact": "logical_offsets",
+      "status": "partially_proven",
+      "value": "four-element alignment proven; exact lhs and rhs offsets unknown"
+    },
+    {
+      "basis": "All pairs reuse one physical input binding, but the planner groups dense_gemv_source(x).id(); array ids are absent from the trace.",
+      "fact": "logical_input_identity",
+      "status": "unknown",
+      "value": null
+    },
+    {
+      "basis": "All pairs are adjacent and in one Vulkan submission, but submissions can contain multiple eval tapes. The trace omits eager-scope boundaries and input_ready state at the first member.",
+      "fact": "scheduling_lifetime",
+      "status": "unknown",
+      "value": null
+    },
+    {
+      "basis": "The measurement harness neither clears nor records MLX_OMARCHY_FUSED_CHAIN and MLX_OMARCHY_FUSED_GEMV.",
+      "fact": "fusion_environment_gates",
+      "status": "unknown",
+      "value": null
+    }
+  ],
+  "execution_model": "openai-codex/gpt-5.6-sol",
+  "fallback_model": null,
+  "measured_pair_census": {
+    "adjacent_same_physical_input_binding_pairs": 744,
+    "decode_intervals": 31,
+    "matmul_vec_dispatches_each_interval": [
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97,
+      97
+    ],
+    "matmul_vec_multi_dispatches_whole_profile": 0,
+    "member_shape_records": [
+      {
+        "groups_x": 1216,
+        "groups_y": 1,
+        "groups_z": 1,
+        "k_inferred_from_exact_weight_range": 896,
+        "output_elements": 4864
+      }
+    ],
+    "members_with_weight_range_exactly_n_times_k_times_two": 1488,
+    "pairs_in_same_submission": 744,
+    "pairs_per_token": 24
+  },
+  "schema": "bf16-gemv-planner-eligibility/1",
+  "source_commit": "6b1ac0296ba65a8e0075171ca9451e222ddff06b",
+  "source_sha256": {
+    "fused_chain.cpp": "1357e965760a1f582c25e97a4e99d042f08a9bf4366d05a3a783f18ad9c36b95",
+    "gpu_profiler.h": "a82db21ee7adc7c73ba673aeb7e8343758dabd84a8415aee741ac67e70599fc2",
+    "primitives.cpp": "68b31d4c82682cf3a8532df418bea3d54cba40b450dc223bce9e85edfa06a48d"
+  },
+  "trace_sha256": {
+    "compute.h": "314f5b021363ae933cbc245042bd2f2c1e48e5223402a4dd8765ef2b72c228ad",
+    "markers-longctx.jsonl": "37ba014729a379d1327304131839ecc4b170672bae4e12e29f6be137bf2c3b50",
+    "profile-longctx.jsonl": "2fe58f97041b6e2f61b9a1f6f1b0311367111bd7683a5fd734a4bf47ab14e8db"
+  },
+  "verdict": {
+    "finding": "The measured pairs satisfy the single-kernel shape, dtype, layout-class, capability, and alignment gates. Existing evidence cannot prove exact rhs stride, logical offsets, array identity, same eager tape, readiness, or fusion environment gates.",
+    "next_action": "Use the compile-time-only diagnostic patch to add ComputeParams and dense-group planner events to the existing GPU profile stream before making a source change.",
+    "planner_eligibility_established": false,
+    "speedup_claim": null
+  }
+}
