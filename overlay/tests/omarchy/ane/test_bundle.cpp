@@ -447,6 +447,22 @@ TEST_CASE("program task count and scratch allocation match each ANEC") {
     fixture.write();
     check_error([&] { load_bundle(fixture.dir.path()); }, "scratch_bytes does not match ANEC");
   }
+  SUBCASE("understated positive scratch") {
+    Fixture fixture;
+    write_le<uint32_t>(fixture.payload_bytes[0], 40 + 3 * sizeof(uint32_t), 1);
+    fixture.refresh_payload(0);
+    fixture.manifest["programs"][0]["scratch_bytes"] = 1;
+    fixture.write();
+    check_error([&] { load_bundle(fixture.dir.path()); }, "scratch_bytes does not match ANEC");
+  }
+  SUBCASE("exact positive scratch") {
+    Fixture fixture;
+    write_le<uint32_t>(fixture.payload_bytes[0], 40 + 3 * sizeof(uint32_t), 1);
+    fixture.refresh_payload(0);
+    fixture.manifest["programs"][0]["scratch_bytes"] = kAllocationBytes;
+    fixture.write();
+    CHECK_NOTHROW(load_bundle(fixture.dir.path()));
+  }
 }
 
 TEST_CASE("all payload digests are checked before ANEC parsing") {
