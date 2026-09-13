@@ -25,14 +25,14 @@
     "sha256": "753fda5580a1fdc8c1535cc291a962c3be3207e819d42b2eb6869b731a7ebf62"
   },
   "source_sha256": {
-    "overlay/tools/coreml/vulkan_mel.py": "263e0bb3c46f7b3b731393bbc251d568c6f26ba8ed0571751b54a3b1fc98015e",
+    "overlay/tools/coreml/vulkan_mel.py": "4f61cd5cd1ebabb2a96d3270e347d3a6607be9b9c186f56663c5f9d14ba095c0",
     "overlay/tools/coreml/mel_stage_compare.py": "210b38995c1491890fd71a7ae6c5c79b79c6d8d583289e3b3831a86b7066b7f8",
     "overlay/tools/coreml/vulkan_mel_constants.py": "caad0ac74d60a4d7378326d5c6d2e0f0fa7d1fd807157f9d203e7348874d258f",
     "tests/coreml/test_vulkan_mel.py": "4dfa53690fdb5790423e37f12121ce5d3dd8c7ce484c8b81ea658829b9e291df",
-    "tests/coreml/test_vulkan_mel_arithmetic.py": "1971d7477f6d9e92b05dee120b38770fddce49b2efa46a26cbf36a46a921ea62",
+    "tests/coreml/test_vulkan_mel_arithmetic.py": "4989bc58bc9d9bc5fd8fd31442541f9a021af844e91a09ec697d19546a8283e7",
     "tests/coreml/test_vulkan_mel_qualification.py": "631a6074d5f4cad44f3bd71281fc7e9e2ccbe0e0a0abe04e2d1ca5ea98011bdb",
-    "docs/parakeet.md": "0346bc263a77c336a05c3eebf1f0bd182230bb1186070464fd066589440cc05c",
-    "docs/coreml.md": "2aee203ba2888d3967278be8e8f4300b9fe898e1f4a2bd7b3e3da0d0a8e5ca6f"
+    "docs/parakeet.md": "0ddb646f2c0c713b7a8a36531684e26b8214ebb502d216cd8e53a1141d9a2f6a",
+    "docs/coreml.md": "dfb613275428995daaed2820eaefe5541a5397d8cfe081cd61015aadd41443f4"
   },
   "local_runtime": {
     "source_commit": "e4d079c883b8606dddef7720bd302c5756be0692",
@@ -211,10 +211,11 @@
     }
   },
   "denormal_source_correction": {
-    "implementation": "Software binary32 add, subtract, multiply, and negation now reuse the Big96 FMA bit path. Preemphasis, Hann windowing, every DFT butterfly, twiddle, and untangle operation use those helpers instead of native float arithmetic.",
-    "regressions": "Retained tests cover subnormal preemphasis, subnormal Hann products, subnormal DFT terms, signed zero, finite overflow, all binary32 exponent fields, and the pinned ordinary-input stage/final comparison.",
+    "implementation": "Software binary32 add, subtract, multiply, and negation reuse the Big96 FMA bit path. Preemphasis, Hann windowing, DFT, magnitude, power, mel reduction, guard addition, and subnormal sqrt scaling use those helpers without changing the certified reduction order.",
+    "regressions": "Retained tests cover the full low-scale waveform-to-power-to-mel chain, subnormal preemphasis, Hann products and DFT terms, signed zero, finite overflow, all binary32 exponent fields, and the pinned ordinary-input stage/final comparison.",
+    "remaining_native_arithmetic_review": "For finite nonnegative mel projection, the 2^-24 guard makes nonzero log output and every reachable stats/normalize operand normal. No concrete FTZ trigger remains in log, statistics, or normalization.",
     "local_command": "MLX_OMARCHY_ALLOW_NON_APPLE=1 PYTHONPATH=.work/venv-run/lib/python3.11/site-packages python3 -m pytest -q tests/coreml/test_vulkan_mel.py tests/coreml/test_vulkan_mel_arithmetic.py tests/coreml/test_vulkan_mel_qualification.py",
-    "local_result": "25 passed in 9.21s",
+    "local_result": "26 passed in 15.06s",
     "apple_physical_status": "not rerun after this source correction; prior first-divergence evidence remains preserved and Apple finite-input qualification remains false"
   },
   "qualification_boundary": {
