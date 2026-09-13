@@ -42,7 +42,7 @@ class MLX_API AneRuntime {
 
   bool usable() const;
   int worker_pid() const;
-  const std::string& runtime_identity() const;
+  std::string runtime_identity() const;
 
  private:
   struct Impl;

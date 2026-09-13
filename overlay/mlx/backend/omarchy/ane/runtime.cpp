@@ -5,6 +5,7 @@
 
 #include "mlx/backend/omarchy/ane/bundle.h"
 #include "mlx/backend/omarchy/ane/runtime_detail.h"
+#include "mlx/backend/omarchy/ane/runtime_ownership.h"
 
 #include <array>
 #include <cerrno>
@@ -21,6 +22,7 @@
 #include <stdexcept>
 #include <string>
 #include <sys/mman.h>
+#include <sys/resource.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -132,8 +134,8 @@ bool wait_for_exit(pid_t pid, TimePoint deadline) {
   return false;
 }
 
-int duplicate_owned_fd(int fd) {
-  int duplicate = ::fcntl(fd, F_DUPFD_CLOEXEC, 64);
+int duplicate_owned_fd(int fd, int minimum) {
+  int duplicate = ::fcntl(fd, F_DUPFD_CLOEXEC, minimum);
   if (duplicate < 0) {
     throw detail::runtime_error(system_error("file descriptor duplication"));
   }
@@ -237,22 +239,26 @@ struct FrozenBundle {
 FrozenBundle freeze_bundle(
     const std::filesystem::path& directory,
     TimePoint deadline) {
-  AneBundle preliminary = load_bundle(directory);
-  if (Clock::now() >= deadline) {
-    throw detail::runtime_error("startup deadline expired after bundle validation");
-  }
   OwnedFd directory_fd(::open(
       directory.c_str(), O_RDONLY | O_CLOEXEC | O_NOFOLLOW | O_DIRECTORY));
   if (directory_fd.get() < 0) {
+    if (errno == ENOENT || errno == ENOTDIR) {
+      throw AneBundleNotFound(
+          "[omarchy-ane] bundle directory not found: " + directory.string() +
+          " (the affected region stays on Vulkan)");
+    }
     throw detail::runtime_error(system_error("bundle snapshot directory open"));
   }
 
   FrozenBundle frozen;
   frozen.manifest =
       snapshot_file_at(directory_fd.get(), "manifest.json", deadline);
-  frozen.payloads.reserve(preliminary.manifest.payloads.size());
+  const auto manifest_path = std::filesystem::path("/proc/self/fd") /
+      std::to_string(frozen.manifest.get());
+  const AneManifest manifest = parse_ane_manifest(manifest_path);
+  frozen.payloads.reserve(manifest.payloads.size());
   std::map<std::string, std::filesystem::path> paths;
-  for (const auto& payload : preliminary.manifest.payloads) {
+  for (const auto& payload : manifest.payloads) {
     frozen.payloads.push_back(
         snapshot_file_at(directory_fd.get(), payload.path, deadline));
     paths.emplace(
@@ -260,8 +266,6 @@ FrozenBundle freeze_bundle(
         std::filesystem::path("/proc/self/fd") /
             std::to_string(frozen.payloads.back().get()));
   }
-  const auto manifest_path = std::filesystem::path("/proc/self/fd") /
-      std::to_string(frozen.manifest.get());
   frozen.bundle = load_bundle_snapshot(manifest_path, paths);
   frozen.contract_sha256 = sha256_file(manifest_path);
   return frozen;
@@ -328,8 +332,10 @@ struct AneRuntime::Impl {
   pid_t pid{-1};
   uint64_t serial{0};
   bool is_usable{false};
-  bool submitted{false};
+  bool current_operation_submitted{false};
   std::string identity;
+  std::timed_mutex transaction_mutex;
+  detail::RuntimeOwnership ownership;
 
   ~Impl() {
     if (control_fd >= 0) {
@@ -358,20 +364,45 @@ struct AneRuntime::Impl {
       output << "reason=" << reason << '\n'
              << "graph_hash=" << bundle.manifest.graph_hash << '\n'
              << "worker_pid=" << pid << '\n'
-             << "submitted=" << (submitted ? "true" : "false") << '\n'
+             << "current_operation_submitted="
+             << (current_operation_submitted ? "true" : "false") << '\n'
              << "runtime_identity=" << identity << '\n'
              << "recovery="
              << (uncertain
                      ? "stop ANE submissions; uncertain completion requires reboot"
-                     : "worker stopped before another submission; hardware recovery not required")
+                     : "worker control closed before another submission; hardware recovery not required")
              << '\n';
     } catch (...) {
     }
   }
 
-  void mark_unusable(const std::string& reason, bool uncertain) {
+  void mark_unusable(std::string reason, bool uncertain) noexcept {
     is_usable = false;
-    preserve_diagnostic(reason, uncertain);
+    if (control_fd >= 0) {
+      ::close(control_fd);
+      control_fd = -1;
+    }
+    bool requires_reboot = uncertain;
+    if (requires_reboot) {
+      ownership.quarantine();
+    } else {
+      try {
+        ownership.release_cleanly();
+      } catch (const std::exception& error) {
+        requires_reboot = true;
+        ownership.quarantine();
+        reason += "; ownership state cleanup failed: ";
+        reason += error.what();
+      }
+    }
+    preserve_diagnostic(reason, requires_reboot);
+    if (pid > 0) {
+      try {
+        child_reaper().adopt(pid);
+        pid = -1;
+      } catch (...) {
+      }
+    }
   }
 
   static std::unique_ptr<Impl> start(
@@ -385,6 +416,7 @@ struct AneRuntime::Impl {
     if (implementation->diagnostic_path.empty()) {
       throw std::invalid_argument("ANE diagnostic path must not be empty");
     }
+    implementation->ownership = detail::RuntimeOwnership::acquire();
     if (!implementation->diagnostic_path.parent_path().empty()) {
       std::filesystem::create_directories(
           implementation->diagnostic_path.parent_path());
@@ -401,13 +433,32 @@ struct AneRuntime::Impl {
       }
     }
     implementation->staging_bytes = staging_size(implementation->bundle.manifest);
+    rlimit file_limit{};
+    if (::getrlimit(RLIMIT_NOFILE, &file_limit) != 0) {
+      throw detail::runtime_error(system_error("worker descriptor limit"));
+    }
+    const uint64_t descriptor_limit = file_limit.rlim_cur == RLIM_INFINITY
+        ? uint64_t{std::numeric_limits<int>::max()}
+        : static_cast<uint64_t>(file_limit.rlim_cur);
+    const int source_fd_floor = detail::worker_source_fd_floor(
+        frozen.payloads.size(), descriptor_limit);
+    OwnedFd worker_manifest(
+        duplicate_owned_fd(frozen.manifest.get(), source_fd_floor));
+    OwnedFd worker_lock(
+        duplicate_owned_fd(implementation->ownership.lock_fd(), source_fd_floor));
+    std::vector<OwnedFd> worker_payloads;
+    worker_payloads.reserve(frozen.payloads.size());
+    for (const auto& payload : frozen.payloads) {
+      worker_payloads.emplace_back(
+          duplicate_owned_fd(payload.get(), source_fd_floor));
+    }
 
     OwnedFd memory(::memfd_create(
         "mlx-omarchy-ane", MFD_CLOEXEC | MFD_ALLOW_SEALING));
     if (memory.get() < 0) {
       throw detail::runtime_error(system_error("memfd_create"));
     }
-    implementation->staging_fd = duplicate_owned_fd(memory.get());
+    implementation->staging_fd = duplicate_owned_fd(memory.get(), source_fd_floor);
     if (::ftruncate(
             implementation->staging_fd,
             static_cast<off_t>(implementation->staging_bytes)) != 0) {
@@ -439,8 +490,10 @@ struct AneRuntime::Impl {
     }
     OwnedFd parent_socket(sockets[0]);
     OwnedFd child_socket(sockets[1]);
-    implementation->control_fd = duplicate_owned_fd(parent_socket.get());
-    OwnedFd child_control(duplicate_owned_fd(child_socket.get()));
+    implementation->control_fd =
+        duplicate_owned_fd(parent_socket.get(), source_fd_floor);
+    OwnedFd child_control(
+        duplicate_owned_fd(child_socket.get(), source_fd_floor));
 
     posix_spawn_file_actions_t actions;
     int spawn_error = ::posix_spawn_file_actions_init(&actions);
@@ -456,12 +509,16 @@ struct AneRuntime::Impl {
     }
     if (spawn_error == 0) {
       spawn_error = ::posix_spawn_file_actions_adddup2(
-          &actions, frozen.manifest.get(), detail::kWorkerManifestFd);
+          &actions, worker_manifest.get(), detail::kWorkerManifestFd);
     }
-    for (size_t i = 0; spawn_error == 0 && i < frozen.payloads.size(); ++i) {
+    if (spawn_error == 0) {
+      spawn_error = ::posix_spawn_file_actions_adddup2(
+          &actions, worker_lock.get(), detail::kWorkerHardwareLockFd);
+    }
+    for (size_t i = 0; spawn_error == 0 && i < worker_payloads.size(); ++i) {
       spawn_error = ::posix_spawn_file_actions_adddup2(
           &actions,
-          frozen.payloads[i].get(),
+          worker_payloads[i].get(),
           detail::kWorkerPayloadFdBase + static_cast<int>(i));
     }
     if (spawn_error == 0) {
@@ -487,10 +544,11 @@ struct AneRuntime::Impl {
       implementation->pid = -1;
       throw detail::runtime_error(system_error("ANE worker spawn", spawn_error));
     }
+    implementation->ownership.arm();
 
-    ensure_before(deadline, "worker readiness wait");
     detail::WorkerReply reply;
     try {
+      ensure_before(deadline, "worker readiness wait");
       reply = receive_reply(implementation->control_fd, deadline);
     } catch (const std::exception& error) {
       implementation->mark_unusable(
@@ -499,9 +557,6 @@ struct AneRuntime::Impl {
     }
     if (reply.kind != detail::WorkerReplyKind::ready) {
       implementation->mark_unusable(reply.detail, false);
-      if (wait_for_exit(implementation->pid, deadline)) {
-        implementation->pid = -1;
-      }
       throw detail::runtime_error(std::string(reply.detail));
     }
     const std::string identity_prefix =
@@ -513,11 +568,6 @@ struct AneRuntime::Impl {
     if (worker_detail.rfind(identity_prefix, 0) != 0) {
       implementation->mark_unusable(
           "worker loaded a different bundle identity", false);
-      ::close(implementation->control_fd);
-      implementation->control_fd = -1;
-      if (wait_for_exit(implementation->pid, deadline)) {
-        implementation->pid = -1;
-      }
       throw detail::runtime_error("worker loaded a different bundle identity");
     }
     implementation->identity = worker_detail;
@@ -541,12 +591,10 @@ std::unique_ptr<AneRuntime> AneRuntime::load(
 }
 
 AneRuntime::~AneRuntime() {
-  if (implementation_ && implementation_->is_usable) {
+  if (implementation_ && usable()) {
     try {
       shutdown(std::chrono::seconds(5));
-    } catch (const std::exception& error) {
-      implementation_->mark_unusable(
-          std::string("automatic shutdown failed: ") + error.what(), true);
+    } catch (...) {
     }
   }
 }
@@ -556,6 +604,11 @@ AneBufferMap AneRuntime::execute(
     std::chrono::milliseconds deadline_duration) {
   const auto checked_deadline = detail::checked_deadline(deadline_duration);
   const TimePoint deadline = checked_deadline.time;
+  std::unique_lock<std::timed_mutex> transaction(
+      implementation_->transaction_mutex, std::defer_lock);
+  if (!transaction.try_lock_until(deadline)) {
+    throw detail::runtime_error("deadline expired waiting for runtime transaction");
+  }
   if (!implementation_->is_usable) {
     throw detail::runtime_error("runtime is unusable; no ANE work was submitted");
   }
@@ -582,9 +635,8 @@ AneBufferMap AneRuntime::execute(
   detail::WorkerCommand command;
   command.operation = detail::WorkerOperation::execute;
   command.serial = ++implementation_->serial;
-  command.deadline_monotonic_nanoseconds =
-      std::chrono::duration_cast<std::chrono::nanoseconds>(
-          deadline.time_since_epoch()).count();
+  command.deadline_monotonic_nanoseconds = checked_deadline.monotonic_nanoseconds;
+  implementation_->current_operation_submitted = false;
   try {
     send_command(implementation_->control_fd, command, deadline);
   } catch (const std::exception& error) {
@@ -592,7 +644,7 @@ AneBufferMap AneRuntime::execute(
         std::string("worker command was not sent: ") + error.what(), false);
     throw;
   }
-  implementation_->submitted = true;
+  implementation_->current_operation_submitted = true;
 
   detail::WorkerReply reply;
   try {
@@ -610,14 +662,12 @@ AneBufferMap AneRuntime::execute(
   }
   if (reply.kind == detail::WorkerReplyKind::uncertain) {
     implementation_->mark_unusable(reply.detail, true);
-    if (wait_for_exit(implementation_->pid, deadline)) {
-      implementation_->pid = -1;
-    }
     throw detail::runtime_error(
         std::string(reply.detail) +
         "; runtime marked unusable and reboot is required before further ANE use");
   }
   if (reply.kind != detail::WorkerReplyKind::executed) {
+    implementation_->current_operation_submitted = false;
     implementation_->mark_unusable(reply.detail, false);
     throw detail::runtime_error(
         std::string(reply.detail) + "; runtime marked unusable");
@@ -630,6 +680,7 @@ AneBufferMap AneRuntime::execute(
     offset += data.size();
     outputs.emplace(tensor.name, std::move(data));
   }
+  implementation_->current_operation_submitted = false;
   return outputs;
 }
 
@@ -637,6 +688,11 @@ AneShutdownReceipt AneRuntime::shutdown(
     std::chrono::milliseconds deadline_duration) {
   const auto checked_deadline = detail::checked_deadline(deadline_duration);
   const TimePoint deadline = checked_deadline.time;
+  std::unique_lock<std::timed_mutex> transaction(
+      implementation_->transaction_mutex, std::defer_lock);
+  if (!transaction.try_lock_until(deadline)) {
+    throw detail::runtime_error("deadline expired waiting for runtime transaction");
+  }
   if (!implementation_->is_usable) {
     throw detail::runtime_error("runtime is unusable and cannot claim clean shutdown");
   }
@@ -645,9 +701,8 @@ AneShutdownReceipt AneRuntime::shutdown(
   detail::WorkerCommand command;
   command.operation = detail::WorkerOperation::shutdown;
   command.serial = ++implementation_->serial;
-  command.deadline_monotonic_nanoseconds =
-      std::chrono::duration_cast<std::chrono::nanoseconds>(
-          deadline.time_since_epoch()).count();
+  command.deadline_monotonic_nanoseconds = checked_deadline.monotonic_nanoseconds;
+  implementation_->current_operation_submitted = false;
   try {
     send_command(implementation_->control_fd, command, deadline);
   } catch (const std::exception& error) {
@@ -655,6 +710,8 @@ AneShutdownReceipt AneRuntime::shutdown(
         std::string("shutdown command was not sent: ") + error.what(), false);
     throw;
   }
+  implementation_->current_operation_submitted = true;
+
   detail::WorkerReply reply;
   try {
     reply = receive_reply(implementation_->control_fd, deadline);
@@ -680,18 +737,26 @@ AneShutdownReceipt AneRuntime::shutdown(
       static_cast<int>(implementation_->pid), reply.released_programs};
   implementation_->pid = -1;
   implementation_->is_usable = false;
+  implementation_->current_operation_submitted = false;
+  implementation_->ownership.release_cleanly();
   return receipt;
 }
 
 bool AneRuntime::usable() const {
+  std::lock_guard<std::timed_mutex> transaction(
+      implementation_->transaction_mutex);
   return implementation_->is_usable;
 }
 
 int AneRuntime::worker_pid() const {
+  std::lock_guard<std::timed_mutex> transaction(
+      implementation_->transaction_mutex);
   return static_cast<int>(implementation_->pid);
 }
 
-const std::string& AneRuntime::runtime_identity() const {
+std::string AneRuntime::runtime_identity() const {
+  std::lock_guard<std::timed_mutex> transaction(
+      implementation_->transaction_mutex);
   return implementation_->identity;
 }
 

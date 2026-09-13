@@ -11,6 +11,8 @@
 #include <iostream>
 #include <limits>
 #include <map>
+#include <sys/file.h>
+#include <sys/stat.h>
 #include <string>
 
 int main(int argc, char** argv) {
@@ -19,6 +21,21 @@ int main(int argc, char** argv) {
     return 2;
   }
   try {
+    struct stat inherited_lock {};
+    struct stat ownership_lock {};
+    if (::fstat(
+            mlx::core::omarchy::ane::detail::kWorkerHardwareLockFd,
+            &inherited_lock) != 0 ||
+        ::stat(
+            mlx::core::omarchy::ane::detail::kRuntimeOwnershipLockPath,
+            &ownership_lock) != 0 ||
+        inherited_lock.st_dev != ownership_lock.st_dev ||
+        inherited_lock.st_ino != ownership_lock.st_ino ||
+        ::flock(
+            mlx::core::omarchy::ane::detail::kWorkerHardwareLockFd,
+            LOCK_EX | LOCK_NB) != 0) {
+      throw std::invalid_argument("missing inherited ANE hardware lock");
+    }
     errno = 0;
     char* end = nullptr;
     unsigned long long size = std::strtoull(argv[1], &end, 10);
