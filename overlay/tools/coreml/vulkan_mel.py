@@ -763,7 +763,7 @@ def _stats_kernel(mx=None):
         name="parakeet_mean_std_f32",
         input_names=["logmel"],
         output_names=["mean", "std"],
-        header=_PRECISE_DIV_HEADER,
+        header=_SQRT_HEADER + _PRECISE_DIV_HEADER,
         source="""
             uint mel = thread_position_in_grid.x;
             precise float sum = 0.0f;
@@ -777,7 +777,7 @@ def _stats_kernel(mx=None):
                 squared = squared + term;
             }
             mean[mel] = average;
-            std[mel] = sqrt(precise_div(squared, 3000.0f));
+            std[mel] = sqrt32(precise_div(squared, 3000.0f));
         """,
         compile_options={"math_mode": "safe"},
     )
