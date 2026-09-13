@@ -1,0 +1,16 @@
+{
+  "schema": "receipt-manifest/1",
+  "candidate_commit": "ff815ada8a1730fdf9762f2cbd5c591d99a9c06b",
+  "files": {
+    "verdict.json": "b3381651a545a178b18a97687352c19db9ccc70abf11733bfc7686da3291dcc1",
+    "verify.py": "c206ce46bf6ed85bc9e952d4e2b0604b0b4b8f38e33761b755ecd55377fb8ba7",
+    "invalid-attempts.json": "3ef9fdc1517d2e1046551b6c581f80e8bc1e658f9cbc5308fbe47a5c5691f0bd",
+    "valid-window/analysis.json": "526b768a89c8491d72e5f366da272ed4a05fab567ef4b5d9b42f461bf7741afb",
+    "valid-window/window.log": "0b086703ffbc87b71953ce32b7efebc3d4093ae88cd6b8f8d8b8a6bb6bac5895",
+    "valid-window/lease.txt": "35d02a6de44a5883e61109500d7b7f5a97a070c246831dc0762738daca977764",
+    "valid-window/control-runtime.json": "f390b5c9154c7033d7b2ee7424f75047141d68d9c555d332e0c2222a25b26ba7",
+    "valid-window/candidate-runtime.json": "6a57396abceb994a7428581f889e7c3e340edbe2a731a1659056ed4f1e7801de",
+    "valid-window/window.sh": "6e12eced1f8491640b19ffbad98e6ec888f6d4e514554bdc637f21b30b4130c5",
+    "valid-window/runtime_identity.py": "8c870c098e18648a022ee7d17a5a0b53a3b5435abeb3e188a62cef9fd9bb5f27"
+  }
+}

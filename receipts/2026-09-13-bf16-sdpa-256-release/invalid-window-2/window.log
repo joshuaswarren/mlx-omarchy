@@ -1,0 +1,11 @@
+lock_acquired=true utc=2026-09-13T06:04:53Z pid=3328731 deadline_epoch=1789279575
+<home>/LongContextCostAttribution-ff815ada.bundle is okay
+The bundle contains this ref:
+ff815ada8a1730fdf9762f2cbd5c591d99a9c06b HEAD
+The bundle requires this ref:
+b41e2b74c330f910b24cab0e7516e306527858f0
+The bundle uses this hash algorithm: sha1
+{"free_bytes": 313055600640, "total_bytes": 478435868672}
+FATAL existing candidate path is dirty
+CHILD_PIDS_CLEAR
+lock_released=true utc=2026-09-13T06:04:53Z rc=3 result_dir=<home>/bf16-sdpa-256-window-20260913T060453Z

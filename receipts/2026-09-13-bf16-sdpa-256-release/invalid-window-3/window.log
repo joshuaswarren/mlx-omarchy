@@ -1,0 +1,19 @@
+lock_acquired=true utc=2026-09-13T06:13:12Z pid=3330277 deadline_epoch=1789280106
+<home>/LongContextCostAttribution-ff815ada.bundle is okay
+The bundle contains this ref:
+ff815ada8a1730fdf9762f2cbd5c591d99a9c06b HEAD
+The bundle requires this ref:
+b41e2b74c330f910b24cab0e7516e306527858f0
+The bundle uses this hash algorithm: sha1
+{"free_bytes": 313055596544, "total_bytes": 478435868672}
+host=qualified-linux-ane-gpu-host
+kernel=7.1.6-1-1-ARCH
+control_commit=6b1ac0296ba65a8e0075171ca9451e222ddff06b
+candidate_commit=ff815ada8a1730fdf9762f2cbd5c591d99a9c06b
+control_wheel=<home>/src/mlx-bf16-grouped-candidate-6b1ac029/dist/mlx_omarchy-0.32.2.dev202609130004+6b1ac029-cp314-cp314-linux_aarch64.whl
+control_sha256=fb4b96b0e52de3a07d62fea6766baa24f409b0b6b32afef1fd5f365e246e1c50
+candidate_wheel=<home>/src/mlx-bf16-sdpa-256-ff815ada/dist/mlx_omarchy-0.32.2.dev202609130551+ff815ad-cp314-cp314-linux_aarch64.whl
+candidate_sha256=2dc08eae980270b91799714dc81b379253d7c9f753da57bb997e956971606555
+cp: cannot create directory '<home>/src/mlx-bf16-sdpa-256-ff815ada/.work/venv-bench-ff815ad': No such file or directory
+CHILD_PIDS_CLEAR
+lock_released=true utc=2026-09-13T06:13:12Z rc=1 result_dir=<home>/bf16-sdpa-256-window-20260913T061312Z

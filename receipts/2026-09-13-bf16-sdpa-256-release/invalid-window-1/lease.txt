@@ -1,0 +1,2 @@
+lease=Main-grant-LongContextCostAttribution phase=bf16-sdpa-256-release deadline_epoch=1789279575
+released_utc=2026-09-13T05:58:37Z rc=6

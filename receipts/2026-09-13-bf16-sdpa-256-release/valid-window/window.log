@@ -1,0 +1,61 @@
+lock_acquired=true utc=2026-09-13T06:19:34Z pid=3331866 deadline_epoch=1789280554
+<home>/LongContextCostAttribution-ff815ada.bundle is okay
+The bundle contains this ref:
+ff815ada8a1730fdf9762f2cbd5c591d99a9c06b HEAD
+The bundle requires this ref:
+b41e2b74c330f910b24cab0e7516e306527858f0
+The bundle uses this hash algorithm: sha1
+{"free_bytes": 313038954496, "total_bytes": 478435868672}
+host=qualified-linux-ane-gpu-host
+kernel=7.1.6-1-1-ARCH
+control_commit=6b1ac0296ba65a8e0075171ca9451e222ddff06b
+candidate_commit=ff815ada8a1730fdf9762f2cbd5c591d99a9c06b
+control_wheel=<home>/src/mlx-bf16-grouped-candidate-6b1ac029/dist/mlx_omarchy-0.32.2.dev202609130004+6b1ac029-cp314-cp314-linux_aarch64.whl
+control_sha256=fb4b96b0e52de3a07d62fea6766baa24f409b0b6b32afef1fd5f365e246e1c50
+candidate_wheel=<home>/src/mlx-bf16-sdpa-256-ff815ada/dist/mlx_omarchy-0.32.2.dev202609130551+ff815ad-cp314-cp314-linux_aarch64.whl
+candidate_sha256=2dc08eae980270b91799714dc81b379253d7c9f753da57bb997e956971606555
+runtime_provenance_complete utc=2026-09-13T06:19:35Z
+quiet_sample=1 load=0.18
+quiet_sample=2 load=0.13
+quiet_sample=3 load=0.09
+quiet_gate_complete utc=2026-09-13T06:20:15Z
+probe_start side=control repeat=1 utc=2026-09-13T06:20:15Z
+probe_end side=control repeat=1 rc=0 utc=2026-09-13T06:20:21Z
+probe_start side=candidate repeat=1 utc=2026-09-13T06:20:21Z
+probe_end side=candidate repeat=1 rc=0 utc=2026-09-13T06:20:27Z
+probe_start side=candidate repeat=2 utc=2026-09-13T06:20:27Z
+probe_end side=candidate repeat=2 rc=0 utc=2026-09-13T06:20:34Z
+probe_start side=control repeat=2 utc=2026-09-13T06:20:34Z
+probe_end side=control repeat=2 rc=0 utc=2026-09-13T06:20:40Z
+probe_start side=control repeat=3 utc=2026-09-13T06:20:40Z
+probe_end side=control repeat=3 rc=0 utc=2026-09-13T06:20:46Z
+probe_start side=candidate repeat=3 utc=2026-09-13T06:20:46Z
+probe_end side=candidate repeat=3 rc=0 utc=2026-09-13T06:20:53Z
+{
+  "candidate_faster_by_median": false,
+  "candidate_minus_control_tps": -0.09789999999999921,
+  "candidate_vs_control_percent": -0.39247915330339334,
+  "generated_ids_sha256_16": "ff502900d2a179a5",
+  "rows": {
+    "candidate": {
+      "decode_tps": [
+        24.8461,
+        24.6689,
+        24.9102
+      ],
+      "median_decode_tps": 24.8461
+    },
+    "control": {
+      "decode_tps": [
+        24.7746,
+        24.944,
+        25.0016
+      ],
+      "median_decode_tps": 24.944
+    }
+  },
+  "schema": "bf16-sdpa-256-release-control/1"
+}
+{"api_version": "1.4.359", "architecture": "honeykrisp", "cooperative_matrix_f32_8": 1, "device_id": 0, "device_name": "Apple M1 (G13G B1)", "driver": "Mesa Honeykrisp", "driver_version": 109060195, "host_visible_coherent": 1, "max_compute_shared_memory_size": 32768, "max_compute_work_group_invocations": 1024, "max_compute_work_group_size_x": 1024, "max_storage_buffer_range": 2147483647, "shader_float16": 1, "shader_int16": 1, "shader_int64": 1, "storage_buffer_16bit_access": 1, "timestamp_period_ns": 1, "total_memory": 8113881088, "unified_memory": 1, "vendor_id": 65541}
+CHILD_PIDS_CLEAR
+lock_released=true utc=2026-09-13T06:20:53Z rc=0 result_dir=<home>/bf16-sdpa-256-window-20260913T061934Z

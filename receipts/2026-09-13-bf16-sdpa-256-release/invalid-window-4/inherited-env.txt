@@ -1,0 +1,2 @@
+inherited_PYTHONPATH=''
+inherited_LD_LIBRARY_PATH=''

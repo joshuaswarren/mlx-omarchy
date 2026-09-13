@@ -1,0 +1,25 @@
+{
+  "candidate_faster_by_median": false,
+  "candidate_minus_control_tps": -0.09789999999999921,
+  "candidate_vs_control_percent": -0.39247915330339334,
+  "generated_ids_sha256_16": "ff502900d2a179a5",
+  "rows": {
+    "candidate": {
+      "decode_tps": [
+        24.8461,
+        24.6689,
+        24.9102
+      ],
+      "median_decode_tps": 24.8461
+    },
+    "control": {
+      "decode_tps": [
+        24.7746,
+        24.944,
+        25.0016
+      ],
+      "median_decode_tps": 24.944
+    }
+  },
+  "schema": "bf16-sdpa-256-release-control/1"
+}

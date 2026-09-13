@@ -1,0 +1,35 @@
+lock_acquired=true utc=2026-09-13T05:51:31Z pid=3322959 deadline_epoch=1789279575
+<home>/LongContextCostAttribution-ff815ada.bundle is okay
+The bundle contains this ref:
+ff815ada8a1730fdf9762f2cbd5c591d99a9c06b HEAD
+The bundle requires this ref:
+b41e2b74c330f910b24cab0e7516e306527858f0
+The bundle uses this hash algorithm: sha1
+{"free_bytes": 313273438208, "total_bytes": 478435868672}
+From <home>/LongContextCostAttribution-ff815ada.bundle
+ * branch              HEAD       -> FETCH_HEAD
+Preparing worktree (detached HEAD ff815ada)
+HEAD is now at ff815ada perf: reduce BF16 SDPA decode workgroup
+build_start utc=2026-09-13T05:51:34Z jobs=2
+build_end utc=2026-09-13T05:56:50Z rc=0
+host=qualified-linux-ane-gpu-host
+kernel=7.1.6-1-1-ARCH
+control_commit=6b1ac0296ba65a8e0075171ca9451e222ddff06b
+candidate_commit=ff815ada8a1730fdf9762f2cbd5c591d99a9c06b
+control_wheel=<home>/src/mlx-bf16-grouped-candidate-6b1ac029/dist/mlx_omarchy-0.32.2.dev202609130004+6b1ac029-cp314-cp314-linux_aarch64.whl
+control_sha256=fb4b96b0e52de3a07d62fea6766baa24f409b0b6b32afef1fd5f365e246e1c50
+candidate_wheel=<home>/src/mlx-bf16-sdpa-256-ff815ada/dist/mlx_omarchy-0.32.2.dev202609130551+ff815ad-cp314-cp314-linux_aarch64.whl
+candidate_sha256=2dc08eae980270b91799714dc81b379253d7c9f753da57bb997e956971606555
+quiet_reset load=2.08
+quiet_reset load=1.49
+quiet_reset load=1.14
+quiet_sample=1 load=0.81
+quiet_sample=2 load=0.58
+quiet_sample=3 load=0.42
+probe_start side=control repeat=1 utc=2026-09-13T05:58:30Z
+probe_end side=control repeat=1 rc=0 utc=2026-09-13T05:58:36Z
+probe_start side=candidate repeat=1 utc=2026-09-13T05:58:36Z
+probe_end side=candidate repeat=1 rc=3 utc=2026-09-13T05:58:37Z
+REFUSING TO EMIT NUMBERS: loaded mlx/lib/libmlx.so sha256 b3e14c3d3bbf37cdee43088ec3c0d024c5de6974ecea386086acac89f8286b04 != claimed wheel <home>/src/mlx-bf16-sdpa-256-ff815ada/dist/mlx_omarchy-0.32.2.dev202609130551+ff815ad-cp314-cp314-linux_aarch64.whl member mlx/lib/libmlx.so sha256 90d5d6fe139eb14bab24f56f1c85f919cb2f360f516048ae8620cac276ff2586. Refusing to emit numbers against the claimed wheel.
+CHILD_PIDS_CLEAR
+lock_released=true utc=2026-09-13T05:58:37Z rc=6 result_dir=<home>/bf16-sdpa-256-window-20260913T055131Z

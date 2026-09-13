@@ -1,0 +1,78 @@
+{
+  "schema": "bf16-sdpa-256-invalid-attempts/1",
+  "execution_model": "openai-codex/gpt-5.6-sol",
+  "fallback_model": null,
+  "candidate_commit": "ff815ada8a1730fdf9762f2cbd5c591d99a9c06b",
+  "candidate_wheel_sha256": "2dc08eae980270b91799714dc81b379253d7c9f753da57bb997e956971606555",
+  "attempts": [
+    {
+      "path": "invalid-window-1",
+      "deadline_epoch": 1789279575,
+      "acquired_utc": "2026-09-13T05:51:31Z",
+      "released_utc": "2026-09-13T05:58:37Z",
+      "outer_rc": 6,
+      "result": "rejected provenance: candidate invocation loaded the control venv libmlx mapping; bench_decode refused before emitting candidate numbers",
+      "candidate_numbers_valid": false,
+      "build_valid": true,
+      "control_repeat_1_valid": true,
+      "child_pids_clear": true,
+      "lock_released": true
+    },
+    {
+      "path": "invalid-window-2",
+      "deadline_epoch": 1789279575,
+      "acquired_utc": "2026-09-13T06:04:53Z",
+      "released_utc": "2026-09-13T06:04:53Z",
+      "outer_rc": 3,
+      "result": "preflight refused the owned untracked .work-release build workspace before any benchmark",
+      "candidate_numbers_valid": false,
+      "benchmark_started": false,
+      "child_pids_clear": true,
+      "lock_released": true
+    },
+    {
+      "path": "invalid-window-3",
+      "deadline_epoch": 1789280106,
+      "acquired_utc": "2026-09-13T06:13:12Z",
+      "released_utc": "2026-09-13T06:13:12Z",
+      "outer_rc": 1,
+      "result": "preflight could not copy the candidate venv because its owned .work parent was absent; no benchmark ran",
+      "candidate_numbers_valid": false,
+      "benchmark_started": false,
+      "child_pids_clear": true,
+      "lock_released": true
+    },
+    {
+      "path": "invalid-window-4",
+      "deadline_epoch": 1789280106,
+      "acquired_utc": "2026-09-13T06:13:51Z",
+      "remaining_seconds_at_acquisition": 75,
+      "dual_runtime_provenance_complete_utc": "2026-09-13T06:13:53.388926Z",
+      "quiet_complete_utc": "2026-09-13T06:14:33Z",
+      "leg_start_utc": [
+        "control-1 2026-09-13T06:14:33Z",
+        "candidate-1 2026-09-13T06:14:39Z",
+        "candidate-2 2026-09-13T06:14:46Z",
+        "control-2 2026-09-13T06:14:53Z",
+        "control-3 2026-09-13T06:14:59Z",
+        "candidate-3 2026-09-13T06:15:05Z"
+      ],
+      "released_utc": "2026-09-13T06:15:12Z",
+      "outer_rc": 124,
+      "result": "hard deadline interrupted candidate repeat 3; five legs completed, the sixth had no probe_end, and no analysis was emitted",
+      "candidate_numbers_valid": false,
+      "matrix_complete": false,
+      "dual_runtime_provenance_valid": true,
+      "quiet_samples": [0.0, 0.0, 0.0],
+      "child_pids_clear": true,
+      "lock_released": true
+    }
+  ],
+  "final_independent_clearance": {
+    "lock_free": true,
+    "candidate_processes": [],
+    "device_reopen": "Apple M1 (G13G B1) / Mesa Honeykrisp"
+  },
+  "performance_verdict": null,
+  "reason": "No complete provenance-valid six-leg matrix finished inside an authorized deadline."
+}

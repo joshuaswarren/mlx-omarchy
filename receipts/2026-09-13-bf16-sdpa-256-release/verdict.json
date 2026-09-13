@@ -1,0 +1,73 @@
+{
+  "schema": "bf16-sdpa-256-release-verdict/1",
+  "execution_model": "openai-codex/gpt-5.6-sol",
+  "fallback_model": null,
+  "host": "qualified-linux-ane-gpu-host",
+  "device": "Apple M1 (G13G B1)",
+  "driver": "Mesa Honeykrisp",
+  "candidate": {
+    "commit": "ff815ada8a1730fdf9762f2cbd5c591d99a9c06b",
+    "wheel_sha256": "2dc08eae980270b91799714dc81b379253d7c9f753da57bb997e956971606555",
+    "version": "0.32.2.dev202609130551+ff815ad",
+    "bf16_workgroup_size": 256
+  },
+  "control": {
+    "commit": "6b1ac0296ba65a8e0075171ca9451e222ddff06b",
+    "wheel_sha256": "fb4b96b0e52de3a07d62fea6766baa24f409b0b6b32afef1fd5f365e246e1c50",
+    "version": "0.32.2.dev202609130004+6b1ac029",
+    "bf16_workgroup_size": 1024
+  },
+  "workload": {
+    "model_snapshot": "56d07e766edd7159fbe12ed12d9cf114bf38bf1e",
+    "model": "mlx-community/Qwen2.5-0.5B-Instruct-bf16",
+    "context": "ctx1024",
+    "prompt_tokens": 1053,
+    "generated_tokens": 32,
+    "decode_intervals": 31,
+    "execution": "eager BF16",
+    "strict_generated_ids_sha256_16": "ff502900d2a179a5",
+    "repetitions_per_side": 3,
+    "order": ["control-1", "candidate-1", "candidate-2", "control-2", "control-3", "candidate-3"]
+  },
+  "runtime_provenance": {
+    "absolute_python_per_side": true,
+    "wheel_record_hashes_match_loaded_core_and_libmlx": true,
+    "loaded_mappings_read_from_proc_self_maps": true,
+    "pythonpath_cleared": true,
+    "ld_library_path_cleared": true,
+    "candidate_libmlx_sha256": "90d5d6fe139eb14bab24f56f1c85f919cb2f360f516048ae8620cac276ff2586",
+    "control_libmlx_sha256": "b3e14c3d3bbf37cdee43088ec3c0d024c5de6974ecea386086acac89f8286b04"
+  },
+  "window": {
+    "acquisition_utc": "2026-09-13T06:19:34Z",
+    "acquisition_epoch": 1789280374,
+    "deadline_epoch": 1789280554,
+    "runtime_provenance_complete_utc": "2026-09-13T06:19:35Z",
+    "quiet_samples": [0.18, 0.13, 0.09],
+    "quiet_complete_utc": "2026-09-13T06:20:15Z",
+    "released_utc": "2026-09-13T06:20:53Z",
+    "outer_rc": 0,
+    "child_pids_clear": true,
+    "lock_released": true,
+    "final_independent_lock_free": true,
+    "final_independent_candidate_processes": [],
+    "device_reopen": true
+  },
+  "performance": {
+    "control_decode_tps": [24.7746, 24.944, 25.0016],
+    "candidate_decode_tps": [24.8461, 24.6689, 24.9102],
+    "control_median_decode_tps": 24.944,
+    "candidate_median_decode_tps": 24.8461,
+    "candidate_minus_control_tps": -0.09789999999999921,
+    "candidate_vs_control_percent": -0.39247915330339334,
+    "diagnostic_wall_used": false
+  },
+  "invalid_attempts_path": "invalid-attempts.json",
+  "outcome": {
+    "candidate_faster_by_median": false,
+    "verdict": "reject",
+    "integration_action": "Do not integrate commit ff815ada; retain the qualified 1024-thread BF16 workgroup.",
+    "numerical_contract_preserved": true,
+    "performance_claim": "The measured 256-thread candidate was 0.392479% slower by median decode throughput in this complete release-control matrix."
+  }
+}
