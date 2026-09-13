@@ -1,0 +1,148 @@
+{
+  "source": {
+    "built_commit": "bab2549cc673662edf5c87b5df073b08677cd956",
+    "hardening_parent": "5ed69996add005f98967cbd27fcea4eaa80a3e1a",
+    "integration_base": "382492a5896322b32d2058b20e3aa1c6c693aa4e",
+    "libane_commit": "f261a6cb537aca62f267ad3d01beda0d6877544c",
+    "remote_source": "/var/tmp/AneRuntimeBridge-bab2549c/source",
+    "remote_libane": "/var/tmp/AneRuntimeBridge-bab2549c/libane",
+    "tracked_trees_clean_before_build": true
+  },
+  "model": {
+    "actual": "openai-codex/gpt-5.6-sol",
+    "fallback": false
+  },
+  "setup_failures": [
+    {
+      "time": "2026-09-12T23:01:31-05:00",
+      "pid_pgid": 3293986,
+      "stage": "native git checkout gate",
+      "cause": "The gate incorrectly required .git to be a directory although the existing source was not a native repository.",
+      "hardware_submission": false,
+      "clearance": "PGID clear, lock free, stale lease removed only after both checks."
+    },
+    {
+      "time": "2026-09-12T23:02:47-05:00",
+      "pid_pgid": 3294187,
+      "stage": "native git validation",
+      "cause": "The metadata-free source snapshot failed git rev-parse.",
+      "hardware_submission": false,
+      "clearance": "PGID clear, lock free, stale lease removed only after both checks.",
+      "log": "setup-failure-native-git.log"
+    },
+    {
+      "stage": "full source checkout",
+      "cause": "Expanding historical receipts exhausted the 7.6 GiB /tmp tmpfs (0 bytes free).",
+      "hardware_submission": false,
+      "recovery": "Removed only owned failed partial checkouts, sparse-checked out exact source, and moved source and build artifacts to /var/tmp on the 293 GiB-free persistent filesystem."
+    }
+  ],
+  "finding_map": [
+    {
+      "id": 1,
+      "finding": "Parent and worker could observe different mutable manifest or payload bytes.",
+      "resolution": "Freeze the manifest and every payload into sealed memfds and load the worker only from inherited descriptors.",
+      "files": ["overlay/mlx/backend/omarchy/ane/runtime.cpp", "overlay/mlx/backend/omarchy/ane/bundle.cpp", "overlay/mlx/backend/omarchy/ane/bundle.h", "overlay/mlx/backend/omarchy/ane/worker.cpp", "overlay/mlx/backend/omarchy/ane/worker_main.cpp"]
+    },
+    {
+      "id": 2,
+      "finding": "Graph hash alone did not bind readiness to the complete validated bundle.",
+      "resolution": "Require and expose graph_hash, raw manifest contract_sha256, and payload-collection model_sha256.",
+      "files": ["overlay/mlx/backend/omarchy/ane/runtime.cpp", "overlay/mlx/backend/omarchy/ane/worker.cpp", "docs/ane-runtime.md"]
+    },
+    {
+      "id": 3,
+      "finding": "startup_deadline began after bundle and process setup work.",
+      "resolution": "Use one absolute monotonic deadline from API entry through validation, snapshot, spawn, and readiness.",
+      "files": ["overlay/mlx/backend/omarchy/ane/runtime.cpp", "overlay/mlx/backend/omarchy/ane/runtime_detail.h"]
+    },
+    {
+      "id": 4,
+      "finding": "Execute and shutdown phases could each restart the caller's deadline budget or overflow the clock.",
+      "resolution": "Use one checked absolute monotonic deadline per transaction and reject zero or overflowing durations by name.",
+      "files": ["overlay/mlx/backend/omarchy/ane/runtime.cpp", "overlay/mlx/backend/omarchy/ane/runtime_detail.h", "overlay/tests/omarchy/ane/test_runtime.cpp"]
+    },
+    {
+      "id": 5,
+      "finding": "Failure paths after spawn could leak descriptors or lose child ownership.",
+      "resolution": "Own descriptors with RAII and transfer every live post-spawn child to process-lifetime waitpid ownership.",
+      "files": ["overlay/mlx/backend/omarchy/ane/runtime.cpp"]
+    },
+    {
+      "id": 6,
+      "finding": "A fixed or blocking reaper could stall the API after enough uncertain workers.",
+      "resolution": "Use a nonblocking dynamic reaper polled with waitpid(WNOHANG).",
+      "files": ["overlay/mlx/backend/omarchy/ane/runtime.cpp"]
+    },
+    {
+      "id": 7,
+      "finding": "Worker resolution did not prove both build-tree and installed-prefix layouts.",
+      "resolution": "Resolve the committed build path first and the installed binary path second, with both paths covered by startup stress.",
+      "files": ["overlay/mlx/backend/omarchy/ane/runtime.cpp", "docs/ane-runtime.md"]
+    },
+    {
+      "id": 8,
+      "finding": "Packed N/C planes used row stride and silently overlapped plane padding when P exceeded H*R.",
+      "resolution": "Address fp16 elements as (n*C+c)*P+h*R+w*2 with checked products and sums.",
+      "files": ["overlay/mlx/backend/omarchy/ane/runtime_detail.h", "overlay/tests/omarchy/ane/test_runtime.cpp"]
+    },
+    {
+      "id": 9,
+      "finding": "Uncertain completion paths risked signals, premature release claims, or continued submissions.",
+      "resolution": "Mark the runtime unusable, write the diagnostic, send no worker signal, preserve child ownership, and require reboot before another ANE submission.",
+      "files": ["overlay/mlx/backend/omarchy/ane/runtime.cpp", "docs/ane-runtime.md"]
+    }
+  ],
+  "local_verification": {
+    "runtime_tests": "4 test cases, 4 passed; 220 assertions, 220 passed",
+    "bundle_tests": "20 test cases, 20 passed; 1802 assertions, 1802 passed",
+    "startup_failure_stress": "101 rejected starts; fd_before=15; fd_after=15; waitpid=-1; errno=10",
+    "install_path_stress": "101 rejected starts; fd_before=15; fd_after=15; waitpid=-1; errno=10"
+  },
+  "jwm1_acceptance": {
+    "status": "partial: two of three planned process-lifetime smokes completed",
+    "logs": ["jwm1-acceptance.log", "jwm1-remaining-smokes.log"],
+    "host": "jwm1-linux",
+    "kernel": "7.1.6-1-1-ARCH",
+    "machine": "aarch64",
+    "driver_version": "f2a3e5e+lifecycle6",
+    "driver_srcversion": "DD43701FCB506056A340587",
+    "runtime_pm": "on/active",
+    "driver_abi": 1,
+    "targeted_tests": {
+      "runtime": "4/4 cases and 220/220 assertions passed",
+      "bundle": "20/20 cases and 1802/1802 assertions passed"
+    },
+    "completed_smokes": [
+      {
+        "operation": "add",
+        "worker_pid": 3298953,
+        "graph_hash": "5584d0fd8d40027229890408e924e6f7930cd5f02516466a442193408482ce76",
+        "contract_sha256": "f974e82eca49726a9eafb58f95a6578a458d423bab12efcdc3c3b780f1bbf680",
+        "model_sha256": "41adbbc6a4d9b6f23316e743d0d840f6cab722123f3b47b7b9b980dd94517a26",
+        "exact_fp16_iterations": 2,
+        "bytes_per_output": 128,
+        "released_programs": 1,
+        "process_released": true
+      },
+      {
+        "operation": "add-mul",
+        "worker_pid": 3299431,
+        "graph_hash": "5584d0fd8d40027229890408e924e6f7930cd5f02516466a442193408482ce76",
+        "contract_sha256": "065f2acd0a0668c0911fcc728bc8bfef56812e0e64c0064de6287ac29dc98619",
+        "model_sha256": "eddf1f251990ee72d24f53f9bf72eb1e8f71966af5551118fe4c2d0c1e32a5a5",
+        "exact_fp16_iterations": 2,
+        "bytes_per_output": 128,
+        "released_programs": 2,
+        "process_released": true,
+        "diagnostic": "add-mul-normal-load.diagnostic contains only the expected runtime_load_graph_hash marker"
+      }
+    ],
+    "harness_stops": [
+      "The first harness asserted driver_abi=6 although the qualified runtime reported driver_abi=1.",
+      "The second harness required the diagnostic path to be absent although a normal load writes runtime_load_graph_hash there."
+    ],
+    "remaining": "One valid add smoke remains; no timeout or crash experiment is planned.",
+    "release": "2026-09-12T23:16:15-05:00; PGID clear; lease absent; lock free; worker PIDs clear"
+  }
+}

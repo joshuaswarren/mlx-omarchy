@@ -1,0 +1,55 @@
+{
+  "status": "audited locally; not executed without a new jwm1 grant",
+  "harness": "/tmp/AneRuntimeBridge-final-add-audited.sh",
+  "scope": "one add smoke, no build, no timeout or crash experiment",
+  "source_contract": [
+    {
+      "assertion": "The CLI accepts BUNDLE add DEADLINE_MS DIAGNOSTIC_PATH and requires a positive deadline.",
+      "evidence": "overlay/tests/omarchy/ane/runtime_hardware_smoke.cpp:50-71"
+    },
+    {
+      "assertion": "The add fixture sends 64 fp16 values of 1.0 and 2.0 and requires exact fp16 3.0 output twice.",
+      "evidence": "overlay/tests/omarchy/ane/runtime_hardware_smoke.cpp:24-47,77-90"
+    },
+    {
+      "assertion": "Successful shutdown requires the worker PID to be absent with ESRCH and prints the released-program count.",
+      "evidence": "overlay/tests/omarchy/ane/runtime_hardware_smoke.cpp:93-101"
+    },
+    {
+      "assertion": "Readiness identity contains graph_hash, contract_sha256, model_sha256, libane commit, and driver_abi=1.",
+      "evidence": "overlay/mlx/backend/omarchy/ane/worker.cpp:153-154,409-412"
+    },
+    {
+      "assertion": "A normal load writes runtime_load_graph_hash; a failure appends reason, worker PID, submitted state, runtime identity, and recovery instruction.",
+      "evidence": "overlay/mlx/backend/omarchy/ane/runtime.cpp:352-367,392-400"
+    }
+  ],
+  "harness_guards": [
+    "Nonblocking /tmp/m1-gpu.lock and owned lease",
+    "120-second absolute window plus 10-second runtime transaction deadlines",
+    "Exact bab2549c HEAD, direct parent 5ed69996, clean tracked tree, and exact f261 libane HEAD",
+    "One and only one add invocation",
+    "Exact iteration output, 128-byte output, one released program, and process_released=true",
+    "Worker PID distinct from prior successful workers 3298953 and 3299431",
+    "Diagnostic contains only the normal-load graph marker and no reason/submitted/recovery failure fields",
+    "No worker before or after; process-group scan controls lease removal on every exit"
+  ],
+  "local_checks": [
+    {
+      "command": "bash -n /tmp/AneRuntimeBridge-final-add-audited.sh",
+      "result": "pass"
+    },
+    {
+      "command": "shellcheck /tmp/AneRuntimeBridge-final-add-audited.sh",
+      "result": "pass with no output"
+    },
+    {
+      "command": "Replay final output and diagnostic assertions against jwm1-acceptance.log and add-mul-normal-load.diagnostic",
+      "result": "contract_replay=pass graph_hash=5584d0fd8d40027229890408e924e6f7930cd5f02516466a442193408482ce76 diagnostic=normal-load-only"
+    }
+  ],
+  "removed_incidental_assertions": [
+    "driver_abi=6",
+    "diagnostic file must be absent"
+  ]
+}

@@ -1,0 +1,13 @@
+lock_acquired=true time=2026-09-12T23:16:15-05:00 pid=3299396 pgid=3299396 lease=/tmp/m1-gpu.lease.AneRuntimeBridge source=bab2549cc673662edf5c87b5df073b08677cd956 deadline_epoch=1789273155 scope=two-remaining-smokes
+worker_clearance=true
+deadline_guard=pass remaining_seconds=180 required_seconds=150
+source_commit=bab2549cc673662edf5c87b5df073b08677cd956 parent_commit=5ed69996add005f98967cbd27fcea4eaa80a3e1a libane_commit=f261a6cb537aca62f267ad3d01beda0d6877544c no_build=true
+runtime_identity graph_hash=5584d0fd8d40027229890408e924e6f7930cd5f02516466a442193408482ce76
+contract_sha256=065f2acd0a0668c0911fcc728bc8bfef56812e0e64c0064de6287ac29dc98619
+model_sha256=eddf1f251990ee72d24f53f9bf72eb1e8f71966af5551118fe4c2d0c1e32a5a5
+host=jwm1-linux kernel=7.1.6-1-1-ARCH machine=aarch64 dt_node=ane@26bc04000 dt_compatible=apple,t8103-ane driver_version=f2a3e5e+lifecycle6 driver_srcversion=DD43701FCB506056A340587 runtime_pm=on/active libane_commit=f261a6cb537aca62f267ad3d01beda0d6877544c driver_abi=1
+worker_pid 3299431
+iteration 0 exact_fp16=PASS bytes=128
+iteration 1 exact_fp16=PASS bytes=128
+shutdown worker_pid=3299431 released_programs=2 process_released=true
+child_pid_clearance=true lock_release=released time=2026-09-12T23:16:15-05:00 exit_rc=1
