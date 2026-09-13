@@ -7,11 +7,13 @@
 #include "mlx/backend/omarchy/ane/runtime_detail.h"
 #include "mlx/backend/omarchy/ane/runtime_ownership.h"
 
+#include <algorithm>
 #include <array>
 #include <cerrno>
 #include <chrono>
 #include <condition_variable>
 #include <cstring>
+#include <dirent.h>
 #include <dlfcn.h>
 #include <fcntl.h>
 #include <fstream>
@@ -252,6 +254,74 @@ struct FrozenBundle {
   std::string contract_sha256;
 };
 
+void validate_bundle_directory(
+    int directory_fd,
+    const AneManifest& manifest,
+    TimePoint deadline) {
+  int scan_fd = ::fcntl(directory_fd, F_DUPFD_CLOEXEC, 0);
+  if (scan_fd < 0) {
+    throw detail::runtime_error(system_error("bundle snapshot directory duplication"));
+  }
+  DIR* stream = ::fdopendir(scan_fd);
+  if (stream == nullptr) {
+    ::close(scan_fd);
+    throw detail::runtime_error(system_error("bundle snapshot directory stream"));
+  }
+  auto close_directory = [](DIR* directory) { ::closedir(directory); };
+  std::unique_ptr<DIR, decltype(close_directory)> entries(stream, close_directory);
+
+  while (true) {
+    if (Clock::now() >= deadline) {
+      throw detail::runtime_error(
+          "startup deadline expired while validating bundle directory");
+    }
+    errno = 0;
+    dirent* entry = ::readdir(entries.get());
+    if (entry == nullptr) {
+      if (errno != 0) {
+        throw detail::runtime_error(system_error("bundle snapshot directory read"));
+      }
+      break;
+    }
+    const std::string name(entry->d_name);
+    if (name == "." || name == "..") {
+      continue;
+    }
+
+    struct stat status {};
+    if (::fstatat(
+            directory_fd,
+            name.c_str(),
+            &status,
+            AT_SYMLINK_NOFOLLOW) != 0) {
+      throw std::runtime_error(
+          "[omarchy-ane] bundle: cannot stat '" + name + "' inside bundle.");
+    }
+    if (S_ISLNK(status.st_mode)) {
+      throw std::runtime_error(
+          "[omarchy-ane] bundle: unexpected link '" + name + "' inside bundle.");
+    }
+    if (S_ISDIR(status.st_mode)) {
+      throw std::runtime_error(
+          "[omarchy-ane] bundle: unexpected directory '" + name + "' inside bundle.");
+    }
+    if (!S_ISREG(status.st_mode)) {
+      throw std::runtime_error(
+          "[omarchy-ane] bundle: unexpected non-regular file '" + name +
+          "' inside bundle.");
+    }
+    if (name != "manifest.json" &&
+        std::none_of(
+            manifest.payloads.begin(),
+            manifest.payloads.end(),
+            [&](const AnePayload& payload) { return payload.path == name; })) {
+      throw std::runtime_error(
+          "[omarchy-ane] bundle: unknown payload file '" + name +
+          "' not listed in manifest.");
+    }
+  }
+}
+
 FrozenBundle freeze_bundle(
     const std::filesystem::path& directory,
     TimePoint deadline) {
@@ -272,6 +342,7 @@ FrozenBundle freeze_bundle(
   const auto manifest_path = std::filesystem::path("/proc/self/fd") /
       std::to_string(frozen.manifest.get());
   const AneManifest manifest = parse_ane_manifest(manifest_path);
+  validate_bundle_directory(directory_fd.get(), manifest, deadline);
   frozen.payloads.reserve(manifest.payloads.size());
   std::map<std::string, std::filesystem::path> paths;
   for (const auto& payload : manifest.payloads) {
