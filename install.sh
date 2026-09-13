@@ -62,7 +62,7 @@ fi
 # 3. Download the release wheel and verify it against the SHA256SUMS asset.
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
-base="https://github.com/$REPO/releases/download/$VERSION"
+base="${MLX_OMARCHY_RELEASE_BASE:-https://github.com/$REPO/releases/download/$VERSION}"
 say "Fetching $VERSION checksums"
 curl -fsSL "$base/SHA256SUMS" -o "$tmp/SHA256SUMS"
 wheel="$(grep -o 'mlx_omarchy-[^ ]*cp314-cp314-linux_aarch64\.whl' "$tmp/SHA256SUMS" | head -n 1)"
