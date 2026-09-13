@@ -1,0 +1,13 @@
+compiler provenance
+  repository:            https://github.com/joshuaswarren/mil-hwx-compiler
+  commit:                83a4434810b0981d1764e6231f6a679df6f35241
+  archive URL:           https://github.com/joshuaswarren/mil-hwx-compiler/releases/download/ane-parity-83a4434/mil-hwx-compiler-83a4434.tar.gz
+  archive SHA-256:       2fbb0e2bc21d729ab114cf9623d31cbccee73fdb84b0ef8d4c078c91d1a05b57
+  package schema:        mil-hwxc.h13-anec-package.v2
+  qualified target:      H13
+  gnustep prefix:        /home/joshuawarren/.local/mil-hwx-gnustep
+  toolchain pins:        objc_commit=a1faad66cee79f29c4ca268b004111edc33a2ae2 make_commit=d0349cc83a23367acdc53df364f73504c281b26c base_commit=3d7013e144b153abcd6c088dc8d6c64ebd43bc4b
+  binary:                /home/joshuawarren/src/ane-linux-experiments/parakeet-mel-exact/.work/ane-compiler/bin/mil-hwxc
+  binary SHA-256:        ab3d1d4e8d69b43f45b2031c1a638bff59ca5e2ad55aa9f48f9713438dafc7ad
+  host tests:            software-tests, hygiene (scripts/verify-linux-compiler.sh)
+prepare-ane-compiler: PASS
