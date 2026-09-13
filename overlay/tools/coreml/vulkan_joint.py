@@ -84,21 +84,17 @@ def run_joint(encoder_frame, decoder_state, *, package_path: Path) -> JointOutpu
     mx = _mlx()
     _validate_input(encoder_frame, "encoder_frame", mx)
     _validate_input(decoder_state, "decoder_state", mx)
-    constants = _load_joint(str(Path(package_path).resolve()))
-    decoder_fp16 = decoder_state.astype(mx.float16, stream=mx.gpu)
-    encoder_fp16 = encoder_frame.astype(mx.float16, stream=mx.gpu)
-    hidden = mx.maximum(
-        mx.add(encoder_fp16, decoder_fp16, stream=mx.gpu),
-        mx.array(0, dtype=mx.float16),
-        stream=mx.gpu,
-    )
-    combined = mx.add(
-        mx.matmul(hidden, constants.weight.T, stream=mx.gpu),
-        constants.bias,
-        stream=mx.gpu,
-    )
-    token_fp16 = combined[:, :8193]
-    duration_fp16 = combined[:, 8193:8198]
-    duration_logits = duration_fp16.astype(mx.float32, stream=mx.gpu)
-    token_logits = token_fp16.astype(mx.float32, stream=mx.gpu)
+    with mx.stream(mx.gpu):
+        constants = _load_joint(str(Path(package_path).resolve()))
+        decoder_fp16 = decoder_state.astype(mx.float16)
+        encoder_fp16 = encoder_frame.astype(mx.float16)
+        hidden = mx.maximum(
+            mx.add(encoder_fp16, decoder_fp16),
+            mx.array(0, dtype=mx.float16),
+        )
+        combined = mx.add(mx.matmul(hidden, constants.weight.T), constants.bias)
+        token_fp16 = combined[:, :8193]
+        duration_fp16 = combined[:, 8193:8198]
+        duration_logits = duration_fp16.astype(mx.float32)
+        token_logits = token_fp16.astype(mx.float32)
     return JointOutput(token_logits, duration_logits)
