@@ -1,0 +1,164 @@
+{
+  "schema": "mlx-omarchy.parakeet-vulkan-decoder/1",
+  "date": "2026-09-13",
+  "branch": "codex/parakeet-vulkan-decoder",
+  "integration_base": "57cc36a2e8ece78dd979b5344752d04c76b4d49d",
+  "scope": "Parakeet-specific MLX GPU adapter for the exact pinned decoder.mlpackage graph",
+  "agent": {
+    "requested_route": "mlx-openai-deep",
+    "actual_model": "openai-codex/gpt-5.6-sol",
+    "fallback_observed": false
+  },
+  "reference": {
+    "repository": "mweinbach/parakeet-coreml-swift",
+    "commit": "75aec2a1c991319657ff4dec5f602c12da6c5012",
+    "model_repository": "mweinbach1/parakeet-tdt-0.6b-v3-coreml",
+    "model_revision": "b650695c2322ee5281dff48d7345b2f3a58ff018"
+  },
+  "pinned_package": {
+    "component": "decoder.mlpackage",
+    "files": {
+      "Manifest.json": {
+        "size": 617,
+        "sha256": "ef610fe0ccaff752f58f086772207ffb08970e67bf41fd07c923f9e006f8e4ec"
+      },
+      "Data/com.apple.CoreML/model.mlmodel": {
+        "size": 12897,
+        "sha256": "8d068618a9fd3a981d6cbc09ae9643a25b2e382f2c3e05d3b9412b9c25a4372e"
+      },
+      "Data/com.apple.CoreML/weights/weight.bin": {
+        "size": 24425600,
+        "sha256": "36cd656ebf1105ee5aa85d1e55c00f25669327aef8b39346333a19260ca78018"
+      }
+    },
+    "program": {
+      "specification_version": 9,
+      "type": "mlProgram",
+      "version": 1,
+      "function": "main",
+      "opset": "CoreML8",
+      "protobuf_unknown_fields": 0,
+      "operation_count": 69,
+      "operation_histogram": {
+        "add": 1,
+        "cast": 8,
+        "const": 44,
+        "gather": 1,
+        "greater_equal": 1,
+        "linear": 1,
+        "lstm": 2,
+        "select": 1,
+        "split": 2,
+        "squeeze": 4,
+        "stack": 2,
+        "transpose": 2
+      }
+    }
+  },
+  "contract": {
+    "callable": "VulkanDecoder(input_ids, hidden, cell) -> DecoderResult(decoder_hidden, next_hidden, next_cell)",
+    "inputs": {
+      "input_ids": "int32[1,1]",
+      "hidden": "float32[2,1,640]",
+      "cell": "float32[2,1,640]"
+    },
+    "outputs": {
+      "decoder_hidden": "float32[1,1,640]",
+      "next_hidden": "float32[2,1,640]",
+      "next_cell": "float32[2,1,640]"
+    },
+    "semantics": "The adapter validates the exact pinned graph and constants, reproduces the MIL int32-to-int16 token cast and negative-token wrap before gather, evaluates two forward LSTMs with IFOC gate order and [4H,input]/[4H,H] weight orientation, preserves fp16 MIL cast boundaries, returns fp32 outputs, and accepts returned GPU state arrays directly on the next transition."
+  },
+  "shared_constant_loader": {
+    "origin_commit": "7a27bc4a",
+    "local_cherry_pick": "1dd8c854967e0dfe5349f5141c23d200284884e1",
+    "api": "load_pinned_component(package_path, component) -> PinnedComponent",
+    "source_sha256": "24e2b6743d510e43752997eefde105a30ff94607407d92f014cf790296b9e0f7"
+  },
+  "official_mil_sources": {
+    "tag": "9.0",
+    "lstm_equations_and_ifoc_order": {
+      "url": "https://raw.githubusercontent.com/apple/coremltools/9.0/coremltools/converters/mil/mil/ops/defs/iOS15/recurrent.py",
+      "sha256": "4e8f476c5fb39f0b94c3c5024beb3efc92967820612d5af00e6fe6f8bf6da97c"
+    },
+    "ios17_lstm_dtype_contract": {
+      "url": "https://raw.githubusercontent.com/apple/coremltools/9.0/coremltools/converters/mil/mil/ops/defs/iOS17/recurrent.py",
+      "sha256": "840ffed75075d8e5a0ef5e6cfa89a05a75f77f8368609c71b878996f52d92863"
+    },
+    "coreml8_lstm_definition": {
+      "url": "https://raw.githubusercontent.com/apple/coremltools/9.0/coremltools/converters/mil/mil/ops/defs/iOS18/recurrent.py",
+      "sha256": "350991ba080fd0da3fe1c72a4ef1b38cff5e307a1b24d99892b83b2555256a76"
+    }
+  },
+  "source_sha256": {
+    "overlay/tools/coreml/vulkan_decoder.py": "5a163be6f78b1e1314040175ac768a4dbf3c270a0a0fa5b2fe5c88595fd46fb4",
+    "tests/coreml/test_vulkan_decoder.py": "fa1a06caa7df3761f2026c3112838f0753e2fef737e469d2cb22f470fa83d08f"
+  },
+  "software_vulkan_verification": {
+    "runtime": "mlx 0.32.2.dev202609130346+e4d079c8",
+    "device": "Device(gpu, 0)",
+    "qualification_scope": "Host software Vulkan only; this is not Apple GPU execution and not native CoreML parity.",
+    "tests": {
+      "command": "MLX_OMARCHY_ALLOW_NON_APPLE=1 PYTHONPATH=$MLX_SITE_PACKAGES python3 -m pytest -q tests/coreml/test_vulkan_decoder.py tests/coreml/test_pinned_component.py",
+      "result": "9 passed in 2.61s"
+    },
+    "compile": {
+      "command": "python3 -m py_compile overlay/tools/coreml/vulkan_decoder.py tests/coreml/test_vulkan_decoder.py",
+      "result": "exit 0"
+    },
+    "independent_numpy_reference": {
+      "method": "Independent NumPy implementation of the official MIL IFOC equations with float16 casts at the package boundaries",
+      "tolerances": {
+        "max_abs_error": 0.005,
+        "mean_abs_error": 0.0002
+      },
+      "cases": {
+        "token-0-zero-state": {
+          "decoder_hidden": {"max_abs_error": 0.0009765625, "mean_abs_error": 0.00004678219556808472},
+          "next_hidden": {"max_abs_error": 0.00048828125, "mean_abs_error": 0.0000320145845762454},
+          "next_cell": {"max_abs_error": 0.00146484375, "mean_abs_error": 0.00007311296940315515}
+        },
+        "token-8192-random-state": {
+          "decoder_hidden": {"max_abs_error": 0.00390625, "mean_abs_error": 0.00006637237675022334},
+          "next_hidden": {"max_abs_error": 0.00048828125, "mean_abs_error": 0.000036780584196094424},
+          "next_cell": {"max_abs_error": 0.0009765625, "mean_abs_error": 0.0001017592367134057}
+        },
+        "token-17-reusing-prior-gpu-state": {
+          "decoder_hidden": {"max_abs_error": 0.001953125, "mean_abs_error": 0.00005880333628738299},
+          "next_hidden": {"max_abs_error": 0.001312255859375, "mean_abs_error": 0.00005048294406151399},
+          "next_cell": {"max_abs_error": 0.0020751953125, "mean_abs_error": 0.00016502439393661916}
+        }
+      }
+    },
+    "trace_delta": {
+      "gpu_primitive_dispatches": 302,
+      "vk_compute_dispatches": 181,
+      "vk_submissions": 3,
+      "commit_calls_with_work": 3,
+      "commit_calls_noop": 3,
+      "omarchy_finalize_calls": 3,
+      "vk_buffer_copies": 16,
+      "vk_buffer_fills": 0
+    },
+    "negative_token_contract": "input_ids=-1 produced byte-identical outputs to input_ids=8192 for all three outputs."
+  },
+  "smoke": {
+    "command": "MLX_OMARCHY_ALLOW_NON_APPLE=1 PYTHONPATH=overlay/tools:$MLX_SITE_PACKAGES python3 -m coreml.vulkan_decoder <pinned-decoder.mlpackage>",
+    "result": "exit 0; both token transitions finite with exact named output shapes and dtypes; second transition reused first transition GPU states",
+    "first": {
+      "decoder_hidden_sha256": "4c33fbb06b49bc17729a332443b7809c33541c511bbc41a5caca668f8cd43019",
+      "next_hidden_sha256": "ab8322f32b983398920c0c89b45e25ca7f29c92ffd6a13bc06cda4c6c67221b6",
+      "next_cell_sha256": "eb70f886fb08e07d87e0e1f9a4dc4eca49555c7eebd9accdd5b47f51ddd7afa2"
+    },
+    "second": {
+      "decoder_hidden_sha256": "bfdc7ff365446961e93064518a7a0cadad9b9f5ee1d73eeef663681dbf5c1f39",
+      "next_hidden_sha256": "dedd7d35114cdab847ae071bfa4de0c68ae474cab1243a6efad33ba7e06cf8ec",
+      "next_cell_sha256": "01e57665dc9496bbf751eb0a9e7ebcef74f8e6b927d4442ed60c378cfd53cb7f"
+    }
+  },
+  "native_qualification": {
+    "qualified": false,
+    "reason": "No independently captured decoder/joint tensor golden exists yet.",
+    "required_capture": "Authenticated float32 decoder_hidden, decoder_next_hidden, and decoder_next_cell arrays plus int32 decoder_input_ids and float32 decoder_hidden/decoder_cell inputs for at least two consecutive nonblank token transitions, with hashes and exact CoreML compute-unit identity."
+  }
+}
