@@ -36,6 +36,11 @@ The package currently provides:
 * :mod:`coreml.tokenizer` — integrity-checked Parakeet BPE detokenization.
   The host maps scalar token IDs to text with the pinned Metaspace and special-
   token semantics; it performs no tensor work.
+* :mod:`coreml.depalettize` — frontend pre-expansion of
+  ``constexpr_lut_to_dense`` into dense fp16/fp32 ``const`` ops whose
+  values are appended to MIL blob storage. The gather copies raw payload
+  bytes, so materialization is byte-exact; vector palettization is
+  rejected with a named error.
 
 Inspection never opens the ANE device, never imports coremltools or
 MLX, and never reads or computes tensor data. It runs on any Linux
