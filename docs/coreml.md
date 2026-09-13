@@ -215,9 +215,13 @@ than the pinned 400 samples fail explicitly.
 
 The frontend preserves the reference preemphasis, fixed Hann bits, Slaney mel
 filterbank, recovered vDSP DFT schedule, vDSP dot-product reduction, guarded
-log, sequential normalization, signed zeros, and float32 rounding. The
+log, sequential normalization, signed-zero components, and single-rounded
+float32 FMA. The lock pins the capture inputs, stage manifest, and every stage
+tensor rather than trusting adjacent files. The
 [full comparison receipt](../receipts/2026-09-12-parakeet-mel-frontend/receipt.json)
-records exact equality for all 384,128 mel values and every captured stage.
+records exact equality for all 384,128 mel values and every captured stage on
+the pinned fixture. Targeted regressions cover FMA midpoint, signed-zero, and
+fixed-frame input contracts; they do not certify every possible waveform.
 
 This code remains a CPU reference algorithm. It uses NumPy tensor operations,
 does not run through the installed Vulkan or ANE backend, and has no backend
