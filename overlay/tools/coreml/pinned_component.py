@@ -31,7 +31,7 @@ class PinnedComponentError(ValueError):
 
 @dataclass
 class PinnedComponent:
-    """One hash-verified MIL block with lazy named constant decoding."""
+    """One hash-verified MIL block with immutable named constant snapshots."""
 
     package_path: Path
     block: Any
@@ -105,7 +105,10 @@ class PinnedComponent:
                 raise PinnedComponentError(
                     f"pinned {dtype} immediate uses {field_name!r}, expected {expected_field!r}"
                 )
-            result = np.asarray(getattr(tensor, field_name).values, dtype=numpy_dtype)
+            decoded = np.asarray(
+                getattr(tensor, field_name).values, dtype=numpy_dtype
+            )
+            result = np.frombuffer(decoded.tobytes(), dtype=decoded.dtype)
         expected_count = int(np.prod(shape, dtype=np.int64)) if shape else 1
         if result.size != expected_count:
             raise PinnedComponentError(
@@ -117,25 +120,23 @@ class PinnedComponent:
 def _verify_package_files(package: Any, component: str, lock: ReferenceLock) -> None:
     prefix = f"{component}.mlpackage/"
     expected = {entry.path[len(prefix) :]: entry for entry in lock.files if entry.path.startswith(prefix)}
-    actual = {
-        "Manifest.json": package.path / "Manifest.json",
-        package.model_path.relative_to(package.path).as_posix(): package.model_path,
-        **{
-            weight.path.relative_to(package.path).as_posix(): weight.path
-            for weight in package.weight_files
-        },
-    }
+    actual = {}
+    for path in package.path.rglob("*"):
+        if not path.is_file():
+            continue
+        resolved = path.resolve()
+        if not resolved.is_relative_to(package.path):
+            raise PinnedComponentError(
+                f"{component}.mlpackage contains an escaping file"
+            )
+        actual[path.relative_to(package.path).as_posix()] = resolved
     if set(actual) != set(expected):
         raise PinnedComponentError(
             f"{component}.mlpackage files differ from the pinned reference lock"
         )
-    weight_hashes = {
-        weight.path.relative_to(package.path).as_posix(): weight.sha256
-        for weight in package.weight_files
-    }
     for relative, path in actual.items():
         pin = expected[relative]
-        digest = weight_hashes.get(relative) or sha256_file(path)
+        digest = sha256_file(path)
         if path.stat().st_size != pin.size or digest != pin.sha256:
             raise PinnedComponentError(
                 f"{component}.mlpackage/{relative} differs from the pinned reference lock"
@@ -176,4 +177,10 @@ def load_pinned_component(package_path: Path, component: str) -> PinnedComponent
         if output.name in values or output.type != operation.attributes["val"].type:
             raise PinnedComponentError("pinned component has an inconsistent const output")
         values[output.name] = operation.attributes["val"]
-    return PinnedComponent(package_path, block, values, _Adapter(package, model))
+    result = PinnedComponent(package_path, block, values, _Adapter(package, model))
+    for name in values:
+        result.constant(name)
+    result._values.clear()
+    result._blob_reader = None
+    _verify_package_files(package, component, lock)
+    return result
