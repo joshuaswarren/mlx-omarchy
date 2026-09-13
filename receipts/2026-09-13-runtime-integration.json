@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-13",
+  "scope": "Host-only integration of the corrected private runtime with published schema-3 bundle checks and GPU changes.",
+  "branch": "integration/ane-runtime-verified",
+  "published_parent": "35684ab88d07dcc8abe394b0d85a76d105b8e0b1",
+  "resolution": "Keep load_bundle_snapshot operating on sealed payload descriptors. Keep directory symlink rejection in load_bundle, using symlink_status before regular-file classification. Preserve published task-count and scratch-allocation validation.",
+  "build": {
+    "source": "/tmp/AneRuntimeBridge-local-build/mlx",
+    "directory": "/tmp/AneRuntimeBridge-local-build/build-ane-shared",
+    "settings": {"BUILD_SHARED_LIBS": true, "MLX_BUILD_OMARCHY": true, "MLX_BUILD_CPU": false, "MLX_BUILD_METAL": false, "MLX_BUILD_TESTS": true},
+    "targets": ["omarchy_ane_bundle_tests", "omarchy_ane_runtime_tests", "mlx-omarchy-info"],
+    "result": "921 build steps completed in 77.28 seconds",
+    "log": "artifact://41264"
+  },
+  "checks": [
+    {"command": "/tmp/AneRuntimeBridge-local-build/build-ane-shared/tests/omarchy/omarchy_ane_bundle_tests", "cases_passed": 21, "assertions_passed": 2052, "failed": 0, "skipped": 0},
+    {"command": "/tmp/AneRuntimeBridge-local-build/build-ane-shared/tests/omarchy/omarchy_ane_runtime_tests", "cases_passed": 11, "assertions_passed": 269, "failed": 0, "skipped": 0},
+    {"command": "python3 overlay/tools/ane-export/h13_package_to_bundle.py receipts/fixtures/h13-explicit-chain-add-mul --out-dir /tmp/ane-runtime-merged-bundle-20260913 --graph-source receipts/fixtures/h13-explicit-chain-add-mul/model.mil --compiler-source /home/joshuawarren/src/mil-hwx-compiler --name merged-add-mul --source-repo joshuaswarren/mlx-omarchy --source-commit 35684ab88d07dcc8abe394b0d85a76d105b8e0b1 --model h13-explicit-chain-add-mul", "result": "PASS programs=2 payloads=2"},
+    {"command": "/tmp/AneRuntimeBridge-local-build/build-ane-shared/tools/mlx-omarchy-info/mlx-omarchy-info --check-bundle /tmp/ane-runtime-merged-bundle-20260913", "result": "OK: bundle valid", "dispatch_plan": [0, 1], "operations": ["add", "mul"], "scratch_bytes": [0, 0]}
+  ],
+  "rejected_inputs": [
+    {"path": "/tmp/mlx-omarchy-h13-bundle-v3", "error": "release_asset.model_sha256 does not match compiled payload collection"},
+    {"path": "receipts/fixtures/h13-explicit-chain-add-mul", "error": "unknown field 'artifactFormat'", "reason": "This is a compiler package, not an adapted runtime bundle. The real adapter invocation above is required."}
+  ],
+  "frontend_integration": {
+    "merged_parent": "604b0435976b50c0d2d01abf9aaca693667a7c46",
+    "resolution": "Replace the obsolete NumPy frontend instructions with the qualified exact CPU and Vulkan instructions.",
+    "tests": "MLX_OMARCHY_ALLOW_NON_APPLE=1 PYTHONPATH=/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/CoremlVulkanMel/.work/venv-run/lib/python3.11/site-packages python3 -m pytest -q tests/coreml/test_vulkan_mel.py tests/coreml/test_vulkan_mel_arithmetic.py tests/coreml/test_vulkan_mel_qualification.py",
+    "test_result": "26 passed in 15.00s",
+    "cli": "MLX_OMARCHY_ALLOW_NON_APPLE=1 PYTHONPATH=/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/CoremlVulkanMel/.work/venv-run/lib/python3.11/site-packages timeout -k 10s 180s python3 overlay/tools/coreml/vulkan_mel.py /home/joshuawarren/.cache/mlx-omarchy/parakeet-reference/captures/b650695c-75aec2a/20260912T154759Z-librispeech/ane /home/joshuawarren/.cache/mlx-omarchy/parakeet-reference/captures/b650695c-75aec2a/mel-stage-probes/stage-capture --json-out /tmp/ane-runtime-integrated-mel-20260913.json",
+    "cli_result": "qualified=true, all_bit_exact=true, stage_set_exact=true; all 18 comparisons bit-exact",
+    "trace_delta": {"gpu_primitive_dispatches": 15, "vk_compute_dispatches": 8, "vk_submissions": 1, "vk_buffer_copies": 0, "vk_buffer_fills": 0},
+    "scope": "Merged Python frontend on local software Vulkan using the previously built CoremlVulkanMel Python extension. Not a rebuilt combined wheel or new Apple hardware qualification."
+  },
+  "independent_review": {
+    "source": "RuntimeMergeReview",
+    "status": "accepted: both High findings closed, no new actionable finding in the reviewed boundaries",
+    "findings": [
+      "freeze_bundle snapshots only manifest-listed payloads and bypasses strict directory enumeration; runtime must reject unlisted files and symlinks through the descriptor-relative path.",
+      "ANEC task counts above 0xffff and descriptor sizes above 0x40000 pass host validation despite qualified driver refusal; reject before worker submission."
+    ],
+    "hardware_action": "4ef85f27 staged and preflighted only, with no acquisition, build, install, or device execution. Corrected 57cc36a2 staging remains preflight-only until root grants qualification.",
+    "corrected_source": "57cc36a2",
+    "root_rebuild": "8 incremental steps rebuilt libmlx, runtime and bundle tests, and mlx-omarchy-info in 14.15 seconds; CPU backend remains disabled.",
+    "root_runtime_check": {"cases_passed": 12, "assertions_passed": 398, "failed": 0, "skipped": 0},
+    "root_bundle_check": {"cases_passed": 22, "assertions_passed": 2308, "failed": 0, "skipped": 0},
+    "fix_receipts": ["receipts/2026-09-13-runtime-directory-closure.log", "receipts/2026-09-13-anec-driver-limits/run.sh"]
+  },
+  "installed_build": {
+    "source": "57cc36a2e8ece78dd979b5344752d04c76b4d49d",
+    "wheel_sha256": "69e381c7ea91ca228a0d4ffa23e9409b3cd1b9026ed102179d05ee1043ab42d3",
+    "result": "Source build and isolated installation succeeded; installed core/libmlx/worker matched wheel RECORD. Installer matmul smoke passed. Qualification runner then returned 124 at the smoke harness guard: 258 seconds remained, 300 required. ANE add/add-mul and final GPU/mel qualification were not run.",
+    "log": "/tmp/AneRuntimeBridge-57cc36a2-acceptance-1789293110.log",
+    "clearance": "Runner and launcher reported release; root independently confirmed guardian 3383430 absent, process group empty, no workers or leases, empty quarantine, and free outer lock.",
+    "followup_receipt": "receipts/2026-09-13-ane-runtime-bridge-qualification/receipt.json: the separately granted installed-only run passed without rebuilding or weakening the guard."
+  },
+  "qualification": {
+    "merged_host_contract": "Both loader defects fixed; root rebuilt suites pass 12/398 runtime and 22/2308 bundle; independent RuntimeMergeReview bypass probes pass 129 directory and 256 descriptor-limit assertions",
+    "merged_hardware_execution": "PASS exact installed source 57cc36a2: add and add-mul each two exact FP16 iterations, worker release, explicit GPU matmul/add, and all 18 bit-exact mel comparisons using the same installed extension; one Vulkan submission and eight compute dispatches.",
+    "durable_receipt": "receipts/2026-09-13-ane-runtime-bridge-qualification/receipt.json",
+    "installed_log": "receipts/2026-09-13-ane-runtime-bridge-qualification/acceptance-success.log",
+    "mel_report_sha256": "3a87ee5f83377b4da64656c56a0f4afdb65f2af1cb09e113b13aeb592e49df78",
+    "root_clearance": "Independently checked remote guardian 3390545 absent, process group and workers absent, no leases, empty quarantine, and free lock. Read remote mel report: Device(gpu,0), 18 exact comparisons, 15 GPU primitives, eight computes, one submission, no copies or fills.",
+    "prior_installed_hardware_receipt": "receipts/2026-09-12-ane-runtime-hardening/corrected-source-qualification.json",
+    "prior_installed_hardware_source": "9ea7501fc748cc031f7cbdc58afbed984fc00d51",
+    "full_model": "unqualified",
+    "rendered_surface": "none"
+  }
+}

@@ -7,6 +7,44 @@ if(MLX_OMARCHY_GPU_PROFILING)
   target_compile_definitions(mlx PRIVATE MLX_OMARCHY_GPU_PROFILING)
 endif()
 target_compile_definitions(mlx PRIVATE MLX_OMARCHY_BACKEND)
+set(MLX_OMARCHY_ANE_SOURCE_DIR "" CACHE PATH
+    "Qualified joshuaswarren/omarchy-ane checkout for the private ANE runtime")
+if(MLX_OMARCHY_ANE_SOURCE_DIR)
+  if(NOT BUILD_SHARED_LIBS)
+    message(FATAL_ERROR
+            "MLX_OMARCHY_ANE_SOURCE_DIR requires BUILD_SHARED_LIBS=ON")
+  endif()
+  execute_process(
+    COMMAND git -C "${MLX_OMARCHY_ANE_SOURCE_DIR}" rev-parse HEAD
+    OUTPUT_VARIABLE MLX_OMARCHY_ANE_SOURCE_COMMIT
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    RESULT_VARIABLE MLX_OMARCHY_ANE_GIT_RESULT)
+  execute_process(
+    COMMAND git -C "${MLX_OMARCHY_ANE_SOURCE_DIR}" status --porcelain
+            --untracked-files=no
+    OUTPUT_VARIABLE MLX_OMARCHY_ANE_SOURCE_DIRTY
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    RESULT_VARIABLE MLX_OMARCHY_ANE_DIRTY_RESULT)
+  if(NOT MLX_OMARCHY_ANE_GIT_RESULT EQUAL 0 OR
+     NOT MLX_OMARCHY_ANE_DIRTY_RESULT EQUAL 0 OR
+     MLX_OMARCHY_ANE_SOURCE_DIRTY OR
+     NOT MLX_OMARCHY_ANE_SOURCE_COMMIT STREQUAL
+         "f261a6cb537aca62f267ad3d01beda0d6877544c")
+    message(FATAL_ERROR
+            "MLX_OMARCHY_ANE_SOURCE_DIR must be canonical omarchy-ane "
+            "f261a6cb537aca62f267ad3d01beda0d6877544c")
+  endif()
+  find_package(PkgConfig REQUIRED)
+  pkg_check_modules(OMARCHY_ANE_LIBDRM REQUIRED IMPORTED_TARGET libdrm)
+  add_library(mlx_omarchy_libane STATIC
+              "${MLX_OMARCHY_ANE_SOURCE_DIR}/libane/ane.c")
+  target_include_directories(
+    mlx_omarchy_libane
+    PUBLIC "${MLX_OMARCHY_ANE_SOURCE_DIR}/libane"
+    PRIVATE "${MLX_OMARCHY_ANE_SOURCE_DIR}/ane/src/uapi/drm")
+  target_link_libraries(mlx_omarchy_libane PRIVATE PkgConfig::OMARCHY_ANE_LIBDRM)
+endif()
+
 find_program(OMARCHY_GLSLC glslc)
 find_program(OMARCHY_GLSLANG glslangValidator)
 if(NOT OMARCHY_GLSLC AND NOT OMARCHY_GLSLANG)
@@ -538,6 +576,25 @@ target_sources(
           ${CMAKE_CURRENT_SOURCE_DIR}/ane/bundle.cpp
           ${CMAKE_CURRENT_SOURCE_DIR}/vulkan.cpp)
 target_include_directories(mlx PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/shaders")
+if(MLX_OMARCHY_ANE_SOURCE_DIR)
+  target_sources(mlx PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/ane/runtime.cpp)
+  add_executable(
+    mlx-omarchy-ane-worker
+    ${CMAKE_CURRENT_SOURCE_DIR}/ane/worker_main.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ane/worker.cpp)
+  target_link_libraries(mlx-omarchy-ane-worker PRIVATE mlx mlx_omarchy_libane)
+  set_target_properties(mlx-omarchy-ane-worker PROPERTIES
+                        INSTALL_RPATH "$ORIGIN/../lib")
+  target_compile_definitions(
+    mlx PRIVATE
+    MLX_OMARCHY_ANE_LIBRARY_BUILD_PATH="$<TARGET_FILE:mlx>"
+    MLX_OMARCHY_ANE_WORKER_BUILD_PATH="$<TARGET_FILE:mlx-omarchy-ane-worker>")
+  install(TARGETS mlx-omarchy-ane-worker
+          RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+  install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/ane/mlx-omarchy-ane.conf
+          DESTINATION lib/tmpfiles.d)
+endif()
+
 
 # The backend dlopens libvulkan at runtime; only headers are needed at compile
 # time.

@@ -1,0 +1,158 @@
+{
+  "schema": "mlx-omarchy.ane-runtime-bridge-qualification/1",
+  "date": "2026-09-13",
+  "scope": "Installed combined-source qualification on jwm1 for ordinary valid FP16 add and add-mul ANE graphs, an explicit Honeykrisp GPU matmul-plus-add postcheck, and the pinned Parakeet mel frontend. This is not full Parakeet encoder or transcript qualification and is not a performance receipt.",
+  "execution_agent": {
+    "id": "AneRuntimeBridge",
+    "resolved_model": "openai-codex/gpt-5.6-sol",
+    "fallback": false
+  },
+  "source": {
+    "mlx_omarchy_commit": "57cc36a2e8ece78dd979b5344752d04c76b4d49d",
+    "source_bundle_sha256": "aebef2154ed0b0c543d796c4d68f52ef3670b2826e17879237dc762f589bf7af",
+    "libane_commit": "f261a6cb537aca62f267ad3d01beda0d6877544c",
+    "libane_bundle_sha256": "a2e33cb7deadba974a5d89e669a8982ea0ed40483d9c87b18688d2c0ff599727",
+    "combined_commit_history": [
+      "d74f54248f747a7dfc3f15fbce661c283add01c5",
+      "9ea7501fc748cc031f7cbdc58afbed984fc00d51",
+      "7f3d7fa3f50b5fcfac082aa0ffd3eb5b6650460f"
+    ]
+  },
+  "installed_wheel": {
+    "filename": "mlx_omarchy-0.32.2.dev202609130952+57cc36a2e8ece78dd979b5344752d04c76b4d49d-cp314-cp314-linux_aarch64.whl",
+    "version": "0.32.2.dev202609130952+57cc36a2e8ece78dd979b5344752d04c76b4d49d",
+    "bytes": 7731209,
+    "sha256": "69e381c7ea91ca228a0d4ffa23e9409b3cd1b9026ed102179d05ee1043ab42d3",
+    "core_sha256": "4ad850da16c300ea9f60aa7247f034f358aa16d7ba2fd146979a01c867e3cfa5",
+    "libmlx_sha256": "402d4da86cd09482344c9cf624eb085323a73d6a38790f60b9e96a5210a0a3f0",
+    "worker_sha256": "52fa2959b0d2cfb7e7a0af877deaac605b7141b033879da1f8f5b908575e2198",
+    "worker_runpath": "$ORIGIN/../lib",
+    "identity_result": "wheel_record_identity=pass; LD_DEBUG resolved the exact installed libmlx for both ANE smokes"
+  },
+  "host": {
+    "name": "jwm1-linux",
+    "machine": "aarch64",
+    "kernel": "7.1.6-1-1-ARCH",
+    "ane_device_tree_node": "ane@26bc04000",
+    "ane_compatible": "apple,t8103-ane",
+    "ane_driver_version": "f2a3e5e+lifecycle6",
+    "ane_driver_srcversion": "DD43701FCB506056A340587",
+    "ane_runtime_pm": "on/active",
+    "driver_abi_major": 1,
+    "vulkan_device": "Apple M1 (G13G B1)",
+    "vulkan_architecture": "honeykrisp",
+    "vulkan_api_version": "1.4.359",
+    "vulkan_driver": "Mesa Honeykrisp",
+    "mesa_identity": "Mesa 26.3.0-devel (git-6f6afc8968)",
+    "firmware_identity": null,
+    "firmware_identity_note": "The bounded run did not print a separate firmware identity. Root integration must capture it before using this receipt for a full hardware or release qualification claim."
+  },
+  "ane_fixture_compiler": {
+    "toolchain": "mil-hwxc aa688df66cbc2110e0df94f0d50fb72c7fa30a18",
+    "binary_sha256": "45fa6cb33e86ac9ec5e35421d338e07c9cd2cfb55b91e26242d9aa2ebeadffec",
+    "target": "h13",
+    "encoder": "h13-oracle-parity",
+    "add_manifest_sha256": "f974e82eca49726a9eafb58f95a6578a458d423bab12efcdc3c3b780f1bbf680",
+    "add_model_sha256": "41adbbc6a4d9b6f23316e743d0d840f6cab722123f3b47b7b9b980dd94517a26",
+    "add_mul_manifest_sha256": "065f2acd0a0668c0911fcc728bc8bfef56812e0e64c0064de6287ac29dc98619",
+    "add_mul_model_sha256": "eddf1f251990ee72d24f53f9bf72eb1e8f71966af5551118fe4c2d0c1e32a5a5"
+  },
+  "exact_command": "/tmp/AneRuntimeBridge-57cc36a2-installed-combined-launch.sh 1789294762 1789295362 /tmp/AneRuntimeBridge-57cc36a2-installed-combined-1789294583.log",
+  "supervision": {
+    "service": "ane57cc-installed-combined",
+    "state": "exited",
+    "exit_code": 0,
+    "uptime_seconds": 29.7,
+    "restarts": 0,
+    "guardian_pid_and_pgid": 3390545,
+    "runner_pid": 3390546,
+    "work_deadline_epoch": 1789295192,
+    "session_deadline_epoch": 1789295252,
+    "cleanup_reserve_seconds": 60,
+    "source_build": false,
+    "install": false
+  },
+  "results": {
+    "ane_add": {
+      "status": "pass",
+      "exact_fp16_iterations": 2,
+      "bytes_per_result": 128,
+      "released_programs": 1,
+      "process_released": true
+    },
+    "ane_add_mul": {
+      "status": "pass",
+      "exact_fp16_iterations": 2,
+      "bytes_per_result": 128,
+      "released_programs": 2,
+      "process_released": true
+    },
+    "ane_smokes": 2,
+    "ane_executions": 4,
+    "gpu_postcheck": {
+      "status": "pass",
+      "device": "Device(gpu, 0)",
+      "numerical_match": true,
+      "result": [
+        [
+          20,
+          23
+        ],
+        [
+          44,
+          51
+        ]
+      ]
+    },
+    "mel_frontend": {
+      "status": "pass",
+      "reference_model": "mweinbach1/parakeet-tdt-0.6b-v3-coreml",
+      "reference_revision": "b650695c2322ee5281dff48d7345b2f3a58ff018",
+      "device": "Device(gpu, 0)",
+      "comparisons": 18,
+      "qualified": true,
+      "all_bit_exact": true,
+      "stage_set_exact": true,
+      "trace_delta": {
+        "commit_calls_noop": 1,
+        "commit_calls_with_work": 1,
+        "gpu_primitive_dispatches": 15,
+        "omarchy_finalize_calls": 1,
+        "vk_buffer_copies": 0,
+        "vk_buffer_fills": 0,
+        "vk_compute_dispatches": 8,
+        "vk_submissions": 1
+      }
+    },
+    "vulkan_device_reopen": true,
+    "terminal_clearance": "clearance=true; outer lock free; process group empty; worker scan pass; workers absent; quarantine empty; lease removed; exit_rc=0",
+    "independent_clearance": "pass; guardian absent; PGID empty; workers absent; lease absent; quarantine empty; lock free"
+  },
+  "prior_guard_124": {
+    "purpose": "Build and install the exact wheel before execution.",
+    "outcome": "Wheel build and install identity passed. The run then exited 124 before ANE/GPU smokes because the deliberate guard measured 258 seconds remaining and required 300 seconds for smoke_harness_compile.",
+    "hardware_execution_in_that_run": false,
+    "terminal_clearance": "pass; lease removed; exit_rc=124",
+    "follow_on": "The successful installed-only run reused that exact installed wheel and did not rebuild or reinstall."
+  },
+  "performance": {
+    "claimed": false,
+    "timing_or_thermal_procedure": "not applicable"
+  },
+  "unresolved_prerequisites": [
+    "A separate firmware identity was not captured in the bounded run.",
+    "This receipt does not execute the Parakeet encoder or full TDT transcript pipeline."
+  ],
+  "artifacts": {
+    "acceptance-success.log": "5b20e76b5dfd826625c001f089f0c6b2989d7f0989cc6ba2dd1c9eebe2e8947d",
+    "mel-report.json": "3a87ee5f83377b4da64656c56a0f4afdb65f2af1cb09e113b13aeb592e49df78",
+    "installed-combined-runner.sh": "d6eca2e9ad946873d73ac64441579add481bdf8ea77c179aa32370e6a0a176ea",
+    "installed-combined-launcher.sh": "ee572b0f72fbcf85f2d1037cb42fc2d308e0d9cb30537976672a28dff51a098d",
+    "lifecycle-host-test.sh": "0b9f1b0f6130867587fcca6220ef2454d68c9680e3aeb60b3cbd8f1a14687d0f",
+    "build-install-guard-124.log": "5e9ee61c353e613663b69ed2076c8ef812fa1730b81b2f216cd8e09230ee071d",
+    "build-install-runner.sh": "1ab7d3f2072f2191e0c85671f23b29667c2d6e128e6abbde1658ebe940df3c31",
+    "build-install-launcher.sh": "ff666d7c431dd597655eac51f7737dc58e448668ef2e06e297a307ce16d8d76d",
+    "preflight.log": "ebd7cbe969bb8fce707a099d7fe7da3c1d1ee5d9473dace5615f2961bb4a066c",
+    "supervised-service-terminal.txt": "740d0e38cfdc028faf02f2f1a007a9623ebd95e145f928ccf0f02da815ab75ed"
+  }
+}

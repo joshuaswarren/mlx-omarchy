@@ -282,6 +282,25 @@ void print_tensor_list(
   }
 }
 
+void print_logical_results(
+    const std::vector<omarchy::ane::AneLogicalResult>& results) {
+  for (size_t index = 0; index < results.size(); ++index) {
+    const auto& result = results[index];
+    std::cout << "[receipt] logical_result " << index << " " << result.name
+              << ": dtype=" << result.dtype << " shape=[";
+    for (size_t i = 0; i < result.shape.size(); ++i) {
+      if (i > 0) {
+        std::cout << ",";
+      }
+      std::cout << result.shape[i];
+    }
+    std::cout << "] tensor=" << result.tensor
+              << " element_offset=" << result.element_offset
+              << " element_count=" << result.element_count
+              << " conversion=" << result.conversion << "\n";
+  }
+}
+
 uint64_t anec_channel_bytes(
     const omarchy::ane::AneAnecHeader& header,
     uint32_t channel) {
@@ -357,6 +376,7 @@ int check_bundle(const std::string& dir_arg) {
     std::cout << "[receipt] task_descriptors: " << m.task_descriptors << "\n";
     print_tensor_list("input", m.inputs);
     print_tensor_list("output", m.outputs);
+    print_logical_results(m.logical_results);
     print_tensor_list("state", m.state);
     print_tensor_list("intermediate", m.intermediates);
     std::cout << "[receipt] dispatch_plan:";

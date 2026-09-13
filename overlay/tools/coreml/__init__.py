@@ -20,6 +20,9 @@ Phase 2 ships the public ``.mlpackage`` inspector under this package:
 
       python3 overlay/tools/coreml/inspect_mlpackage.py inspect PATH [--json] [--strict]
 
+* :mod:`coreml.mil_adapter` — strict locked-package validation and textual
+  MIL emission for the pinned encoder. It streams CoreML8 UINT4 LUT constants
+  to standard FP16 blob records and preserves typed ordered results.
 * :mod:`coreml.reference` — parakeet-reference lock and cache
   verification (owned with the reference freeze; see docs/parakeet.md).
 

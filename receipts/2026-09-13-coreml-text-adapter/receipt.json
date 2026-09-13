@@ -1,0 +1,81 @@
+{
+  "schema": "mlx-omarchy.coreml.text-adapter-receipt/1",
+  "model": {
+    "repository": "mweinbach1/parakeet-tdt-0.6b-v3-coreml",
+    "revision": "b650695c2322ee5281dff48d7345b2f3a58ff018",
+    "model_sha256": "2e4e6b54f32029d7b2a69549c2cedf5cd9c6daa8e5274a2b357fc7911747204b",
+    "weight_sha256": "23867a834223ee6484d0b7b9b703530e8606546efa8e710535163d51ed9aac04"
+  },
+  "source": {
+    "mlx_omarchy_base": "35684ab88d07dcc8abe394b0d85a76d105b8e0b1",
+    "compiler_commit": "a0ce354cf800011a84420da4e12013eb8140b2a5",
+    "compiler_binary_sha256": "90a30effa6b1b51e544dbd377e79cb7d94609fcc7ddfb9c1b60596462cc5eed4",
+    "python": "3.11.2"
+  },
+  "companion_compiler": {
+    "commit": "a1bfea0cd52208ac9f168791e8c6e9a83ddc8efb",
+    "input_mil_sha256": "ac8e9526154ac8b8d4c08b83e44dbc1a2208d7ec33e42a7838d57b698b14f133",
+    "result": "The ordinary normalized program(1)/CoreML8 source parsed and reached H13 lowering; exit 65 at line 265 with h13.unsupported-multi-result-operation on the first ordered two-way split",
+    "receipt": "mil-hwx-compiler/receipts/2026-09-13-mil-ordered-results.md"
+  },
+  "emission": {
+    "program_version": 1,
+    "function_opset": "CoreML8",
+    "operation_count": 3351,
+    "operation_result_count": 3375,
+    "split_count": 24,
+    "split_result_count": 48,
+    "normalized_constexpr_count": 194,
+    "dense_fp16_payload_bytes": 1016332288,
+    "fp16_immediate_count": 120,
+    "fp16_immediate_payload_bytes": 240,
+    "mil_bytes": 668363,
+    "mil_sha256": "ac8e9526154ac8b8d4c08b83e44dbc1a2208d7ec33e42a7838d57b698b14f133",
+    "normalized_blob_bytes": 1016360128,
+    "normalized_blob_sha256": "bae568a9fc856122bb4bb74b1a86a5e680569d00f98e4ca84f40ca296804cb90"
+  },
+  "checks": [
+    {
+      "command": "PYTHONPATH=overlay/tools python3 -m unittest overlay.tests.omarchy.coreml.test_mil_adapter.AdapterUnitTest",
+      "exit": 0,
+      "result": "Ran 3 tests; OK",
+      "log": "unit.log"
+    },
+    {
+      "command": "PYTHONPATH=overlay/tools MLX_OMARCHY_PINNED_ENCODER=<locked encoder.mlpackage> MLX_OMARCHY_PINNED_EMISSION=/tmp/coreml-text-adapter-pinned-source-v2 MLX_OMARCHY_PINNED_SUMMARY=receipts/2026-09-13-coreml-text-adapter/emission.json python3 -m unittest overlay.tests.omarchy.coreml.test_mil_adapter.PinnedEncoderTest",
+      "exit": 0,
+      "result": "Ran 1 test; program(1)/CoreML8, all 24 ordered split pairs, and all 48 split-result uses preserved; all 194 normalized constants compared bit-exactly with Apple constexpr_lut_to_dense decompression one at a time; all 1,016,332,288 dense bytes covered; all 120 FP16 byte immediates including negative infinity preserved",
+      "log": "apple-reference.log"
+    },
+    {
+      "command": "python3 overlay/tools/coreml/mil_adapter.py compile <locked encoder.mlpackage> /tmp/coreml-text-adapter-relative-rejected --reference-lock overlay/tools/coreml/parakeet-reference.lock --compiler build/mil-hwxc --compiler-output /tmp/coreml-text-adapter-relative-rejected-output",
+      "exit": 2,
+      "result": "Rejected a non-absolute compiler path before emission",
+      "log": "relative-compiler.log"
+    },
+    {
+      "command": "python3 overlay/tools/coreml/mil_adapter.py compile <locked encoder.mlpackage> /tmp/coreml-text-adapter-pinned-source-v2 --reference-lock overlay/tools/coreml/parakeet-reference.lock --compiler /home/joshuawarren/src/mil-hwx-compiler/build/mil-hwxc --compiler-output /tmp/coreml-text-adapter-pinned-compiled-v2",
+      "exit": 65,
+      "result": "Actual pinned compiler rejected the first parenthesized multi-result binding at model.mil:265:5: expected type, found '('",
+      "log": "compiler.log",
+      "emission": "emission.json"
+    }
+  ],
+  "root_integration": {
+    "commit": "7f4a17f3",
+    "unit_result": "Ran 3 tests in 0.103s; OK",
+    "real_cli_result": "Integrated package-to-compiler invocation emitted all 3351 operations and 3375 results, then returned compiler exit 65 at line 265 with h13.unsupported-multi-result-operation. No compiler artifact was created.",
+    "emission": "/tmp/ane-runtime-adapter-integrated-20260913-emission.json",
+    "compiler_log": "/tmp/ane-runtime-adapter-integrated-20260913-compiler.log",
+    "independent_constant_check": "PinnedEncoderTest: Ran 1 test in 17.653s; OK. Compared all 194 normalized LUT constants, 1016332288 dense bytes, and 120 FP16 immediates against the Apple decompressor and original bytes.",
+    "reviewed_compiler_fix": "a1bfea0: graph import PASS; malformed split SSA/payload type mismatch now stops with ane.verify.split-constant-parameters rather than reaching backend lowering.",
+    "adapter_review": "AdapterConstantReview: no findings. AdapterSemanticReview: package/lock CLI exception finding fixed and independently rechecked; no remaining finding. ModelSpecError already subclasses ValueError and needed no extra catch.",
+    "cli_regression": "Real missing-package and malformed-lock subprocesses both failed before the fix with exit 1 and tracebacks. After explicitly catching MlPackageError and ReferenceError: 14 AdapterUnitTest plus schema tests passed; both CLI errors return 2 with concise stderr and no output artifact.",
+    "cli_review_receipt": "agent://AdapterSemanticReview"
+  },
+  "limits": {
+    "hardware_execution": "not run",
+    "inference": "not run",
+    "compiler_output": "not produced because the actual compiler failed"
+  }
+}

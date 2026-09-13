@@ -1,0 +1,11 @@
+LOCK_ACQUIRED utc=2026-09-13T04:35:20Z pid=3303700 pgid=3303698 deadline_epoch=1789274490
+awk: fatal: cannot use gawk builtin `load' as variable name
+QUIET_SAMPLE sample=1 load1=0.06 consecutive=0 utc=2026-09-13T04:35:20Z
+awk: fatal: cannot use gawk builtin `load' as variable name
+QUIET_SAMPLE sample=2 load1=0.05 consecutive=0 utc=2026-09-13T04:35:40Z
+awk: fatal: cannot use gawk builtin `load' as variable name
+QUIET_SAMPLE sample=3 load1=0.03 consecutive=0 utc=2026-09-13T04:36:00Z
+Terminated                 sleep 20
+CHILD_PIDS_CLEAR utc=2026-09-13T04:36:10Z
+LOCK_RELEASED utc=2026-09-13T04:36:10Z rc=143
+lock_released=true

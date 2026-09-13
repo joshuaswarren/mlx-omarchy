@@ -1,0 +1,132 @@
+{
+  "schema": "mlx-omarchy.h13-v2-ordered-adapter-verification.v1",
+  "date": "2026-09-13",
+  "actual_model_identity": "openai-codex/gpt-5.6-sol",
+  "adapter": {
+    "repository": "joshuaswarren/mlx-omarchy",
+    "source_commit": "22d6ad168cc409b82bdf6017950d4f770a56f4b3",
+    "path": "overlay/tools/ane-export/h13_package_to_bundle.py",
+    "producer_schema": "mil-hwxc.h13-anec-package.v2",
+    "runtime_manifest_version": 4
+  },
+  "runtime_checker": {
+    "path": "/tmp/OrderedRuntimeLayout-ane-build/tools/mlx-omarchy-info/mlx-omarchy-info",
+    "sha256": "da1b46359ebdc6bc8b7ece2d1dab8256b492a49dbbd0d79002241d41554aa8bb",
+    "command_form": "mlx-omarchy-info --check-bundle <bundle>",
+    "result_for_all_accepted_bundles": "[receipt] OK: bundle valid"
+  },
+  "accepted_packages": [
+    {
+      "name": "split-forward",
+      "package": "/tmp/h13-ordered-add-splits/split-forward-package",
+      "graph_source": "/tmp/h13-ordered-add-splits/split-forward.mil",
+      "graph_source_sha256": "1f17595221a889ad04a785e5ac9e465a2abf30b3f407d9a00effe0e38de1cdf5",
+      "producer_manifest_sha256": "6723c39c55e30485ba3c0f64afff7e33e17534e01a84558ead1d85f69ececfc5",
+      "payloads": {
+        "program-0.anec": "70b9e497556ce990c697fa86316f5292384bd27bbe51911ce24df14df7735a23"
+      },
+      "compiler_source_commit": "600dc3e606886f67d111c011e8c91e9a05a4d6be",
+      "compiler_binary_sha256": "6e08cb08194b452894dab985c93f8dfe96974587f956a87f5ba89163debdedae",
+      "bundle": "/tmp/h13-ordered-add-splits/split-forward-bundle-22d6ad16",
+      "bundle_manifest_sha256": "77b058f7aad605188b90723419e86826d4046d040eefd20c287723d3a7047c9f",
+      "physical_outputs": ["output"],
+      "logical_results": [
+        {"name": "tall", "tensor": "output", "element_offset": 0, "element_count": 64, "shape": [1, 8, 8, 1]},
+        {"name": "wide", "tensor": "output", "element_offset": 64, "element_count": 64, "shape": [1, 1, 8, 8]}
+      ],
+      "producer_to_runtime_exact": true,
+      "adapter_result": "PASS programs=1 payloads=1",
+      "runtime_checker_result": "OK: bundle valid"
+    },
+    {
+      "name": "split-reverse",
+      "package": "/tmp/h13-ordered-add-splits/split-reverse-package",
+      "graph_source": "/tmp/h13-ordered-add-splits/split-reverse.mil",
+      "graph_source_sha256": "258f94e03a09a134e2ae2d6546533cf42f877c70ead382784d09d8d40dda2ba0",
+      "producer_manifest_sha256": "ed77acc0ba9933890dbf415c25e2bc5100b59aa6efab975de4715dd51cd6a27e",
+      "payloads": {
+        "program-0.anec": "70b9e497556ce990c697fa86316f5292384bd27bbe51911ce24df14df7735a23"
+      },
+      "compiler_source_commit": "600dc3e606886f67d111c011e8c91e9a05a4d6be",
+      "compiler_binary_sha256": "6e08cb08194b452894dab985c93f8dfe96974587f956a87f5ba89163debdedae",
+      "bundle": "/tmp/h13-ordered-add-splits/split-reverse-bundle-22d6ad16",
+      "bundle_manifest_sha256": "770721a49fd4248757c6a9c6eeb096795068c09f8072b7c48573f977fd6b51b3",
+      "physical_outputs": ["output"],
+      "logical_results": [
+        {"name": "wide", "tensor": "output", "element_offset": 64, "element_count": 64, "shape": [1, 1, 8, 8]},
+        {"name": "tall", "tensor": "output", "element_offset": 0, "element_count": 64, "shape": [1, 8, 8, 1]}
+      ],
+      "producer_to_runtime_exact": true,
+      "adapter_result": "PASS programs=1 payloads=1",
+      "runtime_checker_result": "OK: bundle valid"
+    },
+    {
+      "name": "independent-forward",
+      "package": "/tmp/h13-v2-distinct-next/independent-forward-package",
+      "graph_source": "/tmp/h13-v2-distinct-next/independent-forward.mil",
+      "graph_source_sha256": "77f61c882c240242fe3ef02b8e814666d1c2e471600a26f25c439e4266089da6",
+      "producer_manifest_sha256": "30efdff60321f8a2afe4b33a29b9231178416b54b3c3c84a628e4bb029d227f4",
+      "payloads": {
+        "program-0.anec": "c7cc9781af1bd2c00583291a4cdaca7db90462674abcaa6011d2622d39f3902f",
+        "program-1.anec": "93e3af5314e899781fd269a91142ed1330ed973035b41a6aa3344ad8679e14f3"
+      },
+      "compiler_source_commit": "600dc3e606886f67d111c011e8c91e9a05a4d6be",
+      "compiler_binary_sha256": "fba4cda5b026beef728ee2dceb11952a5f22607d608758fe239fdfcabd541a4c",
+      "bundle": "/tmp/h13-v2-distinct-next/independent-forward-bundle-22d6ad16",
+      "bundle_manifest_sha256": "345a9c46b6482b9e457de3529bcd6cf386df329ca8ee5e762c1296ee3a8fc966",
+      "physical_outputs": ["tall_storage", "wide_storage"],
+      "logical_results": [
+        {"name": "tall", "tensor": "tall_storage", "element_offset": 0, "element_count": 64, "shape": [1, 8, 8, 1]},
+        {"name": "wide", "tensor": "wide_storage", "element_offset": 0, "element_count": 64, "shape": [1, 1, 8, 8]}
+      ],
+      "producer_to_runtime_exact": true,
+      "adapter_result": "PASS programs=2 payloads=2",
+      "runtime_checker_result": "OK: bundle valid"
+    },
+    {
+      "name": "independent-reverse",
+      "package": "/tmp/h13-v2-distinct-next/independent-reverse-package",
+      "graph_source": "/tmp/h13-v2-distinct-next/independent-reverse.mil",
+      "graph_source_sha256": "2200d31441f7c6bbceb7ff91210174e6efee8a3aa17d1eaa8f177a8170334e9f",
+      "producer_manifest_sha256": "7e805b542c1ed282390766f22c936892b2e7938ce96237988c70b0d7a5667c12",
+      "payloads": {
+        "program-0.anec": "c7cc9781af1bd2c00583291a4cdaca7db90462674abcaa6011d2622d39f3902f",
+        "program-1.anec": "93e3af5314e899781fd269a91142ed1330ed973035b41a6aa3344ad8679e14f3"
+      },
+      "compiler_source_commit": "600dc3e606886f67d111c011e8c91e9a05a4d6be",
+      "compiler_binary_sha256": "fba4cda5b026beef728ee2dceb11952a5f22607d608758fe239fdfcabd541a4c",
+      "bundle": "/tmp/h13-v2-distinct-next/independent-reverse-bundle-22d6ad16",
+      "bundle_manifest_sha256": "1c376484f7009d78ddb0033f302acf6b58de51498199a0e2e9102c44f238f636",
+      "physical_outputs": ["tall_storage", "wide_storage"],
+      "logical_results": [
+        {"name": "wide", "tensor": "wide_storage", "element_offset": 0, "element_count": 64, "shape": [1, 1, 8, 8]},
+        {"name": "tall", "tensor": "tall_storage", "element_offset": 0, "element_count": 64, "shape": [1, 8, 8, 1]}
+      ],
+      "producer_to_runtime_exact": true,
+      "adapter_result": "PASS programs=2 payloads=2",
+      "runtime_checker_result": "OK: bundle valid"
+    }
+  ],
+  "strict_constant_input_rejections": [
+    {
+      "name": "original-split-forward",
+      "package": "/tmp/h13-v2-distinct-next/split-forward-package",
+      "producer_manifest_sha256": "6865e4200f5f5c88095ddf6241c5f4ec8c5c38181b731fd3c6f646c916540756",
+      "result": "compiler manifest programs[0].constantInputs is not supported by bundle schema 4",
+      "exit_code": 1,
+      "output_directory_created": false
+    },
+    {
+      "name": "original-split-reverse",
+      "package": "/tmp/h13-v2-distinct-next/split-reverse-package",
+      "producer_manifest_sha256": "a68ba7ff7b50a44a3b4a53e97e3f0ff96be64ebfa03c551e2fd00e118eccfdd9",
+      "result": "compiler manifest programs[0].constantInputs is not supported by bundle schema 4",
+      "exit_code": 1,
+      "output_directory_created": false
+    }
+  ],
+  "mutation_check": {
+    "producer_manifest_hashes_unchanged_after_adapter_and_runtime_checks": true
+  },
+  "qualification_scope": "Compiler-produced package identity, strict adapter conversion, exact physicalOutputs and ordered logicalResults preservation, and runtime manifest loader validation only. No ANE, GPU, or device execution was performed or claimed."
+}

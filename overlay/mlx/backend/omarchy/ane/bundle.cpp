@@ -380,6 +380,12 @@ AneAnecHeader parse_anec_header(const std::filesystem::path& path) {
   if (header.task_descriptor_size % sizeof(uint32_t) != 0) {
     throw bundle_error("ANEC task descriptor size is not a multiple of 4");
   }
+  if (header.task_descriptor_count > 0xffff) {
+    throw bundle_error("ANEC task descriptor count exceeds driver limit 0xffff");
+  }
+  if (header.task_descriptor_size > 0x40000) {
+    throw bundle_error("ANEC task descriptor size exceeds driver limit 0x40000");
+  }
   if (header.task_size == 0) {
     throw bundle_error("ANEC task size is zero");
   }
@@ -419,75 +425,33 @@ AneAnecHeader parse_anec_header(const std::filesystem::path& path) {
   return header;
 }
 
-AneBundle load_bundle(const std::filesystem::path& dir) {
-  if (!std::filesystem::is_directory(dir)) {
-    throw AneBundleNotFound(
-        "[omarchy-ane] bundle directory not found: " + dir.string() +
-        " (the affected region stays on Vulkan)");
-  }
-
-  AneManifest manifest = parse_ane_manifest(dir / "manifest.json");
+AneBundle load_bundle_snapshot(
+    const std::filesystem::path& manifest_path,
+    const std::map<std::string, std::filesystem::path>& payload_paths) {
+  AneManifest manifest = parse_ane_manifest(manifest_path);
   const std::string payload_identity = payload_collection_sha256(manifest.payloads);
   if (manifest.release_asset.model_sha256 != payload_identity) {
     throw bundle_error(
         "release_asset.model_sha256 does not match compiled payload collection");
   }
-  std::vector<std::filesystem::path> actual_files;
-  for (const auto& entry : std::filesystem::directory_iterator(dir)) {
-    std::error_code status_error;
-    const auto status = entry.symlink_status(status_error);
-    if (status_error) {
-      throw bundle_error(
-          "cannot stat '" + entry.path().filename().string() +
-          "' inside bundle");
-    }
-    if (std::filesystem::is_symlink(status)) {
-      throw bundle_error(
-          "unexpected link '" + entry.path().filename().string() +
-          "' inside bundle");
-    }
-    if (std::filesystem::is_directory(status)) {
-      throw bundle_error(
-          "unexpected directory '" + entry.path().filename().string() +
-          "' inside bundle");
-    }
-    if (!std::filesystem::is_regular_file(status)) {
-      throw bundle_error(
-          "unexpected non-regular file '" + entry.path().filename().string() +
-          "' inside bundle");
-    }
-    actual_files.push_back(entry.path());
-  }
-  for (const auto& file : actual_files) {
-    std::string name = file.filename().string();
-    if (name == "manifest.json") {
-      continue;
-    }
-    bool listed = false;
-    for (const auto& payload : manifest.payloads) {
-      listed = listed || payload.path == name;
-    }
-    if (!listed) {
-      throw bundle_error("unknown payload file '" + name + "' not listed in manifest");
-    }
-  }
+
 
   std::vector<std::filesystem::path> resolved;
   resolved.reserve(manifest.payloads.size());
   for (const auto& payload : manifest.payloads) {
-    std::filesystem::path payload_path = dir / payload.path;
-    std::error_code status_error;
-    const auto status = std::filesystem::symlink_status(payload_path, status_error);
-    if (status_error || status.type() == std::filesystem::file_type::not_found) {
+    auto path = payload_paths.find(payload.path);
+    if (path == payload_paths.end()) {
       throw bundle_error("payload file missing: " + payload.path);
     }
-    if (std::filesystem::is_symlink(status)) {
-      throw bundle_error("unexpected link '" + payload.path + "' inside bundle");
+    resolved.push_back(path->second);
+  }
+  for (const auto& [name, path] : payload_paths) {
+    if (std::none_of(
+            manifest.payloads.begin(),
+            manifest.payloads.end(),
+            [&](const AnePayload& payload) { return payload.path == name; })) {
+      throw bundle_error("unknown snapshot payload '" + name + "'");
     }
-    if (!std::filesystem::is_regular_file(status)) {
-      throw bundle_error("payload file missing: " + payload.path);
-    }
-    resolved.push_back(payload_path);
   }
   for (size_t i = 0; i < manifest.payloads.size(); ++i) {
     const auto& payload = manifest.payloads[i];
@@ -533,6 +497,53 @@ AneBundle load_bundle(const std::filesystem::path& dir) {
     bundle.programs.push_back({p, std::move(header), std::move(path)});
   }
   return bundle;
+}
+
+AneBundle load_bundle(const std::filesystem::path& dir) {
+  if (!std::filesystem::is_directory(dir)) {
+    throw AneBundleNotFound(
+        "[omarchy-ane] bundle directory not found: " + dir.string() +
+        " (the affected region stays on Vulkan)");
+  }
+
+  AneManifest manifest = parse_ane_manifest(dir / "manifest.json");
+  std::map<std::string, std::filesystem::path> payloads;
+  for (const auto& entry : std::filesystem::directory_iterator(dir)) {
+    std::error_code status_error;
+    const auto status = entry.symlink_status(status_error);
+    if (status_error) {
+      throw bundle_error(
+          "cannot stat '" + entry.path().filename().string() +
+          "' inside bundle");
+    }
+    if (std::filesystem::is_symlink(status)) {
+      throw bundle_error(
+          "unexpected link '" + entry.path().filename().string() +
+          "' inside bundle");
+    }
+    if (std::filesystem::is_directory(status)) {
+      throw bundle_error(
+          "unexpected directory '" + entry.path().filename().string() +
+          "' inside bundle");
+    }
+    if (!std::filesystem::is_regular_file(status)) {
+      throw bundle_error(
+          "unexpected non-regular file '" + entry.path().filename().string() +
+          "' inside bundle");
+    }
+    std::string name = entry.path().filename().string();
+    if (name == "manifest.json") {
+      continue;
+    }
+    if (std::none_of(
+            manifest.payloads.begin(),
+            manifest.payloads.end(),
+            [&](const AnePayload& payload) { return payload.path == name; })) {
+      throw bundle_error("unknown payload file '" + name + "' not listed in manifest");
+    }
+    payloads.emplace(std::move(name), entry.path());
+  }
+  return load_bundle_snapshot(dir / "manifest.json", payloads);
 }
 
 } // namespace mlx::core::omarchy::ane

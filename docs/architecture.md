@@ -69,7 +69,7 @@ The partitioner uses an exact capability key:
 - compiler target and source identity plus exact driver ABI major
 - measured transfer and execution cost
 
-ANE compilation must run on Linux without private Apple frameworks. The schema-3 adapter accepts only explicit H13 ANEC compiler packages and preserves every program, dispatch dependency, tensor slice, channel allocation, and payload digest. It requires generation-time compiler provenance, exact compiler target `h13`, and exact driver ABI major 1. Versions 1 and 2 and dotted firmware fields are rejected rather than upgraded.
+ANE compilation must run on Linux without private Apple frameworks. The schema-4 adapter accepts explicit H13 ANEC v2 packages. It preserves ordered logical return views separately from physical buffers, plus programs, slices, allocations, and payload digests. It requires compiler provenance, target `h13`, and driver ABI major 1. Bundle versions 1 through 3 and dotted firmware fields are rejected.
 
 Bundle validation is structural and device-free. It does not establish that H13 bytes are eligible for a physical t8103 or t6000 device, and the current compiler's separate HWX-extraction regression prevents compiler-wide qualification or a release pin. Physical-device and numerical qualification still run through the bounded worker before general MLX lowering can use a region. Runtime-generated, content-addressed bundles may be cached, but each cache hit passes the same strict loader. Linux rejects a bundle before device access if any contract field differs. A missing bundle keeps only the affected region on Vulkan.
 

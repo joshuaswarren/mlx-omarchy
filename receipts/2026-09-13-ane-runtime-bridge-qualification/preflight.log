@@ -1,0 +1,11 @@
+aebef2154ed0b0c543d796c4d68f52ef3670b2826e17879237dc762f589bf7af  /var/tmp/AneRuntimeBridge-57cc36a2/source.bundle
+a2e33cb7deadba974a5d89e669a8982ea0ed40483d9c87b18688d2c0ff599727  /var/tmp/AneRuntimeBridge-57cc36a2/libane.bundle
+88a3f5ffe800af52ca270311e33b6153efdd7860f0332bec4d37ddd8fc956c76  /var/tmp/AneRuntimeBridge-57cc36a2/fixtures.tar
+1ab7d3f2072f2191e0c85671f23b29667c2d6e128e6abbde1658ebe940df3c31  /var/tmp/AneRuntimeBridge-57cc36a2/acceptance.sh
+guardian_identity=true guardian_pid=3382614 comm=timeout pgid=3382614
+ownership_state path=/run/lock/mlx-omarchy-ane inode=9765 uid=0 gid=987 mode=750 links=2
+ownership_state path=/run/lock/mlx-omarchy-ane/device.lock inode=9766 uid=0 gid=987 mode=660 links=1
+ownership_state path=/run/lock/mlx-omarchy-ane/quarantine inode=9767 uid=0 gid=987 mode=660 links=1
+worker_clearance=true runtime_quarantine=empty
+preflight_identity host=jwm1-linux machine=aarch64 user=joshuawarren uid=1001 groups=1001 962 987 992 998 render_gid=987 source=57cc36a2e8ece78dd979b5344752d04c76b4d49d libane=f261a6cb537aca62f267ad3d01beda0d6877544c source_bundle_sha256=aebef2154ed0b0c543d796c4d68f52ef3670b2826e17879237dc762f589bf7af
+preflight=pass acquisition=not-attempted

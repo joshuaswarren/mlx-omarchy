@@ -1,5 +1,5 @@
 {
-  "manifest_version": 3,
+  "manifest_version": 4,
   "name": "ane-mul-fp16-1x512",
   "graph_hash": "fcd8aed34f664f6972866e46c49486a8ba70e92eccc61d9078f32f49261ce65d",
   "task_descriptors": 1,
@@ -119,5 +119,19 @@
   "dispatch_plan": [
     0
   ],
-  "driver_abi_major": 1
+  "driver_abi_major": 1,
+  "logical_results": [
+    {
+      "name": "t2",
+      "dtype": "float16",
+      "shape": [
+        1,
+        512
+      ],
+      "tensor": "t2",
+      "element_offset": 0,
+      "element_count": 512,
+      "conversion": "identity"
+    }
+  ]
 }

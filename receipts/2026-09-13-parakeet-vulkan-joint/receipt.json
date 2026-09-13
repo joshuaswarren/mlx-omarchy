@@ -1,0 +1,205 @@
+{
+  "schema": "mlx-omarchy.parakeet-vulkan-joint/1",
+  "date": "2026-09-13",
+  "scope": "Workload-owned MLX Vulkan adapter for the exact pinned Parakeet joint.mlpackage",
+  "source": {
+    "base_commit": "57cc36a2e8ece78dd979b5344752d04c76b4d49d",
+    "execution_agent_model": "openai-codex/gpt-5.6-sol",
+    "requested_route": "mlx-openai-deep",
+    "route_fallback_observed": false,
+    "loader_commit": "7a27bc4ac42957d8a2d969e70944c05f317d8a77",
+    "loader_hardening_commits": [
+      "7fc406453b50cabffcead19f74ab8ee7e0b113e1",
+      "ba324bfcfa0249f6ce70f5a24d27f7ad327c17f3",
+      "b999f9ea88748fe9e5f792ea87901ba318a3a643",
+      "763a0ba5ba08062fb8d2073cb12adf5877a9dbbd"
+    ],
+    "joint_commit": "1a71d6462b88a7c1d7ed843b7bdecbef331baad7",
+    "gpu_placement_commit": "81447d7a957e94ee520f03bdebed8721794e173b",
+    "files": {
+      "overlay/tools/coreml/pinned_component.py": "25730aa8de275e3431112f2f205b2dde75b87f873210ff0ef6c1eafae8f6ea20",
+      "overlay/tools/coreml/vulkan_joint.py": "bf31537d504612c6d9873051c9ad5f7b84a978268e6d7ed4eaec173a18626115",
+      "tests/coreml/test_pinned_component.py": "2101eacb8da05adc3e14833001d3a7d640ae96caad71988c7feabcc329c86141",
+      "tests/coreml/test_vulkan_joint.py": "315cd3fb93e6f2d3135a93307e79f461b073b2e17432dcc95e531076b5fa1d73",
+      "overlay/tools/coreml/compare_vulkan_joint_golden.py": "5750565a0e6a4c96e803789b169bc9f5bd6ebf5a257223e925a4ec4e84234aae",
+      "overlay/tools/coreml/diagnose_vulkan_joint_arithmetic.py": "07d7c528b6d6f127c011bc0930672ae52901793883fe89fe8eef8eda1f819190"
+    }
+  },
+  "model": {
+    "repository": "mweinbach1/parakeet-tdt-0.6b-v3-coreml",
+    "revision": "b650695c2322ee5281dff48d7345b2f3a58ff018",
+    "license": "CC-BY-4.0",
+    "package_files": {
+      "joint.mlpackage/Manifest.json": {
+        "size": 617,
+        "sha256": "977190c2261e2040f081fd0669fa3da7c4089c7d3f04c04a3c2b25e63f77f45c"
+      },
+      "joint.mlpackage/Data/com.apple.CoreML/model.mlmodel": {
+        "size": 4025,
+        "sha256": "cde4d7c509e8053ec7c90d04368f2d4bb5ad8db87a28b550de80541193100a39"
+      },
+      "joint.mlpackage/Data/com.apple.CoreML/weights/weight.bin": {
+        "size": 10510028,
+        "sha256": "d83381f8a19ac296033554a7cfec355063b8f3225129cb8bed013c92f6ab141f"
+      }
+    },
+    "graph": {
+      "specification_version": 9,
+      "opset": "CoreML8",
+      "inventory": {
+        "const": 12,
+        "cast": 4,
+        "add": 1,
+        "relu": 1,
+        "linear": 1,
+        "slice_by_index": 2
+      },
+      "inputs": {
+        "encoder_frame": "float32[1,640]",
+        "decoder_state": "float32[1,640]"
+      },
+      "outputs": {
+        "token_logits": "float32[1,8193]",
+        "duration_logits": "float32[1,5]"
+      }
+    }
+  },
+  "implementation": {
+    "callable": "coreml.vulkan_joint.run_joint(encoder_frame, decoder_state, *, package_path) -> JointOutput(token_logits, duration_logits)",
+    "mil_order": "cast decoder_state to fp16; cast encoder_frame to fp16; add; relu; fp16 linear; slice token [0:8193]; slice duration [8193:8198]; cast duration to fp32; cast token to fp32",
+    "execution": "A scoped mx.stream(mx.gpu) covers constant transfer and every input-dependent operation without changing the caller's default device. Host work is limited to package parsing, full hash validation, immutable constant decoding, and transfer of constants into MLX arrays.",
+    "shared_loader": "load_pinned_component(package_path, component) rejects symlinks and nonregular entries, reads each exact pinned decoder/joint package file once, validates length and SHA-256 on those immutable buffers, then parses the official MIL Block and snapshots named const outputs from the same buffers. It is not an IR or interpreter."
+  },
+  "runtime": {
+    "version": "0.32.2.dev202609130346+e4d079c8",
+    "device": "llvmpipe (LLVM 15.0.6, 256 bits)",
+    "driver": "Mesa llvmpipe",
+    "architecture": "vulkan",
+    "default_device": "Device(gpu, 0)",
+    "wheel_record_verification": "match",
+    "mlx_core_sha256": "d8bfcf627df57a07a75fed49dd989ae5321323c5008cb768ea46f619409ca442",
+    "libmlx_sha256": "4c499ba19e3b5f8f96402fdca4304e0dfa50d6e6a8e6a949eb7a4d9738fc8276"
+  },
+  "verification": {
+    "tests": {
+      "command": "MLX_OMARCHY_ALLOW_NON_APPLE=1 PYTHONPATH=/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/CoremlVulkanMel/.work/venv-run/lib/python3.11/site-packages python3 -m pytest -q tests/coreml/test_pinned_component.py tests/coreml/test_vulkan_joint.py",
+      "result": "15 passed in 1.10s"
+    },
+    "loader_hardening": {
+      "contracts": [
+        "Loaded constants are immutable snapshots unaffected by later package mutation",
+        "Cached immediate constants cannot be made writable",
+        "Every physical package entry must be pinned, regular, and not a symbolic link",
+        "Model and weight parsing consumes the same immutable bytes whose length and SHA-256 were accepted"
+      ],
+      "decoder_smoke": "Pinned decoder load returned 69 MIL operations and 44 immutable constant snapshots"
+    },
+    "review_rechecks": {
+      "constant_loader": "No remaining findings at 763a0ba5ba08062fb8d2073cb12adf5877a9dbbd; restored-source weight ABA and mutated model buffers were refused; focused loader run passed 8 tests in 0.48s",
+      "joint_semantics": "No remaining findings at 81447d7a957e94ee520f03bdebed8721794e173b; cold load, transpose, slices, and all graph operations stayed on GPU under a CPU caller default"
+    },
+    "cpu_default_smoke": {
+      "scenario": "Cold copied package load and full joint execution while the caller default was Device(cpu, 0)",
+      "caller_default_after_call": "Device(cpu, 0)",
+      "restored_default": "Device(gpu, 0)",
+      "trace_delta": {
+        "gpu_primitive_dispatches": 14,
+        "vk_compute_dispatches": 8,
+        "vk_submissions": 1,
+        "commit_calls_with_work": 1
+      },
+      "outputs": ["float32[1,8193]", "float32[1,5]"]
+    },
+    "direct_smoke": {
+      "command": "MLX_OMARCHY_ALLOW_NON_APPLE=1 PYTHONPATH=/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/CoremlVulkanMel/.work/venv-run/lib/python3.11/site-packages:overlay/tools python3 -c \"from pathlib import Path; import mlx.core as mx; from coreml.vulkan_joint import run_joint; p=Path('/home/joshuawarren/.cache/mlx-omarchy/parakeet-reference/mweinbach1/parakeet-tdt-0.6b-v3-coreml/b650695c2322ee5281dff48d7345b2f3a58ff018/joint.mlpackage'); o=run_joint(mx.zeros((1,640),dtype=mx.float32),mx.zeros((1,640),dtype=mx.float32),package_path=p); mx.eval(*o); print(mx.device_info()['device_name'], o.token_logits.shape, o.token_logits.dtype, o.duration_logits.shape, o.duration_logits.dtype)\"",
+      "result": "llvmpipe (LLVM 15.0.6, 256 bits) (1, 8193) mlx.core.float32 (1, 5) mlx.core.float32"
+    },
+    "native_joint_comparison": {
+      "command": "MLX_OMARCHY_ALLOW_NON_APPLE=1 PYTHONPATH=/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/CoremlVulkanMel/.work/venv-run/lib/python3.11/site-packages:overlay/tools python3 overlay/tools/coreml/compare_vulkan_joint_golden.py --capture-dir /home/joshuawarren/.cache/mlx-omarchy/parakeet-reference/captures/b650695c-75aec2a/20260913T105550Z-librispeech-tdt-tensors/ane --package /home/joshuawarren/.cache/mlx-omarchy/parakeet-reference/mweinbach1/parakeet-tdt-0.6b-v3-coreml/b650695c2322ee5281dff48d7345b2f3a58ff018/joint.mlpackage --output receipts/2026-09-13-parakeet-vulkan-joint/native-comparison.json",
+      "receipt": "native-comparison.json",
+      "receipt_sha256": "a2cdba729e584e9076d05bedaa8ded822c6d3ad43953cdaed460a1cefe9cf4ef",
+      "traces_compared": 16,
+      "token_decisions_matching": 16,
+      "duration_decisions_matching": 16,
+      "full_tensor_bit_exact": false,
+      "tolerance_applied": false
+    },
+    "native_arithmetic_diagnosis": {
+      "command": "MLX_OMARCHY_ALLOW_NON_APPLE=1 PYTHONPATH=/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/CoremlVulkanMel/.work/venv-run/lib/python3.11/site-packages:overlay/tools python3 overlay/tools/coreml/diagnose_vulkan_joint_arithmetic.py --capture-dir /home/joshuawarren/.cache/mlx-omarchy/parakeet-reference/captures/b650695c-75aec2a/20260913T105550Z-librispeech-tdt-tensors/ane --package /home/joshuawarren/.cache/mlx-omarchy/parakeet-reference/mweinbach1/parakeet-tdt-0.6b-v3-coreml/b650695c2322ee5281dff48d7345b2f3a58ff018/joint.mlpackage --output receipts/2026-09-13-parakeet-vulkan-joint/arithmetic-diagnosis.json",
+      "receipt": "arithmetic-diagnosis.json",
+      "receipt_sha256": "5321f3efb090a6419c5fec9a5cbb038fbcca4b155f9375053c96efe26d12fdcb",
+      "candidates": [
+        "baseline fp16 matmul then fp16 bias",
+        "fp16 mx.addmm",
+        "explicit fp32 dot then fp16 bias",
+        "fused fp32 dot and bias then fp16",
+        "fp16 products, fp32 reduction, then fp16 bias",
+        "balanced-tree fp16 accumulation then fp16 bias",
+        "sequential fp16 accumulation then fp16 bias"
+      ],
+      "input_pipeline_bit_exact": true,
+      "compiled_compute_plan_available": false,
+      "result": "The authenticated float32 uploads, fp16 casts, fp16 add, and fp16 ReLU match the NumPy IEEE-fp16 reference bit for bit. Baseline equals an explicit fp32 dot rounded before fp16 bias and is the closest tested token result. mx.addmm equals fused fp32 dot-and-bias and is farther from native token logits. Rounded-fp16 products, a balanced fp16 tree, and sequential fp16 accumulation also do not reproduce the native tensors. The package and capture have no compiled compute plan or accumulator/reduction declaration, so source arithmetic remains unchanged."
+    },
+    "reference": "Independent NumPy execution of the package's exact fp16 cast/add/relu/linear/slice sequence, followed by fp32 output casts. This is an FP contract reference, not Core ML output.",
+    "cases": [
+      {
+        "name": "deterministic",
+        "encoder_frame_sha256": "177368a9a82cafb72ad067854226a95dc1de65f44df4bf7434609bc9f3f82c05",
+        "decoder_state_sha256": "fd5e05c4c02b562ddad6085c95ff50604c58425ea3a3c49961107304c211dc71",
+        "token_logits": {
+          "max_abs": 0.0,
+          "mean_abs": 0.0,
+          "relative_l2": 0.0,
+          "bit_exact": true
+        },
+        "duration_logits": {
+          "max_abs": 0.0,
+          "mean_abs": 0.0,
+          "relative_l2": 0.0,
+          "bit_exact": true
+        },
+        "trace_delta": {
+          "gpu_primitive_dispatches": 14,
+          "vk_compute_dispatches": 8,
+          "vk_submissions": 1,
+          "commit_calls_with_work": 1
+        }
+      },
+      {
+        "name": "licensed_encoder_frame_0",
+        "capture": "b650695c-75aec2a/20260912T154759Z-librispeech/ane/encoder_hidden.npy",
+        "encoder_frame_sha256": "e88d86731720ba4526f57d120ce212365a67118508c76eacd296456bc9d9878e",
+        "decoder_state_sha256": "a256cecdb5b33eb1309997c9fde5a6b5d7a2b0c5902001253230d88334601a63",
+        "token_logits": {
+          "max_abs": 0.0,
+          "mean_abs": 0.0,
+          "relative_l2": 0.0,
+          "bit_exact": true
+        },
+        "duration_logits": {
+          "max_abs": 0.0,
+          "mean_abs": 0.0,
+          "relative_l2": 0.0,
+          "bit_exact": true
+        },
+        "trace_delta": {
+          "gpu_primitive_dispatches": 14,
+          "vk_compute_dispatches": 8,
+          "vk_submissions": 1,
+          "commit_calls_with_work": 1
+        }
+      }
+    ]
+  },
+  "qualification_boundary": {
+    "native_coreml_comparison": "native-comparison.json",
+    "native_compute_units_requested": "ane",
+    "native_backend_claim": "The capture requested ANE compute units; it does not prove every Core ML operation executed exclusively on ANE.",
+    "software_vulkan_device": "llvmpipe (LLVM 15.0.6, 256 bits)",
+    "apple_gpu_claimed": false,
+    "broad_native_coreml_parity_claimed": false,
+    "captured_joint_decision_parity_claimed": true,
+    "full_tensor_bit_exact_parity_claimed": false
+  }
+}

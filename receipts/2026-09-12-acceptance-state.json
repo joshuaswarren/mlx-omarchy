@@ -1,10 +1,10 @@
 {
-  "source_commit": "9e22a534",
+  "source_commit": "57cc36a2",
   "scope": "Current task state, not full feature qualification; completed policy invariants describe this source scope only",
   "stop_conditions": [
-    "Plan §62: required encoder semantics/geometries and mixed-type multi-output representation remain unavailable.",
-    "Explicit H13 ANEC schema-3 host adaptation is qualified; integrated MLX worker execution and host applicability are not. Standalone base-M1 compiler qualification remains separately scoped to source aa688df.",
-    "Pinned CPU audio-to-mel reference is bit-exact; installed Vulkan/ANE preprocessing, backend trace, and full transcription remain unqualified.",
+    "Full encoder execution remains blocked by required H13 lowering, geometries, and mixed-type multi-output representation; implementation work continues against those gaps.",
+    "Explicit H13 schema-3 adaptation and installed combined source 57cc36a2 are qualified on the base M1: four exact ANE add/add-mul executions, GPU matmul/add, and 18 bit-exact mel comparisons on the same installed wheel. Other-host applicability remains unqualified.",
+    "The exact Vulkan mel frontend is qualified with 15 GPU primitives, eight Vulkan compute dispatches, and one submission; full encoder, decoder, and transcription remain unqualified.",
     "Installed-state platform adoption awaits upstream review in omacom/omarchy-mac PR 425."
   ],
   "tasks": [
@@ -156,21 +156,21 @@
       "task": "Parse required ML Program semantics without loss",
       "status": "completed",
       "evidence": "mlpackage.py typed inventory preserving both dtype enums (FeatureType vs MIL), symbolic dims, op versions/opset, op ordering, nested blocks, blob-file refs with offsets, compression (constexpr_*), unknown_schema_fields forward-compat counter (92e7c42d); explicit rejection of unsupported/malformed constructs; docs/coreml.md 'two enums, never conflated'",
-      "reason": "Validated inspection is complete for the pinned workload: nothing is silently normalized or coerced, and unsupported constructs fail named. Distinguishable from semantic translation: no compiler-IR conversion exists or is claimed (docs/coreml.md: parse validity and eligibility are different claims, never mixed); the translation layer is the separately blocked adapter/handoff work."
+      "reason": "Inspection preserves the required package semantics. The separately verified textual adapter now retains the pinned encoder through semantic import; this does not imply H13 lowering or execution coverage."
     },
     {
       "phase": "Core ML requirements",
       "task": "Reuse compiler representation without universal graph IR",
       "status": "completed",
-      "evidence": "coverage receipt 'Reuse verdict': existing compiler representation (ANEGraphModule + ANEH13Compiler lowering) sufficient for the 79.5% reachable set; no universal graph IR created anywhere in mlx-omarchy (grep: frontend produces no IR; inspector is read-only reporting); recommended handoff is a dedicated proto→ANEGraphModule importer in compiler lib/MIL",
-      "reason": "The invariant is honored (no second IR exists) and the reuse decision is recorded with evidence; the importer that would implement the reuse path is compiler-repository work feeding excluded phase-6 tasks, not a mlx-omarchy deliverable."
+      "evidence": "Existing compiler MIL syntax and ANEGraphModule extended at a1bfea0 with ordered results and version/opset validation; mlx-omarchy adapter eac5eed9 emits ordinary MIL and standard BLOBFILE constants without adding a universal graph IR.",
+      "reason": "The compiler owns semantic representation and lowering; the frontend owns strict package validation and exact offline constant normalization."
     },
     {
       "phase": "Core ML requirements",
       "task": "Evaluate textual MIL versus direct compiler API",
       "status": "completed",
-      "evidence": "coverage receipt section 'Textual MIL vs compiler API — minimum faithful handoff': textual path rejected with concrete loss evidence (coremltools has no textual round-trip for blobFileValue refs — 194 palettized weights + 266 large consts would inline as literal lists; literal-attribute spellings like fp32(1e-5) mismatch proto const operands); direct ANEGraphModule importer recommended",
-      "reason": "§17 evaluation completed with evidence; the plan's default (textual MIL) is explicitly overturned because it cannot represent the pinned encoder without loss — documented, not silently assumed."
+      "evidence": "TextMilEncoderFit and DirectMilApiFit independently established that the public compiler API accepts textual bytes and private graph construction shares the same semantic losses. Compiler a1bfea0 closes ordered-result and version/opset gaps. Adapter eac5eed9 preserves all 3351 operations, 3375 results, 24 split pairs, 194 LUT constants and 120 FP16 immediates; receipts/2026-09-13-coreml-text-adapter/receipt.json.",
+      "reason": "Supersedes the earlier direct-import recommendation. Use ordinary textual MIL with exact streamed LUT normalization; H13 split lowering remains unsupported and is not claimed."
     },
     {
       "phase": "Core ML requirements",
@@ -183,8 +183,8 @@
       "phase": "Core ML requirements",
       "task": "Implement missing compiler semantics in compiler repository",
       "status": "blocked",
-      "evidence": "ane-compiler.lock unchanged at a0ce354; coverage receipt blockers (oracle campaign for 689 ops; masking; two-output contract); §19 ownership rule (compiler semantics go in mil-hwx-compiler, never in mlx-omarchy/coreml)",
-      "reason": "No compiler semantics have been (or may be) implemented frontend-side; the required extensions are blocked on hardware oracle minting (unauthorized here) plus two plan decisions. Correctly nothing was implemented in the wrong repository to fake progress."
+      "evidence": "Companion compiler a1bfea0 implements ordered-result parsing/import/verifier semantics and validates program/opset. The actual normalized encoder now reaches H13 lowering and stops at line 265 with h13.unsupported-multi-result-operation, exit 65, no output artifact.",
+      "reason": "Required semantics belong in mil-hwx-compiler. Frontend representation is proven; full H13 operation coverage and model execution remain incomplete."
     },
     {
       "phase": "Core ML requirements",
@@ -196,44 +196,44 @@
     {
       "phase": "Core ML requirements",
       "task": "Preserve ordered multi program package execution",
-      "status": "blocked",
-      "evidence": "Historical compiler package contains 4,097 ordered programs; zero-workspace contract landed in 309cd745. Standalone compiler qualification: mil-hwx-compiler f4ad09066b560818a9dcc1f5f4f53273d941bd1e, executable source aa688df66cbc2110e0df94f0d50fb72c7fa30a18.; receipts/2026-09-12-coreml-h13-joint-integration.json; receipts/2026-09-12-h13-bundle-schema3/receipt.md",
-      "reason": "Schema 3 and the strict loader preserve ordered multi-program packages. Actual ordered execution through the private MLX runtime remains unqualified; AneRuntimeBridge owns the implementation."
+      "status": "completed",
+      "evidence": "receipts/2026-09-13-ane-runtime-bridge-qualification/receipt.json; exact installed 57cc36a2 add and ordered add/mul each passed two FP16 iterations.",
+      "reason": "Ordered fixture package execution is proven through the installed runtime. This does not qualify the full encoder package."
     },
     {
       "phase": "Core ML requirements",
       "task": "Consume canonical ANE driver and userspace runtime",
-      "status": "blocked",
-      "evidence": "E-DRV + E-NORT; docs/forks.md records omarchy-ane fork state (omarchy-kmd instrumentation 'not a finished fix, resets the machine when loaded')",
-      "reason": "Canonical userspace runtime integration is unimplemented and the driver/module prerequisite is unqualified."
+      "status": "completed",
+      "evidence": "receipts/2026-09-13-ane-runtime-bridge-qualification/receipt.json; installed 57cc36a2 consumes canonical omarchy-ane f261a6cb and passes four exact ANE executions on the base M1.",
+      "reason": "Canonical userspace integration is qualified on the base M1. Other firmware and hosts remain separate applicability gates."
     },
     {
       "phase": "Core ML requirements",
       "task": "Verify qualified driver ABI before execution",
       "status": "blocked",
-      "evidence": "E-DRV; roadmap.md 'Stabilize the ANE runtime ABI' exit receipt open",
-      "reason": "No qualified ABI exists to verify before execution; hardware operations out of scope for this reconciliation."
+      "evidence": "Qualified driver reference f261a6cb and device ownership checks; combined host parser now enforces td_count <= 0xffff and td_size <= 0x40000 before worker startup.",
+      "reason": "Driver-reference validation exists. Complete runtime applicability across supported firmware and hosts is not yet qualified."
     },
     {
       "phase": "Core ML requirements",
       "task": "Implement bounded ANE worker resource ownership",
-      "status": "in_progress",
-      "evidence": "receipts/2026-09-12-coreml-h13-joint-integration.json; receipts/2026-09-12-h13-bundle-schema3/receipt.md; active owner AneRuntimeBridge",
-      "reason": "Schema-3 host package gate is complete. The private runtime/worker and separate base-M1 numerical/deadline/resource qualification are in progress, not accepted."
+      "status": "completed",
+      "evidence": "receipts/2026-09-13-ane-runtime-bridge-qualification/receipt.json; runtime 12 cases/398 assertions, bundle 22 cases/2308 assertions, reviewed lifecycle failure tests, installed executions, and independent process/lease/quarantine/lock release checks.",
+      "reason": "Worker ownership, immutable snapshots, deadlines, and quarantine are implemented and checked. The earlier guard-124 run stopped before submission and released resources; the separately bounded installed-only run passed."
     },
     {
       "phase": "Core ML requirements",
       "task": "Keep worker private without inference server requirement",
-      "status": "blocked",
-      "evidence": "E-NORT; plan §25",
-      "reason": "Cannot satisfy a property of an unimplemented worker; design constraint documented and preserved."
+      "status": "completed",
+      "evidence": "Installed private mlx-omarchy-ane-worker executed add/add-mul at 9ea7501f without an inference server; source and installed identities are recorded in receipts/2026-09-12-ane-runtime-hardening/corrected-source-qualification.json.",
+      "reason": "Worker remains a private runtime process rather than a general inference server."
     },
     {
       "phase": "Core ML requirements",
       "task": "Bound submissions and enforce hardware failure recovery",
-      "status": "blocked",
-      "evidence": "E-NORT + E-DRV; plan §26",
-      "reason": "No submission path or recovery state machine exists; both require qualified runtime."
+      "status": "in_progress",
+      "evidence": "Runtime state machine implements startup and submission deadlines, worker reap, and boot-scoped quarantine; host review and 398 runtime assertions pass at 57cc36a2.",
+      "reason": "The recovery implementation exists. Combined installed acceptance and broader hardware fault qualification are distinct remaining checks."
     },
     {
       "phase": "Core ML requirements",
@@ -280,9 +280,9 @@
     {
       "phase": "Core ML requirements",
       "task": "Match exact reference mel preprocessing values",
-      "status": "in_progress",
-      "evidence": "CoremlFrontendIntegration b7ff5c2c: receipts/2026-09-12-parakeet-mel-frontend/receipt.json; root ran 47 focused tests and both real CLIs after review corrections. All 11 captured stages and 384128/384128 final mel values remain byte-identical, with all seven structural gates true. Joint integration with schema 3 is pending; no installed-runtime qualification.",
-      "reason": "CPU reference exactness is proven for the pinned fixture. Installed Vulkan/ANE preprocessing and its no-CPU-tensor backend trace remain outstanding; reference arithmetic alone does not qualify the deployed frontend."
+      "status": "completed",
+      "evidence": "receipts/2026-09-13-parakeet-vulkan-mel/receipt.json and aa13-apple-gpu.json: 18/18 authenticated Apple GPU comparisons bit-exact with 15 GPU primitives, 8 Vulkan compute dispatches, and 1 submission. receipts/2026-09-13-runtime-integration.json: merged-source 26-test pass and real software-Vulkan CLI all 18 comparisons bit-exact.",
+      "reason": "Pinned frontend arithmetic is qualified on Apple GPU, including the full-finite FMA regressions. This does not qualify encoder, decoder, full transcription, or a rebuilt combined installed wheel."
     },
     {
       "phase": "Core ML requirements",
@@ -393,15 +393,15 @@
       "phase": "Core ML requirements",
       "task": "Implement focused host only contract test suites",
       "status": "blocked",
-      "evidence": "68 coreml tool tests pass (integration-review check 1); omarchy_ane_bundle_tests 25 cases/2719 assertions pass; no runtime host suite exists",
-      "reason": "Implemented source-tool contracts have71 passing tests; the complete planned runtime/worker/cache contract suite depends on currently blocked runtime interfaces. This item is not complete merely because the existing subset passes."
+      "evidence": "At corrected combined 57cc36a2: runtime 12 cases/398 assertions; bundle 22 cases/2308 assertions. Adapter/schema 14 tests pass at eac5eed9. Compiled artifact cache remains unimplemented.",
+      "reason": "Existing runtime, bundle, and source-tool contracts have runnable coverage. The complete planned cache and full model contracts are not finished."
     },
     {
       "phase": "Core ML requirements",
       "task": "Implement bounded M1 hardware acceptance test suites",
-      "status": "blocked",
-      "evidence": "E-DRV + E-COV; no hardware operations authorized for this reconciliation",
-      "reason": "§50 suites target an unqualified runtime on unqualified firmware; blocked."
+      "status": "in_progress",
+      "evidence": "Prior installed base-M1 acceptance at 9ea7501f; exact combined 57cc36a2 source-build/install/hardware runner currently under a bounded exclusive grant.",
+      "reason": "Bounded hardware acceptance exists and is running; full encoder and other-host qualification remain incomplete."
     },
     {
       "phase": "Core ML requirements",
@@ -883,15 +883,15 @@
       "phase": "Compiler coverage",
       "task": "Implement only missing required compiler semantics",
       "status": "blocked",
-      "evidence": "Coverage receipt blockers 1–3: oracle coverage gap requires hardware probe campaign (large-spatial convs, runtime matmul rows≫16, spatial unary, (8,375,375) softmax, per-position mask broadcast, affine layer_norm); runtime attention masking has no ANE-side landing place (select/pad/slice/less have no encoder; mask is a runtime input); single-return fp16-binding program model vs two-output mixed-type encoder contract; ane-compiler.lock still at a0ce354 (no extension landed)",
-      "reason": "Plan §62 stop ('required H13 op is not understood'): implementing the 689-op gap requires hardware oracle minting, which is not authorized for this reconciliation, plus two plan-level decisions (masking strategy, second-output policy) that belong to the owner, not the frontend."
+      "evidence": "Companion a1bfea0 preserves ordered multi-results and program/opset. The normalized pinned encoder reaches H13 split lowering at line 265. Remaining coverage includes spatial geometries, runtime masking, and mixed-type multi-output function support.",
+      "reason": "Compiler-owned work continues on the exact split contract. Missing descriptor semantics require source or hardware evidence; no frontend emulation or guessed descriptors."
     },
     {
       "phase": "Compiler coverage",
       "task": "Update compiler pin after extension qualification",
       "status": "blocked",
       "evidence": "ane-compiler.lock unchanged at a0ce354cf800011a84420da4e12013eb8140b2a5 (archive sha256 matches integration review); §19/§47 require extension proven in mil-hwx-compiler with compiler tests BEFORE re-pin",
-      "reason": "Nothing to re-pin: no compiler extension has been qualified. Correctly no pin churn occurred; re-pin is mechanically blocked behind the blocked extension work above."
+      "reason": "Companion ordered-result implementation is reviewed and host-tested. The release pin still requires its complete archive/toolchain verification and intended compatibility decision; no full encoder claim follows from this frontend extension."
     },
     {
       "phase": "Encoder parity",
@@ -917,9 +917,9 @@
     {
       "phase": "Transcription",
       "task": "Implement exact public reference mel frontend",
-      "status": "blocked",
-      "evidence": "CoremlFrontendIntegration b7ff5c2c: receipts/2026-09-12-parakeet-mel-frontend/receipt.json; review corrections verified locally, joint integration pending.",
-      "reason": "The old numerical mismatch is resolved for the pinned CPU oracle: all 384128 mel values match exactly. This remains blocked as an installed frontend because the NumPy implementation performs CPU tensor work and provides no Vulkan/ANE backend trace."
+      "status": "completed",
+      "evidence": "604b0435976b50c0d2d01abf9aaca693667a7c46 merged as 4ef85f27; receipts/2026-09-13-parakeet-vulkan-mel/receipt.json; receipts/2026-09-13-runtime-integration.json.",
+      "reason": "Exact frontend tensor arithmetic executes through Vulkan rather than NumPy. All 18 authenticated stage/final comparisons pass on Apple GPU. The separate combined runtime installation and end-to-end transcription gates remain open."
     },
     {
       "phase": "Transcription",

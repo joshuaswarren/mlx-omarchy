@@ -1,0 +1,45 @@
+ane57cc-installed-combined: exited exit=0 uptime=29.7s restarts=0
+Command: /tmp/AneRuntimeBridge-57cc36a2-installed-combined-launch.sh 1789294762 1789295362 /tmp/AneRuntimeBridge-57cc36a2-installed-combined-1789294583.log
+Cwd: ~/.config/superpowers/worktrees/mlx-omarchy/AneCombinedAcceptance
+PTY: true; restart=no; persist=false; detached=false
+--- terminal tail ---
+
+Instance Layers: count = 2
+--------------------------
+VK_LAYER_KHRONOS_validation Khronos Validation Layer     1.4.357  version 1
+VK_LAYER_MESA_device_select Linux device selection layer 1.4.303  version 1
+
+Devices:
+========
+GPU0:
+   apiVersion         = 1.4.359
+   driverVersion      = 26.2.99
+   vendorID           = 0x10005
+   deviceID           = 0x0000
+   deviceType         = PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU
+   deviceName         = Apple M1 (G13G B1)
+   driverID           = DRIVER_ID_MESA_HONEYKRISP
+   driverName         = Honeykrisp
+   driverInfo         = Mesa 26.3.0-devel (git-6f6afc8968)
+   conformanceVersion = 1.4.0.0
+   deviceUUID         = 95db668a-5eef-fafb-0bfa-d44184cb8c59
+   driverUUID         = 1ea6de0a-755f-6b67-2ae6-5d68a5167ce8
+GPU1:
+   apiVersion         = 1.4.359
+   driverVersion      = 26.2.99
+   vendorID           = 0x10005
+   deviceID           = 0x0000
+   deviceType         = PHYSICAL_DEVICE_TYPE_CPU
+   deviceName         = llvmpipe (LLVM 22.1.8, 128 bits)
+   driverID           = DRIVER_ID_MESA_LLVMPIPE
+   driverName         = llvmpipe
+   driverInfo         = Mesa 26.3.0-devel (git-6f6afc8968) (LLVM 22.1.8)
+   conformanceVersion = 1.3.1.1
+   deviceUUID         = 6d657361-3236-2e33-2e30-2d6465766500
+   driverUUID         = 6c6c766d-7069-7065-5555-494400000000
+vulkan_device_reopen=true path=/home/joshuawarren/.local/bin/vulkaninfo
+worker_clearance=true runtime_quarantine=empty
+installed_combined_acceptance=pass source=57cc36a2e8ece78dd979b5344752d04c76b4d49d libane=f261a6cb537aca62f267ad3d01beda0d6877544c version=0.32.2.dev202609130952+57cc36a2e8ece78dd979b5344752d04c76b4d49d wheel_sha256=69e381c7ea91ca228a0d4ffa23e9409b3cd1b9026ed102179d05ee1043ab42d3 core_sha256=4ad850da16c300ea9f60aa7247f034f358aa16d7ba2fd146979a01c867e3cfa5 libmlx_sha256=402d4da86cd09482344c9cf624eb085323a73d6a38790f60b9e96a5210a0a3f0 worker_sha256=52fa2959b0d2cfb7e7a0af877deaac605b7141b033879da1f8f5b908575e2198 ane_smokes=2 ane_executions=4 gpu_postcheck=true mel_comparisons=18 vulkan_reopen=true mel_report_sha256=3a87ee5f83377b4da64656c56a0f4afdb65f2af1cb09e113b13aeb592e49df78 source_build=false install=false
+clearance=true outer_lock=free process_group_scan=pass process_group=empty worker_scan=pass workers=absent quarantine=empty lease=removed finished_epoch=1789294619 session_deadline_epoch=1789295252 cleanup_deadline=within exit_rc=0
+independent_clearance=pass guardian_absent=3390545 pgid_empty=3390545 workers_absent=true lease_absent=true quarantine_empty=true lock_free=true
+[ane57cc-installed-combined: exited; cursor=15418]

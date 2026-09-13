@@ -1,0 +1,303 @@
+guardian_identity=true guardian_pid=3390545 comm=timeout pgid=3390545
+lock_acquired=true pid=3390546 pgid=3390545 guardian_pid=3390545 work_deadline_epoch=1789295192 session_deadline_epoch=1789295252 cleanup_reserve_seconds=60 source_build=false install=false
+ownership_state path=/run/lock/mlx-omarchy-ane inode=9765 uid=0 gid=987 mode=750 links=2
+ownership_state path=/run/lock/mlx-omarchy-ane/device.lock inode=9766 uid=0 gid=987 mode=660 links=1
+ownership_state path=/run/lock/mlx-omarchy-ane/quarantine inode=9767 uid=0 gid=987 mode=660 links=1
+worker_clearance=true runtime_quarantine=empty
+wheel_record_identity=pass installed_version=0.32.2.dev202609130952+57cc36a2e8ece78dd979b5344752d04c76b4d49d mapped_core=/var/tmp/AneRuntimeBridge-57cc36a2/install/venv/lib/python3.14/site-packages/mlx/core.cpython-314-aarch64-linux-gnu.so mapped_core_sha256=4ad850da16c300ea9f60aa7247f034f358aa16d7ba2fd146979a01c867e3cfa5 mapped_libmlx=/var/tmp/AneRuntimeBridge-57cc36a2/install/venv/lib/python3.14/site-packages/mlx/lib/libmlx.so mapped_libmlx_sha256=402d4da86cd09482344c9cf624eb085323a73d6a38790f60b9e96a5210a0a3f0 installed_worker=/var/tmp/AneRuntimeBridge-57cc36a2/install/venv/lib/python3.14/site-packages/mlx/bin/mlx-omarchy-ane-worker installed_worker_sha256=52fa2959b0d2cfb7e7a0af877deaac605b7141b033879da1f8f5b908575e2198 wheel_sha256=69e381c7ea91ca228a0d4ffa23e9409b3cd1b9026ed102179d05ee1043ab42d3
+ 0x000000000000001d (RUNPATH)            Library runpath: [$ORIGIN/../lib]
+deadline_guard=pass phase=smoke_harness_compile remaining_seconds=600 required_seconds=300
+	linux-vdso.so.1 (0x0000ffff7672c000)
+	libmlx.so => /var/tmp/AneRuntimeBridge-57cc36a2/install/venv/lib/python3.14/site-packages/mlx/lib/libmlx.so (0x0000ffff75330000)
+	libstdc++.so.6 => /usr/lib/libstdc++.so.6 (0x0000ffff75000000)
+	libm.so.6 => /usr/lib/libm.so.6 (0x0000ffff74f20000)
+	libgcc_s.so.1 => /usr/lib/libgcc_s.so.1 (0x0000ffff74ee0000)
+	libc.so.6 => /usr/lib/libc.so.6 (0x0000ffff74d10000)
+	/lib/ld-linux-aarch64.so.1 => /usr/lib/ld-linux-aarch64.so.1 (0x0000ffff76730000)
+	libopenblas.so.0 => /usr/lib/libopenblas.so.0 (0x0000ffff741f0000)
+	libgfortran.so.5 => /usr/lib/libgfortran.so.5 (0x0000ffff74000000)
+	libgomp.so.1 => /usr/lib/libgomp.so.1 (0x0000ffff73f80000)
+deadline_guard=pass phase=add remaining_seconds=599 required_seconds=55
+smoke_effective_identity uid=1001 groups=1001 962 987 992 998 render_gid=987
+runtime_identity graph_hash=5584d0fd8d40027229890408e924e6f7930cd5f02516466a442193408482ce76
+contract_sha256=f974e82eca49726a9eafb58f95a6578a458d423bab12efcdc3c3b780f1bbf680
+model_sha256=41adbbc6a4d9b6f23316e743d0d840f6cab722123f3b47b7b9b980dd94517a26
+host=jwm1-linux kernel=7.1.6-1-1-ARCH machine=aarch64 dt_node=ane@26bc04000 dt_compatible=apple,t8103-ane driver_version=f2a3e5e+lifecycle6 driver_srcversion=DD43701FCB506056A340587 runtime_pm=on/active libane_commit=f261a6cb537aca62f267ad3d01beda0d6877544c driver_abi=1
+worker_executable "/var/tmp/AneRuntimeBridge-57cc36a2/install/venv/lib/python3.14/site-packages/mlx/bin/mlx-omarchy-ane-worker"
+worker_pid 3390628
+iteration 0 exact_fp16=PASS bytes=128
+iteration 1 exact_fp16=PASS bytes=128
+shutdown worker_pid=3390628 released_programs=1 process_released=true
+runtime_identity graph_hash=5584d0fd8d40027229890408e924e6f7930cd5f02516466a442193408482ce76
+iteration 0 exact_fp16=PASS bytes=128
+iteration 1 exact_fp16=PASS bytes=128
+shutdown worker_pid=3390628 released_programs=1 process_released=true
+ld_debug_identity=pass installed_libmlx=/var/tmp/AneRuntimeBridge-57cc36a2/install/venv/lib/python3.14/site-packages/mlx/lib/libmlx.so files=/var/tmp/AneRuntimeBridge-57cc36a2/combined-add.lddebug.3390623
+worker_clearance=true runtime_quarantine=empty
+smoke=add status=pass actual_loaded_libmlx=/var/tmp/AneRuntimeBridge-57cc36a2/install/venv/lib/python3.14/site-packages/mlx/lib/libmlx.so actual_worker=/var/tmp/AneRuntimeBridge-57cc36a2/install/venv/lib/python3.14/site-packages/mlx/bin/mlx-omarchy-ane-worker exact_fp16_iterations=2 released_programs=1 process_released=true
+deadline_guard=pass phase=add-mul remaining_seconds=599 required_seconds=55
+smoke_effective_identity uid=1001 groups=1001 962 987 992 998 render_gid=987
+runtime_identity graph_hash=5584d0fd8d40027229890408e924e6f7930cd5f02516466a442193408482ce76
+contract_sha256=065f2acd0a0668c0911fcc728bc8bfef56812e0e64c0064de6287ac29dc98619
+model_sha256=eddf1f251990ee72d24f53f9bf72eb1e8f71966af5551118fe4c2d0c1e32a5a5
+host=jwm1-linux kernel=7.1.6-1-1-ARCH machine=aarch64 dt_node=ane@26bc04000 dt_compatible=apple,t8103-ane driver_version=f2a3e5e+lifecycle6 driver_srcversion=DD43701FCB506056A340587 runtime_pm=on/active libane_commit=f261a6cb537aca62f267ad3d01beda0d6877544c driver_abi=1
+worker_executable "/var/tmp/AneRuntimeBridge-57cc36a2/install/venv/lib/python3.14/site-packages/mlx/bin/mlx-omarchy-ane-worker"
+worker_pid 3390661
+iteration 0 exact_fp16=PASS bytes=128
+iteration 1 exact_fp16=PASS bytes=128
+shutdown worker_pid=3390661 released_programs=2 process_released=true
+runtime_identity graph_hash=5584d0fd8d40027229890408e924e6f7930cd5f02516466a442193408482ce76
+iteration 0 exact_fp16=PASS bytes=128
+iteration 1 exact_fp16=PASS bytes=128
+shutdown worker_pid=3390661 released_programs=2 process_released=true
+ld_debug_identity=pass installed_libmlx=/var/tmp/AneRuntimeBridge-57cc36a2/install/venv/lib/python3.14/site-packages/mlx/lib/libmlx.so files=/var/tmp/AneRuntimeBridge-57cc36a2/combined-add-mul.lddebug.3390656
+worker_clearance=true runtime_quarantine=empty
+smoke=add-mul status=pass actual_loaded_libmlx=/var/tmp/AneRuntimeBridge-57cc36a2/install/venv/lib/python3.14/site-packages/mlx/lib/libmlx.so actual_worker=/var/tmp/AneRuntimeBridge-57cc36a2/install/venv/lib/python3.14/site-packages/mlx/bin/mlx-omarchy-ane-worker exact_fp16_iterations=2 released_programs=2 process_released=true
+deadline_guard=pass phase=gpu_postcheck remaining_seconds=599 required_seconds=20
+gpu_smoke=pass default_device=Device(gpu, 0) numerical_match=true result=[[20.0, 23.0], [44.0, 51.0]] device_info={'max_storage_buffer_range': 2147483647, 'max_compute_work_group_size_x': 1024, 'max_compute_work_group_invocations': 1024, 'storage_buffer_16bit_access': 1, 'max_compute_shared_memory_size': 32768, 'device_name': 'Apple M1 (G13G B1)', 'architecture': 'honeykrisp', 'unified_memory': 1, 'timestamp_period_ns': 1, 'api_version': '1.4.359', 'driver': 'Mesa Honeykrisp', 'vendor_id': 65541, 'cooperative_matrix_f32_8': 1, 'shader_int64': 1, 'device_id': 0, 'shader_int16': 1, 'driver_version': 109060195, 'total_memory': 8113881088, 'host_visible_coherent': 1, 'shader_float16': 1}
+deadline_guard=pass phase=mel_frontend remaining_seconds=599 required_seconds=180
+installed_extension_identity=pass core=/var/tmp/AneRuntimeBridge-57cc36a2/install/venv/lib/python3.14/site-packages/mlx/core.cpython-314-aarch64-linux-gnu.so core_sha256=4ad850da16c300ea9f60aa7247f034f358aa16d7ba2fd146979a01c867e3cfa5 wheel_sha256=69e381c7ea91ca228a0d4ffa23e9409b3cd1b9026ed102179d05ee1043ab42d3 device=Device(gpu, 0)
+{
+  "all_bit_exact": true,
+  "comparisons": {
+    "dft_imag": {
+      "bit_exact": true,
+      "dtype": "float32",
+      "shape": [
+        3001,
+        257
+      ]
+    },
+    "dft_real": {
+      "bit_exact": true,
+      "dtype": "float32",
+      "shape": [
+        3001,
+        257
+      ]
+    },
+    "encoder_features": {
+      "bit_exact": true,
+      "dtype": "float32",
+      "shape": [
+        1,
+        3000,
+        128
+      ]
+    },
+    "encoder_mask": {
+      "bit_exact": true,
+      "dtype": "int32",
+      "shape": [
+        1,
+        3000
+      ]
+    },
+    "frames": {
+      "bit_exact": true,
+      "dtype": "float32",
+      "shape": [
+        3001,
+        512
+      ]
+    },
+    "hann": {
+      "bit_exact": true,
+      "dtype": "float32",
+      "shape": [
+        400
+      ]
+    },
+    "logmel": {
+      "bit_exact": true,
+      "dtype": "float32",
+      "shape": [
+        3001,
+        128
+      ]
+    },
+    "mask": {
+      "bit_exact": true,
+      "dtype": "int32",
+      "shape": [
+        3001
+      ]
+    },
+    "mean": {
+      "bit_exact": true,
+      "dtype": "float32",
+      "shape": [
+        128
+      ]
+    },
+    "mel": {
+      "bit_exact": true,
+      "dtype": "float32",
+      "shape": [
+        3001,
+        128
+      ]
+    },
+    "mel_fb": {
+      "bit_exact": true,
+      "dtype": "float32",
+      "shape": [
+        128,
+        257
+      ]
+    },
+    "mel_mask": {
+      "bit_exact": true,
+      "dtype": "float32",
+      "shape": [
+        3001
+      ]
+    },
+    "mel_pinned": {
+      "bit_exact": true,
+      "dtype": "float32",
+      "shape": [
+        3001,
+        128
+      ]
+    },
+    "mel_stepwise": {
+      "bit_exact": true,
+      "dtype": "float32",
+      "shape": [
+        3001,
+        128
+      ]
+    },
+    "melproj": {
+      "bit_exact": true,
+      "dtype": "float32",
+      "shape": [
+        3001,
+        128
+      ]
+    },
+    "power": {
+      "bit_exact": true,
+      "dtype": "float32",
+      "shape": [
+        3001,
+        257
+      ]
+    },
+    "preemph": {
+      "bit_exact": true,
+      "dtype": "float32",
+      "shape": [
+        480000
+      ]
+    },
+    "std": {
+      "bit_exact": true,
+      "dtype": "float32",
+      "shape": [
+        128
+      ]
+    }
+  },
+  "device": "Device(gpu, 0)",
+  "gpu_execution": {
+    "gpu_primitive_dispatches": true,
+    "vk_compute_dispatches": true,
+    "vk_submissions": true
+  },
+  "qualified": true,
+  "reference_model": "mweinbach1/parakeet-tdt-0.6b-v3-coreml",
+  "reference_revision": "b650695c2322ee5281dff48d7345b2f3a58ff018",
+  "schema": "mlx-omarchy.parakeet-vulkan-mel/1",
+  "stage_set_exact": true,
+  "trace_delta": {
+    "commit_calls_noop": 1,
+    "commit_calls_with_work": 1,
+    "gpu_primitive_dispatches": 15,
+    "omarchy_finalize_calls": 1,
+    "vk_buffer_copies": 0,
+    "vk_buffer_fills": 0,
+    "vk_compute_dispatches": 8,
+    "vk_submissions": 1
+  }
+}
+installed_57cc_mel_acceptance=pass comparisons=18 device=Device(gpu, 0) trace={"commit_calls_noop":1,"commit_calls_with_work":1,"gpu_primitive_dispatches":15,"omarchy_finalize_calls":1,"vk_buffer_copies":0,"vk_buffer_fills":0,"vk_compute_dispatches":8,"vk_submissions":1}
+'DISPLAY' environment variable not set... skipping surface info
+error: XDG_RUNTIME_DIR is invalid or not set in the environment.
+WARNING: [Loader Message] Code 0 : ICD for selected physical device does not export vkGetPhysicalDeviceDisplayPropertiesKHR!
+WARNING: [Loader Message] Code 0 : ICD for selected physical device does not export vkGetPhysicalDeviceDisplayPlanePropertiesKHR!
+WARNING: [Loader Message] Code 0 : ICD for selected physical device does not export vkGetPhysicalDeviceDisplayPropertiesKHR!
+==========
+VULKANINFO
+==========
+
+Vulkan Instance Version: 1.4.357
+
+
+Instance Extensions: count = 26
+-------------------------------
+VK_EXT_acquire_drm_display             : extension revision 1
+VK_EXT_acquire_xlib_display            : extension revision 1
+VK_EXT_debug_report                    : extension revision 10
+VK_EXT_debug_utils                     : extension revision 2
+VK_EXT_direct_mode_display             : extension revision 1
+VK_EXT_display_surface_counter         : extension revision 1
+VK_EXT_headless_surface                : extension revision 1
+VK_EXT_layer_settings                  : extension revision 2
+VK_EXT_surface_maintenance1            : extension revision 1
+VK_EXT_swapchain_colorspace            : extension revision 5
+VK_KHR_device_group_creation           : extension revision 1
+VK_KHR_display                         : extension revision 23
+VK_KHR_external_fence_capabilities     : extension revision 1
+VK_KHR_external_memory_capabilities    : extension revision 1
+VK_KHR_external_semaphore_capabilities : extension revision 1
+VK_KHR_get_display_properties2         : extension revision 1
+VK_KHR_get_physical_device_properties2 : extension revision 2
+VK_KHR_get_surface_capabilities2       : extension revision 1
+VK_KHR_portability_enumeration         : extension revision 1
+VK_KHR_surface                         : extension revision 25
+VK_KHR_surface_maintenance1            : extension revision 1
+VK_KHR_surface_protected_capabilities  : extension revision 1
+VK_KHR_wayland_surface                 : extension revision 6
+VK_KHR_xcb_surface                     : extension revision 6
+VK_KHR_xlib_surface                    : extension revision 6
+VK_LUNARG_direct_driver_loading        : extension revision 1
+
+Instance Layers: count = 2
+--------------------------
+VK_LAYER_KHRONOS_validation Khronos Validation Layer     1.4.357  version 1
+VK_LAYER_MESA_device_select Linux device selection layer 1.4.303  version 1
+
+Devices:
+========
+GPU0:
+	apiVersion         = 1.4.359
+	driverVersion      = 26.2.99
+	vendorID           = 0x10005
+	deviceID           = 0x0000
+	deviceType         = PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU
+	deviceName         = Apple M1 (G13G B1)
+	driverID           = DRIVER_ID_MESA_HONEYKRISP
+	driverName         = Honeykrisp
+	driverInfo         = Mesa 26.3.0-devel (git-6f6afc8968)
+	conformanceVersion = 1.4.0.0
+	deviceUUID         = 95db668a-5eef-fafb-0bfa-d44184cb8c59
+	driverUUID         = 1ea6de0a-755f-6b67-2ae6-5d68a5167ce8
+GPU1:
+	apiVersion         = 1.4.359
+	driverVersion      = 26.2.99
+	vendorID           = 0x10005
+	deviceID           = 0x0000
+	deviceType         = PHYSICAL_DEVICE_TYPE_CPU
+	deviceName         = llvmpipe (LLVM 22.1.8, 128 bits)
+	driverID           = DRIVER_ID_MESA_LLVMPIPE
+	driverName         = llvmpipe
+	driverInfo         = Mesa 26.3.0-devel (git-6f6afc8968) (LLVM 22.1.8)
+	conformanceVersion = 1.3.1.1
+	deviceUUID         = 6d657361-3236-2e33-2e30-2d6465766500
+	driverUUID         = 6c6c766d-7069-7065-5555-494400000000
+vulkan_device_reopen=true path=/home/joshuawarren/.local/bin/vulkaninfo
+worker_clearance=true runtime_quarantine=empty
+installed_combined_acceptance=pass source=57cc36a2e8ece78dd979b5344752d04c76b4d49d libane=f261a6cb537aca62f267ad3d01beda0d6877544c version=0.32.2.dev202609130952+57cc36a2e8ece78dd979b5344752d04c76b4d49d wheel_sha256=69e381c7ea91ca228a0d4ffa23e9409b3cd1b9026ed102179d05ee1043ab42d3 core_sha256=4ad850da16c300ea9f60aa7247f034f358aa16d7ba2fd146979a01c867e3cfa5 libmlx_sha256=402d4da86cd09482344c9cf624eb085323a73d6a38790f60b9e96a5210a0a3f0 worker_sha256=52fa2959b0d2cfb7e7a0af877deaac605b7141b033879da1f8f5b908575e2198 ane_smokes=2 ane_executions=4 gpu_postcheck=true mel_comparisons=18 vulkan_reopen=true mel_report_sha256=3a87ee5f83377b4da64656c56a0f4afdb65f2af1cb09e113b13aeb592e49df78 source_build=false install=false
+clearance=true outer_lock=free process_group_scan=pass process_group=empty worker_scan=pass workers=absent quarantine=empty lease=removed finished_epoch=1789294619 session_deadline_epoch=1789295252 cleanup_deadline=within exit_rc=0

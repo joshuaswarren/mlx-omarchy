@@ -1,0 +1,81 @@
+preflight=pass host=jwm1-linux machine=aarch64 source=9ea7501fc748cc031f7cbdc58afbed984fc00d51 version=0.32.2.dev202609130744+9ea7501fc748cc031f7cbdc58afbed984fc00d51 wheel_sha256=b672dbd592878335e5180fdadd2193e25bdc5ed1cc3c759c2805e590642d1d93 python=/var/tmp/AneRuntimeBridge-9ea7501f/install/venv/bin/python vulkaninfo=/home/joshuawarren/.local/bin/vulkaninfo core=/var/tmp/AneRuntimeBridge-9ea7501f/install/venv/lib/python3.14/site-packages/mlx/core.cpython-314-aarch64-linux-gnu.so core_sha256=4ad850da16c300ea9f60aa7247f034f358aa16d7ba2fd146979a01c867e3cfa5 libmlx=/var/tmp/AneRuntimeBridge-9ea7501f/install/venv/lib/python3.14/site-packages/mlx/lib/libmlx.so libmlx_sha256=bcb6e25d5d7063fdb7fcb10cb787110bc614355f452798b27ef95c4eb1b98187 worker=/var/tmp/AneRuntimeBridge-9ea7501f/install/venv/lib/python3.14/site-packages/mlx/bin/mlx-omarchy-ane-worker worker_sha256=3052ee7710a24a3b3ce3d2f9843309db486c8530d3961635d95de1b7144f4f75
+lock_acquired=true time=2026-09-13T03:04:02-05:00 pid=3358455 source=9ea7501fc748cc031f7cbdc58afbed984fc00d51 execution_deadline_epoch=1789286702
+gpu_smoke=pass package_version=0.32.2.dev202609130744+9ea7501fc748cc031f7cbdc58afbed984fc00d51 default_device=Device(gpu, 0) numerical_match=true result=[[20.0, 23.0], [44.0, 51.0]]
+device_info={'max_storage_buffer_range': 2147483647, 'max_compute_work_group_size_x': 1024, 'max_compute_work_group_invocations': 1024, 'storage_buffer_16bit_access': 1, 'max_compute_shared_memory_size': 32768, 'device_name': 'Apple M1 (G13G B1)', 'architecture': 'honeykrisp', 'unified_memory': 1, 'timestamp_period_ns': 1, 'api_version': '1.4.359', 'driver': 'Mesa Honeykrisp', 'vendor_id': 65541, 'cooperative_matrix_f32_8': 1, 'shader_int64': 1, 'device_id': 0, 'shader_int16': 1, 'driver_version': 109060195, 'total_memory': 8113881088, 'host_visible_coherent': 1, 'shader_float16': 1}
+mx.metal.device_info is deprecated and will be removed in a future version. Use mx.device_info instead.
+'DISPLAY' environment variable not set... skipping surface info
+error: XDG_RUNTIME_DIR is invalid or not set in the environment.
+WARNING: [Loader Message] Code 0 : ICD for selected physical device does not export vkGetPhysicalDeviceDisplayPropertiesKHR!
+WARNING: [Loader Message] Code 0 : ICD for selected physical device does not export vkGetPhysicalDeviceDisplayPlanePropertiesKHR!
+WARNING: [Loader Message] Code 0 : ICD for selected physical device does not export vkGetPhysicalDeviceDisplayPropertiesKHR!
+==========
+VULKANINFO
+==========
+
+Vulkan Instance Version: 1.4.357
+
+
+Instance Extensions: count = 26
+-------------------------------
+VK_EXT_acquire_drm_display             : extension revision 1
+VK_EXT_acquire_xlib_display            : extension revision 1
+VK_EXT_debug_report                    : extension revision 10
+VK_EXT_debug_utils                     : extension revision 2
+VK_EXT_direct_mode_display             : extension revision 1
+VK_EXT_display_surface_counter         : extension revision 1
+VK_EXT_headless_surface                : extension revision 1
+VK_EXT_layer_settings                  : extension revision 2
+VK_EXT_surface_maintenance1            : extension revision 1
+VK_EXT_swapchain_colorspace            : extension revision 5
+VK_KHR_device_group_creation           : extension revision 1
+VK_KHR_display                         : extension revision 23
+VK_KHR_external_fence_capabilities     : extension revision 1
+VK_KHR_external_memory_capabilities    : extension revision 1
+VK_KHR_external_semaphore_capabilities : extension revision 1
+VK_KHR_get_display_properties2         : extension revision 1
+VK_KHR_get_physical_device_properties2 : extension revision 2
+VK_KHR_get_surface_capabilities2       : extension revision 1
+VK_KHR_portability_enumeration         : extension revision 1
+VK_KHR_surface                         : extension revision 25
+VK_KHR_surface_maintenance1            : extension revision 1
+VK_KHR_surface_protected_capabilities  : extension revision 1
+VK_KHR_wayland_surface                 : extension revision 6
+VK_KHR_xcb_surface                     : extension revision 6
+VK_KHR_xlib_surface                    : extension revision 6
+VK_LUNARG_direct_driver_loading        : extension revision 1
+
+Instance Layers: count = 2
+--------------------------
+VK_LAYER_KHRONOS_validation Khronos Validation Layer     1.4.357  version 1
+VK_LAYER_MESA_device_select Linux device selection layer 1.4.303  version 1
+
+Devices:
+========
+GPU0:
+	apiVersion         = 1.4.359
+	driverVersion      = 26.2.99
+	vendorID           = 0x10005
+	deviceID           = 0x0000
+	deviceType         = PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU
+	deviceName         = Apple M1 (G13G B1)
+	driverID           = DRIVER_ID_MESA_HONEYKRISP
+	driverName         = Honeykrisp
+	driverInfo         = Mesa 26.3.0-devel (git-6f6afc8968)
+	conformanceVersion = 1.4.0.0
+	deviceUUID         = 95db668a-5eef-fafb-0bfa-d44184cb8c59
+	driverUUID         = 1ea6de0a-755f-6b67-2ae6-5d68a5167ce8
+GPU1:
+	apiVersion         = 1.4.359
+	driverVersion      = 26.2.99
+	vendorID           = 0x10005
+	deviceID           = 0x0000
+	deviceType         = PHYSICAL_DEVICE_TYPE_CPU
+	deviceName         = llvmpipe (LLVM 22.1.8, 128 bits)
+	driverID           = DRIVER_ID_MESA_LLVMPIPE
+	driverName         = llvmpipe
+	driverInfo         = Mesa 26.3.0-devel (git-6f6afc8968) (LLVM 22.1.8)
+	conformanceVersion = 1.3.1.1
+	deviceUUID         = 6d657361-3236-2e33-2e30-2d6465766500
+	driverUUID         = 6c6c766d-7069-7065-5555-494400000000
+vulkan_reopen=pass path=/home/joshuawarren/.local/bin/vulkaninfo
+clearance=true outer_lock=free workers=absent quarantine=empty lease=removed exit_rc=0

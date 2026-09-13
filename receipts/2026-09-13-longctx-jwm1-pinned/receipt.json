@@ -1,0 +1,55 @@
+{
+  "schema": "longctx-jwm1-hardware-receipt/1",
+  "execution_model": "openai-codex/gpt-5.6-sol",
+  "fallback_model": null,
+  "protocol_commit": "ef6c5cc8ac8fb23f77e633518b4054243adcfccd",
+  "protocol_launcher_sha256": "413d049237e87c9fa7608b67016467ad209916c258d811a7638f07f9b770e07b",
+  "protocol_payload_sha256": "e9281828827494bed1e62379fda2b28a97333197796655c8cefd746cd2db07aa",
+  "workload_sha256": "ca9c50dc574912489df5142d4a9c3493850cc23fd6b0a06228b5c9f87b1cd9b6",
+  "host": "jwm1-linux",
+  "kernel": "7.1.6-1-1-ARCH",
+  "device": "Apple M1 (G13G B1)",
+  "driver": "Mesa Honeykrisp",
+  "model": "mlx-community/Qwen2.5-0.5B-Instruct-bf16",
+  "model_snapshot": "56d07e766edd7159fbe12ed12d9cf114bf38bf1e",
+  "python_dependencies": {
+    "mlx-lm": "0.31.3",
+    "transformers": "5.16.1",
+    "sentencepiece": "0.2.2",
+    "upstream_mlx_distribution": null
+  },
+  "control": {
+    "commit": "e4d079c883b8606dddef7720bd302c5756be0692",
+    "wheel_sha256": "6b308dfc58375c341c290057d236ee0e189b89d11fa55f4e09e5d9b4715f8ac2",
+    "decode_tps": [24.9819, 25.0449, 24.9764],
+    "median_decode_tps": 24.9819
+  },
+  "candidate": {
+    "commit": "2278ca259618c51cd5ec99fa68c272ffe55b69a5",
+    "wheel_sha256": "ceaec9a6a8432466ab0e3034abb552455153d9c40c24dd5493033baea10cfbba",
+    "decode_tps": [25.0132, 24.9388, 24.8895],
+    "median_decode_tps": 24.9388
+  },
+  "candidate_minus_control_tps": -0.04309999999999903,
+  "candidate_vs_control_percent": -0.17252490803341125,
+  "candidate_faster_by_median": false,
+  "output_digest": "ff502900d2a179a5",
+  "all_six_outputs_exact": true,
+  "verdict": "reject",
+  "launcher_log": "pinned/launcher.log",
+  "launcher_log_sha256": "74d46f36e34212af7bd7f1bff7723937e0afa27a6c857f56e55e3d77bc338a22",
+  "analysis_sha256": "fc7f981a7c3281503554d226ad5115af3af95dc8e9d9f17135dcaa2a0dcd8404",
+  "clearance": {
+    "outer_lock": "free",
+    "process_group": "empty",
+    "staged_workload": "absent",
+    "lease": "absent",
+    "guardian": "absent"
+  },
+  "excluded_run": {
+    "reason": "transformers 5.17.0 was off the install.sh pin and is not mixed with the pinned verdict",
+    "path": "off-pin-transformers-5.17.0",
+    "analysis_sha256": "5213541efe37959682a537a6dd54a5ff81a44e66a35b213c8e0718d855374e05",
+    "launcher_log_sha256": "be7712bdd3a0f4fb8952ecc755a746c84180d573e3f364861699bb37541fa380"
+  }
+}

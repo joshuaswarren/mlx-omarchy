@@ -37,12 +37,21 @@ class AdapterTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory) / "bundle"
             manifest = ADAPTER.adapt(FIXTURE, output, IDENTITY)
-            self.assertEqual(manifest["manifest_version"], 3)
+            self.assertEqual(manifest["manifest_version"], 4)
             self.assertEqual(manifest["driver_abi_major"], 1)
             self.assertEqual(manifest["dispatch_plan"], [0, 1])
             self.assertEqual([p["operation"] for p in manifest["programs"]], ["add", "mul"])
             self.assertEqual(manifest["programs"][0]["inputs"][0]["channel"], 5)
             self.assertEqual(manifest["programs"][1]["outputs"][0]["allocation_bytes"], 16384)
+            self.assertEqual(manifest["outputs"], [{
+                "name": "y", "index": 0, "dtype": "float16",
+                "shape": [1, 64, 1, 1], "byte_size": 128, "stride": 16384,
+            }])
+            self.assertEqual(manifest["logical_results"], [{
+                "name": "y", "dtype": "float16", "shape": [1, 64, 1, 1],
+                "tensor": "y", "element_offset": 0, "element_count": 64,
+                "conversion": "identity",
+            }])
             self.assertEqual(
                 manifest["payloads"][1]["sha256"],
                 "62595e4a61db24066b83a4f7c077d459c69a6a740109098ee0122b4b46dcd3cc",
@@ -91,6 +100,100 @@ class AdapterTest(unittest.TestCase):
             with self.assertRaisesRegex(ADAPTER.AdapterError, "artifactFormat"):
                 ADAPTER.adapt(package, Path(directory) / "bundle", IDENTITY)
 
+    def test_logical_result_order_duplicates_and_overlapping_views_are_preserved(self):
+        with tempfile.TemporaryDirectory() as directory:
+            package = Path(directory) / "package"
+            shutil.copytree(FIXTURE, package)
+            source = json.loads((package / "manifest.json").read_text())
+            source["logicalResults"] = [
+                {"name": "tail", "dtype": "float16", "shape": [4, 8],
+                 "physical": {"tensor": "y", "elementOffset": 32,
+                              "elementCount": 32}, "conversion": "identity"},
+                {"name": "whole", "dtype": "float16", "shape": [8, 8],
+                 "physical": {"tensor": "y", "elementOffset": 0,
+                              "elementCount": 64}, "conversion": "identity"},
+                {"name": "tail", "dtype": "float16", "shape": [4, 8],
+                 "physical": {"tensor": "y", "elementOffset": 32,
+                              "elementCount": 32}, "conversion": "identity"},
+            ]
+            (package / "manifest.json").write_text(json.dumps(source))
+            manifest = ADAPTER.adapt(package, Path(directory) / "bundle", IDENTITY)
+            self.assertEqual(
+                [(item["name"], item["shape"], item["element_offset"])
+                 for item in manifest["logical_results"]],
+                [("tail", [4, 8], 32), ("whole", [8, 8], 0),
+                 ("tail", [4, 8], 32)],
+            )
+
+    def test_invalid_logical_result_contract_is_rejected_without_output(self):
+        cases = {
+            "unsupported conversion": ("conversion", "cast", "conversion"),
+            "identity dtype mismatch": ("dtype", "float32", "dtype"),
+        }
+        for name, (field, value, error) in cases.items():
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as directory:
+                package = Path(directory) / "package"
+                output = Path(directory) / "bundle"
+                shutil.copytree(FIXTURE, package)
+                source = json.loads((package / "manifest.json").read_text())
+                source["logicalResults"][0][field] = value
+                (package / "manifest.json").write_text(json.dumps(source))
+                with self.assertRaisesRegex(ADAPTER.AdapterError, error):
+                    ADAPTER.adapt(package, output, IDENTITY)
+                self.assertFalse(output.exists())
+
+    def test_unsupported_physical_output_dtype_is_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            package = Path(directory) / "package"
+            shutil.copytree(FIXTURE, package)
+            source = json.loads((package / "manifest.json").read_text())
+            source["programs"][1]["outputs"][0]["dtype"] = "float32"
+            source["programs"][1]["outputs"][0]["logicalBytes"] = 256
+            source["tensors"]["y"]["logicalBytes"] = 256
+            source["physicalOutputs"][0]["dtype"] = "float32"
+            source["physicalOutputs"][0]["logicalBytes"] = 256
+            source["logicalResults"][0]["dtype"] = "float32"
+            (package / "manifest.json").write_text(json.dumps(source))
+            with self.assertRaisesRegex(ADAPTER.AdapterError, "hardware dtype"):
+                ADAPTER.adapt(package, Path(directory) / "bundle", IDENTITY)
+
+    def test_logical_result_geometry_and_unknown_fields_are_rejected(self):
+        mutations = (
+            (lambda source: source["logicalResults"][0]["physical"].update(
+                elementCount=63), "elementCount"),
+            (lambda source: source["logicalResults"][0]["physical"].update(
+                elementOffset=1), "storage"),
+            (lambda source: source["logicalResults"][0]["physical"].update(
+                physicalElements=64), "unknown field"),
+            (lambda source: source["logicalResults"][0].update(extra=True),
+             "unknown field"),
+            (lambda source: source["physicalOutputs"][0].update(extra=True),
+             "unknown field"),
+        )
+        for mutate, error in mutations:
+            with self.subTest(error=error), tempfile.TemporaryDirectory() as directory:
+                package = Path(directory) / "package"
+                shutil.copytree(FIXTURE, package)
+                source = json.loads((package / "manifest.json").read_text())
+                mutate(source)
+                (package / "manifest.json").write_text(json.dumps(source))
+                with self.assertRaisesRegex(ADAPTER.AdapterError, error):
+                    ADAPTER.adapt(package, Path(directory) / "bundle", IDENTITY)
+
+    def test_old_producer_schema_is_rejected_without_partial_output(self):
+        with tempfile.TemporaryDirectory() as directory:
+            package = Path(directory) / "package"
+            output = Path(directory) / "bundle"
+            shutil.copytree(FIXTURE, package)
+            source = json.loads((package / "manifest.json").read_text())
+            source["schema"] = "mil-hwxc.h13-anec-package.v1"
+            del source["physicalOutputs"]
+            del source["logicalResults"]
+            (package / "manifest.json").write_text(json.dumps(source))
+            with self.assertRaisesRegex(ADAPTER.AdapterError, "schema"):
+                ADAPTER.adapt(package, output, IDENTITY)
+            self.assertFalse(output.exists())
+
     def test_top_level_offset_is_independent_of_physical_slice_span(self):
         with tempfile.TemporaryDirectory() as directory:
             package = Path(directory) / "package"
@@ -120,6 +223,10 @@ class AdapterTest(unittest.TestCase):
             source = json.loads((package / "manifest.json").read_text())
             source["tensors"]["y"]["shape"] = [1, 128, 1, 1]
             source["tensors"]["y"]["logicalBytes"] = 256
+            source["physicalOutputs"][0]["shape"] = [1, 128, 1, 1]
+            source["physicalOutputs"][0]["logicalBytes"] = 256
+            source["logicalResults"][0]["shape"] = [1, 128, 1, 1]
+            source["logicalResults"][0]["physical"]["elementCount"] = 128
             output = source["programs"][1]["outputs"][0]
             output["nchw"][1] = 128
             output["slice"] = {
@@ -154,6 +261,26 @@ class AdapterTest(unittest.TestCase):
                  for program in manifest["programs"]],
                 [0, 64],
             )
+
+    def test_current_bundle_fixtures_use_v4_logical_results(self):
+        fixtures = (
+            REPO / "receipts/fixtures/exported/ane-add-fp16-1x512",
+            REPO / "receipts/fixtures/exported/ane-add-fp16-1x896",
+            REPO / "receipts/fixtures/exported/ane-mul-fp16-1x512",
+            REPO / "receipts/fixtures/mil-oneop-bundle",
+        )
+        for fixture in fixtures:
+            with self.subTest(fixture=fixture):
+                manifest = json.loads((fixture / "manifest.json").read_text())
+                output = manifest["outputs"][0]
+                self.assertEqual(manifest["manifest_version"], 4)
+                self.assertEqual(manifest["logical_results"], [{
+                    "name": output["name"], "dtype": output["dtype"],
+                    "shape": output["shape"], "tensor": output["name"],
+                    "element_offset": 0,
+                    "element_count": output["byte_size"] // 2,
+                    "conversion": "identity",
+                }])
 
     def test_generation_receipt_binds_compiler_manifest(self):
         with tempfile.TemporaryDirectory() as directory:

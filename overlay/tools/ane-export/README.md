@@ -1,6 +1,6 @@
 # ane-export
 
-This directory contains two host-side paths that produce schema-3 ANE bundles:
+ This directory contains two host-side paths that produce schema-4 ANE bundles:
 
 - `ane_export.py` retains the macOS reference workflow for small elementwise
   captures. It uses Xcode, ANECompiler, and the private `ANECCompile` entry
@@ -32,8 +32,8 @@ python3 ane_export.py desc.json --out-dir out-add-1x512 \
 
 The exporter emits `bundle/manifest.json`, `bundle/model.anec`, and
 `bundle/weights.bin`. It also retains the MIL capture and HWX conversion input
-outside the bundle. Schema 3 records one program, one dispatch index, exact
-channel allocations, and driver ABI major 1.
+ outside the bundle. Schema 4 records one program, explicit ordered identity
+ return views, exact channel allocations, and driver ABI major 1.
 
 Both producers set `release_asset.model_sha256` to the same compiled-payload
 collection identity. They sort payload records by `path`, retain exactly
@@ -50,7 +50,7 @@ that reference compiler.
 
 ## Explicit Linux package workflow
 
-The adapter accepts only `mil-hwxc.h13-anec-package.v1`, target `H13`, and
+ The adapter accepts only `mil-hwxc.h13-anec-package.v2`, target `H13`, and
 artifact format `anec`. The compiler invocation must use `--format anec`.
 Provide the source graph, a repository containing the recorded generation
 commit, and the generation receipt. The receipt binds the compiler manifest,
@@ -71,12 +71,13 @@ python3 h13_package_to_bundle.py package \
   --model graph-region
 ```
 
-The adapter preserves program order, dispatch order, intermediate tensors,
-channel bindings, NCHW geometry, tensor slices, and allocation sizes. It
-requires the receipt's compiler manifest digest before it reads compiler
-wiring. It refuses HWX packages, non-H13 targets, unknown package fields,
-invalid payload receipts, and embedded `constantInputs`. Schema 3 does not yet
-define a constant-input payload representation.
+ The adapter preserves explicit physical outputs and ordered logical return
+ views, including duplicates, reshapes, and overlapping slices. It retains
+ program order, bindings, NCHW geometry, and allocations. The manifest digest
+ must match the receipt before wiring is read. HWX packages, non-H13 targets,
+ old schemas, unknown fields, invalid receipts, and embedded `constantInputs`
+ are rejected. The old v1 archive in `ane-compiler.lock` is incompatible with
+ this adapter; a new release pin awaits full compiler qualification.
 
 ## Validate
 

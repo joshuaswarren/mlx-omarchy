@@ -1,5 +1,5 @@
 {
-  "manifest_version": 3,
+  "manifest_version": 4,
   "name": "ane-add-fp16-1x896",
   "graph_hash": "9048326d6335b6bec29296d0ce521fa528c09c4558d93e15bf1830d7ec777da1",
   "task_descriptors": 1,
@@ -119,5 +119,19 @@
   "dispatch_plan": [
     0
   ],
-  "driver_abi_major": 1
+  "driver_abi_major": 1,
+  "logical_results": [
+    {
+      "name": "t2",
+      "dtype": "float16",
+      "shape": [
+        1,
+        896
+      ],
+      "tensor": "t2",
+      "element_offset": 0,
+      "element_count": 896,
+      "conversion": "identity"
+    }
+  ]
 }

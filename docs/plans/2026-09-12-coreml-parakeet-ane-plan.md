@@ -300,7 +300,7 @@ The existing bundle layer already validates:
 - source provenance,
 - model identity.
 
-The authoritative current field contract is schema 3 in `docs/ane-bundles.md`.
+The authoritative field contract is schema 4 in `docs/ane-bundles.md`, including ordered logical return views.
 Historical firmware-range and workspace-tensor bundle fields are superseded
 and are not aliases. `driver_abi_major` declares loader ABI applicability; it
 does not prove firmware or physical-device qualification.
@@ -1656,7 +1656,7 @@ channel layout
 must fail closed.
 
 Historical firmware-range and workspace-tensor bundle fields are superseded
-by schema 3 (`docs/ane-bundles.md`). Firmware/platform applicability remains
+by schema 4 (`docs/ane-bundles.md`). Firmware/platform applicability remains
 a separate runtime and receipt requirement; `driver_abi_major` does not prove
 it.
 

@@ -20,9 +20,9 @@ execution: code
 > does not wait for GPU performance parity. Every correctness and
 > device-safety gate in this plan still applies.
 >
-> **Bundle schema:** Current bundle fields follow schema 3 in
-> `docs/ane-bundles.md`: exact `driver_abi_major` and per-program
-> `scratch_bytes`. Historical firmware-range and workspace-tensor bundle
+> **Bundle schema:** Current bundle fields follow schema 4 in
+> `docs/ane-bundles.md`: ordered logical return views, exact `driver_abi_major`,
+> and per-program `scratch_bytes`. Historical firmware-range and workspace-tensor bundle
 > fields are superseded and are not aliases. Firmware/platform
 > applicability, compiler, runtime, and full-model acceptance
 > requirements below still apply; `driver_abi_major` does not prove

@@ -7,6 +7,37 @@
   "intermediates": [
     "sum"
   ],
+  "logicalResults": [
+    {
+      "conversion": "identity",
+      "dtype": "float16",
+      "name": "y",
+      "physical": {
+        "elementCount": 64,
+        "elementOffset": 0,
+        "tensor": "y"
+      },
+      "shape": [
+        1,
+        64,
+        1,
+        1
+      ]
+    }
+  ],
+  "physicalOutputs": [
+    {
+      "dtype": "float16",
+      "logicalBytes": 128,
+      "shape": [
+        1,
+        64,
+        1,
+        1
+      ],
+      "tensor": "y"
+    }
+  ],
   "programs": [
     {
       "bytes": 20992,
@@ -169,7 +200,7 @@
       "taskDescriptors": 1
     }
   ],
-  "schema": "mil-hwxc.h13-anec-package.v1",
+  "schema": "mil-hwxc.h13-anec-package.v2",
   "target": "H13",
   "tensors": {
     "a": {

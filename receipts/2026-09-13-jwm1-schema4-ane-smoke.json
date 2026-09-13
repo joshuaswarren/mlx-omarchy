@@ -1,0 +1,19 @@
+{
+  "schema": "jwm1-schema4-ane-smoke/1",
+  "date": "2026-09-13",
+  "status": "pass",
+  "host": "jwm1-linux",
+  "source_commit": "a9f14124e3e23b3eb5c538a1b99e9a72b74fa892",
+  "device": "/dev/accel/accel0",
+  "dt_node": "ane@26bc04000",
+  "dt_compatible": "apple,t8103-ane",
+  "binary_sha256": "5e31501727921108116c9e2b597193529e5981d75e4f43c9731a559acfa256da",
+  "worker_sha256": "45a4a26710b20898c5ebedb3682ec9708166361d96b3d57347a0321a4b8a6f09",
+  "libane_commit": "f261a6cb537aca62f267ad3d01beda0d6877544c",
+  "schema_3_rejected": "unsupported manifest_version (expected 4)",
+  "schema_4_iterations": 2,
+  "exact_fp16": true,
+  "expected": "0x4600",
+  "gpu_lock": "never acquired",
+  "scope": "T8103 add-then-mul only; not T6000; not encoder"
+}

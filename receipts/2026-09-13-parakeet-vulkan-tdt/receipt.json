@@ -1,0 +1,1299 @@
+{
+  "backend": "apple-gpu-vulkan",
+  "comparison": {
+    "actual": [
+      {
+        "duration": 3,
+        "frame_index": 3,
+        "token_id": 1876
+      },
+      {
+        "duration": 2,
+        "frame_index": 6,
+        "token_id": 303
+      },
+      {
+        "duration": 2,
+        "frame_index": 8,
+        "token_id": 669
+      },
+      {
+        "duration": 2,
+        "frame_index": 10,
+        "token_id": 326
+      },
+      {
+        "duration": 2,
+        "frame_index": 12,
+        "token_id": 3357
+      },
+      {
+        "duration": 3,
+        "frame_index": 14,
+        "token_id": 4223
+      },
+      {
+        "duration": 2,
+        "frame_index": 17,
+        "token_id": 555
+      },
+      {
+        "duration": 2,
+        "frame_index": 19,
+        "token_id": 1269
+      },
+      {
+        "duration": 3,
+        "frame_index": 21,
+        "token_id": 7898
+      },
+      {
+        "duration": 1,
+        "frame_index": 24,
+        "token_id": 509
+      },
+      {
+        "duration": 2,
+        "frame_index": 25,
+        "token_id": 1150
+      },
+      {
+        "duration": 2,
+        "frame_index": 27,
+        "token_id": 1742
+      },
+      {
+        "duration": 2,
+        "frame_index": 29,
+        "token_id": 7877
+      },
+      {
+        "duration": 3,
+        "frame_index": 31,
+        "token_id": 1503
+      },
+      {
+        "duration": 3,
+        "frame_index": 34,
+        "token_id": 479
+      },
+      {
+        "duration": 2,
+        "frame_index": 37,
+        "token_id": 1447
+      },
+      {
+        "duration": 2,
+        "frame_index": 39,
+        "token_id": 575
+      },
+      {
+        "duration": 2,
+        "frame_index": 41,
+        "token_id": 1743
+      },
+      {
+        "duration": 2,
+        "frame_index": 43,
+        "token_id": 320
+      },
+      {
+        "duration": 2,
+        "frame_index": 45,
+        "token_id": 769
+      },
+      {
+        "duration": 3,
+        "frame_index": 47,
+        "token_id": 575
+      },
+      {
+        "duration": 3,
+        "frame_index": 50,
+        "token_id": 3550
+      },
+      {
+        "duration": 2,
+        "frame_index": 53,
+        "token_id": 5231
+      },
+      {
+        "duration": 3,
+        "frame_index": 56,
+        "token_id": 939
+      },
+      {
+        "duration": 2,
+        "frame_index": 59,
+        "token_id": 773
+      },
+      {
+        "duration": 1,
+        "frame_index": 61,
+        "token_id": 283
+      },
+      {
+        "duration": 3,
+        "frame_index": 63,
+        "token_id": 575
+      },
+      {
+        "duration": 4,
+        "frame_index": 66,
+        "token_id": 3415
+      },
+      {
+        "duration": 2,
+        "frame_index": 70,
+        "token_id": 282
+      },
+      {
+        "duration": 2,
+        "frame_index": 72,
+        "token_id": 351
+      },
+      {
+        "duration": 2,
+        "frame_index": 74,
+        "token_id": 2414
+      },
+      {
+        "duration": 3,
+        "frame_index": 76,
+        "token_id": 1765
+      },
+      {
+        "duration": 2,
+        "frame_index": 79,
+        "token_id": 1083
+      },
+      {
+        "duration": 2,
+        "frame_index": 81,
+        "token_id": 366
+      },
+      {
+        "duration": 2,
+        "frame_index": 83,
+        "token_id": 555
+      },
+      {
+        "duration": 2,
+        "frame_index": 85,
+        "token_id": 7410
+      },
+      {
+        "duration": 2,
+        "frame_index": 90,
+        "token_id": 1160
+      },
+      {
+        "duration": 3,
+        "frame_index": 92,
+        "token_id": 2009
+      },
+      {
+        "duration": 2,
+        "frame_index": 95,
+        "token_id": 334
+      },
+      {
+        "duration": 2,
+        "frame_index": 97,
+        "token_id": 552
+      },
+      {
+        "duration": 2,
+        "frame_index": 99,
+        "token_id": 1413
+      },
+      {
+        "duration": 1,
+        "frame_index": 101,
+        "token_id": 7877
+      },
+      {
+        "duration": 2,
+        "frame_index": 102,
+        "token_id": 699
+      },
+      {
+        "duration": 2,
+        "frame_index": 104,
+        "token_id": 5477
+      },
+      {
+        "duration": 2,
+        "frame_index": 106,
+        "token_id": 326
+      },
+      {
+        "duration": 1,
+        "frame_index": 108,
+        "token_id": 7877
+      },
+      {
+        "duration": 1,
+        "frame_index": 109,
+        "token_id": 309
+      },
+      {
+        "duration": 2,
+        "frame_index": 110,
+        "token_id": 630
+      },
+      {
+        "duration": 1,
+        "frame_index": 112,
+        "token_id": 344
+      },
+      {
+        "duration": 1,
+        "frame_index": 113,
+        "token_id": 7918
+      },
+      {
+        "duration": 1,
+        "frame_index": 114,
+        "token_id": 7894
+      },
+      {
+        "duration": 3,
+        "frame_index": 115,
+        "token_id": 296
+      },
+      {
+        "duration": 2,
+        "frame_index": 118,
+        "token_id": 571
+      },
+      {
+        "duration": 1,
+        "frame_index": 120,
+        "token_id": 326
+      },
+      {
+        "duration": 4,
+        "frame_index": 123,
+        "token_id": 2628
+      },
+      {
+        "duration": 3,
+        "frame_index": 127,
+        "token_id": 463
+      },
+      {
+        "duration": 4,
+        "frame_index": 130,
+        "token_id": 7883
+      },
+      {
+        "duration": 4,
+        "frame_index": 138,
+        "token_id": 7883
+      },
+      {
+        "duration": 4,
+        "frame_index": 202,
+        "token_id": 7883
+      },
+      {
+        "duration": 4,
+        "frame_index": 226,
+        "token_id": 7883
+      },
+      {
+        "duration": 4,
+        "frame_index": 234,
+        "token_id": 7883
+      },
+      {
+        "duration": 4,
+        "frame_index": 242,
+        "token_id": 7883
+      },
+      {
+        "duration": 4,
+        "frame_index": 250,
+        "token_id": 7883
+      },
+      {
+        "duration": 4,
+        "frame_index": 258,
+        "token_id": 7883
+      },
+      {
+        "duration": 4,
+        "frame_index": 266,
+        "token_id": 7883
+      },
+      {
+        "duration": 1,
+        "frame_index": 274,
+        "token_id": 7883
+      },
+      {
+        "duration": 1,
+        "frame_index": 279,
+        "token_id": 7883
+      },
+      {
+        "duration": 4,
+        "frame_index": 280,
+        "token_id": 7883
+      },
+      {
+        "duration": 1,
+        "frame_index": 284,
+        "token_id": 7883
+      },
+      {
+        "duration": 4,
+        "frame_index": 285,
+        "token_id": 7883
+      },
+      {
+        "duration": 0,
+        "frame_index": 289,
+        "token_id": 7883
+      },
+      {
+        "duration": 4,
+        "frame_index": 289,
+        "token_id": 7883
+      },
+      {
+        "duration": 0,
+        "frame_index": 293,
+        "token_id": 7883
+      },
+      {
+        "duration": 4,
+        "frame_index": 293,
+        "token_id": 7883
+      },
+      {
+        "duration": 0,
+        "frame_index": 297,
+        "token_id": 7883
+      },
+      {
+        "duration": 4,
+        "frame_index": 297,
+        "token_id": 7883
+      },
+      {
+        "duration": 0,
+        "frame_index": 301,
+        "token_id": 7883
+      },
+      {
+        "duration": 1,
+        "frame_index": 305,
+        "token_id": 7883
+      },
+      {
+        "duration": 1,
+        "frame_index": 310,
+        "token_id": 7883
+      },
+      {
+        "duration": 1,
+        "frame_index": 315,
+        "token_id": 7883
+      },
+      {
+        "duration": 1,
+        "frame_index": 320,
+        "token_id": 7883
+      },
+      {
+        "duration": 4,
+        "frame_index": 321,
+        "token_id": 7883
+      },
+      {
+        "duration": 1,
+        "frame_index": 325,
+        "token_id": 7883
+      },
+      {
+        "duration": 4,
+        "frame_index": 326,
+        "token_id": 7883
+      },
+      {
+        "duration": 4,
+        "frame_index": 330,
+        "token_id": 7883
+      },
+      {
+        "duration": 4,
+        "frame_index": 334,
+        "token_id": 7883
+      },
+      {
+        "duration": 4,
+        "frame_index": 338,
+        "token_id": 7883
+      },
+      {
+        "duration": 4,
+        "frame_index": 342,
+        "token_id": 7883
+      },
+      {
+        "duration": 4,
+        "frame_index": 346,
+        "token_id": 7883
+      },
+      {
+        "duration": 4,
+        "frame_index": 350,
+        "token_id": 7883
+      },
+      {
+        "duration": 4,
+        "frame_index": 354,
+        "token_id": 7883
+      },
+      {
+        "duration": 4,
+        "frame_index": 362,
+        "token_id": 7883
+      },
+      {
+        "duration": 1,
+        "frame_index": 370,
+        "token_id": 7883
+      },
+      {
+        "duration": 0,
+        "frame_index": 372,
+        "token_id": 7883
+      },
+      {
+        "duration": 0,
+        "frame_index": 373,
+        "token_id": 7883
+      },
+      {
+        "duration": 0,
+        "frame_index": 373,
+        "token_id": 7883
+      },
+      {
+        "duration": 0,
+        "frame_index": 373,
+        "token_id": 7883
+      },
+      {
+        "duration": 0,
+        "frame_index": 373,
+        "token_id": 7883
+      },
+      {
+        "duration": 0,
+        "frame_index": 373,
+        "token_id": 7883
+      },
+      {
+        "duration": 0,
+        "frame_index": 373,
+        "token_id": 7863
+      },
+      {
+        "duration": 0,
+        "frame_index": 373,
+        "token_id": 8135
+      },
+      {
+        "duration": 0,
+        "frame_index": 373,
+        "token_id": 8029
+      },
+      {
+        "duration": 0,
+        "frame_index": 373,
+        "token_id": 8062
+      },
+      {
+        "duration": 0,
+        "frame_index": 373,
+        "token_id": 8029
+      }
+    ],
+    "actual_emissions": 104,
+    "emissions_compared": 104,
+    "exact_match": false,
+    "first_divergence": {
+      "actual": {
+        "duration": 0,
+        "frame_index": 373,
+        "token_id": 8029
+      },
+      "emission_index": 101,
+      "native": {
+        "duration": 0,
+        "frame_index": 373,
+        "token_id": 7892
+      }
+    },
+    "native": [
+      {
+        "duration": 3,
+        "frame_index": 3,
+        "token_id": 1876
+      },
+      {
+        "duration": 2,
+        "frame_index": 6,
+        "token_id": 303
+      },
+      {
+        "duration": 2,
+        "frame_index": 8,
+        "token_id": 669
+      },
+      {
+        "duration": 2,
+        "frame_index": 10,
+        "token_id": 326
+      },
+      {
+        "duration": 2,
+        "frame_index": 12,
+        "token_id": 3357
+      },
+      {
+        "duration": 3,
+        "frame_index": 14,
+        "token_id": 4223
+      },
+      {
+        "duration": 2,
+        "frame_index": 17,
+        "token_id": 555
+      },
+      {
+        "duration": 2,
+        "frame_index": 19,
+        "token_id": 1269
+      },
+      {
+        "duration": 3,
+        "frame_index": 21,
+        "token_id": 7898
+      },
+      {
+        "duration": 1,
+        "frame_index": 24,
+        "token_id": 509
+      },
+      {
+        "duration": 2,
+        "frame_index": 25,
+        "token_id": 1150
+      },
+      {
+        "duration": 2,
+        "frame_index": 27,
+        "token_id": 1742
+      },
+      {
+        "duration": 2,
+        "frame_index": 29,
+        "token_id": 7877
+      },
+      {
+        "duration": 3,
+        "frame_index": 31,
+        "token_id": 1503
+      },
+      {
+        "duration": 3,
+        "frame_index": 34,
+        "token_id": 479
+      },
+      {
+        "duration": 2,
+        "frame_index": 37,
+        "token_id": 1447
+      },
+      {
+        "duration": 2,
+        "frame_index": 39,
+        "token_id": 575
+      },
+      {
+        "duration": 2,
+        "frame_index": 41,
+        "token_id": 1743
+      },
+      {
+        "duration": 2,
+        "frame_index": 43,
+        "token_id": 320
+      },
+      {
+        "duration": 2,
+        "frame_index": 45,
+        "token_id": 769
+      },
+      {
+        "duration": 3,
+        "frame_index": 47,
+        "token_id": 575
+      },
+      {
+        "duration": 3,
+        "frame_index": 50,
+        "token_id": 3550
+      },
+      {
+        "duration": 2,
+        "frame_index": 53,
+        "token_id": 5231
+      },
+      {
+        "duration": 3,
+        "frame_index": 56,
+        "token_id": 939
+      },
+      {
+        "duration": 2,
+        "frame_index": 59,
+        "token_id": 773
+      },
+      {
+        "duration": 1,
+        "frame_index": 61,
+        "token_id": 283
+      },
+      {
+        "duration": 3,
+        "frame_index": 63,
+        "token_id": 575
+      },
+      {
+        "duration": 4,
+        "frame_index": 66,
+        "token_id": 3415
+      },
+      {
+        "duration": 2,
+        "frame_index": 70,
+        "token_id": 282
+      },
+      {
+        "duration": 2,
+        "frame_index": 72,
+        "token_id": 351
+      },
+      {
+        "duration": 2,
+        "frame_index": 74,
+        "token_id": 2414
+      },
+      {
+        "duration": 3,
+        "frame_index": 76,
+        "token_id": 1765
+      },
+      {
+        "duration": 2,
+        "frame_index": 79,
+        "token_id": 1083
+      },
+      {
+        "duration": 2,
+        "frame_index": 81,
+        "token_id": 366
+      },
+      {
+        "duration": 2,
+        "frame_index": 83,
+        "token_id": 555
+      },
+      {
+        "duration": 2,
+        "frame_index": 85,
+        "token_id": 7410
+      },
+      {
+        "duration": 2,
+        "frame_index": 90,
+        "token_id": 1160
+      },
+      {
+        "duration": 3,
+        "frame_index": 92,
+        "token_id": 2009
+      },
+      {
+        "duration": 2,
+        "frame_index": 95,
+        "token_id": 334
+      },
+      {
+        "duration": 2,
+        "frame_index": 97,
+        "token_id": 552
+      },
+      {
+        "duration": 2,
+        "frame_index": 99,
+        "token_id": 1413
+      },
+      {
+        "duration": 1,
+        "frame_index": 101,
+        "token_id": 7877
+      },
+      {
+        "duration": 2,
+        "frame_index": 102,
+        "token_id": 699
+      },
+      {
+        "duration": 2,
+        "frame_index": 104,
+        "token_id": 5477
+      },
+      {
+        "duration": 2,
+        "frame_index": 106,
+        "token_id": 326
+      },
+      {
+        "duration": 1,
+        "frame_index": 108,
+        "token_id": 7877
+      },
+      {
+        "duration": 1,
+        "frame_index": 109,
+        "token_id": 309
+      },
+      {
+        "duration": 2,
+        "frame_index": 110,
+        "token_id": 630
+      },
+      {
+        "duration": 1,
+        "frame_index": 112,
+        "token_id": 344
+      },
+      {
+        "duration": 1,
+        "frame_index": 113,
+        "token_id": 7918
+      },
+      {
+        "duration": 1,
+        "frame_index": 114,
+        "token_id": 7894
+      },
+      {
+        "duration": 3,
+        "frame_index": 115,
+        "token_id": 296
+      },
+      {
+        "duration": 2,
+        "frame_index": 118,
+        "token_id": 571
+      },
+      {
+        "duration": 1,
+        "frame_index": 120,
+        "token_id": 326
+      },
+      {
+        "duration": 4,
+        "frame_index": 123,
+        "token_id": 2628
+      },
+      {
+        "duration": 3,
+        "frame_index": 127,
+        "token_id": 463
+      },
+      {
+        "duration": 4,
+        "frame_index": 130,
+        "token_id": 7883
+      },
+      {
+        "duration": 4,
+        "frame_index": 138,
+        "token_id": 7883
+      },
+      {
+        "duration": 4,
+        "frame_index": 202,
+        "token_id": 7883
+      },
+      {
+        "duration": 4,
+        "frame_index": 226,
+        "token_id": 7883
+      },
+      {
+        "duration": 4,
+        "frame_index": 234,
+        "token_id": 7883
+      },
+      {
+        "duration": 4,
+        "frame_index": 242,
+        "token_id": 7883
+      },
+      {
+        "duration": 4,
+        "frame_index": 250,
+        "token_id": 7883
+      },
+      {
+        "duration": 4,
+        "frame_index": 258,
+        "token_id": 7883
+      },
+      {
+        "duration": 4,
+        "frame_index": 266,
+        "token_id": 7883
+      },
+      {
+        "duration": 1,
+        "frame_index": 274,
+        "token_id": 7883
+      },
+      {
+        "duration": 1,
+        "frame_index": 279,
+        "token_id": 7883
+      },
+      {
+        "duration": 4,
+        "frame_index": 280,
+        "token_id": 7883
+      },
+      {
+        "duration": 1,
+        "frame_index": 284,
+        "token_id": 7883
+      },
+      {
+        "duration": 4,
+        "frame_index": 285,
+        "token_id": 7883
+      },
+      {
+        "duration": 0,
+        "frame_index": 289,
+        "token_id": 7883
+      },
+      {
+        "duration": 4,
+        "frame_index": 289,
+        "token_id": 7883
+      },
+      {
+        "duration": 0,
+        "frame_index": 293,
+        "token_id": 7883
+      },
+      {
+        "duration": 4,
+        "frame_index": 293,
+        "token_id": 7883
+      },
+      {
+        "duration": 0,
+        "frame_index": 297,
+        "token_id": 7883
+      },
+      {
+        "duration": 4,
+        "frame_index": 297,
+        "token_id": 7883
+      },
+      {
+        "duration": 0,
+        "frame_index": 301,
+        "token_id": 7883
+      },
+      {
+        "duration": 1,
+        "frame_index": 305,
+        "token_id": 7883
+      },
+      {
+        "duration": 1,
+        "frame_index": 310,
+        "token_id": 7883
+      },
+      {
+        "duration": 1,
+        "frame_index": 315,
+        "token_id": 7883
+      },
+      {
+        "duration": 1,
+        "frame_index": 320,
+        "token_id": 7883
+      },
+      {
+        "duration": 4,
+        "frame_index": 321,
+        "token_id": 7883
+      },
+      {
+        "duration": 1,
+        "frame_index": 325,
+        "token_id": 7883
+      },
+      {
+        "duration": 4,
+        "frame_index": 326,
+        "token_id": 7883
+      },
+      {
+        "duration": 4,
+        "frame_index": 330,
+        "token_id": 7883
+      },
+      {
+        "duration": 4,
+        "frame_index": 334,
+        "token_id": 7883
+      },
+      {
+        "duration": 4,
+        "frame_index": 338,
+        "token_id": 7883
+      },
+      {
+        "duration": 4,
+        "frame_index": 342,
+        "token_id": 7883
+      },
+      {
+        "duration": 4,
+        "frame_index": 346,
+        "token_id": 7883
+      },
+      {
+        "duration": 4,
+        "frame_index": 350,
+        "token_id": 7883
+      },
+      {
+        "duration": 4,
+        "frame_index": 354,
+        "token_id": 7883
+      },
+      {
+        "duration": 4,
+        "frame_index": 362,
+        "token_id": 7883
+      },
+      {
+        "duration": 1,
+        "frame_index": 370,
+        "token_id": 7883
+      },
+      {
+        "duration": 0,
+        "frame_index": 372,
+        "token_id": 7883
+      },
+      {
+        "duration": 0,
+        "frame_index": 373,
+        "token_id": 7883
+      },
+      {
+        "duration": 0,
+        "frame_index": 373,
+        "token_id": 7883
+      },
+      {
+        "duration": 0,
+        "frame_index": 373,
+        "token_id": 7883
+      },
+      {
+        "duration": 0,
+        "frame_index": 373,
+        "token_id": 7883
+      },
+      {
+        "duration": 0,
+        "frame_index": 373,
+        "token_id": 7883
+      },
+      {
+        "duration": 0,
+        "frame_index": 373,
+        "token_id": 7863
+      },
+      {
+        "duration": 0,
+        "frame_index": 373,
+        "token_id": 8135
+      },
+      {
+        "duration": 0,
+        "frame_index": 373,
+        "token_id": 7892
+      },
+      {
+        "duration": 0,
+        "frame_index": 373,
+        "token_id": 7863
+      },
+      {
+        "duration": 0,
+        "frame_index": 373,
+        "token_id": 8135
+      }
+    ],
+    "native_emissions": 104
+  },
+  "execution": {
+    "command": [
+      "/home/joshuawarren/src/mlx-longctx-base-e4d079c/.work-longctx/control-venv/bin/python",
+      "-m",
+      "coreml.parakeet_tdt",
+      "/home/joshuawarren/tmp/coreml-tdt-0cf2d148/capture/ane",
+      "/home/joshuawarren/tmp/coreml-tdt-0cf2d148/model",
+      "--source-commit",
+      "c1462bf932134d391e79a7c9435486a2c4f0f021",
+      "--runtime-source-commit",
+      "e4d079c883b8606dddef7720bd302c5756be0692",
+      "--output",
+      "/home/joshuawarren/tmp/coreml-tdt-0cf2d148/run/receipt.json"
+    ],
+    "control": "greedy_tdt_decode",
+    "decoder_calls": 145,
+    "elapsed_seconds": 1.1347251039696857,
+    "gpu_trace_after": {
+      "commit_calls_noop": 292,
+      "commit_calls_with_work": 292,
+      "gpu_primitive_dispatches": 14817,
+      "omarchy_finalize_calls": 292,
+      "vk_buffer_copies": 580,
+      "vk_buffer_fills": 2,
+      "vk_compute_dispatches": 8275,
+      "vk_submissions": 292
+    },
+    "gpu_trace_before": {
+      "commit_calls_noop": 0,
+      "commit_calls_with_work": 0,
+      "gpu_primitive_dispatches": 0,
+      "omarchy_finalize_calls": 0,
+      "vk_buffer_copies": 0,
+      "vk_buffer_fills": 0,
+      "vk_compute_dispatches": 0,
+      "vk_submissions": 0
+    },
+    "gpu_trace_delta": {
+      "commit_calls_noop": 292,
+      "commit_calls_with_work": 292,
+      "gpu_primitive_dispatches": 14817,
+      "omarchy_finalize_calls": 292,
+      "vk_buffer_copies": 580,
+      "vk_buffer_fills": 2,
+      "vk_compute_dispatches": 8275,
+      "vk_submissions": 292
+    },
+    "joint_calls": 146,
+    "recorded_decisions_injected": false,
+    "valid_encoder_frames": 375
+  },
+  "host": {
+    "hostname": "jwm1-linux",
+    "kernel": "7.1.6-1-1-ARCH"
+  },
+  "mlx": {
+    "architecture": "honeykrisp",
+    "device": "Apple M1 (G13G B1)",
+    "version": "0.32.2.dev202609131130+e4d079c"
+  },
+  "model": {
+    "capture_parent_receipt_sha256": "5ee6328fa622a9440ecd1070ef02de9705294d4e73d4a989c88aeb4885175985",
+    "encoder_hidden_npy_sha256": "7e442034cb42521f7b76ec9645e8d0082899a5f551ea8d046c62a9283cc6e4e5",
+    "quantization": "fp16 compute precision; encoder 4-bit palettized (kmeans, per-grouped-channel, conv excluded); decoder/joint fp16",
+    "revision": "b650695c2322ee5281dff48d7345b2f3a58ff018"
+  },
+  "diagnosis": {
+    "status": "localized; exact native operator remains unproven",
+    "method": "Offline replay of authenticated capture 20260913T105550Z before any hardware escalation",
+    "jwm1_used": false,
+    "failing_step": {
+      "name": "decision-142 decoder transition for input token 8135 into joint token argmax",
+      "decision_index": 142,
+      "emission_index": 101,
+      "frame_index": 373,
+      "symbol_count": 7,
+      "duration_index": 0,
+      "duration": 0,
+      "actual_token_id": 8029,
+      "native_token_id": 7892
+    },
+    "offline_full_replay": {
+      "source_commit": "1f8804cd087e60b7ab34a2a730510977f5aca0c3",
+      "runtime_source_commit": "e4d079c883b8606dddef7720bd302c5756be0692",
+      "source_hashes_equal_to_apple_run": true,
+      "host": "omp-studio-local",
+      "backend": "software-vulkan",
+      "device": "llvmpipe (LLVM 15.0.6, 256 bits)",
+      "runtime_version": "0.32.2.dev202609130346+e4d079c8",
+      "model_revision": "b650695c2322ee5281dff48d7345b2f3a58ff018",
+      "elapsed_seconds": 57.81975218933076,
+      "decoder_calls": 145,
+      "joint_calls": 146,
+      "actual_emission_sequence_matches_apple_vulkan": true,
+      "actual_emission_sequence_sha256": "d8d9c1f1400cf1901df48c2094b6c764065cc3a10cca54c0aa2b3fb4e556e993",
+      "sequence_hash_encoding": "SHA-256 of UTF-8 JSON.stringify(array)",
+      "first_divergence": {
+        "emission_index": 101,
+        "actual": {
+          "token_id": 8029,
+          "frame_index": 373,
+          "duration": 0
+        },
+        "native": {
+          "token_id": 7892,
+          "frame_index": 373,
+          "duration": 0
+        }
+      },
+      "command": "MLX_OMARCHY_ALLOW_NON_APPLE=1 PYTHONPATH=<installed-mlx-site>:overlay/tools:overlay/tools/coreml python3 -m coreml.parakeet_tdt <authenticated-20260913T105550Z-capture>/ane <pinned-b650695c-model> --source-commit 1f8804cd087e60b7ab34a2a730510977f5aca0c3 --runtime-source-commit e4d079c883b8606dddef7720bd302c5756be0692 --allow-non-apple --output /tmp/tdt-divergence-full-offline.json"
+    },
+    "native_path_replay": {
+      "mode": "inject authenticated native decisions through target while executing decoder and joint",
+      "target_decision_index": 142,
+      "target_emission_index": 101,
+      "decoder_calls": 142,
+      "token_decisions_matching_before_target": 142,
+      "token_decisions_compared_before_target": 142,
+      "duration_decisions_matching_through_target": 143,
+      "duration_decisions_compared_through_target": 143,
+      "elapsed_seconds": 55.2408717982471,
+      "decoder_input_token": 8135,
+      "actual_token_id": 8029,
+      "native_token_id": 7892,
+      "native_token_rank": 2,
+      "actual_logit": -12.640625,
+      "native_token_logit": -12.875,
+      "actual_minus_native_logit": 0.234375,
+      "duration_index": 0,
+      "duration_logits": [13.203125, 8.71875, -10.0546875, -45.96875, -8.3828125],
+      "encoder_frame_raw_sha256": "421387a213f3d218dfd55d08a0a22446b7252810711aceb31307b0e598c2d56d",
+      "decoder_state_raw_sha256": "fb820c60707759d9deeea80ce7c0874afd6735ba9cb36f1af7ab75eeb3738970"
+    },
+    "target_joint_arithmetic_variants": {
+      "baseline_fp16_matmul_then_fp16_bias": {
+        "token_id": 8029,
+        "native_token_rank": 2,
+        "winner_minus_native": 0.234375
+      },
+      "mx_addmm_fp16": {
+        "token_id": 8029,
+        "native_token_rank": 2,
+        "winner_minus_native": 0.234375
+      },
+      "explicit_fp32_dot_then_fp16_bias": {
+        "token_id": 8029,
+        "native_token_rank": 2,
+        "winner_minus_native": 0.234375
+      },
+      "fused_fp32_dot_and_bias_then_fp16": {
+        "token_id": 8029,
+        "native_token_rank": 2,
+        "winner_minus_native": 0.234375
+      },
+      "fp16_products_fp32_reduce_then_fp16_bias": {
+        "token_id": 8029,
+        "native_token_rank": 2,
+        "winner_minus_native": 0.234375
+      },
+      "balanced_tree_fp16_then_fp16_bias": {
+        "token_id": 8029,
+        "native_token_rank": 2,
+        "winner_minus_native": 0.234375
+      },
+      "sequential_fp16_then_fp16_bias": {
+        "token_id": 8029,
+        "native_token_rank": 2,
+        "winner_minus_native": 0.296875
+      }
+    },
+    "captured_component_evidence": {
+      "tensor_trace_limit": 16,
+      "target_decision_tensor_present": false,
+      "decoder": {
+        "native_comparison_traces": 15,
+        "non_bit_exact_from_trace_0": true,
+        "trace_0_next_cell_max_absolute_error": 0.0028076171875,
+        "trace_10_next_cell_max_absolute_error": 0.03125,
+        "trace_15_next_cell_max_absolute_error": 0.0234375,
+        "worst_next_cell_max_absolute_error": 0.03125
+      },
+      "joint": {
+        "native_input_traces": 16,
+        "token_decisions_matching": 16,
+        "duration_decisions_matching": 16,
+        "full_tensor_bit_exact": false
+      }
+    },
+    "conclusion": {
+      "not_honeykrisp_specific": "The complete software-Vulkan emission sequence is byte-for-byte identical to the Apple M1 Honeykrisp sequence with identical TDT, decoder, and joint source hashes.",
+      "control_path": "Native-injected replay matches every token decision before decision 142 and every duration decision through decision 142, so host control first fails only when the target token argmax is observed.",
+      "joint_variant_result": "All seven tested joint accumulation and fusion variants retain token 8029 at the target state; changing among them does not recover native token 7892.",
+      "most_supported_cause": "Cumulative recurrent decoder-state numerical drift is the leading cause because decoder outputs differ from native Core ML at the first captured transition and grow across the captured prefix, while joint execution fed native captured states preserves all 16 captured decisions.",
+      "proof_limit": "The native capture stops tensor traces at decision 15. It has no native decoder state or token logits for decision 142, so the exact decoder operation and a late-state joint contribution cannot be proven from this capture.",
+      "required_next_evidence": "Capture authenticated decoder input/state/output and joint input/token logits for native decision 142, plus the immediately preceding recurrent state, before changing decoder or joint arithmetic."
+    },
+    "excluded_candidate": {
+      "commit": "8289b1bc77f3797d42611339efa6723824ea08e6",
+      "promote": false,
+      "reason": "The fp32-LSTM candidate improves weighted aggregate tensor error by only 1.52711865565479 percent, worsens decoder_hidden maxima and means, and does not establish native Core ML accumulator semantics."
+    }
+  },
+  "schema": "parakeet-vulkan-tdt-comparison/1",
+  "source": {
+    "base_commit": "c4768af65f1fd263c2ee55b6767291896ee18381",
+    "branch_commit": "c1462bf932134d391e79a7c9435486a2c4f0f021",
+    "excluded_decoder_commit": "8289b1bc",
+    "files": {
+      "parakeet_tdt.py": {
+        "origin_commit": "7d893bdeb9a1426745599754e238250575ce2220",
+        "path": "overlay/tools/coreml/parakeet_tdt.py",
+        "sha256": "104e5762edd626b1ddc16e8afb522de729133f18bfab176cf1e9389cb2ac051c"
+      },
+      "vulkan_decoder.py": {
+        "origin_commit": "2af4f282a2b480c9854fe51a9688dc562719a411",
+        "path": "overlay/tools/coreml/vulkan_decoder.py",
+        "sha256": "5a163be6f78b1e1314040175ac768a4dbf3c270a0a0fa5b2fe5c88595fd46fb4"
+      },
+      "vulkan_joint.py": {
+        "origin_commit": "81447d7a957e94ee520f03bdebed8721794e173b",
+        "path": "overlay/tools/coreml/vulkan_joint.py",
+        "sha256": "bf31537d504612c6d9873051c9ad5f7b84a978268e6d7ed4eaec173a18626115"
+      }
+    },
+    "runtime": {
+      "core_path": "/home/joshuawarren/src/mlx-longctx-base-e4d079c/.work-longctx/control-venv/lib/python3.14/site-packages/mlx/core.cpython-314-aarch64-linux-gnu.so",
+      "core_sha256": "4ad850da16c300ea9f60aa7247f034f358aa16d7ba2fd146979a01c867e3cfa5",
+      "libmlx_path": "/home/joshuawarren/src/mlx-longctx-base-e4d079c/.work-longctx/control-venv/lib/python3.14/site-packages/mlx/lib/libmlx.so",
+      "libmlx_sha256": "f604640d8c125eb2fb9082381691cd94b4f3aa42b169499561a6fd0d5eda542f",
+      "source_commit": "e4d079c883b8606dddef7720bd302c5756be0692"
+    }
+  },
+  "status": "diverged"
+}

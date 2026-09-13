@@ -1,0 +1,184 @@
+LOCK_ACQUIRED utc=2026-09-13T08:18:52Z pid=3360998 pgid=3360997 acquire_by=1789288094 execution_deadline=1789288432 outer_deadline=1789289084 source_commit=aa13b105cafb12fb60854417f68cac1aa946ef05
+SOURCE_FROZEN source_sha=4f61cd5cd1ebabb2a96d3270e347d3a6607be9b9c186f56663c5f9d14ba095c0 comparator_sha=210b38995c1491890fd71a7ae6c5c79b79c6d8d583289e3b3831a86b7066b7f8 constants_sha=caad0ac74d60a4d7378326d5c6d2e0f0fa7d1fd807157f9d203e7348874d258f regression_sha=735f96bad9af741c00fe878e002ada1b00f893f69dd85713cdd0f680cfbb41f4
+runtime=0.32.2.dev202609121216+8f6de34c
+device=Device(gpu, 0)
+QUIET_SAMPLE sample=1 load1=0.00 consecutive=1 utc=2026-09-13T08:18:52Z
+QUIET_SAMPLE sample=2 load1=0.00 consecutive=2 utc=2026-09-13T08:19:12Z
+QUIET_SAMPLE sample=3 load1=0.00 consecutive=3 utc=2026-09-13T08:19:32Z
+original_underflow_dft_real: bit_exact=true shape=[4, 257]
+original_underflow_dft_imag: bit_exact=true shape=[4, 257]
+low_scale_reference_subnormal_power=1280
+low_scale_power: bit_exact=true shape=[3001, 257]
+low_scale_mel_projection: bit_exact=true shape=[3001, 128]
+device=Device(gpu, 0)
+APPLE_MEL_REGRESSION_VALID
+{
+  "all_bit_exact": true,
+  "comparisons": {
+    "dft_imag": {
+      "bit_exact": true,
+      "dtype": "float32",
+      "shape": [
+        3001,
+        257
+      ]
+    },
+    "dft_real": {
+      "bit_exact": true,
+      "dtype": "float32",
+      "shape": [
+        3001,
+        257
+      ]
+    },
+    "encoder_features": {
+      "bit_exact": true,
+      "dtype": "float32",
+      "shape": [
+        1,
+        3000,
+        128
+      ]
+    },
+    "encoder_mask": {
+      "bit_exact": true,
+      "dtype": "int32",
+      "shape": [
+        1,
+        3000
+      ]
+    },
+    "frames": {
+      "bit_exact": true,
+      "dtype": "float32",
+      "shape": [
+        3001,
+        512
+      ]
+    },
+    "hann": {
+      "bit_exact": true,
+      "dtype": "float32",
+      "shape": [
+        400
+      ]
+    },
+    "logmel": {
+      "bit_exact": true,
+      "dtype": "float32",
+      "shape": [
+        3001,
+        128
+      ]
+    },
+    "mask": {
+      "bit_exact": true,
+      "dtype": "int32",
+      "shape": [
+        3001
+      ]
+    },
+    "mean": {
+      "bit_exact": true,
+      "dtype": "float32",
+      "shape": [
+        128
+      ]
+    },
+    "mel": {
+      "bit_exact": true,
+      "dtype": "float32",
+      "shape": [
+        3001,
+        128
+      ]
+    },
+    "mel_fb": {
+      "bit_exact": true,
+      "dtype": "float32",
+      "shape": [
+        128,
+        257
+      ]
+    },
+    "mel_mask": {
+      "bit_exact": true,
+      "dtype": "float32",
+      "shape": [
+        3001
+      ]
+    },
+    "mel_pinned": {
+      "bit_exact": true,
+      "dtype": "float32",
+      "shape": [
+        3001,
+        128
+      ]
+    },
+    "mel_stepwise": {
+      "bit_exact": true,
+      "dtype": "float32",
+      "shape": [
+        3001,
+        128
+      ]
+    },
+    "melproj": {
+      "bit_exact": true,
+      "dtype": "float32",
+      "shape": [
+        3001,
+        128
+      ]
+    },
+    "power": {
+      "bit_exact": true,
+      "dtype": "float32",
+      "shape": [
+        3001,
+        257
+      ]
+    },
+    "preemph": {
+      "bit_exact": true,
+      "dtype": "float32",
+      "shape": [
+        480000
+      ]
+    },
+    "std": {
+      "bit_exact": true,
+      "dtype": "float32",
+      "shape": [
+        128
+      ]
+    }
+  },
+  "device": "Device(gpu, 0)",
+  "gpu_execution": {
+    "gpu_primitive_dispatches": true,
+    "vk_compute_dispatches": true,
+    "vk_submissions": true
+  },
+  "qualified": true,
+  "reference_model": "mweinbach1/parakeet-tdt-0.6b-v3-coreml",
+  "reference_revision": "b650695c2322ee5281dff48d7345b2f3a58ff018",
+  "schema": "mlx-omarchy.parakeet-vulkan-mel/1",
+  "stage_set_exact": true,
+  "trace_delta": {
+    "commit_calls_noop": 1,
+    "commit_calls_with_work": 1,
+    "gpu_primitive_dispatches": 15,
+    "omarchy_finalize_calls": 1,
+    "vk_buffer_copies": 0,
+    "vk_buffer_fills": 0,
+    "vk_compute_dispatches": 8,
+    "vk_submissions": 1
+  }
+}
+APPLE_GPU_RECEIPT_VALID comparisons=18 trace={"commit_calls_noop": 1, "commit_calls_with_work": 1, "gpu_primitive_dispatches": 15, "omarchy_finalize_calls": 1, "vk_buffer_copies": 0, "vk_buffer_fills": 0, "vk_compute_dispatches": 8, "vk_submissions": 1}
+WINDOW_COMPLETE utc=2026-09-13T08:20:25Z
+CHILD_PIDS_CLEAR utc=2026-09-13T08:20:25Z
+LOCK_RELEASED utc=2026-09-13T08:20:25Z rc=0
+lock_released=true

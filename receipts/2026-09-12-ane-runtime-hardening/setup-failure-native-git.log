@@ -1,0 +1,7 @@
+lock_acquired=true time=2026-09-12T23:02:47-05:00 pid=3294187 pgid=3294187 lease=/tmp/m1-gpu.lease.AneRuntimeBridge source=bab2549cc673662edf5c87b5df073b08677cd956 deadline_epoch=1789273067
+worker_clearance=true
+deadline_guard=pass remaining_seconds=900 required_seconds=850
+fatal: not a git repository (or any parent up to mount point /)
+Stopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set).
+child_pid_clearance=false lock_release=preserved exit_rc=128
+pid=3294200 ppid=3294187 pgid=3294187 state=S

@@ -169,6 +169,49 @@ histogram is now independently verified), while the old artifact's
 boundary dtype/shape entries were all `None` — blank values presented
 as data, which the new inspector refuses to emit.
 
+## Textual MIL adapter
+
+`overlay/tools/coreml/mil_adapter.py` converts only the locked encoder from
+`mweinbach1/parakeet-tdt-0.6b-v3-coreml` at revision
+`b650695c2322ee5281dff48d7345b2f3a58ff018`. It verifies the complete
+package against `parakeet-reference.lock`, rejects unknown protobuf fields,
+state, nested blocks, dynamic or optional model boundaries, unsupported value
+storage, and non-unit bindings, then emits textual `program(1)` MIL with a
+`CoreML8` main function.
+
+The adapter preserves operation and result order. Multi-result operations use
+ordered parenthesized typed bindings. It replaces each supported
+`constexpr_lut_to_dense` in place with an FP16 `const`, expanding one
+constant at a time from LSB-first UINT4 indices and block-indexed palettes.
+All FP16 byte immediates, including non-finite bit patterns, move unchanged to
+standard Core ML blob-v2 records. Existing external weights remain under the
+ordinary model root. The output has no alternate graph or CPU tensor path.
+
+Emission and compilation are separate explicit actions:
+
+```bash
+python3 overlay/tools/coreml/mil_adapter.py emit ENCODER.mlpackage OUTPUT \
+  --reference-lock overlay/tools/coreml/parakeet-reference.lock
+
+python3 overlay/tools/coreml/mil_adapter.py compile ENCODER.mlpackage OUTPUT \
+  --reference-lock overlay/tools/coreml/parakeet-reference.lock \
+  --compiler /absolute/path/to/mil-hwxc \
+  --compiler-output /absolute/path/to/output
+```
+
+`compile` requires an absolute executable path and invokes that binary with
+the emitted `model.mil`, ordinary `model-root`, H13 target, and ANEC format.
+It returns the compiler's actual nonzero status. The adapter receipt records
+the baseline compiler at `a0ce354cf800011a84420da4e12013eb8140b2a5`
+rejecting the first parenthesized binding. Companion compiler commit
+`a1bfea0cd52208ac9f168791e8c6e9a83ddc8efb` accepts the ordered result
+syntax: the same `program(1)`/`CoreML8` MIL hash parses completely and
+reaches H13 lowering, where it fails explicitly at the first two-result split
+with `h13.unsupported-multi-result-operation`. This is semantic round-trip
+progress, not a compiler artifact or encoder qualification. The exact
+emission, Apple-reference comparison, local invocation, and cross-repository
+compiler receipt are in `receipts/2026-09-13-coreml-text-adapter/`.
+
 ## Compiler preparation and execution boundary
 
 `scripts/prepare-ane-compiler.sh` downloads and hash-verifies the external
@@ -178,24 +221,22 @@ of a known H13 graph. These are host checks, not ANE execution proof.
 
 The [integration review](../receipts/2026-09-12-coreml-integration-review.json)
 records the executed checks and links the complete encoder coverage table.
-The public encoder remains unqualified: required H13 semantics and shapes
-are missing, and the mixed-type, two-output contract is not represented by
-the current compiler program model. Execution work stops at plan section 62;
-no CPU fallback or altered model contract substitutes for these gaps.
+The public encoder remains unqualified. Compiler source `b12b03f` preserves
+contiguous split views and imports the normalized encoder, but rejects its
+terminal mixed-type conversion. Distinct reordered terminal returns also
+remain unsupported. Neither gap permits CPU tensor fallback.
 
-The [schema-3 adapter receipt](../receipts/2026-09-12-h13-bundle-schema3/receipt.md)
-replaces the blocked bundle-v2 contract. Schema 3 removes the top-level
-workspace tensor and dotted firmware range. Each compiler program declares
-unsigned `scratch_bytes` (zero is valid and must match ANEC channel 3),
-explicit input and output bindings, allocation bytes, tensor slices, and
-dispatch order. The manifest requires unsigned `driver_abi_major: 1` and
-compiler target `h13` exactly; the loader rejects schema 2 without a shim.
+The current [schema-4 contract](ane-bundles.md) separates physical outputs
+from ordered logical return views. It accepts only v2 compiler packages and
+identity conversions with checked dtype, shape, offset, and count. Programs
+retain exact scratch bytes, bindings, allocations, and dispatch order. Target
+`h13` and unsigned `driver_abi_major: 1` remain required; old schemas are rejected.
 
-This proves declared structural compatibility in the host loader. It does not
-prove physical t8103 or t6000 eligibility, device numerical qualification,
-compiler-wide qualification, or runtime execution. The adapter receipt covers
-explicit `--format anec` generation. The HWX extraction regression remains
-separate.
+Real ordinary, duplicate, reshaped, and sliced-add packages pass the host
+loader. This does not qualify the new runtime on hardware. Installed execution
+at `57cc36a2` remains historical schema-3 evidence. The old compiler release
+archive is incompatible with the new adapter; full compiler qualification
+and a matching immutable archive are required before replacing the pin.
 
 The [licensed reference receipt](../receipts/2026-09-12-licensed-parakeet-reference.json)
 replaces the undocumented-rights JFK clip with a byte-verified CC-BY-4.0
@@ -229,3 +270,34 @@ does not run through the installed Vulkan or ANE backend, and has no backend
 trace. It does not satisfy the no-CPU-tensor-fallback release gate. The exact
 dot-product and DFT results qualify reference arithmetic only; they do not
 qualify the Linux encoder or the full Core ML plan.
+
+## Exact Vulkan mel execution
+
+`overlay/tools/coreml/vulkan_mel.py` implements the same pinned contract with
+workload-owned MLX custom kernels. The runtime extraction path performs no
+NumPy or CPU tensor arithmetic. The path emits `[3001,128]` float32 mel, an
+all-one `[3001]` int32 mask, and `[1,3000,128]` / `[1,3000]` encoder
+inputs. Its comparator authenticates all five final capture files and all 14
+stage files. It materializes and validates the real int32 mask on the host,
+then converts only the comparison copy to the frozen float32 stage dtype. The
+final trace snapshot follows every comparison, so the exact-eight Vulkan
+compute gate includes any lazy work. The comparator maps the `mel_mask`,
+`mel_pinned`, and `mel_stepwise` aliases explicitly. The
+comparison receipt is
+[`2026-09-13-parakeet-vulkan-mel`](../receipts/2026-09-13-parakeet-vulkan-mel/receipt.json).
+The historical Apple run remains evidence only for the pinned ordinary-input
+fixture. The first finite-range rerun passed 8,192 full-exponent FMA triples,
+then failed the `2^-120` DFT with 1,028 real-component bit mismatches (first
+`0x02349b98`, expected `0x026c5098`). A diagnostic isolated the first loss
+to native preemphasis arithmetic, with independent loss in windowing and the
+DFT. A source audit found the same reachable denormal boundary in magnitude,
+power, mel reduction, and subnormal square-root scaling. These stages now use
+the exact integer binary32 helpers while preserving the certified reduction
+order. Software Vulkan passes the retained low-scale waveform-to-power-and-mel-
+projection, signed-zero, overflow, pinned ordinary-input, and stage-comparison
+regressions. Source-frozen Apple M1/Honeykrisp requalification at
+`aa13b105cafb12fb60854417f68cac1aa946ef05` passes the original `2^-120`
+DFT trigger, the low-scale power and mel-projection regression with 1,280
+nonzero subnormal power values, and all 18 authenticated stage/final
+comparisons. The run recorded 15 GPU primitives, eight Vulkan compute
+dispatches, and one Vulkan submission.
