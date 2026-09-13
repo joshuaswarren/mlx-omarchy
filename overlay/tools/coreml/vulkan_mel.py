@@ -622,14 +622,17 @@ return add_double_float(with_cross, DoubleFloat(value.low * value.low, 0.0f));
 }
 
 float sqrt32(float value) {
-if (!(value > 0.0f) || isinf(value)) return sqrt(value);
+uint value_bits = floatBitsToUint(value);
+if ((value_bits & 0x80000000u) != 0u ||
+    (value_bits & 0x7fffffffu) == 0u ||
+    (value_bits & 0x7f800000u) == 0x7f800000u) return sqrt(value);
 precise float scaled_value = value;
 precise float result_scale = 1.0f;
-if (floatBitsToUint(value) < 0x20000000u) {
-scaled_value = value * 18446744073709551616.0f;
+if (value_bits < 0x20000000u) {
+scaled_value = mul32(value, 18446744073709551616.0f);
 result_scale = 0.00000000023283064365386962890625f;
-} else if (floatBitsToUint(value) > 0x60000000u) {
-scaled_value = value * 5.4210108624275221700372640043497e-20f;
+} else if (value_bits > 0x60000000u) {
+scaled_value = mul32(value, 5.4210108624275221700372640043497e-20f);
 result_scale = 4294967296.0f;
 }
 precise float root = sqrt(scaled_value);
@@ -653,7 +656,7 @@ continue;
 }
 break;
 }
-return root * result_scale;
+return mul32(root, result_scale);
 }
 """
 
@@ -859,9 +862,9 @@ def _magnitude_kernel(mx=None):
         header=_SQRT_HEADER,
         source="""
             uint i = thread_position_in_grid.x;
-            precise float re2 = dft_real[i] * dft_real[i];
-            precise float im2 = dft_imag[i] * dft_imag[i];
-            magnitude[i] = sqrt32(re2 + im2);
+            precise float re2 = mul32(dft_real[i], dft_real[i]);
+            precise float im2 = mul32(dft_imag[i], dft_imag[i]);
+            magnitude[i] = sqrt32(add32(re2, im2));
         """,
         compile_options={"math_mode": "safe"},
     )
@@ -874,10 +877,11 @@ def _power_kernel(mx=None):
         name="parakeet_power_f32",
         input_names=["magnitude"],
         output_names=["power"],
+        header=_FMA_HEADER,
         source="""
             uint i = thread_position_in_grid.x;
             precise float value = magnitude[i];
-            power[i] = value * value;
+            power[i] = mul32(value, value);
         """,
         compile_options={"math_mode": "safe"},
     )
@@ -939,37 +943,37 @@ def _mel_kernel(mx=None):
                     }
                 }
             }
-            precise float first0 = accum[0] + accum[4];
-            precise float first1 = accum[1] + accum[5];
-            precise float first2 = accum[2] + accum[6];
-            precise float first3 = accum[3] + accum[7];
-            precise float second0 = accum[8] + accum[12];
-            precise float second1 = accum[9] + accum[13];
-            precise float second2 = accum[10] + accum[14];
-            precise float second3 = accum[11] + accum[15];
-            precise float third0 = accum[16] + accum[20];
-            precise float third1 = accum[17] + accum[21];
-            precise float third2 = accum[18] + accum[22];
-            precise float third3 = accum[19] + accum[23];
-            precise float fourth0 = accum[24] + accum[28];
-            precise float fourth1 = accum[25] + accum[29];
-            precise float fourth2 = accum[26] + accum[30];
-            precise float fourth3 = accum[27] + accum[31];
-            first0 = first0 + second0; first1 = first1 + second1;
-            first2 = first2 + second2; first3 = first3 + second3;
-            second0 = third0 + fourth0; second1 = third1 + fourth1;
-            second2 = third2 + fourth2; second3 = third3 + fourth3;
-            first0 = first0 + second0; first1 = first1 + second1;
-            first2 = first2 + second2; first3 = first3 + second3;
-            precise float pair0 = first0 + first1;
-            precise float pair1 = first2 + first3;
-            precise float projected = pair0 + pair1;
+            precise float first0 = add32(accum[0], accum[4]);
+            precise float first1 = add32(accum[1], accum[5]);
+            precise float first2 = add32(accum[2], accum[6]);
+            precise float first3 = add32(accum[3], accum[7]);
+            precise float second0 = add32(accum[8], accum[12]);
+            precise float second1 = add32(accum[9], accum[13]);
+            precise float second2 = add32(accum[10], accum[14]);
+            precise float second3 = add32(accum[11], accum[15]);
+            precise float third0 = add32(accum[16], accum[20]);
+            precise float third1 = add32(accum[17], accum[21]);
+            precise float third2 = add32(accum[18], accum[22]);
+            precise float third3 = add32(accum[19], accum[23]);
+            precise float fourth0 = add32(accum[24], accum[28]);
+            precise float fourth1 = add32(accum[25], accum[29]);
+            precise float fourth2 = add32(accum[26], accum[30]);
+            precise float fourth3 = add32(accum[27], accum[31]);
+            first0 = add32(first0, second0); first1 = add32(first1, second1);
+            first2 = add32(first2, second2); first3 = add32(first3, second3);
+            second0 = add32(third0, fourth0); second1 = add32(third1, fourth1);
+            second2 = add32(third2, fourth2); second3 = add32(third3, fourth3);
+            first0 = add32(first0, second0); first1 = add32(first1, second1);
+            first2 = add32(first2, second2); first3 = add32(first3, second3);
+            precise float pair0 = add32(first0, first1);
+            precise float pair1 = add32(first2, first3);
+            precise float projected = add32(pair0, pair1);
             projected = fma32(
                 filterbank[fb_base + 256u],
                 power[power_base + 256u],
                 projected);
             melproj[index] = projected;
-            precise float guarded = projected + 0.000000059604644775390625f;
+            precise float guarded = add32(projected, 0.000000059604644775390625f);
             logmel[index] = log32(guarded);
         """,
         compile_options={"math_mode": "safe"},

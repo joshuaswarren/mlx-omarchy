@@ -248,8 +248,10 @@ fixture. The first finite-range rerun passed 8,192 full-exponent FMA triples,
 then failed the `2^-120` DFT with 1,028 real-component bit mismatches (first
 `0x02349b98`, expected `0x026c5098`). A diagnostic isolated the first loss
 to native preemphasis arithmetic, with independent loss in windowing and the
-DFT. The workload now routes those add, subtract, and multiply operations
-through the exact integer binary32 helpers. Software Vulkan passes the retained
-subnormal, signed-zero, overflow, pinned ordinary-input, and stage-comparison
-regressions. The corrected helper path has not run on Apple hardware, so full
-finite-input Apple arithmetic remains unqualified.
+DFT. A source audit found the same reachable denormal boundary in magnitude,
+power, mel reduction, and subnormal square-root scaling. These stages now use
+the exact integer binary32 helpers while preserving the certified reduction
+order. Software Vulkan passes the retained low-scale full-chain, signed-zero,
+overflow, pinned ordinary-input, and stage-comparison regressions. The corrected
+helper path has not run on Apple hardware, so finite-input Apple arithmetic
+remains unqualified.

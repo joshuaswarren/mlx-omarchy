@@ -16,7 +16,7 @@ sys.path.insert(0, str(TOOLS))
 import vulkan_mel
 from dft_geometry_probe import candidate_spectrum
 from dotpr import _fma32, mel_projection
-from mel_reference import stft_frames
+from mel_reference import chunk_for_mel, stft_frames
 from reference import ReferenceLock
 
 
@@ -229,6 +229,41 @@ def test_dft_preserves_subnormal_fma_terms():
 
     _assert_same_bits(np.asarray(actual_real), expected_real)
     _assert_same_bits(np.asarray(actual_imaginary), expected_imaginary)
+
+
+def test_low_scale_waveform_preserves_power_and_mel_subnormals():
+    lock = ReferenceLock.load(TOOLS / "parakeet-reference.lock")
+    rng = np.random.default_rng(916)
+    waveform = (
+        rng.uniform(-1, 1, 512) * np.float32(2.0**-70)
+    ).astype(np.float32)
+    frames = stft_frames(chunk_for_mel(waveform), lock.mel)
+    expected_real, expected_imaginary = candidate_spectrum(
+        frames, "vdsp-radix4-dif"
+    )
+    magnitude = np.sqrt(
+        expected_real * expected_real + expected_imaginary * expected_imaginary
+    ).astype(np.float32)
+    expected_power = (magnitude * magnitude).astype(np.float32)
+    positive_subnormal = (expected_power.view(np.uint32) > 0) & (
+        expected_power.view(np.uint32) < 0x00800000
+    )
+    assert np.any(positive_subnormal)
+    filterbank = np.asarray(vulkan_mel._constant_floats(), np.float32)[
+        vulkan_mel.FILTERBANK_OFFSET:
+    ].reshape(vulkan_mel.N_MELS, vulkan_mel.N_BINS)
+    expected_mel = mel_projection(filterbank, expected_power)
+
+    constants = vulkan_mel._constant_arrays(mx)
+    preemphasis = vulkan_mel._preemphasize(mx.array(waveform))
+    actual_frames = vulkan_mel._frame(preemphasis, constants.hann)
+    actual_real, actual_imaginary = vulkan_mel._dft_frames(actual_frames)
+    actual_power = vulkan_mel._power(actual_real, actual_imaginary)
+    actual_mel, _ = vulkan_mel._mel_project(actual_power, constants.filterbank)
+    mx.eval(actual_power, actual_mel)
+
+    _assert_same_bits(np.asarray(actual_power), expected_power)
+    _assert_same_bits(np.asarray(actual_mel), expected_mel)
 
 
 @pytest.mark.parametrize("scale", [2.0**-60, 2.0**53])
