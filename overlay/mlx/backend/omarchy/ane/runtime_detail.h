@@ -9,6 +9,7 @@
 #include <chrono>
 #include <cstdint>
 #include <cstring>
+#include <filesystem>
 #include <limits>
 #include <map>
 #include <stdexcept>
@@ -33,6 +34,15 @@ constexpr uint32_t kWorkerProtocolVersion = 1;
 
 inline std::runtime_error runtime_error(const std::string& reason) {
   return std::runtime_error("[omarchy-ane] runtime: " + reason + ".");
+}
+
+inline std::filesystem::path installed_worker_path(
+    const std::filesystem::path& library_path) {
+  const auto prefix = library_path.parent_path().parent_path();
+  if (prefix.empty()) {
+    throw runtime_error("loaded libmlx path has no installation prefix");
+  }
+  return prefix / "bin" / "mlx-omarchy-ane-worker";
 }
 
 inline int worker_source_fd_floor(
