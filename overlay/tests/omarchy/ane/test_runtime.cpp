@@ -245,5 +245,16 @@ TEST_CASE("ANE ownership excludes peers and preserves a same-boot quarantine") {
     owner.release_cleanly();
   }
   CHECK_FALSE(std::filesystem::exists(state));
+
+  std::ofstream(state) << std::string(129, 'x');
+  CHECK_THROWS_WITH_AS(
+      detail::RuntimeOwnership::acquire_at(lock, state, boot_a),
+      "[omarchy-ane] runtime: ANE ownership state is invalid.",
+      std::runtime_error);
+  CHECK(std::filesystem::exists(state));
+  CHECK_THROWS_WITH_AS(
+      detail::RuntimeOwnership::acquire_at(lock, state, boot_a),
+      "[omarchy-ane] runtime: ANE ownership state is invalid.",
+      std::runtime_error);
   std::filesystem::remove_all(root);
 }

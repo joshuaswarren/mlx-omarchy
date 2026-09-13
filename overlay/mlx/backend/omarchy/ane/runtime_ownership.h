@@ -84,6 +84,7 @@ class RuntimeOwnership {
           "ANE ownership lock failed: " + std::string(std::strerror(error)));
     }
     ownership.state_path_ = state_path;
+    ownership.preserve_quarantine_ = true;
     ownership.state_fd_ = open_regular(state_path);
     std::string current_state = read_fd(ownership.state_fd_);
     trim_line_end(current_state);
@@ -97,6 +98,7 @@ class RuntimeOwnership {
           "ANE runtime is quarantined for this boot; reboot is required");
     }
     write_fd(ownership.state_fd_, boot_id + "\n");
+    ownership.preserve_quarantine_ = false;
     return ownership;
   }
 
