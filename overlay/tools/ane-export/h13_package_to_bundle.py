@@ -83,7 +83,7 @@ def require_fields(value: dict, required: set[str], allowed: set[str], where: st
 
 def convert_binding(binding: dict, where: str) -> tuple[dict, str]:
     allowed = {
-        "allocationBytes", "dtype", "elementDtype", "index", "logicalBytes",
+        "allocationBytes", "dtype", "index", "logicalBytes",
         "name", "nchw", "role", "shape", "slice",
     }
     require_fields(
@@ -92,16 +92,10 @@ def convert_binding(binding: dict, where: str) -> tuple[dict, str]:
         allowed,
         where,
     )
+    # The per-binding dtype directly names the surface element type:
+    # "bool" = 1-byte bool surfaces (compiler yield 2026-09-13; no
+    # separate elementDtype field exists). logical_bytes stay bytes.
     dtype = binding["dtype"]
-    # Optional ABI extension (2026-09-13): the compiler package may name
-    # an element dtype for 1-byte bool surfaces; absent means fp16
-    # (every existing artifact is unchanged). "elementDtype" is the
-    # working field name pending the compiler lane's final yield.
-    element_dtype = binding.get("elementDtype", "float16")
-    if element_dtype not in ("float16", "bool"):
-        fail(f"{where}.elementDtype '{element_dtype}' is unsupported")
-    if element_dtype == "bool":
-        dtype = "bool"
     if dtype not in DTYPE_BYTES:
         fail(f"{where}.dtype '{dtype}' is unsupported")
     if dtype not in ANEC_DTYPES:
