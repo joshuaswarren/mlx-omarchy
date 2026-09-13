@@ -11,10 +11,10 @@ reconciliation; this doc only carries the bundle-schema-relevant
 findings.
 
 
-An ANE bundle is a directory containing a strict schema-3 manifest and every
-payload needed to execute one compiled graph region. A region can contain more
-than one ANEC program. The manifest preserves program order, tensor slices,
-channel indices, allocation sizes, and intermediate-tensor flow.
+ An ANE bundle contains a strict schema-4 manifest and every payload needed
+ to execute one compiled graph region. A region can contain several ANEC
+ programs. The manifest separates physical output storage from ordered
+ logical returns and preserves program order, slices, and allocations.
 
 The loader is a pre-device gate. It validates the complete manifest, every
 payload digest, and every ANEC header before a caller can map a payload or open
@@ -37,19 +37,20 @@ one payload record. Payload paths are plain filenames. Unknown files,
 directories, links, missing files, wrong sizes, and digest mismatches fail
 closed.
 
-## Manifest schema 3
-
-Schema 3 is a clean cutover. Versions 1 and 2 are rejected. The removed dotted
-firmware range is not parsed as an alias. Applicability is declared with an
-exact unsigned `driver_abi_major`; the current contract requires major 1.
+ ## Manifest schema 4
+ 
+ Schema 4 rejects versions 1, 2, and 3. It requires explicit ordered
+ `logical_results`; it never infers returns from physical output order.
+ Applicability requires exact unsigned `driver_abi_major: 1`, not a firmware range.
 
 | Field | Contract |
 | --- | --- |
-| `manifest_version` | Exact integer `3`. |
+ | `manifest_version` | Exact integer `4`. |
 | `name` | Non-empty graph-region name. |
 | `graph_hash` | 64 lowercase hexadecimal characters. |
 | `task_descriptors` | Positive sum of all program task-descriptor counts. |
-| `inputs`, `outputs` | Non-empty ordinary tensor lists. |
+ | `inputs`, `outputs` | Non-empty physical tensor lists. |
+ | `logical_results` | Non-empty ordered return views; every physical output must be referenced. |
 | `state`, `intermediates` | Ordinary tensor lists; they can be empty. State and intermediate tensors must be bound for both read and write. |
 | `programs` | Non-empty ordered program definitions. Each ANEC payload is referenced exactly once. |
 | `dispatch_plan` | A complete permutation of program indices. |
@@ -60,7 +61,7 @@ exact unsigned `driver_abi_major`; the current contract requires major 1.
 | `provenance.source_repo`, `source_commit`, `exported_at` | Non-empty repository and date; commit is exactly 40 lowercase hexadecimal characters. |
 | `release_asset.model`, `model_sha256` | Non-empty release name and canonical compiled-payload collection SHA-256. |
 
-`release_asset.model_sha256` has one byte-domain for every schema-3 producer.
+ `release_asset.model_sha256` uses the same payload byte-domain for both producers.
 Build one record per declared payload with exactly `role`, `path`, `byte_size`,
 and `sha256`. Sort records by `path`, then serialize the array with Python
 `json.dumps(records, sort_keys=True, separators=(",", ":"),
@@ -77,7 +78,20 @@ the dtype size times the shape product. Stride must cover the tensor and be
 tensor; `scratch_bytes` must equal the ANEC channel-3 allocation exactly, with
 no rounding. `scratch_bytes: 0` represents a program with no channel-3 allocation.
 
-### Program entries
+ ### Logical result entries
+ 
+ Each result contains exactly `name`, `dtype`, `shape`, `tensor`,
+ `element_offset`, `element_count`, and `conversion`. Only `identity` is
+ supported. The dtype must match the referenced physical output. The positive
+ shape product must equal the count, and the offset/count range must fit the
+ physical output. A logical shape can differ from its storage shape.
+ 
+ Result order, duplicate names, repeated mappings, and overlapping read-only
+ slices are preserved. `AneRuntime::output_layout()` returns immutable metadata
+ valid for the runtime lifetime. `execute()` still returns each physical
+ buffer once; callers apply logical views without hidden copies or conversion.
+ 
+ ### Program entries
 
 Each program names its ANEC `payload`, `operation`, `encoder`, positive
 `task_descriptors`, unsigned `scratch_bytes`, and its input and output
@@ -106,8 +120,8 @@ do not require complete write coverage.
 
 1. Distinguish a missing directory as `AneBundleNotFound` so the region stays
    on Vulkan.
-2. Parse schema 3, reject unknown fields, and validate the complete tensor,
-   program, dispatch, ABI, provenance, and payload mapping contract.
+ 2. Parse schema 4, reject unknown fields, and validate tensors, logical
+    results, programs, dispatch, ABI, provenance, and payload mappings.
 3. Reject every unlisted, non-regular, or link directory entry.
 4. Confirm all listed payloads exist and match their declared byte sizes.
 5. Hash every listed payload and compare every digest.
@@ -129,35 +143,34 @@ first ANEC cannot hide a later payload digest mismatch.
 ## Explicit compiler package adapter
 
 `overlay/tools/ane-export/h13_package_to_bundle.py` converts
-`mil-hwxc.h13-anec-package.v1` packages emitted with exact target `H13` and
-exact format `anec`. It preserves every program, dispatch index, binding,
-slice, intermediate, allocation, NCHW record, and payload byte. The required
-generation receipt binds the compiler manifest, source graph, compiler source
+ `mil-hwxc.h13-anec-package.v2` packages emitted with exact target `H13` and
+ exact format `anec`. It preserves explicit `physicalOutputs` and ordered
+ `logicalResults`, programs, bindings, slices, allocations, and payload bytes.
+The required generation receipt binds the compiler manifest, graph, source
 commit, generation binary digest, and every payload digest. `--compiler-source`
 is only a repository witness that proves the recorded generation commit exists.
 It does not recompute or verify the historical compiler binary. The adapter
 refuses HWX packages, non-H13 packages, unknown schema fields, invalid mappings,
-and packages with embedded `constantInputs`; schema 3 does not yet have a
-constant-input payload representation.
-
-The committed fixture at `receipts/fixtures/h13-explicit-chain-add-mul/` contains
-an actual two-program explicit-ANEC compiler package. Its `source.json` records
-the generating command, compiler commits, graph hash, binary hash, compiler
-manifest hash, and payload hashes. The compiler manifest hash was recorded from
-the retained generated fixture during this schema correction, not emitted by
-the compiler at generation time. It binds the adapter input but is not
-independent authentication of the historical compiler run. Future compiler
-receipts must record it when they create the package. This remains host-only
-structural evidence, with no device or compiler-wide qualification claim.
-
-The current compiler has a separate HWX-extraction regression in its host test
-path. Explicit `--format anec` adaptation remains testable, but that result
-must not be used as a compiler release pin or as compiler-wide qualification.
+ and packages with embedded `constantInputs`; schema 4 has no constant-input
+ payload representation.
+ 
+ The committed fixture at `receipts/fixtures/h13-explicit-chain-add-mul/`
+ contains a two-program package generated by compiler source `b12b03f17619c76b77c48a83510847de2245ea1a`.
+ Its `source.json` records the command, source and binary identities, graph
+ digest, manifest digest, and payload digests. Real ordinary, duplicate,
+ reshaped, and sliced-add packages pass the v4 loader. Distinct reordered
+ terminal returns remain a compiler prerequisite; a separate adapter test
+ verifies order preservation from a valid v2 manifest.
+ 
+ The release pin in `ane-compiler.lock` still names the old v1 compiler
+ archive, which this adapter rejects. Replacing it requires a qualified v2
+ source and matching immutable archive digest, not just a schema-field edit.
+ The compiler HWX-extraction regression remains a release gate.
 
 ## Runtime-generated cache policy
 
 The planned product will compile from the selected `.mlpackage` on Linux
-and cache the adapted schema-3 bundle. This tree does not implement that
+ and cache the adapted schema-4 bundle. This tree does not implement that
 compiler or cache. A planned cache key binds the source package hash, selected
 function and shapes, compiler commit, compiler target, compiler package schema,
 bundle schema, driver ABI major, firmware/device identity used for device
@@ -169,8 +182,8 @@ on Vulkan.
 
 `mlx-omarchy-info --check-bundle <dir>` runs `load_bundle` only. It opens no
 Vulkan or ANE device. On success it prints the graph identity, tensor lists,
-dispatch plan, every program and channel binding, payload digests, compiler
-identity, and driver ABI as `[receipt]` lines.
+ ordered logical results, dispatch plan, program bindings, payload digests,
+ compiler identity, and driver ABI as `[receipt]` lines.
 
 | Exit | Meaning |
 | --- | --- |
@@ -185,12 +198,12 @@ identity, and driver ABI as `[receipt]` lines.
 
 ## Reference exporter and fixtures
 
-The macOS reference exporter now emits schema 3 for its one-program captures.
-The retained payload bytes and historical compiler provenance under
-`receipts/fixtures/exported/` and `receipts/fixtures/mil-oneop-bundle/` are
-unchanged; their manifests now express one program, one dispatch index, exact
-channel allocation, and driver ABI major 1. They do not prove Linux-native
-compilation or device execution.
+ The macOS reference exporter emits schema 4 for its one-program captures.
+ Retained payloads and historical compiler provenance under
+ `receipts/fixtures/exported/` and `receipts/fixtures/mil-oneop-bundle/` are
+ unchanged. Their manifests now include explicit identity return views, one
+ program, exact channel allocations, and driver ABI major 1. Migrating the
+ manifest does not qualify those bytes on hardware under the new runtime.
 
 ## Tests
 
@@ -256,7 +269,7 @@ This section reconciles the maderix bundle/runtime findings against
   only for two-branch-convolution graphs; plain chains stay on the
   internal solver. This is a macOS framework detail and does not
   affect bundle payloads.
-- **Reconciled with our work:** schema 3 records `compiler.host_build`, `compiler.toolchain`, `compiler.target`, and exact `driver_abi_major`. Apple reference identities remain historical facts; they are not required build dependencies.
+ - **Reconciled with our work:** schema 4 records `compiler.host_build`, `compiler.toolchain`, `compiler.target`, and exact `driver_abi_major`. Apple reference identities remain historical facts; they are not required build dependencies.
 
 ### Compiler options the exporter can capture (Part 4b "Compiler options and retained debug output")
 
