@@ -1,0 +1,102 @@
+{
+  "schema": "bf16-longctx-next-candidate/1",
+  "execution_model": "openai-codex/gpt-5.6-sol",
+  "fallback_model": null,
+  "qualified_base_commit": "e4d079c883b8606dddef7720bd302c5756be0692",
+  "prior_candidates": [
+    {
+      "candidate": "grouped BF16 GEMV source-relation repair",
+      "commit": "4f90815c056cbb29a2ff4e1a958856b85af6390a",
+      "observed_candidate_vs_control_percent": -0.36740695629179365,
+      "lifecycle_acceptance": false,
+      "action": "do_not_promote"
+    },
+    {
+      "candidate": "256-thread BF16 SDPA workgroup",
+      "commit": "ff815ada8a1730fdf9762f2cbd5c591d99a9c06b",
+      "measured_candidate_vs_control_percent": -0.39247915330339334,
+      "lifecycle_acceptance": true,
+      "action": "rejected"
+    },
+    {
+      "candidate": "deferred post-dispatch encoder barriers",
+      "commit": "f5649936f68a2262e6f1e51ad9b146ec035808cb",
+      "paired_bf16_ctx1024_control_decode_tps": [25.02, 24.98, 24.96],
+      "paired_bf16_ctx1024_candidate_decode_tps": [24.95, 25.0, 24.93],
+      "action": "rejected"
+    },
+    {
+      "candidate": "wider BF16 GEMV vector mapping",
+      "action": "rejected_by_exactness_counterexample"
+    },
+    {
+      "candidate": "chunked native softmax respread",
+      "action": "rejected_by_paired_matrix"
+    }
+  ],
+  "profile_evidence": {
+    "release_control_longctx_wall_delta_ms_per_token": 8.674424457291344,
+    "sdpa_decode_native_bf16_gpu_busy_delta_ms_per_token": 11.081529064516129,
+    "all_other_kernels_net_gpu_busy_delta_ms_per_token": -9.820166354838708,
+    "net_instrumented_gpu_busy_delta_ms_per_token": 1.261362709677421,
+    "components_are_not_additive": true,
+    "source": "receipts/2026-09-13-bf16-longctx-gpu-profile/verdict.json"
+  },
+  "selected_candidate": {
+    "name": "cache the BF16 SDPA denominator exponent for normalization",
+    "status": "source_proposal_not_implemented",
+    "target": "overlay/mlx/backend/omarchy/shaders/sdpa_decode_native.comp",
+    "qualified_base_behavior": {
+      "bf16_local_size_x": 1024,
+      "denominator_expression": "local_sum += exp(s_stream[index] - row_max)",
+      "normalization_expression": "s_stream[index] = exp(s_stream[index] - row_max) * normalizer"
+    },
+    "mechanism": "During the denominator pass, compute exp(score - row_max) once, store that f32 value back to s_stream, and add the same value to the existing per-lane sum. During normalization, multiply the cached f32 value by normalizer instead of evaluating exp a second time.",
+    "why_this_candidate": "It removes one exp per key from SdpaDecodeNativeBF16, the only kernel with a positive 11.0815 ms/token long-context GPU-busy delta, while retaining the qualified 1024-thread workgroup and the existing dispatch, reduction, and output accumulation shapes.",
+    "must_preserve": [
+      "one owner thread per key",
+      "ascending per-lane denominator accumulation order",
+      "the 256-lane binary reduction tree",
+      "normalizer calculation",
+      "ascending-key output accumulation",
+      "RNE BF16 output store",
+      "the f16 shader binary"
+    ],
+    "numerical_risk": "The proposal is acceptable only if storing and reloading the first exp result is word-identical to the current second exp evaluation for every tested score. Any mismatch rejects the candidate; no tolerance-based fallback is allowed."
+  },
+  "offline_acceptance": {
+    "required_exact_word_key_lengths": [256, 263, 320, 1024, 2048],
+    "required_dispatches_per_eligible_case": 1,
+    "required_f16_spirv_relation": "byte_identical_to_qualified_base",
+    "required_bf16_route_relation": "only exponent reuse changes",
+    "required_test_status": "non-skipped success",
+    "hardware_allowed": false
+  },
+  "future_hardware_acceptance": {
+    "requires_new_main_grant": true,
+    "control_commit": "e4d079c883b8606dddef7720bd302c5756be0692",
+    "candidate_commit": null,
+    "candidate_commit_status": "set only after offline exactness qualification",
+    "workload": "mlx-community/Qwen2.5-0.5B-Instruct-bf16 snapshot 56d07e766edd7159fbe12ed12d9cf114bf38bf1e, ctx1024, 1053 prompt tokens, 32 generated tokens",
+    "strict_output_digest": "ff502900d2a179a5",
+    "matrix_order": [
+      "control-1",
+      "candidate-1",
+      "candidate-2",
+      "control-2",
+      "control-3",
+      "candidate-3"
+    ],
+    "speed_claim_rule": "No speed verdict unless all six source-bound runs complete under the corrected lifecycle and exact output holds."
+  },
+  "protocol": {
+    "launcher": "launch-exact-run.sh",
+    "launcher_sha256": "09ec10427685ef945986563e81a08fa1d1002e29d4a279c1e330e698ab4f74f6",
+    "payload": "exact-run-payload.sh",
+    "payload_sha256": "5f74d4cd7afd81875b54cf33b777ff1028219c6139928dae3293b0fd71bf7726",
+    "remote_stage_check": "The exact payload and workload hashes are checked inside the same remote command immediately before setsid exec.",
+    "guardian": "setsid --wait timeout owns one remote process group; the payload records the exact timeout guardian and process group.",
+    "cleanup_reserve_seconds": 60,
+    "final_clearance": "The payload detects and terminates owned residual descendants before release. In-payload and independent post-run scans then require guardian absence, an empty process group, no staged workload process, no lease, and a free lock."
+  }
+}

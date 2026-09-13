@@ -1,0 +1,16 @@
+{
+  "candidate": "cache the BF16 SDPA denominator exponent for normalization",
+  "candidate_status": "proposal_only_pending_exact_word_offline_qualification",
+  "cleanup_reserve_seconds": 60,
+  "execution_model": "openai-codex/gpt-5.6-sol",
+  "fake_child_detected_and_cleared": true,
+  "fallback_model": null,
+  "guardian_and_workload_process_group_match": true,
+  "hardware_grant": false,
+  "launcher_sha256": "09ec10427685ef945986563e81a08fa1d1002e29d4a279c1e330e698ab4f74f6",
+  "optimization_claim": null,
+  "payload_sha256": "5f74d4cd7afd81875b54cf33b777ff1028219c6139928dae3293b0fd71bf7726",
+  "protocol_ready": true,
+  "remote_hash_check_immediately_before_exec": true,
+  "schema": "bf16-longctx-next-candidate-protocol/1"
+}

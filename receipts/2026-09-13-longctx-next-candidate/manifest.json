@@ -1,0 +1,13 @@
+{
+  "files": {
+    "exact-run-payload.sh": "5f74d4cd7afd81875b54cf33b777ff1028219c6139928dae3293b0fd71bf7726",
+    "launch-exact-run.sh": "09ec10427685ef945986563e81a08fa1d1002e29d4a279c1e330e698ab4f74f6",
+    "proposal.json": "ef239944c2ebe11203b5a9b0ac83af3faf9972bd16f7bc789fc3efd2d6e9bcc9",
+    "smoke-receipt.txt": "b4818cabcf5b1cf5c84ba4a676d50b718111c969c6ca9d0539971c150e561998",
+    "smoke-workload.sh": "815110faeadaf8b3966389de10dabdcdeeade403e50de7ed41fe24c4ba42f67f",
+    "smoke.sh": "24925b963c529125da0d9eb252863053085fe1b9f094fee9a73f062164a84e2b",
+    "verdict.json": "034f470eff4348740e2bc0c8a2044851416e4f6da747549be3a64d1776f48b06",
+    "verify.py": "3ed6357e29e344226062e6d4a222d0541b9f735ce1d717fd5bfaa0c61017e912"
+  },
+  "schema": "receipt-manifest/1"
+}
