@@ -37,6 +37,23 @@ int usage() {
   return 64;
 }
 
+// fp16 value equality: identical bits, except +0.0 and -0.0 compare
+// equal. The H13 compiler models zero products as unsigned (aa688df
+// "model unsigned zero products"), so a -0.0 expectation against a +0.0
+// device result is a value match, not a mismatch.
+bool fp16_values_equal(const uint8_t* lhs, const uint8_t* rhs, size_t size) {
+  for (size_t i = 0; i + 1 < size; i += 2) {
+    uint16_t left = static_cast<uint16_t>(lhs[i]) |
+                    (static_cast<uint16_t>(lhs[i + 1]) << 8);
+    uint16_t right = static_cast<uint16_t>(rhs[i]) |
+                     (static_cast<uint16_t>(rhs[i + 1]) << 8);
+    if (left == right) continue;
+    if ((left & 0x7FFF) == 0 && (right & 0x7FFF) == 0) continue; // +/-0
+    return false;
+  }
+  return true;
+}
+
 std::vector<uint8_t> read_file(const std::string& path) {
   std::ifstream stream(path, std::ios::binary);
   if (!stream) {
@@ -56,6 +73,7 @@ int main(int argc, char** argv) {
   long iterations = 1;
   std::map<std::string, std::string> input_files;
   std::map<std::string, std::string> expect_files;
+  std::map<std::string, std::string> save_files;
 
   for (int i = 1; i < argc; ++i) {
     std::string flag = argv[i];
@@ -74,12 +92,30 @@ int main(int argc, char** argv) {
       deadline_ms = std::stol(value());
     } else if (flag == "--iterations") {
       iterations = std::stol(value());
-    } else if (flag.rfind("--input=", 0) == 0) {
-      auto sep = flag.find('=', 8);
-      input_files[flag.substr(8, sep - 8)] = flag.substr(sep + 1);
-    } else if (flag.rfind("--expect=", 0) == 0) {
-      auto sep = flag.find('=', 9);
-      expect_files[flag.substr(9, sep - 9)] = flag.substr(sep + 1);
+    } else if (flag == "--input") {
+      auto assignment = value();
+      auto sep = assignment.find('=');
+      if (sep == std::string::npos) {
+        std::fprintf(stderr, "--input expects NAME=FILE\n");
+        return usage();
+      }
+      input_files[assignment.substr(0, sep)] = assignment.substr(sep + 1);
+    } else if (flag == "--expect") {
+      auto assignment = value();
+      auto sep = assignment.find('=');
+      if (sep == std::string::npos) {
+        std::fprintf(stderr, "--expect expects NAME=FILE\n");
+        return usage();
+      }
+      expect_files[assignment.substr(0, sep)] = assignment.substr(sep + 1);
+    } else if (flag == "--save") {
+      auto assignment = value();
+      auto sep = assignment.find('=');
+      if (sep == std::string::npos) {
+        std::fprintf(stderr, "--save expects NAME=FILE\n");
+        return usage();
+      }
+      save_files[assignment.substr(0, sep)] = assignment.substr(sep + 1);
     } else {
       return usage();
     }
@@ -141,6 +177,25 @@ int main(int argc, char** argv) {
       return 1;
     }
 
+    for (const auto& entry : save_files) {
+      auto found = outputs.find(entry.first);
+      if (found == outputs.end()) {
+        std::fprintf(
+            stderr, "cannot save missing output '%s'\n",
+            entry.first.c_str());
+        return 1;
+      }
+      std::ofstream stream(entry.second, std::ios::binary);
+      stream.write(
+          reinterpret_cast<const char*>(found->second.data()),
+          static_cast<std::streamsize>(found->second.size()));
+      if (!stream) {
+        std::fprintf(stderr, "cannot write %s\n", entry.second.c_str());
+        return 1;
+      }
+      std::printf("saved output %s (%zu bytes)\n", entry.first.c_str(),
+                  found->second.size());
+    }
     for (const auto& entry : expect_files) {
       auto found = outputs.find(entry.first);
       if (found == outputs.end()) {
@@ -151,10 +206,10 @@ int main(int argc, char** argv) {
       }
       auto expected = read_file(entry.second);
       if (found->second.size() != expected.size() ||
-          std::memcmp(found->second.data(), expected.data(),
-                      expected.size()) != 0) {
+          !fp16_values_equal(
+              found->second.data(), expected.data(), expected.size())) {
         std::fprintf(
-            stderr, "output '%s' does not match the expected bytes\n",
+            stderr, "output '%s' does not match the expected fp16 values\n",
             entry.first.c_str());
         return 1;
       }

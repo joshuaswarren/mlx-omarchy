@@ -36,16 +36,8 @@ struct LibaneApi {
   uint64_t (*dst_size)(struct ane_nn* nn, uint32_t idx);
   void (*send)(struct ane_nn* nn, void* from, uint32_t idx);
   void (*read)(struct ane_nn* nn, void* to, uint32_t idx);
-  void (*tile)(
-      void* data, void* tile, uint64_t n, uint64_t c, uint64_t h,
-      uint64_t w, uint64_t p, uint64_t r);
-  void (*untile)(
-      void* data, void* tile, uint64_t n, uint64_t c, uint64_t h,
-      uint64_t w, uint64_t p, uint64_t r);
-
   bool ok() const {
-    return init && free && exec && src_size && dst_size && send && read &&
-        tile && untile;
+    return init && free && exec && src_size && dst_size && send && read;
   }
 };
 
@@ -61,9 +53,6 @@ LibaneApi load_api(void* handle) {
       dlsym(handle, "__ane_dst_size"));
   api.send = reinterpret_cast<decltype(api.send)>(dlsym(handle, "__ane_send"));
   api.read = reinterpret_cast<decltype(api.read)>(dlsym(handle, "__ane_read"));
-  api.tile = reinterpret_cast<decltype(api.tile)>(dlsym(handle, "ane_tile"));
-  api.untile =
-      reinterpret_cast<decltype(api.untile)>(dlsym(handle, "ane_untile"));
   return api;
 }
 
@@ -121,7 +110,7 @@ class LibaneDevice : public AneDevice {
     // channel order matches (ane.h: ane_send(nn, input, 0), (nn, input, 1)).
     (void)channel;
     std::vector<uint8_t> tile(binding.allocation_bytes, 0);
-    stage(data, size, tile.data(), binding, true);
+    pack(data, binding.logical_bytes, binding, tile.data());
     api_.send(nn, tile.data(), channel);
   }
 
@@ -143,7 +132,7 @@ class LibaneDevice : public AneDevice {
     (void)channel;
     std::vector<uint8_t> tile(binding.allocation_bytes, 0);
     api_.read(nn, tile.data(), channel);
-    stage(tile.data(), tile.size(), out, binding, false);
+    unpack(tile.data(), binding.logical_bytes, binding, out);
     (void)size;
   }
 
@@ -165,28 +154,36 @@ class LibaneDevice : public AneDevice {
     return found->second;
   }
 
-  // Copies between logical bytes and the device tile using the binding's
-  // NCHW[6] geometry (ane_tile/ane_untile in libane).
-  void stage(
-      const uint8_t* from,
-      size_t logical_size,
-      uint8_t* to,
-      const AneProgramBinding& binding,
-      bool to_tile) {
-    if (binding.nchw[0] == 0) {
-      std::memcpy(to, from, std::min(logical_size, binding.allocation_bytes));
-      return;
+  // Hardware-proven dense<->tile packing: linear element index maps to
+  // plane * plane_stride + row * row_stride + column * 2 bytes inside the
+  // allocation, with NCHW[6] = [N, C, H, W, plane_stride, row_stride]
+  // (same layout contract as the validated a9f14124 smoke runtime).
+  static size_t packed_offset(const AneProgramBinding& binding, size_t element) {
+    const uint64_t height = binding.nchw[2];
+    const uint64_t width = binding.nchw[3];
+    const uint64_t plane_stride = binding.nchw[4];
+    const uint64_t row_stride = binding.nchw[5];
+    const uint64_t plane_elements = height * width;
+    const uint64_t plane = element / plane_elements;
+    const uint64_t within = element % plane_elements;
+    const uint64_t row = within / width;
+    const uint64_t column = within % width;
+    return static_cast<size_t>(
+        plane * plane_stride + row * row_stride + column * 2);
+  }
+
+  void pack(const uint8_t* dense, size_t logical, const AneProgramBinding& b,
+            uint8_t* tile) const {
+    std::memset(tile, 0, b.allocation_bytes);
+    for (size_t element = 0; element < logical / 2; ++element) {
+      std::memcpy(tile + packed_offset(b, element), dense + element * 2, 2);
     }
-    if (to_tile) {
-      api_.tile(
-          const_cast<uint8_t*>(from), to, binding.nchw[0], binding.nchw[1],
-          binding.nchw[2], binding.nchw[3], binding.nchw[4],
-          binding.nchw[5]);
-    } else {
-      api_.untile(
-          to, const_cast<uint8_t*>(from), binding.nchw[0], binding.nchw[1],
-          binding.nchw[2], binding.nchw[3], binding.nchw[4],
-          binding.nchw[5]);
+  }
+
+  void unpack(const uint8_t* tile, size_t logical, const AneProgramBinding& b,
+              uint8_t* dense) const {
+    for (size_t element = 0; element < logical / 2; ++element) {
+      std::memcpy(dense + element * 2, tile + packed_offset(b, element), 2);
     }
   }
 
