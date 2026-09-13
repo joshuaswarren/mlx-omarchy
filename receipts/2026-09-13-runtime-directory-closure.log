@@ -1,0 +1,46 @@
+Runtime directory closure receipt
+Date: 2026-09-13
+Base commit: 7f4a17f32f78ea97b00b60ab993f1fd7aef9606f
+Qualified omarchy-ane source: f261a6cb537aca62f267ad3d01beda0d6877544c
+Execution host: x86_64 Linux; host-only; no ANE/GPU/worker execution
+Model: openai-codex/gpt-5.6-sol
+Fallback: none
+
+Pre-fix reproduction
+Command:
+.work/build/tests/omarchy/omarchy_ane_runtime_tests --test-case='ANE runtime validates every bundle directory entry before device work' --no-version
+Observed:
+unknown regular file: expected strict bundle error, got "ANE diagnostic path must not be empty"
+unknown symlink: expected strict bundle error, got "ANE diagnostic path must not be empty"
+[doctest] test cases: 1 | 0 passed | 1 failed | 11 skipped
+[doctest] assertions: 97 | 95 passed | 2 failed
+[doctest] Status: FAILURE!
+
+Post-fix exact-source build
+Command:
+cmake -E copy_if_different overlay/mlx/backend/omarchy/ane/runtime.cpp .work/mlx/mlx/backend/omarchy/ane/runtime.cpp && cmake -E copy_if_different overlay/tests/omarchy/ane/test_runtime.cpp .work/mlx/tests/omarchy/ane/test_runtime.cpp && cmake --build .work/build --target omarchy_ane_runtime_tests -j2
+Observed:
+[100%] Built target mlx
+[100%] Built target omarchy_ane_runtime_tests
+
+Post-fix focused runtime-path check
+Command:
+.work/build/tests/omarchy/omarchy_ane_runtime_tests --test-case='ANE runtime validates every bundle directory entry before device work' --no-version
+Observed:
+[doctest] test cases: 1 | 1 passed | 0 failed | 11 skipped
+[doctest] assertions: 129 | 129 passed | 0 failed
+[doctest] Status: SUCCESS!
+
+Post-fix complete scoped test executable
+Command:
+.work/build/tests/omarchy/omarchy_ane_runtime_tests --no-version
+Observed:
+[doctest] test cases: 12 | 12 passed | 0 failed | 0 skipped
+[doctest] assertions: 398 | 398 passed | 0 failed
+[doctest] Status: SUCCESS!
+
+Behavior exercised through AneRuntime::load:
+- unlisted regular file rejected with the strict bundle error
+- unlisted symlink rejected without following it
+- unlisted directory rejected
+- valid sealed bundle snapshot progressed to the empty-diagnostic pre-worker guard

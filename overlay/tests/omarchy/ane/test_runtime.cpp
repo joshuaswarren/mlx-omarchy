@@ -1,6 +1,8 @@
 // Copyright © 2026 Joshua Warren / mlx-omarchy contributors.
 // SPDX-License-Identifier: MIT
 
+#include "mlx/backend/omarchy/ane/bundle.h"
+#include "mlx/backend/omarchy/ane/runtime.h"
 #include "mlx/backend/omarchy/ane/runtime_detail.h"
 #include "mlx/backend/omarchy/ane/runtime_ownership.h"
 
@@ -11,10 +13,14 @@
 #include <array>
 #include <chrono>
 #include <cstdint>
+#include <cstdlib>
+#include <cstring>
 #include <fcntl.h>
 #include <filesystem>
 #include <fstream>
 #include <limits>
+#include <string>
+#include <type_traits>
 #include <vector>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -23,6 +29,122 @@
 using namespace mlx::core::omarchy::ane;
 
 namespace {
+
+constexpr uint64_t kRuntimePayloadBytes = 0x4000;
+const std::array<uint64_t, 6> kRuntimeNchw{1, 64, 1, 1, 64, 64};
+
+template <typename T>
+void write_le(std::string& bytes, size_t offset, T value) {
+  static_assert(std::is_integral_v<T>);
+  REQUIRE(offset + sizeof(T) <= bytes.size());
+  std::memcpy(bytes.data() + offset, &value, sizeof(T));
+}
+
+void write_nchw(std::string& bytes, uint32_t channel) {
+  size_t offset = 40 + kAnecTileCount * sizeof(uint32_t) +
+      channel * kRuntimeNchw.size() * sizeof(uint64_t);
+  for (uint64_t value : kRuntimeNchw) {
+    write_le(bytes, offset, value);
+    offset += sizeof(value);
+  }
+}
+
+std::string runtime_anec_bytes() {
+  std::string bytes(kAnecPayloadOffset + kRuntimePayloadBytes, '\0');
+  write_le<uint64_t>(bytes, 0, kRuntimePayloadBytes);
+  write_le<uint32_t>(bytes, 8, 0x274);
+  write_le<uint32_t>(bytes, 12, 1);
+  write_le<uint64_t>(bytes, 16, 0x1f8);
+  write_le<uint64_t>(bytes, 24, 0x400);
+  write_le<uint32_t>(bytes, 32, 2);
+  write_le<uint32_t>(bytes, 36, 1);
+  write_le<uint32_t>(bytes, 40, 1);
+  for (uint32_t channel : {4u, 5u, 6u}) {
+    write_le<uint32_t>(bytes, 40 + channel * sizeof(uint32_t), 1);
+    write_nchw(bytes, channel);
+  }
+  return bytes;
+}
+
+void write_file(const std::filesystem::path& path, const std::string& bytes) {
+  std::ofstream output(path, std::ios::binary | std::ios::trunc);
+  output.write(bytes.data(), static_cast<std::streamsize>(bytes.size()));
+  REQUIRE(output.good());
+}
+
+std::string runtime_tensor(const std::string& name, uint64_t index) {
+  return "{\"name\":\"" + name + "\",\"index\":" + std::to_string(index) +
+      ",\"dtype\":\"float16\",\"shape\":[1,64,1,1],\"byte_size\":128,"
+      "\"stride\":16384}";
+}
+
+std::string runtime_binding(const std::string& name, uint32_t channel) {
+  return "{\"tensor\":\"" + name + "\",\"channel\":" +
+      std::to_string(channel) +
+      ",\"dtype\":\"float16\",\"shape\":[1,64,1,1],"
+      "\"nchw\":[1,64,1,1,64,64],\"logical_bytes\":128,"
+      "\"allocation_bytes\":16384,\"element_offset\":0,"
+      "\"element_count\":64,\"physical_elements\":64}";
+}
+
+class RuntimeBundle {
+ public:
+  RuntimeBundle() {
+    std::string path_template =
+        (std::filesystem::temp_directory_path() / "mlx-omarchy-runtime-XXXXXX").string();
+    char* created = ::mkdtemp(path_template.data());
+    if (created == nullptr) {
+      throw std::runtime_error("cannot create runtime bundle test directory");
+    }
+    path_ = created;
+
+    const std::string payload = runtime_anec_bytes();
+    const std::string payload_sha = sha256_hex(
+        reinterpret_cast<const uint8_t*>(payload.data()), payload.size());
+    const std::string payload_record =
+        "[{\"byte_size\":" + std::to_string(payload.size()) +
+        ",\"path\":\"program-0.anec\",\"role\":\"anec\",\"sha256\":\"" +
+        payload_sha + "\"}]";
+    const std::string model_sha = sha256_hex(
+        reinterpret_cast<const uint8_t*>(payload_record.data()), payload_record.size());
+    const std::string manifest =
+        "{\"manifest_version\":3,\"name\":\"runtime-directory-test\","
+        "\"graph_hash\":\"" + std::string(64, '1') +
+        "\",\"task_descriptors\":1,\"inputs\":[" +
+        runtime_tensor("a", 0) + "," + runtime_tensor("b", 1) +
+        "],\"outputs\":[" + runtime_tensor("y", 0) +
+        "],\"state\":[],\"intermediates\":[],\"programs\":[{"
+        "\"payload\":\"program-0.anec\",\"operation\":\"add\","
+        "\"encoder\":\"h13-oracle-parity\",\"task_descriptors\":1,"
+        "\"scratch_bytes\":0,\"inputs\":[" + runtime_binding("a", 5) + "," +
+        runtime_binding("b", 6) + "],\"outputs\":[" + runtime_binding("y", 4) +
+        "]}],\"dispatch_plan\":[0],\"payloads\":[{\"role\":\"anec\","
+        "\"path\":\"program-0.anec\",\"sha256\":\"" + payload_sha +
+        "\",\"byte_size\":" + std::to_string(payload.size()) +
+        "}],\"compiler\":{\"host_build\":\"Linux test host\","
+        "\"toolchain\":\"mil-hwxc test source\",\"target\":\"h13\"},"
+        "\"driver_abi_major\":1,\"provenance\":{"
+        "\"source_repo\":\"joshuaswarren/mlx-omarchy\",\"source_commit\":\"" +
+        std::string(40, 'c') +
+        "\",\"exported_at\":\"2026-09-12\"},\"release_asset\":{"
+        "\"model\":\"runtime-directory-test\",\"model_sha256\":\"" +
+        model_sha + "\"}}";
+    write_file(path_ / "program-0.anec", payload);
+    write_file(path_ / "manifest.json", manifest);
+  }
+
+  ~RuntimeBundle() {
+    std::error_code error;
+    std::filesystem::remove_all(path_, error);
+  }
+
+  const std::filesystem::path& path() const {
+    return path_;
+  }
+
+ private:
+  std::filesystem::path path_;
+};
 
 AneProgramBinding lane_binding() {
   AneProgramBinding binding;
@@ -129,6 +251,42 @@ TEST_CASE("ANE runtime rejects invalid staging and deadlines before device work"
       detail::checked_deadline(std::chrono::milliseconds::max()),
       "[omarchy-ane] runtime: deadline exceeds the monotonic clock range.",
       std::invalid_argument);
+}
+
+TEST_CASE("ANE runtime validates every bundle directory entry before device work") {
+  RuntimeBundle bundle;
+
+  SUBCASE("unknown regular file") {
+    write_file(bundle.path() / "extra.bin", "unexpected");
+    CHECK_THROWS_WITH_AS(
+        AneRuntime::load(bundle.path(), std::chrono::seconds(1), {}),
+        "[omarchy-ane] bundle: unknown payload file 'extra.bin' not listed in manifest.",
+        std::runtime_error);
+  }
+
+  SUBCASE("unknown symlink") {
+    std::filesystem::create_symlink(
+        bundle.path() / "program-0.anec", bundle.path() / "alias.anec");
+    CHECK_THROWS_WITH_AS(
+        AneRuntime::load(bundle.path(), std::chrono::seconds(1), {}),
+        "[omarchy-ane] bundle: unexpected link 'alias.anec' inside bundle.",
+        std::runtime_error);
+  }
+
+  SUBCASE("unknown directory") {
+    std::filesystem::create_directory(bundle.path() / "nested");
+    CHECK_THROWS_WITH_AS(
+        AneRuntime::load(bundle.path(), std::chrono::seconds(1), {}),
+        "[omarchy-ane] bundle: unexpected directory 'nested' inside bundle.",
+        std::runtime_error);
+  }
+
+  SUBCASE("valid bundle reaches pre-worker runtime initialization") {
+    CHECK_THROWS_WITH_AS(
+        AneRuntime::load(bundle.path(), std::chrono::seconds(1), {}),
+        "ANE diagnostic path must not be empty",
+        std::invalid_argument);
+  }
 }
 
 TEST_CASE("ANE installed worker follows the loaded library prefix") {
