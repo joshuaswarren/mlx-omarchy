@@ -1,10 +1,11 @@
 # Copyright © 2026 Joshua Warren / mlx-omarchy contributors.
 # SPDX-License-Identifier: MIT
-"""Optional elementDtype ABI acceptance (mlx-omarchy side, 2026-09-13).
+"""Per-binding dtype ABI acceptance (mlx-omarchy side, 2026-09-13).
 
-Back-compat: existing packages (no elementDtype field) adapt unchanged.
-Bool surfaces: elementDtype="bool" maps to a 1-byte dtype with
-logical_bytes == element count. Everything is host-only.
+Compiler yield: bool surfaces use the existing per-binding ``dtype``
+field (no separate elementDtype field exists). ``dtype: "bool"`` maps
+to a 1-byte surface with logical_bytes == element count; absent change
+means fp16 and adapts unchanged. Everything is host-only.
 """
 
 import json
@@ -46,21 +47,21 @@ def _copy_fixture(root: Path) -> Path:
     return target
 
 
-def _mutate_binding_dtype(package: Path, element_dtype) -> None:
+def _mutate_binding_dtype(package: Path, dtype) -> None:
     manifest = json.loads((package / "manifest.json").read_text())
     binding = manifest["programs"][0]["inputs"][0]
-    if element_dtype is not None:
-        binding["elementDtype"] = element_dtype
+    if dtype is not None:
+        binding["dtype"] = dtype
     (package / "manifest.json").write_text(json.dumps(manifest))
 
 
 class ElementDtypeTest(unittest.TestCase):
-    def test_absent_field_adapts_unchanged_back_compat(self):
+    def test_fp16_package_adapts_unchanged_back_compat(self):
         with tempfile.TemporaryDirectory() as directory:
             package = _copy_fixture(Path(directory))
             manifest = json.loads((package / "manifest.json").read_text())
-            self.assertNotIn(
-                "elementDtype", json.dumps(manifest["programs"][0])
+            self.assertEqual(
+                manifest["programs"][0]["inputs"][0]["dtype"], "float16"
             )
             result = adapter.adapt(
                 package,
@@ -135,7 +136,7 @@ class ElementDtypeTest(unittest.TestCase):
                         "model": "m",
                     },
                 )
-            self.assertIn("elementDtype 'int4'", str(caught.exception))
+            self.assertIn(".dtype 'int4' is unsupported", str(caught.exception))
 
 
 if __name__ == "__main__":
