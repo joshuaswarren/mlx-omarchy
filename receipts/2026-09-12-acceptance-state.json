@@ -3,8 +3,8 @@
   "scope": "Current task state, not full feature qualification; completed policy invariants describe this source scope only",
   "stop_conditions": [
     "Full encoder execution remains blocked by required H13 lowering, geometries, and mixed-type multi-output representation; implementation work continues against those gaps.",
-    "Explicit H13 schema-3 adaptation is qualified. Installed base-M1 add/add-mul and GPU postcheck passed at 9ea7501f. Corrected combined 57cc36a2 host validation and review passed; its installed execution is in progress. Other-host applicability remains unqualified.",
-    "The exact Vulkan mel frontend has 18 bit-exact Apple GPU stage/final comparisons with backend trace at 604b0435. Combined-source local CLI also passes; full encoder, decoder, and transcription remain unqualified.",
+    "Explicit H13 schema-3 adaptation and installed combined source 57cc36a2 are qualified on the base M1: four exact ANE add/add-mul executions, GPU matmul/add, and 18 bit-exact mel comparisons on the same installed wheel. Other-host applicability remains unqualified.",
+    "The exact Vulkan mel frontend is qualified with 15 GPU primitives, eight Vulkan compute dispatches, and one submission; full encoder, decoder, and transcription remain unqualified.",
     "Installed-state platform adoption awaits upstream review in omacom/omarchy-mac PR 425."
   ],
   "tasks": [
@@ -196,16 +196,16 @@
     {
       "phase": "Core ML requirements",
       "task": "Preserve ordered multi program package execution",
-      "status": "in_progress",
-      "evidence": "Prior installed two-program add/mul exact execution at 9ea7501f; receipts/2026-09-12-ane-runtime-hardening/corrected-source-qualification.json. Combined 57cc36a2 installed qualification is running.",
-      "reason": "The runtime exists and preserves ordered fixture execution. Full encoder package execution remains unqualified."
+      "status": "completed",
+      "evidence": "receipts/2026-09-13-ane-runtime-bridge-qualification/receipt.json; exact installed 57cc36a2 add and ordered add/mul each passed two FP16 iterations.",
+      "reason": "Ordered fixture package execution is proven through the installed runtime. This does not qualify the full encoder package."
     },
     {
       "phase": "Core ML requirements",
       "task": "Consume canonical ANE driver and userspace runtime",
-      "status": "in_progress",
-      "evidence": "Private runtime consumes omarchy-ane f261a6cb. Prior installed add/add-mul passed at 9ea7501f; corrected combined 57cc36a2 installation is under qualification.",
-      "reason": "Canonical userspace integration is implemented; current installed source and non-M1 applicability need separate qualification."
+      "status": "completed",
+      "evidence": "receipts/2026-09-13-ane-runtime-bridge-qualification/receipt.json; installed 57cc36a2 consumes canonical omarchy-ane f261a6cb and passes four exact ANE executions on the base M1.",
+      "reason": "Canonical userspace integration is qualified on the base M1. Other firmware and hosts remain separate applicability gates."
     },
     {
       "phase": "Core ML requirements",
@@ -217,9 +217,9 @@
     {
       "phase": "Core ML requirements",
       "task": "Implement bounded ANE worker resource ownership",
-      "status": "in_progress",
-      "evidence": "Corrected runtime 57cc36a2; independent runtime lifecycle and binding reviews; root runtime suite 12 cases/398 assertions and bundle suite 22 cases/2308 assertions passed.",
-      "reason": "Worker ownership, immutable snapshots, deadlines, and quarantine are implemented. Current installed execution is being qualified separately."
+      "status": "completed",
+      "evidence": "receipts/2026-09-13-ane-runtime-bridge-qualification/receipt.json; runtime 12 cases/398 assertions, bundle 22 cases/2308 assertions, reviewed lifecycle failure tests, installed executions, and independent process/lease/quarantine/lock release checks.",
+      "reason": "Worker ownership, immutable snapshots, deadlines, and quarantine are implemented and checked. The earlier guard-124 run stopped before submission and released resources; the separately bounded installed-only run passed."
     },
     {
       "phase": "Core ML requirements",

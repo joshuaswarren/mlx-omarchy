@@ -47,9 +47,21 @@
     "root_bundle_check": {"cases_passed": 22, "assertions_passed": 2308, "failed": 0, "skipped": 0},
     "fix_receipts": ["receipts/2026-09-13-runtime-directory-closure.log", "receipts/2026-09-13-anec-driver-limits/run.sh"]
   },
+  "installed_build": {
+    "source": "57cc36a2e8ece78dd979b5344752d04c76b4d49d",
+    "wheel_sha256": "69e381c7ea91ca228a0d4ffa23e9409b3cd1b9026ed102179d05ee1043ab42d3",
+    "result": "Source build and isolated installation succeeded; installed core/libmlx/worker matched wheel RECORD. Installer matmul smoke passed. Qualification runner then returned 124 at the smoke harness guard: 258 seconds remained, 300 required. ANE add/add-mul and final GPU/mel qualification were not run.",
+    "log": "/tmp/AneRuntimeBridge-57cc36a2-acceptance-1789293110.log",
+    "clearance": "Runner and launcher reported release; root independently confirmed guardian 3383430 absent, process group empty, no workers or leases, empty quarantine, and free outer lock.",
+    "followup_receipt": "receipts/2026-09-13-ane-runtime-bridge-qualification/receipt.json: the separately granted installed-only run passed without rebuilding or weakening the guard."
+  },
   "qualification": {
     "merged_host_contract": "Both loader defects fixed; root rebuilt suites pass 12/398 runtime and 22/2308 bundle; independent RuntimeMergeReview bypass probes pass 129 directory and 256 descriptor-limit assertions",
-    "merged_hardware_execution": "not run",
+    "merged_hardware_execution": "PASS exact installed source 57cc36a2: add and add-mul each two exact FP16 iterations, worker release, explicit GPU matmul/add, and all 18 bit-exact mel comparisons using the same installed extension; one Vulkan submission and eight compute dispatches.",
+    "durable_receipt": "receipts/2026-09-13-ane-runtime-bridge-qualification/receipt.json",
+    "installed_log": "receipts/2026-09-13-ane-runtime-bridge-qualification/acceptance-success.log",
+    "mel_report_sha256": "3a87ee5f83377b4da64656c56a0f4afdb65f2af1cb09e113b13aeb592e49df78",
+    "root_clearance": "Independently checked remote guardian 3390545 absent, process group and workers absent, no leases, empty quarantine, and free lock. Read remote mel report: Device(gpu,0), 18 exact comparisons, 15 GPU primitives, eight computes, one submission, no copies or fills.",
     "prior_installed_hardware_receipt": "receipts/2026-09-12-ane-runtime-hardening/corrected-source-qualification.json",
     "prior_installed_hardware_source": "9ea7501fc748cc031f7cbdc58afbed984fc00d51",
     "full_model": "unqualified",
