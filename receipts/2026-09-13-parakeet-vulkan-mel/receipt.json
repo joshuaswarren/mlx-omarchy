@@ -17,19 +17,22 @@
   "contract": {
     "input": "One non-empty float32 waveform at 16 kHz, no longer than 480000 samples",
     "output": "float32 mel [3001,128], all-one int32 mask [3001], float32 encoder features [1,3000,128], and int32 encoder mask [1,3000]",
-    "execution": "Every waveform-dependent stage uses workload-owned mx.fast.metal_kernel calls on stream=mx.gpu. NumPy is imported only after GPU evaluation by the fixture comparator.",
-    "success": "All certified stage and final bytes must match and positive GPU primitive, Vulkan compute, and Vulkan submission counters must be observed."
+    "execution": "Every waveform-dependent stage uses workload-owned mx.fast.metal_kernel calls on stream=mx.gpu. The runtime extraction path performs no NumPy or CPU tensor arithmetic; the host comparator imports NumPy before dispatch and uses it only to inspect completed GPU outputs.",
+    "success": "All five final capture hashes, all 14 stage hashes, and all 18 stage/final comparisons must match; the expected stage set must be exact; GPU primitive and submission counters must be positive; Vulkan compute dispatches must equal the frozen count of eight."
   },
   "immutable_constants": {
     "float_count": 34704,
     "sha256": "753fda5580a1fdc8c1535cc291a962c3be3207e819d42b2eb6869b731a7ebf62"
   },
   "source_sha256": {
-    "overlay/tools/coreml/vulkan_mel.py": "3d05d810aec2455680eedabc04c61ed947ebc18f3c2d892f9029dce949c3eac6",
+    "overlay/tools/coreml/vulkan_mel.py": "b7a0eb37c6f79a9a9275bdd15ef3762d94f1188e9155dbdf1c35f5b899167d84",
+    "overlay/tools/coreml/mel_stage_compare.py": "210b38995c1491890fd71a7ae6c5c79b79c6d8d583289e3b3831a86b7066b7f8",
     "overlay/tools/coreml/vulkan_mel_constants.py": "caad0ac74d60a4d7378326d5c6d2e0f0fa7d1fd807157f9d203e7348874d258f",
     "tests/coreml/test_vulkan_mel.py": "4dfa53690fdb5790423e37f12121ce5d3dd8c7ce484c8b81ea658829b9e291df",
-    "docs/parakeet.md": "f7243b89059a854f53932638827f6699f0d34b23973802cec34882c3547e0b76",
-    "docs/coreml.md": "b0723149285bb3da9199465f1694c4d511e82d48e5843f67d641f9f2d5ed4f25"
+    "tests/coreml/test_vulkan_mel_arithmetic.py": "c76ad7c35353b6a62bea665795a4f8da82d9590ad88b228a563432f65ddf341c",
+    "tests/coreml/test_vulkan_mel_qualification.py": "4d0fd763828a4f7ddb8b5ed15a54a7e0fa2d2c299586a5f504a9c2b10fa5ad65",
+    "docs/parakeet.md": "e55823b3e128b3f36bf3143cde0f3bca5099811c82390b8e17a31a82edeceefe",
+    "docs/coreml.md": "f7d6de41833f6df715094375e6ced78b2889f5551289b3ab4899d297aaf8b3ab"
   },
   "local_runtime": {
     "source_commit": "e4d079c883b8606dddef7720bd302c5756be0692",
@@ -99,7 +102,7 @@
     }
   },
   "final_apple_verification": {
-    "status": "qualified",
+    "status": "historical pinned ordinary-input pass; superseded for general qualification",
     "source_commit": "976c3bad5db57314dc06a913fda9c7f0b4bead21",
     "source_sha256": "3d05d810aec2455680eedabc04c61ed947ebc18f3c2d892f9029dce949c3eac6",
     "host_class": "qualified Apple M1 Linux test host",
@@ -111,7 +114,7 @@
     "fixed_deadline_epoch": 1789278277,
     "command_cwd": "isolated staging root; private host and path omitted",
     "command": "nohup setsid timeout -k 10s 824s tools/CoremlVulkanMel-final.sh",
-    "result": "qualified=true; all 15 certified stage and final comparisons were byte-exact on Device(gpu, 0)",
+    "result": "historical ordinary-input result: all 15 then-compared certified stage and final tensors were byte-exact on Device(gpu, 0); this predates the full-finite FMA and 18-comparison gate corrections",
     "observed_output": "APPLE_GPU_RECEIPT_VALID comparisons=15 trace={\"commit_calls_noop\": 1, \"commit_calls_with_work\": 1, \"gpu_primitive_dispatches\": 15, \"omarchy_finalize_calls\": 1, \"vk_buffer_copies\": 0, \"vk_buffer_fills\": 0, \"vk_compute_dispatches\": 8, \"vk_submissions\": 1}",
     "trace_delta": {
       "gpu_primitive_dispatches": 15,
@@ -132,9 +135,40 @@
       "final-launcher.log": "87b8c1248659847cb340f0805fc733d8670ede38d2049f4559a9134f042a4b57"
     }
   },
+  "review_correction": {
+    "status": "qualified on local software Vulkan; corrected source awaits Apple rerun",
+    "source_commits": [
+      "2f08632097d21342924ea74b598607746af10dc6",
+      "a5b209e4b45f26d809d0e7d3ab6539f33b243777"
+    ],
+    "root_cause": "The former unscaled Dekker split multiplied finite operands by 4097, which overflowed at large magnitudes and lost subnormal products. It did not implement the declared finite binary32 FMA contract.",
+    "native_fma_limit": {
+      "probe": "lhs=0x5a58d667 rhs=0x2c6c9263 acc=0xbe6a1737 through mx.fast.metal_kernel",
+      "native": "0x4748616a",
+      "correctly_rounded": "0x4748616b",
+      "broader_probe": "4371 mismatches in 200000 finite triples"
+    },
+    "implementation": "The replacement combines unpacked binary32 significands in a 96-bit uint32 magnitude with sticky state, then rounds once to binary32. It does not clamp or narrow legal finite inputs.",
+    "local_verification": [
+      {
+        "command": "200000 deterministic finite binary32 triples across all exponents through the replacement custom-kernel fma32",
+        "result": "0 mismatches; 0 actual NaNs; 0 expected NaNs"
+      },
+      {
+        "command": "python3 -m pytest -q tests/coreml/test_vulkan_mel.py tests/coreml/test_vulkan_mel_arithmetic.py tests/coreml/test_vulkan_mel_qualification.py",
+        "result": "19 passed in 4.27s"
+      },
+      {
+        "command": "python3 overlay/tools/coreml/vulkan_mel.py <pinned-capture> <certified-stage-capture> --json-out .work/vulkan-mel-review-correction.json",
+        "result": "qualified=true; all 18 comparisons bit-exact; exact expected stage set; Device(gpu, 0); 15 GPU primitives, 8 Vulkan computes, and 1 Vulkan submission"
+      }
+    ],
+    "negative_gates": "Missing or extra stage keys reject qualification. Vulkan compute counts 1, 7, and 9 reject qualification. Tampering any of the five final capture files fails the named SHA-256 gate.",
+    "apple_rerun": "pending; the historical Apple run is not reused as general full-domain qualification"
+  },
   "qualification_boundary": {
-    "local_frontend": "qualified against the pinned fixture through the installed e4d079c8 software-Vulkan runtime",
-    "apple_physical_gpu": "qualified on Apple M1 through Honeykrisp with all 15 comparisons byte-exact and positive GPU/Vulkan trace counters",
+    "local_frontend": "qualified on software Vulkan: full-finite FMA regressions pass and all 18 authenticated stage/final comparisons are byte-exact",
+    "apple_physical_gpu": "historical evidence only for the pinned ordinary-input fixture; corrected source awaits a new Apple run",
     "encoder_and_full_plan": "not claimed"
   }
 }
