@@ -1141,7 +1141,7 @@ def _compare_fixture(capture_dir: Path, stage_dir: Path) -> dict:
     after = trace_snapshot()
     computed_stages = {
         **result.stages,
-        "mel_mask": result.mask,
+        "mel_mask": result.mask.astype(mx.float32),
         "mel_pinned": result.mel,
         "mel_stepwise": result.mel,
     }
