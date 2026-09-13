@@ -21,7 +21,8 @@
       "overlay/tools/coreml/vulkan_joint.py": "bf31537d504612c6d9873051c9ad5f7b84a978268e6d7ed4eaec173a18626115",
       "tests/coreml/test_pinned_component.py": "2101eacb8da05adc3e14833001d3a7d640ae96caad71988c7feabcc329c86141",
       "tests/coreml/test_vulkan_joint.py": "315cd3fb93e6f2d3135a93307e79f461b073b2e17432dcc95e531076b5fa1d73",
-      "overlay/tools/coreml/compare_vulkan_joint_golden.py": "5750565a0e6a4c96e803789b169bc9f5bd6ebf5a257223e925a4ec4e84234aae"
+      "overlay/tools/coreml/compare_vulkan_joint_golden.py": "5750565a0e6a4c96e803789b169bc9f5bd6ebf5a257223e925a4ec4e84234aae",
+      "overlay/tools/coreml/diagnose_vulkan_joint_arithmetic.py": "07d7c528b6d6f127c011bc0930672ae52901793883fe89fe8eef8eda1f819190"
     }
   },
   "model": {
@@ -122,6 +123,23 @@
       "duration_decisions_matching": 16,
       "full_tensor_bit_exact": false,
       "tolerance_applied": false
+    },
+    "native_arithmetic_diagnosis": {
+      "command": "MLX_OMARCHY_ALLOW_NON_APPLE=1 PYTHONPATH=/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/CoremlVulkanMel/.work/venv-run/lib/python3.11/site-packages:overlay/tools python3 overlay/tools/coreml/diagnose_vulkan_joint_arithmetic.py --capture-dir /home/joshuawarren/.cache/mlx-omarchy/parakeet-reference/captures/b650695c-75aec2a/20260913T105550Z-librispeech-tdt-tensors/ane --package /home/joshuawarren/.cache/mlx-omarchy/parakeet-reference/mweinbach1/parakeet-tdt-0.6b-v3-coreml/b650695c2322ee5281dff48d7345b2f3a58ff018/joint.mlpackage --output receipts/2026-09-13-parakeet-vulkan-joint/arithmetic-diagnosis.json",
+      "receipt": "arithmetic-diagnosis.json",
+      "receipt_sha256": "5321f3efb090a6419c5fec9a5cbb038fbcca4b155f9375053c96efe26d12fdcb",
+      "candidates": [
+        "baseline fp16 matmul then fp16 bias",
+        "fp16 mx.addmm",
+        "explicit fp32 dot then fp16 bias",
+        "fused fp32 dot and bias then fp16",
+        "fp16 products, fp32 reduction, then fp16 bias",
+        "balanced-tree fp16 accumulation then fp16 bias",
+        "sequential fp16 accumulation then fp16 bias"
+      ],
+      "input_pipeline_bit_exact": true,
+      "compiled_compute_plan_available": false,
+      "result": "The authenticated float32 uploads, fp16 casts, fp16 add, and fp16 ReLU match the NumPy IEEE-fp16 reference bit for bit. Baseline equals an explicit fp32 dot rounded before fp16 bias and is the closest tested token result. mx.addmm equals fused fp32 dot-and-bias and is farther from native token logits. Rounded-fp16 products, a balanced fp16 tree, and sequential fp16 accumulation also do not reproduce the native tensors. The package and capture have no compiled compute plan or accumulator/reduction declaration, so source arithmetic remains unchanged."
     },
     "reference": "Independent NumPy execution of the package's exact fp16 cast/add/relu/linear/slice sequence, followed by fp32 output casts. This is an FP contract reference, not Core ML output.",
     "cases": [
