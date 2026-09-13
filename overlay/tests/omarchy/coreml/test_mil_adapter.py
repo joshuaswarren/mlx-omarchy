@@ -5,6 +5,8 @@
 import json
 import os
 import struct
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -136,6 +138,26 @@ def _type_text(value_type):
 
 
 class AdapterUnitTest(unittest.TestCase):
+    def test_cli_rejects_package_and_lock_errors_without_tracebacks(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            package = _write_package(root, _minimal_model())
+            lock = root / "invalid.lock"
+            lock.write_text("not json")
+            output = root / "output"
+            for source in (root / "missing.mlpackage", package):
+                with self.subTest(package=source):
+                    result = subprocess.run(
+                        [sys.executable, str(Path(_TOOLS) / "coreml" / "mil_adapter.py"),
+                         "emit", str(source), str(output), "--reference-lock", str(lock)],
+                        capture_output=True, text=True, check=False, timeout=15,
+                    )
+                    self.assertEqual(result.returncode, 2, result.stderr)
+                    self.assertTrue(result.stderr.startswith("mil_adapter: "), result.stderr)
+                    self.assertNotIn("Traceback", result.stderr)
+                    self.assertEqual(result.stdout, "")
+                    self.assertFalse(output.exists())
+
     def _validate(self, model):
         with tempfile.TemporaryDirectory() as directory:
             package = open_mlpackage(_write_package(Path(directory), model))

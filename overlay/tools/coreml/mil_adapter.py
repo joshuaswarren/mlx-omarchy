@@ -28,9 +28,9 @@ from typing import Any, Callable
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from coreml.mlpackage import MlPackage, open_mlpackage
+from coreml.mlpackage import MlPackage, MlPackageError, open_mlpackage
 from coreml.proto import count_unknown_fields, feature_dtype_name, load_model, mil_dtype_name
-from coreml.reference import ReferenceLock, validate_lock
+from coreml.reference import ReferenceError, ReferenceLock, validate_lock
 
 EXPECTED_REPOSITORY = "mweinbach1/parakeet-tdt-0.6b-v3-coreml"
 EXPECTED_REVISION = "b650695c2322ee5281dff48d7345b2f3a58ff018"
@@ -867,7 +867,7 @@ def main(argv: list[str] | None = None) -> int:
                 file=sys.stderr,
             )
         return result.returncode
-    except (AdapterError, OSError, ValueError) as exc:
+    except (AdapterError, MlPackageError, ReferenceError, OSError, ValueError) as exc:
         print(f"mil_adapter: {exc}", file=sys.stderr)
         return 2
 

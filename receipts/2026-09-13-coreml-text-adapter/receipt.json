@@ -69,7 +69,9 @@
     "compiler_log": "/tmp/ane-runtime-adapter-integrated-20260913-compiler.log",
     "independent_constant_check": "PinnedEncoderTest: Ran 1 test in 17.653s; OK. Compared all 194 normalized LUT constants, 1016332288 dense bytes, and 120 FP16 immediates against the Apple decompressor and original bytes.",
     "reviewed_compiler_fix": "a1bfea0: graph import PASS; malformed split SSA/payload type mismatch now stops with ane.verify.split-constant-parameters rather than reaching backend lowering.",
-    "adapter_review": "in progress"
+    "adapter_review": "AdapterConstantReview: no findings. AdapterSemanticReview: package/lock CLI exception finding fixed and independently rechecked; no remaining finding. ModelSpecError already subclasses ValueError and needed no extra catch.",
+    "cli_regression": "Real missing-package and malformed-lock subprocesses both failed before the fix with exit 1 and tracebacks. After explicitly catching MlPackageError and ReferenceError: 14 AdapterUnitTest plus schema tests passed; both CLI errors return 2 with concise stderr and no output artifact.",
+    "cli_review_receipt": "agent://AdapterSemanticReview"
   },
   "limits": {
     "hardware_execution": "not run",
