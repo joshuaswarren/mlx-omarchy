@@ -1,0 +1,88 @@
+{
+  "schema": "bf16-grouped-gemv-integration-review/1",
+  "date": "2026-09-12",
+  "status": "reviewed-and-integrated",
+  "model_identity": "openai-codex/gpt-5.6-sol",
+  "routing_fallback": false,
+  "integration": {
+    "root_base": "9e22a534b9297242f360d32d26062cf2b4c2ab0d",
+    "qualified_source_commit": "6b1ac0296ba65a8e0075171ca9451e222ddff06b",
+    "qualified_receipt_commit": "179eb698ea60d0325581c35f1099d794871f774c",
+    "cherry_picked_source_commit": "ad26e00e1757468f214f2dfc49f537366be5d0d4",
+    "cherry_picked_receipt_commit": "6e0031d2aea64daf4d21cc9954753c98df1c9cf2",
+    "conflicts": 0,
+    "prior_receipt_rewritten": false
+  },
+  "source_relation": {
+    "verdict": "byte-identical-to-qualified-candidate",
+    "root_delta_from_qualification_base_in_reviewed_files": [],
+    "files": {
+      "overlay/mlx/backend/omarchy/CMakeLists.txt": "800f72d261de93afcb95ed82aa9b8ccd5e7e67eb466527eca12a9778e04e3fa1",
+      "overlay/mlx/backend/omarchy/compute.cpp": "6a849fae7e9e496c3cd7a52608ec38d19593679e4186754923f563ef2f1a9e36",
+      "overlay/mlx/backend/omarchy/compute.h": "314f5b021363ae933cbc245042bd2f2c1e48e5223402a4dd8765ef2b72c228ad",
+      "overlay/mlx/backend/omarchy/fused_chain.cpp": "1357e965760a1f582c25e97a4e99d042f08a9bf4366d05a3a783f18ad9c36b95",
+      "overlay/mlx/backend/omarchy/fused_chain.h": "102d44fb9571d5e1fe6b617f8659a3f19301142cadb6e2c03b52d28704577ec2",
+      "overlay/mlx/backend/omarchy/primitives.cpp": "68b31d4c82682cf3a8532df418bea3d54cba40b450dc223bce9e85edfa06a48d",
+      "overlay/mlx/backend/omarchy/shaders/matmul_vec_multi_bf16.comp": "832743255b63e9c77964d75ccb60948fcdeed1f9dda4f7131fdf193e60ebb0ab",
+      "overlay/tests/omarchy/test_fused_chain.cpp": "60701e065259b221281284cb5938dd64c753cff26d7e623a95d496b523e52450"
+    },
+    "proof_command": "git diff --name-status b41e2b74c330f910b24cab0e7516e306527858f0 9e22a534b9297242f360d32d26062cf2b4c2ab0d -- <reviewed-files>; compare git rev-parse 6b1ac029:<file> with git hash-object <file>",
+    "proof_result": "no root delta in reviewed files; all eight blobs identical"
+  },
+  "adversarial_review": {
+    "finding_count": 0,
+    "fix_commit_required": false,
+    "checked": {
+      "shared_input_equivalence": "Planner groups by direct source identity; runtime requires direct identity or the same backing pointer, byte offset, dtype, size, row-contiguous layout, unit final stride, and equal matmul input shape before dispatch.",
+      "buffer_lifetime_and_offsets": "Group state retains array owners; all seven bindings carry VulkanBuffer owners for batch stamping; item offsets require alignment and uint32 index-span checks before allocation or dispatch.",
+      "output_width_stride_and_range": "Each weight must be transposed dense BF16 with strides [...,1,K], positive N, output size N, four-row alignment, and bounded weight span; fresh contiguous outputs are allocated only after every member passes.",
+      "alias_safety": "The fused dispatch reads only a proven common input and distinct weight bindings and writes fresh output allocations; a merely similar input does not qualify.",
+      "row_tail_fallback": "Any N not divisible by four rejects the whole group before allocation and preserves per-node execution.",
+      "shape_and_dtype_rejection": "Only two or three eager BF16 Matmul nodes, same stream, one logical row, K positive and divisible by 128, ready BF16 input and ready BF16 weights qualify; generic shapes remain on the existing path.",
+      "independent_bf16_rounding": "Every member and every four-row accumulator has an independent precise float FMA chain and independent NaN-preserving BF16 round-to-nearest-even store matching matmul_vec_bf16.",
+      "dispatch_bookkeeping": "The shader workgroup partition exactly matches the sum of per-member N/4 groups; each planned node is marked done only after the single dispatch is recorded; failed qualification leaves every node on its ordinary path.",
+      "preserved_contracts": "The Q4 grouped path, compiled-BF16 refusal, rejected optional barrier gate, and generic Matmul fallback were not modified by integration."
+    }
+  },
+  "local_verification": {
+    "configure": {
+      "command": "cmake -S .work/mlx -B .work/build -G Ninja -DMLX_BUILD_OMARCHY=ON -DMLX_BUILD_CPU=ON -DMLX_BUILD_METAL=OFF -DMLX_BUILD_CUDA=OFF -DMLX_BUILD_TESTS=ON -DMLX_BUILD_EXAMPLES=OFF -DMLX_BUILD_BENCHMARKS=OFF",
+      "result": "configured"
+    },
+    "build": {
+      "command": "timeout 600 cmake --build .work/build --target omarchy_fused_chain_tests -j2",
+      "result": "exit 0",
+      "supervised_process": "bf16-integration-build-20260912"
+    },
+    "shader": {
+      "command": "/usr/local/bin/glslc -O --target-env=vulkan1.3 overlay/mlx/backend/omarchy/shaders/matmul_vec_multi_bf16.comp -o /tmp/Bf16IntegrationReview-matmul_vec_multi_bf16.spv && spirv-val --target-env vulkan1.3 /tmp/Bf16IntegrationReview-matmul_vec_multi_bf16.spv",
+      "result": "SHADER_COMPILE_AND_VALIDATE_OK"
+    },
+    "dense_executable_smoke": {
+      "command": "MLX_OMARCHY_ALLOW_NON_APPLE=1 .work/build/tests/omarchy/omarchy_fused_chain_tests --test-case=\"eager dense bf16 decode gemv*\" --no-skip",
+      "result": "2 test cases entered and passed with 0 assertions; both capability-gated cases skipped their assertions because local llvmpipe lacks a 32-lane shuffle subgroup"
+    },
+    "q4_guard": {
+      "command": "MLX_OMARCHY_ALLOW_NON_APPLE=1 .work/build/tests/omarchy/omarchy_fused_chain_tests --test-case=\"eager q4 decode gemv group*\" --no-skip",
+      "result": "3/3 cases and 18974/18974 assertions passed"
+    },
+    "compiled_bf16_guard": {
+      "command": "MLX_OMARCHY_ALLOW_NON_APPLE=1 .work/build/tests/omarchy/omarchy_fused_chain_tests --test-case=\"bf16 compiled tape stays refused\" --no-skip",
+      "result": "1/1 case and 1/1 assertion passed"
+    }
+  },
+  "hardware_evidence": {
+    "reused": true,
+    "reason": "All eight files changed by qualified commit 6b1ac029 are byte-identical after integration; the adversarial review introduced no executable change.",
+    "receipt": "receipts/2026-09-12-bf16-grouped-gemv/verdict.json",
+    "measured_legs": 72,
+    "matching_digests": true,
+    "long_bf16_decode_delta_percent": {
+      "honeykrisp": 0.8245382585752026,
+      "stock_mesa": 0.7518796992481258
+    },
+    "new_jwm1_run": false,
+    "jwm1_touched": false
+  },
+  "scope_limit": "This qualifies the grouped eager BF16 GEMV candidate only. It does not claim full native parity."
+}
