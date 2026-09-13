@@ -34,6 +34,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+import collect_macos
 from collect_common import (SCHEMA_VERSION, Redactor, build_payload,
                             dump_json, json_bytes, run_tool)
 
@@ -42,8 +43,7 @@ DT_BASE = "/sys/firmware/devicetree/base"
 
 def probe_host(redactor):
     if platform.system() == "Darwin":
-        from collect_macos import probe_host as native_host
-        return native_host(redactor)
+        return collect_macos.probe_host(redactor)
     out = {"available": True}
     info = os.uname()
     out["arch"] = info.machine
@@ -269,8 +269,7 @@ def _primary_device(devices):
 def probe_mesa(redactor):
     """Vulkan stack identity from `vulkaninfo --summary`."""
     if platform.system() == "Darwin":
-        from collect_macos import not_applicable
-        return not_applicable()
+        return collect_macos.not_applicable()
     out = {"available": False, "properties": {}, "summary": None}
     rec = run_tool(["vulkaninfo", "--summary"], redactor,
                    label="vulkaninfo --summary", timeout=30)
@@ -293,8 +292,7 @@ def probe_mesa(redactor):
 def probe_mesa_package(redactor):
     """Mesa package version as a cross-check; distro-specific and optional."""
     if platform.system() == "Darwin":
-        from collect_macos import not_applicable
-        return not_applicable()
+        return collect_macos.not_applicable()
     return {
         "pacman": run_tool(["pacman", "-Q", "mesa"], redactor,
                            label="pacman -Q mesa", timeout=15),
@@ -307,8 +305,7 @@ def probe_mesa_package(redactor):
 def probe_ane(redactor):
     """Apple Neural Engine visibility: device node and libane."""
     if platform.system() == "Darwin":
-        from collect_macos import not_applicable
-        return not_applicable()
+        return collect_macos.not_applicable()
     node = os.path.exists("/dev/ane")
     out = {"available": node, "device_node": node}
     out["devicetree"] = _ane_devicetree()

@@ -301,6 +301,10 @@ def host_facts():
     return facts
 
 
+# pmset battery states with a known charging answer; anything else is unknown.
+_BATTERY_STATES = frozenset({"charging", "discharging", "not charging", "charged"})
+
+
 def power_state():
     """Power metadata, or None when unknown. Never inferred."""
     if platform.system() == "Darwin":
@@ -311,14 +315,13 @@ def power_state():
             return None
         pct = re.search(r"(\d+)%", out)
         state = re.search(r"\d+%;\s*([^;]+);", out)
+        label = state.group(1).strip() if state else None
         return {
             "raw": " ".join(out.split())[:200],
             "source": "AC Power" if "AC Power" in out else
                       ("Battery" if "Battery Power" in out else None),
             "percent": int(pct.group(1)) if pct else None,
-            "charging": {"charging": True, "discharging": False,
-                         "not charging": False, "charged": False}.get(
-                             state.group(1).strip()) if state else None,
+            "charging": (label == "charging") if label in _BATTERY_STATES else None,
         }
     for ps in sorted(Path("/sys/class/power_supply").glob("*")):
         try:

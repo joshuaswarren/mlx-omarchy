@@ -294,6 +294,11 @@ def build_manifest(archive_name, files, extra=None):
     return manifest
 
 
+def is_native_macos(host, manifest):
+    """True when a report came from native macOS MLX rather than Linux."""
+    return (host.get("system") or manifest.get("system")) == "Darwin"
+
+
 def build_payload(kind, quick, manifest, generated_at=None, benchmark=None):
     """Build the strict-schema JSON summary sent with the upload.
 
@@ -346,7 +351,7 @@ def build_payload(kind, quick, manifest, generated_at=None, benchmark=None):
             "tflops": row.get("tflops"),
             "median_ms": row.get("median_ms"),
         })
-    native = (host.get("system") or manifest.get("system")) == "Darwin"
+    native = is_native_macos(host, manifest)
     kernel = host.get("kernel_release")
     if native:
         shortfall_flag = None

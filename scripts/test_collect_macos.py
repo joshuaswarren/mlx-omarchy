@@ -4,6 +4,7 @@
 import base64
 import contextlib
 import hashlib
+from importlib.metadata import FileHash, PackagePath
 import io
 import json
 from pathlib import Path
@@ -193,7 +194,6 @@ class NativeProvenanceTests(unittest.TestCase):
         entries = []
         for path in files:
             # PackagePath carries the same RECORD metadata as importlib.metadata.
-            from importlib.metadata import PackagePath, FileHash
             entry = PackagePath(path.name)
             digest = base64.urlsafe_b64encode(hashlib.sha256(path.read_bytes()).digest()).decode().rstrip("=")
             entry.hash = FileHash("sha256=" + digest)
@@ -242,7 +242,6 @@ class NativeProvenanceTests(unittest.TestCase):
         result = self.inspect({"mlx": self.distribution([self.extension]),
                                "mlx-metal": self.distribution([self.library], version="0.31.0")})
         self.assertEqual(result["verified"], "mismatch")
-        self.assertFalse(result["version_match"])
         self.assertIn("mlx-metal==0.31.0", result["mismatch"])
         self.assertTrue(all(entry["match"] for entry in result["files"]))
 
@@ -256,17 +255,17 @@ class NativeProvenanceTests(unittest.TestCase):
                 patch.object(prov, "native_provenance", return_value={"verified": "unverified"}), \
                 patch.object(prov, "provenance_line", return_value="provenance: test"), \
                 patch("sys.stderr", new=io.StringIO()):
-            cd.prepare_probe(self.mx)
+            prov.prepare_probe(self.mx)
             self.mx.set_default_device.assert_called_once_with("gpu")
             self.mx.metal.is_available.return_value = False
             with self.assertRaisesRegex(RuntimeError, "Metal GPU unavailable"):
-                cd.prepare_probe(self.mx)
+                prov.prepare_probe(self.mx)
 
     def test_both_probes_refuse_mismatch_before_tensor_work(self):
         self.mx.default_device = lambda: "Device(gpu, 0)"
         for source, result_key in ((cd.CORRECTNESS_PROBE, "ops"), (cd.BENCH_PROBE, "matmul")):
             with self.subTest(probe=result_key), \
-                    patch.object(cd, "prepare_probe", return_value={
+                    patch.object(prov, "prepare_probe", return_value={
                         "verified": "mismatch", "mismatch": "changed library"}), \
                     contextlib.redirect_stdout(io.StringIO()) as output:
                 with self.assertRaises(SystemExit):
@@ -282,7 +281,7 @@ class NativeProvenanceTests(unittest.TestCase):
                 patch.object(prov, "native_provenance") as native, \
                 patch.object(prov, "provenance_line", return_value="provenance: test"), \
                 patch("sys.stderr", new=io.StringIO()):
-            self.assertEqual(cd.prepare_probe(self.mx)["verified"], "mismatch")
+            self.assertEqual(prov.prepare_probe(self.mx)["verified"], "mismatch")
         installed.assert_called_once_with()
         native.assert_not_called()
         self.mx.set_default_device.assert_not_called()

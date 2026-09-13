@@ -11,24 +11,29 @@ def not_applicable():
     return {"available": False, "error": "not applicable to native macOS MLX"}
 
 
+def _text(record):
+    return record["stdout"].strip() if record["exit_code"] == 0 else None
+
+
+def _int(value):
+    return int(value) if value and str(value).isdigit() else None
+
+
 def probe_host(redactor):
     facts = bench_matrix.host_facts()
     model = run_tool(["sysctl", "-n", "hw.model"], redactor, timeout=10)
     active = run_tool(["sysctl", "-n", "hw.activecpu"], redactor, timeout=10)
-    cores = facts.get("cores")
-    present = int(cores) if cores and str(cores).isdigit() else None
-    online = active["stdout"].strip() if active["exit_code"] == 0 else ""
     memory = facts.get("memsize_bytes")
     return {
         "available": True,
         "system": "Darwin",
-        "arch": facts["machine"],
+        "arch": facts.get("machine"),
         "kernel_release": platform.release(),
         "os": facts.get("os"),
-        "model": model["stdout"].strip() if model["exit_code"] == 0 else None,
+        "model": _text(model),
         "chip": facts.get("chip"),
-        "cpu_online": int(online) if online.isdigit() else None,
-        "cpu": {"present": present, "hotplug_control": None},
+        "cpu_online": _int(_text(active)),
+        "cpu": {"present": _int(facts.get("cores")), "hotplug_control": None},
         "memory_total_mib": memory // (1024 * 1024) if memory else None,
         "gpu": facts.get("gpu"),
     }

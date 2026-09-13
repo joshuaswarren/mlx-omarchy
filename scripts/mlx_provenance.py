@@ -38,6 +38,7 @@ import base64
 import hashlib
 import importlib.metadata
 import json
+import platform
 import sys
 import zipfile
 from pathlib import Path
@@ -276,8 +277,11 @@ def native_provenance():
     result = {"dist": "mlx", "dist_version": None,
               "mx_version": getattr(mx, "__version__", None),
               "version_match": None, "files": [], "verified": "unverified",
-              "mismatch": None, "packages": {}}
+              "mismatch": None, "note": None, "packages": {}}
+    loaded = _loaded_macos_binaries()
+    wanted = {path.name for path in loaded}
     records = {}
+    problems = []
     # Native pip wheels can split the extension and Metal library across packages.
     for name in ("mlx", "mlx-metal", "mlx-cpu"):
         try:
@@ -292,35 +296,35 @@ def native_provenance():
         if name == "mlx":
             result["dist_version"] = dist.version
         for rel, digest in _record_hashes(dist).items():
+            # Resolving every RECORD entry walks the filesystem per file;
+            # only the loaded binaries are ever looked up.
+            if Path(rel).name not in wanted:
+                continue
             path = Path(dist.locate_file(rel)).resolve()
             records.setdefault(path, []).append(digest)
-    for path in _loaded_macos_binaries():
+    for path in loaded:
         actual = sha256_file(path)
         expected = records.get(path, [])
         matches = all(actual == digest for digest in expected) if expected else None
         result["files"].append({"path": path.name, "sha256": actual,
                                 "record_sha256": expected, "match": matches})
         if matches is False:
-            result["mismatch"] = f"Loaded {path.name} differs from its installed RECORD"
-    if result["dist_version"] is not None and result["mx_version"] is not None:
-        result["version_match"] = result["dist_version"] == result["mx_version"]
+            problems.append(f"Loaded {path.name} differs from its installed RECORD")
+    base = result["dist_version"]
+    if base is not None and result["mx_version"] is not None:
+        result["version_match"] = base == result["mx_version"]
         if not result["version_match"]:
-            result["mismatch"] = "Compiled MLX version differs from installed mlx version"
+            problems.append("Compiled MLX version differs from installed mlx version")
     # Each backend binary can match its own RECORD while the backend package
     # is stale relative to mlx. A mixed native stack must not verify as a match.
-    stale = sorted(
-        f"{name}=={info['version']}"
-        for name, info in result["packages"].items()
-        if name != "mlx" and result["dist_version"] is not None
-        and info["version"] != result["dist_version"]
-    )
+    stale = sorted(f"{name}=={info['version']}"
+                   for name, info in result["packages"].items()
+                   if base is not None and info["version"] != base)
     if stale:
-        result["version_match"] = False
-        result["mismatch"] = (
-            f"Native backend package version differs from mlx=="
-            f"{result['dist_version']}: {', '.join(stale)}"
-        )
-    if result["mismatch"]:
+        problems.append(f"Native backend package version differs from "
+                        f"mlx=={base}: {', '.join(stale)}")
+    result["mismatch"] = " ; ".join(problems) or None
+    if problems:
         result["verified"] = "mismatch"
     elif (result["version_match"] is True and result["files"]
           and all(entry["match"] is True for entry in result["files"])):
@@ -328,6 +332,19 @@ def native_provenance():
     else:
         result["note"] = "Binary fingerprints only. Package hashes or version metadata are missing."
     return result
+
+
+def prepare_probe(mx):
+    """Provenance gate for a probe child. Selects Metal on macOS."""
+    if platform.system() == "Darwin":
+        if not mx.metal.is_available():
+            raise RuntimeError("Metal GPU unavailable. Native macOS probes require Metal.")
+        mx.set_default_device(mx.gpu)
+        provenance = native_provenance()
+    else:
+        provenance = installed_provenance()
+    print(provenance_line(provenance), file=sys.stderr)
+    return provenance
 
 
 def control_check(package_dir):

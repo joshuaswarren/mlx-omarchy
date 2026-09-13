@@ -42,6 +42,7 @@ import tempfile
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+import collect_macos
 import collect_quick
 SCRIPTS_DIR = os.path.dirname(os.path.abspath(__file__))
 from collect_common import (
@@ -50,6 +51,7 @@ from collect_common import (
     archive_bytes,
     build_manifest,
     build_payload,
+    is_native_macos,
     json_bytes,
     read_text,
     run_tool,
@@ -84,7 +86,7 @@ res["mlx_version"] = getattr(mx, "__version__", None)
 
 import sys as _sys
 _sys.path.insert(0, __SCRIPTS_DIR__)
-from collect_deep import prepare_probe
+from mlx_provenance import prepare_probe
 
 try:
     res["provenance"] = prepare_probe(mx)
@@ -156,7 +158,7 @@ try:
 
     import sys as _sys
     _sys.path.insert(0, __SCRIPTS_DIR__)
-    from collect_deep import prepare_probe
+    from mlx_provenance import prepare_probe
 
     res["provenance"] = prepare_probe(mx)
     res["device"] = str(mx.default_device())
@@ -217,20 +219,6 @@ except Exception as exc:
     out["error"] = f"{type(exc).__name__}: {exc}"
 print(json.dumps(out))
 """
-
-
-def prepare_probe(mx):
-    from mlx_provenance import installed_provenance, native_provenance, provenance_line
-
-    if platform.system() == "Darwin":
-        if not mx.metal.is_available():
-            raise RuntimeError("Metal GPU unavailable. Native macOS probes require Metal.")
-        mx.set_default_device(mx.gpu)
-        provenance = native_provenance()
-    else:
-        provenance = installed_provenance()
-    print(provenance_line(provenance), file=sys.stderr)
-    return provenance
 
 
 def section_environment(redactor, repo):
@@ -306,8 +294,7 @@ def section_benchmark(redactor, repo):
         except (ValueError, IndexError):
             pass
     if platform.system() == "Darwin":
-        from collect_macos import not_applicable
-        out["kernel_spike"] = not_applicable()
+        out["kernel_spike"] = collect_macos.not_applicable()
         return out
     spike = find_spike_binary(repo)
     if spike is None:
@@ -349,8 +336,7 @@ def find_info_tool(redactor, repo):
 
 def section_profile(redactor, repo, ws):
     if platform.system() == "Darwin":
-        from collect_macos import not_applicable
-        return not_applicable()
+        return collect_macos.not_applicable()
     out = {"available": False, "trace_smoke": None, "stream": None,
            "analysis": None}
     tool = find_info_tool(redactor, repo)
@@ -502,7 +488,7 @@ def build_submission(manifest, files, archive_name):
     correctness = _member(files, "correctness.json")
     ops = correctness.get("ops", [])
     lines = ["## mlx-omarchy hardware report", ""]
-    if (host.get("system") or manifest.get("system")) == "Darwin":
+    if is_native_macos(host, manifest):
         lines += [
             f"Machine: {host.get('model') or 'unknown'} / {host.get('chip') or 'unknown'}"
             f" ({host.get('os') or 'macOS'}, Darwin {host.get('kernel_release')})",
@@ -601,8 +587,7 @@ def section_child(name, ws, repo):
     try:
         context = None
         if name == "benchmark" and platform.system() == "Darwin":
-            from collect_macos import measurement_context
-            context = measurement_context()
+            context = collect_macos.measurement_context()
         if name == "quick":
             data = collect_quick.collect()
         elif name == "environment":
@@ -616,7 +601,8 @@ def section_child(name, ws, repo):
         else:
             data = {"available": False, "error": f"unknown section {name}"}
         if context is not None:
-            data["context"] = {"before": context, "after": measurement_context()}
+            data["context"] = {"before": context,
+                               "after": collect_macos.measurement_context()}
     except Exception as exc:
         data = {"available": False,
                 "error": redactor.apply(f"{type(exc).__name__}: {exc}")}
