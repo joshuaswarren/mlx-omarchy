@@ -1,0 +1,24 @@
+{
+  "schema": "jwm1-ane-restored/1",
+  "date": "2026-09-13",
+  "status": "pass",
+  "host": "jwm1-linux",
+  "nproc": 8,
+  "cpu_online": "0-7",
+  "device": "/dev/accel/accel0",
+  "device_mode": "crw-rw-rw- root render",
+  "module": "f2a3e5e+lifecycle6",
+  "dt_node": "ane@26bc04000",
+  "power_control": "on",
+  "smoke": {
+    "binary_sha256": "5e31501727921108116c9e2b597193529e5981d75e4f43c9731a559acfa256da",
+    "bundle": "/var/tmp/Jwm1AneAccelSmoke2-a9f14124/schema4-add-mul",
+    "mode": "add-mul",
+    "deadline_ms": 10000,
+    "exit": 0,
+    "iterations": 2,
+    "exact_fp16": true,
+    "graph_hash": "5584d0fd8d40027229890408e924e6f7930cd5f02516466a442193408482ce76"
+  },
+  "scope": "Known-good 64-element schema-4 add-then-mul only. Not 1x896. Not encoder."
+}
