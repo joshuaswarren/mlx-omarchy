@@ -44,6 +44,24 @@ SUPPORTED = "SUPPORTED"
 LOWERABLE_VIA_FRONTEND = "LOWERABLE-VIA-FRONTEND"
 NEEDS_COMPILER_OP = "NEEDS-COMPILER-OP"
 BOUNDARY = "BOUNDARY"
+# Section-39 nuance: implemented on a compiler branch, not yet in
+# the pinned release. These ops become plain SUPPORTED once the
+# branch ships and the ane-compiler.lock pin moves.
+SUPPORTED_PENDING_RELEASE = "SUPPORTED-PENDING-COMPILER-RELEASE"
+
+_PENDING_RELEASE_OPS = {
+    "less": \
+        "registry entry + exact rejection on compiler branch feature/h13-registry-boolean-ops "
+        "(b4f4da9); 1-byte bool surface (elementDtype ABI extension) captured by the "
+        "compiler lane; the pinned release 83a4434 has neither",
+    "floor": \
+        "registry entry + exact rejection on compiler branch feature/h13-registry-boolean-ops "
+        "(b4f4da9); 1-byte bool surface captured by the compiler lane; pinned "
+        "release 83a4434 has neither",
+    "floor_div": \
+        "composes real_div (pinned) with floor (branch); blocked on the floor "
+        "encoder release",
+}
 
 ELIGIBILITY_SCHEMA = "mlx-omarchy.coreml.eligibility/1"
 
@@ -123,6 +141,16 @@ def classify_spec(spec, histogram: dict[str, int]) -> list[OpDisposition]:
                     )
                 )
             continue
+        if op_type in _PENDING_RELEASE_OPS:
+            dispositions.append(
+                OpDisposition(
+                    op_type,
+                    count,
+                    SUPPORTED_PENDING_RELEASE,
+                    _PENDING_RELEASE_OPS[op_type],
+                )
+            )
+            continue
         entries = mask_entries.get(op_type, [])
         if entries:
             per_type = len(entries)
@@ -178,13 +206,19 @@ def classify_spec(spec, histogram: dict[str, int]) -> list[OpDisposition]:
                     )
                 )
             if blocking:
+                # The -inf-fill select encoder is captured on the
+                # compiler branch (3-in/out7 bool surface, elementDtype
+                # ABI extension); only the release is pending.
                 dispositions.append(
                     OpDisposition(
                         op_type,
                         blocking,
-                        NEEDS_COMPILER_OP,
-                        "non-finite select fill: 0 * inf = NaN "
-                        "(compiler `select` required)",
+                        SUPPORTED_PENDING_RELEASE,
+                        "non-finite select fill: 0 * inf = NaN; encoder "
+                        "captured on compiler branch "
+                        "feature/h13-registry-boolean-ops (b4f4da9+) as a "
+                        "3-in/out7 1-byte bool surface; pinned release "
+                        "83a4434 has neither",
                     )
                 )
             continue
@@ -212,6 +246,7 @@ def eligibility_report(package: Path) -> dict:
         LOWERABLE_VIA_FRONTEND: 0,
         NEEDS_COMPILER_OP: 0,
         BOUNDARY: 0,
+        SUPPORTED_PENDING_RELEASE: 0,
     }
     blocking: list[dict] = []
     for entry in dispositions:

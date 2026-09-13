@@ -123,7 +123,7 @@ uint64_t checked_add(uint64_t lhs, uint64_t rhs, const std::string& field) {
 uint64_t dtype_size(const std::string& dtype) {
   if (dtype == "float16" || dtype == "bfloat16") return 2;
   if (dtype == "float32" || dtype == "int32") return 4;
-  if (dtype == "uint8") return 1;
+  if (dtype == "uint8" || dtype == "bool") return 1;
   return 0;
 }
 
