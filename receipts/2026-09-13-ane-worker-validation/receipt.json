@@ -1,0 +1,57 @@
+{
+  "schema": "mlx-omarchy.jwm1-ane-worker-hardware-window.v1",
+  "host": "jwm1-linux",
+  "source_root": "/var/tmp/AneWorkerValidation-c05ba1df",
+  "source_commit": "c05ba1df2aa0427a36685a4e4661e6a1f47ff33d",
+  "runner": "receipts/2026-09-13-ane-worker-validation/run-once.sh",
+  "log": "receipts/2026-09-13-ane-worker-validation/hardware-window.log",
+  "started_at": "2026-09-13T14:23:43-05:00",
+  "finished_at": "2026-09-13T14:27:02-05:00",
+  "preflight": {
+    "device": "character special file",
+    "module": "loaded",
+    "gpu_lock": "free",
+    "quarantine_bytes": 0,
+    "power_runtime_status": "unsupported by the ane_sys genpd domain; device power evidenced by successful bounded execution"
+  },
+  "host_tests_on_target": {
+    "suite": "omarchy_ane_worker_tests",
+    "cases": 6,
+    "assertions": 32,
+    "result": "SUCCESS"
+  },
+  "bundle_adaptation": {
+    "tool": "overlay/tools/ane-export/h13_package_to_bundle.py",
+    "fixture": "overlay/tests/omarchy/ane/fixtures/h13-explicit-chain-add-mul",
+    "graph_hash": "5584d0fd8d40027229890408e924e6f7930cd5f02516466a442193408482ce76",
+    "programs": ["add", "mul"],
+    "payload_sha256": {
+      "program-0.anec": "9a6a6a9a701ce207d4a8ea80ee1ca6d5ade076be2115b73a9aed6f4236aa56ab",
+      "program-1.anec": "62595e4a61db24066b83a4f7c077d459c69a6a740109098ee0122b4b46dcd3cc"
+    }
+  },
+  "worker_run": {
+    "executable": ".work/mlx/build-ane-device/tools/mlx-omarchy-ane-worker/mlx-omarchy-ane-worker",
+    "libane": "libane.so built from ~/src/omarchy-ane-h13-f261a6c (f261a6cb537aca62f267ad3d01beda0d6877544c), dlopen'd",
+    "deadline_ms": 5000,
+    "iterations": 2,
+    "status": "Completed",
+    "released_programs": 2,
+    "elapsed_ms": 2,
+    "quarantined": false,
+    "expected_output": "y = fp16(fp16(a + b) * b), deterministic a/b fixtures",
+    "verification": "exact fp16 value match for all 64 lanes; the only bit-level difference class is +0.0 device result vs -0.0 mathematical product, equal by IEEE value comparison and matching the compiler's unsigned-zero-product model (mil-hwx-compiler aa688df)"
+  },
+  "post_verify": {
+    "device": "character special file",
+    "module": "loaded",
+    "quarantine_bytes": 0,
+    "gpu_lock": "released"
+  },
+  "prohibited_actions_observed": {
+    "ane_unloaded": false,
+    "rebooted": false,
+    "executed_1x896": false
+  },
+  "result": "PASS"
+}

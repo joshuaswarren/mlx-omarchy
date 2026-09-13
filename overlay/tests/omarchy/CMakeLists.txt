@@ -46,6 +46,16 @@ target_compile_options(omarchy_ane_runtime_tests
 target_link_options(omarchy_ane_runtime_tests PRIVATE ${SANITIZER_LINK_FLAGS})
 doctest_discover_tests(omarchy_ane_runtime_tests)
 add_test(NAME omarchy_ane_runtime_tests COMMAND omarchy_ane_runtime_tests)
+add_executable(omarchy_ane_worker_tests
+               ${CMAKE_CURRENT_SOURCE_DIR}/ane/test_worker.cpp)
+target_link_libraries(omarchy_ane_worker_tests PRIVATE mlx doctest)
+target_compile_options(omarchy_ane_worker_tests
+                       PRIVATE ${SANITIZER_COMPILE_FLAGS})
+target_link_options(omarchy_ane_worker_tests PRIVATE ${SANITIZER_LINK_FLAGS})
+
+doctest_discover_tests(omarchy_ane_worker_tests)
+add_test(NAME omarchy_ane_worker_tests COMMAND omarchy_ane_worker_tests)
+
 
 if(TARGET mlx-omarchy-ane-worker)
   add_executable(mlx-omarchy-ane-smoke
