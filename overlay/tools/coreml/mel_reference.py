@@ -8,12 +8,11 @@ Derived from ``mweinbach/parakeet-coreml-swift`` @
 ``MelFilterBank.swift``, reproducing the pinned algorithm op-for-op with
 installed NumPy only.
 
-Status: DIAGNOSTIC, not a qualified frontend (plan §62 stop, 2026-09-12).
+Status: exact portable CPU reference frontend for the pinned Parakeet fixture.
 
-This is a host-preprocessing diagnostic, not model inference or a shipping
-frontend. The tested NumPy pipeline differs from the pinned macOS capture.
-The experiment does not isolate that difference to Accelerate, the FFT,
-FMA contraction, or any other single stage. Run the diagnostic:
+This module is a fixture oracle, not a qualified installed runtime. It uses
+NumPy tensor operations on CPU and therefore does not satisfy plan §3.3 or the
+backend-trace gate. Run the exact fixture comparison with:
 
     python3 overlay/tools/coreml/mel_reference.py <capture-dir>
 
@@ -27,26 +26,54 @@ capture's silence-tail structure (identical rows from frame 1046, not
 
 from __future__ import annotations
 
+import base64
 import hashlib
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
+from dft_geometry_probe import candidate_spectrum
 from dotpr import mel_projection
 from reference import MelConfig, ReferenceLock
 
 CHUNK_SAMPLES = 3000 * 160  # 30 s chunk, as chunked by ParakeetTranscriber
 ENCODER_MAX_TIME = 3000     # encoder input frames per chunk (traced shape)
 
+# Exact 400-sample nonperiodic Hann coefficients captured from the pinned
+# public Swift reference. Keeping their float32 bits avoids platform libm drift.
+_HANN_400 = np.frombuffer(base64.b64decode(
+    "AAAAAAAAgjgAAII5ADwSOgD4gToACss6gCcSOwDhRjsA14E7gEWkO4C5yjvAMPU7QNQRPOAOKzygRkY84HljPGBTgTyg5ZE8"
+    "oHKjPFD5tTxgeMk8wO7dPABb8zzo3QQ96IcQPcCqHD2gRSk9yFc2PWDgQz2Q3lE9aFFgPQg4bz14kX49ZC6HPXRMjz1wopc9"
+    "zC+gPfzzqD107rE9pB67PfSDxD3MHc49jOvXPZjs4T1QIOw9DIb2PZKOAD508gU+WG4LPuABET62rBY+fG4cPtJGIj5gNSg+"
+    "vDkuPoxTND5qgjo+8MVAPrwdRz5kiU0+fghUPqaaWj5uP2E+avZnPiq/bj5EmXU+SIR8PuK/gT6mRYU+MtOIPk5ojD7CBJA+"
+    "UqiTPsNSlz7YA5s+VruePgJ5oj6cPKY+7AWqPq/UrT6pqLE+nIG1PkxfuT50Qb0+2yfBPkASxT5gAMk+AfLMPt7m0D663tQ+"
+    "T9nYPmXW3D601eA+/dbkPgDa6D593uw+LuTwPtbq9D4x8vg+Afr8Pv+AAD/4hAI/xogEP0uMBj9ljwg/9pEKP9mTDD/wlA4/"
+    "GpUQPziUEj8mkhQ/x44WP/mJGD+bgxo/kHscP7ZxHj/tZSA/FFgiPw9IJD+7NSY/+iAoP64JKj+27ys/9NItP0qzLz+YkDE/"
+    "wWozP6ZBNT8qFTc/LuU4P5axOj9Eejw/Gz8+PwAAQD/SvEE/e3VDP9opRT/T2UY/UIVIPzEsSj9czks/uGtNPyoETz+Yl1A/"
+    "5iVSPwCvUz/KMlU/KLFWPwgqWD9PnVk/5gpbP7RyXD+k1F0/oDBfP5CGYD9g1mE/+h9jP0hjZD85oGU/tNZmP6oGaD8EMGk/"
+    "sFJqP51uaz+5g2w/8JFtPzKZbj9wmW8/mJJwP5uEcT9ob3I/8lJzPykvdD8CBHU/bNF1P1uXdj/DVXc/mAx4P867eD9aY3k/"
+    "MAN6P0mbej+ZK3s/F7R7P7o0fD98rXw/Ux59PziHfT8m6H0/FkF+PwKSfj/l2n4/uht/P35Ufz8shX8/wq1/Pz7Ofz+c5n8/"
+    "3PZ/P/z+fz/8/n8/3PZ/P5zmfz8+zn8/w61/PyyFfz9+VH8/uht/P+bafj8Ckn4/FkF+PyfofT85h30/VB59P3ytfD+7NHw/"
+    "GLR7P5orez9Km3o/MgN6P1pjeT/Pu3g/mAx4P8RVdz9cl3Y/bNF1PwQEdT8rL3Q/9FJzP2pvcj+bhHE/mJJwP3GZbz80mW4/"
+    "8pFtP7qDbD+ebms/slJqPwUwaT+qBmg/ttZmPzqgZT9LY2Q/+x9jP2HWYT+ShmA/ojBfP6fUXT+2clw/5wpbP1GdWT8JKlg/"
+    "KrFWP8wyVT8Cr1M/6iVSP5mXUD8qBE8/umtNP13OSz8zLEo/VIVIP9fZRj/aKUU/fXVDP9S8QT///z8/HT8+P0h6PD+YsTo/"
+    "L+U4PywVNz+nQTU/xGozP52QMT9Nsy8/9tItP7rvKz+wCSo/+yAoP701Jj8TSCQ/F1giP+1lID+5cR4/knscP5yDGj/6iRg/"
+    "yo4WPyiSFD88lBI/HZUQP/GUDj/ckww/+pEKP2mPCD9MjAY/yogEP/mEAj8AgQA/BPr8Pjry+D7b6vQ+MOTwPoLe7D4D2ug+"
+    "BNfkPr/V4D5s1tw+VNnYPsHe1D7j5tA+AvLMPmcAyT5JEsU+4ifBPnhBvT5SX7k+oIG1PqiosT6y1K0+8gWqPqI8pj4KeaI+"
+    "XLuePtoDmz7IUpc+VKiTPsEEkD5SaIw+MdOIPq9FhT7qv4E+UIR8PlSZdT4yv24+ePZnPng/YT6qmlo+ighUPmiJTT66HUc+"
+    "9sVAPmqCOj6gUzQ+yjkuPmY1KD7iRiI+hG4cPrqsFj7qARE+XG4LPoDyBT6YjgA+EIb2PWAg7D2c7OE9hOvXPeAdzj0AhMQ9"
+    "vB67PYTusT0E9Kg93C+gPXiilz10TI89bC6HPYCRfj0gOG89cFFgPYjeUT2I4EM94Fc2PchFKT3Yqhw9+IcQPQjeBD0gW/M8"
+    "wO7dPIB4yTxQ+bU8oHKjPLDlkTxgU4E8AHpjPOBGRjwgDys8YNQRPAAx9TvAuco7wEWkO0DXgTuA4UY7ACgSOwAKyzoA+IE6"
+    "ADwSOgAAgjkAAII4AAAAAA=="
+), dtype="<f4")
+
 
 def hann_window(win_length: int) -> np.ndarray:
-    """``torch.hann_window(win_length, periodic=False)``, float32."""
-    n = np.arange(win_length, dtype=np.float32)
-    return (np.float32(0.5) - np.float32(0.5)
-            * np.cos(np.float32(2.0) * np.float32(np.pi) * n
-                     / np.float32(win_length - 1))).astype(np.float32)
-
+    """Return the exact pinned 400-sample nonperiodic Hann window."""
+    if win_length != 400:
+        raise ValueError("only the pinned 400-sample Hann window is qualified")
+    return _HANN_400.copy()
 
 def mel_filterbank(cfg: MelConfig) -> np.ndarray:
     """Slaney-normalised mel filterbank, float64 math cast to float32.
@@ -120,20 +147,14 @@ def stft_frames(waveform: np.ndarray, cfg: MelConfig) -> np.ndarray:
 
 def logmel(frames: np.ndarray, cfg: MelConfig,
            filterbank: np.ndarray | None = None) -> np.ndarray:
-    """Power spectrum -> mel projection -> ``log(mel + guard)``, float32.
-
-    The sqrt-then-square two-step form matches the reference round-off
-    order. FFT runs in float64 (numpy pocketfft); see module docstring
-    for why float32 Accelerate output cannot be reproduced portably.
-    """
+    """Apply the pinned vDSP DFT, power, mel projection, and log stages."""
     fb = mel_filterbank(cfg) if filterbank is None else filterbank
-    spec = np.fft.rfft(frames.astype(np.float64), axis=1)
-    re = spec.real.astype(np.float32)
-    im = spec.imag.astype(np.float32)
+    re, im = candidate_spectrum(frames, "vdsp-radix4-dif")
     mag = np.sqrt(re * re + im * im).astype(np.float32)
     power = (mag * mag).astype(np.float32)
     mel = mel_projection(fb, power)
-    return np.log(mel + float(np.float32(cfg.log_guard))).astype(np.float32)
+    guarded = (mel + np.float32(cfg.log_guard)).astype(np.float32)
+    return np.log(guarded.astype(np.float64)).astype(np.float32)
 
 
 def normalize(logmel_frames: np.ndarray, cfg: MelConfig) -> np.ndarray:
@@ -203,8 +224,8 @@ class DivergenceReport:
 def compare_capture(capture_dir: Path, lock_path: Path | None = None) -> DivergenceReport:
     """Recompute mel for a golden capture and locate the first divergence.
 
-    Structural contracts are checked exactly; value equality is reported
-    honestly (expected: not bit-exact, see module docstring / §62).
+    Numeric bits, signed zeros, shapes, masks, and encoder slicing are checked
+    exactly. Any mismatch remains a hard failure.
     """
     lock = ReferenceLock.load(lock_path or Path(__file__).parent / "parakeet-reference.lock")
     cfg = lock.mel
@@ -277,8 +298,8 @@ def main(argv: list[str]) -> int:
     for k, v in rep.structural.items():
         print(f"structural {k}: {v}")
     if not rep.exact:
-        print("VERDICT: portable pipeline is not bit-exact with the Accelerate"
-              " vDSP golden (§62 stop). Diagnostic only; no frontend claim.")
+        print("VERDICT: exact pinned mel gate failed. CPU fixture oracle only;"
+              " no installed-runtime qualification.")
         return 1
     return 0
 
