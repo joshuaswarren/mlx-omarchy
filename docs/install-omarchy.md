@@ -46,8 +46,11 @@ Eager single-row 4-bit/group-64 quantized projections that read one x
 residual `Add` that is a projection's only consumer is folded into that
 GEMV's store: a Qwen2 decode layer drops from 22 dispatches to 14 with
 every array still materialized and every value bit-identical to the
-per-node path. Set `MLX_OMARCHY_FUSED_GEMV=0` to keep the per-node
-path (`MLX_OMARCHY_FUSED_CHAIN=0` disables it too).
+per-node path. Eager dense BF16 decode projections that share one
+evaluated input (q/k/v or gate/up) dispatch as one grouped GEMV with
+independent per-output accumulation, also bit-identical to the per-node
+path. Set `MLX_OMARCHY_FUSED_GEMV=0` to keep either grouping on the
+per-node path (`MLX_OMARCHY_FUSED_CHAIN=0` disables it too).
 
 Dispatches record unconditional pre+post memory barriers by default.
 `MLX_OMARCHY_GATED_BARRIERS=1` replaces them with dependency-gated
