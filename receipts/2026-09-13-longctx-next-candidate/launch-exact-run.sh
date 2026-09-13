@@ -37,7 +37,7 @@ mkdir -p "$(dirname "$LOG_PATH")"
 test ! -e "$LOG_PATH"
 
 REMOTE_STAGE_CHECK="set -e; printf '%s  %s\\n' '$PAYLOAD_SHA' '$REMOTE_PAYLOAD' | sha256sum --check --status; printf '%s  %s\\n' '$WORKLOAD_SHA' '$REMOTE_WORKLOAD' | sha256sum --check --status; test -f '$REMOTE_PAYLOAD'; test -f '$REMOTE_WORKLOAD'"
-if "${SSH[@]}" "$REMOTE_STAGE_CHECK"; then
+if "${SSH[@]}" "$REMOTE_STAGE_CHECK" 2>/dev/null; then
   echo "immutable_staging=reused root=$ROOT"
 else
   "${SSH[@]}" "test ! -e '$ROOT' && install -d -m 700 '$ROOT'"
@@ -121,5 +121,33 @@ print(f"independent_clearance=true guardian=absent pgid={pgid} process_group=emp
 PY
 
 [[ "$run_rc" == 0 ]]
-grep -Fq 'clearance=true outer_lock=free process_group_scan=pass process_group=empty lease=removed' "$LOG_PATH"
+python3 - "$LOG_PATH" <<'PY'
+import sys
+
+records = [
+    line for line in open(sys.argv[1], encoding="utf-8")
+    if line.startswith("clearance=")
+]
+if len(records) != 1:
+    raise SystemExit(f"expected one clearance record, found {len(records)}")
+fields = {}
+for token in records[0].split():
+    key, value = token.split("=", 1)
+    if key in fields:
+        raise SystemExit(f"duplicate clearance field: {key}")
+    fields[key] = value
+required = {
+    "clearance": "true",
+    "outer_lock": "free",
+    "process_group_scan": "pass",
+    "process_group": "empty",
+    "lease": "removed",
+    "cleanup_deadline": "within",
+    "exit_rc": "0",
+}
+for key, expected in required.items():
+    actual = fields.get(key)
+    if actual != expected:
+        raise SystemExit(f"clearance {key}: expected {expected}, got {actual}")
+PY
 echo "launch_complete=true run_label=$RUN_LABEL runner_sha256=$PAYLOAD_SHA workload_sha256=$WORKLOAD_SHA"

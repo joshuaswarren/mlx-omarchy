@@ -1,14 +1,17 @@
 {
   "files": {
+    "candidate-workload.sh": "fb96ca62fdf2fa08b13f2e76a3778916f38d1bea71263d05d78318d6feffb1fe",
     "exact-run-payload.sh": "5f74d4cd7afd81875b54cf33b777ff1028219c6139928dae3293b0fd71bf7726",
     "failure-smoke-receipt.txt": "d78adb03b6d6512d9e506ccca310c22c3b6a90b510ace6effbec02a87f118f06",
     "failure-smoke.sh": "6ad2212d465d9dcbbfc80eb416b7d811491bdbb8b6c14f5962e5748458865f29",
-    "launch-exact-run.sh": "09ec10427685ef945986563e81a08fa1d1002e29d4a279c1e330e698ab4f74f6",
-    "proposal.json": "8b0ffe47b181d62f0a1d630a45a8864399cfdb44152771a9eae50a1eab88b924",
+    "launch-exact-run.sh": "7a2adf5f5eaee6514b9df6c4968a41f735d8acd1fc7c96b6e6475cd1f624b1ea",
+    "launcher-smoke-receipt.txt": "f0cde9e3229aa94904e250c3bb0a3cfc943b2070a8f9c56f2eb09e56cc517cd7",
+    "launcher-smoke.sh": "78a60312bd4c4f505cd480f6e7ee32d17b9ce934bff20343293dc37e19ef2e05",
+    "proposal.json": "26f35dd13d1f2c8125b323f83333c100a60468b11f9cf3d8d28e94d4d11fbf5b",
     "smoke-receipt.txt": "b1424f07054663da6565024497866373cd6163456dcd68db36941feb5047589a",
     "smoke-workload.sh": "815110faeadaf8b3966389de10dabdcdeeade403e50de7ed41fe24c4ba42f67f",
     "smoke.sh": "24925b963c529125da0d9eb252863053085fe1b9f094fee9a73f062164a84e2b",
-    "verdict.json": "536b11f3a1f8556dea9f33e34757ee8d3b734d6eccac61584d5024e22392b631",
-    "verify.py": "e450a8d35996df1b4bc105d1d0a6bd2b79ac34090a4d83372cc30bef0f75914e"
+    "verdict.json": "a6f7e4e68cdfabf6e3ef1481ca3b1fd5c7a758128d9a1ed533fdac1cf2e8aefa",
+    "verify.py": "ac8fd1b38032fc9a1aa97195bfdaaebd867672e05f6ef83e6f8ed407188ffdfe"
   }
 }

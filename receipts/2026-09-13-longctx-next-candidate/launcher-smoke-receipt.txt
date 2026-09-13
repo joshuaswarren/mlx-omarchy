@@ -1,0 +1,9 @@
+immutable_staging=created root=/var/tmp/LongContextCostAttribution-launcher-local-3693550
+guardian_identity=true guardian_pid=3693613 comm=timeout pgid=3693613
+lock_acquired=true pid=3693619 pgid=3693613 guardian_pid=3693613 work_deadline_epoch=1789299191 session_deadline_epoch=1789299251
+smoke_workload=true pid=3693639 pgid=3693613
+workload_complete=true run_label=launcher-local-3693550
+clearance=true outer_lock=free process_group_scan=pass process_group=empty descendant_cleanup=none lease=removed finished_epoch=1789298351 session_deadline_epoch=1789299251 cleanup_deadline=within exit_rc=0
+independent_clearance=true guardian=absent pgid=3693613 process_group=empty staged_workload=absent lease=absent lock=free
+launch_complete=true run_label=launcher-local-3693550 runner_sha256=5f74d4cd7afd81875b54cf33b777ff1028219c6139928dae3293b0fd71bf7726 workload_sha256=815110faeadaf8b3966389de10dabdcdeeade403e50de7ed41fe24c4ba42f67f
+launcher_contract_smoke=pass

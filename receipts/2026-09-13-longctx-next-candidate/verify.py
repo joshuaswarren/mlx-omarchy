@@ -124,6 +124,65 @@ for marker in (
     "cleanup_deadline=within exit_rc=124",
 ):
     assert marker in failure_smoke, marker
+launcher_smoke = (ROOT / "launcher-smoke-receipt.txt").read_text()
+clearance_records = [
+    line for line in launcher_smoke.splitlines() if line.startswith("clearance=")
+]
+assert len(clearance_records) == 1
+clearance_fields = dict(token.split("=", 1) for token in clearance_records[0].split())
+for key, expected in {
+    "clearance": "true",
+    "outer_lock": "free",
+    "process_group_scan": "pass",
+    "process_group": "empty",
+    "lease": "removed",
+    "cleanup_deadline": "within",
+    "exit_rc": "0",
+}.items():
+    assert clearance_fields.get(key) == expected
+launch_records = [
+    line for line in launcher_smoke.splitlines() if line.startswith("launch_complete=")
+]
+assert len(launch_records) == 1
+launch_fields = dict(token.split("=", 1) for token in launch_records[0].split())
+assert launch_fields["runner_sha256"] == protocol["payload_sha256"]
+assert launch_fields["workload_sha256"] == sha256("smoke-workload.sh")
+assert "launcher_contract_smoke=pass" in launcher_smoke
+
+hardware = proposal["future_hardware_acceptance"]
+assert sha256(hardware["workload_file"]) == hardware["workload_sha256"]
+assert hardware["per_probe_deadline_seconds"] == 85
+assert hardware["matrix_order"] == [
+    "control-1",
+    "candidate-1",
+    "candidate-2",
+    "control-2",
+    "control-3",
+    "candidate-3",
+]
+candidate_workload = (ROOT / hardware["workload_file"]).read_text()
+for literal in (
+    "EXPECTED_BASE=e4d079c883b8606dddef7720bd302c5756be0692",
+    "EXPECTED_CANDIDATE=2278ca259618c51cd5ec99fa68c272ffe55b69a5",
+    "EXPECTED_BASE_SHADER=e41b54a666e5284921593cd5c3fdac4fca26a4f475abf54cc5483967e88e8706",
+    "EXPECTED_CANDIDATE_SHADER=b58a0b9c80cf01d0520ef66ee5fbbc2f16ddb22aefd2efec41c1f80557db5f5c",
+    "snapshots/56d07e766edd7159fbe12ed12d9cf114bf38bf1e",
+    "EXPECTED_IDS=ff502900d2a179a5",
+    "mlx_omarchy-*+e4d079c-*.whl",
+    "mlx_omarchy-*+2278ca2-*.whl",
+    "timeout --foreground --kill-after=5s 85s",
+    "mx.set_default_device(mx.gpu)",
+    "for spec in control:1 candidate:1 candidate:2 control:2 control:3 candidate:3",
+):
+    assert literal in candidate_workload, literal
+assert "+2278ca25-*.whl" not in candidate_workload
+for line in candidate_workload.splitlines():
+    if "timeout " in line:
+        assert "timeout --foreground" in line
+embedded_python = re.findall(r"<<'PY'[^\n]*\n(.*?)\nPY(?:\n|$)", candidate_workload, re.DOTALL)
+assert len(embedded_python) == 5
+for index, source in enumerate(embedded_python):
+    compile(source, f"candidate-workload-heredoc-{index}.py", "exec")
 
 launcher = (ROOT / "launch-exact-run.sh").read_text()
 payload = (ROOT / "exact-run-payload.sh").read_text()
@@ -155,6 +214,10 @@ verdict = {
     "guardian_and_workload_process_group_match": True,
     "cleanup_reserve_seconds": 60,
     "remote_hash_check_immediately_before_exec": True,
+    "launcher_end_to_end_contract": True,
+    "candidate_workload_sha256": hardware["workload_sha256"],
+    "candidate_workload_static_contract": True,
+    "planned_matrix": hardware["matrix_order"],
     "optimization_claim": None,
 }
 (ROOT / "verdict.json").write_text(json.dumps(verdict, indent=2, sort_keys=True) + "\n")

@@ -1,6 +1,8 @@
 {
   "candidate": "cache the BF16 SDPA denominator exponent for normalization",
   "candidate_status": "offline_exact_word_qualified_pending_hardware_grant",
+  "candidate_workload_sha256": "fb96ca62fdf2fa08b13f2e76a3778916f38d1bea71263d05d78318d6feffb1fe",
+  "candidate_workload_static_contract": true,
   "cleanup_reserve_seconds": 60,
   "execution_model": "openai-codex/gpt-5.6-sol",
   "exit_124_propagated": true,
@@ -8,9 +10,18 @@
   "fallback_model": null,
   "guardian_and_workload_process_group_match": true,
   "hardware_grant": false,
-  "launcher_sha256": "09ec10427685ef945986563e81a08fa1d1002e29d4a279c1e330e698ab4f74f6",
+  "launcher_end_to_end_contract": true,
+  "launcher_sha256": "7a2adf5f5eaee6514b9df6c4968a41f735d8acd1fc7c96b6e6475cd1f624b1ea",
   "optimization_claim": null,
   "payload_sha256": "5f74d4cd7afd81875b54cf33b777ff1028219c6139928dae3293b0fd71bf7726",
+  "planned_matrix": [
+    "control-1",
+    "candidate-1",
+    "candidate-2",
+    "control-2",
+    "control-3",
+    "candidate-3"
+  ],
   "protocol_ready": true,
   "remote_hash_check_immediately_before_exec": true,
   "scanner_failure_preserves_uncertainty": true,
