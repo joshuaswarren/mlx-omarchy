@@ -56,12 +56,12 @@
     "failure_contract": "Empty or multi-chunk input and non-400 Hann lengths raise ValueError; DFT inputs must be float32 [batch,512]; structural, shape, dtype, signed-zero, capture-hash, stage-manifest, and stage-content mismatches fail closed"
   },
   "source_sha256": {
-    "overlay/tools/coreml/mel_reference.py": "66903c4084fad463bc90273fe16c80297edcc07141553e731c789a6138160ba0",
+    "overlay/tools/coreml/mel_reference.py": "10e458b390898492f33fe6fbf69a1baae94ad48fd8436cab46003e8723ac17a0",
     "overlay/tools/coreml/mel_stage_compare.py": "fe49f08eb0d1ab9a7bef38816eefe184e7fa07f65c58493dc1b350f224265035",
     "overlay/tools/coreml/dft_geometry_probe.py": "f5b6d5d5d86dc2c18a32dcdd076f250b29f82dea8322aa181b0a65755c46ef65",
     "overlay/tools/coreml/dotpr.py": "39f55b662d752d577ca33ef51ddc201c1ef01bc32e5e3077de3b1721f5056881",
     "overlay/tools/coreml/parakeet-reference.lock": "63415836246175d34748c1c44f2c8d00c79affc5be0f4d7da058eb7d5328f8d1",
-    "tests/coreml/test_mel_frontend.py": "51fd2a2cacff3325160ab8e09e46e2224a3e6621f9567e2289b32e21ef2dd00f",
+    "tests/coreml/test_mel_frontend.py": "aca6d30d7a01a90a3904cf832caf45f1f22cc48fc4ce93c414c9f417736139c5",
     "docs/coreml.md": "f04c48e8903cd3e76f23e1f5c64dd5b22660a9f042ee65151788513936998259"
   },
   "red_evidence": {
@@ -70,8 +70,8 @@
   },
   "verification": [
     {
-      "command": "timeout 30s python3 -m pytest -q tests/coreml/test_mel_frontend.py tests/coreml/test_dotpr.py tests/coreml/test_reference_lock.py",
-      "result": "46 passed in 3.28s"
+      "command": "timeout 45s python3 -m pytest -q tests/coreml/test_mel_frontend.py tests/coreml/test_dotpr.py tests/coreml/test_reference_lock.py",
+      "result": "47 passed in 6.33s after the root structural dtype/bit-exactness correction"
     },
     {
       "command": "timeout 30s python3 -m pytest -q tests/coreml/test_reference_lock.py",
@@ -101,7 +101,7 @@
     "encoder_and_full_plan": "not claimed; Linux H13 compile, physical runtime execution, encoder numerical parity, local decoder/joint, TDT output, stability, and packaging remain separate gates"
   },
   "review_remediation": [
-    "The mel CLI now returns failure when any structural exactness gate is false.",
+    "The mel CLI returns failure when any structural gate is false. Root reproduced a boolean mask passing all seven gates before requiring int32 mask identity and float32 encoder bit identity; test_mel_cli_rejects_wrong_mask_dtype now rejects that case. Both real CLIs passed after the correction.",
     "Stage equality requires matching shape, dtype, and bytes; signed-zero-only differences report a bitwise divergence without crashing.",
     "The repository lock authenticates waveform.npy, mel.npy, the exact stage manifest, and all 14 required stage tensors.",
     "The recovered DFT imports the certified single-rounded float32 FMA from dotpr instead of keeping a double-rounding duplicate.",
