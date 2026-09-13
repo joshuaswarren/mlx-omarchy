@@ -49,11 +49,87 @@ struct Counters {
   // Number of Compiled-tape nodes the interpreter evaluated, whether
   // they recorded a dispatch or not.
   std::atomic<uint64_t> compiled_tape_node_evaluations{0};
+  std::atomic<uint64_t> ane_models_loaded{0};
+  std::atomic<uint64_t> ane_packages_compiled{0};
+  std::atomic<uint64_t> ane_package_cache_hits{0};
+  std::atomic<uint64_t> ane_worker_starts{0};
+  std::atomic<uint64_t> ane_submissions{0};
+  std::atomic<uint64_t> ane_timeouts{0};
+  std::atomic<uint64_t> ane_input_bytes{0};
+  std::atomic<uint64_t> ane_output_bytes{0};
+  std::atomic<uint64_t> ane_exec_ns{0};
 };
-
 inline Counters& counters() {
   static Counters counters_;
   return counters_;
+}
+struct AneTraceSnapshot {
+  uint64_t ane_models_loaded;
+  uint64_t ane_packages_compiled;
+  uint64_t ane_package_cache_hits;
+  uint64_t ane_worker_starts;
+  uint64_t ane_submissions;
+  uint64_t ane_timeouts;
+  uint64_t ane_input_bytes;
+  uint64_t ane_output_bytes;
+  uint64_t ane_exec_ns;
+};
+
+static inline void ane_counter_add(
+    std::atomic<uint64_t>& counter, uint64_t value = 1) noexcept {
+#ifdef MLX_OMARCHY_ANE_TRACING
+  counter.fetch_add(value, std::memory_order_relaxed);
+#else
+  (void)counter;
+  (void)value;
+#endif
+}
+
+inline void record_ane_model_loaded() noexcept {
+  ane_counter_add(counters().ane_models_loaded);
+}
+
+inline void record_ane_package_compiled() noexcept {
+  ane_counter_add(counters().ane_packages_compiled);
+}
+
+inline void record_ane_package_cache_hit() noexcept {
+  ane_counter_add(counters().ane_package_cache_hits);
+}
+
+inline void record_ane_worker_start() noexcept {
+  ane_counter_add(counters().ane_worker_starts);
+}
+
+inline void record_ane_submission(uint64_t input_bytes) noexcept {
+  ane_counter_add(counters().ane_submissions);
+  ane_counter_add(counters().ane_input_bytes, input_bytes);
+}
+
+inline void record_ane_completion(
+    uint64_t output_bytes, uint64_t exec_ns) noexcept {
+  ane_counter_add(counters().ane_output_bytes, output_bytes);
+  ane_counter_add(counters().ane_exec_ns, exec_ns);
+}
+
+inline void record_ane_timeout(uint64_t exec_ns) noexcept {
+  ane_counter_add(counters().ane_timeouts);
+  ane_counter_add(counters().ane_exec_ns, exec_ns);
+}
+
+inline AneTraceSnapshot ane_trace_snapshot() noexcept {
+  auto& values = counters();
+  return {
+      values.ane_models_loaded.load(std::memory_order_relaxed),
+      values.ane_packages_compiled.load(std::memory_order_relaxed),
+      values.ane_package_cache_hits.load(std::memory_order_relaxed),
+      values.ane_worker_starts.load(std::memory_order_relaxed),
+      values.ane_submissions.load(std::memory_order_relaxed),
+      values.ane_timeouts.load(std::memory_order_relaxed),
+      values.ane_input_bytes.load(std::memory_order_relaxed),
+      values.ane_output_bytes.load(std::memory_order_relaxed),
+      values.ane_exec_ns.load(std::memory_order_relaxed),
+  };
 }
 
 // Process-wide snapshot for in-process readers (ctypes from Python, test
