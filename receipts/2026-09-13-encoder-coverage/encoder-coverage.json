@@ -1,0 +1,252 @@
+{
+  "schema": "mlx-omarchy.parakeet-encoder-coverage.v1",
+  "encoder_package": "encoder.mlpackage @ b650695c2322ee5281dff48d7345b2f3a58ff018",
+  "compiler_commit": "83a4434810b0981d1764e6231f6a679df6f35241",
+  "total_ops": 3351,
+  "distinct_op_types": 29,
+  "h13_supported_ops_live_from_source": [
+    "abs",
+    "add",
+    "clip",
+    "const",
+    "conv",
+    "exp",
+    "expand_dims",
+    "gelu",
+    "layer_norm",
+    "leaky_relu",
+    "linear",
+    "matmul",
+    "maximum",
+    "minimum",
+    "mul",
+    "real_div",
+    "reduce_max",
+    "reduce_mean",
+    "reduce_sum",
+    "relu",
+    "reshape",
+    "rsqrt",
+    "sigmoid",
+    "silu",
+    "softmax",
+    "split",
+    "sqrt",
+    "squeeze",
+    "sub",
+    "tanh"
+  ],
+  "summary": {
+    "supported_types": 16,
+    "supported_ops": 2866,
+    "unsupported_with_owner_types": 13,
+    "unsupported_with_owner_ops": 485,
+    "unsupported_blocking_types": 0,
+    "unsupported_blocking_ops": 0
+  },
+  "rows": [
+    {
+      "op": "const",
+      "count": 1783,
+      "class": "supported",
+      "owner": "",
+      "evidence": "ANEOperationGraph.mm:6 ANEOperationKindConstant; consumed for folding/weights/splats at ANEH13Compiler.mm:145,174,235,396,606,1518"
+    },
+    {
+      "op": "constexpr_lut_to_dense",
+      "count": 194,
+      "class": "unsupported-with-owner",
+      "owner": "mlx-omarchy Core ML frontend preferred (pre-expand palettized weights to dense fp16 consts before compiler input); compiler constexpr kind is the in-repo alternative (registry knows only constexpr_affine_dequantize)",
+      "evidence": "no H13 dispatch branch"
+    },
+    {
+      "op": "linear",
+      "count": 194,
+      "class": "supported",
+      "owner": "",
+      "evidence": "ANEH13Compiler.mm:1748 linear/matmul branch (lowers to matmul transpose_y=true + folded bias)"
+    },
+    {
+      "op": "add",
+      "count": 183,
+      "class": "supported",
+      "owner": "",
+      "evidence": "ANEH13Compiler.mm:64 BinaryOperation::Add"
+    },
+    {
+      "op": "transpose",
+      "count": 146,
+      "class": "unsupported-with-owner",
+      "owner": "mil-hwx-compiler (IR-known, no H13 lowering branch)",
+      "evidence": "no H13 dispatch branch"
+    },
+    {
+      "op": "reshape",
+      "count": 145,
+      "class": "supported",
+      "owner": "",
+      "evidence": "ANEH13Compiler.mm:157 structural"
+    },
+    {
+      "op": "mul",
+      "count": 128,
+      "class": "supported",
+      "owner": "",
+      "evidence": "ANEH13Compiler.mm:65 Multiply"
+    },
+    {
+      "op": "layer_norm",
+      "count": 120,
+      "class": "supported",
+      "owner": "",
+      "evidence": ":91"
+    },
+    {
+      "op": "conv",
+      "count": 77,
+      "class": "supported",
+      "owner": "",
+      "evidence": "ANEH13Compiler.mm:1450"
+    },
+    {
+      "op": "matmul",
+      "count": 72,
+      "class": "supported",
+      "owner": "",
+      "evidence": "ANEH13Compiler.mm:1312/1748; attention runtime-operand form in README envelope"
+    },
+    {
+      "op": "silu",
+      "count": 72,
+      "class": "supported",
+      "owner": "",
+      "evidence": ":82"
+    },
+    {
+      "op": "select",
+      "count": 48,
+      "class": "unsupported-with-owner",
+      "owner": "mil-hwx-compiler (new op semantic; H13 fp16 lowering required)",
+      "evidence": "no H13 dispatch branch"
+    },
+    {
+      "op": "slice_by_index",
+      "count": 48,
+      "class": "unsupported-with-owner",
+      "owner": "mil-hwx-compiler (new op semantic; H13 fp16 lowering required)",
+      "evidence": "no H13 dispatch branch"
+    },
+    {
+      "op": "pad",
+      "count": 24,
+      "class": "unsupported-with-owner",
+      "owner": "mil-hwx-compiler (new op semantic; H13 fp16 lowering required)",
+      "evidence": "no H13 dispatch branch"
+    },
+    {
+      "op": "sigmoid",
+      "count": 24,
+      "class": "supported",
+      "owner": "",
+      "evidence": ":81"
+    },
+    {
+      "op": "softmax",
+      "count": 24,
+      "class": "supported",
+      "owner": "",
+      "evidence": "ANEH13Compiler.mm:90 NormOperation::Softmax"
+    },
+    {
+      "op": "split",
+      "count": 24,
+      "class": "supported",
+      "owner": "",
+      "evidence": ":160/1631"
+    },
+    {
+      "op": "expand_dims",
+      "count": 13,
+      "class": "supported",
+      "owner": "",
+      "evidence": ":159"
+    },
+    {
+      "op": "cast",
+      "count": 11,
+      "class": "unsupported-with-owner",
+      "owner": "mil-hwx-compiler (new op semantic; H13 fp16 lowering required)",
+      "evidence": "no H13 dispatch branch"
+    },
+    {
+      "op": "less",
+      "count": 4,
+      "class": "unsupported-with-owner",
+      "owner": "mil-hwx-compiler (new op semantic; H13 fp16 lowering required)",
+      "evidence": "no H13 dispatch branch"
+    },
+    {
+      "op": "floor",
+      "count": 3,
+      "class": "unsupported-with-owner",
+      "owner": "mil-hwx-compiler (new op semantic; H13 fp16 lowering required)",
+      "evidence": "no H13 dispatch branch"
+    },
+    {
+      "op": "floor_div",
+      "count": 3,
+      "class": "unsupported-with-owner",
+      "owner": "mil-hwx-compiler (new op semantic; H13 fp16 lowering required)",
+      "evidence": "no H13 dispatch branch"
+    },
+    {
+      "op": "relu",
+      "count": 3,
+      "class": "supported",
+      "owner": "",
+      "evidence": "ANEH13Compiler.mm:1690 native relu path"
+    },
+    {
+      "op": "sub",
+      "count": 3,
+      "class": "supported",
+      "owner": "",
+      "evidence": "ANEH13Compiler.mm:68 Subtract (x minus same-shape const tensor envelope)"
+    },
+    {
+      "op": "logical_and",
+      "count": 1,
+      "class": "unsupported-with-owner",
+      "owner": "mil-hwx-compiler (new op semantic; H13 fp16 lowering required)",
+      "evidence": "no H13 dispatch branch"
+    },
+    {
+      "op": "logical_not",
+      "count": 1,
+      "class": "unsupported-with-owner",
+      "owner": "mil-hwx-compiler (new op semantic; H13 fp16 lowering required)",
+      "evidence": "no H13 dispatch branch"
+    },
+    {
+      "op": "reduce_min",
+      "count": 1,
+      "class": "unsupported-with-owner",
+      "owner": "mil-hwx-compiler (new op semantic; H13 fp16 lowering required)",
+      "evidence": "no H13 dispatch branch"
+    },
+    {
+      "op": "reduce_sum",
+      "count": 1,
+      "class": "supported",
+      "owner": "",
+      "evidence": ":92"
+    },
+    {
+      "op": "tile",
+      "count": 1,
+      "class": "unsupported-with-owner",
+      "owner": "mil-hwx-compiler (new op semantic; H13 fp16 lowering required)",
+      "evidence": "no H13 dispatch branch"
+    }
+  ]
+}

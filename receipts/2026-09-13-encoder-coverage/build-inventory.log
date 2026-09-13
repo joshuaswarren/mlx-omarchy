@@ -1,0 +1,10 @@
+{
+  "supported_types": 16,
+  "supported_ops": 2866,
+  "unsupported_with_owner_types": 13,
+  "unsupported_with_owner_ops": 485,
+  "unsupported_blocking_types": 0,
+  "unsupported_blocking_ops": 0
+}
+supported: ['add', 'const', 'conv', 'expand_dims', 'layer_norm', 'linear', 'matmul', 'mul', 'reduce_sum', 'relu', 'reshape', 'sigmoid', 'silu', 'softmax', 'split', 'sub']
+missing: ['cast', 'constexpr_lut_to_dense', 'floor', 'floor_div', 'less', 'logical_and', 'logical_not', 'pad', 'reduce_min', 'select', 'slice_by_index', 'tile', 'transpose']
