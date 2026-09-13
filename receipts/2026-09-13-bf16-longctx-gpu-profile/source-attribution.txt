@@ -1,0 +1,249 @@
+source_commit=6b1ac0296ba65a8e0075171ca9451e222ddff06b
+overlay/mlx/backend/omarchy/primitives.cpp commit_sha256=68b31d4c82682cf3a8532df418bea3d54cba40b450dc223bce9e85edfa06a48d
+overlay/mlx/backend/omarchy/primitives.cpp working_sha256=68b31d4c82682cf3a8532df418bea3d54cba40b450dc223bce9e85edfa06a48d
+overlay/mlx/backend/omarchy/primitives.cpp identical=True
+overlay/mlx/backend/omarchy/shaders/sdpa_decode_native.comp commit_sha256=e41b54a666e5284921593cd5c3fdac4fca26a4f475abf54cc5483967e88e8706
+overlay/mlx/backend/omarchy/shaders/sdpa_decode_native.comp working_sha256=e41b54a666e5284921593cd5c3fdac4fca26a4f475abf54cc5483967e88e8706
+overlay/mlx/backend/omarchy/shaders/sdpa_decode_native.comp identical=True
+overlay/mlx/backend/omarchy/compute.h commit_sha256=314f5b021363ae933cbc245042bd2f2c1e48e5223402a4dd8765ef2b72c228ad
+overlay/mlx/backend/omarchy/compute.h working_sha256=314f5b021363ae933cbc245042bd2f2c1e48e5223402a4dd8765ef2b72c228ad
+overlay/mlx/backend/omarchy/compute.h identical=True
+
+[primitives.cpp 10635-10731]
+10635:  // Decode uses native Metal's 32-key online-softmax order directly over
+10636:  // Q and the strided KV cache. This replaces both attention matmuls, both
+10637:  // layout copies, softmax, and the q/k/v upcasts with one dispatch per
+10638:  // layer. float16 rides the proven SdpaDecodeNativeF16 arm. bfloat16
+10639:  // rides the same structure through the -DBF16_IO blob: exact widening
+10640:  // in, RNE stores, every intermediate in float32 (upstream Metal keeps
+10641:  // every attention intermediate in float32, sdpa_vector.h:50), and the
+10642:  // one-pass 32-stream merge at every context length - the f32 partial
+10643:  // array the two-pass needs cannot fit the workgroup store at the
+10644:  // 128-block crossover, and the bf16 parity contract is the f32-score
+10645:  // composition below, not native's two-pass partial format.
+10646:  const char* decode_env = std::getenv("MLX_OMARCHY_SDPA_DECODE_NATIVE");
+10647:  const auto& decode_caps = encoder.device().capabilities();
+10648:  constexpr VkSubgroupFeatureFlags kDecodeSubgroupFeatures =
+10649:      VK_SUBGROUP_FEATURE_BASIC_BIT | VK_SUBGROUP_FEATURE_ARITHMETIC_BIT |
+10650:      VK_SUBGROUP_FEATURE_SHUFFLE_BIT;
+10651:  constexpr uint32_t kDecodeSharedBytes =
+10652:      (32u * 32u + 2u * 128u + 128u * 32u) * sizeof(float);
+10653:  const bool decode_subgroup_ready = decode_caps.cooperative_matrix_f32_8 &&
+10654:      decode_caps.subgroup_size == 32u &&
+10655:      decode_caps.max_compute_work_group_invocations >= 1024u &&
+10656:      decode_caps.max_compute_work_group_size[0] >= 1024u &&
+10657:      decode_caps.max_compute_shared_memory_size >= kDecodeSharedBytes &&
+10658:      (decode_caps.subgroup_operations & kDecodeSubgroupFeatures) ==
+10659:          kDecodeSubgroupFeatures;
+10660:  // The composition-exact bf16 arm uses no subgroup operations at all - its
+10661:  // per-thread work and barriers need only the 1024-thread workgroup and the
+10662:  // 9,472 bytes of static shared the arm declares - so it gates on those
+10663:  // alone and engages on any device that meets them, including software
+10664:  // drivers, where its bit-identity against the composition is testable.
+10665:  // Perf-only shape gate: below 256 keys the arm's serial accumulation
+10666:  // loses to the composition (34.1 vs 31.2 ms/token at the short leg); at
+10667:  // and above it the arm wins (34.4 vs 34.7 at 262, 39.9 vs 43.3 at 1K).
+10668:  // The gate cannot move a digest: both routes store identical words for
+10669:  // every input, so either side of the boundary the token stream is the
+10670:  // base stream. 256 sits between the measured losing (<=61-key) and
+10671:  // winning (>=262-key) regimes on the 16-wide tile boundary.
+10672:  constexpr uint32_t kDecodeBf16SharedBytes =
+10673:      (64u + 2048u + 256u) * sizeof(float);
+10674:  const bool decode_bf16_ready =
+10675:      decode_caps.max_compute_work_group_invocations >= 1024u &&
+10676:      decode_caps.max_compute_work_group_size[0] >= 1024u &&
+10677:      decode_caps.max_compute_shared_memory_size >= kDecodeBf16SharedBytes;
+10678:  const bool decode_bf16_probe = q.dtype() == bfloat16;
+10679:  const bool decode_route_ready =
+10680:      decode_bf16_probe ? decode_bf16_ready : decode_subgroup_ready;
+10681:  if ((decode_env == nullptr || std::strcmp(decode_env, "0") != 0) &&
+10682:      decode_route_ready && inputs.size() == 3 && !has_sinks_ &&
+10683:      !output_logsumexp_ && batch == 1 && q_len == 1 &&
+10684:      (q.dtype() == float16 || q.dtype() == bfloat16) &&
+10685:      head_dim == 64 && v_dim == 64 && k_len > 0 &&
+10686:      (q.dtype() != bfloat16 ||
+10687:          (k_len >= uint32_t{256} && k_len <= uint32_t{2048})) &&
+10688:      q.strides()[3] == 1 && k.strides()[3] == 1 && v.strides()[3] == 1) {
+10689:    const bool decode_bf16 = decode_bf16_probe;
+10690:    out.set_data(allocate_omarchy(out.nbytes()));
+10691:    omarchy::ComputeParams params;
+10692:    params.count = checked_u32(out.size(), tag, out);
+10693:    params.matrix_m = checked_u32(heads, tag, out);
+10694:    params.matrix_n = checked_u32(kv_heads, tag, out);
+10695:    params.matrix_k = checked_u32(k_len, tag, out);
+10696:    params.alpha = scale_;
+10697:    // Native M1 Max switches to 64 two-pass blocks at 1024 keys and 128
+10698:    // above it; zero selects the one-pass 32-SIMD decode kernel. bf16
+10699:    // always runs one-pass (see above).
+10700:    params.flags = decode_bf16
+10701:        ? 0u
+10702:        : (k_len > 1024 ? 128u : (k_len == 1024 ? 64u : 0u));
+10703:    params.lhs_offset = checked_item_offset(q, q.size(), tag, out);
+10704:    params.rhs_offset = checked_item_offset(k, k.size(), tag, out);
+10705:    params.aux_offset = checked_item_offset(v, v.size(), tag, out);
+10706:    params.output_offset = checked_item_offset(out, out.size(), tag, out);
+10707:    params.shape[0] = checked_u32(q.strides()[1], tag, out);
+10708:    params.shape[1] = checked_u32(k.strides()[1], tag, out);
+10709:    params.shape[2] = checked_u32(k.strides()[2], tag, out);
+10710:    params.shape[3] = checked_u32(q.strides()[3], tag, out);
+10711:    params.in_strides[0] = checked_u32(k.strides()[3], tag, out);
+10712:    params.in_strides[1] = checked_u32(v.strides()[1], tag, out);
+10713:    params.in_strides[2] = checked_u32(v.strides()[2], tag, out);
+10714:    params.in_strides[3] = checked_u32(v.strides()[3], tag, out);
+10715:    std::array<omarchy::ComputeBinding, 4> bindings{
+10716:        binding(q), binding(k), binding(v), binding(out)};
+10717:      omarchy::capsim::require_backed(
+10718:          encoder.device(),
+10719:          decode_caps,
+10720:          decode_subgroup_ready,
+10721:          decode_bf16 ? "SdpaDecodeNativeBF16" : "SdpaDecodeNativeF16",
+10722:          "cooperative_matrix_fp32_8x8x8+workgroup_limits+"
+10723:          "shared_memory_limit_bytes",
+10724:          encoder.device().hardware_capabilities().cooperative_matrix_f32_8);
+10725:    encoder.dispatch_compute(
+10726:        decode_bf16 ? omarchy::ComputeKernel::SdpaDecodeNativeBF16
+10727:                    : omarchy::ComputeKernel::SdpaDecodeNativeF16,
+10728:        bindings,
+10729:        params,
+10730:        params.matrix_m);
+10731:    return;
+
+[sdpa_decode_native.comp 99-109,146-272]
+99:// The composition-exact arm replaces the online-softmax structure with the
+100:// f32-score composition's observable arithmetic. Scores and probs share one
+101:// f32 stream (probs overwrite scores in place; the normalize pass reads and
+102:// writes only its own strided slots). The kStreamKeys bound is enforced by
+103:// the host guard; larger contexts fall through to the composition, which
+104:// this arm reproduces bit for bit.
+105:const uint kStreamKeys = 2048u;
+106:shared float s_qrow[64];
+107:shared float s_stream[kStreamKeys];
+108:shared float s_tree[256];
+109:#endif
+146:void main() {
+147:#ifdef BF16_IO
+148:  // ------------------------------------------------------------------
+149:  // The composition-exact bf16 arm. Every operation below reproduces the
+150:  // f32-score composition's observable arithmetic in the same order, so
+151:  // the route is bit-identical to the ten-dispatch path it replaces and
+152:  // no generated token can move:
+153:  //   1. q*scale once in f32 (the composition's elementwise multiply;
+154:  //      the matmul alpha is 1.0 and its drain multiplies by it),
+155:  //   2. scores = per-dot ascending-d `acc += a * b` accumulation over
+156:  //      16-wide tiles with exact-zero tail padding, drained by 1.0f,
+157:  //      stored f32 (matmul.comp),
+158:  //   3. softmax: 256-lane strided max scan + binary max tree, strided
+159:  //      sequential exp-sum per lane + binary sum tree, normalizer
+160:  //      1.0/sum, probs = exp(score - max) * normalizer recomputed from
+161:  //      the stored f32 scores (softmax_suffix.comp),
+162:  //   4. output = ascending-key `acc += a * b` over 16-wide tiles with
+163:  //      exact-zero tail padding, drained by 1.0f (matmul.comp), stored
+164:  //      through the cast.comp RNE bf16 pair.
+165:  // Threads 256..1023 share every barrier but do no phase work; the
+166:  // reduction trees only involve lanes 0..255, exactly as the 256-thread
+167:  // softmax kernel computes them.
+168:  // ------------------------------------------------------------------
+169:  uint thread = gl_LocalInvocationID.x;
+170:  uint head = gl_WorkGroupID.x;
+171:  uint repeats = params.matrix_m / params.matrix_n;
+172:  uint kv_head = head / repeats;
+173:  uint k_len = params.matrix_k;
+174:
+175:  if (thread < 64u) {
+176:    s_qrow[thread] = params.alpha * bf16_load(
+177:        query_data.values[params.lhs_offset +
+178:            head * params.shape[0] + thread * params.shape[3]]);
+179:  }
+180:  barrier();
+181:
+182:  // Scores over every key: ascending-d accumulation, matmul.comp order.
+183:  for (uint key = thread; key < k_len; key += 1024u) {
+184:    uint k_base = params.rhs_offset + kv_head * params.shape[1] +
+185:        key * params.shape[2];
+186:    float accumulator = 0.0;
+187:    for (uint d = 0u; d < 64u; ++d) {
+188:      accumulator += s_qrow[d] *
+189:          bf16_load(key_data.values[k_base + d * params.in_strides[0]]);
+190:    }
+191:    s_stream[key] = 1.0 * accumulator;
+192:  }
+193:  barrier();
+194:
+195:  // Row max: strided scan then the 256-lane binary tree.
+196:  if (thread < 256u) {
+197:    float local_max = uintBitsToFloat(0xff800000u);
+198:    for (uint index = thread; index < k_len; index += 256u) {
+199:      float next = s_stream[index];
+200:      if (isnan(next) || next > local_max) {
+201:        local_max = next;
+202:      }
+203:    }
+204:    s_tree[thread] = local_max;
+205:  }
+206:  barrier();
+207:  for (uint stride = 128u; stride > 0u; stride >>= 1u) {
+208:    if (thread < stride) {
+209:      s_tree[thread] = max(s_tree[thread], s_tree[thread + stride]);
+210:    }
+211:    barrier();
+212:  }
+213:  float row_max = s_tree[0];
+214:  barrier();
+215:
+216:  // Denominator: strided sequential exp-sum per lane, then the tree.
+217:  if (thread < 256u) {
+218:    float local_sum = 0.0;
+219:    for (uint index = thread; index < k_len; index += 256u) {
+220:      local_sum += exp(s_stream[index] - row_max);
+221:    }
+222:    s_tree[thread] = local_sum;
+223:  }
+224:  barrier();
+225:  for (uint stride = 128u; stride > 0u; stride >>= 1u) {
+226:    if (thread < stride) {
+227:      s_tree[thread] += s_tree[thread + stride];
+228:    }
+229:    barrier();
+230:  }
+231:  float normalizer = 1.0 / s_tree[0];
+232:  barrier();
+233:
+234:  // Probs in place: exp recomputed from the stored f32 scores, exactly
+235:  // as the normalize pass of softmax_suffix.comp does.
+236:  if (thread < 256u) {
+237:    for (uint index = thread; index < k_len; index += 256u) {
+238:      s_stream[index] = exp(s_stream[index] - row_max) * normalizer;
+239:    }
+240:  }
+241:  barrier();
+242:
+243:  // Output dim d: ascending-key accumulation over 16-wide tiles with
+244:  // exact-zero tail padding, drained by 1.0f, stored RNE bf16.
+245:  if (thread < 64u) {
+246:    uint d = thread;
+247:    float accumulator = 0.0;
+248:    uint key = 0u;
+249:    for (uint tile = 0u; tile < k_len / 16u; ++tile) {
+250:      for (uint index = 0u; index < 16u; ++index) {
+251:        accumulator += s_stream[key] * bf16_load(
+252:            value_data.values[params.aux_offset +
+253:                kv_head * params.in_strides[1] +
+254:                key * params.in_strides[2] +
+255:                d * params.in_strides[3]]);
+256:        ++key;
+257:      }
+258:    }
+259:    for (uint index = 0u; index < 16u; ++index) {
+260:      float prob = key < k_len ? s_stream[key] : 0.0;
+261:      float value16 = key < k_len ? bf16_load(
+262:          value_data.values[params.aux_offset +
+263:              kv_head * params.in_strides[1] +
+264:              key * params.in_strides[2] +
+265:              d * params.in_strides[3]]) : 0.0;
+266:      accumulator += prob * value16;
+267:      ++key;
+268:    }
+269:    output_data.values[params.output_offset + head * DIM + d] =
+270:        bf16_store(1.0 * accumulator);
+271:  }
+272:  return;

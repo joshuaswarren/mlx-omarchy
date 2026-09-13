@@ -1,0 +1,3 @@
+lease=Main-grant-LongContextCostAttribution phase=gpu-profile deadline_epoch=1789276458
+pid=3311975 acquired_utc=2026-09-13T05:06:35Z
+released_utc=2026-09-13T05:07:56Z rc=0

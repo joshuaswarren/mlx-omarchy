@@ -1,0 +1,16 @@
+[build window post-readback]
+pid_3307403=clear
+pid_3307407=clear
+pid_3307636=clear
+global_lock_free=true utc=2026-09-13T05:04:58Z
+lease=Main-grant-LongContextCostAttribution phase=diagnostic-build-and-profile pid=3307407 acquired_utc=2026-09-13T04:59:18Z deadline_epoch=1789276458
+released_utc=2026-09-13T05:04:34Z rc=4
+
+[measurement window post-readback]
+pid_3311970=clear
+pid_3311973=clear
+pid_3311975=clear
+global_lock_free=true utc=2026-09-13T05:08:34Z
+lease=Main-grant-LongContextCostAttribution phase=gpu-profile deadline_epoch=1789276458
+pid=3311975 acquired_utc=2026-09-13T05:06:35Z
+released_utc=2026-09-13T05:07:56Z rc=0

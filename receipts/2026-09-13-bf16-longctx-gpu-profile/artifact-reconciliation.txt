@@ -1,0 +1,52 @@
+exact_required_source=6b1ac0296ba65a8e0075171ca9451e222ddff06b
+retained_old_diagnostic_source=65630524f7b91f4dd1aa58d63fdd5f5a2f4c4df3
+retained_old_diagnostic_path=~/src/recover-diag-wheel/mlx_omarchy-0.32.2.dev202609082003+diag.6563052-cp314-cp314-linux_aarch64.whl
+retained_old_diagnostic_sha256=0dbd55558a15646f8085e09df93fc7ee0ee22af31805a72568324ae72a4e691e
+changed_total_paths=7232
+changed_omarchy_runtime_paths=37
+old_artifact_usable=false
+reason=The retained diagnostic wheel predates the qualified grouped BF16 implementation and 37 Omarchy runtime-path changes.
+
+[changed Omarchy runtime paths]
+overlay/mlx/backend/omarchy/CMakeLists.txt
+overlay/mlx/backend/omarchy/allocator.cpp
+overlay/mlx/backend/omarchy/allocator.h
+overlay/mlx/backend/omarchy/capability_sim.cpp
+overlay/mlx/backend/omarchy/capability_sim.h
+overlay/mlx/backend/omarchy/compiled.cpp
+overlay/mlx/backend/omarchy/compute.cpp
+overlay/mlx/backend/omarchy/compute.h
+overlay/mlx/backend/omarchy/copy.cpp
+overlay/mlx/backend/omarchy/custom_kernel.cpp
+overlay/mlx/backend/omarchy/device.cpp
+overlay/mlx/backend/omarchy/device.h
+overlay/mlx/backend/omarchy/device_info.cpp
+overlay/mlx/backend/omarchy/encoder.cpp
+overlay/mlx/backend/omarchy/encoder.h
+overlay/mlx/backend/omarchy/eval.cpp
+overlay/mlx/backend/omarchy/fused_chain.cpp
+overlay/mlx/backend/omarchy/fused_chain.h
+overlay/mlx/backend/omarchy/gpu_profiler.h
+overlay/mlx/backend/omarchy/primitives.cpp
+overlay/mlx/backend/omarchy/shaders/binary_vec.comp
+overlay/mlx/backend/omarchy/shaders/cast_int.comp
+overlay/mlx/backend/omarchy/shaders/fused_chain.comp
+overlay/mlx/backend/omarchy/shaders/matmul_coopmat.comp
+overlay/mlx/backend/omarchy/shaders/matmul_coopmat_bf16.comp
+overlay/mlx/backend/omarchy/shaders/matmul_fma_bf16.comp
+overlay/mlx/backend/omarchy/shaders/matmul_rb.comp
+overlay/mlx/backend/omarchy/shaders/matmul_vec.comp
+overlay/mlx/backend/omarchy/shaders/matmul_vec_multi_bf16.comp
+overlay/mlx/backend/omarchy/shaders/qmm_coopmat.comp
+overlay/mlx/backend/omarchy/shaders/qmm_fma.comp
+overlay/mlx/backend/omarchy/shaders/qmm_tile.comp
+overlay/mlx/backend/omarchy/shaders/qmm_vec.comp
+overlay/mlx/backend/omarchy/shaders/sdpa_decode_native.comp
+overlay/mlx/backend/omarchy/shaders/slice_update_pair.comp
+overlay/mlx/backend/omarchy/shaders/softmax_suffix.comp
+overlay/mlx/backend/omarchy/shaders/swiglu.comp
+
+[exact profiler source hashes]
+800f72d261de93afcb95ed82aa9b8ccd5e7e67eb466527eca12a9778e04e3fa1  overlay/mlx/backend/omarchy/CMakeLists.txt
+a82db21ee7adc7c73ba673aeb7e8343758dabd84a8415aee741ac67e70599fc2  overlay/mlx/backend/omarchy/gpu_profiler.h
+314f5b021363ae933cbc245042bd2f2c1e48e5223402a4dd8765ef2b72c228ad  overlay/mlx/backend/omarchy/compute.h

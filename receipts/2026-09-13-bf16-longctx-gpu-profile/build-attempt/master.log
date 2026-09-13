@@ -1,0 +1,13 @@
+total_lock_acquired=true utc=2026-09-13T04:59:18Z pid=3307407 deadline_epoch=1789276458 result_dir=/home/joshuawarren/longctx-gpu-profile-total-20260913T045918Z
+build_phase_start utc=2026-09-13T04:59:18Z
+Preparing worktree (detached HEAD 6b1ac029)
+HEAD is now at 6b1ac029 Fuse shared-input dense BF16 decode GEMVs
+build_source=6b1ac0296ba65a8e0075171ca9451e222ddff06b
+build_jobs=2
+build_pid_pending=true deadline_epoch=1789276458 timeout_seconds=600 log=/home/joshuawarren/longctx-gpu-profile-total-20260913T045918Z/build.log
+build_pid=3307636 deadline_epoch=1789276458 log=/home/joshuawarren/longctx-gpu-profile-total-20260913T045918Z/build.log
+build_wait_rc=0
+FATAL expected one exact diagnostic wheel, got 0
+build_phase_end utc=2026-09-13T05:04:34Z rc=4
+TOTAL_CHILD_PIDS_CLEAR
+total_lock_released=true utc=2026-09-13T05:04:34Z rc=4 result_dir=/home/joshuawarren/longctx-gpu-profile-total-20260913T045918Z

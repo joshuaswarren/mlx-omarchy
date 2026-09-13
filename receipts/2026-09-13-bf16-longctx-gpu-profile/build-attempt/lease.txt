@@ -1,0 +1,2 @@
+lease=Main-grant-LongContextCostAttribution phase=diagnostic-build-and-profile pid=3307407 acquired_utc=2026-09-13T04:59:18Z deadline_epoch=1789276458
+released_utc=2026-09-13T05:04:34Z rc=4

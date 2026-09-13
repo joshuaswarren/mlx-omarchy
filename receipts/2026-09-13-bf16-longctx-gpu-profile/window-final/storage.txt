@@ -1,0 +1,3 @@
+Filesystem     1024-blocks      Used Available Capacity Mounted on
+/dev/nvme0n1p5   467222528 158444628 306245388      35% /home
+tmpfs              7924032   7644032    280000      97% /tmp

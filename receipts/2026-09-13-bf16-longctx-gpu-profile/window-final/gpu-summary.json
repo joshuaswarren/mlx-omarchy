@@ -1,0 +1,541 @@
+{
+  "comparison": {
+    "components_are_not_additive": true,
+    "diagnostic_deltas": {
+      "begin_wait_ms_per_token": -7.620321774193549,
+      "dispatch_record_host_ms_per_token": -0.10926364516129006,
+      "dispatches_per_token": -216.0,
+      "gpu_busy_ms_per_token": 1.261362709677421,
+      "gpu_span_ms_per_token": -3.18564651612904,
+      "inter_submit_gap_ms_per_token": 0.01934425806451623,
+      "intra_submit_gap_ms_per_token": -4.466353483870966,
+      "join_wait_ms_per_token": 0.0,
+      "positive_gpu_gap_ms_per_token": -4.44700922580645,
+      "submissions_per_token": -1.0,
+      "submit_host_ms_per_token": -3.0376691935483855,
+      "wall_ms_per_token": -3.3701920322580676
+    },
+    "diagnostic_wall_is_not_release_performance": true,
+    "kernel_gpu_busy_deltas": [
+      {
+        "gpu_busy_delta_ms_per_token": 11.081529064516129,
+        "kernel": "SdpaDecodeNativeBF16"
+      },
+      {
+        "gpu_busy_delta_ms_per_token": 0.1539884838709682,
+        "kernel": "MatmulBF16"
+      },
+      {
+        "gpu_busy_delta_ms_per_token": 0.017856193548387078,
+        "kernel": "LogSumExpBF16"
+      },
+      {
+        "gpu_busy_delta_ms_per_token": 0.0015833225806451412,
+        "kernel": "ElementwiseBF16"
+      },
+      {
+        "gpu_busy_delta_ms_per_token": 0.0012190322580644952,
+        "kernel": "ArgReduceBF16"
+      },
+      {
+        "gpu_busy_delta_ms_per_token": -0.005587612903225736,
+        "kernel": "FastRopeF32"
+      },
+      {
+        "gpu_busy_delta_ms_per_token": -0.015044322580645156,
+        "kernel": "TakeBF16"
+      },
+      {
+        "gpu_busy_delta_ms_per_token": -0.03644180645161277,
+        "kernel": "SwigluBF16"
+      },
+      {
+        "gpu_busy_delta_ms_per_token": -0.17868693548387105,
+        "kernel": "BinaryVecBF16"
+      },
+      {
+        "gpu_busy_delta_ms_per_token": -0.7731949354838709,
+        "kernel": "SoftmaxF32"
+      },
+      {
+        "gpu_busy_delta_ms_per_token": -0.804554709677419,
+        "kernel": "FastRmsNormBF16"
+      },
+      {
+        "gpu_busy_delta_ms_per_token": -0.8841348387096775,
+        "kernel": "ElementwiseF32"
+      },
+      {
+        "gpu_busy_delta_ms_per_token": -0.9385288064516129,
+        "kernel": "CastF32BF16"
+      },
+      {
+        "gpu_busy_delta_ms_per_token": -1.1053568064516128,
+        "kernel": "CopyGeneralBF16"
+      },
+      {
+        "gpu_busy_delta_ms_per_token": -1.154751806451614,
+        "kernel": "MatmulVecBF16"
+      },
+      {
+        "gpu_busy_delta_ms_per_token": -1.7433558387096773,
+        "kernel": "CastBF16F32"
+      },
+      {
+        "gpu_busy_delta_ms_per_token": -2.3551749677419354,
+        "kernel": "MatmulF32"
+      }
+    ],
+    "reason": "GPU timestamps, host submit costs, waits, and wall time overlap on the critical path; the profiling build adds timestamps and barriers per dispatch.",
+    "release_control_wall_delta_ms_per_token": 8.674424457291344
+  },
+  "control": {
+    "longctx": {
+      "records": [
+        {
+          "decode_tps": 25.0052,
+          "device": "Apple M1 (G13G B1)",
+          "engine": "bench_decode",
+          "generated": 32,
+          "ids_first": [
+            28715,
+            389,
+            279
+          ],
+          "ids_last": [
+            4977,
+            311,
+            12322
+          ],
+          "ids_sha256_16": "ff502900d2a179a5",
+          "prefill_s": 1.553565,
+          "prefill_tps": 677.7961,
+          "prompt_tokens": 1053
+        },
+        {
+          "decode_tps": 24.8613,
+          "device": "Apple M1 (G13G B1)",
+          "engine": "bench_decode",
+          "generated": 32,
+          "ids_first": [
+            28715,
+            389,
+            279
+          ],
+          "ids_last": [
+            4977,
+            311,
+            12322
+          ],
+          "ids_sha256_16": "ff502900d2a179a5",
+          "prefill_s": 1.555375,
+          "prefill_tps": 677.0074,
+          "prompt_tokens": 1053
+        },
+        {
+          "decode_tps": 24.9487,
+          "device": "Apple M1 (G13G B1)",
+          "engine": "bench_decode",
+          "generated": 32,
+          "ids_first": [
+            28715,
+            389,
+            279
+          ],
+          "ids_last": [
+            4977,
+            311,
+            12322
+          ],
+          "ids_sha256_16": "ff502900d2a179a5",
+          "prefill_s": 1.552301,
+          "prefill_tps": 678.348,
+          "prompt_tokens": 1053
+        }
+      ],
+      "wall_ms_per_token": {
+        "median": 40.082248774485244,
+        "values": [
+          39.99168173020012,
+          40.223158081033574,
+          40.082248774485244
+        ]
+      }
+    },
+    "short": {
+      "records": [
+        {
+          "decode_tps": 31.7555,
+          "device": "Apple M1 (G13G B1)",
+          "engine": "bench_decode",
+          "generated": 32,
+          "ids_first": [
+            9707,
+            0,
+            2585
+          ],
+          "ids_last": [
+            537,
+            2704,
+            1246
+          ],
+          "ids_sha256_16": "f26175202f3dabe9",
+          "prefill_s": 0.228541,
+          "prefill_tps": 131.2673,
+          "prompt_tokens": 30
+        },
+        {
+          "decode_tps": 31.8931,
+          "device": "Apple M1 (G13G B1)",
+          "engine": "bench_decode",
+          "generated": 32,
+          "ids_first": [
+            9707,
+            0,
+            2585
+          ],
+          "ids_last": [
+            537,
+            2704,
+            1246
+          ],
+          "ids_sha256_16": "f26175202f3dabe9",
+          "prefill_s": 0.227945,
+          "prefill_tps": 131.6109,
+          "prompt_tokens": 30
+        },
+        {
+          "decode_tps": 31.8392,
+          "device": "Apple M1 (G13G B1)",
+          "engine": "bench_decode",
+          "generated": 32,
+          "ids_first": [
+            9707,
+            0,
+            2585
+          ],
+          "ids_last": [
+            537,
+            2704,
+            1246
+          ],
+          "ids_sha256_16": "f26175202f3dabe9",
+          "prefill_s": 0.227499,
+          "prefill_tps": 131.8688,
+          "prompt_tokens": 30
+        }
+      ],
+      "wall_ms_per_token": {
+        "median": 31.4078243171939,
+        "values": [
+          31.490607926186012,
+          31.354744443155415,
+          31.4078243171939
+        ]
+      }
+    }
+  },
+  "diagnostic": {
+    "longctx": {
+      "decode_tps": 17.1142,
+      "device": "Apple M1 (G13G B1)",
+      "engine": "bench_decode",
+      "generated": 32,
+      "ids_first": [
+        28715,
+        389,
+        279
+      ],
+      "ids_last": [
+        4977,
+        311,
+        12322
+      ],
+      "ids_sha256_16": "ff502900d2a179a5",
+      "prefill_s": 1.629973,
+      "prefill_tps": 646.023,
+      "prompt_tokens": 1053
+    },
+    "short": {
+      "decode_tps": 16.1807,
+      "device": "Apple M1 (G13G B1)",
+      "engine": "bench_decode",
+      "generated": 32,
+      "ids_first": [
+        9707,
+        0,
+        2585
+      ],
+      "ids_last": [
+        537,
+        2704,
+        1246
+      ],
+      "ids_sha256_16": "f26175202f3dabe9",
+      "prefill_s": 0.311508,
+      "prefill_tps": 96.3057,
+      "prompt_tokens": 30
+    }
+  },
+  "identity": {
+    "device_info": {
+      "api_version": "1.4.359",
+      "architecture": "honeykrisp",
+      "cooperative_matrix_f32_8": 1,
+      "device_id": 0,
+      "device_name": "Apple M1 (G13G B1)",
+      "driver": "Mesa Honeykrisp",
+      "driver_version": 109060195,
+      "host_visible_coherent": 1,
+      "max_compute_shared_memory_size": 32768,
+      "max_compute_work_group_invocations": 1024,
+      "max_compute_work_group_size_x": 1024,
+      "max_storage_buffer_range": 2147483647,
+      "shader_float16": 1,
+      "shader_int16": 1,
+      "shader_int64": 1,
+      "storage_buffer_16bit_access": 1,
+      "timestamp_period_ns": 1,
+      "total_memory": 8113881088,
+      "unified_memory": 1,
+      "vendor_id": 65541
+    },
+    "diagnostic_shared_object_member_sha256": {
+      "mlx/core.cpython-314-aarch64-linux-gnu.so": "4ad850da16c300ea9f60aa7247f034f358aa16d7ba2fd146979a01c867e3cfa5",
+      "mlx/lib/libmlx.so": "f6f4565c6e2997d66a14b0f38c5899e72b2a0ff8d0ebe25972504e56b6c55fa1"
+    },
+    "diagnostic_version": "0.32.2.dev202609130459+diag.6b1ac02",
+    "diagnostic_wheel": "/home/joshuawarren/src/mlx-bf16-grouped-profile-6b1ac029/dist/mlx_omarchy-0.32.2.dev202609130459+diag.6b1ac02-cp314-cp314-linux_aarch64.whl",
+    "diagnostic_wheel_sha256": "ff89e8dab256f4b6b282c8bd083d7d1b6b59a3a07fe994498b966d016f85f530",
+    "host": "jwm1-linux",
+    "kernel": "7.1.6-1-1-ARCH",
+    "model_snapshot": "56d07e766edd7159fbe12ed12d9cf114bf38bf1e",
+    "profiling_literal_present": true,
+    "release_wheel": "/home/joshuawarren/src/mlx-bf16-grouped-candidate-6b1ac029/dist/mlx_omarchy-0.32.2.dev202609130004+6b1ac029-cp314-cp314-linux_aarch64.whl",
+    "release_wheel_sha256": "fb4b96b0e52de3a07d62fea6766baa24f409b0b6b32afef1fd5f365e246e1c50",
+    "source_commit": "6b1ac0296ba65a8e0075171ca9451e222ddff06b"
+  },
+  "pins": {
+    "longctx": "ff502900d2a179a5",
+    "short": "f26175202f3dabe9"
+  },
+  "profiles": {
+    "longctx": {
+      "decode": {
+        "begin_wait_ms_per_token": 21.29222064516129,
+        "dispatch_record_host_ms_per_token": 1.2270887096774195,
+        "dispatches": 15810,
+        "dispatches_per_token": 510.0,
+        "gpu_busy_ms_per_token": 47.818996451612904,
+        "gpu_span_ms_per_token": 58.34390861290322,
+        "inter_submit_gap_ms_per_token": 1.047850935483871,
+        "intervals": 31,
+        "intra_submit_gap_ms_per_token": 9.477061225806452,
+        "join_wait_ms_per_token": 0.0,
+        "kernels": {
+          "ArgReduceBF16": {
+            "dispatches": 31,
+            "dispatches_per_token": 1.0,
+            "gpu_busy_ms_per_token": 0.13866529032258063
+          },
+          "BinaryVecBF16": {
+            "dispatches": 1488,
+            "dispatches_per_token": 48.0,
+            "gpu_busy_ms_per_token": 0.9532382903225806
+          },
+          "CastBF16F32": {
+            "dispatches": 1488,
+            "dispatches_per_token": 48.0,
+            "gpu_busy_ms_per_token": 1.0150970967741937
+          },
+          "CastF32BF16": {
+            "dispatches": 1488,
+            "dispatches_per_token": 48.0,
+            "gpu_busy_ms_per_token": 1.0348595483870968
+          },
+          "CopyGeneralBF16": {
+            "dispatches": 1488,
+            "dispatches_per_token": 48.0,
+            "gpu_busy_ms_per_token": 0.9910577096774194
+          },
+          "ElementwiseBF16": {
+            "dispatches": 31,
+            "dispatches_per_token": 1.0,
+            "gpu_busy_ms_per_token": 0.18245829032258062
+          },
+          "FastRmsNormBF16": {
+            "dispatches": 1519,
+            "dispatches_per_token": 49.0,
+            "gpu_busy_ms_per_token": 1.3788305161290322
+          },
+          "FastRopeF32": {
+            "dispatches": 1488,
+            "dispatches_per_token": 48.0,
+            "gpu_busy_ms_per_token": 1.3011704516129032
+          },
+          "LogSumExpBF16": {
+            "dispatches": 31,
+            "dispatches_per_token": 1.0,
+            "gpu_busy_ms_per_token": 0.27882393548387097
+          },
+          "MatmulBF16": {
+            "dispatches": 2232,
+            "dispatches_per_token": 72.0,
+            "gpu_busy_ms_per_token": 10.328594
+          },
+          "MatmulVecBF16": {
+            "dispatches": 3007,
+            "dispatches_per_token": 97.0,
+            "gpu_busy_ms_per_token": 18.573911032258064
+          },
+          "SdpaDecodeNativeBF16": {
+            "dispatches": 744,
+            "dispatches_per_token": 24.0,
+            "gpu_busy_ms_per_token": 11.081529064516129
+          },
+          "SwigluBF16": {
+            "dispatches": 744,
+            "dispatches_per_token": 24.0,
+            "gpu_busy_ms_per_token": 0.5114332258064517
+          },
+          "TakeBF16": {
+            "dispatches": 31,
+            "dispatches_per_token": 1.0,
+            "gpu_busy_ms_per_token": 0.049328
+          }
+        },
+        "overlapping_dispatch_pairs": 0,
+        "positive_gpu_gap_ms_per_token": 10.524912161290324,
+        "submissions": 93,
+        "submissions_per_token": 3.0,
+        "submit_host_ms_per_token": 15.940180548387097,
+        "wall_ms_per_token": 58.42794812903226
+      },
+      "device": "Apple M1 (G13G B1)",
+      "label": "longctx",
+      "period_ns": 1.0,
+      "records": {
+        "begins": 134,
+        "dispatches": 21014,
+        "dropped": 0,
+        "joins": 1,
+        "submissions": 134
+      },
+      "valid_bits": 64
+    },
+    "short": {
+      "decode": {
+        "begin_wait_ms_per_token": 28.91254241935484,
+        "dispatch_record_host_ms_per_token": 1.3363523548387095,
+        "dispatches": 22506,
+        "dispatches_per_token": 726.0,
+        "gpu_busy_ms_per_token": 46.55763374193548,
+        "gpu_span_ms_per_token": 61.52955512903226,
+        "inter_submit_gap_ms_per_token": 1.0285066774193548,
+        "intervals": 31,
+        "intra_submit_gap_ms_per_token": 13.943414709677418,
+        "join_wait_ms_per_token": 0.0,
+        "kernels": {
+          "ArgReduceBF16": {
+            "dispatches": 31,
+            "dispatches_per_token": 1.0,
+            "gpu_busy_ms_per_token": 0.13744625806451613
+          },
+          "BinaryVecBF16": {
+            "dispatches": 1488,
+            "dispatches_per_token": 48.0,
+            "gpu_busy_ms_per_token": 1.1319252258064516
+          },
+          "CastBF16F32": {
+            "dispatches": 3720,
+            "dispatches_per_token": 120.0,
+            "gpu_busy_ms_per_token": 2.758452935483871
+          },
+          "CastF32BF16": {
+            "dispatches": 2232,
+            "dispatches_per_token": 72.0,
+            "gpu_busy_ms_per_token": 1.9733883548387097
+          },
+          "CopyGeneralBF16": {
+            "dispatches": 2976,
+            "dispatches_per_token": 96.0,
+            "gpu_busy_ms_per_token": 2.096414516129032
+          },
+          "ElementwiseBF16": {
+            "dispatches": 31,
+            "dispatches_per_token": 1.0,
+            "gpu_busy_ms_per_token": 0.18087496774193548
+          },
+          "ElementwiseF32": {
+            "dispatches": 744,
+            "dispatches_per_token": 24.0,
+            "gpu_busy_ms_per_token": 0.8841348387096775
+          },
+          "FastRmsNormBF16": {
+            "dispatches": 1519,
+            "dispatches_per_token": 49.0,
+            "gpu_busy_ms_per_token": 2.1833852258064512
+          },
+          "FastRopeF32": {
+            "dispatches": 1488,
+            "dispatches_per_token": 48.0,
+            "gpu_busy_ms_per_token": 1.306758064516129
+          },
+          "LogSumExpBF16": {
+            "dispatches": 31,
+            "dispatches_per_token": 1.0,
+            "gpu_busy_ms_per_token": 0.2609677419354839
+          },
+          "MatmulBF16": {
+            "dispatches": 2232,
+            "dispatches_per_token": 72.0,
+            "gpu_busy_ms_per_token": 10.174605516129033
+          },
+          "MatmulF32": {
+            "dispatches": 1488,
+            "dispatches_per_token": 48.0,
+            "gpu_busy_ms_per_token": 2.3551749677419354
+          },
+          "MatmulVecBF16": {
+            "dispatches": 3007,
+            "dispatches_per_token": 97.0,
+            "gpu_busy_ms_per_token": 19.728662838709678
+          },
+          "SoftmaxF32": {
+            "dispatches": 744,
+            "dispatches_per_token": 24.0,
+            "gpu_busy_ms_per_token": 0.7731949354838709
+          },
+          "SwigluBF16": {
+            "dispatches": 744,
+            "dispatches_per_token": 24.0,
+            "gpu_busy_ms_per_token": 0.5478750322580644
+          },
+          "TakeBF16": {
+            "dispatches": 31,
+            "dispatches_per_token": 1.0,
+            "gpu_busy_ms_per_token": 0.06437232258064515
+          }
+        },
+        "overlapping_dispatch_pairs": 0,
+        "positive_gpu_gap_ms_per_token": 14.971921387096774,
+        "submissions": 124,
+        "submissions_per_token": 4.0,
+        "submit_host_ms_per_token": 18.977849741935483,
+        "wall_ms_per_token": 61.79814016129033
+      },
+      "device": "Apple M1 (G13G B1)",
+      "label": "short",
+      "period_ns": 1.0,
+      "records": {
+        "begins": 160,
+        "dispatches": 29222,
+        "dropped": 0,
+        "joins": 1,
+        "submissions": 160
+      },
+      "valid_bits": 64
+    }
+  },
+  "schema": "bf16-longctx-gpu-profile-window/1"
+}

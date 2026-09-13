@@ -1,0 +1,5 @@
+measurement_launcher_pid=3311970
+original_deadline_epoch=1789276458
+original_deadline_utc=2026-09-13T05:14:18Z
+timeout_seconds=240
+launcher_log=/home/joshuawarren/LongContextCostAttribution-gpu-profile-measurement-20260913T050635Z.log

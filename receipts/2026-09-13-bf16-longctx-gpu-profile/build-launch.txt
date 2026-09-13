@@ -1,0 +1,4 @@
+launcher_pid=3307403
+deadline_epoch=1789276458
+deadline_utc=2026-09-13T05:14:18Z
+launcher_log=/home/joshuawarren/LongContextCostAttribution-gpu-profile-launcher-20260913T045918Z.log
