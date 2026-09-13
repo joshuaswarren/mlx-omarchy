@@ -70,7 +70,7 @@ git clone https://github.com/joshuaswarren/mlx-omarchy.git
 cd mlx-omarchy
 ```
 
-Two paths exist. They need different setups.
+Two paths exist. Both support Linux and macOS. They need different setups.
 
 ### Path 1: quick capability report, zero install
 
@@ -89,18 +89,66 @@ The command prints one JSON report: CPU and memory, kernel, Apple
 Silicon model, the Mesa Honeykrisp and Vulkan stack, ANE visibility, and
 the installed mlx-omarchy wheel with its capability dump. The JSON is
 small and carries no personal data; paste it wherever you discuss the
-project.
+project. On macOS, it records the Mac model identifier, chip, memory,
+CPU count, macOS build, and Metal GPU facts instead. Linux driver and
+ANE checks are marked not applicable. MLX is optional for this path.
 
 Passing `--submit` publishes exactly this JSON and nothing else: the
 request is marked `archive: null`, so no archive exists on this path
 and one request carries the whole submission.
 
-### Path 2: full report, needs the released wheel
+### Path 2: full report, needs an installed MLX package
 
 `scripts/collect_deep.py` runs five sections: `quick`, `environment`,
 `correctness`, `benchmark`, and `profile`. The `correctness` and
 `benchmark` sections import `mlx`, so they report `available: false`
-when no wheel is installed for the interpreter that runs the collector.
+when no MLX package is installed for the interpreter that runs the collector.
+
+#### macOS setup
+
+On an Apple Silicon Mac, use native MLX with a Python version supported
+by that package. The Linux `cp314` wheel below does not run on macOS.
+For example, with Python 3.14:
+
+```bash
+python3.14 -m venv ~/.venvs/mlx-collect-macos
+~/.venvs/mlx-collect-macos/bin/python -m pip install mlx==0.32.1
+~/.venvs/mlx-collect-macos/bin/python scripts/collect_deep.py \
+  --out mlx-macos-reference.tar.gz
+
+# Generate, preview, and submit a report:
+~/.venvs/mlx-collect-macos/bin/python scripts/collect_deep.py \
+  --out mlx-macos-reference.tar.gz \
+  --submit https://mlx-omarchy-community-data.joshua-s-warren.workers.dev
+```
+
+You can also use a Python interpreter that already imports native MLX,
+including a Homebrew installation. Correctness and benchmark probes
+require Metal and explicitly select `mx.gpu`. They use the same six
+numerical checks, tolerances, matrix sizes, warmups, and repetitions as
+the Linux collector. No models are downloaded.
+
+The report hashes the loaded Python extension and MLX dynamic libraries.
+It checks RECORD hashes from `mlx` and its native backend packages when
+available. A hash or compiled-version mismatch refuses measurements.
+Homebrew or source installations without RECORD hashes produce
+`verified: unverified`, with binary fingerprints retained.
+
+Mac reports are labeled as native macOS references in the public summary
+and cover text. Mesa, Linux ANE visibility, the kernel spike binary, and
+Omarchy dispatch profiling are not applicable. Temperature is not collected.
+The benchmark records power state and counts of known model processes
+before and after execution. It excludes process names, IDs, and raw power
+output. These observations do not establish Linux support, ANE execution,
+or performance parity. For a comparison, use the same physical machine,
+MLX version, workload, power, and thermal procedure with other GPU work stopped.
+
+A run without `--out` writes no persistent report. A run with `--out`
+writes an archive and cover text. Adding `--submit` publishes the report
+from that run through the same service as Linux. Each command collects
+fresh observations, so rerunning it can produce different bytes.
+
+#### Linux setup
 
 Prerequisites, in order:
 
@@ -237,8 +285,8 @@ submission file.
 ### Troubleshooting
 
 - `pip install` fails with `is not a supported wheel on this platform`:
-  the interpreter is not Python 3.14. The aarch64 wheel is `cp314`
-  only. Run the install with a 3.14 interpreter.
+  check the OS and interpreter. The Linux aarch64 wheel is `cp314`
+  only and cannot be installed on macOS. Run the install with a 3.14 interpreter.
 - The report shows `"mlx": {"available": false}`, or `correctness` and
   `benchmark` both say `available: false`: the collector ran under a
   Python without the mlx-omarchy wheel. Test the exact interpreter you
@@ -255,7 +303,10 @@ submission file.
 
 ### Check your core count before you benchmark
 
-A machine that silently runs fewer cores than it has produces
+On macOS, the collector reads `hw.ncpu` and `hw.activecpu` through
+`sysctl`. Linux boot-clamp and hotplug checks do not apply.
+
+On Linux, a machine that silently runs fewer cores than it has produces
 misleading host-bound numbers. One line shows your situation:
 
 ```bash
@@ -293,6 +344,19 @@ Privacy rules that hold for every submission:
 Results land on the public read API and in a mirrored snapshot on the
 `community-data` branch. Coding agents working in this repository find
 query commands under "Community hardware data" in `AGENTS.md`.
+
+### Test the collectors
+
+The tests need only Python's standard library. Native package and device
+failure cases use fixtures, so they also run on Linux without MLX:
+
+```bash
+python3 scripts/test_collect.py
+python3 scripts/test_collect_macos.py
+python3 -m unittest discover -s tests -p test_mlx_provenance.py
+python3 scripts/bench_matrix.py --self-test
+```
+
 
 ## Driver changes
 

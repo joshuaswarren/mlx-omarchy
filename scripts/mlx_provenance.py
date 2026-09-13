@@ -251,6 +251,71 @@ def installed_provenance(expect_wheel=None, dist_name=DIST_NAME):
     return result
 
 
+def _loaded_macos_binaries():
+    import ctypes
+    import mlx.core as mx
+
+    paths = {Path(mx.__spec__.origin).resolve()}
+    dyld = ctypes.CDLL(None)
+    dyld._dyld_image_count.restype = ctypes.c_uint32
+    dyld._dyld_get_image_name.argtypes = [ctypes.c_uint32]
+    dyld._dyld_get_image_name.restype = ctypes.c_char_p
+    for index in range(dyld._dyld_image_count()):
+        name = dyld._dyld_get_image_name(index)
+        if name:
+            path = Path(name.decode()).resolve()
+            if path.name.startswith("libmlx") and path.suffix == ".dylib":
+                paths.add(path)
+    return sorted(paths)
+
+
+def native_provenance():
+    """Hash the loaded macOS extension and MLX libraries against package RECORDs."""
+    import mlx.core as mx
+
+    result = {"dist": "mlx", "dist_version": None,
+              "mx_version": getattr(mx, "__version__", None),
+              "version_match": None, "files": [], "verified": "unverified",
+              "mismatch": None, "packages": {}}
+    records = {}
+    # Native pip wheels can split the extension and Metal library across packages.
+    for name in ("mlx", "mlx-metal", "mlx-cpu"):
+        try:
+            dist = importlib.metadata.distribution(name)
+        except importlib.metadata.PackageNotFoundError:
+            continue
+        result["packages"][name] = {
+            "version": dist.version,
+            "installer": (dist.read_text("INSTALLER") or "unknown").strip(),
+            "record_available": dist.read_text("RECORD") is not None,
+        }
+        if name == "mlx":
+            result["dist_version"] = dist.version
+        for rel, digest in _record_hashes(dist).items():
+            path = Path(dist.locate_file(rel)).resolve()
+            records.setdefault(path, []).append(digest)
+    for path in _loaded_macos_binaries():
+        actual = sha256_file(path)
+        expected = records.get(path, [])
+        matches = all(actual == digest for digest in expected) if expected else None
+        result["files"].append({"path": path.name, "sha256": actual,
+                                "record_sha256": expected, "match": matches})
+        if matches is False:
+            result["mismatch"] = f"Loaded {path.name} differs from its installed RECORD"
+    if result["dist_version"] is not None and result["mx_version"] is not None:
+        result["version_match"] = result["dist_version"] == result["mx_version"]
+        if not result["version_match"]:
+            result["mismatch"] = "Compiled MLX version differs from installed mlx version"
+    if result["mismatch"]:
+        result["verified"] = "mismatch"
+    elif (result["version_match"] is True and result["files"]
+          and all(entry["match"] is True for entry in result["files"])):
+        result["verified"] = "match"
+    else:
+        result["note"] = "Binary fingerprints only. Package hashes or version metadata are missing."
+    return result
+
+
 def control_check(package_dir):
     """Positive control: MLX_DISABLE_COMPILE must exist in libmlx.so.
 

@@ -138,6 +138,17 @@ class Redactor:
             ))
         return rules
 
+    def apply_value(self, value):
+        """Redact structured observations without changing their types."""
+        if isinstance(value, str):
+            return self.apply(value)
+        if isinstance(value, dict):
+            return {self.apply(key): self.apply_value(item)
+                    for key, item in value.items()}
+        if isinstance(value, list):
+            return [self.apply_value(item) for item in value]
+        return value
+
     def apply(self, text):
         if not isinstance(text, str):
             text = str(text)
@@ -329,20 +340,29 @@ def build_payload(kind, quick, manifest, generated_at=None, benchmark=None):
             "tflops": row.get("tflops"),
             "median_ms": row.get("median_ms"),
         })
+    native = host.get("system") == "Darwin"
+    kernel = host.get("kernel_release")
+    if native:
+        shortfall_flag = None
+        kernel = f"Darwin {kernel or 'unknown'} ({host.get('os') or 'macOS'})"
+    device = mlx.get("default_device")
+    if native and mlx.get("metal_available"):
+        device = f"Metal GPU (native macOS MLX, {device})"
     return {
         "schema_version": SCHEMA_VERSION,
         "kind": kind,
         "generated_at": generated_at or time.strftime(
             "%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "arch": host.get("arch"),
-        "model": dt.get("model"),
-        "chip": soc or (compatible[0] if compatible else None),
-        "kernel": host.get("kernel_release"),
+        "model": host.get("model") if native else dt.get("model"),
+        "chip": host.get("chip") if native else
+            soc or (compatible[0] if compatible else None),
+        "kernel": kernel,
         "mesa_driver": gpu.get("driverName"),
         "mesa_device": gpu.get("deviceName"),
         "mlx_version": distributions.get("mlx-omarchy")
             or mlx.get("mlx_version"),
-        "mlx_device": mlx.get("default_device"),
+        "mlx_device": device,
         "source_commit": manifest.get("source_commit"),
         "repo_dirty": manifest.get("repo_dirty"),
         "cpu_present": present if isinstance(present, int) else None,
