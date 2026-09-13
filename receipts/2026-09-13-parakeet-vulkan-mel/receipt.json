@@ -1,0 +1,93 @@
+{
+  "schema": "mlx-omarchy.parakeet-vulkan-mel/1",
+  "date": "2026-09-13",
+  "branch": "wave/CoremlVulkanMel",
+  "integration_base": "e4d079c883b8606dddef7720bd302c5756be0692",
+  "scope": "Exact workload-owned MLX custom-kernel implementation of the pinned Parakeet waveform-to-mel frontend",
+  "reference": {
+    "repository": "mweinbach/parakeet-coreml-swift",
+    "commit": "75aec2a1c991319657ff4dec5f602c12da6c5012",
+    "model_repository": "mweinbach1/parakeet-tdt-0.6b-v3-coreml",
+    "model_revision": "b650695c2322ee5281dff48d7345b2f3a58ff018",
+    "audio": "LibriSpeech test-clean/1089/134686/1089-134686-0000.flac",
+    "audio_sha256": "30885601173f96b0d8ddd020dc959b055c6c1582b85a33e3fcab8c4b08ed94c2",
+    "macos_fixture": "20260912T154759Z-librispeech/ane",
+    "stage_fixture": "mel-stage-probes/stage-capture"
+  },
+  "contract": {
+    "input": "One non-empty float32 waveform at 16 kHz, no longer than 480000 samples",
+    "output": "float32 mel [3001,128], all-one int32 mask [3001], float32 encoder features [1,3000,128], and int32 encoder mask [1,3000]",
+    "execution": "Every waveform-dependent stage uses workload-owned mx.fast.metal_kernel calls on stream=mx.gpu. NumPy is imported only after GPU evaluation by the fixture comparator.",
+    "success": "All certified stage and final bytes must match and positive GPU primitive, Vulkan compute, and Vulkan submission counters must be observed."
+  },
+  "immutable_constants": {
+    "float_count": 34704,
+    "sha256": "753fda5580a1fdc8c1535cc291a962c3be3207e819d42b2eb6869b731a7ebf62"
+  },
+  "source_sha256": {
+    "overlay/tools/coreml/vulkan_mel.py": "c3c01af30647e613c5707f97bc986d8585fcdbd04b371fdad605593a5800d6d8",
+    "overlay/tools/coreml/vulkan_mel_constants.py": "caad0ac74d60a4d7378326d5c6d2e0f0fa7d1fd807157f9d203e7348874d258f",
+    "tests/coreml/test_vulkan_mel.py": "6ea5df323f4a7352432db5e533f659c1eaa4677d45527f6dc5f55392170fa13b",
+    "docs/parakeet.md": "f7243b89059a854f53932638827f6699f0d34b23973802cec34882c3547e0b76",
+    "docs/coreml.md": "b0723149285bb3da9199465f1694c4d511e82d48e5843f67d641f9f2d5ed4f25"
+  },
+  "local_runtime": {
+    "source_commit": "e4d079c883b8606dddef7720bd302c5756be0692",
+    "wheel": "dist/mlx_omarchy-0.32.2.dev202609130346+e4d079c8-cp311-cp311-linux_x86_64.whl",
+    "wheel_sha256": "481b93ecbb9118b2623add84931aa18ad6b770d945987b0e8dc0c440c5e032a2",
+    "core_extension_sha256": "d8bfcf627df57a07a75fed49dd989ae5321323c5008cb768ea46f619409ca442",
+    "libmlx_sha256": "4c499ba19e3b5f8f96402fdca4304e0dfa50d6e6a8e6a949eb7a4d9738fc8276",
+    "provenance": "installed files matched wheel RECORD and mlx version matched the distribution"
+  },
+  "local_postfix_verification": [
+    {
+      "command": "custom sqrt32 kernel over 1,000,009 positive finite float32 bit patterns, including zero, subnormal/normal boundaries, power-of-two boundaries, and max finite",
+      "result": "0 mismatches against np.sqrt(float64).astype(float32)"
+    },
+    {
+      "command": "timeout 75s python3 -m pytest -q tests/coreml/test_vulkan_mel.py",
+      "result": "7 passed in 1.70s"
+    },
+    {
+      "command": "timeout 75s python3 overlay/tools/coreml/vulkan_mel.py <pinned-capture> <certified-stage-capture> --json-out .work/vulkan-mel-local-final.json",
+      "result": "exit 0; qualified=true; all 15 stage/final comparisons bit-exact; Device(gpu, 0); 15 GPU primitives, 8 Vulkan computes, and 1 Vulkan submission"
+    }
+  ],
+  "apple_red_reproduction": {
+    "host": "jwm1-linux",
+    "device": "Apple M1 (G13G B1)",
+    "driver": "Honeykrisp, Mesa 26.3.0-devel (git-6f6afc8968)",
+    "runtime": "mlx-omarchy 0.32.2.dev202609121216+8f6de34c",
+    "runtime_reconciliation": "Installed hashes matched wheel RECORD. 8f6de34c and e4d079c8 have no diff in custom-kernel-relevant runtime paths.",
+    "acquired": "2026-09-13T04:37:35Z",
+    "released": "2026-09-13T04:38:16Z",
+    "result": "qualified=false before the sqrt32 correction; DFT real/imag, preemphasis, frames, Hann, filterbank, mask, and encoder mask were exact. Power diverged first and cascaded into mel projection, log, statistics, normalized mel, and encoder features.",
+    "trace_delta": {
+      "gpu_primitive_dispatches": 15,
+      "vk_compute_dispatches": 8,
+      "vk_submissions": 1,
+      "commit_calls_with_work": 1,
+      "commit_calls_noop": 1,
+      "omarchy_finalize_calls": 1,
+      "vk_buffer_copies": 0,
+      "vk_buffer_fills": 0
+    },
+    "cleanup": "CHILD_PIDS_CLEAR, launcher PID/PGID clear, lock_released=true, and a post-run nonblocking lock probe succeeded",
+    "artifacts": {
+      "apple-gpu.json": "35a058ddcf2b6baff8f871f7d2c7cef0e29aacf07665b18ef4e2426c4ecaa455",
+      "vulkaninfo.txt": "7341441f6ff7e3a052ffc20a3fb0572e910645260475bdc1d57f4df4ee0ac393",
+      "lease.txt": "a9351b949aaf4bcd9d289ea35ca272a590049a3049ddfe97be5b3094eed39001",
+      "attempt1-launcher.log": "862e918b883c98f09088bcb4bedae1423f46c025d4cb6fcbeb1db4d3fa92d4f5",
+      "attempt2-launcher.log": "e58d6c8b5d5b5fb7c63f8fff0fcc9d3330159f616c8466766909c28b10a55f34"
+    }
+  },
+  "postfix_apple_verification": {
+    "status": "pending_conditional_hardware_window",
+    "required": "After LongContextCostAttribution reports child/PGID clearance and lock release, run the frozen corrected source once in Main's conditional no-build <=300s window with a fixed deadline, the quiet gate, and /tmp/m1-gpu.lock."
+  },
+  "qualification_boundary": {
+    "local_frontend": "qualified against the pinned fixture through the installed e4d079c8 software-Vulkan runtime",
+    "apple_physical_gpu": "not yet qualified after the sqrt correction",
+    "encoder_and_full_plan": "not claimed"
+  }
+}

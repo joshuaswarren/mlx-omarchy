@@ -44,42 +44,37 @@ Every numerics-bearing step in the golden capture ran inside the pinned
 reference library (SwiftPM `exact revision` dependency); the capture harness
 (`overlay/tools/coreml/capture/`) only orchestrates and dumps `.npy`/JSON.
 
-## Portable mel diagnostic
+## Exact CPU and Vulkan mel frontends
 
-The tested NumPy implementation does not meet exact golden equality.
-The hash-verified capture comparison reports 215401/384128 identical float32
-bit patterns and maximum absolute error 4.769862e-05. The first difference is
-at frame 0, bin 0. Shapes and masks match; encoder input values do not.
+The earlier approximate NumPy diagnostic is superseded. The pinned frontend now
+has two exact implementations. `overlay/tools/coreml/mel_reference.py` is the
+CPU fixture oracle. `overlay/tools/coreml/vulkan_mel.py` dispatches every
+waveform-dependent stage through workload-owned `mx.fast.metal_kernel` calls
+on the MLX GPU stream. NumPy is imported only after GPU evaluation by the
+fixture-comparison CLI; it is not a runtime tensor path or fallback.
 
-Stage isolation (2026-09-12, certified intermediates): `mel-stage-capture`
-runs the pinned `MelFeatureExtractor` on macstudio (CPU vDSP only, no
-CoreML), gates its stepwise intermediates byte-identical against the pinned
-library output, and reproduces the golden `mel.npy` hash exactly. Comparing
-each stage against that ground truth:
+Both implementations preserve the fixed Hann bits, recovered vDSP radix-4 DFT,
+vDSP dot-product order, sqrt-then-square boundary, guarded float64-equivalent
+log rounding, sequential mean and sample standard deviation, and final int32
+mask. The Vulkan path carries an explicit compensated binary32 FMA because the
+Omarchy translator cannot rely on native IEEE fused results. It also separates
+sqrt from the final square so the shader compiler cannot fold away the required
+float32 rounding boundary.
 
-```text
-bit-exact portable stages: preemphasis, framing geometry, Slaney
-  filterbank, sqrt-then-square power, per-bin mean/std, masks/shapes.
-divergent stages (all float32 libm/Accelerate internals):
-  hann window   243/400 values differ (Apple cosf; float64 correctly
-                rounded cos of the same argument differs on 304/400)
-  DFT           vDSP_DFT_zrop vs pocketfft: ~29% of bins, max |d| 4.8e-7
-  mel dot       vDSP_dotpr: best tested emulation (4-lane pairwise,
-                scalar tail) leaves 961/384128 values, +/-1 ulp
-  log           Apple logf vs float64-log cast: 339/384128 values
-```
-
-No approximate frontend is qualified, no tolerance changes, and no claim is
-made that exact reproduction is impossible. This implementation stays on the
-diagnostic branch rather than main.
+The CPU comparison receipt is
+[`2026-09-12-parakeet-mel-frontend`](../receipts/2026-09-12-parakeet-mel-frontend/receipt.json).
+The Vulkan implementation and device trace are recorded in
+[`2026-09-13-parakeet-vulkan-mel`](../receipts/2026-09-13-parakeet-vulkan-mel/receipt.json).
+Each receipt states its execution boundary; neither claims encoder, decoder, or
+full-plan completion.
 
 ```bash
 python3 overlay/tools/coreml/mel_reference.py <pinned-capture-directory>
-python3 overlay/tools/coreml/mel_stage_compare.py <capture-dir> <stage-dump-dir>
+python3 overlay/tools/coreml/vulkan_mel.py <capture-dir> <stage-dump-dir> --json-out <receipt.json>
 ```
 
-Licensing: the Python port is derived from the pinned Apache-2.0
-`parakeet-coreml-swift` sources; attribution in the module header.
+Licensing: both ports derive from the pinned Apache-2.0
+`mweinbach/parakeet-coreml-swift` sources identified in their module headers.
 
 ## Numerical comparison contract (frozen before Linux execution work)
 
