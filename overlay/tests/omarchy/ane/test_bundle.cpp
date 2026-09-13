@@ -467,6 +467,22 @@ TEST_CASE("program task count and scratch allocation match each ANEC") {
     fixture.write();
     check_error([&] { load_bundle(fixture.dir.path()); }, "scratch_bytes does not match ANEC");
   }
+  SUBCASE("understated positive scratch") {
+    Fixture fixture;
+    write_le<uint32_t>(fixture.payload_bytes[0], 40 + 3 * sizeof(uint32_t), 1);
+    fixture.refresh_payload(0);
+    fixture.manifest["programs"][0]["scratch_bytes"] = 1;
+    fixture.write();
+    check_error([&] { load_bundle(fixture.dir.path()); }, "scratch_bytes does not match ANEC");
+  }
+  SUBCASE("exact positive scratch") {
+    Fixture fixture;
+    write_le<uint32_t>(fixture.payload_bytes[0], 40 + 3 * sizeof(uint32_t), 1);
+    fixture.refresh_payload(0);
+    fixture.manifest["programs"][0]["scratch_bytes"] = kAllocationBytes;
+    fixture.write();
+    CHECK_NOTHROW(load_bundle(fixture.dir.path()));
+  }
 }
 
 TEST_CASE("all payload digests are checked before ANEC parsing") {
@@ -503,6 +519,31 @@ TEST_CASE("unknown files and missing payloads fail closed") {
     fixture.write();
     std::filesystem::remove(fixture.dir.path() / "program-1.anec");
     check_error([&] { load_bundle(fixture.dir.path()); }, "payload file missing: program-1.anec");
+  }
+}
+
+TEST_CASE("directory links fail closed") {
+  SUBCASE("listed payload") {
+    Fixture fixture;
+    fixture.write();
+    TempDir outside;
+    const auto payload = fixture.dir.path() / "program-0.anec";
+    const auto target = outside.path() / "program-0.anec";
+    std::filesystem::rename(payload, target);
+    std::filesystem::create_symlink(target, payload);
+    check_error(
+        [&] { load_bundle(fixture.dir.path()); },
+        "unexpected link 'program-0.anec'");
+  }
+  SUBCASE("unlisted entry") {
+    Fixture fixture;
+    fixture.write();
+    std::filesystem::create_symlink(
+        fixture.dir.path() / "program-0.anec",
+        fixture.dir.path() / "alias.anec");
+    check_error(
+        [&] { load_bundle(fixture.dir.path()); },
+        "unexpected link 'alias.anec'");
   }
 }
 

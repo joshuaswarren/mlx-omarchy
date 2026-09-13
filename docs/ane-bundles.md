@@ -74,7 +74,8 @@ Each tensor has `name`, `index`, `dtype`, `shape`, `byte_size`, and
 `stride`. Shapes, byte sizes, and strides are positive. Byte size must equal
 the dtype size times the shape product. Stride must cover the tensor and be
 `0x4000`-aligned. Zero ordinary tensors are invalid. Program scratch is not a
-tensor; `scratch_bytes: 0` represents a program with no channel-3 allocation.
+tensor; `scratch_bytes` must equal the ANEC channel-3 allocation exactly, with
+no rounding. `scratch_bytes: 0` represents a program with no channel-3 allocation.
 
 ### Program entries
 
@@ -107,7 +108,7 @@ do not require complete write coverage.
    on Vulkan.
 2. Parse schema 3, reject unknown fields, and validate the complete tensor,
    program, dispatch, ABI, provenance, and payload mapping contract.
-3. Reject every unlisted or non-regular directory entry.
+3. Reject every unlisted, non-regular, or link directory entry.
 4. Confirm all listed payloads exist and match their declared byte sizes.
 5. Hash every listed payload and compare every digest.
 6. Parse each ANEC header, require its declared payload end to equal the file
@@ -155,8 +156,9 @@ must not be used as a compiler release pin or as compiler-wide qualification.
 
 ## Runtime-generated cache policy
 
-The product compiles from the selected `.mlpackage` on Linux and caches the
-adapted schema-3 bundle. A cache key binds the source package hash, selected
+The planned product will compile from the selected `.mlpackage` on Linux
+and cache the adapted schema-3 bundle. This tree does not implement that
+compiler or cache. A planned cache key binds the source package hash, selected
 function and shapes, compiler commit, compiler target, compiler package schema,
 bundle schema, driver ABI major, firmware/device identity used for device
 qualification, and frontend version. A cached bundle remains subject to the
@@ -195,8 +197,8 @@ compilation or device execution.
 `tools/ci/run-ane-bundle-tests.sh` runs the real-package Python adapter tests
 and the host-only C++ loader suite. The tests cover schema rejection, exact ABI,
 program/payload mapping, dispatch order, tensor ranges, zero ordinary tensors,
-allocation and channel mismatches, digest ordering, unknown files, and the
-not-found contract.
+allocation and channel mismatches, digest ordering, unknown files, symlink
+entries, and the not-found contract.
 
 ## External reference: maderix (Inside the M4 ANE)
 

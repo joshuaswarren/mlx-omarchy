@@ -46,8 +46,11 @@ Eager single-row 4-bit/group-64 quantized projections that read one x
 residual `Add` that is a projection's only consumer is folded into that
 GEMV's store: a Qwen2 decode layer drops from 22 dispatches to 14 with
 every array still materialized and every value bit-identical to the
-per-node path. Set `MLX_OMARCHY_FUSED_GEMV=0` to keep the per-node
-path (`MLX_OMARCHY_FUSED_CHAIN=0` disables it too).
+per-node path. Eager dense BF16 decode projections that share one
+evaluated input (q/k/v or gate/up) dispatch as one grouped GEMV with
+independent per-output accumulation, also bit-identical to the per-node
+path. Set `MLX_OMARCHY_FUSED_GEMV=0` to keep either grouping on the
+per-node path (`MLX_OMARCHY_FUSED_CHAIN=0` disables it too).
 
 Dispatches record unconditional pre+post memory barriers by default.
 `MLX_OMARCHY_GATED_BARRIERS=1` replaces them with dependency-gated
@@ -66,13 +69,18 @@ runtime-test trace counters.
    newer, Vulkan development headers, a C++ compiler, and the BLAS/LAPACK
    development packages the CPU backend links (`liblapack-dev libblas-dev
    liblapacke-dev` on Debian-family distributions).
+   On Arch/Omarchy, install `blas-openblas` and set
+   `CMAKE_INCLUDE_PATH=/usr/include/openblas` for the build; both BLAS and
+   LAPACK headers live in that package-owned directory. No source or linker
+   flag changes are needed.
 2. Run `./scripts/build-wheel.sh`
 3. Read the wheel path, size, and sha256 from the receipt lines.
 
 The script prepares the pinned upstream tree, builds with
 `MLX_BUILD_OMARCHY=ON`, the CPU backend on, and the Metal and CUDA backends
-off, and writes one wheel into `dist/`. The built wheel needs
-`liblapack.so.3` and `libblas.so.3` at runtime.
+off, and writes one wheel into `dist/`. Keep the selected BLAS/LAPACK
+provider installed at runtime: `libblas`/`liblapack` on Debian-family
+distributions, or `openblas` on Arch/Omarchy.
 
 ## Install and smoke-test
 
