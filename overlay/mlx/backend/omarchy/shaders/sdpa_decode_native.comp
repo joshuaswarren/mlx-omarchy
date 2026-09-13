@@ -96,12 +96,10 @@ shared float s_sum[MAX_BLOCKS];
 // one adjacent output pair.
 shared uint s_partial_words[MAX_BLOCKS * SIMD];
 #else
-// The composition-exact arm replaces the online-softmax structure with the
-// f32-score composition's observable arithmetic. Scores and probs share one
-// f32 stream (probs overwrite scores in place; the normalize pass reads and
-// writes only its own strided slots). The kStreamKeys bound is enforced by
-// the host guard; larger contexts fall through to the composition, which
-// this arm reproduces bit for bit.
+// The composition-exact arm preserves the f32-score composition's observable
+// arithmetic. Scores and exponents share one f32 stream: the denominator
+// replaces each score with its exponent, then normalization multiplies in
+// place. The kStreamKeys host guard sends larger contexts to the composition.
 const uint kStreamKeys = 2048u;
 shared float s_qrow[64];
 shared float s_stream[kStreamKeys];
@@ -157,8 +155,8 @@ void main() {
   //      stored f32 (matmul.comp),
   //   3. softmax: 256-lane strided max scan + binary max tree, strided
   //      sequential exp-sum per lane + binary sum tree, normalizer
-  //      1.0/sum, probs = exp(score - max) * normalizer recomputed from
-  //      the stored f32 scores (softmax_suffix.comp),
+  //      1.0/sum, cached exponents multiplied by normalizer in place
+  //      (softmax_suffix.comp arithmetic),
   //   4. output = ascending-key `acc += a * b` over 16-wide tiles with
   //      exact-zero tail padding, drained by 1.0f (matmul.comp), stored
   //      through the cast.comp RNE bf16 pair.
@@ -213,11 +211,13 @@ void main() {
   float row_max = s_tree[0];
   barrier();
 
-  // Denominator: strided sequential exp-sum per lane, then the tree.
+  // Denominator: cache each f32 exponent while preserving the strided sum.
   if (thread < 256u) {
     float local_sum = 0.0;
     for (uint index = thread; index < k_len; index += 256u) {
-      local_sum += exp(s_stream[index] - row_max);
+      float probability = exp(s_stream[index] - row_max);
+      s_stream[index] = probability;
+      local_sum += probability;
     }
     s_tree[thread] = local_sum;
   }
@@ -231,11 +231,10 @@ void main() {
   float normalizer = 1.0 / s_tree[0];
   barrier();
 
-  // Probs in place: exp recomputed from the stored f32 scores, exactly
-  // as the normalize pass of softmax_suffix.comp does.
+  // Normalize the cached f32 exponents in place.
   if (thread < 256u) {
     for (uint index = thread; index < k_len; index += 256u) {
-      s_stream[index] = exp(s_stream[index] - row_max) * normalizer;
+      s_stream[index] *= normalizer;
     }
   }
   barrier();
