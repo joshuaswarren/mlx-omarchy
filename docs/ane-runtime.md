@@ -10,4 +10,4 @@ Every execute and shutdown transaction also uses one absolute monotonic deadline
 
 `shutdown` clears all worker-owned program handles, waits for process exit within its deadline, and returns the worker PID and released-program count. Callers must treat a failed shutdown as uncertain; only a returned receipt confirms release.
 
-The worker accepts only Linux AArch64 with `apple,t8103-ane`, device-tree status `okay`, driver version `f2a3e5e+lifecycle6`, a bound `ane` platform driver, runtime PM `on/active`, and readable/writable `/dev/accel/accel0`. Its runtime identity also records the kernel, module source version, libane commit, and driver ABI.
+The worker accepts only Linux AArch64 with `apple,t8103-ane`, device-tree status `okay`, driver version `f2a3e5e+lifecycle6`, a bound `ane` platform driver, runtime PM `on/active`, and readable/writable `/dev/accel/accel0`. Its runtime identity records the graph hash, raw manifest hash, payload-collection model hash, kernel, module source version, libane commit, and driver ABI.

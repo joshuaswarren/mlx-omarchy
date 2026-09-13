@@ -520,7 +520,7 @@ struct AneRuntime::Impl {
       }
       throw detail::runtime_error("worker loaded a different bundle identity");
     }
-    implementation->identity = worker_detail.substr(identity_prefix.size());
+    implementation->identity = worker_detail;
     implementation->is_usable = true;
     return implementation;
   }
