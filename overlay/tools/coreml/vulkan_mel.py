@@ -7,7 +7,7 @@ Derived from ``mweinbach/parakeet-coreml-swift`` at
 ``MelFeatureExtractor.swift`` and ``MelFilterBank.swift``.
 
 Waveform-dependent arithmetic is dispatched only through ``mx.fast.metal_kernel``.
-NumPy is imported only by the fixture-comparison CLI after GPU evaluation.
+The runtime extraction path contains no NumPy or CPU tensor arithmetic.
 """
 
 from __future__ import annotations
@@ -198,50 +198,271 @@ def _frame(preemph, hann):
 
 
 _FMA_HEADER = """
-float adjacent_float(float value, bool upward) {
-    if (value == 0.0f) {
-        return uintBitsToFloat(upward ? 1u : 0x80000001u);
+struct Big96 {
+    uint w0;
+    uint w1;
+    uint w2;
+    uint sticky;
+};
+
+Big96 zero_big96() {
+    Big96 value;
+    value.w0 = 0u;
+    value.w1 = 0u;
+    value.w2 = 0u;
+    value.sticky = 0u;
+    return value;
+}
+
+int msb32(uint value) {
+    int bit = 0;
+    if (value >= 0x10000u) { value >>= 16u; bit += 16; }
+    if (value >= 0x100u) { value >>= 8u; bit += 8; }
+    if (value >= 0x10u) { value >>= 4u; bit += 4; }
+    if (value >= 0x4u) { value >>= 2u; bit += 2; }
+    if (value >= 0x2u) bit += 1;
+    return bit;
+}
+
+uint low_mask(uint count) {
+    return count == 0u ? 0u : 0xffffffffu >> (32u - count);
+}
+
+Big96 or_big_word(Big96 value, int word, uint bits) {
+    if (word == 0) value.w0 |= bits;
+    else if (word == 1) value.w1 |= bits;
+    else if (word == 2) value.w2 |= bits;
+    return value;
+}
+
+Big96 shifted48(uint low, uint high, int shift) {
+    Big96 value = zero_big96();
+    if (shift < 0) {
+        int distance = -shift;
+        if (distance < 32) {
+            uint amount = uint(distance);
+            value.sticky = (low & low_mask(amount)) != 0u ? 1u : 0u;
+            low = (low >> amount) | (high << (32u - amount));
+            high >>= amount;
+        } else if (distance == 32) {
+            value.sticky = low != 0u ? 1u : 0u;
+            low = high;
+            high = 0u;
+        } else if (distance < 48) {
+            uint amount = uint(distance - 32);
+            value.sticky = (low != 0u || (high & low_mask(amount)) != 0u) ? 1u : 0u;
+            low = high >> amount;
+            high = 0u;
+        } else {
+            value.sticky = (low != 0u || high != 0u) ? 1u : 0u;
+            low = 0u;
+            high = 0u;
+        }
+        shift = 0;
     }
-    uint bits = floatBitsToUint(value);
-    bits += upward == (value > 0.0f) ? 1u : uint(-1);
-    return uintBitsToFloat(bits);
+    int word = shift >> 5;
+    uint offset = uint(shift & 31);
+    value = or_big_word(value, word, low << offset);
+    if (offset != 0u) value = or_big_word(value, word + 1, low >> (32u - offset));
+    word = (shift + 32) >> 5;
+    offset = uint((shift + 32) & 31);
+    value = or_big_word(value, word, high << offset);
+    if (offset != 0u) value = or_big_word(value, word + 1, high >> (32u - offset));
+    return value;
+}
+
+uint big_word(Big96 value, int word) {
+    if (word == 0) return value.w0;
+    if (word == 1) return value.w1;
+    if (word == 2) return value.w2;
+    return 0u;
+}
+
+int compare_big(Big96 left, Big96 right) {
+    if (left.w2 != right.w2) return left.w2 < right.w2 ? -1 : 1;
+    if (left.w1 != right.w1) return left.w1 < right.w1 ? -1 : 1;
+    if (left.w0 != right.w0) return left.w0 < right.w0 ? -1 : 1;
+    if (left.sticky != right.sticky) return left.sticky < right.sticky ? -1 : 1;
+    return 0;
+}
+
+Big96 add_big(Big96 left, Big96 right) {
+    Big96 result;
+    result.w0 = left.w0 + right.w0;
+    uint carry = result.w0 < left.w0 ? 1u : 0u;
+    uint middle = left.w1 + right.w1;
+    uint middle_carry = middle < left.w1 ? 1u : 0u;
+    result.w1 = middle + carry;
+    carry = (middle_carry != 0u || result.w1 < middle) ? 1u : 0u;
+    result.w2 = left.w2 + right.w2 + carry;
+    result.sticky = left.sticky | right.sticky;
+    return result;
+}
+
+Big96 subtract_big(Big96 left, Big96 right) {
+    Big96 result;
+    result.w0 = left.w0 - right.w0;
+    uint borrow = left.w0 < right.w0 ? 1u : 0u;
+    uint middle_subtrahend = right.w1 + borrow;
+    uint middle_overflow = middle_subtrahend < right.w1 ? 1u : 0u;
+    result.w1 = left.w1 - middle_subtrahend;
+    borrow = (middle_overflow != 0u || left.w1 < middle_subtrahend) ? 1u : 0u;
+    result.w2 = left.w2 - right.w2 - borrow;
+    result.sticky = left.sticky | right.sticky;
+    return result;
+}
+
+Big96 decrement_big(Big96 value) {
+    uint previous = value.w0;
+    value.w0 -= 1u;
+    if (previous == 0u) {
+        previous = value.w1;
+        value.w1 -= 1u;
+        if (previous == 0u) value.w2 -= 1u;
+    }
+    return value;
+}
+
+int big_msb(Big96 value) {
+    if (value.w2 != 0u) return 64 + msb32(value.w2);
+    if (value.w1 != 0u) return 32 + msb32(value.w1);
+    if (value.w0 != 0u) return msb32(value.w0);
+    return -1;
+}
+
+uint extract_big(Big96 value, int shift) {
+    if (shift < 0) return value.w0 << uint(-shift);
+    if (shift >= 96) return 0u;
+    int word = shift >> 5;
+    uint offset = uint(shift & 31);
+    uint result = big_word(value, word) >> offset;
+    if (offset != 0u) result |= big_word(value, word + 1) << (32u - offset);
+    return result;
+}
+
+bool big_bit(Big96 value, int position) {
+    if (position < 0 || position >= 96) return false;
+    return ((big_word(value, position >> 5) >> uint(position & 31)) & 1u) != 0u;
+}
+
+bool any_big_below(Big96 value, int position) {
+    if (value.sticky != 0u) return true;
+    if (position <= 0) return false;
+    if (position >= 96) return value.w0 != 0u || value.w1 != 0u || value.w2 != 0u;
+    int word = position >> 5;
+    uint offset = uint(position & 31);
+    if (word > 0 && value.w0 != 0u) return true;
+    if (word > 1 && value.w1 != 0u) return true;
+    return (big_word(value, word) & low_mask(offset)) != 0u;
+}
+
+uint round_big96(Big96 magnitude, int top_exponent, uint sign) {
+    int highest = big_msb(magnitude);
+    if (highest < 0) return sign;
+    int exponent = top_exponent - 94 + highest;
+    if (exponent > 127) return sign | 0x7f800000u;
+    if (exponent >= -126) {
+        int cut = highest - 23;
+        uint significand = extract_big(magnitude, cut) & 0x00ffffffu;
+        bool guard = big_bit(magnitude, cut - 1);
+        bool sticky = any_big_below(magnitude, cut - 1);
+        if (guard && (sticky || (significand & 1u) != 0u)) significand += 1u;
+        if (significand == 0x01000000u) {
+            significand >>= 1u;
+            exponent += 1;
+            if (exponent > 127) return sign | 0x7f800000u;
+        }
+        return sign | (uint(exponent + 127) << 23u) | (significand & 0x007fffffu);
+    }
+    int cut = -55 - top_exponent;
+    uint significand = extract_big(magnitude, cut);
+    bool guard = big_bit(magnitude, cut - 1);
+    bool sticky = any_big_below(magnitude, cut - 1);
+    if (guard && (sticky || (significand & 1u) != 0u)) significand += 1u;
+    if (significand >= 0x00800000u) return sign | 0x00800000u;
+    return sign | significand;
 }
 
 float fma32(float a, float b, float c) {
-    precise float product = a * b;
-    precise float a_split = a * 4097.0f;
-    precise float a_hi = a_split - (a_split - a);
-    precise float a_lo = a - a_hi;
-    precise float b_split = b * 4097.0f;
-    precise float b_hi = b_split - (b_split - b);
-    precise float b_lo = b - b_hi;
-    precise float product_error = a_hi * b_hi - product;
-    product_error = product_error + a_hi * b_lo;
-    product_error = product_error + a_lo * b_hi;
-    product_error = product_error + a_lo * b_lo;
-    precise float sum = product + c;
-    precise float recovered = sum - product;
-    precise float sum_error = (product - (sum - recovered)) + (c - recovered);
-    precise float correction = product_error + sum_error;
-    precise float correction_recovered = correction - product_error;
-    precise float correction_error =
-        (product_error - (correction - correction_recovered)) +
-        (sum_error - correction_recovered);
-    precise float result = sum + correction;
-    precise float result_recovered = result - sum;
-    precise float result_error =
-        (sum - (result - result_recovered)) + (correction - result_recovered);
-    if (result_error != 0.0f) {
-        bool upward = result_error > 0.0f;
-        precise float adjacent = adjacent_float(result, upward);
-        precise float half_gap = 0.5f * abs(adjacent - result);
-        precise float absolute_error = abs(result_error);
-        if (absolute_error > half_gap ||
-            (absolute_error == half_gap && correction_error * result_error > 0.0f)) {
-            return adjacent;
+    uint a_bits = floatBitsToUint(a);
+    uint b_bits = floatBitsToUint(b);
+    uint c_bits = floatBitsToUint(c);
+    uint a_exp = (a_bits >> 23u) & 0xffu;
+    uint b_exp = (b_bits >> 23u) & 0xffu;
+    uint c_exp = (c_bits >> 23u) & 0xffu;
+    uint a_fraction = a_bits & 0x007fffffu;
+    uint b_fraction = b_bits & 0x007fffffu;
+    uint c_fraction = c_bits & 0x007fffffu;
+    bool a_nan = a_exp == 0xffu && a_fraction != 0u;
+    bool b_nan = b_exp == 0xffu && b_fraction != 0u;
+    bool c_nan = c_exp == 0xffu && c_fraction != 0u;
+    if (a_nan || b_nan || c_nan) return uintBitsToFloat(0x7fc00000u);
+    bool a_infinite = a_exp == 0xffu;
+    bool b_infinite = b_exp == 0xffu;
+    bool c_infinite = c_exp == 0xffu;
+    bool a_zero = (a_bits & 0x7fffffffu) == 0u;
+    bool b_zero = (b_bits & 0x7fffffffu) == 0u;
+    uint product_sign = (a_bits ^ b_bits) & 0x80000000u;
+    uint c_sign = c_bits & 0x80000000u;
+    if ((a_infinite && b_zero) || (b_infinite && a_zero)) {
+        return uintBitsToFloat(0x7fc00000u);
+    }
+    if (a_infinite || b_infinite) {
+        if (c_infinite && product_sign != c_sign) return uintBitsToFloat(0x7fc00000u);
+        return uintBitsToFloat(product_sign | 0x7f800000u);
+    }
+    if (c_infinite) return c;
+
+    uint a_significand = a_exp == 0u ? a_fraction : a_fraction | 0x00800000u;
+    uint b_significand = b_exp == 0u ? b_fraction : b_fraction | 0x00800000u;
+    uint c_significand = c_exp == 0u ? c_fraction : c_fraction | 0x00800000u;
+    int a_lsb_exponent = a_exp == 0u ? -149 : int(a_exp) - 150;
+    int b_lsb_exponent = b_exp == 0u ? -149 : int(b_exp) - 150;
+    int c_lsb_exponent = c_exp == 0u ? -149 : int(c_exp) - 150;
+
+    uint a_low = a_significand & 0xffffu;
+    uint a_high = a_significand >> 16u;
+    uint b_low = b_significand & 0xffffu;
+    uint b_high = b_significand >> 16u;
+    uint product0 = a_low * b_low;
+    uint product1 = a_low * b_high + a_high * b_low;
+    uint product_low = product0 + (product1 << 16u);
+    uint carry = product_low < product0 ? 1u : 0u;
+    uint product_high = a_high * b_high + (product1 >> 16u) + carry;
+    bool product_zero = product_low == 0u && product_high == 0u;
+    int product_lsb_exponent = a_lsb_exponent + b_lsb_exponent;
+    int product_top_exponent = product_zero ? -10000 : product_lsb_exponent +
+        (product_high != 0u ? 32 + msb32(product_high) : msb32(product_low));
+    int c_top_exponent = c_significand == 0u ? -10000 :
+        c_lsb_exponent + msb32(c_significand);
+
+    if (product_zero && c_significand == 0u) {
+        return uintBitsToFloat(product_sign == c_sign ? product_sign : 0u);
+    }
+    int top_exponent = product_top_exponent > c_top_exponent ?
+        product_top_exponent : c_top_exponent;
+    Big96 product = product_zero ? zero_big96() : shifted48(
+        product_low, product_high, 94 - (top_exponent - product_lsb_exponent));
+    Big96 addend = c_significand == 0u ? zero_big96() : shifted48(
+        c_significand, 0u, 94 - (top_exponent - c_lsb_exponent));
+    Big96 magnitude;
+    uint result_sign;
+    if (product_sign == c_sign) {
+        magnitude = add_big(product, addend);
+        result_sign = product_sign;
+    } else {
+        int order = compare_big(product, addend);
+        if (order == 0) return 0.0f;
+        Big96 larger = order > 0 ? product : addend;
+        Big96 smaller = order > 0 ? addend : product;
+        result_sign = order > 0 ? product_sign : c_sign;
+        magnitude = subtract_big(larger, smaller);
+        if (smaller.sticky != 0u && larger.sticky == 0u && big_msb(magnitude) >= 0) {
+            magnitude = decrement_big(magnitude);
+            magnitude.sticky = 1u;
         }
     }
-    return result;
+    return uintBitsToFloat(round_big96(magnitude, top_exponent, result_sign));
 }
 """
 
@@ -887,6 +1108,22 @@ def trace_snapshot() -> dict[str, int]:
     _trace_function()(ctypes.byref(snapshot))
     return {name: int(getattr(snapshot, name)) for name, _ in snapshot._fields_}
 
+def _qualification_status(comparisons, stage_names, expected_stage_names, deltas):
+    stage_set_exact = set(stage_names) == set(expected_stage_names)
+    all_bit_exact = len(comparisons) == len(expected_stage_names) + 4 and all(
+        item["bit_exact"] for item in comparisons.values()
+    )
+    gpu_execution = {
+        "gpu_primitive_dispatches": deltas["gpu_primitive_dispatches"] > 0,
+        "vk_compute_dispatches": deltas["vk_compute_dispatches"] == 8,
+        "vk_submissions": deltas["vk_submissions"] > 0,
+    }
+    return {
+        "all_bit_exact": all_bit_exact,
+        "stage_set_exact": stage_set_exact,
+        "gpu_execution": gpu_execution,
+        "qualified": all_bit_exact and stage_set_exact and all(gpu_execution.values()),
+    }
 
 def _compare_fixture(capture_dir: Path, stage_dir: Path) -> dict:
     import numpy as np
@@ -902,19 +1139,27 @@ def _compare_fixture(capture_dir: Path, stage_dir: Path) -> dict:
     result = extract_chunk_features(waveform, capture_stages=True)
     mx.eval(result.mel, result.mask, result.encoder_features, result.encoder_mask)
     after = trace_snapshot()
+    computed_stages = {
+        **result.stages,
+        "mel_mask": result.mask,
+        "mel_pinned": result.mel,
+        "mel_stepwise": result.mel,
+    }
     comparisons = {}
     for name in STAGE_NAMES:
-        if name not in result.stages:
-            continue
-        actual = np.asarray(result.stages[name])
-        expected = np.load(stage_dir / f"{name}.npy", allow_pickle=False)
-        comparisons[name] = {
-            "shape": list(actual.shape),
-            "dtype": str(actual.dtype),
-            "bit_exact": actual.shape == expected.shape
-            and actual.dtype == expected.dtype
-            and actual.tobytes() == expected.tobytes(),
-        }
+        actual_mx = computed_stages.get(name)
+        if actual_mx is None:
+            comparisons[name] = {"missing": True, "bit_exact": False}
+        else:
+            actual = np.asarray(actual_mx)
+            expected = np.load(stage_dir / f"{name}.npy", allow_pickle=False)
+            comparisons[name] = {
+                "shape": list(actual.shape),
+                "dtype": str(actual.dtype),
+                "bit_exact": actual.shape == expected.shape
+                and actual.dtype == expected.dtype
+                and actual.tobytes() == expected.tobytes(),
+            }
     finals = {
         "mel": (result.mel, capture_dir / "mel.npy"),
         "mask": (result.mask, capture_dir / "mel_mask.npy"),
@@ -938,21 +1183,16 @@ def _compare_fixture(capture_dir: Path, stage_dir: Path) -> dict:
             and actual.tobytes() == expected.tobytes(),
         }
     deltas = {name: after[name] - before[name] for name in before}
-    all_bit_exact = all(item["bit_exact"] for item in comparisons.values())
-    gpu_execution = {
-        "gpu_primitive_dispatches": deltas["gpu_primitive_dispatches"] > 0,
-        "vk_compute_dispatches": deltas["vk_compute_dispatches"] > 0,
-        "vk_submissions": deltas["vk_submissions"] > 0,
-    }
+    status = _qualification_status(
+        comparisons, computed_stages, STAGE_NAMES, deltas
+    )
     return {
         "schema": "mlx-omarchy.parakeet-vulkan-mel/1",
         "reference_model": lock.model_repo,
         "reference_revision": lock.model_revision,
         "device": str(mx.default_device()),
         "comparisons": comparisons,
-        "all_bit_exact": all_bit_exact,
-        "gpu_execution": gpu_execution,
-        "qualified": all_bit_exact and all(gpu_execution.values()),
+        **status,
         "trace_delta": deltas,
     }
 
