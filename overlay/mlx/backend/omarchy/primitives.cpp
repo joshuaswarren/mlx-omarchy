@@ -10657,11 +10657,10 @@ void ScaledDotProductAttention::eval_gpu(
       decode_caps.max_compute_shared_memory_size >= kDecodeSharedBytes &&
       (decode_caps.subgroup_operations & kDecodeSubgroupFeatures) ==
           kDecodeSubgroupFeatures;
-  // The composition-exact bf16 arm uses no subgroup operations at all - its
-  // per-thread work and barriers need only the 1024-thread workgroup and the
-  // 9,472 bytes of static shared the arm declares - so it gates on those
-  // alone and engages on any device that meets them, including software
-  // drivers, where its bit-identity against the composition is testable.
+  // The composition-exact bf16 arm uses no subgroup operations and runs a
+  // 256-thread workgroup with 9,472 bytes of static shared memory. Keep the
+  // existing 1024-thread capability qualification here: this performance-only
+  // change must not expand the set of devices that enter the exactness route.
   // Perf-only shape gate: below 256 keys the arm's serial accumulation
   // loses to the composition (34.1 vs 31.2 ms/token at the short leg); at
   // and above it the arm wins (34.4 vs 34.7 at 262, 39.9 vs 43.3 at 1K).
