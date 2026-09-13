@@ -51,8 +51,10 @@ a CPU fixture oracle in `overlay/tools/coreml/mel_reference.py` and a Vulkan
 implementation in `overlay/tools/coreml/vulkan_mel.py`. The Vulkan runtime
 dispatches every waveform-dependent stage through workload-owned
 `mx.fast.metal_kernel` calls on the MLX GPU stream. Its extraction path
-performs no NumPy or CPU tensor arithmetic; the host-side comparator imports
-NumPy before dispatch and uses it only to check completed GPU outputs.
+performs no NumPy or CPU tensor arithmetic. The host-side comparator
+materializes and validates the completed int32 API mask before it creates the
+float32 comparison-only stage copy. Its final trace snapshot follows every
+comparison, so lazy GPU work cannot fall outside the exact dispatch gate.
 
 Both implementations preserve the fixed Hann bits, recovered vDSP radix-4 DFT,
 vDSP dot-product order, sqrt-then-square boundary, guarded float64-equivalent

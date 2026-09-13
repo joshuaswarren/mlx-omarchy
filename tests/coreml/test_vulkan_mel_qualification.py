@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 from types import SimpleNamespace
 
+import numpy as np
 import pytest
 
 TOOLS = Path(__file__).resolve().parents[2] / "overlay" / "tools" / "coreml"
@@ -80,6 +81,35 @@ def test_qualification_accepts_exact_stages_comparisons_and_dispatch_count():
         },
         "qualified": True,
     }
+
+
+def test_comparison_stages_normalize_the_completed_api_mask_on_the_host():
+    api_mask = np.ones((vulkan_mel.N_FRAMES,), dtype=np.int32)
+    mel = object()
+    result = SimpleNamespace(stages={"waveform": object()}, mask=api_mask, mel=mel)
+
+    stages = vulkan_mel._comparison_stages(result, np)
+
+    assert stages["mel_mask"].dtype == np.float32
+    np.testing.assert_array_equal(stages["mel_mask"], api_mask)
+    assert result.mask is api_mask
+    assert result.mask.dtype == np.int32
+    assert stages["mel_pinned"] is mel
+    assert stages["mel_stepwise"] is mel
+
+
+@pytest.mark.parametrize(
+    ("mask", "message"),
+    [
+        (np.ones((vulkan_mel.N_FRAMES,), dtype=np.float32), "int32"),
+        (np.ones((vulkan_mel.N_FRAMES, 1), dtype=np.int32), "shape"),
+    ],
+)
+def test_comparison_stages_reject_invalid_api_masks(mask, message):
+    result = SimpleNamespace(stages={}, mask=mask, mel=object())
+
+    with pytest.raises(ValueError, match=message):
+        vulkan_mel._comparison_stages(result, np)
 
 
 def test_stage_evidence_authenticates_every_final_capture(tmp_path):
