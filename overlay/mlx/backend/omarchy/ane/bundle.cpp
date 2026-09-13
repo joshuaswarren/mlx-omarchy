@@ -313,9 +313,7 @@ void validate_program_contract(
   if (program.outputs.size() != header.destination_count) {
     throw bundle_error(prefix + " output count does not match ANEC destination_count");
   }
-  const uint64_t scratch =
-      align_up(program.scratch_bytes, kAneTileAlignment, prefix + " scratch allocation");
-  if (channel_size_bytes(header, 3) != scratch) {
+  if (channel_size_bytes(header, 3) != program.scratch_bytes) {
     throw bundle_error(prefix + " scratch_bytes does not match ANEC channel 3 allocation");
   }
   for (uint32_t i = 0; i < program.outputs.size(); ++i) {
@@ -431,6 +429,7 @@ AneBundle load_bundle_snapshot(
         "release_asset.model_sha256 does not match compiled payload collection");
   }
 
+
   std::vector<std::filesystem::path> resolved;
   resolved.reserve(manifest.payloads.size());
   for (const auto& payload : manifest.payloads) {
@@ -504,12 +503,24 @@ AneBundle load_bundle(const std::filesystem::path& dir) {
   AneManifest manifest = parse_ane_manifest(dir / "manifest.json");
   std::map<std::string, std::filesystem::path> payloads;
   for (const auto& entry : std::filesystem::directory_iterator(dir)) {
-    if (entry.is_directory()) {
+    std::error_code status_error;
+    const auto status = entry.symlink_status(status_error);
+    if (status_error) {
+      throw bundle_error(
+          "cannot stat '" + entry.path().filename().string() +
+          "' inside bundle");
+    }
+    if (std::filesystem::is_symlink(status)) {
+      throw bundle_error(
+          "unexpected link '" + entry.path().filename().string() +
+          "' inside bundle");
+    }
+    if (std::filesystem::is_directory(status)) {
       throw bundle_error(
           "unexpected directory '" + entry.path().filename().string() +
           "' inside bundle");
     }
-    if (!entry.is_regular_file()) {
+    if (!std::filesystem::is_regular_file(status)) {
       throw bundle_error(
           "unexpected non-regular file '" + entry.path().filename().string() +
           "' inside bundle");

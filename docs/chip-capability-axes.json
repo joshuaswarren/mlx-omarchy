@@ -52,7 +52,7 @@
       "type": "bitmask",
       "bits_consumed": {
         "ARITHMETIC": "qmm_vec subgroup + Q4-word + multi-weight decode GEMV (primitives.cpp:6687-6689, 6999-7000, 6466-6468)",
-        "SHUFFLE_RELATIVE": "dense BF16 decode GEMV, matmul_vec.comp USE_BF16 (primitives.cpp:629)",
+        "SHUFFLE_RELATIVE": "dense BF16 decode GEMV, matmul_vec.comp USE_BF16 (primitives.cpp:629); grouped shared-input MatmulVecMultiBF16 (matmul_vec_multi_bf16.comp, primitives.cpp:7337-7341)",
         "BASIC|ARITHMETIC|SHUFFLE": "SdpaDecodeNative (primitives.cpp:10295-10306)"
       },
       "source": "VkPhysicalDeviceSubgroupProperties.supportedOperations (device.cpp:167)",

@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-13",
+  "scope": "Host-only integration of the corrected private runtime with published schema-3 bundle checks and GPU changes.",
+  "branch": "integration/ane-runtime-verified",
+  "published_parent": "35684ab88d07dcc8abe394b0d85a76d105b8e0b1",
+  "resolution": "Keep load_bundle_snapshot operating on sealed payload descriptors. Keep directory symlink rejection in load_bundle, using symlink_status before regular-file classification. Preserve published task-count and scratch-allocation validation.",
+  "build": {
+    "source": "/tmp/AneRuntimeBridge-local-build/mlx",
+    "directory": "/tmp/AneRuntimeBridge-local-build/build-ane-shared",
+    "settings": {"BUILD_SHARED_LIBS": true, "MLX_BUILD_OMARCHY": true, "MLX_BUILD_CPU": false, "MLX_BUILD_METAL": false, "MLX_BUILD_TESTS": true},
+    "targets": ["omarchy_ane_bundle_tests", "omarchy_ane_runtime_tests", "mlx-omarchy-info"],
+    "result": "921 build steps completed in 77.28 seconds",
+    "log": "artifact://41264"
+  },
+  "checks": [
+    {"command": "/tmp/AneRuntimeBridge-local-build/build-ane-shared/tests/omarchy/omarchy_ane_bundle_tests", "cases_passed": 21, "assertions_passed": 2052, "failed": 0, "skipped": 0},
+    {"command": "/tmp/AneRuntimeBridge-local-build/build-ane-shared/tests/omarchy/omarchy_ane_runtime_tests", "cases_passed": 11, "assertions_passed": 269, "failed": 0, "skipped": 0},
+    {"command": "python3 overlay/tools/ane-export/h13_package_to_bundle.py receipts/fixtures/h13-explicit-chain-add-mul --out-dir /tmp/ane-runtime-merged-bundle-20260913 --graph-source receipts/fixtures/h13-explicit-chain-add-mul/model.mil --compiler-source /home/joshuawarren/src/mil-hwx-compiler --name merged-add-mul --source-repo joshuaswarren/mlx-omarchy --source-commit 35684ab88d07dcc8abe394b0d85a76d105b8e0b1 --model h13-explicit-chain-add-mul", "result": "PASS programs=2 payloads=2"},
+    {"command": "/tmp/AneRuntimeBridge-local-build/build-ane-shared/tools/mlx-omarchy-info/mlx-omarchy-info --check-bundle /tmp/ane-runtime-merged-bundle-20260913", "result": "OK: bundle valid", "dispatch_plan": [0, 1], "operations": ["add", "mul"], "scratch_bytes": [0, 0]}
+  ],
+  "rejected_inputs": [
+    {"path": "/tmp/mlx-omarchy-h13-bundle-v3", "error": "release_asset.model_sha256 does not match compiled payload collection"},
+    {"path": "receipts/fixtures/h13-explicit-chain-add-mul", "error": "unknown field 'artifactFormat'", "reason": "This is a compiler package, not an adapted runtime bundle. The real adapter invocation above is required."}
+  ],
+  "qualification": {
+    "merged_host_contract": "verified",
+    "merged_hardware_execution": "not run",
+    "prior_installed_hardware_receipt": "receipts/2026-09-12-ane-runtime-hardening/corrected-source-qualification.json",
+    "prior_installed_hardware_source": "9ea7501fc748cc031f7cbdc58afbed984fc00d51",
+    "full_model": "unqualified",
+    "rendered_surface": "none"
+  }
+}

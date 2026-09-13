@@ -43,7 +43,7 @@ python3 -m venv ~/.venvs/mlx
 
 Wheel filenames carry the build commit, so the exact URLs and SHA256 sums are in the release notes and the `SHA256SUMS` asset, not here.
 
-Building from source is covered in [docs/install-omarchy.md](docs/install-omarchy.md). Build dependencies: Python 3.10+, CMake 3.25+, Vulkan headers, a C++ compiler, and LAPACK/BLAS development packages; the wheel needs `liblapack.so.3` and `libblas.so.3` at runtime.
+Building from source is covered in [docs/install-omarchy.md](docs/install-omarchy.md). Build dependencies: Python 3.10+, CMake 3.25+, Vulkan headers, a C++ compiler, and the BLAS/LAPACK packages named there.
 
 Do not install the upstream `mlx` package beside this wheel; both provide the `mlx` module. `mlx-lm` depends on upstream `mlx`, so install it with `pip install --no-deps mlx-lm` and add its own dependencies (`transformers[sentencepiece] numpy protobuf pyyaml jinja2 huggingface_hub`) as `install.sh` does.
 
@@ -84,7 +84,7 @@ Historic release measurement, kept for reference — the published v0.4.0 aarch6
 
 ### Current main: measured, not qualified
 
-The composed tree at `a2e38c3e` was measured as a single unit on 2026-09-12 (later commits carry receipts and documentation only at this writing). All 36 canonical digest cells hold on both drivers. The standing M1 battery passes 29 of 30 targets; the one failure is the [ledgered, still-open quantized-matmul affine-offset wrong value](docs/known-defects.md), so the baseline gate stays open and neither the tree nor these numbers are a qualification ([receipt](receipts/2026-09-12-parity-status/README.md)).
+The composed tree at `a2e38c3e` was measured as a single unit on 2026-09-12. Later grouped-BF16 GEMV work preserved those digest pins ([receipt](receipts/2026-09-12-bf16-grouped-gemv/verdict.json)). All 36 canonical digest cells hold on both drivers. The standing M1 battery passes 29 of 30 targets; the one failure is the [ledgered, still-open quantized-matmul affine-offset wrong value](docs/known-defects.md), so the baseline gate stays open and neither the tree nor these numbers are a qualification ([receipt](receipts/2026-09-12-parity-status/README.md)).
 
 Measured on one wheel built from this tree, fork driver, median of three fresh-process repetitions per driver after a discarded warmup, AC power. The denominator is the committed macOS MLX 0.32.2 baseline on an Apple M1, five repetitions with stable digests ([receipt](receipts/native-baseline-2026-09-06/native-2026-09-06-summary.json)): Q4 decode 150.57 / 146.77 / 140.38 tok/s and prefill 294.1 / 1213.0 / 1840.9; BF16 decode 56.43 / 55.72 / 54.55 and prefill 232.6 / 1007.7 / 1655.7. The fork build reaches these fractions of native:
 

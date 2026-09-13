@@ -19,6 +19,14 @@ execution: code
 > lane is approved (`docs/plans/2026-09-12-coreml-parakeet-ane-plan.md`); it
 > does not wait for GPU performance parity. Every correctness and
 > device-safety gate in this plan still applies.
+>
+> **Bundle schema:** Current bundle fields follow schema 3 in
+> `docs/ane-bundles.md`: exact `driver_abi_major` and per-program
+> `scratch_bytes`. Historical firmware-range and workspace-tensor bundle
+> fields are superseded and are not aliases. Firmware/platform
+> applicability, compiler, runtime, and full-model acceptance
+> requirements below still apply; `driver_abi_major` does not prove
+> firmware qualification.
 
 ## Goal Capsule
 
@@ -78,7 +86,7 @@ The corrected 13-layer graph still needs a run with workspace buffer 3 before th
 **Artifacts and interoperation**
 
 - R9. ANE graphs must compile on Linux through an open-source compiler. Building or using the Linux ANE path must not require a Mac or private Apple compiler. macOS may provide independent numerical and performance references.
-- R10. Every ANE bundle must record graph metadata, tensor contracts, compiler and firmware identifiers, hashes, and source provenance.
+- R10. Every ANE bundle must record graph metadata, tensor contracts, compiler identity, exact `driver_abi_major`, per-program `scratch_bytes`, hashes, and source provenance. Firmware/platform applicability remains a separate device-qualification requirement; `driver_abi_major` does not prove it.
 - R11. GPU-to-ANE transfers must use measured host staging until the DRM driver and Vulkan stack prove safe dma-buf sharing.
 - R19. Release bundles must ship as separate public assets keyed by model, shapes, compiler, firmware, and graph hash. Unsupported or missing bundles must leave the affected region on Vulkan.
 
@@ -393,8 +401,8 @@ ANE work follows `v0.5.0`. It does not block the five Vulkan releases.
 - **Test scenarios:**
   - A hand-authored one-operation source graph compiles on Linux without Apple frameworks and its M1-target artifact executes as a validated ANEC fixture.
   - A region built from MLX primitives lowers, compiles, bundles, and runs independently from the existing ANEForge fixtures.
-  - A valid bundle exposes its exact input, output, state, and workspace contracts.
-  - A changed graph, shape, compiler, firmware range, descriptor hash, or signature fails before device access.
+  - A valid bundle exposes its exact input, output, state, and per-program `scratch_bytes` contracts.
+  - A changed graph, shape, compiler, `driver_abi_major`, descriptor hash, or signature fails before device access.
   - Repeated export of the same graph and toolchain produces the same graph identity.
   - The release manifest resolves only assets matching the exact model, shape, compiler, firmware, and graph hash.
   - A missing bundle leaves the affected region on Vulkan.

@@ -7234,6 +7234,121 @@ bool dispatch_quantized_gemv_group(
   return true;
 }
 
+bool dispatch_dense_gemv_group(
+    std::vector<array>& nodes,
+    const array& x,
+    const Stream& stream) {
+  if (nodes.size() < 2 || nodes.size() > kDenseVecMultiWeights) {
+    return false;
+  }
+  auto& encoder = get_command_encoder(stream);
+  const auto& caps = encoder.device().capabilities();
+  if (encoder.device().compute().binding_limit() < kDenseVecMultiBindings ||
+      !caps.storage_buffer_16bit_access || !caps.shader_int16 ||
+      caps.subgroup_size != 32u ||
+      (caps.subgroup_operations &
+       VK_SUBGROUP_FEATURE_SHUFFLE_RELATIVE_BIT) == 0u) {
+    return false;
+  }
+  const array& x_view = nodes[0].inputs().at(0);
+  if (x_view.dtype() != bfloat16 || x_view.ndim() < 2 ||
+      x_view.shape(-2) != 1 ||
+      x_view.size() != static_cast<size_t>(x_view.shape(-1)) ||
+      x.dtype() != bfloat16 || x.size() != x_view.size() ||
+      x.data_shared_ptr() == nullptr || !x.flags().row_contiguous ||
+      x.strides().back() != 1 || !input_ready(x, stream) ||
+      x.offset() % x.itemsize() != 0) {
+    return false;
+  }
+  const int k = x_view.shape(-1);
+  const uint64_t x_offset = x.offset() / x.itemsize();
+  if (k <= 0 || k % 128 != 0 || (x_offset & 3u) != 0u ||
+      !compute_index_span_fits(x_offset, x.size())) {
+    return false;
+  }
+
+  ComputeParams params;
+  params.lhs_offset = static_cast<uint32_t>(x_offset);
+  params.matrix_k = static_cast<uint32_t>(k);
+  params.dims = static_cast<uint32_t>(nodes.size());
+  uint32_t total_groups = 0;
+  for (size_t i = 0; i < nodes.size(); ++i) {
+    const array& node = nodes[i];
+    if (node.inputs().size() != 2 || node.dtype() != bfloat16 ||
+        node.primitive().stream() != stream ||
+        typeid(node.primitive()) != typeid(Matmul)) {
+      return false;
+    }
+    const array& node_x = node.inputs()[0];
+    const bool direct_input = node_x.id() == x.id();
+    const bool aliased_input = node_x.dtype() == x.dtype() &&
+        node_x.size() == x.size() && node_x.data_shared_ptr() != nullptr &&
+        node_x.data_shared_ptr() == x.data_shared_ptr() &&
+        node_x.offset() == x.offset() && node_x.flags().row_contiguous &&
+        node_x.strides().back() == 1;
+    if ((!direct_input && !aliased_input) || node_x.shape() != x_view.shape()) {
+      return false;
+    }
+    const array& weight = node.inputs()[1];
+    if (weight.dtype() != bfloat16 || weight.ndim() != node_x.ndim() ||
+        weight.shape(-2) != k || weight.shape(-1) <= 0 ||
+        weight.strides()[weight.ndim() - 2] != 1 ||
+        weight.strides().back() != k ||
+        weight.data_shared_ptr() == nullptr || !input_ready(weight, stream) ||
+        weight.offset() % weight.itemsize() != 0) {
+      return false;
+    }
+    const uint32_t n = static_cast<uint32_t>(weight.shape(-1));
+    const uint64_t weight_offset = weight.offset() / weight.itemsize();
+    const uint64_t weight_count = static_cast<uint64_t>(n) * k;
+    if ((n & 3u) != 0u || node.size() != n ||
+        (weight_offset & 3u) != 0u ||
+        !compute_index_span_fits(weight_offset, weight_count)) {
+      return false;
+    }
+    params.shape[i] = n;
+    params.in_strides[i] = static_cast<uint32_t>(weight_offset);
+    total_groups += n / 4u;
+    if (total_groups > kMaxComputeGroupCountX) {
+      return false;
+    }
+  }
+
+  for (auto& node : nodes) {
+    node.set_data(allocator().malloc(node.nbytes()));
+  }
+  std::array<ComputeBinding, kDenseVecMultiBindings> bindings{};
+  bindings[0] = binding(x);
+  const ComputeBinding filler = binding(nodes[0]);
+  for (uint32_t i = 0; i < kDenseVecMultiWeights; ++i) {
+    const uint32_t base = 1 + i * kDenseVecMultiBindingsPerWeight;
+    if (i < nodes.size()) {
+      bindings[base] = binding(nodes[i].inputs()[1]);
+      bindings[base + 1] = binding(nodes[i]);
+    } else {
+      bindings[base] = filler;
+      bindings[base + 1] = filler;
+    }
+  }
+  capsim::require_backed(
+      encoder.device(),
+      caps,
+      true,
+      "MatmulVecMultiBF16",
+      "subgroup_size==32+subgroup_ops_mask[SHUFFLE_RELATIVE]",
+      encoder.device().hardware_capabilities().subgroup_size == 32u &&
+          (encoder.device().hardware_capabilities().subgroup_operations &
+           VK_SUBGROUP_FEATURE_SHUFFLE_RELATIVE_BIT) != 0u);
+  encoder.dispatch_compute(
+      ComputeKernel::MatmulVecMultiBF16,
+      bindings,
+      params,
+      total_groups,
+      1u,
+      1u);
+  return true;
+}
+
 SliceUpdatePairDispatch dispatch_slice_update_pair(
     std::array<array, 2>& nodes,
     const Stream& stream) {

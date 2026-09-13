@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "source_commit": "9e22a534",
+  "scope": "Local joint integration of the exact pinned CPU frontend reference and schema-3 H13 package consumer; no hardware or installed-runtime qualification",
+  "build": {
+    "supervised_process": "CoremlH13IntegrationBuild",
+    "exit_code": 0,
+    "built_targets": ["omarchy_ane_bundle_tests", "mlx-omarchy-info"],
+    "test_cases_passed": 19,
+    "assertions_passed": 1706,
+    "failures": 0
+  },
+  "real_consumer": {
+    "executable": ".work/build/tools/mlx-omarchy-info/mlx-omarchy-info",
+    "invocation": "timeout 15s <executable> --check-bundle <bundle>",
+    "generated_bundle": "/tmp/mlx-omarchy-combined.TZgt9P/bundle",
+    "result": "OK: bundle valid; 2 task descriptors; dispatch plan 0 1; add followed by mul; intermediate sum preserved",
+    "compiler_executable_source": "aa688df66cbc2110e0df94f0d50fb72c7fa30a18",
+    "payloads": {
+      "program-0.anec": "9a6a6a9a701ce207d4a8ea80ee1ca6d5ade076be2115b73a9aed6f4236aa56ab",
+      "program-1.anec": "62595e4a61db24066b83a4f7c077d459c69a6a740109098ee0122b4b46dcd3cc"
+    },
+    "migrated_fixtures_accepted": [
+      "receipts/fixtures/exported/ane-add-fp16-1x512",
+      "receipts/fixtures/exported/ane-add-fp16-1x896",
+      "receipts/fixtures/exported/ane-mul-fp16-1x512",
+      "receipts/fixtures/mil-oneop-bundle"
+    ]
+  },
+  "component_receipts": [
+    "receipts/2026-09-12-h13-bundle-schema3/receipt.md",
+    "receipts/2026-09-12-parakeet-mel-frontend/receipt.json"
+  ],
+  "limits": {
+    "published": false,
+    "rendered_surface": "none; headless compiler/package consumer and reference arithmetic",
+    "ane_execution_through_mlx_runtime": "not qualified",
+    "compiler_wide_qualification": "not claimed; HWX extraction regression remains distinct",
+    "installed_frontend": "not qualified; exact reference uses CPU NumPy, not Vulkan or ANE",
+    "full_encoder_and_parakeet": "not qualified",
+    "router_lifecycle": "separate incomplete recovery owned by RouterRecoveryClosure"
+  }
+}

@@ -1,4 +1,4 @@
-# Receipt: mel stage isolation with certified macStudio intermediates, 2026-09-12
+# Receipt: mel stage isolation with certified Apple M1 Ultra intermediates, 2026-09-12
 
 Branch `parakeet-mel-exact`. Continues the portable mel diagnostic
 (`receipts/2026-09-12-parakeet-mel-portable-divergence.md`, which records
@@ -20,8 +20,8 @@ per plan §43 (host DSP kept separate from tensor inference) and §62
 3. Input is the pinned capture waveform as raw f32
    (sha256 `29ff16924c9577f5e335fcc7d64dd5d9ee261db7e9ec9c8eb7f8129b31cc1643`,
    verified by the tool against `--expect-sha256` before computing).
-4. macstudio (Apple M1 Ultra, macOS 26.6.2 25G83, Swift 6.3.3 — the
-   golden environment): `mel_pinned.npy` sha256 =
+4. Apple M1 Ultra, macOS 26.6.2 25G83, Swift 6.3.3 — the
+   golden environment: `mel_pinned.npy` sha256 =
    `4ed24d7da64c17f58419ec45f15aa24ac9d1cfd93a4de51ee4f05e1d712b4d22`,
    byte-identical to the golden `mel.npy` pinned in
    `parakeet-reference.lock`. Every dumped intermediate is therefore
@@ -101,14 +101,14 @@ w = np.load('<capture>/waveform.npy'); raw = w.astype('<f4').tobytes()
 open('/tmp/wave.f32','wb').write(raw)
 print(hashlib.sha256(raw).hexdigest())
 PY
-rsync -a overlay/tools/coreml/capture/ macstudio:~/parakeet-mel-stage/
-ssh macstudio 'cd ~/parakeet-mel-stage && swift build -c release'
-ssh macstudio 'cd ~/parakeet-mel-stage && .build/release/mel-stage-capture \
+cp -a overlay/tools/coreml/capture/ /tmp/parakeet-mel-stage/
+cd /tmp/parakeet-mel-stage && swift build -c release
+cd /tmp/parakeet-mel-stage && .build/release/mel-stage-capture \
   --waveform wave.f32 --out stage-capture \
-  --expect-sha256 29ff16924c9577f5e335fcc7d64dd5d9ee261db7e9ec9c8eb7f8129b31cc1643'
+  --expect-sha256 29ff16924c9577f5e335fcc7d64dd5d9ee261db7e9ec9c8eb7f8129b31cc1643
 # -> verified waveform sha256 ok / pinned extract: 3001 frames /
 #    gate: stepwise == pinned byte-identical (384128 values)
-rsync -a macstudio:~/parakeet-mel-stage/stage-capture/ /tmp/stage-dumps/
+cp -a /tmp/parakeet-mel-stage/stage-capture/ /tmp/stage-dumps/
 python3 overlay/tools/coreml/mel_stage_compare.py <capture-dir> /tmp/stage-dumps
 ```
 
@@ -159,7 +159,7 @@ split-radix geometries against the preserved probe set; then re-run
 logf and the untangle are solved arithmetic; no lock, threshold, or
 tolerance was changed.
 
-Probe commands (macstudio, `~/parakeet-mel-stage`):
+Probe commands (Apple M1 Ultra, macOS; `/tmp/parakeet-mel-stage`):
 
 ```bash
 .build/release/mel-stage-capture --mode probe-cosf --waveform cos_in.f32 --out probe-cosf
