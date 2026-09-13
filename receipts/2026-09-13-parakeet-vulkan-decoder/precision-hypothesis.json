@@ -1,0 +1,124 @@
+{
+  "schema": "mlx-omarchy.parakeet-vulkan-decoder-precision-hypothesis/1",
+  "date": "2026-09-13",
+  "agent": {
+    "requested_route": "mlx-openai-deep",
+    "actual_model": "openai-codex/gpt-5.6-sol",
+    "fallback_observed": false
+  },
+  "candidate": {
+    "commit": "8289b1bc77f3797d42611339efa6723824ea08e6",
+    "source": "overlay/tools/coreml/vulkan_decoder.py",
+    "source_sha256": "ff58473de114e69ec3d17587e34b5393af8834e69cf993f01f78d0dbcf840e9e",
+    "change": "Use fp32 arithmetic inside both expanded LSTMs, then round sequence and state outputs to the package fp16 boundary; retain the fp16 projector."
+  },
+  "decision": {
+    "promote_candidate": false,
+    "reason": "The official MIL definition does not specify internal accumulator precision, and the candidate regresses decoder_hidden while improving aggregate error. Aggregate mean absolute error alone is not evidence of native semantics.",
+    "integrated_baseline": "0685dc03",
+    "comparison_policy": "Run the frozen integrated baseline first, then compare this candidate separately through the same full TDT controller stream.",
+    "acceptance_bounds_changed": false
+  },
+  "official_mil_evidence": {
+    "coremltools_tag": "9.0",
+    "ios15_lstm": {
+      "url": "https://raw.githubusercontent.com/apple/coremltools/9.0/coremltools/converters/mil/mil/ops/defs/iOS15/recurrent.py",
+      "sha256": "4e8f476c5fb39f0b94c3c5024beb3efc92967820612d5af00e6fe6f8bf6da97c",
+      "specified": [
+        "Input, forget, output, cell gate packing",
+        "sigmoid recurrent activation",
+        "tanh cell activation",
+        "tanh output activation",
+        "c_t = f_t * c_(t-1) + i_t * z_t",
+        "h_t = o_t * tanh(c_t)",
+        "LSTM outputs have the same dtype as x"
+      ]
+    },
+    "ios17_lstm": {
+      "url": "https://raw.githubusercontent.com/apple/coremltools/9.0/coremltools/converters/mil/mil/ops/defs/iOS17/recurrent.py",
+      "sha256": "840ffed75075d8e5a0ef5e6cfa89a05a75f77f8368609c71b878996f52d92863",
+      "specified": "Inherits the iOS15 LSTM and adds fp16 to type domain T."
+    },
+    "ios18_recurrent": {
+      "url": "https://raw.githubusercontent.com/apple/coremltools/9.0/coremltools/converters/mil/mil/ops/defs/iOS18/recurrent.py",
+      "sha256": "350991ba080fd0da3fe1c72a4ef1b38cff5e307a1b24d99892b83b2555256a76",
+      "specified": "Defines no LSTM override."
+    },
+    "not_specified": "No inspected CoreMLTools definition states the LSTM internal accumulator precision or intermediate rounding points."
+  },
+  "pinned_model_mil": {
+    "model_revision": "b650695c2322ee5281dff48d7345b2f3a58ff018",
+    "component": "decoder.mlpackage",
+    "lstm_count": 2,
+    "inputs": "Both LSTMs receive fp16 x, initial_h, initial_c, weight_ih, weight_hh, and bias tensors.",
+    "outputs": "Both LSTMs declare fp16 sequence, hidden, and cell outputs.",
+    "activations": {
+      "recurrent_activation": "sigmoid",
+      "cell_activation": "tanh",
+      "activation": "tanh"
+    }
+  },
+  "authentic_capture_comparison": {
+    "capture_policy": "requested compute_units=ane; exclusive backend execution not established",
+    "trace_count": 15,
+    "output_tensor_count": 45,
+    "fixed_software_regression_bounds": {
+      "max_abs_error": 0.005,
+      "mean_abs_error": 0.0002,
+      "changed": false
+    },
+    "weighted_full_tensor_mean_abs_error": {
+      "baseline": 0.0005184061154723167,
+      "candidate": 0.0005104894389708837,
+      "candidate_improvement_percent": 1.52711865565479
+    },
+    "per_output": {
+      "decoder_hidden": {
+        "per_trace_max_improved_equal_worsened": [4, 6, 5],
+        "per_trace_mean_improved_equal_worsened": [8, 0, 7],
+        "within_bounds_baseline_candidate": [0, 0],
+        "max_abs_error_baseline_candidate": [0.01953125, 0.0234375],
+        "max_mean_abs_error_baseline_candidate": [0.0008073091506958008, 0.0008105754852294922],
+        "mean_max_abs_error_baseline_candidate": [0.011067708333333334, 0.0115234375],
+        "mean_mean_abs_error_baseline_candidate": [0.000467882106701533, 0.00046866347392400103]
+      },
+      "next_hidden": {
+        "per_trace_max_improved_equal_worsened": [8, 5, 2],
+        "per_trace_mean_improved_equal_worsened": [14, 0, 1],
+        "within_bounds_baseline_candidate": [2, 2],
+        "max_abs_error_baseline_candidate": [0.019287109375, 0.01904296875],
+        "max_mean_abs_error_baseline_candidate": [0.00034875147975981234, 0.0003458049613982439],
+        "mean_max_abs_error_baseline_candidate": [0.009328206380208334, 0.009230550130208333],
+        "mean_mean_abs_error_baseline_candidate": [0.0002290349050114552, 0.00022500226895014443]
+      },
+      "next_cell": {
+        "per_trace_max_improved_equal_worsened": [6, 3, 6],
+        "per_trace_mean_improved_equal_worsened": [13, 0, 2],
+        "within_bounds_baseline_candidate": [1, 1],
+        "max_abs_error_baseline_candidate": [0.03125, 0.03125],
+        "max_mean_abs_error_baseline_candidate": [0.0010933153796941042, 0.0010722248815000057],
+        "mean_max_abs_error_baseline_candidate": [0.018526458740234376, 0.01853154500325521],
+        "mean_mean_abs_error_baseline_candidate": [0.0008330393303185701, 0.0008168895915150641]
+      }
+    },
+    "native_coreml_qualified": false
+  },
+  "artifacts": {
+    "baseline": {
+      "path": "receipts/2026-09-13-parakeet-vulkan-decoder/native-comparison.json",
+      "sha256": "c3e00a0eee199dc26c0ee5642395474c089347817f0cfcfed04c2ecce1e7f831"
+    },
+    "candidate": {
+      "path": "receipts/2026-09-13-parakeet-vulkan-decoder/native-comparison-fp32-lstm.json",
+      "sha256": "e68adfd7ed8ba2dced6be217fa335d51ec6543bd5199456a59a6078cec4bd879"
+    },
+    "cast_placement_candidates": {
+      "path": "receipts/2026-09-13-parakeet-vulkan-decoder/arithmetic-candidates.json",
+      "sha256": "76b0a8b8d815284ec70f0ae4506b1374bb1ff57d617018039e5010364ea157ad"
+    },
+    "addmm_candidates": {
+      "path": "receipts/2026-09-13-parakeet-vulkan-decoder/addmm-candidates.json",
+      "sha256": "1bd1375f21af6e6c6588638fc0aba9ac1409510a434e86ec114188e68a09ca8a"
+    }
+  }
+}
