@@ -2,6 +2,8 @@
 # SPDX-License-Identifier: MIT
 """Contract checks for pinned decoder and joint component loading."""
 
+import shutil
+import struct
 import sys
 from pathlib import Path
 
@@ -48,3 +50,46 @@ def test_loader_rejects_component_name_that_does_not_match_package():
 
     with pytest.raises(ValueError, match="decoder.mlpackage"):
         load_pinned_component(PACKAGE, "decoder")
+
+
+def _package_copy(tmp_path):
+    if not PACKAGE.is_dir():
+        pytest.skip("pinned joint.mlpackage is not installed")
+    target = tmp_path / "joint.mlpackage"
+    shutil.copytree(PACKAGE, target)
+    return target
+
+
+def test_loaded_constants_are_an_immutable_snapshot(tmp_path):
+    target = _package_copy(tmp_path)
+    expected = load_pinned_component(PACKAGE, "joint").constant(
+        "head_weight_to_fp16"
+    )[0, 0]
+    component = load_pinned_component(target, "joint")
+    weight_path = target / "Data/com.apple.CoreML/weights/weight.bin"
+    with weight_path.open("r+b") as stream:
+        stream.seek(64)
+        _, _, _, payload_offset = struct.unpack("<IIQQ", stream.read(24))
+        stream.seek(payload_offset)
+        original = stream.read(1)
+        stream.seek(payload_offset)
+        stream.write(bytes([original[0] ^ 1]))
+
+    assert component.constant("head_weight_to_fp16")[0, 0] == expected
+
+
+def test_cached_immediate_cannot_be_made_writable():
+    if not PACKAGE.is_dir():
+        pytest.skip("pinned joint.mlpackage is not installed")
+    value = load_pinned_component(PACKAGE, "joint").constant("var_14_begin_0")
+
+    with pytest.raises(ValueError):
+        value.setflags(write=True)
+
+
+def test_loader_rejects_extra_physical_package_file(tmp_path):
+    target = _package_copy(tmp_path)
+    (target / "unlisted.bin").write_bytes(b"unlisted")
+
+    with pytest.raises(ValueError, match="files differ"):
+        load_pinned_component(target, "joint")
