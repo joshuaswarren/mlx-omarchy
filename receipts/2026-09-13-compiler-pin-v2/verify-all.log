@@ -1,0 +1,55 @@
+
+=== clean work area ===
+
+=== source hash rejection before build ===
+wrong archive rejected before extraction and build: PASS
+
+=== prepare pinned compiler ===
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+
+100 4349k  100 4349k    0     0   9.9M      0 --:--:-- --:--:-- --:--:--  9.9M
+make: Entering directory '/home/joshuawarren/src/ane-linux-experiments/parakeet-mel-exact/.work/ane-compiler/mil-hwx-compiler'
+mkdir -p build
+/usr/bin/clang++-14 -std=c++17 -fobjc-arc -MMD -MP -I/home/joshuawarren/.local/mil-hwx-gnustep/include -DGNUSTEP -DGNUSTEP_BASE_LIBRARY=1 -DGNUSTEP_RUNTIME=1 -D_NONFRAGILE_ABI=1 -DGNUSTEP_BASE_LIBRARY=1 -fno-strict-aliasing -fexceptions -fobjc-exceptions -D_NATIVE_OBJC_EXCEPTIONS -pthread -fPIC -Wall -DGSWARN -DGSDIAGNOSE -Wno-import -g -O2 -fobjc-runtime=gnustep-2.0 -fblocks -fconstant-string-class=NSConstantString -I. -I/home/joshuawarren/GNUstep/Library/Headers -I/home/joshuawarren/.local/mil-hwx-gnustep/include -I/home/joshuawarren/.local/mil-hwx-gnustep/include -Wall -Wextra -Werror -Iinclude -Ilib/MIL -Ilib/IR -Ilib/Transform -Ilib/Planning -Ilib/Driver -Ilib/HWX -Ilib/Model -Ilib/Runtime -Iplugins/H16G -Iplugins/H16G/Encoding -Iplugins/H13 -Iplugins/H14 tools/mil-hwxc.mm lib/Support/ANEDiagnostic.mm lib/MIL/MILLexer.mm lib/MIL/MILSyntax.mm lib/MIL/MILParser.mm lib/MIL/MILPrinter.mm lib/IR/ANEGraphIR.mm lib/IR/ANEGraphVerifier.mm lib/MIL/MILGraphImporter.mm lib/IR/ANEOperationGraph.mm lib/Transform/ANENormalizePass.mm lib/Transform/ANEDecomposePass.mm lib/Transform/ANEFusionPass.mm plugins/H16G/H16GTarget.mm lib/Transform/ANEH16GLegalizePass.mm lib/IR/ANEScheduledGraph.mm lib/Planning/ANETilePlanner.mm lib/Planning/ANEMemoryPlanner.mm lib/Planning/ANEComposedRegionPlanner.mm lib/Planning/ANEProgramPartition.mm lib/Planning/ANETaskScheduler.mm plugins/H16G/Encoding/H16GTDWriter.mm plugins/H16G/Encoding/H16GConvEncoder.mm plugins/H16G/Encoding/H16GConvChainEncoder.mm plugins/H16G/Encoding/H16GDepthwiseEncoder.mm plugins/H16G/Encoding/H16GRegularConvEncoder.mm plugins/H16G/Encoding/H16GMatmulEncoder.mm plugins/H16G/Encoding/H16GALUEncoder.mm plugins/H16G/Encoding/H16GBroadcastALUEncoder.mm plugins/H16G/Encoding/H16GMatrixRowDivisionEncoder.mm plugins/H16G/Encoding/H16GLUTEncoder.mm plugins/H16G/Encoding/H16GReduceEncoder.mm plugins/H16G/Encoding/H16GSRAMChainEncoder.mm plugins/H16G/Encoding/H16GLayoutEncoder.mm plugins/H16G/Encoding/H16GLayoutConvChainEncoder.mm plugins/H16G/Encoding/H16GDecodedFormValidator.mm plugins/H16G/Encoding/H16GMixedTaskEncoder.mm lib/HWX/HWXObjectWriter.mm plugins/H16G/Encoding/H16GConstantPacker.mm lib/Driver/ANEStagedCompiler.mm plugins/H16G/Encoding/H16GProgramEncoder.mm plugins/H16G/Encoding/H16GProgramAssembler.mm plugins/H16G/Encoding/H16GEncodedTask.mm plugins/H16G/Encoding/H16GTaskEncoder.mm plugins/H16G/Encoding/H16GTaskComposer.mm lib/Driver/ANECompiler.mm lib/Model/ANEBlobResolver.mm lib/HWX/ANEHWXArtifact.mm lib/HWX/HWXImage.mm lib/Runtime/ANEExecutableBundle.mm plugins/H13/ANEH13Compiler.mm plugins/H13/H13Program.cpp plugins/H13/H13ANEC.cpp plugins/H14/ANEH14Compiler.mm plugins/H14/H14Program.cpp -L/home/joshuawarren/.local/mil-hwx-gnustep/lib -Wl,-rpath,/home/joshuawarren/.local/mil-hwx-gnustep/lib -fuse-ld=lld-14 -pthread -fexceptions -rdynamic -fobjc-runtime=gnustep-2.0 -fblocks -L/home/joshuawarren/GNUstep/Library/Libraries -L/home/joshuawarren/.local/mil-hwx-gnustep/lib -L/home/joshuawarren/.local/mil-hwx-gnustep/lib -lgnustep-base -lpthread -lobjc -lm -o build/mil-hwxc
+make: Leaving directory '/home/joshuawarren/src/ane-linux-experiments/parakeet-mel-exact/.work/ane-compiler/mil-hwx-compiler'
+make: Entering directory '/home/joshuawarren/src/ane-linux-experiments/parakeet-mel-exact/.work/ane-compiler/mil-hwx-compiler'
+mkdir -p build
+/usr/bin/clang++-14 -std=c++17 -fobjc-arc -MMD -MP -I/home/joshuawarren/.local/mil-hwx-gnustep/include -DGNUSTEP -DGNUSTEP_BASE_LIBRARY=1 -DGNUSTEP_RUNTIME=1 -D_NONFRAGILE_ABI=1 -DGNUSTEP_BASE_LIBRARY=1 -fno-strict-aliasing -fexceptions -fobjc-exceptions -D_NATIVE_OBJC_EXCEPTIONS -pthread -fPIC -Wall -DGSWARN -DGSDIAGNOSE -Wno-import -g -O2 -fobjc-runtime=gnustep-2.0 -fblocks -fconstant-string-class=NSConstantString -I. -I/home/joshuawarren/GNUstep/Library/Headers -I/home/joshuawarren/.local/mil-hwx-gnustep/include -I/home/joshuawarren/.local/mil-hwx-gnustep/include -Wall -Wextra -Werror -Iinclude -Ilib/IR tests/test_operation_graph.mm lib/Support/ANEDiagnostic.mm lib/IR/ANEGraphIR.mm lib/IR/ANEOperationGraph.mm -L/home/joshuawarren/.local/mil-hwx-gnustep/lib -Wl,-rpath,/home/joshuawarren/.local/mil-hwx-gnustep/lib -fuse-ld=lld-14 -pthread -fexceptions -rdynamic -fobjc-runtime=gnustep-2.0 -fblocks -L/home/joshuawarren/GNUstep/Library/Libraries -L/home/joshuawarren/.local/mil-hwx-gnustep/lib -L/home/joshuawarren/.local/mil-hwx-gnustep/lib -lgnustep-base -lpthread -lobjc -lm -lcrypto -o build/test_operation_graph
+/usr/bin/clang++-14 -std=c++17 -fobjc-arc -MMD -MP -I/home/joshuawarren/.local/mil-hwx-gnustep/include -DGNUSTEP -DGNUSTEP_BASE_LIBRARY=1 -DGNUSTEP_RUNTIME=1 -D_NONFRAGILE_ABI=1 -DGNUSTEP_BASE_LIBRARY=1 -fno-strict-aliasing -fexceptions -fobjc-exceptions -D_NATIVE_OBJC_EXCEPTIONS -pthread -fPIC -Wall -DGSWARN -DGSDIAGNOSE -Wno-import -g -O2 -fobjc-runtime=gnustep-2.0 -fblocks -fconstant-string-class=NSConstantString -I. -I/home/joshuawarren/GNUstep/Library/Headers -I/home/joshuawarren/.local/mil-hwx-gnustep/include -I/home/joshuawarren/.local/mil-hwx-gnustep/include -Wall -Wextra -Werror -Iinclude -Ilib/HWX -Ilib/IR -Iplugins/H16G/Encoding tests/test_hwx_object_writer.mm lib/HWX/HWXImage.mm lib/HWX/HWXObjectWriter.mm plugins/H16G/Encoding/H16GTDWriter.mm plugins/H16G/Encoding/H16GConvEncoder.mm plugins/H16G/Encoding/H16GConvChainEncoder.mm plugins/H16G/Encoding/H16GDepthwiseEncoder.mm plugins/H16G/Encoding/H16GRegularConvEncoder.mm plugins/H16G/Encoding/H16GMatmulEncoder.mm plugins/H16G/Encoding/H16GALUEncoder.mm plugins/H16G/Encoding/H16GBroadcastALUEncoder.mm plugins/H16G/Encoding/H16GMatrixRowDivisionEncoder.mm plugins/H16G/Encoding/H16GLUTEncoder.mm plugins/H16G/Encoding/H16GReduceEncoder.mm plugins/H16G/Encoding/H16GSRAMChainEncoder.mm plugins/H16G/Encoding/H16GLayoutEncoder.mm plugins/H16G/Encoding/H16GLayoutConvChainEncoder.mm plugins/H16G/Encoding/H16GDecodedFormValidator.mm plugins/H16G/Encoding/H16GMixedTaskEncoder.mm -L/home/joshuawarren/.local/mil-hwx-gnustep/lib -Wl,-rpath,/home/joshuawarren/.local/mil-hwx-gnustep/lib -fuse-ld=lld-14 -pthread -fexceptions -rdynamic -fobjc-runtime=gnustep-2.0 -fblocks -L/home/joshuawarren/GNUstep/Library/Libraries -L/home/joshuawarren/.local/mil-hwx-gnustep/lib -L/home/joshuawarren/.local/mil-hwx-gnustep/lib -lgnustep-base -lpthread -lobjc -lm -lcrypto -o build/test_hwx_object_writer
+/usr/bin/clang++-14 -std=c++17 -fobjc-arc -MMD -MP -I/home/joshuawarren/.local/mil-hwx-gnustep/include -DGNUSTEP -DGNUSTEP_BASE_LIBRARY=1 -DGNUSTEP_RUNTIME=1 -D_NONFRAGILE_ABI=1 -DGNUSTEP_BASE_LIBRARY=1 -fno-strict-aliasing -fexceptions -fobjc-exceptions -D_NATIVE_OBJC_EXCEPTIONS -pthread -fPIC -Wall -DGSWARN -DGSDIAGNOSE -Wno-import -g -O2 -fobjc-runtime=gnustep-2.0 -fblocks -fconstant-string-class=NSConstantString -I. -I/home/joshuawarren/GNUstep/Library/Headers -I/home/joshuawarren/.local/mil-hwx-gnustep/include -I/home/joshuawarren/.local/mil-hwx-gnustep/include -Wall -Wextra -Werror -Iinclude -Ilib/IR -Iplugins/H16G -Iplugins/H16G/Encoding tests/test_program_composition.mm plugins/H16G/H16GTarget.mm plugins/H16G/Encoding/H16GTDWriter.mm plugins/H16G/Encoding/H16GConvEncoder.mm plugins/H16G/Encoding/H16GConvChainEncoder.mm plugins/H16G/Encoding/H16GDepthwiseEncoder.mm plugins/H16G/Encoding/H16GRegularConvEncoder.mm plugins/H16G/Encoding/H16GMatmulEncoder.mm plugins/H16G/Encoding/H16GALUEncoder.mm plugins/H16G/Encoding/H16GBroadcastALUEncoder.mm plugins/H16G/Encoding/H16GMatrixRowDivisionEncoder.mm plugins/H16G/Encoding/H16GLUTEncoder.mm plugins/H16G/Encoding/H16GReduceEncoder.mm plugins/H16G/Encoding/H16GSRAMChainEncoder.mm plugins/H16G/Encoding/H16GLayoutEncoder.mm plugins/H16G/Encoding/H16GLayoutConvChainEncoder.mm plugins/H16G/Encoding/H16GDecodedFormValidator.mm plugins/H16G/Encoding/H16GMixedTaskEncoder.mm plugins/H16G/Encoding/H16GEncodedTask.mm plugins/H16G/Encoding/H16GTaskEncoder.mm plugins/H16G/Encoding/H16GTaskComposer.mm -L/home/joshuawarren/.local/mil-hwx-gnustep/lib -Wl,-rpath,/home/joshuawarren/.local/mil-hwx-gnustep/lib -fuse-ld=lld-14 -pthread -fexceptions -rdynamic -fobjc-runtime=gnustep-2.0 -fblocks -L/home/joshuawarren/GNUstep/Library/Libraries -L/home/joshuawarren/.local/mil-hwx-gnustep/lib -L/home/joshuawarren/.local/mil-hwx-gnustep/lib -lgnustep-base -lpthread -lobjc -lm -lcrypto -o build/test_program_composition
+make: Leaving directory '/home/joshuawarren/src/ane-linux-experiments/parakeet-mel-exact/.work/ane-compiler/mil-hwx-compiler'
+operation graph: PASS
+HWX object writer: PASS
+program composition: PASS
+make: Entering directory '/home/joshuawarren/src/ane-linux-experiments/parakeet-mel-exact/.work/ane-compiler/mil-hwx-compiler'
+/usr/bin/clang++-14 -O2 -std=c++17 -Wall -Wextra -Werror plugins/H13/H13Program.cpp tests/test_h13_encoding.cpp -o build/test_h13_encoding
+/usr/bin/clang++-14 -O2 -std=c++17 -Wall -Wextra -Werror plugins/H13/H13ANEC.cpp tests/test_h13_anec.cpp -o build/test_h13_anec
+build/test_h13_encoding
+H13_ENCODING_OK
+build/test_h13_anec
+python3 tests/test_h13_cli.py build/mil-hwxc
+H13 MIL-to-ANEC/HWX CLI: PASS (device-free)
+python3 tests/test_h13_split_cli.py build/mil-hwxc
+h13 split cli: PASS
+python3 tests/test_hwx_inspection.py
+HWX inspection: PASS (multi-task H13 plus source-derived H14 fixtures)
+make: Leaving directory '/home/joshuawarren/src/ane-linux-experiments/parakeet-mel-exact/.work/ane-compiler/mil-hwx-compiler'
+linux compiler software tests: PASS
+linux compiler hygiene: PASS
+
+
+=== known H13 graph host qualification ===
+compiled target=H13 artifacts=4097 format=anec output=/home/joshuawarren/src/ane-linux-experiments/parakeet-mel-exact/.work/ane-compiler/h13-qualification/conv_relu
+manifest: schema=mil-hwxc.h13-anec-package.v2 target=H13 format=anec programs=4097
+{
+[inspect_anec.py per-program JSON listing of 4097 programs trimmed; it passed device-free — see h13-package-sha256.txt for the hash summary]
+=== scope ===
+provenance: commit=83a4434810b0981d1764e6231f6a679df6f35241 schema=mil-hwxc.h13-anec-package.v2 qualified-target=H13
+device access: none (host compilation and device-free package inspection only)
+not exercised: bundle adaptation (load_bundle), ANE submission, runtime qualification
+verify-ane-compiler: PASS
