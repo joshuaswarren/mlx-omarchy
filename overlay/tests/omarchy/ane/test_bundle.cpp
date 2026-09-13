@@ -485,6 +485,54 @@ TEST_CASE("program task count and scratch allocation match each ANEC") {
   }
 }
 
+TEST_CASE("ANEC task descriptor fields stay within driver submit limits") {
+  SUBCASE("task descriptor count accepts 0xffff") {
+    Fixture fixture;
+    write_le<uint32_t>(fixture.payload_bytes[0], 12, 0xffff);
+    fixture.manifest["programs"][0]["task_descriptors"] = 0xffff;
+    fixture.manifest["task_descriptors"] = 0x10000;
+    fixture.refresh_payload(0);
+    fixture.write();
+    CHECK_NOTHROW(load_bundle(fixture.dir.path()));
+  }
+
+  SUBCASE("task descriptor count rejects 0x10000") {
+    Fixture fixture;
+    write_le<uint32_t>(fixture.payload_bytes[0], 12, 0x10000);
+    fixture.manifest["programs"][0]["task_descriptors"] = 0x10000;
+    fixture.manifest["task_descriptors"] = 0x10001;
+    fixture.refresh_payload(0);
+    fixture.write();
+    check_error(
+        [&] { load_bundle(fixture.dir.path()); },
+        "ANEC task descriptor count exceeds driver limit 0xffff");
+  }
+
+  SUBCASE("task descriptor size accepts 0x40000") {
+    Fixture fixture;
+    fixture.payload_bytes[0].resize(kAnecPayloadOffset + 0x40000);
+    write_le<uint64_t>(fixture.payload_bytes[0], 0, 0x40000);
+    write_le<uint32_t>(fixture.payload_bytes[0], 8, 0x40000);
+    write_le<uint32_t>(fixture.payload_bytes[0], 40, 16);
+    fixture.refresh_payload(0);
+    fixture.write();
+    CHECK_NOTHROW(load_bundle(fixture.dir.path()));
+  }
+
+  SUBCASE("task descriptor size rejects 0x40004") {
+    Fixture fixture;
+    fixture.payload_bytes[0].resize(kAnecPayloadOffset + 0x40004);
+    write_le<uint64_t>(fixture.payload_bytes[0], 0, 0x40004);
+    write_le<uint32_t>(fixture.payload_bytes[0], 8, 0x40004);
+    write_le<uint32_t>(fixture.payload_bytes[0], 40, 17);
+    fixture.refresh_payload(0);
+    fixture.write();
+    check_error(
+        [&] { load_bundle(fixture.dir.path()); },
+        "ANEC task descriptor size exceeds driver limit 0x40000");
+  }
+}
+
 TEST_CASE("all payload digests are checked before ANEC parsing") {
   Fixture fixture;
   fixture.manifest["payloads"][1]["sha256"] = hex(64, '0');
