@@ -1,0 +1,325 @@
+{
+  "schema": "mlx-omarchy.parakeet-decoder-addmm-evidence/1",
+  "device": "Device(gpu, 0)",
+  "trace_count": 15,
+  "output_tensor_count": 45,
+  "lstm_fusion_probe": {
+    "fp16_addmm_hidden_bias__fp16_matmul": {
+      "full_tensor_mean_abs_error": 0.0005202547845741114,
+      "full_tensor_mean_abs_error_improvement_vs_baseline_percent": -0.3566063452222812,
+      "global_max_abs_error": 0.03125,
+      "outputs": {
+        "decoder_hidden": {
+          "max_abs_error": 0.01953125,
+          "max_abs_error_trace": 0,
+          "max_mean_abs_error": 0.0008282661437988281,
+          "max_mean_abs_error_trace": 3,
+          "mean_max_abs_error": 0.011263020833333333,
+          "mean_mean_abs_error": 0.0004721841216087341
+        },
+        "next_cell": {
+          "max_abs_error": 0.03125,
+          "max_abs_error_trace": 10,
+          "max_mean_abs_error": 0.0010719678830355406,
+          "max_mean_abs_error_trace": 12,
+          "mean_max_abs_error": 0.018512217203776042,
+          "mean_mean_abs_error": 0.0008346520705769458
+        },
+        "next_hidden": {
+          "max_abs_error": 0.019287109375,
+          "max_abs_error_trace": 13,
+          "max_mean_abs_error": 0.0003498460166156292,
+          "max_mean_abs_error_trace": 4,
+          "mean_max_abs_error": 0.009466552734375,
+          "mean_mean_abs_error": 0.00022989283005396527
+        }
+      }
+    },
+    "fp16_addmm_input_bias__fp16_matmul": {
+      "full_tensor_mean_abs_error": 0.0005188977718353271,
+      "full_tensor_mean_abs_error_improvement_vs_baseline_percent": -0.09484000059730617,
+      "global_max_abs_error": 0.03125,
+      "outputs": {
+        "decoder_hidden": {
+          "max_abs_error": 0.0234375,
+          "max_abs_error_trace": 3,
+          "max_mean_abs_error": 0.0008173942565917969,
+          "max_mean_abs_error_trace": 3,
+          "mean_max_abs_error": 0.012044270833333334,
+          "mean_mean_abs_error": 0.00047184839844703684
+        },
+        "next_cell": {
+          "max_abs_error": 0.03125,
+          "max_abs_error_trace": 10,
+          "max_mean_abs_error": 0.0010751022957265377,
+          "max_mean_abs_error_trace": 12,
+          "mean_max_abs_error": 0.018627166748046875,
+          "mean_mean_abs_error": 0.0008316317573189736
+        },
+        "next_hidden": {
+          "max_abs_error": 0.01904296875,
+          "max_abs_error_trace": 13,
+          "max_mean_abs_error": 0.0003519765567034483,
+          "max_mean_abs_error_trace": 4,
+          "mean_max_abs_error": 0.009183756510416667,
+          "mean_mean_abs_error": 0.00022968847304582595
+        }
+      }
+    },
+    "fp16_matmul__fp16_matmul": {
+      "full_tensor_mean_abs_error": 0.0005184061154723167,
+      "full_tensor_mean_abs_error_improvement_vs_baseline_percent": 0,
+      "global_max_abs_error": 0.03125,
+      "outputs": {
+        "decoder_hidden": {
+          "max_abs_error": 0.01953125,
+          "max_abs_error_trace": 0,
+          "max_mean_abs_error": 0.0008073091506958008,
+          "max_mean_abs_error_trace": 3,
+          "mean_max_abs_error": 0.011067708333333334,
+          "mean_mean_abs_error": 0.000467882106701533
+        },
+        "next_cell": {
+          "max_abs_error": 0.03125,
+          "max_abs_error_trace": 10,
+          "max_mean_abs_error": 0.0010933153796941042,
+          "max_mean_abs_error_trace": 12,
+          "mean_max_abs_error": 0.018526458740234376,
+          "mean_mean_abs_error": 0.0008330393303185701
+        },
+        "next_hidden": {
+          "max_abs_error": 0.019287109375,
+          "max_abs_error_trace": 13,
+          "max_mean_abs_error": 0.00034875147975981234,
+          "max_mean_abs_error_trace": 4,
+          "mean_max_abs_error": 0.009328206380208334,
+          "mean_mean_abs_error": 0.0002290349050114552
+        }
+      }
+    },
+    "fp32_addmm_hidden_bias__fp16_matmul": {
+      "full_tensor_mean_abs_error": 0.0005105084963142872,
+      "full_tensor_mean_abs_error_improvement_vs_baseline_percent": 1.5234425139514496,
+      "global_max_abs_error": 0.03125,
+      "outputs": {
+        "decoder_hidden": {
+          "max_abs_error": 0.0234375,
+          "max_abs_error_trace": 3,
+          "max_mean_abs_error": 0.0008105754852294922,
+          "max_mean_abs_error_trace": 3,
+          "mean_max_abs_error": 0.0115234375,
+          "mean_mean_abs_error": 0.00046889513731002803
+        },
+        "next_cell": {
+          "max_abs_error": 0.03125,
+          "max_abs_error_trace": 10,
+          "max_mean_abs_error": 0.0010722248815000057,
+          "max_mean_abs_error_trace": 12,
+          "mean_max_abs_error": 0.01853154500325521,
+          "mean_mean_abs_error": 0.0008168309057752291
+        },
+        "next_hidden": {
+          "max_abs_error": 0.01904296875,
+          "max_abs_error_trace": 13,
+          "max_mean_abs_error": 0.0003458049613982439,
+          "max_mean_abs_error_trace": 4,
+          "mean_max_abs_error": 0.009230550130208333,
+          "mean_mean_abs_error": 0.00022499276635547474
+        }
+      }
+    },
+    "fp32_addmm_input_bias__fp16_matmul": {
+      "full_tensor_mean_abs_error": 0.0005104891260464986,
+      "full_tensor_mean_abs_error_improvement_vs_baseline_percent": 1.5271790184429095,
+      "global_max_abs_error": 0.03125,
+      "outputs": {
+        "decoder_hidden": {
+          "max_abs_error": 0.0234375,
+          "max_abs_error_trace": 3,
+          "max_mean_abs_error": 0.0008105754852294922,
+          "max_mean_abs_error_trace": 3,
+          "mean_max_abs_error": 0.0115234375,
+          "mean_mean_abs_error": 0.00046866347392400103
+        },
+        "next_cell": {
+          "max_abs_error": 0.03125,
+          "max_abs_error_trace": 10,
+          "max_mean_abs_error": 0.0010722248815000057,
+          "max_mean_abs_error_trace": 12,
+          "mean_max_abs_error": 0.01853154500325521,
+          "mean_mean_abs_error": 0.0008168887967864672
+        },
+        "next_hidden": {
+          "max_abs_error": 0.01904296875,
+          "max_abs_error_trace": 13,
+          "max_mean_abs_error": 0.0003458049613982439,
+          "max_mean_abs_error_trace": 4,
+          "mean_max_abs_error": 0.009230550130208333,
+          "mean_mean_abs_error": 0.00022500228136777877
+        }
+      }
+    },
+    "fp32_matmul__fp16_matmul": {
+      "full_tensor_mean_abs_error": 0.0005104894389708837,
+      "full_tensor_mean_abs_error_improvement_vs_baseline_percent": 1.52711865565479,
+      "global_max_abs_error": 0.03125,
+      "outputs": {
+        "decoder_hidden": {
+          "max_abs_error": 0.0234375,
+          "max_abs_error_trace": 3,
+          "max_mean_abs_error": 0.0008105754852294922,
+          "max_mean_abs_error_trace": 3,
+          "mean_max_abs_error": 0.0115234375,
+          "mean_mean_abs_error": 0.00046866347392400103
+        },
+        "next_cell": {
+          "max_abs_error": 0.03125,
+          "max_abs_error_trace": 10,
+          "max_mean_abs_error": 0.0010722248815000057,
+          "max_mean_abs_error_trace": 12,
+          "mean_max_abs_error": 0.01853154500325521,
+          "mean_mean_abs_error": 0.0008168895915150643
+        },
+        "next_hidden": {
+          "max_abs_error": 0.01904296875,
+          "max_abs_error_trace": 13,
+          "max_mean_abs_error": 0.0003458049613982439,
+          "max_mean_abs_error_trace": 4,
+          "mean_max_abs_error": 0.009230550130208333,
+          "mean_mean_abs_error": 0.00022500226895014443
+        }
+      }
+    }
+  },
+  "projector_fusion_probe": {
+    "fp32_matmul__fp16_addmm": {
+      "full_tensor_mean_abs_error": 0.0005106057239075501,
+      "full_tensor_mean_abs_error_improvement_vs_baseline_percent": -0.02277910722323642,
+      "global_max_abs_error": 0.03125,
+      "outputs": {
+        "decoder_hidden": {
+          "max_abs_error": 0.0234375,
+          "max_abs_error_trace": 3,
+          "max_mean_abs_error": 0.0008098766207695008,
+          "max_mean_abs_error_trace": 3,
+          "mean_max_abs_error": 0.011653645833333334,
+          "mean_mean_abs_error": 0.0004692448986073335
+        },
+        "next_cell": {
+          "max_abs_error": 0.03125,
+          "max_abs_error_trace": 10,
+          "max_mean_abs_error": 0.0010722248815000057,
+          "max_mean_abs_error_trace": 12,
+          "mean_max_abs_error": 0.01853154500325521,
+          "mean_mean_abs_error": 0.0008168895915150643
+        },
+        "next_hidden": {
+          "max_abs_error": 0.01904296875,
+          "max_abs_error_trace": 13,
+          "max_mean_abs_error": 0.0003458049613982439,
+          "max_mean_abs_error_trace": 4,
+          "mean_max_abs_error": 0.009230550130208333,
+          "mean_mean_abs_error": 0.00022500226895014443
+        }
+      }
+    },
+    "fp32_matmul__fp16_matmul": {
+      "full_tensor_mean_abs_error": 0.0005104894389708837,
+      "full_tensor_mean_abs_error_improvement_vs_baseline_percent": 0,
+      "global_max_abs_error": 0.03125,
+      "outputs": {
+        "decoder_hidden": {
+          "max_abs_error": 0.0234375,
+          "max_abs_error_trace": 3,
+          "max_mean_abs_error": 0.0008105754852294922,
+          "max_mean_abs_error_trace": 3,
+          "mean_max_abs_error": 0.0115234375,
+          "mean_mean_abs_error": 0.00046866347392400103
+        },
+        "next_cell": {
+          "max_abs_error": 0.03125,
+          "max_abs_error_trace": 10,
+          "max_mean_abs_error": 0.0010722248815000057,
+          "max_mean_abs_error_trace": 12,
+          "mean_max_abs_error": 0.01853154500325521,
+          "mean_mean_abs_error": 0.0008168895915150643
+        },
+        "next_hidden": {
+          "max_abs_error": 0.01904296875,
+          "max_abs_error_trace": 13,
+          "max_mean_abs_error": 0.0003458049613982439,
+          "max_mean_abs_error_trace": 4,
+          "mean_max_abs_error": 0.009230550130208333,
+          "mean_mean_abs_error": 0.00022500226895014443
+        }
+      }
+    },
+    "fp32_matmul__fp32_addmm": {
+      "full_tensor_mean_abs_error": 0.0005108926092810482,
+      "full_tensor_mean_abs_error_improvement_vs_baseline_percent": -0.07897720880912669,
+      "global_max_abs_error": 0.03125,
+      "outputs": {
+        "decoder_hidden": {
+          "max_abs_error": 0.02333545684814453,
+          "max_abs_error_trace": 3,
+          "max_mean_abs_error": 0.0008113705087453126,
+          "max_mean_abs_error_trace": 3,
+          "mean_max_abs_error": 0.011633793512980143,
+          "mean_mean_abs_error": 0.00047067932547482396
+        },
+        "next_cell": {
+          "max_abs_error": 0.03125,
+          "max_abs_error_trace": 10,
+          "max_mean_abs_error": 0.0010722248815000057,
+          "max_mean_abs_error_trace": 12,
+          "mean_max_abs_error": 0.01853154500325521,
+          "mean_mean_abs_error": 0.0008168895915150643
+        },
+        "next_hidden": {
+          "max_abs_error": 0.01904296875,
+          "max_abs_error_trace": 13,
+          "max_mean_abs_error": 0.0003458049613982439,
+          "max_mean_abs_error_trace": 4,
+          "mean_max_abs_error": 0.009230550130208333,
+          "mean_mean_abs_error": 0.00022500226895014443
+        }
+      }
+    },
+    "fp32_matmul__fp32_matmul": {
+      "full_tensor_mean_abs_error": 0.0005108926092810482,
+      "full_tensor_mean_abs_error_improvement_vs_baseline_percent": -0.07897720880912669,
+      "global_max_abs_error": 0.03125,
+      "outputs": {
+        "decoder_hidden": {
+          "max_abs_error": 0.02333545684814453,
+          "max_abs_error_trace": 3,
+          "max_mean_abs_error": 0.0008113705087453126,
+          "max_mean_abs_error_trace": 3,
+          "mean_max_abs_error": 0.011633793512980143,
+          "mean_mean_abs_error": 0.00047067932547482396
+        },
+        "next_cell": {
+          "max_abs_error": 0.03125,
+          "max_abs_error_trace": 10,
+          "max_mean_abs_error": 0.0010722248815000057,
+          "max_mean_abs_error_trace": 12,
+          "mean_max_abs_error": 0.01853154500325521,
+          "mean_mean_abs_error": 0.0008168895915150643
+        },
+        "next_hidden": {
+          "max_abs_error": 0.01904296875,
+          "max_abs_error_trace": 13,
+          "max_mean_abs_error": 0.0003458049613982439,
+          "max_mean_abs_error_trace": 4,
+          "mean_max_abs_error": 0.009230550130208333,
+          "mean_mean_abs_error": 0.00022500226895014443
+        }
+      }
+    }
+  },
+  "selection": {
+    "lstm": "fp32_matmul",
+    "projector": "fp16_matmul",
+    "reason": "mx.addmm did not materially improve the LSTM result and worsened the projector result; retain the simpler explicit MIL equation order"
+  }
+}

@@ -1,0 +1,492 @@
+{
+  "all_within_software_regression_bounds": false,
+  "bounds": {
+    "max_abs_error": 0.005,
+    "mean_abs_error": 0.0002,
+    "provenance": "post-hoc software regression bounds; not native CoreML qualification gates"
+  },
+  "capture_metadata_sha256": "6eaf2bfe801584af570cd66f42e8dc17efd67776fb181f691585d2bcab590e0a",
+  "capture_policy": "requested compute_units=ane; exclusive backend execution not established",
+  "capture_traces": 16,
+  "captured_state_chain": [
+    {
+      "cell_bit_exact_to_prior_next": true,
+      "hidden_bit_exact_to_prior_next": true,
+      "trace": 1
+    },
+    {
+      "cell_bit_exact_to_prior_next": true,
+      "hidden_bit_exact_to_prior_next": true,
+      "trace": 2
+    },
+    {
+      "cell_bit_exact_to_prior_next": true,
+      "hidden_bit_exact_to_prior_next": true,
+      "trace": 3
+    },
+    {
+      "cell_bit_exact_to_prior_next": true,
+      "hidden_bit_exact_to_prior_next": true,
+      "trace": 4
+    },
+    {
+      "cell_bit_exact_to_prior_next": true,
+      "hidden_bit_exact_to_prior_next": true,
+      "trace": 5
+    },
+    {
+      "cell_bit_exact_to_prior_next": true,
+      "hidden_bit_exact_to_prior_next": true,
+      "trace": 6
+    },
+    {
+      "cell_bit_exact_to_prior_next": true,
+      "hidden_bit_exact_to_prior_next": true,
+      "trace": 7
+    },
+    {
+      "cell_bit_exact_to_prior_next": true,
+      "hidden_bit_exact_to_prior_next": true,
+      "trace": 8
+    },
+    {
+      "cell_bit_exact_to_prior_next": true,
+      "hidden_bit_exact_to_prior_next": true,
+      "trace": 9
+    },
+    {
+      "cell_bit_exact_to_prior_next": true,
+      "hidden_bit_exact_to_prior_next": true,
+      "trace": 10
+    },
+    {
+      "cell_bit_exact_to_prior_next": true,
+      "hidden_bit_exact_to_prior_next": true,
+      "trace": 11
+    },
+    {
+      "cell_bit_exact_to_prior_next": true,
+      "hidden_bit_exact_to_prior_next": true,
+      "trace": 12
+    },
+    {
+      "cell_bit_exact_to_prior_next": true,
+      "hidden_bit_exact_to_prior_next": true,
+      "trace": 13
+    },
+    {
+      "cell_bit_exact_to_prior_next": true,
+      "hidden_bit_exact_to_prior_next": true,
+      "trace": 14
+    },
+    {
+      "cell_bit_exact_to_prior_next": true,
+      "hidden_bit_exact_to_prior_next": true,
+      "trace": 15
+    }
+  ],
+  "compared_traces": 15,
+  "comparisons": [
+    {
+      "decision_token_id": 8192,
+      "input_id": 8192,
+      "outputs": {
+        "decoder_hidden": {
+          "bit_exact": false,
+          "max_abs_error": 0.01953125,
+          "mean_abs_error": 0.000536799430847168,
+          "within_software_regression_bounds": false
+        },
+        "next_cell": {
+          "bit_exact": false,
+          "max_abs_error": 0.002685546875,
+          "mean_abs_error": 0.0001288340426981449,
+          "within_software_regression_bounds": true
+        },
+        "next_hidden": {
+          "bit_exact": false,
+          "max_abs_error": 0.000732421875,
+          "mean_abs_error": 4.35179565101862e-05,
+          "within_software_regression_bounds": true
+        }
+      },
+      "trace": 0
+    },
+    {
+      "decision_token_id": 303,
+      "input_id": 1876,
+      "outputs": {
+        "decoder_hidden": {
+          "bit_exact": false,
+          "max_abs_error": 0.01171875,
+          "mean_abs_error": 0.00045174360275268555,
+          "within_software_regression_bounds": false
+        },
+        "next_cell": {
+          "bit_exact": false,
+          "max_abs_error": 0.027729034423828125,
+          "mean_abs_error": 0.000771523779258132,
+          "within_software_regression_bounds": false
+        },
+        "next_hidden": {
+          "bit_exact": false,
+          "max_abs_error": 0.0078125,
+          "mean_abs_error": 0.00021837824024260045,
+          "within_software_regression_bounds": false
+        }
+      },
+      "trace": 2
+    },
+    {
+      "decision_token_id": 669,
+      "input_id": 303,
+      "outputs": {
+        "decoder_hidden": {
+          "bit_exact": false,
+          "max_abs_error": 0.0234375,
+          "mean_abs_error": 0.0008105754852294922,
+          "within_software_regression_bounds": false
+        },
+        "next_cell": {
+          "bit_exact": false,
+          "max_abs_error": 0.014404296875,
+          "mean_abs_error": 0.00084238201379776,
+          "within_software_regression_bounds": false
+        },
+        "next_hidden": {
+          "bit_exact": false,
+          "max_abs_error": 0.008880615234375,
+          "mean_abs_error": 0.00029028342105448247,
+          "within_software_regression_bounds": false
+        }
+      },
+      "trace": 3
+    },
+    {
+      "decision_token_id": 326,
+      "input_id": 669,
+      "outputs": {
+        "decoder_hidden": {
+          "bit_exact": false,
+          "max_abs_error": 0.0107421875,
+          "mean_abs_error": 0.0006027579307556153,
+          "within_software_regression_bounds": false
+        },
+        "next_cell": {
+          "bit_exact": false,
+          "max_abs_error": 0.016387939453125,
+          "mean_abs_error": 0.0009599128738045692,
+          "within_software_regression_bounds": false
+        },
+        "next_hidden": {
+          "bit_exact": false,
+          "max_abs_error": 0.01361083984375,
+          "mean_abs_error": 0.0003458049613982439,
+          "within_software_regression_bounds": false
+        }
+      },
+      "trace": 4
+    },
+    {
+      "decision_token_id": 3357,
+      "input_id": 326,
+      "outputs": {
+        "decoder_hidden": {
+          "bit_exact": false,
+          "max_abs_error": 0.009765625,
+          "mean_abs_error": 0.00033949613571166993,
+          "within_software_regression_bounds": false
+        },
+        "next_cell": {
+          "bit_exact": false,
+          "max_abs_error": 0.02197265625,
+          "mean_abs_error": 0.0007905466016381979,
+          "within_software_regression_bounds": false
+        },
+        "next_hidden": {
+          "bit_exact": false,
+          "max_abs_error": 0.011962890625,
+          "mean_abs_error": 0.0002445028629153967,
+          "within_software_regression_bounds": false
+        }
+      },
+      "trace": 5
+    },
+    {
+      "decision_token_id": 4223,
+      "input_id": 3357,
+      "outputs": {
+        "decoder_hidden": {
+          "bit_exact": false,
+          "max_abs_error": 0.0107421875,
+          "mean_abs_error": 0.0003336191177368164,
+          "within_software_regression_bounds": false
+        },
+        "next_cell": {
+          "bit_exact": false,
+          "max_abs_error": 0.012298583984375,
+          "mean_abs_error": 0.0007661451119929553,
+          "within_software_regression_bounds": false
+        },
+        "next_hidden": {
+          "bit_exact": false,
+          "max_abs_error": 0.00830078125,
+          "mean_abs_error": 0.0002104717306792736,
+          "within_software_regression_bounds": false
+        }
+      },
+      "trace": 6
+    },
+    {
+      "decision_token_id": 555,
+      "input_id": 4223,
+      "outputs": {
+        "decoder_hidden": {
+          "bit_exact": false,
+          "max_abs_error": 0.00634765625,
+          "mean_abs_error": 0.0004025101661682129,
+          "within_software_regression_bounds": false
+        },
+        "next_cell": {
+          "bit_exact": false,
+          "max_abs_error": 0.0137939453125,
+          "mean_abs_error": 0.0008032571524381638,
+          "within_software_regression_bounds": false
+        },
+        "next_hidden": {
+          "bit_exact": false,
+          "max_abs_error": 0.005126953125,
+          "mean_abs_error": 0.00019723526202142239,
+          "within_software_regression_bounds": false
+        }
+      },
+      "trace": 7
+    },
+    {
+      "decision_token_id": 1269,
+      "input_id": 555,
+      "outputs": {
+        "decoder_hidden": {
+          "bit_exact": false,
+          "max_abs_error": 0.00341796875,
+          "mean_abs_error": 0.00029283761978149414,
+          "within_software_regression_bounds": false
+        },
+        "next_cell": {
+          "bit_exact": false,
+          "max_abs_error": 0.017578125,
+          "mean_abs_error": 0.0008065987844020128,
+          "within_software_regression_bounds": false
+        },
+        "next_hidden": {
+          "bit_exact": false,
+          "max_abs_error": 0.007080078125,
+          "mean_abs_error": 0.00019623329862952232,
+          "within_software_regression_bounds": false
+        }
+      },
+      "trace": 8
+    },
+    {
+      "decision_token_id": 7898,
+      "input_id": 1269,
+      "outputs": {
+        "decoder_hidden": {
+          "bit_exact": false,
+          "max_abs_error": 0.0185546875,
+          "mean_abs_error": 0.0006169140338897705,
+          "within_software_regression_bounds": false
+        },
+        "next_cell": {
+          "bit_exact": false,
+          "max_abs_error": 0.02001953125,
+          "mean_abs_error": 0.0009868904016911983,
+          "within_software_regression_bounds": false
+        },
+        "next_hidden": {
+          "bit_exact": false,
+          "max_abs_error": 0.007568359375,
+          "mean_abs_error": 0.00025676083751022814,
+          "within_software_regression_bounds": false
+        }
+      },
+      "trace": 9
+    },
+    {
+      "decision_token_id": 509,
+      "input_id": 7898,
+      "outputs": {
+        "decoder_hidden": {
+          "bit_exact": false,
+          "max_abs_error": 0.01171875,
+          "mean_abs_error": 0.0004955053329467774,
+          "within_software_regression_bounds": false
+        },
+        "next_cell": {
+          "bit_exact": false,
+          "max_abs_error": 0.03125,
+          "mean_abs_error": 0.0009587273467332125,
+          "within_software_regression_bounds": false
+        },
+        "next_hidden": {
+          "bit_exact": false,
+          "max_abs_error": 0.014404296875,
+          "mean_abs_error": 0.0002925362437963486,
+          "within_software_regression_bounds": false
+        }
+      },
+      "trace": 10
+    },
+    {
+      "decision_token_id": 1150,
+      "input_id": 509,
+      "outputs": {
+        "decoder_hidden": {
+          "bit_exact": false,
+          "max_abs_error": 0.0068359375,
+          "mean_abs_error": 0.00029948502779006956,
+          "within_software_regression_bounds": false
+        },
+        "next_cell": {
+          "bit_exact": false,
+          "max_abs_error": 0.01776123046875,
+          "mean_abs_error": 0.0008129442576318979,
+          "within_software_regression_bounds": false
+        },
+        "next_hidden": {
+          "bit_exact": false,
+          "max_abs_error": 0.00537109375,
+          "mean_abs_error": 0.00018184692598879337,
+          "within_software_regression_bounds": false
+        }
+      },
+      "trace": 11
+    },
+    {
+      "decision_token_id": 1742,
+      "input_id": 1150,
+      "outputs": {
+        "decoder_hidden": {
+          "bit_exact": false,
+          "max_abs_error": 0.015625,
+          "mean_abs_error": 0.0006651997566223145,
+          "within_software_regression_bounds": false
+        },
+        "next_cell": {
+          "bit_exact": false,
+          "max_abs_error": 0.027099609375,
+          "mean_abs_error": 0.0010722248815000057,
+          "within_software_regression_bounds": false
+        },
+        "next_hidden": {
+          "bit_exact": false,
+          "max_abs_error": 0.014892578125,
+          "mean_abs_error": 0.00030096191912889483,
+          "within_software_regression_bounds": false
+        }
+      },
+      "trace": 12
+    },
+    {
+      "decision_token_id": 7877,
+      "input_id": 1742,
+      "outputs": {
+        "decoder_hidden": {
+          "bit_exact": false,
+          "max_abs_error": 0.0048828125,
+          "mean_abs_error": 0.00030385255813598634,
+          "within_software_regression_bounds": false
+        },
+        "next_cell": {
+          "bit_exact": false,
+          "max_abs_error": 0.0203857421875,
+          "mean_abs_error": 0.0009144103154540062,
+          "within_software_regression_bounds": false
+        },
+        "next_hidden": {
+          "bit_exact": false,
+          "max_abs_error": 0.01904296875,
+          "mean_abs_error": 0.0002581575885415077,
+          "within_software_regression_bounds": false
+        }
+      },
+      "trace": 13
+    },
+    {
+      "decision_token_id": 1503,
+      "input_id": 7877,
+      "outputs": {
+        "decoder_hidden": {
+          "bit_exact": false,
+          "max_abs_error": 0.009765625,
+          "mean_abs_error": 0.00033408403396606445,
+          "within_software_regression_bounds": false
+        },
+        "next_cell": {
+          "bit_exact": false,
+          "max_abs_error": 0.01116943359375,
+          "mean_abs_error": 0.0005989029537886381,
+          "within_software_regression_bounds": false
+        },
+        "next_hidden": {
+          "bit_exact": false,
+          "max_abs_error": 0.00341796875,
+          "mean_abs_error": 8.000936359167098e-05,
+          "within_software_regression_bounds": true
+        }
+      },
+      "trace": 14
+    },
+    {
+      "decision_token_id": 479,
+      "input_id": 1503,
+      "outputs": {
+        "decoder_hidden": {
+          "bit_exact": false,
+          "max_abs_error": 0.009765625,
+          "mean_abs_error": 0.0005445718765258789,
+          "within_software_regression_bounds": false
+        },
+        "next_cell": {
+          "bit_exact": false,
+          "max_abs_error": 0.0234375,
+          "mean_abs_error": 0.001040043355897069,
+          "within_software_regression_bounds": false
+        },
+        "next_hidden": {
+          "bit_exact": false,
+          "max_abs_error": 0.01025390625,
+          "mean_abs_error": 0.00025833342224359514,
+          "within_software_regression_bounds": false
+        }
+      },
+      "trace": 15
+    }
+  ],
+  "device": "Device(gpu, 0)",
+  "native_coreml_qualified": false,
+  "schema": "mlx-omarchy.parakeet-vulkan-decoder-native-comparison/1",
+  "skipped_ran_decoder_false": [
+    1
+  ],
+  "trace_delta": {
+    "commit_calls_noop": 15,
+    "commit_calls_with_work": 15,
+    "gpu_primitive_dispatches": 1320,
+    "omarchy_finalize_calls": 15,
+    "vk_buffer_copies": 60,
+    "vk_buffer_fills": 0,
+    "vk_compute_dispatches": 840,
+    "vk_submissions": 15
+  },
+  "worst_max_abs_error": {
+    "output": "next_cell",
+    "trace": 10,
+    "value": 0.03125
+  },
+  "worst_mean_abs_error": {
+    "output": "next_cell",
+    "trace": 12,
+    "value": 0.0010722248815000057
+  }
+}
