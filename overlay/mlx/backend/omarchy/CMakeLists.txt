@@ -574,6 +574,8 @@ target_sources(
           ${CMAKE_CURRENT_SOURCE_DIR}/stream.cpp
           ${CMAKE_CURRENT_SOURCE_DIR}/ane/manifest.cpp
           ${CMAKE_CURRENT_SOURCE_DIR}/ane/bundle.cpp
+          ${CMAKE_CURRENT_SOURCE_DIR}/ane/worker.cpp
+          ${CMAKE_CURRENT_SOURCE_DIR}/ane/worker_libane.cpp
           ${CMAKE_CURRENT_SOURCE_DIR}/vulkan.cpp)
 target_include_directories(mlx PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/shaders")
 if(MLX_OMARCHY_ANE_SOURCE_DIR)
@@ -581,7 +583,7 @@ if(MLX_OMARCHY_ANE_SOURCE_DIR)
   add_executable(
     mlx-omarchy-ane-worker
     ${CMAKE_CURRENT_SOURCE_DIR}/ane/worker_main.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/ane/worker.cpp)
+    ${CMAKE_CURRENT_SOURCE_DIR}/ane/runtime_worker.cpp)
   target_link_libraries(mlx-omarchy-ane-worker PRIVATE mlx mlx_omarchy_libane)
   set_target_properties(mlx-omarchy-ane-worker PROPERTIES
                         INSTALL_RPATH "$ORIGIN/../lib")
