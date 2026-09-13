@@ -35,15 +35,20 @@
   },
   "independent_review": {
     "source": "RuntimeMergeReview",
-    "status": "changes required before hardware qualification",
+    "status": "source fixes integrated at 57cc36a2; independent bypass recheck in progress",
     "findings": [
       "freeze_bundle snapshots only manifest-listed payloads and bypasses strict directory enumeration; runtime must reject unlisted files and symlinks through the descriptor-relative path.",
       "ANEC task counts above 0xffff and descriptor sizes above 0x40000 pass host validation despite qualified driver refusal; reject before worker submission."
     ],
-    "hardware_action": "4ef85f27 staged and preflighted only; no acquisition, build, install, or device execution. Candidate withheld pending source corrections."
+    "hardware_action": "4ef85f27 staged and preflighted only, with no acquisition, build, install, or device execution. Corrected 57cc36a2 staging remains preflight-only until root grants qualification.",
+    "corrected_source": "57cc36a2",
+    "root_rebuild": "8 incremental steps rebuilt libmlx, runtime and bundle tests, and mlx-omarchy-info in 14.15 seconds; CPU backend remains disabled.",
+    "root_runtime_check": {"cases_passed": 12, "assertions_passed": 398, "failed": 0, "skipped": 0},
+    "root_bundle_check": {"cases_passed": 22, "assertions_passed": 2308, "failed": 0, "skipped": 0},
+    "fix_receipts": ["receipts/2026-09-13-runtime-directory-closure.log", "receipts/2026-09-13-anec-driver-limits/run.sh"]
   },
   "qualification": {
-    "merged_host_contract": "focused checks passed; independent review found two unresolved loader defects",
+    "merged_host_contract": "Both reported loader defects fixed; corrected combined host suites pass; independent recheck pending",
     "merged_hardware_execution": "not run",
     "prior_installed_hardware_receipt": "receipts/2026-09-12-ane-runtime-hardening/corrected-source-qualification.json",
     "prior_installed_hardware_source": "9ea7501fc748cc031f7cbdc58afbed984fc00d51",

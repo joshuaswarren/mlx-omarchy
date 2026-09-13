@@ -156,21 +156,21 @@
       "task": "Parse required ML Program semantics without loss",
       "status": "completed",
       "evidence": "mlpackage.py typed inventory preserving both dtype enums (FeatureType vs MIL), symbolic dims, op versions/opset, op ordering, nested blocks, blob-file refs with offsets, compression (constexpr_*), unknown_schema_fields forward-compat counter (92e7c42d); explicit rejection of unsupported/malformed constructs; docs/coreml.md 'two enums, never conflated'",
-      "reason": "Validated inspection is complete for the pinned workload: nothing is silently normalized or coerced, and unsupported constructs fail named. Distinguishable from semantic translation: no compiler-IR conversion exists or is claimed (docs/coreml.md: parse validity and eligibility are different claims, never mixed); the translation layer is the separately blocked adapter/handoff work."
+      "reason": "Inspection preserves the required package semantics. The separately verified textual adapter now retains the pinned encoder through semantic import; this does not imply H13 lowering or execution coverage."
     },
     {
       "phase": "Core ML requirements",
       "task": "Reuse compiler representation without universal graph IR",
       "status": "completed",
-      "evidence": "coverage receipt 'Reuse verdict': existing compiler representation (ANEGraphModule + ANEH13Compiler lowering) sufficient for the 79.5% reachable set; no universal graph IR created anywhere in mlx-omarchy (grep: frontend produces no IR; inspector is read-only reporting); recommended handoff is a dedicated proto→ANEGraphModule importer in compiler lib/MIL",
-      "reason": "The invariant is honored (no second IR exists) and the reuse decision is recorded with evidence; the importer that would implement the reuse path is compiler-repository work feeding excluded phase-6 tasks, not a mlx-omarchy deliverable."
+      "evidence": "Existing compiler MIL syntax and ANEGraphModule extended at a1bfea0 with ordered results and version/opset validation; mlx-omarchy adapter eac5eed9 emits ordinary MIL and standard BLOBFILE constants without adding a universal graph IR.",
+      "reason": "The compiler owns semantic representation and lowering; the frontend owns strict package validation and exact offline constant normalization."
     },
     {
       "phase": "Core ML requirements",
       "task": "Evaluate textual MIL versus direct compiler API",
       "status": "completed",
-      "evidence": "coverage receipt section 'Textual MIL vs compiler API — minimum faithful handoff': textual path rejected with concrete loss evidence (coremltools has no textual round-trip for blobFileValue refs — 194 palettized weights + 266 large consts would inline as literal lists; literal-attribute spellings like fp32(1e-5) mismatch proto const operands); direct ANEGraphModule importer recommended",
-      "reason": "§17 evaluation completed with evidence; the plan's default (textual MIL) is explicitly overturned because it cannot represent the pinned encoder without loss — documented, not silently assumed."
+      "evidence": "TextMilEncoderFit and DirectMilApiFit independently established that the public compiler API accepts textual bytes and private graph construction shares the same semantic losses. Compiler a1bfea0 closes ordered-result and version/opset gaps. Adapter eac5eed9 preserves all 3351 operations, 3375 results, 24 split pairs, 194 LUT constants and 120 FP16 immediates; receipts/2026-09-13-coreml-text-adapter/receipt.json.",
+      "reason": "Supersedes the earlier direct-import recommendation. Use ordinary textual MIL with exact streamed LUT normalization; H13 split lowering remains unsupported and is not claimed."
     },
     {
       "phase": "Core ML requirements",
@@ -183,8 +183,8 @@
       "phase": "Core ML requirements",
       "task": "Implement missing compiler semantics in compiler repository",
       "status": "blocked",
-      "evidence": "ane-compiler.lock unchanged at a0ce354; coverage receipt blockers (oracle campaign for 689 ops; masking; two-output contract); §19 ownership rule (compiler semantics go in mil-hwx-compiler, never in mlx-omarchy/coreml)",
-      "reason": "No compiler semantics have been (or may be) implemented frontend-side; the required extensions are blocked on hardware oracle minting (unauthorized here) plus two plan decisions. Correctly nothing was implemented in the wrong repository to fake progress."
+      "evidence": "Companion compiler a1bfea0 implements ordered-result parsing/import/verifier semantics and validates program/opset. The actual normalized encoder now reaches H13 lowering and stops at line 265 with h13.unsupported-multi-result-operation, exit 65, no output artifact.",
+      "reason": "Required semantics belong in mil-hwx-compiler. Frontend representation is proven; full H13 operation coverage and model execution remain incomplete."
     },
     {
       "phase": "Core ML requirements",
