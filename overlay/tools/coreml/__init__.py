@@ -42,6 +42,11 @@ The package currently provides:
   classifies every boolean/mask op and rewrites the algebraically exact
   subset onto existing ops; the ``-inf`` select fill is refused with the
   named counterexample.
+* :mod:`coreml.output_peel` — keeps ANE graph outputs in fp16 by removing
+  trailing exact-widening boundary casts (fp16->fp32, bool->int32) from
+  MIL text and recording the GPU-side epilogue that re-applies them;
+  any non-widening trailing conversion is refused with a named error.
+
 
 Inspection never opens the ANE device, never imports coremltools or
 MLX, and never reads or computes tensor data. It runs on any Linux
