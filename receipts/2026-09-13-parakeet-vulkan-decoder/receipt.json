@@ -166,9 +166,69 @@
       "next_cell_sha256": "01e57665dc9496bbf751eb0a9e7ebcef74f8e6b927d4442ed60c378cfd53cb7f"
     }
   },
-  "native_qualification": {
-    "qualified": false,
-    "reason": "No independently captured decoder/joint tensor golden exists yet.",
-    "required_capture": "Authenticated float32 decoder_hidden, decoder_next_hidden, and decoder_next_cell arrays plus int32 decoder_input_ids and float32 decoder_hidden/decoder_cell inputs for at least two consecutive nonblank token transitions, with hashes and exact CoreML compute-unit identity."
+  "native_comparison": {
+    "native_coreml_parity_claimed": false,
+    "capture": {
+      "timestamp_utc": "2026-09-13T10:55:50Z",
+      "requested_compute_units": "ane",
+      "exclusive_backend_execution_established": false,
+      "hardware": "Mac13,2 / Apple M1 Ultra",
+      "macos": "26.6.2 (25G83)",
+      "coreml_framework_version": "3520.5.1",
+      "reference_commit": "75aec2a1c991319657ff4dec5f602c12da6c5012",
+      "environment_sha256": "5bf8dd8489db12ec472993f926c4bfbf08fa666abbc0e34fe77ad7dce72c12be",
+      "validation_sha256": "aa61bc80e720e2563eaf5e387f6e55389d5b6fcbc55b3d2c3de0fccd3d22c833",
+      "manifest_sha256": "ab37e0317ced1587cbe35aca39a08265b9af01120ffd668ee4cbf706e1ecbe19",
+      "tensor_metadata_sha256": "6eaf2bfe801584af570cd66f42e8dc17efd67776fb181f691585d2bcab590e0a",
+      "manifest_entries_verified": 170
+    },
+    "execution": {
+      "capture_traces": 16,
+      "compared_decoder_traces": 15,
+      "skipped_ran_decoder_false": [1],
+      "captured_state_chain_bit_exact": true,
+      "gpu_primitive_dispatches": 1170,
+      "vk_compute_dispatches": 690,
+      "vk_submissions": 15
+    },
+    "fixed_software_regression_bounds": {
+      "max_abs_error": 0.005,
+      "mean_abs_error": 0.0002,
+      "provenance": "Selected after the initial software-Vulkan-to-NumPy comparison; unchanged for this native comparison; not native CoreML qualification gates."
+    },
+    "result": {
+      "all_within_fixed_software_regression_bounds": false,
+      "decoder_hidden": {
+        "within_count": 0,
+        "total": 15,
+        "max_abs_error": 0.01953125,
+        "max_mean_abs_error": 0.0008073091506958008,
+        "median_max_abs_error": 0.009765625,
+        "median_mean_abs_error": 0.0004485905170440674
+      },
+      "next_hidden": {
+        "within_count": 2,
+        "total": 15,
+        "max_abs_error": 0.019287109375,
+        "max_mean_abs_error": 0.00034875147975981234,
+        "median_max_abs_error": 0.008544921875,
+        "median_mean_abs_error": 0.00024978434666991236
+      },
+      "next_cell": {
+        "within_count": 1,
+        "total": 15,
+        "max_abs_error": 0.03125,
+        "max_mean_abs_error": 0.0010933153796941042,
+        "median_max_abs_error": 0.017578125,
+        "median_mean_abs_error": 0.0008214384783059358
+      },
+      "worst_max_abs_error": {"trace": 10, "output": "next_cell", "value": 0.03125},
+      "worst_mean_abs_error": {"trace": 12, "output": "next_cell", "value": 0.0010933153796941042}
+    },
+    "full_metrics": {
+      "path": "receipts/2026-09-13-parakeet-vulkan-decoder/native-comparison.json",
+      "sha256": "c3e00a0eee199dc26c0ee5642395474c089347817f0cfcfed04c2ecce1e7f831"
+    },
+    "interpretation": "The authentic requested-ANE capture establishes stable, finite CoreML reference tensors and an exact captured state chain. The software Vulkan adapter does not remain within its existing post-hoc NumPy regression bounds across those states, so this receipt makes no native CoreML parity claim."
   }
 }
