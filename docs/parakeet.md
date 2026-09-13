@@ -70,11 +70,15 @@ The CPU comparison receipt is
 The Vulkan implementation and device trace are recorded in
 [`2026-09-13-parakeet-vulkan-mel`](../receipts/2026-09-13-parakeet-vulkan-mel/receipt.json).
 The previous Apple result covers only the pinned ordinary-input fixture. The
-corrected source passed 8,192 full-exponent FMA triples on Apple M1, but its
-`2^-120` DFT produced 1,028 real-component bit mismatches, starting with
-`0x02349b98` instead of `0x026c5098`. Full finite-input Apple arithmetic is not
-qualified, and the fixed window ended before the corrected 18-comparison CLI
-could run. Neither receipt claims encoder, decoder, or full-plan completion.
+first finite-range rerun passed 8,192 full-exponent FMA triples on Apple M1,
+but its `2^-120` DFT produced 1,028 real-component bit mismatches, starting
+with `0x02349b98` instead of `0x026c5098`. A diagnostic found the first
+loss in native preemphasis arithmetic and independent losses in windowing and
+the DFT. These operations now use the integer binary32 add, subtract, and
+multiply helpers. Software Vulkan passes the retained finite-range and pinned
+ordinary-input regressions. The corrected helper path has not run on Apple
+hardware, so full finite-input Apple arithmetic is not qualified. Neither
+receipt claims encoder, decoder, or full-plan completion.
 
 ```bash
 python3 overlay/tools/coreml/mel_reference.py <pinned-capture-directory>
