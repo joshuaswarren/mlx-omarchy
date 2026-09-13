@@ -578,6 +578,8 @@ if(MLX_OMARCHY_ANE_SOURCE_DIR)
     ${CMAKE_CURRENT_SOURCE_DIR}/ane/worker_main.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/ane/worker.cpp)
   target_link_libraries(mlx-omarchy-ane-worker PRIVATE mlx mlx_omarchy_libane)
+  set_target_properties(mlx-omarchy-ane-worker PROPERTIES
+                        INSTALL_RPATH "$ORIGIN/../lib")
   target_compile_definitions(
     mlx PRIVATE
     MLX_OMARCHY_ANE_LIBRARY_BUILD_PATH="$<TARGET_FILE:mlx>"
