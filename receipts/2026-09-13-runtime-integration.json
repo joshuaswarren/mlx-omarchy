@@ -35,7 +35,7 @@
   },
   "independent_review": {
     "source": "RuntimeMergeReview",
-    "status": "source fixes integrated at 57cc36a2; independent bypass recheck in progress",
+    "status": "accepted: both High findings closed, no new actionable finding in the reviewed boundaries",
     "findings": [
       "freeze_bundle snapshots only manifest-listed payloads and bypasses strict directory enumeration; runtime must reject unlisted files and symlinks through the descriptor-relative path.",
       "ANEC task counts above 0xffff and descriptor sizes above 0x40000 pass host validation despite qualified driver refusal; reject before worker submission."
@@ -48,7 +48,7 @@
     "fix_receipts": ["receipts/2026-09-13-runtime-directory-closure.log", "receipts/2026-09-13-anec-driver-limits/run.sh"]
   },
   "qualification": {
-    "merged_host_contract": "Both reported loader defects fixed; corrected combined host suites pass; independent recheck pending",
+    "merged_host_contract": "Both loader defects fixed; root rebuilt suites pass 12/398 runtime and 22/2308 bundle; independent RuntimeMergeReview bypass probes pass 129 directory and 256 descriptor-limit assertions",
     "merged_hardware_execution": "not run",
     "prior_installed_hardware_receipt": "receipts/2026-09-12-ane-runtime-hardening/corrected-source-qualification.json",
     "prior_installed_hardware_source": "9ea7501fc748cc031f7cbdc58afbed984fc00d51",
