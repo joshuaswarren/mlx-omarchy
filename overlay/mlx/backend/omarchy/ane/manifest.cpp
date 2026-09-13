@@ -258,9 +258,13 @@ std::vector<AneLogicalResult> parse_logical_results(
 }
 
 void validate_logical_results(const AneManifest& manifest) {
-  std::map<std::string, const AneTensor*> outputs;
+  struct OutputRecord {
+    const AneTensor* tensor;
+    bool referenced{false};
+  };
+  std::map<std::string, OutputRecord> outputs;
   for (const auto& output : manifest.outputs) {
-    outputs.emplace(output.name, &output);
+    outputs.emplace(output.name, OutputRecord{&output});
   }
   for (size_t i = 0; i < manifest.logical_results.size(); ++i) {
     const auto& result = manifest.logical_results[i];
@@ -272,7 +276,8 @@ void validate_logical_results(const AneManifest& manifest) {
           where + " references unknown physical output tensor '" +
           result.tensor + "'");
     }
-    const AneTensor& output = *found->second;
+    const AneTensor& output = *found->second.tensor;
+    found->second.referenced = true;
     if (result.dtype != output.dtype) {
       throw manifest_error(
           where + " dtype does not match physical output tensor '" +
@@ -284,6 +289,12 @@ void validate_logical_results(const AneManifest& manifest) {
       throw manifest_error(
           where + " range exceeds physical output tensor '" +
           result.tensor + "'");
+    }
+  }
+  for (const auto& [name, output] : outputs) {
+    if (!output.referenced) {
+      throw manifest_error(
+          "logical_results must reference every physical output; missing " + name);
     }
   }
 }
