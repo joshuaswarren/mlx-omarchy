@@ -10,15 +10,14 @@
 
 #ifdef MLX_OMARCHY_ANE_DEVICE
 
+#include "mlx/backend/omarchy/ane/tile_layout.h"
 #include "mlx/backend/omarchy/ane/worker.h"
 
 #include <dlfcn.h>
 
-#include <algorithm>
 #include <cstring>
 #include <string>
 #include <unordered_map>
-#include <vector>
 
 extern "C" {
 #include "ane.h"
@@ -154,36 +153,27 @@ class LibaneDevice : public AneDevice {
     return found->second;
   }
 
-  // Hardware-proven dense<->tile packing: linear element index maps to
-  // plane * plane_stride + row * row_stride + column * 2 bytes inside the
-  // allocation, with NCHW[6] = [N, C, H, W, plane_stride, row_stride]
-  // (same layout contract as the validated a9f14124 smoke runtime).
-  static size_t packed_offset(const AneProgramBinding& binding, size_t element) {
-    const uint64_t height = binding.nchw[2];
-    const uint64_t width = binding.nchw[3];
-    const uint64_t plane_stride = binding.nchw[4];
-    const uint64_t row_stride = binding.nchw[5];
-    const uint64_t plane_elements = height * width;
-    const uint64_t plane = element / plane_elements;
-    const uint64_t within = element % plane_elements;
-    const uint64_t row = within / width;
-    const uint64_t column = within % width;
-    return static_cast<size_t>(
-        plane * plane_stride + row * row_stride + column * 2);
-  }
-
+  // Dense<->tile placement lives in tile_layout.h (shared with the
+  // host tests): plane * plane_stride + row * row_stride +
+  // column * element_size, element_size = 2 (fp16) or 1 (bool).
   void pack(const uint8_t* dense, size_t logical, const AneProgramBinding& b,
             uint8_t* tile) const {
     std::memset(tile, 0, b.allocation_bytes);
-    for (size_t element = 0; element < logical / 2; ++element) {
-      std::memcpy(tile + packed_offset(b, element), dense + element * 2, 2);
+    const size_t width = ane_element_size(b);
+    for (size_t element = 0; element < logical / width; ++element) {
+      std::memcpy(
+          tile + ane_packed_offset(b, element), dense + element * width,
+          width);
     }
   }
 
   void unpack(const uint8_t* tile, size_t logical, const AneProgramBinding& b,
               uint8_t* dense) const {
-    for (size_t element = 0; element < logical / 2; ++element) {
-      std::memcpy(dense + element * 2, tile + packed_offset(b, element), 2);
+    const size_t width = ane_element_size(b);
+    for (size_t element = 0; element < logical / width; ++element) {
+      std::memcpy(
+          dense + element * width, tile + ane_packed_offset(b, element),
+          width);
     }
   }
 

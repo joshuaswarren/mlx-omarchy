@@ -16,6 +16,7 @@ except ImportError:  # package discovery (omarchy.coreml.*)
 
 from coreml.eligibility import (
     BOUNDARY,
+    SUPPORTED_PENDING_RELEASE,
     LOWERABLE_VIA_FRONTEND,
     NEEDS_COMPILER_OP,
     SUPPORTED,
@@ -63,7 +64,10 @@ class EligibilityTest(unittest.TestCase):
         self.assertEqual(report["total_ops"], 3351)
         self.assertEqual(report["counts"][SUPPORTED], 2866)
         self.assertEqual(report["counts"][LOWERABLE_VIA_FRONTEND], 245)
-        self.assertEqual(report["counts"][NEEDS_COMPILER_OP], 229)
+        self.assertEqual(report["counts"][NEEDS_COMPILER_OP], 195)
+        self.assertEqual(
+            report["counts"][SUPPORTED_PENDING_RELEASE], 34
+        )
         self.assertEqual(report["counts"][BOUNDARY], 11)
         self.assertEqual(sum(report["counts"].values()), 3351)
         blocking = {
@@ -74,13 +78,28 @@ class EligibilityTest(unittest.TestCase):
             {
                 "transpose": 146,
                 "slice_by_index": 48,
-                "select": 24,  # the -inf fill family only
-                "less": 4,
-                "floor": 3,
-                "floor_div": 3,
                 "tile": 1,
             },
         )
+        # less/floor/floor_div and the -inf select family are
+        # implemented on the compiler branch (registry entries + bool
+        # surfaces) but not in the pinned release: pending, not blocking.
+        pending = {
+            entry["op"]: entry["count"]
+            for entry in report["ops"]
+            if entry["disposition"] == SUPPORTED_PENDING_RELEASE
+        }
+        self.assertEqual(
+            pending,
+            {"select": 24, "less": 4, "floor": 3, "floor_div": 3},
+        )
+        reasons = " ".join(
+            entry["reason"].replace("\n", " ")
+            for entry in report["ops"]
+            if entry["disposition"] == SUPPORTED_PENDING_RELEASE
+        )
+        self.assertIn("b4f4da9", reasons)
+        self.assertIn("83a4434", reasons)
         # Post-depalettize delta: palettized weights fold into consts.
         post = report["post_frontend_histogram"]
         self.assertNotIn("constexpr_lut_to_dense", post)
@@ -110,9 +129,8 @@ class ModelApiTest(unittest.TestCase):
         with self.assertRaises(PackageNotEligible) as caught:
             model.check_compute_target("ane")
         message = str(caught.exception)
-        self.assertIn("blocked by 7 op classes", message)
+        self.assertIn("blocked by 3 op classes", message)
         self.assertIn("transpose x146", message)
-        self.assertIn("select x24", message)
 
         with self.assertRaises(ComputeTargetUnsupported) as gpu:
             model.check_compute_target("gpu")
@@ -145,7 +163,10 @@ class CliTest(unittest.TestCase):
         self.assertEqual(inspect.returncode, 0, inspect.stderr)
         report = json.loads(inspect.stdout)
         self.assertEqual(report["counts"][SUPPORTED], 2866)
-        self.assertEqual(report["counts"][NEEDS_COMPILER_OP], 229)
+        self.assertEqual(report["counts"][NEEDS_COMPILER_OP], 195)
+        self.assertEqual(
+            report["counts"][SUPPORTED_PENDING_RELEASE], 34
+        )
 
         check = subprocess.run(
             [
