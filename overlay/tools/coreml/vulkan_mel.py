@@ -1108,6 +1108,22 @@ def trace_snapshot() -> dict[str, int]:
     _trace_function()(ctypes.byref(snapshot))
     return {name: int(getattr(snapshot, name)) for name, _ in snapshot._fields_}
 
+def _comparison_stages(result, np):
+    mask = np.asarray(result.mask)
+    if mask.dtype != np.int32:
+        raise ValueError(f"runtime mel mask must have int32 dtype, got {mask.dtype}")
+    if mask.shape != (N_FRAMES,):
+        raise ValueError(
+            f"runtime mel mask must have shape ({N_FRAMES},), got {mask.shape}"
+        )
+    return {
+        **result.stages,
+        "mel_mask": mask.astype(np.float32),
+        "mel_pinned": result.mel,
+        "mel_stepwise": result.mel,
+    }
+
+
 def _qualification_status(comparisons, stage_names, expected_stage_names, deltas):
     stage_set_exact = set(stage_names) == set(expected_stage_names)
     all_bit_exact = len(comparisons) == len(expected_stage_names) + 4 and all(
@@ -1138,13 +1154,7 @@ def _compare_fixture(capture_dir: Path, stage_dir: Path) -> dict:
     before = trace_snapshot()
     result = extract_chunk_features(waveform, capture_stages=True)
     mx.eval(result.mel, result.mask, result.encoder_features, result.encoder_mask)
-    after = trace_snapshot()
-    computed_stages = {
-        **result.stages,
-        "mel_mask": result.mask.astype(mx.float32),
-        "mel_pinned": result.mel,
-        "mel_stepwise": result.mel,
-    }
+    computed_stages = _comparison_stages(result, np)
     comparisons = {}
     for name in STAGE_NAMES:
         actual_mx = computed_stages.get(name)
@@ -1182,6 +1192,7 @@ def _compare_fixture(capture_dir: Path, stage_dir: Path) -> dict:
             and actual.dtype == expected.dtype
             and actual.tobytes() == expected.tobytes(),
         }
+    after = trace_snapshot()
     deltas = {name: after[name] - before[name] for name in before}
     status = _qualification_status(
         comparisons, computed_stages, STAGE_NAMES, deltas
