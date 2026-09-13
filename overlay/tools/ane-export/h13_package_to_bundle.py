@@ -13,10 +13,11 @@ import sys
 from pathlib import Path
 from bundle_payload_identity import payload_collection_sha256
 
-SCHEMA = "mil-hwxc.h13-anec-package.v1"
+SCHEMA = "mil-hwxc.h13-anec-package.v2"
 TILE = 0x4000
 DRIVER_ABI_MAJOR = 1
 DTYPE_BYTES = {"float16": 2, "bfloat16": 2, "float32": 4, "int32": 4, "uint8": 1}
+ANEC_DTYPES = {"float16", "bfloat16"}
 ROLES = ("input", "output", "state", "intermediate")
 
 
@@ -91,6 +92,8 @@ def convert_binding(binding: dict, where: str) -> tuple[dict, str]:
     dtype = binding["dtype"]
     if dtype not in DTYPE_BYTES:
         fail(f"{where}.dtype '{dtype}' is unsupported")
+    if dtype not in ANEC_DTYPES:
+        fail(f"{where}.dtype '{dtype}' is an unsupported ANEC hardware dtype")
     binding_shape = shape(binding["shape"], f"{where}.shape")
     logical_bytes = unsigned(binding["logicalBytes"], f"{where}.logicalBytes", positive=True)
     count = product(binding_shape)
@@ -161,15 +164,18 @@ def convert_binding(binding: dict, where: str) -> tuple[dict, str]:
 
 def adapt(package: Path, output: Path, identity: dict) -> dict:
     source = load_object(package / "manifest.json")
+    if source.get("schema") != SCHEMA:
+        fail(f"compiler manifest schema must be exactly '{SCHEMA}'")
     require_fields(
         source,
-        {"artifactFormat", "dispatchPlan", "intermediates", "programs", "schema", "target", "tensors"},
+        {"artifactFormat", "dispatchPlan", "intermediates", "logicalResults",
+         "physicalOutputs", "programs", "schema", "target", "tensors"},
         {"artifactFormat", "bytes", "constantBytes", "constantInputs", "constantOffset",
-         "dispatchPlan", "intermediates", "programs", "schema", "target", "tensors"},
+         "dispatchPlan", "encoder", "file", "inputs", "intermediates",
+         "logicalResults", "operation", "outputs", "physicalOutputs", "programs",
+         "schema", "scratchBytes", "target", "taskDescriptors", "tensors"},
         "compiler manifest",
     )
-    if source["schema"] != SCHEMA:
-        fail(f"compiler manifest schema must be exactly '{SCHEMA}'")
     if source["artifactFormat"] != "anec":
         fail("compiler manifest artifactFormat must be exactly 'anec'")
     if source["target"] != "H13":
@@ -188,6 +194,15 @@ def adapt(package: Path, output: Path, identity: dict) -> dict:
     tensors = source["tensors"]
     if not isinstance(tensors, dict) or not tensors:
         fail("compiler manifest tensors must be a non-empty object")
+    single_program_fields = {
+        "bytes", "constantBytes", "constantInputs", "constantOffset", "encoder", "file",
+        "inputs", "operation", "outputs", "scratchBytes", "taskDescriptors",
+    }
+    present_single_program_fields = single_program_fields & source.keys()
+    if present_single_program_fields and (
+            present_single_program_fields != single_program_fields or len(programs) != 1 or
+            any(source[field] != programs[0].get(field) for field in single_program_fields)):
+        fail("compiler manifest single-program fields must exactly match programs[0]")
 
     converted_programs = []
     payloads = []
@@ -204,7 +219,7 @@ def adapt(package: Path, output: Path, identity: dict) -> dict:
         }
         require_fields(program, allowed, allowed, where)
         if program["constantInputs"]:
-            fail(f"{where}.constantInputs is not supported by bundle schema 3")
+            fail(f"{where}.constantInputs is not supported by bundle schema 4")
         filename = program["file"]
         if not isinstance(filename, str) or not filename or Path(filename).name != filename:
             fail(f"{where}.file must be a plain filename")
@@ -262,7 +277,100 @@ def adapt(package: Path, output: Path, identity: dict) -> dict:
             "byte_size": byte_size,
         })
 
+    physical_values = source["physicalOutputs"]
+    if not isinstance(physical_values, list) or not physical_values:
+        fail("compiler manifest physicalOutputs must be a non-empty array")
+    physical_outputs = []
+    physical_by_name: dict[str, dict] = {}
+    for index, value in enumerate(physical_values):
+        where = f"compiler manifest physicalOutputs[{index}]"
+        if not isinstance(value, dict):
+            fail(f"{where} must be an object")
+        require_fields(value, {"tensor", "dtype", "shape", "logicalBytes"},
+                       {"tensor", "dtype", "shape", "logicalBytes"}, where)
+        name = value["tensor"]
+        if not isinstance(name, str) or not name:
+            fail(f"{where}.tensor must be a non-empty string")
+        if name in physical_by_name:
+            fail(f"{where}.tensor duplicates physical output '{name}'")
+        dtype = value["dtype"]
+        if dtype not in DTYPE_BYTES:
+            fail(f"{where}.dtype '{dtype}' is unsupported")
+        output_shape = shape(value["shape"], f"{where}.shape")
+        byte_size = unsigned(value["logicalBytes"], f"{where}.logicalBytes", positive=True)
+        elements = product(output_shape)
+        if byte_size != elements * DTYPE_BYTES[dtype]:
+            fail(f"{where}.logicalBytes does not match dtype geometry")
+        tensor = tensors.get(name)
+        if not isinstance(tensor, dict) or tensor.get("role") != "output" or                 tensor.get("shape") != output_shape or tensor.get("logicalBytes") != byte_size:
+            fail(f"{where} does not match output tensor '{name}'")
+        facts = inferred.get(name)
+        if not facts or facts["dtype"] != dtype:
+            fail(f"{where}.dtype does not match program output '{name}'")
+        converted = {
+            "name": name,
+            "index": index,
+            "dtype": dtype,
+            "shape": output_shape,
+            "byte_size": byte_size,
+            "stride": max(facts["stride"], ((byte_size + TILE - 1) // TILE) * TILE),
+        }
+        physical_outputs.append(converted)
+        physical_by_name[name] = {"dtype": dtype, "elements": elements}
+
+    result_values = source["logicalResults"]
+    if not isinstance(result_values, list) or not result_values:
+        fail("compiler manifest logicalResults must be a non-empty array")
+    logical_results = []
+    referenced_physical_outputs: set[str] = set()
+    for index, value in enumerate(result_values):
+        where = f"compiler manifest logicalResults[{index}]"
+        if not isinstance(value, dict):
+            fail(f"{where} must be an object")
+        require_fields(value, {"name", "dtype", "shape", "physical", "conversion"},
+                       {"name", "dtype", "shape", "physical", "conversion"}, where)
+        name = value["name"]
+        if not isinstance(name, str) or not name:
+            fail(f"{where}.name must be a non-empty string")
+        dtype = value["dtype"]
+        if dtype not in DTYPE_BYTES:
+            fail(f"{where}.dtype '{dtype}' is unsupported")
+        result_shape = shape(value["shape"], f"{where}.shape")
+        if value["conversion"] != "identity":
+            fail(f"{where}.conversion must be exactly 'identity'")
+        physical = value["physical"]
+        if not isinstance(physical, dict):
+            fail(f"{where}.physical must be an object")
+        require_fields(physical, {"tensor", "elementOffset", "elementCount"},
+                       {"tensor", "elementOffset", "elementCount"}, f"{where}.physical")
+        tensor_name = physical["tensor"]
+        if not isinstance(tensor_name, str) or tensor_name not in physical_by_name:
+            fail(f"{where}.physical.tensor does not name a physical output")
+        offset = unsigned(physical["elementOffset"], f"{where}.physical.elementOffset")
+        count = unsigned(physical["elementCount"], f"{where}.physical.elementCount",
+                         positive=True)
+        if count != product(result_shape):
+            fail(f"{where}.physical.elementCount does not match logical shape")
+        storage = physical_by_name[tensor_name]
+        if dtype != storage["dtype"]:
+            fail(f"{where}.dtype does not match physical output for identity conversion")
+        if offset + count > storage["elements"]:
+            fail(f"{where}.physical range exceeds physical output storage")
+        logical_results.append({
+            "name": name,
+            "dtype": dtype,
+            "shape": result_shape,
+            "tensor": tensor_name,
+            "element_offset": offset,
+            "element_count": count,
+            "conversion": "identity",
+        })
+        referenced_physical_outputs.add(tensor_name)
+    if referenced_physical_outputs != set(physical_by_name):
+        fail("compiler manifest logicalResults must reference every physical output")
+
     tensor_lists = {role: [] for role in ROLES}
+    tensor_lists["output"] = physical_outputs
     expected_intermediates = set(intermediates)
     actual_intermediates = set()
     for name, tensor in tensors.items():
@@ -276,6 +384,10 @@ def adapt(package: Path, output: Path, identity: dict) -> dict:
             fail(f"{where}.role '{role}' is unsupported")
         tensor_shape = shape(tensor["shape"], f"{where}.shape")
         byte_size = unsigned(tensor["logicalBytes"], f"{where}.logicalBytes", positive=True)
+        if role == "output" and name not in physical_by_name:
+            if not isinstance(tensor.get("aliasOf"), str) or not tensor["aliasOf"]:
+                fail(f"{where} is neither a physical output nor an explicit alias")
+            continue
         facts = inferred.get(name)
         if not facts:
             fail(f"{where} has no program binding")
@@ -283,21 +395,28 @@ def adapt(package: Path, output: Path, identity: dict) -> dict:
             fail(f"{where}.logicalBytes does not match inferred dtype geometry")
         if role == "intermediate":
             actual_intermediates.add(name)
-        tensor_lists[role].append({
-            "name": name,
-            "index": len(tensor_lists[role]),
-            "dtype": facts["dtype"],
-            "shape": tensor_shape,
-            "byte_size": byte_size,
-            "stride": max(facts["stride"], ((byte_size + TILE - 1) // TILE) * TILE),
-        })
-    if set(inferred) != set(tensors):
-        extras = sorted(set(inferred) - set(tensors))
+        if role != "output":
+            tensor_lists[role].append({
+                "name": name,
+                "index": len(tensor_lists[role]),
+                "dtype": facts["dtype"],
+                "shape": tensor_shape,
+                "byte_size": byte_size,
+                "stride": max(facts["stride"], ((byte_size + TILE - 1) // TILE) * TILE),
+            })
+    extras = sorted(set(inferred) - set(tensors))
+    if extras:
         fail(f"program binding references unknown tensor '{extras[0]}'")
+    declared_physical = {
+        name for name, tensor in tensors.items()
+        if isinstance(tensor, dict) and tensor.get("role") == "output" and "aliasOf" not in tensor
+    }
+    if declared_physical != set(physical_by_name):
+        fail("compiler manifest physicalOutputs does not match physical output tensors")
     if actual_intermediates != expected_intermediates:
         fail("compiler manifest intermediates does not match tensor roles")
-    if not tensor_lists["input"] or not tensor_lists["output"]:
-        fail("compiler manifest requires at least one input and one output tensor")
+    if not tensor_lists["input"]:
+        fail("compiler manifest requires at least one input tensor")
     tensor_roles = {name: value["role"] for name, value in tensors.items()}
     tensor_elements = {name: product(shape(value["shape"], f"compiler manifest tensors.{name}.shape"))
                        for name, value in tensors.items()}
@@ -320,6 +439,8 @@ def adapt(package: Path, output: Path, identity: dict) -> dict:
                     fail(f"tensor '{name}' binding range exceeds its logical shape")
                 (reads if direction == "inputs" else writes).add(name)
     for name, role in tensor_roles.items():
+        if role == "output" and name not in physical_by_name:
+            continue
         if (role == "input" and name not in reads) or                 (role == "output" and name not in writes) or                 (role in ("state", "intermediate") and
                  (name not in reads or name not in writes)):
             fail(f"tensor '{name}' is not fully bound for role '{role}'")
@@ -349,7 +470,7 @@ def adapt(package: Path, output: Path, identity: dict) -> dict:
                     merged[-1] = (merged[-1][0], max(merged[-1][1], stop))
             available[binding["tensor"]] = merged
     for name, role in tensor_roles.items():
-        if role != "output":
+        if role != "output" or name not in physical_by_name:
             continue
         complete = any(start == 0 and stop >= tensor_elements[name]
                        for start, stop in available.get(name, []))
@@ -369,12 +490,13 @@ def adapt(package: Path, output: Path, identity: dict) -> dict:
         if len(value) != length or any(character not in "0123456789abcdef" for character in value):
             fail(f"identity.{field} must be {length} lowercase hex characters")
     manifest = {
-        "manifest_version": 3,
+        "manifest_version": 4,
         "name": identity["name"],
         "graph_hash": identity["graph_hash"],
         "task_descriptors": descriptors,
         "inputs": tensor_lists["input"],
         "outputs": tensor_lists["output"],
+        "logical_results": logical_results,
         "state": tensor_lists["state"],
         "intermediates": tensor_lists["intermediate"],
         "programs": converted_programs,

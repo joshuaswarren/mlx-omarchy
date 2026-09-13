@@ -45,17 +45,54 @@ Every numerics-bearing step in the golden capture ran inside the pinned
 reference library (SwiftPM `exact revision` dependency); the capture harness
 (`overlay/tools/coreml/capture/`) only orchestrates and dumps `.npy`/JSON.
 
-## Portable mel reference
+## Exact CPU and Vulkan mel frontends
 
-The pinned NumPy frontend is bit-exact on the frozen fixture. See
-[Exact pinned mel reference](coreml.md#exact-pinned-mel-reference).
+The earlier approximate NumPy diagnostic is superseded. The pinned frontend has
+a CPU fixture oracle in `overlay/tools/coreml/mel_reference.py` and a Vulkan
+implementation in `overlay/tools/coreml/vulkan_mel.py`. The Vulkan runtime
+dispatches every waveform-dependent stage through workload-owned
+`mx.fast.metal_kernel` calls on the MLX GPU stream. Its extraction path
+performs no NumPy or CPU tensor arithmetic. The host-side comparator
+materializes and validates the completed int32 API mask before it creates the
+float32 comparison-only stage copy. Its final trace snapshot follows every
+comparison, so lazy GPU work cannot fall outside the exact dispatch gate.
+
+Both implementations preserve the fixed Hann bits, recovered vDSP radix-4 DFT,
+vDSP dot-product order, sqrt-then-square boundary, guarded float64-equivalent
+log rounding, sequential mean and sample standard deviation, and final int32
+mask. The Vulkan path implements binary32 fused multiply-add from float fields
+and uint32 significands. This is required because the custom-kernel native
+`fma` path returns `0x4748616a` instead of the correctly rounded
+`0x4748616b` for the retained finite probe. The integer implementation also
+avoids the overflow and underflow failures of the former unscaled Dekker split.
+
+The CPU comparison receipt is
+[`2026-09-12-parakeet-mel-frontend`](../receipts/2026-09-12-parakeet-mel-frontend/receipt.json).
+The Vulkan implementation and device trace are recorded in
+[`2026-09-13-parakeet-vulkan-mel`](../receipts/2026-09-13-parakeet-vulkan-mel/receipt.json).
+The previous Apple result covers only the pinned ordinary-input fixture. The
+first finite-range rerun passed 8,192 full-exponent FMA triples on Apple M1,
+but its `2^-120` DFT produced 1,028 real-component bit mismatches, starting
+with `0x02349b98` instead of `0x026c5098`. A diagnostic found the first
+loss in native preemphasis arithmetic and independent losses in windowing and
+the DFT. A source audit found reachable denormal arithmetic in magnitude, power,
+mel reduction, and subnormal square-root scaling. Those stages now use the
+integer binary32 helpers without changing the certified reduction order.
+Software Vulkan passes the retained low-scale waveform-to-power-and-mel-
+projection, finite-range, and pinned ordinary-input regressions. Source-frozen
+Apple M1/Honeykrisp requalification at `aa13b105cafb12fb60854417f68cac1aa946ef05`
+passes the original `2^-120` DFT trigger, the low-scale power and mel-projection
+regression with 1,280 nonzero subnormal power values, and all 18 authenticated
+stage/final comparisons. This qualifies the Apple GPU frontend; it does not
+claim encoder, decoder, or full-plan completion.
 
 ```bash
 python3 overlay/tools/coreml/mel_reference.py <pinned-capture-directory>
+python3 overlay/tools/coreml/vulkan_mel.py <capture-dir> <stage-dump-dir> --json-out <receipt.json>
 ```
 
-Licensing: the Python port is derived from the pinned Apache-2.0
-`parakeet-coreml-swift` sources; attribution in the module header.
+Licensing: both ports derive from the pinned Apache-2.0
+`mweinbach/parakeet-coreml-swift` sources identified in their module headers.
 
 ## Numerical comparison contract (frozen before Linux execution work)
 

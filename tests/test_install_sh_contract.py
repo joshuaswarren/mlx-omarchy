@@ -12,6 +12,18 @@ LAUNCHERS = ("mlx-omarchy", "mlx-omarchy-demo", "mlx-omarchy-info")
 
 
 class InstallerContractTests(unittest.TestCase):
+    @unittest.skipIf(Path("/dev/accel/accel0").exists(), "requires a host without ANE")
+    def test_ane_install_refuses_before_writing_without_device(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            result = subprocess.run(
+                ["bash", str(INSTALLER), "--ane"],
+                env={**os.environ, "HOME": tmp},
+                capture_output=True, text=True, timeout=30, check=False,
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("ANE installation requires /dev/accel/accel0", result.stderr)
+            self.assertEqual(list(Path(tmp).iterdir()), [])
+
     def test_uninstall_removes_owned_files_only(self):
         with tempfile.TemporaryDirectory() as tmp:
             home = Path(tmp)

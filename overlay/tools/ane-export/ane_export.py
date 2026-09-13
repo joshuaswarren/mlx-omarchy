@@ -228,7 +228,7 @@ def main() -> int:
     args = parser.parse_args()
 
     if args.target.lower() != "h13":
-        die("--target must be exactly h13 for bundle schema 3")
+        die("--target must be h13")
     descriptor = json.loads(args.descriptor.read_text())
     op = descriptor.get("op")
     if op not in ("add", "mul", "matmul"):
@@ -345,7 +345,7 @@ def main() -> int:
          "byte_size": bundle_weights.stat().st_size},
     ]
     manifest = {
-        "manifest_version": 3,
+        "manifest_version": 4,
         "name": name,
         "graph_hash": sha256_file(mil_path),
         "task_descriptors": facts["task_descriptors"],
@@ -360,6 +360,11 @@ def main() -> int:
             "shape": out_shape,
             "byte_size": out_elems * elem_size,
             "stride": output_allocation,
+        }],
+        "logical_results": [{
+            "name": "t2", "dtype": "float16", "shape": out_shape,
+            "tensor": "t2", "element_offset": 0,
+            "element_count": out_elems, "conversion": "identity",
         }],
         "state": [],
         "intermediates": [],

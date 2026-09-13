@@ -96,6 +96,17 @@ mkdir -p "$DIST_DIR"
 # setup.py appends CMAKE_ARGS to its cmake invocation; it splits the value on
 # spaces, so keep each -D flag space separated.
 export CMAKE_ARGS="-DMLX_BUILD_OMARCHY=ON -DMLX_BUILD_CPU=ON -DMLX_BUILD_METAL=OFF -DMLX_BUILD_CUDA=OFF -DMLX_BUILD_TESTS=OFF -DMLX_BUILD_EXAMPLES=OFF -DMLX_BUILD_BENCHMARKS=OFF"
+if [[ -n "${MLX_OMARCHY_ANE_SOURCE_DIR:-}" ]]; then
+  [[ -d "$MLX_OMARCHY_ANE_SOURCE_DIR" ]] || {
+    echo "ERROR: MLX_OMARCHY_ANE_SOURCE_DIR is not a directory" >&2
+    exit 2
+  }
+  [[ "$MLX_OMARCHY_ANE_SOURCE_DIR" != *" "* ]] || {
+    echo "ERROR: MLX_OMARCHY_ANE_SOURCE_DIR cannot contain spaces" >&2
+    exit 2
+  }
+  export CMAKE_ARGS="$CMAKE_ARGS -DMLX_OMARCHY_ANE_SOURCE_DIR=$MLX_OMARCHY_ANE_SOURCE_DIR"
+fi
 if [[ $DIAGNOSTICS -eq 1 ]]; then
   # Diagnostics wheel: compile in the env-gated GPU profiling harness.
   # DEV_RELEASE=1 keeps setup.py from appending its own git-hash local
