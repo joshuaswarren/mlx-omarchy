@@ -24,8 +24,9 @@ import sys
 from pathlib import Path
 
 import numpy as np
-
+from dft_geometry_probe import candidate_spectrum
 from dotpr import mel_projection
+from mel_reference import chunk_for_mel, hann_window, mel_filterbank, preemphasize
 from reference import ReferenceLock
 
 TOOLS = Path(__file__).resolve().parent
@@ -71,7 +72,7 @@ def main(argv: list[str]) -> int:
     print("gate: dump manifest verified; mel_pinned == golden mel.npy")
 
     wave = np.load(capture_dir / "waveform.npy")
-    chunk = M_chunk(wave, cfg)
+    chunk = chunk_for_mel(wave)
 
     mac = {n: np.load(dumps_dir / f"{n}.npy") for n in
            ("preemph", "hann", "mel_fb", "frames", "dft_real", "dft_imag",
@@ -105,10 +106,10 @@ def main(argv: list[str]) -> int:
     print(line); ok &= good
 
     # Stage 5: DFT on certified frames.
-    spec = np.fft.rfft(mac["frames"].astype(np.float64), axis=1)
-    good, line = stage_diff("dft_real", spec.real.astype(np.float32), mac["dft_real"])
+    dft_real, dft_imag = candidate_spectrum(mac["frames"], "vdsp-radix4-dif")
+    good, line = stage_diff("dft_real", dft_real, mac["dft_real"])
     print(line); ok &= good
-    good, line = stage_diff("dft_imag", spec.imag.astype(np.float32), mac["dft_imag"])
+    good, line = stage_diff("dft_imag", dft_imag, mac["dft_imag"])
     print(line); ok &= good
 
     # Stage 6: power on certified spectrum.
@@ -143,54 +144,6 @@ def main(argv: list[str]) -> int:
           "divergent stages listed above (first divergent preprocessing stage "
           "is the earliest DIVERGE line whose upstream inputs were certified)")
     return 0 if ok else 1
-
-
-def M_chunk(wave, cfg):
-    import numpy as np
-    x = np.ascontiguousarray(wave, dtype=np.float32)
-    target = 3000 * cfg.hop_length
-    if x.size < target:
-        x = np.concatenate([x, np.zeros(target - x.size, np.float32)])
-    return x
-
-
-def preemphasize(x, cfg):
-    y = np.empty_like(x)
-    y[0] = x[0]
-    y[1:] = (x[1:] - np.float32(cfg.preemphasis) * x[:-1]).astype(np.float32)
-    return y
-
-
-def hann_window(win_length):
-    n = np.arange(win_length, dtype=np.float32)
-    return (np.float32(0.5) - np.float32(0.5)
-            * np.cos(np.float32(2.0) * np.float32(np.pi) * n
-                     / np.float32(win_length - 1))).astype(np.float32)
-
-
-def mel_filterbank(cfg):
-    f_sp = 200.0 / 3.0
-    min_log_hz = 1000.0
-    min_log_mel = min_log_hz / f_sp
-    logstep = np.log(6.4) / 27.0
-    with np.errstate(divide="ignore"):
-        def hz_to_mel(hz):
-            return np.where(hz >= min_log_hz,
-                            min_log_mel + np.log(hz / min_log_hz) / logstep, hz / f_sp)
-
-    def mel_to_hz(m):
-        return np.where(m >= min_log_mel,
-                        min_log_hz * np.exp(logstep * (m - min_log_mel)), f_sp * m)
-
-    with np.errstate(divide="ignore"):
-        mels = hz_to_mel(0.0) + (hz_to_mel(cfg.sample_rate / 2.0) - hz_to_mel(0.0)) * (
-            np.arange(cfg.n_mels + 2) / (cfg.n_mels + 1))
-    hz_pts = mel_to_hz(mels)
-    freqs = np.arange(cfg.n_fft // 2 + 1) * cfg.sample_rate / cfg.n_fft
-    lo, c, up = hz_pts[:-2], hz_pts[1:-1], hz_pts[2:]
-    tri = np.maximum(0.0, np.minimum((freqs[None, :] - lo[:, None]) / (c - lo)[:, None],
-                                     (up[:, None] - freqs[None, :]) / (up - c)[:, None]))
-    return (tri * (2.0 / (up - lo))[:, None]).astype(np.float32)
 
 
 if __name__ == "__main__":

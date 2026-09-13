@@ -183,13 +183,19 @@ are missing, and the mixed-type, two-output contract is not represented by
 the current compiler program model. Execution work stops at plan section 62;
 no CPU fallback or altered model contract substitutes for these gaps.
 
-The [known-H13 adapter review](../receipts/2026-09-12-h13-adapter-review.json)
-finds a separate bundle-v2 blocker. All 4,097 known-graph programs have no
-workspace tiles, but the schema requires positive workspace geometry, size,
-and stride. Removing only the byte-size check would not resolve the other
-constraints. No workspace or firmware identity is fabricated; the adapter
-remains unimplemented pending an explicit absent-workspace contract.
+The [schema-3 adapter receipt](../receipts/2026-09-12-h13-bundle-schema3/receipt.md)
+replaces the blocked bundle-v2 contract. Schema 3 removes the top-level
+workspace tensor and dotted firmware range. Each compiler program declares
+unsigned `scratch_bytes` (zero is valid and must match ANEC channel 3),
+explicit input and output bindings, allocation bytes, tensor slices, and
+dispatch order. The manifest requires unsigned `driver_abi_major: 1` and
+compiler target `h13` exactly; the loader rejects schema 2 without a shim.
 
+This proves declared structural compatibility in the host loader. It does not
+prove physical t8103 or t6000 eligibility, device numerical qualification,
+compiler-wide qualification, or runtime execution. The adapter receipt covers
+explicit `--format anec` generation. The HWX extraction regression remains
+separate.
 
 The [licensed reference receipt](../receipts/2026-09-12-licensed-parakeet-reference.json)
 replaces the undocumented-rights JFK clip with a byte-verified CC-BY-4.0
@@ -197,3 +203,24 @@ LibriSpeech utterance. ANE and GPU emit the same 104 tokens, including the
 pinned reference's erroneous suffix; CPU emits 100. Encoder tensors pass the
 unchanged tolerances. This is reference capture, not Linux ANE execution or
 evidence of clean transcription. No Core ML feature release is claimed.
+
+## Exact pinned mel reference
+
+`overlay/tools/coreml/mel_reference.py` is the exact CPU fixture oracle for
+the pinned public Parakeet frontend. It accepts one non-empty, single-chunk
+float32 waveform at 16 kHz, pads it to 30 seconds, and returns float32 mel
+features shaped `[3001, 128]` plus an all-one int32 mask. The encoder contract
+uses the first 3,000 rows. Inputs longer than one chunk and Hann lengths other
+than the pinned 400 samples fail explicitly.
+
+The frontend preserves the reference preemphasis, fixed Hann bits, Slaney mel
+filterbank, recovered vDSP DFT schedule, vDSP dot-product reduction, guarded
+log, sequential normalization, signed zeros, and float32 rounding. The
+[full comparison receipt](../receipts/2026-09-12-parakeet-mel-frontend/receipt.json)
+records exact equality for all 384,128 mel values and every captured stage.
+
+This code remains a CPU reference algorithm. It uses NumPy tensor operations,
+does not run through the installed Vulkan or ANE backend, and has no backend
+trace. It does not satisfy the no-CPU-tensor-fallback release gate. The exact
+dot-product and DFT results qualify reference arithmetic only; they do not
+qualify the Linux encoder or the full Core ML plan.
