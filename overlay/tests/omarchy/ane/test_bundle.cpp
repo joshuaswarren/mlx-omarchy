@@ -486,6 +486,31 @@ TEST_CASE("unknown files and missing payloads fail closed") {
   }
 }
 
+TEST_CASE("directory links fail closed") {
+  SUBCASE("listed payload") {
+    Fixture fixture;
+    fixture.write();
+    TempDir outside;
+    const auto payload = fixture.dir.path() / "program-0.anec";
+    const auto target = outside.path() / "program-0.anec";
+    std::filesystem::rename(payload, target);
+    std::filesystem::create_symlink(target, payload);
+    check_error(
+        [&] { load_bundle(fixture.dir.path()); },
+        "unexpected link 'program-0.anec'");
+  }
+  SUBCASE("unlisted entry") {
+    Fixture fixture;
+    fixture.write();
+    std::filesystem::create_symlink(
+        fixture.dir.path() / "program-0.anec",
+        fixture.dir.path() / "alias.anec");
+    check_error(
+        [&] { load_bundle(fixture.dir.path()); },
+        "unexpected link 'alias.anec'");
+  }
+}
+
 TEST_CASE("missing bundle is a normal not-found outcome") {
   TempDir parent;
   try {

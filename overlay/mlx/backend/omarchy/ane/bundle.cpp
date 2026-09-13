@@ -436,12 +436,24 @@ AneBundle load_bundle(const std::filesystem::path& dir) {
   }
   std::vector<std::filesystem::path> actual_files;
   for (const auto& entry : std::filesystem::directory_iterator(dir)) {
-    if (entry.is_directory()) {
+    std::error_code status_error;
+    const auto status = entry.symlink_status(status_error);
+    if (status_error) {
+      throw bundle_error(
+          "cannot stat '" + entry.path().filename().string() +
+          "' inside bundle");
+    }
+    if (std::filesystem::is_symlink(status)) {
+      throw bundle_error(
+          "unexpected link '" + entry.path().filename().string() +
+          "' inside bundle");
+    }
+    if (std::filesystem::is_directory(status)) {
       throw bundle_error(
           "unexpected directory '" + entry.path().filename().string() +
           "' inside bundle");
     }
-    if (!entry.is_regular_file()) {
+    if (!std::filesystem::is_regular_file(status)) {
       throw bundle_error(
           "unexpected non-regular file '" + entry.path().filename().string() +
           "' inside bundle");
@@ -466,7 +478,15 @@ AneBundle load_bundle(const std::filesystem::path& dir) {
   resolved.reserve(manifest.payloads.size());
   for (const auto& payload : manifest.payloads) {
     std::filesystem::path payload_path = dir / payload.path;
-    if (!std::filesystem::is_regular_file(payload_path)) {
+    std::error_code status_error;
+    const auto status = std::filesystem::symlink_status(payload_path, status_error);
+    if (status_error || status.type() == std::filesystem::file_type::not_found) {
+      throw bundle_error("payload file missing: " + payload.path);
+    }
+    if (std::filesystem::is_symlink(status)) {
+      throw bundle_error("unexpected link '" + payload.path + "' inside bundle");
+    }
+    if (!std::filesystem::is_regular_file(status)) {
       throw bundle_error("payload file missing: " + payload.path);
     }
     resolved.push_back(payload_path);
