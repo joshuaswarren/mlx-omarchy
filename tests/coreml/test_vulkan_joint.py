@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 """MLX Vulkan checks for the pinned Parakeet joint package."""
 
+import shutil
 import sys
 from pathlib import Path
 
@@ -96,3 +97,40 @@ def test_joint_matches_independent_fp_contract_on_vulkan(source):
     assert actual_duration.tobytes() == expected_duration.tobytes()
     assert after["gpu_primitive_dispatches"] > before["gpu_primitive_dispatches"]
     assert after["vk_compute_dispatches"] > before["vk_compute_dispatches"]
+
+
+def test_joint_keeps_entire_graph_on_gpu_when_caller_defaults_to_cpu(tmp_path):
+    if not PACKAGE.is_dir():
+        pytest.skip("pinned joint.mlpackage is not installed")
+    package = tmp_path / "joint.mlpackage"
+    shutil.copytree(PACKAGE, package)
+    previous_default = mx.default_device()
+    try:
+        mx.set_default_device(mx.cpu)
+        caller_default = mx.default_device()
+        before = trace_snapshot()
+        result = run_joint(
+            mx.zeros((1, 640), dtype=mx.float32),
+            mx.zeros((1, 640), dtype=mx.float32),
+            package_path=package,
+        )
+        mx.eval(result.token_logits, result.duration_logits)
+        after = trace_snapshot()
+        assert mx.default_device() == caller_default
+        assert {
+            key: after[key] - before[key]
+            for key in (
+                "gpu_primitive_dispatches",
+                "vk_compute_dispatches",
+                "vk_submissions",
+                "commit_calls_with_work",
+            )
+        } == {
+            "gpu_primitive_dispatches": 14,
+            "vk_compute_dispatches": 8,
+            "vk_submissions": 1,
+            "commit_calls_with_work": 1,
+        }
+    finally:
+        mx.set_default_device(previous_default)
+    assert mx.default_device() == previous_default
