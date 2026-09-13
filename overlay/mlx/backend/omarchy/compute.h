@@ -37,6 +37,10 @@ inline constexpr uint32_t kQmmVecMultiWeights = 3;
 inline constexpr uint32_t kQmmVecMultiBindingsPerWeight = 6;
 inline constexpr uint32_t kQmmVecMultiBindings =
     1 + kQmmVecMultiWeights * kQmmVecMultiBindingsPerWeight;
+inline constexpr uint32_t kDenseVecMultiWeights = 3;
+inline constexpr uint32_t kDenseVecMultiBindingsPerWeight = 2;
+inline constexpr uint32_t kDenseVecMultiBindings =
+    1 + kDenseVecMultiWeights * kDenseVecMultiBindingsPerWeight;
 
 constexpr uint32_t compute_dispatch_group_count(uint32_t count) {
   if (count == 0) {
@@ -616,6 +620,7 @@ enum class ComputeKernel : uint16_t {
   QmmPrefillFmaPreciseF16,
   MatmulBf16FmaL16C4,
   Custom,
+  MatmulVecMultiBF16,
   Count,
 };
 

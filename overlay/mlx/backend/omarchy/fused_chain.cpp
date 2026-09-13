@@ -618,6 +618,12 @@ struct GemvGroup {
   enum class State : uint8_t { pending, done, failed } state{State::pending};
 };
 
+struct DenseGemvGroup {
+  std::vector<array> nodes;
+  std::optional<array> input;
+  enum class State : uint8_t { pending, done, failed } state{State::pending};
+};
+
 struct SliceUpdatePair {
   explicit SliceUpdatePair(const array& first, const array& second)
       : nodes{first, second} {}
@@ -643,6 +649,8 @@ struct EagerFusionState {
   std::unordered_map<std::uintptr_t, FusedChain> chains;
   std::unordered_map<std::uintptr_t, size_t> gemv_roles;
   std::vector<GemvGroup> gemv_groups;
+  std::unordered_map<std::uintptr_t, size_t> dense_gemv_roles;
+  std::vector<DenseGemvGroup> dense_gemv_groups;
   std::unordered_map<std::uintptr_t, size_t> slice_update_roles;
   std::vector<SliceUpdatePair> slice_update_pairs;
   std::unordered_map<std::uintptr_t, size_t> rope_redirect_roles;
@@ -653,6 +661,14 @@ thread_local EagerFusionState* eager_state = nullptr;
 
 bool is_op(const array* node, const std::type_info& op) {
   return node && node->has_primitive() && typeid(node->primitive()) == op;
+}
+
+const array& dense_gemv_source(const array& x) {
+  if (is_op(&x, typeid(Flatten)) && x.inputs().size() == 1 &&
+      x.dtype() == x.inputs()[0].dtype() && x.size() == x.inputs()[0].size()) {
+    return x.inputs()[0];
+  }
+  return x;
 }
 
 // Producer-direct KV write planning. Classification of one SliceUpdate
@@ -1086,6 +1102,47 @@ EagerFusionScope::EagerFusionScope(const std::deque<array>& tape)
       state->gemv_groups.push_back(std::move(group));
     }
   }
+  std::unordered_map<std::uintptr_t, std::vector<const array*>> dense_by_x;
+  std::vector<std::uintptr_t> dense_x_order;
+  for (const auto& node : tape) {
+    if (!is_op(&node, typeid(Matmul)) || node.inputs().size() != 2 ||
+        node.dtype() != bfloat16 || claimed.count(node.id())) {
+      continue;
+    }
+    const array& x = node.inputs()[0];
+    if (x.ndim() < 2 || x.shape(-2) != 1 ||
+        x.size() != static_cast<size_t>(x.shape(-1))) {
+      continue;
+    }
+    const array& source = dense_gemv_source(x);
+    auto [it, inserted] = dense_by_x.try_emplace(source.id());
+    if (inserted) {
+      dense_x_order.push_back(source.id());
+    }
+    it->second.push_back(&node);
+  }
+  for (auto x_id : dense_x_order) {
+    const auto& nodes = dense_by_x[x_id];
+    for (size_t start = 0; start + 1 < nodes.size();
+         start += kDenseVecMultiWeights) {
+      DenseGemvGroup group;
+      group.input = dense_gemv_source(nodes[start]->inputs()[0]);
+      for (size_t i = start;
+           i < nodes.size() && i < start + kDenseVecMultiWeights;
+           ++i) {
+        group.nodes.push_back(*nodes[i]);
+      }
+      if (group.nodes.size() < 2) {
+        continue;
+      }
+      const size_t index = state->dense_gemv_groups.size();
+      for (const auto& node : group.nodes) {
+        state->dense_gemv_roles.emplace(node.id(), index);
+        claimed.insert(node.id());
+      }
+      state->dense_gemv_groups.push_back(std::move(group));
+    }
+  }
   // Producer-direct KV cache writes: when one pair member's new rows
   // come from a RoPE node (keys) and the other's from a fused GEMV
   // Add epilogue through a provable chain of view-only ops (values),
@@ -1263,6 +1320,17 @@ bool try_eval_eager_fusion(array& node, const Stream& stream) {
     node.copy_shared_buffer(
         window.base, view_strides, flags, node.data_size(), window.offset);
     return true;
+  }
+  if (auto dense = eager_state->dense_gemv_roles.find(node.id());
+      dense != eager_state->dense_gemv_roles.end()) {
+    auto& group = eager_state->dense_gemv_groups[dense->second];
+    if (group.state == DenseGemvGroup::State::pending) {
+      group.state = dispatch_dense_gemv_group(
+                        group.nodes, *group.input, stream)
+          ? DenseGemvGroup::State::done
+          : DenseGemvGroup::State::failed;
+    }
+    return group.state == DenseGemvGroup::State::done;
   }
   if (auto gemv = eager_state->gemv_roles.find(node.id());
       gemv != eager_state->gemv_roles.end()) {

@@ -1,0 +1,4 @@
+Command: /usr/local/bin/glslc -O --target-env=vulkan1.3 overlay/mlx/backend/omarchy/shaders/matmul_vec_multi_bf16.comp -o /tmp/matmul_vec_multi_bf16.spv && spirv-val --target-env vulkan1.3 /tmp/matmul_vec_multi_bf16.spv
+Output:
+overlay/mlx/backend/omarchy/shaders/matmul_vec_multi_bf16.comp
+SHADER_COMPILE_AND_VALIDATE_OK
