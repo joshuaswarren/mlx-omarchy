@@ -228,3 +228,34 @@ does not run through the installed Vulkan or ANE backend, and has no backend
 trace. It does not satisfy the no-CPU-tensor-fallback release gate. The exact
 dot-product and DFT results qualify reference arithmetic only; they do not
 qualify the Linux encoder or the full Core ML plan.
+
+## Exact Vulkan mel execution
+
+`overlay/tools/coreml/vulkan_mel.py` implements the same pinned contract with
+workload-owned MLX custom kernels. The runtime extraction path performs no
+NumPy or CPU tensor arithmetic. The path emits `[3001,128]` float32 mel, an
+all-one `[3001]` int32 mask, and `[1,3000,128]` / `[1,3000]` encoder
+inputs. Its comparator authenticates all five final capture files and all 14
+stage files. It materializes and validates the real int32 mask on the host,
+then converts only the comparison copy to the frozen float32 stage dtype. The
+final trace snapshot follows every comparison, so the exact-eight Vulkan
+compute gate includes any lazy work. The comparator maps the `mel_mask`,
+`mel_pinned`, and `mel_stepwise` aliases explicitly. The
+comparison receipt is
+[`2026-09-13-parakeet-vulkan-mel`](../receipts/2026-09-13-parakeet-vulkan-mel/receipt.json).
+The historical Apple run remains evidence only for the pinned ordinary-input
+fixture. The first finite-range rerun passed 8,192 full-exponent FMA triples,
+then failed the `2^-120` DFT with 1,028 real-component bit mismatches (first
+`0x02349b98`, expected `0x026c5098`). A diagnostic isolated the first loss
+to native preemphasis arithmetic, with independent loss in windowing and the
+DFT. A source audit found the same reachable denormal boundary in magnitude,
+power, mel reduction, and subnormal square-root scaling. These stages now use
+the exact integer binary32 helpers while preserving the certified reduction
+order. Software Vulkan passes the retained low-scale waveform-to-power-and-mel-
+projection, signed-zero, overflow, pinned ordinary-input, and stage-comparison
+regressions. Source-frozen Apple M1/Honeykrisp requalification at
+`aa13b105cafb12fb60854417f68cac1aa946ef05` passes the original `2^-120`
+DFT trigger, the low-scale power and mel-projection regression with 1,280
+nonzero subnormal power values, and all 18 authenticated stage/final
+comparisons. The run recorded 15 GPU primitives, eight Vulkan compute
+dispatches, and one Vulkan submission.

@@ -54,7 +54,13 @@ def verify_stage_evidence(
     capture_dir: Path, dumps_dir: Path, lock: ReferenceLock
 ) -> dict[str, str]:
     paths = lock.macos_reference_paths
-    for name in ("waveform.npy", "mel.npy"):
+    for name in (
+        "waveform.npy",
+        "mel.npy",
+        "mel_mask.npy",
+        "encoder_input_features.npy",
+        "encoder_input_mask.npy",
+    ):
         expected = paths.get(name)
         if expected is None or sha256_file(capture_dir / name) != expected:
             raise ValueError(f"{name}: capture SHA-256 does not match the reference lock")
