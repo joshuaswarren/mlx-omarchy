@@ -78,10 +78,12 @@ the DFT. A source audit found reachable denormal arithmetic in magnitude, power,
 mel reduction, and subnormal square-root scaling. Those stages now use the
 integer binary32 helpers without changing the certified reduction order.
 Software Vulkan passes the retained low-scale waveform-to-power-and-mel-
-projection, finite-range, and pinned ordinary-input regressions. The corrected
-helper path has not run on Apple hardware, so finite-input Apple arithmetic is
-not qualified. Neither
-receipt claims encoder, decoder, or full-plan completion.
+projection, finite-range, and pinned ordinary-input regressions. Source-frozen
+Apple M1/Honeykrisp requalification at `aa13b105cafb12fb60854417f68cac1aa946ef05`
+passes the original `2^-120` DFT trigger, the low-scale power and mel-projection
+regression with 1,280 nonzero subnormal power values, and all 18 authenticated
+stage/final comparisons. This qualifies the Apple GPU frontend; it does not
+claim encoder, decoder, or full-plan completion.
 
 ```bash
 python3 overlay/tools/coreml/mel_reference.py <pinned-capture-directory>
