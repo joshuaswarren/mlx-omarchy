@@ -325,6 +325,16 @@ TEST_CASE("old schemas are rejected without compatibility shim") {
   check_error([&] { load_bundle(fixture.dir.path()); }, "unsupported manifest_version");
 }
 TEST_CASE("manifest v4 requires strict ordered logical results") {
+  SUBCASE("unreferenced physical output") {
+    Fixture fixture;
+    fixture.manifest["outputs"].push_back(tensor("sum", 1));
+    fixture.manifest["intermediates"] = nlohmann::json::array();
+    fixture.manifest["programs"][1]["inputs"][0]["tensor"] = "a";
+    fixture.write();
+    check_error(
+        [&] { load_bundle(fixture.dir.path()); },
+        "logical_results must reference every physical output");
+  }
   SUBCASE("missing list") {
     Fixture fixture;
     fixture.manifest.erase("logical_results");
