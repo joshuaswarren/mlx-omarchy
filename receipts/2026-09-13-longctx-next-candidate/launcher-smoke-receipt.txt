@@ -1,9 +1,17 @@
-immutable_staging=created root=/var/tmp/LongContextCostAttribution-launcher-local-3693550
-guardian_identity=true guardian_pid=3693613 comm=timeout pgid=3693613
-lock_acquired=true pid=3693619 pgid=3693613 guardian_pid=3693613 work_deadline_epoch=1789299191 session_deadline_epoch=1789299251
-smoke_workload=true pid=3693639 pgid=3693613
-workload_complete=true run_label=launcher-local-3693550
-clearance=true outer_lock=free process_group_scan=pass process_group=empty descendant_cleanup=none lease=removed finished_epoch=1789298351 session_deadline_epoch=1789299251 cleanup_deadline=within exit_rc=0
-independent_clearance=true guardian=absent pgid=3693613 process_group=empty staged_workload=absent lease=absent lock=free
-launch_complete=true run_label=launcher-local-3693550 runner_sha256=5f74d4cd7afd81875b54cf33b777ff1028219c6139928dae3293b0fd71bf7726 workload_sha256=815110faeadaf8b3966389de10dabdcdeeade403e50de7ed41fe24c4ba42f67f
+immutable_staging=created root=/var/tmp/LongContextCostAttribution-launcher-local-3821767
+guardian_identity=true guardian_pid=3821841 comm=timeout pgid=3821841
+lock_acquired=true pid=3821847 pgid=3821841 guardian_pid=3821841 work_deadline_epoch=1789301561 session_deadline_epoch=1789301621
+smoke_workload=true pid=3821868 pgid=3821841
+workload_complete=true run_label=launcher-local-3821767
+clearance=true outer_lock=free process_group_scan=pass process_group=empty descendant_cleanup=none lease=removed finished_epoch=1789300721 session_deadline_epoch=1789301621 cleanup_deadline=within exit_rc=0
+independent_clearance=true guardian=absent pgid=3821841 process_group=empty staged_workload=absent lease=absent lock=free
+launch_complete=true run_label=launcher-local-3821767 runner_sha256=e9281828827494bed1e62379fda2b28a97333197796655c8cefd746cd2db07aa workload_sha256=815110faeadaf8b3966389de10dabdcdeeade403e50de7ed41fe24c4ba42f67f
 launcher_contract_smoke=pass
+immutable_staging=created root=/var/tmp/LongContextCostAttribution-launcher-deadline-local-3821767
+guardian_identity=true guardian_pid=3821927 comm=timeout pgid=3821927
+lock_acquired=true pid=3821933 pgid=3821927 guardian_pid=3821927 work_deadline_epoch=1789301561 session_deadline_epoch=1789301621
+smoke_workload=true pid=3821954 pgid=3821927
+workload_complete=true run_label=launcher-deadline-local-3821767
+clearance=true outer_lock=free process_group_scan=pass process_group=empty descendant_cleanup=none lease=removed finished_epoch=1789300721 session_deadline_epoch=1789301621 cleanup_deadline=within exit_rc=0
+independent_clearance_timeout_injected=true
+independent_clearance_deadline_case_rc=124 launch_complete=false

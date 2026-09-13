@@ -21,8 +21,16 @@
     {
       "candidate": "deferred post-dispatch encoder barriers",
       "commit": "f5649936f68a2262e6f1e51ad9b146ec035808cb",
-      "paired_bf16_ctx1024_control_decode_tps": [25.02, 24.98, 24.96],
-      "paired_bf16_ctx1024_candidate_decode_tps": [24.95, 25.0, 24.93],
+      "paired_bf16_ctx1024_control_decode_tps": [
+        25.02,
+        24.98,
+        24.96
+      ],
+      "paired_bf16_ctx1024_candidate_decode_tps": [
+        24.95,
+        25,
+        24.93
+      ],
       "action": "rejected"
     },
     {
@@ -44,7 +52,7 @@
   },
   "selected_candidate": {
     "name": "cache the BF16 SDPA denominator exponent for normalization",
-    "status": "offline_exact_word_qualified_pending_hardware_grant",
+    "status": "offline_exact_word_qualified_and_arm_wheels_built_pending_hardware_grant",
     "candidate_commit": "2278ca259618c51cd5ec99fa68c272ffe55b69a5",
     "candidate_receipt": "receipts/2026-09-13-bf16-sdpa-exp-cache-local/verification.json",
     "shader_source_sha256": "b58a0b9c80cf01d0520ef66ee5fbbc2f16ddb22aefd2efec41c1f80557db5f5c",
@@ -69,7 +77,13 @@
     "numerical_risk": "The proposal is acceptable only if storing and reloading the first exp result is word-identical to the current second exp evaluation for every tested score. Any mismatch rejects the candidate; no tolerance-based fallback is allowed."
   },
   "offline_acceptance": {
-    "required_exact_word_key_lengths": [256, 263, 320, 1024, 2048],
+    "required_exact_word_key_lengths": [
+      256,
+      263,
+      320,
+      1024,
+      2048
+    ],
     "required_dispatches_per_eligible_case": 1,
     "required_f16_spirv_relation": "byte_identical_to_qualified_base",
     "required_bf16_route_relation": "only exponent reuse changes",
@@ -80,13 +94,13 @@
     "requires_new_main_grant": true,
     "control_commit": "e4d079c883b8606dddef7720bd302c5756be0692",
     "candidate_commit": "2278ca259618c51cd5ec99fa68c272ffe55b69a5",
-    "candidate_commit_status": "offline exact-word qualified; parent hardware grant still required",
+    "candidate_commit_status": "offline_exact_word_qualified_and_arm_wheels_built_pending_hardware_grant",
     "workload_file": "candidate-workload.sh",
-    "workload_sha256": "fb96ca62fdf2fa08b13f2e76a3778916f38d1bea71263d05d78318d6feffb1fe",
+    "workload_sha256": "ca9c50dc574912489df5142d4a9c3493850cc23fd6b0a06228b5c9f87b1cd9b6",
     "control_source": "$HOME/src/mlx-longctx-base-e4d079c at e4d079c883b8606dddef7720bd302c5756be0692",
     "candidate_source": "$HOME/src/mlx-longctx-exp-cache-2278ca25 at 2278ca259618c51cd5ec99fa68c272ffe55b69a5",
-    "control_wheel_identity": "$HOME/src/mlx-longctx-base-e4d079c/dist/mlx_omarchy-*+e4d079c-*.whl; exact SHA-256 recorded and checked at run time",
-    "candidate_wheel_identity": "$HOME/src/mlx-longctx-exp-cache-2278ca25/dist/mlx_omarchy-*+2278ca2-*.whl; exact SHA-256 recorded and checked at run time",
+    "control_wheel_identity": "$HOME/src/mlx-longctx-base-e4d079c/dist/mlx_omarchy-0.32.2.dev202609131130+e4d079c-cp314-cp314-linux_aarch64.whl; SHA-256 6b308dfc58375c341c290057d236ee0e189b89d11fa55f4e09e5d9b4715f8ac2",
+    "candidate_wheel_identity": "$HOME/src/mlx-longctx-exp-cache-2278ca25/dist/mlx_omarchy-0.32.2.dev202609131142+2278ca2-cp314-cp314-linux_aarch64.whl; SHA-256 ceaec9a6a8432466ab0e3034abb552455153d9c40c24dd5493033baea10cfbba",
     "control_python": "$HOME/src/mlx-longctx-base-e4d079c/.work-longctx/control-venv/bin/python",
     "candidate_python": "$HOME/src/mlx-longctx-exp-cache-2278ca25/.work-longctx/candidate-venv/bin/python",
     "workload": "mlx-community/Qwen2.5-0.5B-Instruct-bf16 snapshot 56d07e766edd7159fbe12ed12d9cf114bf38bf1e, ctx1024, 1053 prompt tokens, 32 generated tokens",
@@ -101,16 +115,42 @@
       "control-3",
       "candidate-3"
     ],
-    "speed_claim_rule": "No speed verdict unless all six source-bound runs complete under the corrected lifecycle and exact output holds."
+    "speed_claim_rule": "No speed verdict unless all six source-bound runs complete under the corrected lifecycle and exact output holds.",
+    "native_image_identity": {
+      "control": {
+        "mlx/core.cpython-314-aarch64-linux-gnu.so": "4ad850da16c300ea9f60aa7247f034f358aa16d7ba2fd146979a01c867e3cfa5",
+        "mlx/lib/libmlx.so": "f604640d8c125eb2fb9082381691cd94b4f3aa42b169499561a6fd0d5eda542f"
+      },
+      "candidate": {
+        "mlx/core.cpython-314-aarch64-linux-gnu.so": "4ad850da16c300ea9f60aa7247f034f358aa16d7ba2fd146979a01c867e3cfa5",
+        "mlx/lib/libmlx.so": "155ba25b8e6fc8188654a56142358e63b28712bd9e3524b27194a7dbab6c2f5d"
+      }
+    },
+    "compiled_spv_identity": {
+      "base_bf16": "daa432ed514b05b2dbfa9adcab64a3b464e037f2f4271a6c962598c3ffef9b15",
+      "base_f16": "a301a801f73640c3c2fe11888bb85526618f1cc4ac839f4557d4143b0e3a6e60",
+      "candidate_bf16": "d8edeeb952599a2e280d9cfc9a3d54be5e8993a565236751b9489a4ffffde973",
+      "candidate_f16": "a301a801f73640c3c2fe11888bb85526618f1cc4ac839f4557d4143b0e3a6e60"
+    }
   },
   "protocol": {
     "launcher": "launch-exact-run.sh",
-    "launcher_sha256": "7a2adf5f5eaee6514b9df6c4968a41f735d8acd1fc7c96b6e6475cd1f624b1ea",
+    "launcher_sha256": "413d049237e87c9fa7608b67016467ad209916c258d811a7638f07f9b770e07b",
     "payload": "exact-run-payload.sh",
-    "payload_sha256": "5f74d4cd7afd81875b54cf33b777ff1028219c6139928dae3293b0fd71bf7726",
+    "payload_sha256": "e9281828827494bed1e62379fda2b28a97333197796655c8cefd746cd2db07aa",
     "remote_stage_check": "The exact payload and workload hashes are checked inside the same remote command immediately before setsid exec.",
-    "guardian": "setsid --wait timeout owns one remote process group; the payload records the exact timeout guardian and process group.",
+    "guardian": "setsid --wait timeout owns the primary remote process group; the payload is a Linux child subreaper and records the exact timeout guardian and process group.",
     "cleanup_reserve_seconds": 60,
-    "final_clearance": "The payload detects and terminates owned residual descendants before release. In-payload and independent post-run scans then require guardian absence, an empty process group, no staged workload process, no lease, and a free lock."
+    "final_clearance": "The subreaper discovers recursive descendants even after setsid detachment, terminates owned residual descendants, atomically refuses an existing lease, and retains uncertainty after scanner failure. In-payload and absolute-deadline independent scans require guardian absence, an empty process group, no staged workload process, no lease, and a free lock."
+  },
+  "source_preparation": {
+    "receipt": "arm-build-receipt.json",
+    "build_harness": "build-arm-wheel.sh",
+    "build_harness_sha256": "454cb4d4e437f5318d9edd305d00cc2ca9801a95f484ae0c29826a4703473fe1",
+    "host": "jwm1-linux",
+    "control_build_rc": 0,
+    "candidate_build_rc": 0,
+    "process_groups_absent_after_build": true,
+    "gpu_or_model_execution": false
   }
 }

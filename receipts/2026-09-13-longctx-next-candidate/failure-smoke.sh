@@ -8,7 +8,7 @@ TMP=$(mktemp -d)
 cleanup() {
   rm -f "$TMP/lock" "$TMP/lease" "$TMP/payload-scan-fail.sh" \
     "$TMP/workload-ok.sh" "$TMP/workload-124.sh" "$TMP/scan-fail.log" \
-    "$TMP/exit-124.log"
+    "$TMP/retained-lease.log" "$TMP/exit-124.log"
   rmdir "$TMP"
 }
 trap cleanup EXIT
@@ -50,6 +50,7 @@ run_payload scanner-failure "$TMP/payload-scan-fail.sh" "$TMP/workload-ok.sh" "$
 grep -Fq 'clearance=false outer_lock=free process_group_scan=failed' "$TMP/scan-fail.log"
 grep -Fq 'lease_present=true' "$TMP/scan-fail.log"
 [[ -s "$TMP/lease" ]]
+lease_sha_before=$(sha256sum "$TMP/lease" | cut -d' ' -f1)
 printf 'scanner_failure_case_rc=%s lease_retained=true lock=' "$case_rc" >>"$OUTPUT"
 if flock -n "$TMP/lock" true; then
   echo free >>"$OUTPUT"
@@ -58,6 +59,14 @@ else
   exit 1
 fi
 cat "$TMP/scan-fail.log" >>"$OUTPUT"
+run_payload retained-lease-refusal "$PAYLOAD" "$TMP/workload-ok.sh" "$TMP/retained-lease.log"
+[[ "$case_rc" == 78 ]]
+grep -Fq 'lease_acquired=false reason=existing_retained_lease' "$TMP/retained-lease.log"
+lease_sha_after=$(sha256sum "$TMP/lease" | cut -d' ' -f1)
+[[ "$lease_sha_after" == "$lease_sha_before" ]]
+printf 'retained_lease_refusal_rc=%s lease_unchanged=true lease_sha256=%s\n' \
+  "$case_rc" "$lease_sha_after" >>"$OUTPUT"
+cat "$TMP/retained-lease.log" >>"$OUTPUT"
 rm -f "$TMP/lease"
 
 run_payload exit-124 "$PAYLOAD" "$TMP/workload-124.sh" "$TMP/exit-124.log"

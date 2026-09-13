@@ -7,6 +7,17 @@ EXPECTED_BASE=e4d079c883b8606dddef7720bd302c5756be0692
 EXPECTED_CANDIDATE=2278ca259618c51cd5ec99fa68c272ffe55b69a5
 EXPECTED_BASE_SHADER=e41b54a666e5284921593cd5c3fdac4fca26a4f475abf54cc5483967e88e8706
 EXPECTED_CANDIDATE_SHADER=b58a0b9c80cf01d0520ef66ee5fbbc2f16ddb22aefd2efec41c1f80557db5f5c
+EXPECTED_CONTROL_WHEEL_SHA=6b308dfc58375c341c290057d236ee0e189b89d11fa55f4e09e5d9b4715f8ac2
+EXPECTED_CANDIDATE_WHEEL_SHA=ceaec9a6a8432466ab0e3034abb552455153d9c40c24dd5493033baea10cfbba
+EXPECTED_CONTROL_CORE_SHA=4ad850da16c300ea9f60aa7247f034f358aa16d7ba2fd146979a01c867e3cfa5
+EXPECTED_CANDIDATE_CORE_SHA=4ad850da16c300ea9f60aa7247f034f358aa16d7ba2fd146979a01c867e3cfa5
+EXPECTED_CONTROL_LIBMLX_SHA=f604640d8c125eb2fb9082381691cd94b4f3aa42b169499561a6fd0d5eda542f
+EXPECTED_CANDIDATE_LIBMLX_SHA=155ba25b8e6fc8188654a56142358e63b28712bd9e3524b27194a7dbab6c2f5d
+EXPECTED_BASE_BF16_SPV_SHA=daa432ed514b05b2dbfa9adcab64a3b464e037f2f4271a6c962598c3ffef9b15
+EXPECTED_BASE_F16_SPV_SHA=a301a801f73640c3c2fe11888bb85526618f1cc4ac839f4557d4143b0e3a6e60
+EXPECTED_CANDIDATE_BF16_SPV_SHA=d8edeeb952599a2e280d9cfc9a3d54be5e8993a565236751b9489a4ffffde973
+EXPECTED_CANDIDATE_F16_SPV_SHA=a301a801f73640c3c2fe11888bb85526618f1cc4ac839f4557d4143b0e3a6e60
+SPV_DIR="$CANDIDATE/receipts/2026-09-13-bf16-sdpa-exp-cache-local"
 EXPECTED_IDS=ff502900d2a179a5
 MODEL="$HOME/.cache/huggingface/hub/models--mlx-community--Qwen2.5-0.5B-Instruct-bf16/snapshots/56d07e766edd7159fbe12ed12d9cf114bf38bf1e"
 CONTROL_PY="$BASE/.work-longctx/control-venv/bin/python"
@@ -24,6 +35,10 @@ GPU_RUNNER="$R/bench_gpu.py"
 [ -z "$(git -C "$CANDIDATE" status --porcelain --untracked-files=no)" ]
 [ "$(sha256sum "$BASE/overlay/mlx/backend/omarchy/shaders/sdpa_decode_native.comp" | cut -d' ' -f1)" = "$EXPECTED_BASE_SHADER" ]
 [ "$(sha256sum "$CANDIDATE/overlay/mlx/backend/omarchy/shaders/sdpa_decode_native.comp" | cut -d' ' -f1)" = "$EXPECTED_CANDIDATE_SHADER" ]
+[ "$(sha256sum "$SPV_DIR/base-bf16.spv" | cut -d' ' -f1)" = "$EXPECTED_BASE_BF16_SPV_SHA" ]
+[ "$(sha256sum "$SPV_DIR/base-f16.spv" | cut -d' ' -f1)" = "$EXPECTED_BASE_F16_SPV_SHA" ]
+[ "$(sha256sum "$SPV_DIR/candidate-bf16.spv" | cut -d' ' -f1)" = "$EXPECTED_CANDIDATE_BF16_SPV_SHA" ]
+[ "$(sha256sum "$SPV_DIR/candidate-f16.spv" | cut -d' ' -f1)" = "$EXPECTED_CANDIDATE_F16_SPV_SHA" ]
 [ -x "$CONTROL_PY" ]
 [ -x "$CANDIDATE_PY" ]
 test -f "$SCRIPTS/bench_decode.py"
@@ -40,6 +55,8 @@ CONTROL_WHEEL=${control_wheels[0]}
 CANDIDATE_WHEEL=${candidate_wheels[0]}
 CONTROL_SHA=$(sha256sum "$CONTROL_WHEEL" | cut -d' ' -f1)
 CANDIDATE_SHA=$(sha256sum "$CANDIDATE_WHEEL" | cut -d' ' -f1)
+[ "$CONTROL_SHA" = "$EXPECTED_CONTROL_WHEEL_SHA" ]
+[ "$CANDIDATE_SHA" = "$EXPECTED_CANDIDATE_WHEEL_SHA" ]
 printf 'host=%s\nkernel=%s\ncontrol_commit=%s\ncandidate_commit=%s\ncontrol_shader_sha256=%s\ncandidate_shader_sha256=%s\ncontrol_wheel=%s\ncontrol_wheel_sha256=%s\ncandidate_wheel=%s\ncandidate_wheel_sha256=%s\nmodel=%s\n' \
   "$(hostname -s)" "$(uname -r)" "$EXPECTED_BASE" "$EXPECTED_CANDIDATE" \
   "$EXPECTED_BASE_SHADER" "$EXPECTED_CANDIDATE_SHADER" \
@@ -62,10 +79,16 @@ wheel = pathlib.Path(sys.argv[1]).resolve()
 expected_python = pathlib.Path(sys.argv[2]).absolute()
 expected_prefix = pathlib.Path(sys.argv[3]).resolve()
 expected_stamp = sys.argv[4]
+expected_wheel_sha = sys.argv[5]
+expected_members = {
+    "mlx/core.cpython-314-aarch64-linux-gnu.so": sys.argv[6],
+    "mlx/lib/libmlx.so": sys.argv[7],
+}
 assert pathlib.Path(sys.executable).absolute() == expected_python
 assert pathlib.Path(sys.prefix).resolve() == expected_prefix
 assert "PYTHONPATH" not in os.environ
 assert "LD_LIBRARY_PATH" not in os.environ
+assert hashlib.sha256(wheel.read_bytes()).hexdigest() == expected_wheel_sha
 with zipfile.ZipFile(wheel) as archive:
     names = archive.namelist()
     record_name = next(name for name in names if name.endswith(".dist-info/RECORD"))
@@ -74,13 +97,14 @@ with zipfile.ZipFile(wheel) as archive:
         for row in csv.reader(io.TextIOWrapper(archive.open(record_name)))
     }
     members = [name for name in names if name.endswith(".so")]
-    wheel_hashes = {}
+    assert set(members) == set(expected_members), members
     for name in members:
         data = archive.read(name)
-        digest = hashlib.sha256(data).digest()
-        encoded = base64.urlsafe_b64encode(digest).decode().rstrip("=")
+        raw_digest = hashlib.sha256(data).digest()
+        encoded = base64.urlsafe_b64encode(raw_digest).decode().rstrip("=")
         assert records[name] == "sha256=" + encoded, (name, records.get(name))
-        wheel_hashes[name] = hashlib.sha256(data).hexdigest()
+        digest = hashlib.sha256(data).hexdigest()
+        assert digest == expected_members[name], (name, digest, expected_members[name])
 import mlx.core as mx
 mapped = []
 for line in pathlib.Path("/proc/self/maps").read_text().splitlines():
@@ -94,7 +118,7 @@ for value in mapped:
     assert path.is_relative_to(expected_prefix), (path, expected_prefix)
     member = next(name for name in members if name.endswith("/" + path.name))
     digest = hashlib.sha256(path.read_bytes()).hexdigest()
-    assert digest == wheel_hashes[member], (path, digest, wheel_hashes[member])
+    assert digest == expected_members[member], (path, digest, expected_members[member])
     mapped_hashes[str(path)] = digest
 version = importlib.metadata.version("mlx-omarchy")
 assert expected_stamp in version, version
@@ -105,7 +129,8 @@ print(json.dumps({
     "prefix": str(expected_prefix),
     "version": version,
     "wheel": str(wheel),
-    "wheel_sha256": hashlib.sha256(wheel.read_bytes()).hexdigest(),
+    "wheel_sha256": expected_wheel_sha,
+    "expected_native_members": expected_members,
     "loaded_mappings": mapped_hashes,
     "device": device,
 }, indent=2, sort_keys=True))
@@ -123,11 +148,8 @@ runpy.run_path(script, run_name="__main__")
 PY
 
 env -u PYTHONPATH -u LD_LIBRARY_PATH -u MLX_OMARCHY_FUSED_CHAIN -u MLX_OMARCHY_FUSED_GEMV \
-  "$CONTROL_PY" "$IDENTITY" "$CONTROL_WHEEL" "$CONTROL_PY" \
-  "$(dirname "$(dirname "$CONTROL_PY")")" +e4d079c > "$R/control-runtime.json"
-env -u PYTHONPATH -u LD_LIBRARY_PATH -u MLX_OMARCHY_FUSED_CHAIN -u MLX_OMARCHY_FUSED_GEMV \
-  "$CANDIDATE_PY" "$IDENTITY" "$CANDIDATE_WHEEL" "$CANDIDATE_PY" \
-  "$(dirname "$(dirname "$CANDIDATE_PY")")" +2278ca2 > "$R/candidate-runtime.json"
+  "$CONTROL_PY" "$IDENTITY" "$CONTROL_WHEEL" "$CONTROL_PY" "$(dirname "$(dirname "$CONTROL_PY")")" +e4d079c "$EXPECTED_CONTROL_WHEEL_SHA" "$EXPECTED_CONTROL_CORE_SHA" "$EXPECTED_CONTROL_LIBMLX_SHA" > "$R/control-runtime.json"
+env -u PYTHONPATH -u LD_LIBRARY_PATH -u MLX_OMARCHY_FUSED_CHAIN -u MLX_OMARCHY_FUSED_GEMV "$CANDIDATE_PY" "$IDENTITY" "$CANDIDATE_WHEEL" "$CANDIDATE_PY" "$(dirname "$(dirname "$CANDIDATE_PY")")" +2278ca2 "$EXPECTED_CANDIDATE_WHEEL_SHA" "$EXPECTED_CANDIDATE_CORE_SHA" "$EXPECTED_CANDIDATE_LIBMLX_SHA" > "$R/candidate-runtime.json"
 "$CONTROL_PY" - "$R/control-runtime.json" "$R/candidate-runtime.json" <<'PY' | tee "$R/runtime-provenance.json"
 import json
 import pathlib

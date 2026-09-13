@@ -24,6 +24,7 @@ timeout --signal=TERM --kill-after=2s 15s \
     EXPECTED_HOST="$(hostname)" LOCK_PATH="$TMP/lock" LEASE_PATH="$TMP/lease" \
     WORKLOAD_PATH="$WORKLOAD" WORKLOAD_SHA256="$WORKLOAD_SHA" \
     RUN_LABEL=bounded-fake-child-smoke LIFECYCLE_SMOKE_FAKE_CHILD=1 \
+    LIFECYCLE_SMOKE_DETACHED_CHILD=1 \
     bash "$PAYLOAD" >"$TMP/run.log" 2>&1
 run_rc=$?
 set -e
@@ -31,31 +32,37 @@ cat "$TMP/run.log" >"$OUTPUT"
 [[ "$run_rc" == 0 ]]
 grep -Fq 'fake_child_detected=true' "$TMP/run.log"
 grep -Fq 'fake_child_left_for_cleanup=true' "$TMP/run.log"
+grep -Fq 'fake_detached_child_detected=true' "$TMP/run.log"
+grep -Fq 'fake_detached_child_left_for_cleanup=true' "$TMP/run.log"
 grep -Fq 'workload_complete=true run_label=bounded-fake-child-smoke' "$TMP/run.log"
 grep -Fq 'clearance=true outer_lock=free process_group_scan=pass process_group=empty descendant_cleanup=terminated_descendants=' "$TMP/run.log"
 
-read -r guardian_pid pgid < <(python3 - "$TMP/run.log" <<'PY'
+read -r guardian_pid pgid detached_pid < <(python3 - "$TMP/run.log" <<'PY'
 import re
 import sys
 text = open(sys.argv[1], encoding="utf-8").read()
 matches = re.findall(r"^guardian_identity=true guardian_pid=(\d+) comm=timeout pgid=(\d+)$", text, re.MULTILINE)
-if len(matches) != 1:
-    raise SystemExit(f"expected one guardian identity, found {matches}")
-print(*matches[0])
+detached = re.findall(r"^fake_detached_child_detected=true pid=(\d+) pgid=\d+$", text, re.MULTILINE)
+if len(matches) != 1 or len(detached) != 1:
+    raise SystemExit(f"expected one guardian and detached child, found {matches}, {detached}")
+print(*matches[0], detached[0])
 PY
 )
 
-python3 - "$guardian_pid" "$pgid" "$TMP/lease" "$TMP/lock" <<'PY' >>"$OUTPUT"
+python3 - "$guardian_pid" "$pgid" "$detached_pid" "$TMP/lease" "$TMP/lock" <<'PY' >>"$OUTPUT"
 import fcntl
 import glob
 import os
 import sys
 guardian = int(sys.argv[1])
 pgid = int(sys.argv[2])
-lease = sys.argv[3]
-lock = sys.argv[4]
+detached = int(sys.argv[3])
+lease = sys.argv[4]
+lock = sys.argv[5]
 if os.path.exists(f"/proc/{guardian}"):
     raise SystemExit(f"guardian_residual={guardian}")
+if os.path.exists(f"/proc/{detached}"):
+    raise SystemExit(f"detached_descendant_residual={detached}")
 members = []
 for path in glob.glob("/proc/[0-9]*/stat"):
     try:

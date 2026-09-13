@@ -1,11 +1,14 @@
 scanner_failure_case_rc=125 lease_retained=true lock=free
-guardian_identity=true guardian_pid=3622710 comm=timeout pgid=3622710
-lock_acquired=true pid=3622714 pgid=3622710 guardian_pid=3622710 work_deadline_epoch=1789296927 session_deadline_epoch=1789296987
+guardian_identity=true guardian_pid=3772825 comm=timeout pgid=3772825
+lock_acquired=true pid=3772826 pgid=3772825 guardian_pid=3772825 work_deadline_epoch=1789299934 session_deadline_epoch=1789299994
 workload_ok=true
 workload_complete=true run_label=scanner-failure
-clearance=false outer_lock=free process_group_scan=failed process_group=empty descendant_cleanup=none lease_present=true finished_epoch=1789296922 session_deadline_epoch=1789296987 cleanup_deadline=within exit_rc=0
+clearance=false outer_lock=free process_group_scan=failed process_group=empty descendant_cleanup=none lease_present=true finished_epoch=1789299929 session_deadline_epoch=1789299994 cleanup_deadline=within exit_rc=0
+retained_lease_refusal_rc=78 lease_unchanged=true lease_sha256=edd0c6759372b7874f385fca0fdb522fa3c07a1595df02c78540822fcd5049ed
+guardian_identity=true guardian_pid=3772869 comm=timeout pgid=3772869
+lease_acquired=false reason=existing_retained_lease lease_sha256=edd0c6759372b7874f385fca0fdb522fa3c07a1595df02c78540822fcd5049ed
 exit_124_case_rc=124 lease_removed=true lock=free
-guardian_identity=true guardian_pid=3622763 comm=timeout pgid=3622763
-lock_acquired=true pid=3622764 pgid=3622763 guardian_pid=3622763 work_deadline_epoch=1789296927 session_deadline_epoch=1789296987
+guardian_identity=true guardian_pid=3772898 comm=timeout pgid=3772898
+lock_acquired=true pid=3772899 pgid=3772898 guardian_pid=3772898 work_deadline_epoch=1789299934 session_deadline_epoch=1789299994
 workload_exit_124=true
-clearance=true outer_lock=free process_group_scan=pass process_group=empty descendant_cleanup=none lease=removed finished_epoch=1789296922 session_deadline_epoch=1789296987 cleanup_deadline=within exit_rc=124
+clearance=true outer_lock=free process_group_scan=pass process_group=empty descendant_cleanup=none lease=removed finished_epoch=1789299929 session_deadline_epoch=1789299994 cleanup_deadline=within exit_rc=124

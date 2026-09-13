@@ -14,7 +14,7 @@ LOCAL_WORKLOAD=$(readlink -f "$5")
 HOST=jwm1-linux
 HERE=$(cd "$(dirname "$0")" && pwd)
 PAYLOAD="$HERE/exact-run-payload.sh"
-PAYLOAD_SHA=5f74d4cd7afd81875b54cf33b777ff1028219c6139928dae3293b0fd71bf7726
+PAYLOAD_SHA=e9281828827494bed1e62379fda2b28a97333197796655c8cefd746cd2db07aa
 WORKLOAD_SHA=$(sha256sum "$LOCAL_WORKLOAD" | cut -d' ' -f1)
 ROOT="/var/tmp/LongContextCostAttribution-$RUN_LABEL"
 REMOTE_PAYLOAD="$ROOT/payload.sh"
@@ -68,7 +68,9 @@ print(*matches[0])
 PY
 )
 
-"${SSH[@]}" python3 - "$guardian_pid" "$pgid" "$LEASE" "$LOCK" "$ROOT" <<'PY'
+remaining=$((OUTER_DEADLINE_EPOCH - $(date +%s)))
+(( remaining > 0 ))
+timeout --foreground --signal=TERM --kill-after=5s "${remaining}s" "${SSH[@]}" python3 - "$guardian_pid" "$pgid" "$LEASE" "$LOCK" "$ROOT" <<'PY'
 import fcntl
 import glob
 import os

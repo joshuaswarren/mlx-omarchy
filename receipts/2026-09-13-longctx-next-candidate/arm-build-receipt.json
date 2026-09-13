@@ -1,0 +1,77 @@
+{
+  "build_harness_sha256": "454cb4d4e437f5318d9edd305d00cc2ca9801a95f484ae0c29826a4703473fe1",
+  "candidate": {
+    "build_log": "/home/joshuawarren/src/mlx-longctx-exp-cache-2278ca25/.work-longctx/candidate-build.log",
+    "build_log_sha256": "82a9fc5c8642a2e8f2299410f9e0fe2b39473cf32dc5b07eb885755a48fef60b",
+    "build_pgid": 3405547,
+    "build_pid": 3405547,
+    "build_rc": 0,
+    "deadline_epoch": 1789301423,
+    "finished_epoch": 1789300276,
+    "installed_native_files": {
+      "mlx/core.cpython-314-aarch64-linux-gnu.so": "4ad850da16c300ea9f60aa7247f034f358aa16d7ba2fd146979a01c867e3cfa5",
+      "mlx/lib/libmlx.so": "155ba25b8e6fc8188654a56142358e63b28712bd9e3524b27194a7dbab6c2f5d"
+    },
+    "process_group_absent": true,
+    "python": "/home/joshuawarren/src/mlx-longctx-exp-cache-2278ca25/.work-longctx/candidate-venv/bin/python",
+    "source": "/home/joshuawarren/src/mlx-longctx-exp-cache-2278ca25",
+    "source_commit": "2278ca259618c51cd5ec99fa68c272ffe55b69a5",
+    "source_shader_sha256": "b58a0b9c80cf01d0520ef66ee5fbbc2f16ddb22aefd2efec41c1f80557db5f5c",
+    "start_line": "build_start=true label=candidate pid=3405547 pgid=3405547 deadline_epoch=1789301423 source=/home/joshuawarren/src/mlx-longctx-exp-cache-2278ca25 commit=2278ca259618c51cd5ec99fa68c272ffe55b69a5 home_available_kb=302320844",
+    "tracked_status": "",
+    "venv": "/home/joshuawarren/src/mlx-longctx-exp-cache-2278ca25/.work-longctx/candidate-venv",
+    "wheel_native_members": {
+      "mlx/core.cpython-314-aarch64-linux-gnu.so": "4ad850da16c300ea9f60aa7247f034f358aa16d7ba2fd146979a01c867e3cfa5",
+      "mlx/lib/libmlx.so": "155ba25b8e6fc8188654a56142358e63b28712bd9e3524b27194a7dbab6c2f5d"
+    },
+    "wheel_path": "/home/joshuawarren/src/mlx-longctx-exp-cache-2278ca25/dist/mlx_omarchy-0.32.2.dev202609131142+2278ca2-cp314-cp314-linux_aarch64.whl",
+    "wheel_sha256": "ceaec9a6a8432466ab0e3034abb552455153d9c40c24dd5493033baea10cfbba",
+    "wheel_size": 7640363,
+    "wheel_spv_members_present": false
+  },
+  "captured_epoch": 1789300364,
+  "control": {
+    "build_log": "/home/joshuawarren/src/mlx-longctx-base-e4d079c/.work-longctx/control-build.log",
+    "build_log_sha256": "ee6a5331ab1819858fd44d8794baf67cdc081804854a956b97c66b7ce5329c25",
+    "build_pgid": 3400626,
+    "build_pid": 3400626,
+    "build_rc": 0,
+    "deadline_epoch": 1789300726,
+    "finished_epoch": 1789299578,
+    "installed_native_files": {
+      "mlx/core.cpython-314-aarch64-linux-gnu.so": "4ad850da16c300ea9f60aa7247f034f358aa16d7ba2fd146979a01c867e3cfa5",
+      "mlx/lib/libmlx.so": "f604640d8c125eb2fb9082381691cd94b4f3aa42b169499561a6fd0d5eda542f"
+    },
+    "process_group_absent": true,
+    "python": "/home/joshuawarren/src/mlx-longctx-base-e4d079c/.work-longctx/control-venv/bin/python",
+    "source": "/home/joshuawarren/src/mlx-longctx-base-e4d079c",
+    "source_commit": "e4d079c883b8606dddef7720bd302c5756be0692",
+    "source_shader_sha256": "e41b54a666e5284921593cd5c3fdac4fca26a4f475abf54cc5483967e88e8706",
+    "start_line": "build_start=true label=control pid=3400626 pgid=3400626 deadline_epoch=1789300726 source=/home/joshuawarren/src/mlx-longctx-base-e4d079c commit=e4d079c883b8606dddef7720bd302c5756be0692 home_available_kb=302442848",
+    "tracked_status": "",
+    "venv": "/home/joshuawarren/src/mlx-longctx-base-e4d079c/.work-longctx/control-venv",
+    "wheel_native_members": {
+      "mlx/core.cpython-314-aarch64-linux-gnu.so": "4ad850da16c300ea9f60aa7247f034f358aa16d7ba2fd146979a01c867e3cfa5",
+      "mlx/lib/libmlx.so": "f604640d8c125eb2fb9082381691cd94b4f3aa42b169499561a6fd0d5eda542f"
+    },
+    "wheel_path": "/home/joshuawarren/src/mlx-longctx-base-e4d079c/dist/mlx_omarchy-0.32.2.dev202609131130+e4d079c-cp314-cp314-linux_aarch64.whl",
+    "wheel_sha256": "6b308dfc58375c341c290057d236ee0e189b89d11fa55f4e09e5d9b4715f8ac2",
+    "wheel_size": 7640376,
+    "wheel_spv_members_present": false
+  },
+  "home_available_kb": 302199072,
+  "host": "jwm1-linux",
+  "kernel": "7.1.6-1-1-ARCH",
+  "schema": "longctx-arm-wheel-build/1",
+  "execution_model": "openai-codex/gpt-5.6-sol",
+  "fallback_model": null,
+  "scope": "CPU-only ARM wheel builds; no MLX import, model load, GPU probe, ANE probe, or benchmark",
+  "compiled_shader_evidence": {
+    "base_bf16_spv_sha256": "daa432ed514b05b2dbfa9adcab64a3b464e037f2f4271a6c962598c3ffef9b15",
+    "base_f16_spv_sha256": "a301a801f73640c3c2fe11888bb85526618f1cc4ac839f4557d4143b0e3a6e60",
+    "candidate_bf16_spv_sha256": "d8edeeb952599a2e280d9cfc9a3d54be5e8993a565236751b9489a4ffffde973",
+    "candidate_f16_spv_sha256": "a301a801f73640c3c2fe11888bb85526618f1cc4ac839f4557d4143b0e3a6e60",
+    "source_commit": "2278ca259618c51cd5ec99fa68c272ffe55b69a5",
+    "note": "The wheels contain no standalone .spv members; exact runtime wheel and native-image hashes bind the embedded build."
+  }
+}

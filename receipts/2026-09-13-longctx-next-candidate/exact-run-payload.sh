@@ -9,6 +9,23 @@ set -euo pipefail
 : "${WORKLOAD_PATH:?WORKLOAD_PATH is required}"
 : "${WORKLOAD_SHA256:?WORKLOAD_SHA256 is required}"
 : "${RUN_LABEL:?RUN_LABEL is required}"
+if [[ "${LONGCTX_SUBREAPER_ACTIVE:-0}" != 1 ]]; then
+  exec python3 - "$0" <<'PY'
+import ctypes
+import os
+import shutil
+import sys
+
+libc = ctypes.CDLL(None, use_errno=True)
+if libc.prctl(36, 1, 0, 0, 0) != 0:
+    raise OSError(ctypes.get_errno(), "PR_SET_CHILD_SUBREAPER")
+env = os.environ.copy()
+env["LONGCTX_SUBREAPER_ACTIVE"] = "1"
+bash = shutil.which("bash")
+assert bash is not None
+os.execve(bash, [bash, sys.argv[1]], env)
+PY
+fi
 
 CLEANUP_RESERVE_SECONDS=60
 WORK_DEADLINE_EPOCH=0
@@ -43,21 +60,34 @@ process_group_members() {
 import glob
 import os
 import sys
+
 wanted = int(sys.argv[1])
 script = int(sys.argv[2])
 guardian = int(sys.argv[3])
 me = os.getpid()
 scanner_parent = os.getppid()
-for path in glob.glob('/proc/[0-9]*/stat'):
+excluded = {script, guardian, me, scanner_parent}
+table = {}
+for path in glob.glob("/proc/[0-9]*/stat"):
     try:
         text = open(path).read()
-        close = text.rfind(')')
-        pid = int(text[:text.find(' ')])
+        close = text.rfind(")")
+        pid = int(text[:text.find(" ")])
         fields = text[close + 2:].split()
-        if int(fields[2]) == wanted and pid not in (script, guardian, me, scanner_parent):
-            print(f"pid={pid} ppid={fields[1]} pgid={fields[2]} state={fields[0]}")
+        table[pid] = (int(fields[1]), int(fields[2]), fields[0])
     except (FileNotFoundError, ProcessLookupError, PermissionError, ValueError, IndexError):
         pass
+owned = {pid for pid, (_, pgid, _) in table.items() if pgid == wanted and pid not in excluded}
+changed = True
+while changed:
+    changed = False
+    for pid, (ppid, _, _) in table.items():
+        if pid not in excluded and pid not in owned and (ppid == script or ppid in owned):
+            owned.add(pid)
+            changed = True
+for pid in sorted(owned):
+    ppid, pgid, state = table[pid]
+    print(f"pid={pid} ppid={ppid} pgid={pgid} state={state}")
 PY
 }
 
@@ -69,25 +99,35 @@ import os
 import signal
 import sys
 import time
+
 wanted = int(sys.argv[1])
 script = int(sys.argv[2])
 guardian = int(sys.argv[3])
 me = os.getpid()
 scanner_parent = os.getppid()
-excluded = (script, guardian, me, scanner_parent)
+excluded = {script, guardian, me, scanner_parent}
+
 def members():
-    found = []
-    for path in glob.glob('/proc/[0-9]*/stat'):
+    table = {}
+    for path in glob.glob("/proc/[0-9]*/stat"):
         try:
             text = open(path).read()
-            close = text.rfind(')')
-            pid = int(text[:text.find(' ')])
+            close = text.rfind(")")
+            pid = int(text[:text.find(" ")])
             fields = text[close + 2:].split()
-            if int(fields[2]) == wanted and pid not in excluded:
-                found.append(pid)
+            table[pid] = (int(fields[1]), int(fields[2]))
         except (FileNotFoundError, ProcessLookupError, PermissionError, ValueError, IndexError):
             pass
-    return found
+    owned = {pid for pid, (_, pgid) in table.items() if pgid == wanted and pid not in excluded}
+    changed = True
+    while changed:
+        changed = False
+        for pid, (ppid, _) in table.items():
+            if pid not in excluded and pid not in owned and (ppid == script or ppid in owned):
+                owned.add(pid)
+                changed = True
+    return sorted(owned)
+
 targets = members()
 for pid in targets:
     try:
@@ -159,7 +199,7 @@ finish() {
 
 capture_guardian
 [[ "$(hostname)" == "$EXPECTED_HOST" ]]
-for command in bash cat date flock grep hostname ps python3 rm sha256sum timeout tr; do
+for command in bash cat cut date flock grep hostname ps python3 rm setsid sha256sum sleep timeout tr; do
   command -v "$command" >/dev/null
 done
 [[ "$ACQUIRE_CUTOFF_EPOCH" =~ ^[0-9]+$ ]]
@@ -182,11 +222,22 @@ if ! flock -n 9; then
   echo "lock_acquired=false time=$(date -Is)"
   exit 75
 fi
+if [[ -e "$LEASE_PATH" ]]; then
+  echo "lease_acquired=false reason=existing_retained_lease lease_sha256=$(sha256sum "$LEASE_PATH" | cut -d' ' -f1)"
+  flock -u 9
+  exec 9>&-
+  exit 78
+fi
 [[ "$(ps -o pgid= -p $$ | tr -d ' ')" == "$PGID" ]]
 [[ "$PPID" == "$GUARDIAN_PID" ]]
 [[ "$(cat "/proc/$GUARDIAN_PID/comm")" == timeout ]]
-printf 'agent=LongContextCostAttribution pid=%s pgid=%s guardian_pid=%s started=%s work_deadline_epoch=%s session_deadline_epoch=%s cleanup_reserve_seconds=%s workload_sha256=%s run_label=%s\n' \
-  "$$" "$PGID" "$GUARDIAN_PID" "$(date -Is)" "$WORK_DEADLINE_EPOCH" "$SESSION_DEADLINE_EPOCH" "$CLEANUP_RESERVE_SECONDS" "$WORKLOAD_SHA256" "$RUN_LABEL" >"$LEASE_PATH"
+if ! (set -o noclobber; printf 'agent=LongContextCostAttribution pid=%s pgid=%s guardian_pid=%s started=%s work_deadline_epoch=%s session_deadline_epoch=%s cleanup_reserve_seconds=%s workload_sha256=%s run_label=%s\n' \
+  "$$" "$PGID" "$GUARDIAN_PID" "$(date -Is)" "$WORK_DEADLINE_EPOCH" "$SESSION_DEADLINE_EPOCH" "$CLEANUP_RESERVE_SECONDS" "$WORKLOAD_SHA256" "$RUN_LABEL" >"$LEASE_PATH") 2>/dev/null; then
+  echo "lease_acquired=false reason=atomic_create_refused"
+  flock -u 9
+  exec 9>&-
+  exit 78
+fi
 echo "lock_acquired=true pid=$$ pgid=$PGID guardian_pid=$GUARDIAN_PID work_deadline_epoch=$WORK_DEADLINE_EPOCH session_deadline_epoch=$SESSION_DEADLINE_EPOCH"
 trap finish EXIT INT TERM
 
@@ -197,6 +248,17 @@ if [[ "${LIFECYCLE_SMOKE_FAKE_CHILD:-0}" == 1 ]]; then
   grep -Fq "pid=$fake_child " <<<"$fake_members"
   echo "fake_child_detected=true pid=$fake_child"
   echo "fake_child_left_for_cleanup=true pid=$fake_child"
+fi
+if [[ "${LIFECYCLE_SMOKE_DETACHED_CHILD:-0}" == 1 ]]; then
+  setsid sleep 30 </dev/null >/dev/null 2>&1 &
+  fake_detached_child=$!
+  sleep 0.1
+  fake_detached_pgid=$(ps -o pgid= -p "$fake_detached_child" | tr -d ' ')
+  [[ "$fake_detached_pgid" == "$fake_detached_child" && "$fake_detached_pgid" != "$PGID" ]]
+  fake_members=$(process_group_members)
+  grep -Fq "pid=$fake_detached_child " <<<"$fake_members"
+  echo "fake_detached_child_detected=true pid=$fake_detached_child pgid=$fake_detached_pgid"
+  echo "fake_detached_child_left_for_cleanup=true pid=$fake_detached_child"
 fi
 
 work_seconds=$(remaining_work_seconds)
