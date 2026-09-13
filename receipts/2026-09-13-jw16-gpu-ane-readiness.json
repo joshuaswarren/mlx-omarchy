@@ -1,0 +1,139 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-13",
+  "resolved_model": {
+    "configured": "openai-codex/gpt-5.6-sol",
+    "actual": "openai-codex/gpt-5.6-sol",
+    "fallback": false
+  },
+  "source_revisions": {
+    "mlx_omarchy": "f7169fcb7c2d",
+    "ane_linux_experiments": "eb3fe6477d55",
+    "omarchy_ane_driver_worktree": "061b461410a595eb9884e48a250dcc47fc77be8d",
+    "omarchy_ane_driver_sha256": "3156583dae8e75ac7928abed41638d8980c08b437d337be29129441e9e43c1c4",
+    "omarchy_linux": "945766977286778643c6149d86eb46d1f473a0e5"
+  },
+  "target": {
+    "ssh_alias": "jw16mbp1-linux",
+    "hostname": "jw16mbp1-linux",
+    "kernel": "Linux jw16mbp1-linux 7.1.6-1-1-ARCH #1 SMP PREEMPT_DYNAMIC Sat, 08 Aug 2026 17:14:04 +0000 aarch64 GNU/Linux",
+    "device_tree_model": "Apple MacBook Pro (16-inch, M1 Max, 2021)",
+    "device_tree_compatible": [
+      "apple,j316c",
+      "apple,t6001",
+      "apple,arm-platform"
+    ]
+  },
+  "gpu": {
+    "status": "ready_and_router_serving",
+    "vulkan": {
+      "instance_version": "1.4.357",
+      "api_version": "1.4.354",
+      "device_name": "Apple M1 Max (G13C C0)",
+      "device_type": "PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU",
+      "vendor_id": "0x10005",
+      "device_id": "0x0000",
+      "driver_id": "DRIVER_ID_MESA_HONEYKRISP",
+      "driver_name": "Honeykrisp",
+      "driver_version": "26.2.2",
+      "driver_info": "Mesa 26.2.2-arch1.1",
+      "mesa_package": "mesa 1:26.2.2-1",
+      "vulkan_tools_package": "vulkan-tools 1.4.357.0-1"
+    },
+    "firmware": {
+      "device_tree_compatible_hex": "6170706c652c6167782d7436303031006170706c652c6167782d67313363006170706c652c6167782d6731337300",
+      "decoded_compatible": [
+        "apple,agx-t6001",
+        "apple,agx-g13c",
+        "apple,agx-g13s"
+      ],
+      "firmware_version_cells_hex": "0000000d0000000500000000",
+      "firmware_abi_cells_hex": "0000000d0000000500000000",
+      "firmware_compat_cells_hex": "0000000d0000000500000000",
+      "rtkit_log": "RTKit: Initializing (protocol version 12)"
+    },
+    "llm_inference": {
+      "load_state": "loaded",
+      "active_state": "active",
+      "sub_state": "running",
+      "main_pid": 3555,
+      "worker_pid": 3556,
+      "start_timestamp": "Sat 2026-09-12 21:24:49 CDT",
+      "lock": "/tmp/m1-gpu.lock",
+      "lock_holders": [3555, 3556],
+      "server": "llama-vulkan/llama-server",
+      "model": "qwen38-27b-q4_k_m.gguf",
+      "served_alias": "qwen3.8-27b",
+      "context": 65536,
+      "parallel_slots": 2,
+      "health_response": {"status": "ok"},
+      "models_without_api_key": "HTTP 401"
+    },
+    "mlx_execution": {
+      "performed": false,
+      "reason": "The live router-serving llm-inference unit owns /tmp/m1-gpu.lock. It was not stopped. Vulkan enumeration proved the device without running a competing MLX workload."
+    }
+  },
+  "ane": {
+    "status": "hardware_present_in_live_adt_but_not_described_or_bound_in_linux_fdt",
+    "device_nodes": [],
+    "sys_class_ane": false,
+    "linux_fdt_ane_paths": [],
+    "linux_fdt_ane_compatible_count": 0,
+    "linux_fdt_reg_name_engine_count": 0,
+    "linux_fdt_interrupt_name_ane_count": 0,
+    "ane_module_loaded": false,
+    "installed_ane_modules": [],
+    "kernel_journal_ane_match_count": 0,
+    "diagnostic_module": {
+      "path": "/tmp/m1max-ane-prereq/source-061b461410a595eb9884e48a250dcc47fc77be8d/ane/ane.ko",
+      "sha256": "7b3691b4fcb01fbe8f4d92e507e95f49c183c2083ed78bb9d1ed2a03607ac1f0",
+      "vermagic": "7.1.6-1-1-ARCH SMP preempt mod_unload aarch64",
+      "of_aliases": [
+        "apple,t6000-ane",
+        "apple,t8103-ane"
+      ],
+      "loaded": false,
+      "reason_not_loaded": "The live Linux FDT has no matching ANE node and no ANE DART provider. Loading a module that cannot bind would not qualify hardware and was prohibited."
+    }
+  },
+  "live_tree_evidence": {
+    "fdt_path": "/sys/firmware/fdt",
+    "fdt_bytes": 140214,
+    "decompiled_dts": {
+      "private_capture_path": "/tmp/2026-09-13-jw16-live-device-tree.dts",
+      "bytes": 231477,
+      "sha256": "245b5c8ad0024a371a94c6a8c74107cefd41938f5fa5f037c3975a8494f88d57",
+      "dtc_note": "dtc required -f because the live tree contains an empty node name at /reserved-memory/@10fbdbc8000. The output was used only for read-only evidence extraction and is not committed because the full tree contains machine identifiers."
+    },
+    "live_adt_capture": {
+      "private_remote_path": "/home/joshuawarren/.cache/ane-live-adt.IVNQh1/adt.bin",
+      "mode": "0600",
+      "bytes": 507904,
+      "sha256": "08605987113442a01d7fe2446697e877831ab9dc82ca81d99e506dfc60f24eeb",
+      "capture_source": "Live FDT phram region 0x10004f70000 + 0x7c000",
+      "post_capture_module_state": "phram absent",
+      "post_capture_mtd_state": "mtd0 nvram only",
+      "raw_blob_committed": false
+    }
+  },
+  "commands": [
+    "ssh -o BatchMode=yes -o ConnectTimeout=8 jw16mbp1-linux 'hostname; uname -a; read /proc/device-tree/model and compatible; read /proc/cpuinfo'",
+    "ssh -o BatchMode=yes -o ConnectTimeout=8 jw16mbp1-linux 'systemctl show llm-inference.service; inspect /tmp/m1-gpu.lock owners and matching processes'",
+    "ssh -o BatchMode=yes -o ConnectTimeout=8 jw16mbp1-linux 'timeout 15s vulkaninfo --summary; pacman -Q mesa vulkan-tools; read DRM uevent and firmware properties'",
+    "ssh -o BatchMode=yes -o ConnectTimeout=8 jw16mbp1-linux 'curl --fail --silent --show-error --max-time 5 http://127.0.0.1:8002/health'",
+    "ssh -o BatchMode=yes -o ConnectTimeout=8 jw16mbp1-linux 'inspect /dev/ane*, /sys/class/ane, /proc/device-tree, /sys/firmware/fdt, lsmod, dmesg, journalctl, and /proc/mtd'",
+    "ssh -o BatchMode=yes -o ConnectTimeout=8 jw16mbp1-linux 'timeout 20s dtc -q -f -I fs -O dts -o /tmp/2026-09-13-jw16-live-device-tree.dts /sys/firmware/devicetree/base'",
+    "scp -o BatchMode=yes -o ConnectTimeout=8 jw16mbp1-linux:/home/joshuawarren/.cache/ane-live-adt.IVNQh1/adt.bin /tmp/2026-09-13-jw16-live.adt",
+    "timeout 15s python3 /home/joshuawarren/src/homelab-infra/scripts/jwm1-adt-parse.py /tmp/2026-09-13-jw16-live.adt ane"
+  ],
+  "safety": {
+    "llm_inference_stopped": false,
+    "gpu_benchmark_started": false,
+    "ane_module_loaded": false,
+    "device_tree_applied": false,
+    "register_access_performed": false,
+    "default_branch_pushed": false
+  },
+  "mapping_receipt": "receipts/2026-09-13-t6000-live-mapping.md"
+}
