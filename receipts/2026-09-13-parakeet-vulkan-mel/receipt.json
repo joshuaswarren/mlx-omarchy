@@ -54,7 +54,7 @@
     }
   ],
   "apple_red_reproduction": {
-    "host": "jwm1-linux",
+    "host_class": "qualified Apple M1 Linux test host",
     "device": "Apple M1 (G13G B1)",
     "driver": "Honeykrisp, Mesa 26.3.0-devel (git-6f6afc8968)",
     "runtime": "mlx-omarchy 0.32.2.dev202609121216+8f6de34c",
@@ -99,12 +99,42 @@
     }
   },
   "final_apple_verification": {
-    "status": "pending_new_hardware_grant",
-    "required": "Run source SHA-256 3d05d810aec2455680eedabc04c61ed947ebc18f3c2d892f9029dce949c3eac6 once on jwm1 after a new explicit Main grant."
+    "status": "qualified",
+    "source_commit": "976c3bad5db57314dc06a913fda9c7f0b4bead21",
+    "source_sha256": "3d05d810aec2455680eedabc04c61ed947ebc18f3c2d892f9029dce949c3eac6",
+    "host_class": "qualified Apple M1 Linux test host",
+    "device": "Apple M1 (G13G B1)",
+    "driver": "Honeykrisp, Mesa 26.3.0-devel (git-6f6afc8968)",
+    "runtime": "mlx-omarchy 0.32.2.dev202609121216+8f6de34c",
+    "acquired": "2026-09-13T05:30:53Z",
+    "released": "2026-09-13T05:31:34Z",
+    "fixed_deadline_epoch": 1789278277,
+    "command_cwd": "isolated staging root; private host and path omitted",
+    "command": "nohup setsid timeout -k 10s 824s tools/CoremlVulkanMel-final.sh",
+    "result": "qualified=true; all 15 certified stage and final comparisons were byte-exact on Device(gpu, 0)",
+    "observed_output": "APPLE_GPU_RECEIPT_VALID comparisons=15 trace={\"commit_calls_noop\": 1, \"commit_calls_with_work\": 1, \"gpu_primitive_dispatches\": 15, \"omarchy_finalize_calls\": 1, \"vk_buffer_copies\": 0, \"vk_buffer_fills\": 0, \"vk_compute_dispatches\": 8, \"vk_submissions\": 1}",
+    "trace_delta": {
+      "gpu_primitive_dispatches": 15,
+      "vk_compute_dispatches": 8,
+      "vk_submissions": 1,
+      "commit_calls_with_work": 1,
+      "commit_calls_noop": 1,
+      "omarchy_finalize_calls": 1,
+      "vk_buffer_copies": 0,
+      "vk_buffer_fills": 0
+    },
+    "cleanup": "CHILD_PIDS_CLEAR; launcher PID 3319655 and PGID 3319655 independently clear; /tmp/m1-gpu.lease absent; /tmp/m1-gpu.lock free; no ANE workers",
+    "artifacts": {
+      "final-apple-gpu.json": "2d58dabb6d804e7bb61ae41e25f65e2811cc2fe2b8a16eda2f3ecbb5282706e8",
+      "final-workload.log": "2d58dabb6d804e7bb61ae41e25f65e2811cc2fe2b8a16eda2f3ecbb5282706e8",
+      "final-load.log": "ad374250b8babf85e1896cb27d8c208249c54726a25eb170e7615fe4eb194a08",
+      "final-lease.txt": "c7b5016678e1320ccfb5163bf1e38fa24d979c775d0e45dbc7791152bcecdcfd",
+      "final-launcher.log": "87b8c1248659847cb340f0805fc733d8670ede38d2049f4559a9134f042a4b57"
+    }
   },
   "qualification_boundary": {
     "local_frontend": "qualified against the pinned fixture through the installed e4d079c8 software-Vulkan runtime",
-    "apple_physical_gpu": "not yet qualified after the standard-deviation sqrt correction",
+    "apple_physical_gpu": "qualified on Apple M1 through Honeykrisp with all 15 comparisons byte-exact and positive GPU/Vulkan trace counters",
     "encoder_and_full_plan": "not claimed"
   }
 }

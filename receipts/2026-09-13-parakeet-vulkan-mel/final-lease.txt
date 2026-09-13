@@ -1,0 +1,4 @@
+LOCK_ACQUIRED utc=2026-09-13T05:30:53Z pid=3319656 pgid=3319655 deadline_epoch=1789278277 source_commit=976c3bad
+CHILD_PIDS_CLEAR utc=2026-09-13T05:31:34Z
+LOCK_RELEASED utc=2026-09-13T05:31:34Z rc=0
+lock_released=true
