@@ -252,18 +252,20 @@ def test_low_scale_waveform_preserves_power_and_mel_subnormals():
     filterbank = np.asarray(vulkan_mel._constant_floats(), np.float32)[
         vulkan_mel.FILTERBANK_OFFSET:
     ].reshape(vulkan_mel.N_MELS, vulkan_mel.N_BINS)
-    expected_mel = mel_projection(filterbank, expected_power)
+    expected_mel_projection = mel_projection(filterbank, expected_power)
 
     constants = vulkan_mel._constant_arrays(mx)
     preemphasis = vulkan_mel._preemphasize(mx.array(waveform))
     actual_frames = vulkan_mel._frame(preemphasis, constants.hann)
     actual_real, actual_imaginary = vulkan_mel._dft_frames(actual_frames)
     actual_power = vulkan_mel._power(actual_real, actual_imaginary)
-    actual_mel, _ = vulkan_mel._mel_project(actual_power, constants.filterbank)
-    mx.eval(actual_power, actual_mel)
+    actual_mel_projection, _ = vulkan_mel._mel_project(
+        actual_power, constants.filterbank
+    )
+    mx.eval(actual_power, actual_mel_projection)
 
     _assert_same_bits(np.asarray(actual_power), expected_power)
-    _assert_same_bits(np.asarray(actual_mel), expected_mel)
+    _assert_same_bits(np.asarray(actual_mel_projection), expected_mel_projection)
 
 
 @pytest.mark.parametrize("scale", [2.0**-60, 2.0**53])

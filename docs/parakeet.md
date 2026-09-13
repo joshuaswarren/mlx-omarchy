@@ -77,9 +77,10 @@ loss in native preemphasis arithmetic and independent losses in windowing and
 the DFT. A source audit found reachable denormal arithmetic in magnitude, power,
 mel reduction, and subnormal square-root scaling. Those stages now use the
 integer binary32 helpers without changing the certified reduction order.
-Software Vulkan passes the retained low-scale full-chain, finite-range, and
-pinned ordinary-input regressions. The corrected helper path has not run on
-Apple hardware, so finite-input Apple arithmetic is not qualified. Neither
+Software Vulkan passes the retained low-scale waveform-to-power-and-mel-
+projection, finite-range, and pinned ordinary-input regressions. The corrected
+helper path has not run on Apple hardware, so finite-input Apple arithmetic is
+not qualified. Neither
 receipt claims encoder, decoder, or full-plan completion.
 
 ```bash
