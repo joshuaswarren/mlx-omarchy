@@ -62,8 +62,8 @@ class EligibilityTest(unittest.TestCase):
         report = eligibility_report(cache)
         self.assertEqual(report["total_ops"], 3351)
         self.assertEqual(report["counts"][SUPPORTED], 2866)
-        self.assertEqual(report["counts"][LOWERABLE_VIA_FRONTEND], 221)
-        self.assertEqual(report["counts"][NEEDS_COMPILER_OP], 253)
+        self.assertEqual(report["counts"][LOWERABLE_VIA_FRONTEND], 245)
+        self.assertEqual(report["counts"][NEEDS_COMPILER_OP], 229)
         self.assertEqual(report["counts"][BOUNDARY], 11)
         self.assertEqual(sum(report["counts"].values()), 3351)
         blocking = {
@@ -74,7 +74,6 @@ class EligibilityTest(unittest.TestCase):
             {
                 "transpose": 146,
                 "slice_by_index": 48,
-                "pad": 24,
                 "select": 24,  # the -inf fill family only
                 "less": 4,
                 "floor": 3,
@@ -86,12 +85,15 @@ class EligibilityTest(unittest.TestCase):
         post = report["post_frontend_histogram"]
         self.assertNotIn("constexpr_lut_to_dense", post)
         self.assertEqual(post["const"], 1977)
-        # Depalettize folds into consts (sum-neutral); the 24 finite-fill
-        # selects, logical_and/not and reduce_min drop out fully; the 24
-        # -inf selects persist until the compiler op exists.
+        # Depalettize folds into consts (sum-neutral); the 24 pads
+        # fold into identity convs (sum-neutral); the 24 finite-fill
+        # selects, logical_and/not and reduce_min drop out fully; the
+        # 24 -inf selects persist until the compiler op exists.
         self.assertEqual(sum(post.values()), 3351 - 27)
         self.assertEqual(post.get("select"), 24)
         self.assertNotIn("logical_and", post)
+        self.assertNotIn("pad", post)
+        self.assertEqual(post["conv"], 101)
         self.assertNotIn("reduce_min", post)
 
 
@@ -108,7 +110,7 @@ class ModelApiTest(unittest.TestCase):
         with self.assertRaises(PackageNotEligible) as caught:
             model.check_compute_target("ane")
         message = str(caught.exception)
-        self.assertIn("blocked by 8 op classes", message)
+        self.assertIn("blocked by 7 op classes", message)
         self.assertIn("transpose x146", message)
         self.assertIn("select x24", message)
 
@@ -143,7 +145,7 @@ class CliTest(unittest.TestCase):
         self.assertEqual(inspect.returncode, 0, inspect.stderr)
         report = json.loads(inspect.stdout)
         self.assertEqual(report["counts"][SUPPORTED], 2866)
-        self.assertEqual(report["counts"][NEEDS_COMPILER_OP], 253)
+        self.assertEqual(report["counts"][NEEDS_COMPILER_OP], 229)
 
         check = subprocess.run(
             [
