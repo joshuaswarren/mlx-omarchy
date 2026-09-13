@@ -212,6 +212,82 @@ std::vector<AneTensor> parse_tensor_list(
   return tensors;
 }
 
+AneLogicalResult parse_logical_result(
+    const nlohmann::json& value,
+    size_t position) {
+  const std::string where =
+      "logical_results[" + std::to_string(position) + "]";
+  if (!value.is_object()) {
+    throw manifest_error(where + " must be an object");
+  }
+  reject_unknown_fields(
+      value,
+      {"name", "dtype", "shape", "tensor", "element_offset",
+       "element_count", "conversion"});
+
+  AneLogicalResult result;
+  result.name = require_non_empty_string(value, "name");
+  result.dtype = require_non_empty_string(value, "dtype");
+  result.shape = require_shape(value, "shape", where);
+  result.tensor = require_non_empty_string(value, "tensor");
+  result.element_offset = require_unsigned(value, "element_offset");
+  result.element_count = require_positive(value, "element_count");
+  result.conversion = require_non_empty_string(value, "conversion");
+  if (result.conversion != "identity") {
+    throw manifest_error(
+        where + " has unsupported conversion '" + result.conversion + "'");
+  }
+  if (element_count(result.shape, where) != result.element_count) {
+    throw manifest_error(where + " shape does not match element_count");
+  }
+  return result;
+}
+
+std::vector<AneLogicalResult> parse_logical_results(
+    const nlohmann::json& root) {
+  const auto& values = required_field(root, "logical_results");
+  if (!values.is_array() || values.empty()) {
+    throw manifest_error("field 'logical_results' must be a non-empty array");
+  }
+  std::vector<AneLogicalResult> results;
+  results.reserve(values.size());
+  for (size_t i = 0; i < values.size(); ++i) {
+    results.push_back(parse_logical_result(values[i], i));
+  }
+  return results;
+}
+
+void validate_logical_results(const AneManifest& manifest) {
+  std::map<std::string, const AneTensor*> outputs;
+  for (const auto& output : manifest.outputs) {
+    outputs.emplace(output.name, &output);
+  }
+  for (size_t i = 0; i < manifest.logical_results.size(); ++i) {
+    const auto& result = manifest.logical_results[i];
+    const std::string where =
+        "logical_results[" + std::to_string(i) + "]";
+    auto found = outputs.find(result.tensor);
+    if (found == outputs.end()) {
+      throw manifest_error(
+          where + " references unknown physical output tensor '" +
+          result.tensor + "'");
+    }
+    const AneTensor& output = *found->second;
+    if (result.dtype != output.dtype) {
+      throw manifest_error(
+          where + " dtype does not match physical output tensor '" +
+          result.tensor + "'");
+    }
+    const uint64_t physical_count = element_count(output.shape, where);
+    if (result.element_offset > physical_count ||
+        result.element_count > physical_count - result.element_offset) {
+      throw manifest_error(
+          where + " range exceeds physical output tensor '" +
+          result.tensor + "'");
+    }
+  }
+}
+
 AneProgramBinding parse_binding(
     const nlohmann::json& value,
     const std::string& where) {
@@ -542,8 +618,9 @@ AneManifest parse_ane_manifest(const std::filesystem::path& manifest_path) {
   reject_unknown_fields(
       root,
       {"manifest_version", "name", "graph_hash", "task_descriptors", "inputs",
-       "outputs", "state", "intermediates", "programs", "dispatch_plan",
-       "payloads", "compiler", "driver_abi_major", "provenance", "release_asset"});
+       "outputs", "logical_results", "state", "intermediates", "programs",
+       "dispatch_plan", "payloads", "compiler", "driver_abi_major",
+       "provenance", "release_asset"});
 
   AneManifest manifest;
   const auto& version = required_field(root, "manifest_version");
@@ -562,6 +639,7 @@ AneManifest parse_ane_manifest(const std::filesystem::path& manifest_path) {
   manifest.task_descriptors = require_positive(root, "task_descriptors");
   manifest.inputs = parse_tensor_list(root, "inputs", true);
   manifest.outputs = parse_tensor_list(root, "outputs", true);
+  manifest.logical_results = parse_logical_results(root);
   manifest.state = parse_tensor_list(root, "state", false);
   manifest.intermediates = parse_tensor_list(root, "intermediates", false);
 
@@ -615,6 +693,7 @@ AneManifest parse_ane_manifest(const std::filesystem::path& manifest_path) {
   }
   parse_provenance(required_field(root, "provenance"), manifest);
   parse_release(required_field(root, "release_asset"), manifest);
+  validate_logical_results(manifest);
   validate_bindings(manifest);
   return manifest;
 }

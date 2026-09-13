@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "mlx/api.h"
+#include "mlx/backend/omarchy/ane/manifest.h"
 
 namespace mlx::core::omarchy::ane {
 
@@ -38,6 +39,7 @@ class MLX_API AneRuntime {
   AneBufferMap execute(
       const AneBufferMap& inputs,
       std::chrono::milliseconds deadline);
+  const std::vector<AneLogicalResult>& output_layout() const;
   AneShutdownReceipt shutdown(std::chrono::milliseconds deadline);
 
   bool usable() const;
