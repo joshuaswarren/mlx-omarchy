@@ -1,0 +1,32 @@
+{
+  "files": {
+    "analysis.json": "ebde9ea5cb5e6a6064a574c9a18019663194d0ed7a5e960d90b267f22e6a50a6",
+    "analyze.py": "016ceddc9466cff5db69dc388335219548533db6febaab0e9767225fd3d4a332",
+    "candidate-1.log": "62ca21291710ffb0b1be09e741dbdb5ec4fd5aa52dcf12bb06ff77c7763fd33a",
+    "candidate-2.log": "9cbce0b285c88bef1a6ed91071425b47911419facc5f1b3809e6ea14f0a24c56",
+    "candidate-3.log": "32078500b2c934dad6fd60f18df9dfb0fb1c4e124babce559b7ef8c12d01b4c6",
+    "candidate-runtime.json": "00e51a19cd86e2cedee740e3591f3eb420794beddf6bbba42bf8ce5baf08eea9",
+    "control-1.log": "f48097f5446057cde00ba6be566cb90de1e0fc32af867022baf51a8959932333",
+    "control-2.log": "53cedfcadd33c7aee37aa3abcb93cf337a9b478dabde65bcf72b90b023aec2ec",
+    "control-3.log": "8992bb374396c35c16165748a6773fe4d8953df1a77a9cdea85bcad09b0bc267",
+    "control-runtime.json": "9c8c7851d858c9e62ee764fc786a3591f04e16c2f75a962584941c13b9747a56",
+    "dense-gemv-suite.log.gz": "68f22734dc8f848236196cd4f15f4742bdb62bb1a66f2be95a5e570466e3b4ed",
+    "executed-preflight.sh": "172c68ba5a33721b3f5eccb372c602a2f7a53fc3651f74afd9a2fe46481c8845",
+    "executed-runner.sh": "cfbda0d39788c222961edfc3b624445dfcc10ed02eda46082454cd090fbbc50c",
+    "fusion-gate.json": "010d018b7f808403fc5e1b404881f1bc62bed3c239665b0a94633a98a5d61dc1",
+    "identity.txt": "6553edeaba0f2ca07e6fcfe682b16a85b6153edde6b513bd27c1e48edb441763",
+    "independent-clearance-command.sh": "5901e775dc8f739d6f2ea2506dff1254296af1d8f19b36b2e2dc461cb4e8f4fd",
+    "independent-clearance.json": "930ad468d13b135e7d6fc715a50afc2c5882a14d5bca7194b09949384424e0f5",
+    "inherited-env.txt": "61913ca5823219a3688210bb496d073c384140e5e5cd2fbefd5d47209a0c4ec1",
+    "lease.txt": "e0af27c7f5702cd61749dc301012c8f1ef8f77027f84ede0a1eb05e23241fc51",
+    "loadavg.txt": "442bfca2c35ac4c6a072e7e95f5e4ffdfc3632ba27c2f184851170ff5e917592",
+    "prompt.txt": "40e058593532cb7e1d79dd8c8274894a4d0ce02915ca365a78d14c7d051a91fb",
+    "runtime-provenance.json": "d5da94a49767d1bdc924771bd5b5dabfa6240e705808d22bea5202e571122241",
+    "separate-flatten-test.log": "8d9808905486c06193c7a2db520a7055c3895886e1e6840c1c0e8f955f3a28dc",
+    "test-build.log.gz": "ca3db0e5190f8619e0f4d2cd60514bbb10eeddce202d0128ebabd1065b6429f6",
+    "test-configure.log.gz": "1ba3501604f98012fa652143f42608338e063e5dae68024facc324e235b273f0",
+    "verdict.json": "136289efa5f4030f085115a62a919ac8b4ac6de9269279c5d680c6042f49d334",
+    "window.log.gz": "397570b7384cbffcbf247152b0977952337e4ae285e7b60c9a514a1c23da1bd2"
+  },
+  "schema": "receipt-manifest/1"
+}

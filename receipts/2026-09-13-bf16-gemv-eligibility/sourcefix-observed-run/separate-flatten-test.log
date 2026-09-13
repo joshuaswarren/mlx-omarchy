@@ -1,0 +1,1043 @@
+[doctest] doctest version is "2.4.12"
+[doctest] run with "--help" for options
+===============================================================================
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1360:
+TEST CASE:  eager dense bf16 decode gemv groups separate flatten views
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1404: SUCCESS: CHECK_EQ( counters().vk_compute_dispatches.load() - before, 1 ) is correct!
+  values: CHECK_EQ( 1, 1 )
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1146: SUCCESS: REQUIRE_EQ( a32.size(), b32.size() ) is correct!
+  values: REQUIRE_EQ( 128, 128 )
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -20.75, -20.75 )
+  logged: mismatch at 0
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -35.5, -35.5 )
+  logged: mismatch at 1
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 16.25, 16.25 )
+  logged: mismatch at 2
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -16.625, -16.625 )
+  logged: mismatch at 3
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 34.25, 34.25 )
+  logged: mismatch at 4
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -5.15625, -5.15625 )
+  logged: mismatch at 5
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 31, 31 )
+  logged: mismatch at 6
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 36.25, 36.25 )
+  logged: mismatch at 7
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -7.9375, -7.9375 )
+  logged: mismatch at 8
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -4.0625, -4.0625 )
+  logged: mismatch at 9
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -55.5, -55.5 )
+  logged: mismatch at 10
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -62.25, -62.25 )
+  logged: mismatch at 11
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 58, 58 )
+  logged: mismatch at 12
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 9.875, 9.875 )
+  logged: mismatch at 13
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 24.25, 24.25 )
+  logged: mismatch at 14
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 17, 17 )
+  logged: mismatch at 15
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -31.375, -31.375 )
+  logged: mismatch at 16
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -7.625, -7.625 )
+  logged: mismatch at 17
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 9.5625, 9.5625 )
+  logged: mismatch at 18
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -23, -23 )
+  logged: mismatch at 19
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -4.53125, -4.53125 )
+  logged: mismatch at 20
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 2.70312, 2.70312 )
+  logged: mismatch at 21
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 25, 25 )
+  logged: mismatch at 22
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -4.09375, -4.09375 )
+  logged: mismatch at 23
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -32.5, -32.5 )
+  logged: mismatch at 24
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 16.125, 16.125 )
+  logged: mismatch at 25
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -10.4375, -10.4375 )
+  logged: mismatch at 26
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -22.625, -22.625 )
+  logged: mismatch at 27
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 40.25, 40.25 )
+  logged: mismatch at 28
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -10.375, -10.375 )
+  logged: mismatch at 29
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 2.48438, 2.48438 )
+  logged: mismatch at 30
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 8.875, 8.875 )
+  logged: mismatch at 31
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 26.75, 26.75 )
+  logged: mismatch at 32
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 28.375, 28.375 )
+  logged: mismatch at 33
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 47.25, 47.25 )
+  logged: mismatch at 34
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 33, 33 )
+  logged: mismatch at 35
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -23.5, -23.5 )
+  logged: mismatch at 36
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 53.75, 53.75 )
+  logged: mismatch at 37
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 33.25, 33.25 )
+  logged: mismatch at 38
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -26.875, -26.875 )
+  logged: mismatch at 39
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -7.5625, -7.5625 )
+  logged: mismatch at 40
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -28.875, -28.875 )
+  logged: mismatch at 41
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -11.25, -11.25 )
+  logged: mismatch at 42
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 14.4375, 14.4375 )
+  logged: mismatch at 43
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 29.875, 29.875 )
+  logged: mismatch at 44
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 1.78906, 1.78906 )
+  logged: mismatch at 45
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -27.75, -27.75 )
+  logged: mismatch at 46
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 22, 22 )
+  logged: mismatch at 47
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 40.75, 40.75 )
+  logged: mismatch at 48
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 15.375, 15.375 )
+  logged: mismatch at 49
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -26.375, -26.375 )
+  logged: mismatch at 50
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 18.75, 18.75 )
+  logged: mismatch at 51
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -6.15625, -6.15625 )
+  logged: mismatch at 52
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 28, 28 )
+  logged: mismatch at 53
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 37, 37 )
+  logged: mismatch at 54
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 33.5, 33.5 )
+  logged: mismatch at 55
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -13.1875, -13.1875 )
+  logged: mismatch at 56
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 68.5, 68.5 )
+  logged: mismatch at 57
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -11.125, -11.125 )
+  logged: mismatch at 58
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -11.875, -11.875 )
+  logged: mismatch at 59
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -41.75, -41.75 )
+  logged: mismatch at 60
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 32, 32 )
+  logged: mismatch at 61
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 6.3125, 6.3125 )
+  logged: mismatch at 62
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -28.75, -28.75 )
+  logged: mismatch at 63
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 8.5, 8.5 )
+  logged: mismatch at 64
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -28.5, -28.5 )
+  logged: mismatch at 65
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 19, 19 )
+  logged: mismatch at 66
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 2.26562, 2.26562 )
+  logged: mismatch at 67
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -53.25, -53.25 )
+  logged: mismatch at 68
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 31.125, 31.125 )
+  logged: mismatch at 69
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -36.75, -36.75 )
+  logged: mismatch at 70
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 13.5625, 13.5625 )
+  logged: mismatch at 71
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -26.5, -26.5 )
+  logged: mismatch at 72
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -15.4375, -15.4375 )
+  logged: mismatch at 73
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 5.21875, 5.21875 )
+  logged: mismatch at 74
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -0.246094, -0.246094 )
+  logged: mismatch at 75
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -39, -39 )
+  logged: mismatch at 76
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 46.75, 46.75 )
+  logged: mismatch at 77
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -21.75, -21.75 )
+  logged: mismatch at 78
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 47.5, 47.5 )
+  logged: mismatch at 79
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 25.75, 25.75 )
+  logged: mismatch at 80
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 55.25, 55.25 )
+  logged: mismatch at 81
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -23, -23 )
+  logged: mismatch at 82
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 41.5, 41.5 )
+  logged: mismatch at 83
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 11.4375, 11.4375 )
+  logged: mismatch at 84
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 6.90625, 6.90625 )
+  logged: mismatch at 85
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 20.625, 20.625 )
+  logged: mismatch at 86
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -20.25, -20.25 )
+  logged: mismatch at 87
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -59.75, -59.75 )
+  logged: mismatch at 88
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -6.0625, -6.0625 )
+  logged: mismatch at 89
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 7.375, 7.375 )
+  logged: mismatch at 90
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -44.5, -44.5 )
+  logged: mismatch at 91
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -1.01562, -1.01562 )
+  logged: mismatch at 92
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -0.835938, -0.835938 )
+  logged: mismatch at 93
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 25.5, 25.5 )
+  logged: mismatch at 94
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 21.125, 21.125 )
+  logged: mismatch at 95
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -40.75, -40.75 )
+  logged: mismatch at 96
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 20.125, 20.125 )
+  logged: mismatch at 97
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 43, 43 )
+  logged: mismatch at 98
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 46.5, 46.5 )
+  logged: mismatch at 99
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 5.21875, 5.21875 )
+  logged: mismatch at 100
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 24.25, 24.25 )
+  logged: mismatch at 101
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -3.42188, -3.42188 )
+  logged: mismatch at 102
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -31, -31 )
+  logged: mismatch at 103
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 26.375, 26.375 )
+  logged: mismatch at 104
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -4.6875, -4.6875 )
+  logged: mismatch at 105
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 54.25, 54.25 )
+  logged: mismatch at 106
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -21.125, -21.125 )
+  logged: mismatch at 107
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -8.5, -8.5 )
+  logged: mismatch at 108
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 8.5, 8.5 )
+  logged: mismatch at 109
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 43.75, 43.75 )
+  logged: mismatch at 110
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -16.125, -16.125 )
+  logged: mismatch at 111
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 1.07812, 1.07812 )
+  logged: mismatch at 112
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 42.5, 42.5 )
+  logged: mismatch at 113
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 31.625, 31.625 )
+  logged: mismatch at 114
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -69, -69 )
+  logged: mismatch at 115
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -10.1875, -10.1875 )
+  logged: mismatch at 116
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -12.6875, -12.6875 )
+  logged: mismatch at 117
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 10.9375, 10.9375 )
+  logged: mismatch at 118
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -31.375, -31.375 )
+  logged: mismatch at 119
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -86, -86 )
+  logged: mismatch at 120
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -16.125, -16.125 )
+  logged: mismatch at 121
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -1.51562, -1.51562 )
+  logged: mismatch at 122
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 30.375, 30.375 )
+  logged: mismatch at 123
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -29.375, -29.375 )
+  logged: mismatch at 124
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -12.4375, -12.4375 )
+  logged: mismatch at 125
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 5.75, 5.75 )
+  logged: mismatch at 126
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -2.39062, -2.39062 )
+  logged: mismatch at 127
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1146: SUCCESS: REQUIRE_EQ( a32.size(), b32.size() ) is correct!
+  values: REQUIRE_EQ( 128, 128 )
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -10.1875, -10.1875 )
+  logged: mismatch at 0
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 7.125, 7.125 )
+  logged: mismatch at 1
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 25.875, 25.875 )
+  logged: mismatch at 2
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -39, -39 )
+  logged: mismatch at 3
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 11.1875, 11.1875 )
+  logged: mismatch at 4
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 67, 67 )
+  logged: mismatch at 5
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -1.44531, -1.44531 )
+  logged: mismatch at 6
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -17.875, -17.875 )
+  logged: mismatch at 7
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -3.64062, -3.64062 )
+  logged: mismatch at 8
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 19, 19 )
+  logged: mismatch at 9
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -44.75, -44.75 )
+  logged: mismatch at 10
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -39.5, -39.5 )
+  logged: mismatch at 11
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -20.875, -20.875 )
+  logged: mismatch at 12
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 40.5, 40.5 )
+  logged: mismatch at 13
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -26.125, -26.125 )
+  logged: mismatch at 14
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 20.375, 20.375 )
+  logged: mismatch at 15
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 29.5, 29.5 )
+  logged: mismatch at 16
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 2.01562, 2.01562 )
+  logged: mismatch at 17
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 22.25, 22.25 )
+  logged: mismatch at 18
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -25.5, -25.5 )
+  logged: mismatch at 19
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -3.6875, -3.6875 )
+  logged: mismatch at 20
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -11.8125, -11.8125 )
+  logged: mismatch at 21
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 22.75, 22.75 )
+  logged: mismatch at 22
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -12.9375, -12.9375 )
+  logged: mismatch at 23
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 7.40625, 7.40625 )
+  logged: mismatch at 24
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -38, -38 )
+  logged: mismatch at 25
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -9, -9 )
+  logged: mismatch at 26
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 39, 39 )
+  logged: mismatch at 27
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 0.835938, 0.835938 )
+  logged: mismatch at 28
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -15.75, -15.75 )
+  logged: mismatch at 29
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -27.125, -27.125 )
+  logged: mismatch at 30
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -2.85938, -2.85938 )
+  logged: mismatch at 31
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -19.375, -19.375 )
+  logged: mismatch at 32
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 35.75, 35.75 )
+  logged: mismatch at 33
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 5.5, 5.5 )
+  logged: mismatch at 34
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 26.375, 26.375 )
+  logged: mismatch at 35
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -18.125, -18.125 )
+  logged: mismatch at 36
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -23.75, -23.75 )
+  logged: mismatch at 37
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -15.875, -15.875 )
+  logged: mismatch at 38
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -17.625, -17.625 )
+  logged: mismatch at 39
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 7.84375, 7.84375 )
+  logged: mismatch at 40
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -42.25, -42.25 )
+  logged: mismatch at 41
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -52.5, -52.5 )
+  logged: mismatch at 42
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -32.5, -32.5 )
+  logged: mismatch at 43
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -7.875, -7.875 )
+  logged: mismatch at 44
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -3.75, -3.75 )
+  logged: mismatch at 45
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -19.875, -19.875 )
+  logged: mismatch at 46
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 46.75, 46.75 )
+  logged: mismatch at 47
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -10.4375, -10.4375 )
+  logged: mismatch at 48
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 30.125, 30.125 )
+  logged: mismatch at 49
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 53, 53 )
+  logged: mismatch at 50
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -7.5625, -7.5625 )
+  logged: mismatch at 51
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 31, 31 )
+  logged: mismatch at 52
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -32, -32 )
+  logged: mismatch at 53
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 57, 57 )
+  logged: mismatch at 54
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 24.375, 24.375 )
+  logged: mismatch at 55
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 23, 23 )
+  logged: mismatch at 56
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -20.375, -20.375 )
+  logged: mismatch at 57
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -75, -75 )
+  logged: mismatch at 58
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 13.125, 13.125 )
+  logged: mismatch at 59
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -59, -59 )
+  logged: mismatch at 60
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 46.25, 46.25 )
+  logged: mismatch at 61
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 4.96875, 4.96875 )
+  logged: mismatch at 62
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -3.04688, -3.04688 )
+  logged: mismatch at 63
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -2.10938, -2.10938 )
+  logged: mismatch at 64
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 17.25, 17.25 )
+  logged: mismatch at 65
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 40, 40 )
+  logged: mismatch at 66
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -3.26562, -3.26562 )
+  logged: mismatch at 67
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -19.5, -19.5 )
+  logged: mismatch at 68
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -47.5, -47.5 )
+  logged: mismatch at 69
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -3.5625, -3.5625 )
+  logged: mismatch at 70
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -24.125, -24.125 )
+  logged: mismatch at 71
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 25.5, 25.5 )
+  logged: mismatch at 72
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -24.25, -24.25 )
+  logged: mismatch at 73
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -8, -8 )
+  logged: mismatch at 74
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -3.5, -3.5 )
+  logged: mismatch at 75
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -2.10938, -2.10938 )
+  logged: mismatch at 76
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -2.67188, -2.67188 )
+  logged: mismatch at 77
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 46.75, 46.75 )
+  logged: mismatch at 78
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -19.5, -19.5 )
+  logged: mismatch at 79
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -45, -45 )
+  logged: mismatch at 80
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 52.25, 52.25 )
+  logged: mismatch at 81
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -18.625, -18.625 )
+  logged: mismatch at 82
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -21.375, -21.375 )
+  logged: mismatch at 83
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 25.375, 25.375 )
+  logged: mismatch at 84
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -3.26562, -3.26562 )
+  logged: mismatch at 85
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -37.75, -37.75 )
+  logged: mismatch at 86
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -14.5625, -14.5625 )
+  logged: mismatch at 87
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -22.875, -22.875 )
+  logged: mismatch at 88
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -74, -74 )
+  logged: mismatch at 89
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -69, -69 )
+  logged: mismatch at 90
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 1.10156, 1.10156 )
+  logged: mismatch at 91
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -26, -26 )
+  logged: mismatch at 92
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -11.8125, -11.8125 )
+  logged: mismatch at 93
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 75, 75 )
+  logged: mismatch at 94
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -37.75, -37.75 )
+  logged: mismatch at 95
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -19.5, -19.5 )
+  logged: mismatch at 96
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 16.375, 16.375 )
+  logged: mismatch at 97
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -12.875, -12.875 )
+  logged: mismatch at 98
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -48.5, -48.5 )
+  logged: mismatch at 99
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 20.25, 20.25 )
+  logged: mismatch at 100
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -15.5625, -15.5625 )
+  logged: mismatch at 101
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -7.1875, -7.1875 )
+  logged: mismatch at 102
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 11.1875, 11.1875 )
+  logged: mismatch at 103
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -51, -51 )
+  logged: mismatch at 104
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -3.23438, -3.23438 )
+  logged: mismatch at 105
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -31.125, -31.125 )
+  logged: mismatch at 106
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 22.875, 22.875 )
+  logged: mismatch at 107
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 10.0625, 10.0625 )
+  logged: mismatch at 108
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -52.25, -52.25 )
+  logged: mismatch at 109
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -12.75, -12.75 )
+  logged: mismatch at 110
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -35.75, -35.75 )
+  logged: mismatch at 111
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 21.875, 21.875 )
+  logged: mismatch at 112
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 47.5, 47.5 )
+  logged: mismatch at 113
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 13, 13 )
+  logged: mismatch at 114
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -20.625, -20.625 )
+  logged: mismatch at 115
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 22.625, 22.625 )
+  logged: mismatch at 116
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 5.9375, 5.9375 )
+  logged: mismatch at 117
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -8.75, -8.75 )
+  logged: mismatch at 118
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 39.5, 39.5 )
+  logged: mismatch at 119
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 21.75, 21.75 )
+  logged: mismatch at 120
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 17.125, 17.125 )
+  logged: mismatch at 121
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 17.125, 17.125 )
+  logged: mismatch at 122
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 27.5, 27.5 )
+  logged: mismatch at 123
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( 32.75, 32.75 )
+  logged: mismatch at 124
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -14.375, -14.375 )
+  logged: mismatch at 125
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -39.5, -39.5 )
+  logged: mismatch at 126
+
+/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/mlx/tests/omarchy/test_fused_chain.cpp:1149: SUCCESS: CHECK_EQ( a32.data<float>()[i], b32.data<float>()[i] ) is correct!
+  values: CHECK_EQ( -3.07812, -3.07812 )
+  logged: mismatch at 127
+
+===============================================================================
+[doctest] test cases:   1 |   1 passed | 0 failed | 31 skipped
+[doctest] assertions: 259 | 259 passed | 0 failed |
+[doctest] Status: SUCCESS!

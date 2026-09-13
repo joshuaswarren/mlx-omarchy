@@ -1,0 +1,42 @@
+{
+  "benchmark_model": "mlx-community/Qwen2.5-0.5B-Instruct-bf16@56d07e766edd7159fbe12ed12d9cf114bf38bf1e",
+  "candidate_wheel_sha256": "f05c64c9acb17d5280d5ea7a2f0644ca44f97d85ea01a51b4e291d7d07d9f656",
+  "execution_model": "openai-codex/gpt-5.6-sol",
+  "fallback_model": null,
+  "host_device": "Apple M1 (G13G B1)",
+  "lifecycle_acceptance": false,
+  "matrix": {
+    "candidate_decode_tps": [
+      24.9319,
+      24.867,
+      24.6603
+    ],
+    "candidate_median_decode_tps": 24.867,
+    "candidate_vs_control_percent": -0.36740695629179365,
+    "control_decode_tps": [
+      25.035,
+      24.8525,
+      24.9587
+    ],
+    "control_median_decode_tps": 24.9587,
+    "generated_tokens": 32,
+    "output_digest": "ff502900d2a179a5",
+    "prompt_tokens": 1053
+  },
+  "observed_result": "The source-fix wheel passed the targeted regression and six-run fixed matrix, but its median decode rate was 0.3674% below control. The stale remote runner invalidates lifecycle acceptance and source promotion.",
+  "optimization_claim_accepted": false,
+  "owned_process_group_id": null,
+  "post_release_clearance": {
+    "lock_free": true,
+    "residual_workers": []
+  },
+  "preflight_sha256": "172c68ba5a33721b3f5eccb372c602a2f7a53fc3651f74afd9a2fe46481c8845",
+  "regression": {
+    "dense_gemv_assertions_passed": 11413,
+    "separate_flatten_assertions_passed": 259
+  },
+  "runner_review_status": "unreviewed_stale_remote_stage",
+  "runner_sha256": "cfbda0d39788c222961edfc3b624445dfcc10ed02eda46082454cd090fbbc50c",
+  "schema": "bf16-gemv-sourcefix-observed-run/1",
+  "source_commit": "4f90815c056cbb29a2ff4e1a958856b85af6390a"
+}

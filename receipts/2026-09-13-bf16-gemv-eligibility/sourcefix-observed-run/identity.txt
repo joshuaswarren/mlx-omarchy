@@ -1,0 +1,8 @@
+host=jwm1-linux
+kernel=7.1.6-1-1-ARCH
+control_commit=6b1ac0296ba65a8e0075171ca9451e222ddff06b
+candidate_commit=4f90815c056cbb29a2ff4e1a958856b85af6390a
+control_wheel=/home/joshuawarren/src/mlx-bf16-grouped-candidate-6b1ac029/dist/mlx_omarchy-0.32.2.dev202609130004+6b1ac029-cp314-cp314-linux_aarch64.whl
+control_sha256=fb4b96b0e52de3a07d62fea6766baa24f409b0b6b32afef1fd5f365e246e1c50
+candidate_wheel=/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/dist/mlx_omarchy-0.32.2.dev202609130833+4f90815-cp314-cp314-linux_aarch64.whl
+candidate_sha256=f05c64c9acb17d5280d5ea7a2f0644ca44f97d85ea01a51b4e291d7d07d9f656

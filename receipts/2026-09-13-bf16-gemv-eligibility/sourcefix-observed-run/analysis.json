@@ -1,0 +1,36 @@
+{
+  "candidate_faster_by_median": false,
+  "candidate_minus_control_tps": -0.09169999999999945,
+  "candidate_vs_control_percent": -0.36740695629179365,
+  "generated_ids_sha256_16": "ff502900d2a179a5",
+  "loaded_images_differ": true,
+  "rows": {
+    "candidate": {
+      "decode_tps": [
+        24.9319,
+        24.867,
+        24.6603
+      ],
+      "ids_sha256_16": [
+        "ff502900d2a179a5",
+        "ff502900d2a179a5",
+        "ff502900d2a179a5"
+      ],
+      "median_decode_tps": 24.867
+    },
+    "control": {
+      "decode_tps": [
+        25.035,
+        24.8525,
+        24.9587
+      ],
+      "ids_sha256_16": [
+        "ff502900d2a179a5",
+        "ff502900d2a179a5",
+        "ff502900d2a179a5"
+      ],
+      "median_decode_tps": 24.9587
+    }
+  },
+  "schema": "bf16-gemv-sourcefix-release-control/1"
+}

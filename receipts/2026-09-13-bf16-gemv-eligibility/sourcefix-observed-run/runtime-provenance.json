@@ -1,0 +1,13 @@
+{
+  "candidate_loaded_mappings": {
+    "/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/candidate-site/mlx/core.cpython-314-aarch64-linux-gnu.so": "4ad850da16c300ea9f60aa7247f034f358aa16d7ba2fd146979a01c867e3cfa5",
+    "/home/joshuawarren/src/mlx-bf16-gemv-sourcefix-4f90815c/.work-sourcefix/candidate-site/mlx/lib/libmlx.so": "13b0f09004910682fe3c50b17f9041234929164ff0c89959909f38c0bb352d78"
+  },
+  "candidate_version": "0.32.2.dev202609130833+4f90815",
+  "control_loaded_mappings": {
+    "/home/joshuawarren/src/mlx-bf16-grouped-candidate-6b1ac029/.work/venv-run/lib/python3.14/site-packages/mlx/core.cpython-314-aarch64-linux-gnu.so": "4ad850da16c300ea9f60aa7247f034f358aa16d7ba2fd146979a01c867e3cfa5",
+    "/home/joshuawarren/src/mlx-bf16-grouped-candidate-6b1ac029/.work/venv-run/lib/python3.14/site-packages/mlx/lib/libmlx.so": "b3e14c3d3bbf37cdee43088ec3c0d024c5de6974ecea386086acac89f8286b04"
+  },
+  "control_version": "0.32.2.dev202609130004+6b1ac029",
+  "loaded_images_differ": true
+}

@@ -49,6 +49,37 @@
       "exit_code": 0,
       "child_processes": "clear",
       "lock_released": true
+    },
+    {
+      "kind": "sourcefix_regression_and_fixed_matrix",
+      "acquired_epoch": 1789289693,
+      "fixed_deadline_epoch": 1789290733,
+      "released_epoch": 1789290074,
+      "source_commit": "4f90815c056cbb29a2ff4e1a958856b85af6390a",
+      "candidate_wheel_sha256": "f05c64c9acb17d5280d5ea7a2f0644ca44f97d85ea01a51b4e291d7d07d9f656",
+      "wheel_rebuilt": false,
+      "test_binary_build_result": "success",
+      "targeted_regression": {
+        "status": "success",
+        "assertions_passed": 259
+      },
+      "matrix": {
+        "status": "complete",
+        "control_median_decode_tps": 24.9587,
+        "candidate_median_decode_tps": 24.867,
+        "candidate_vs_control_percent": -0.36740695629179365,
+        "output_digest": "ff502900d2a179a5"
+      },
+      "executed_runner_sha256": "cfbda0d39788c222961edfc3b624445dfcc10ed02eda46082454cd090fbbc50c",
+      "executed_preflight_sha256": "172c68ba5a33721b3f5eccb372c602a2f7a53fc3651f74afd9a2fe46481c8845",
+      "runner_review_status": "unreviewed_stale_remote_stage",
+      "lifecycle_acceptance": false,
+      "owned_process_group_id": null,
+      "post_release_clearance": {
+        "residual_workers": [],
+        "lock_free": true
+      },
+      "acceptance": "evidence_only_no_source_promotion"
     }
   ],
   "performance_claim": null

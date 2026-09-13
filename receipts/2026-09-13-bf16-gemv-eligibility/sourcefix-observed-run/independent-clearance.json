@@ -1,0 +1,15 @@
+{
+  "schema": "jwm1-independent-post-release-clearance/1",
+  "host": "jwm1-linux",
+  "observed_result": {
+    "residual_workers": [],
+    "lock_free": true
+  },
+  "excluded_ancestry": [697, 3363063, 3363066, 3374244, 3374245],
+  "command_summary": "A remote Python /proc scan excluded its own ancestry and rejected processes whose cmdline contained the exact source worktree, result directory, or runner name; flock -n /tmp/m1-gpu.lock true then verified the lock was free.",
+  "executed_after_release": true,
+  "owned_process_group_id": null,
+  "owned_process_group_id_status": "not captured by the stale executed runner and not recoverable after process exit",
+  "inner_runner_pid": 3369755,
+  "lifecycle_acceptance": false
+}
