@@ -6,6 +6,8 @@
     "verdict.json": "c685646ec61086d6da1c87388df245fcb303dbbe7280ee7ff61430ab3dc77e7e",
     "local-plan-smoke.jsonl": "21e584cb88de1d3b5a760f24c9df68e9603befea0672a544ca7e8194f7371612",
     "local-plan-smoke-verdict.json": "c9147f923841e7c3eef07d8cb6260fa451bd0c21636ee0186e2c37b22693c7e5",
-    "diagnostic-verification.json": "f931376b2eddda8ca1f89b45683ead3dd939148ae4e752e4414dd1f62b07e131"
+    "diagnostic-verification.json": "f67dfca09941787d5dc511a12a17cd2fbd934c2e086672640bace1560c7de8c7",
+    "hardware-attempts.json": "d0d27207dcff61cb6c7103536880470842d41fedf52a2bb443123b086c31ec1c",
+    "non-gpu-preflight.json": "457270310c926e789a9c0871a261b9a0016ecf50e5f6c5be832e4a9c80729b04"
   }
 }

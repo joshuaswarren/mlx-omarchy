@@ -1,0 +1,36 @@
+{
+  "schema": "bf16-gemv-non-gpu-preflight/1",
+  "execution_model": "openai-codex/gpt-5.6-sol",
+  "fallback_model": null,
+  "host": "jwm1-linux",
+  "source_commit": "3e26a6a7f373303f6ae417936edc2f57ab372264",
+  "base_commit": "6b1ac0296ba65a8e0075171ca9451e222ddff06b",
+  "identity_helper_sha256": "e5a5f70943ca7054a117389bc0bb256e8627930ec57eb4ebdab9c70119821eeb",
+  "preflight_script_sha256": "d8c482117ff72e3f06fcd3a8e2db5fcd6778e3b1a60b649f232673fa50286e1f",
+  "runtime_harness_sha256": "83b2cdc7b8f906021ce469f72c2c67fe3eb2663ef1e8ba65c28bf86b8b74b13b",
+  "profile_helper_sha256": "5a15b304edcc636021a3702390eadc047a08d72a380961ba93dbfc9b4e6c8123",
+  "wheel_sha256": "d311e7e3faaf7425c02adaf8b0a0c4301ae91fb3f893e7e172795f6b6248aebf",
+  "wheel_version": "0.32.2.dev202609130728+diag.3e26a6a",
+  "installed_binaries": {
+    "mlx/core.cpython-314-aarch64-linux-gnu.so": "4ad850da16c300ea9f60aa7247f034f358aa16d7ba2fd146979a01c867e3cfa5",
+    "mlx/lib/libmlx.so": "35cd196daaee76e65c611bbf9a0365fb40b63108f5665f55ee3d592d691a1a45"
+  },
+  "checks": {
+    "tracked_source_clean": true,
+    "diagnostic_build_directory_explicitly_ignored": true,
+    "malformed_exclude_absent": true,
+    "package_record_matches_wheel_binaries": true,
+    "installed_binaries_match_wheel": true,
+    "pythonpath_exact": true,
+    "ld_library_path_cleared": true,
+    "model_config_present": true,
+    "benchmark_scripts_present": true,
+    "compute_header_present": true
+  },
+  "result": "NON_GPU_PREFLIGHT_OK",
+  "mlx_imported": false,
+  "device_opened": false,
+  "build_run": false,
+  "inference_run": false,
+  "performance_claim": null
+}

@@ -1,0 +1,38 @@
+{
+  "schema": "bf16-gemv-hardware-attempts/1",
+  "execution_model": "openai-codex/gpt-5.6-sol",
+  "fallback_model": null,
+  "host": "jwm1-linux",
+  "source_commit": "3e26a6a7f373303f6ae417936edc2f57ab372264",
+  "attempts": [
+    {
+      "kind": "build_and_runtime",
+      "acquired_epoch": 1789284529,
+      "fixed_deadline_epoch": 1789285429,
+      "build_start_epoch": 1789284533,
+      "build_end_epoch": 1789284846,
+      "build_result": "success",
+      "runtime_result": "not_started",
+      "reason": "The first runtime-identity helper incorrectly required sys.prefix to equal a PYTHONPATH installation target.",
+      "released_epoch": 1789284847,
+      "exit_code": 1,
+      "child_processes": "clear",
+      "lock_released": true
+    },
+    {
+      "kind": "no_build_continuation",
+      "staged_runtime_identity_sha256": "9372b610f6edc257f1767d2f0c7407dd219f1e7f2c50240b726c99a6862fafe1",
+      "staged_harness_sha256": "725343be5cd16dc0d2e3bbfaed8f2fc5cc825f31113862e8c2d5b8bc4becd559",
+      "staged_epoch": 1789285223,
+      "acquire_by_epoch": 1789285296,
+      "outer_deadline_epoch": 1789285429,
+      "runtime_result": "not_started",
+      "reason": "Pre-lock source cleanliness rejected the known untracked diagnostic build directory. The acquisition deadline expired during correction.",
+      "exit_code": 3,
+      "lock_acquired": false,
+      "lease_created": false,
+      "child_processes": "clear"
+    }
+  ],
+  "performance_claim": null
+}

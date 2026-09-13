@@ -41,7 +41,9 @@
     "inspection": "strings over all three release objects found none of fg_scope, fg_candidate, fg_group, fg_summary, or fg_dispatch",
     "result": "RELEASE_DIAGNOSTICS_ABSENT"
   },
-  "target_limitation": "The local Vulkan device lacks a 32-lane shuffle subgroup, so the BF16 grouped-GEMV target test skipped before planner execution. No M1 hardware run was made because no hardware grant was available.",
-  "next_command_after_hardware_grant": "Run the existing exact long-context window with a build from 3e26a6a7f373303f6ae417936edc2f57ab372264 and MLX_OMARCHY_GPU_PROFILE set, then pass its profile and exact compute.h to analyze_diagnostic.py.",
+  "target_limitation": "The local Vulkan device lacks a 32-lane shuffle subgroup, so the BF16 grouped-GEMV target test skipped before planner execution. The exact M1 diagnostic wheel built successfully, but both granted attempts stopped before inference: the first at an invalid sys.prefix identity assertion and the second at a pre-lock source-cleanliness check after the known build directory appeared as untracked.",
+  "hardware_attempts": "hardware-attempts.json",
+  "non_gpu_preflight": "non-gpu-preflight.json",
+  "next_command_after_hardware_grant": "Reuse the exact 3e26a6a7 diagnostic wheel through preflight d8c482117ff72e3f06fcd3a8e2db5fcd6778e3b1a60b649f232673fa50286e1f and canonical package runtime identity helper e5a5f70943ca7054a117389bc0bb256e8627930ec57eb4ebdab9c70119821eeb, then pass the resulting profile plus exact compute.h to analyze_diagnostic.py.",
   "performance_result": null
 }
