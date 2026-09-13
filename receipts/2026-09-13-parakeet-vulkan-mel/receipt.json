@@ -25,7 +25,7 @@
     "sha256": "753fda5580a1fdc8c1535cc291a962c3be3207e819d42b2eb6869b731a7ebf62"
   },
   "source_sha256": {
-    "overlay/tools/coreml/vulkan_mel.py": "c3c01af30647e613c5707f97bc986d8585fcdbd04b371fdad605593a5800d6d8",
+    "overlay/tools/coreml/vulkan_mel.py": "3d05d810aec2455680eedabc04c61ed947ebc18f3c2d892f9029dce949c3eac6",
     "overlay/tools/coreml/vulkan_mel_constants.py": "caad0ac74d60a4d7378326d5c6d2e0f0fa7d1fd807157f9d203e7348874d258f",
     "tests/coreml/test_vulkan_mel.py": "4dfa53690fdb5790423e37f12121ce5d3dd8c7ce484c8b81ea658829b9e291df",
     "docs/parakeet.md": "f7243b89059a854f53932638827f6699f0d34b23973802cec34882c3547e0b76",
@@ -81,13 +81,30 @@
       "attempt2-launcher.log": "e58d6c8b5d5b5fb7c63f8fff0fcc9d3330159f616c8466766909c28b10a55f34"
     }
   },
-  "postfix_apple_verification": {
-    "status": "pending_conditional_hardware_window",
-    "required": "After LongContextCostAttribution reports child/PGID clearance and lock release, run the frozen corrected source once in Main's conditional no-build <=300s window with a fixed deadline, the quiet gate, and /tmp/m1-gpu.lock."
+  "postfix_apple_red_reproduction": {
+    "source_sha256": "c3c01af30647e613c5707f97bc986d8585fcdbd04b371fdad605593a5800d6d8",
+    "acquired": "2026-09-13T05:10:18Z",
+    "released": "2026-09-13T05:10:59Z",
+    "result": "qualified=false; the corrected magnitude path made power, mel projection, logmel, and mean exact. The remaining native sqrt in standard deviation diverged and cascaded only to normalized mel and encoder features.",
+    "exact": ["preemph", "hann", "mel_fb", "frames", "dft_real", "dft_imag", "power", "melproj", "logmel", "mean", "mask", "encoder_mask"],
+    "mismatched": ["std", "mel", "encoder_features"],
+    "trace_delta": {"gpu_primitive_dispatches": 15, "vk_compute_dispatches": 8, "vk_submissions": 1},
+    "cleanup": "CHILD_PIDS_CLEAR, launcher PID/PGID clear, lock_released=true, and a post-run nonblocking lock probe succeeded",
+    "artifacts": {
+      "postfix-apple-gpu.json": "5b5fbd40a0748ed1ca10b3cca3212711a69900aa9fbf3c7f4ccd4c515c7b2fea",
+      "postfix-workload.log": "5b5fbd40a0748ed1ca10b3cca3212711a69900aa9fbf3c7f4ccd4c515c7b2fea",
+      "postfix-load.log": "8ff8c2d5bb54c7fbd1a57e603a2a024acc8228f241b0c068d0b7dc1e834442d2",
+      "postfix-lease.txt": "62dc536174d854c07248f35cd22648f40d2004564f802ed35a7b7d2b9ba385c0",
+      "postfix-launcher.log": "e207950e201d780df6d1e5554fd2bab5f01c6f5ab72b8a01e2e64f3a8a75aa62"
+    }
+  },
+  "final_apple_verification": {
+    "status": "pending_new_hardware_grant",
+    "required": "Run source SHA-256 3d05d810aec2455680eedabc04c61ed947ebc18f3c2d892f9029dce949c3eac6 once on jwm1 after a new explicit Main grant."
   },
   "qualification_boundary": {
     "local_frontend": "qualified against the pinned fixture through the installed e4d079c8 software-Vulkan runtime",
-    "apple_physical_gpu": "not yet qualified after the sqrt correction",
+    "apple_physical_gpu": "not yet qualified after the standard-deviation sqrt correction",
     "encoder_and_full_plan": "not claimed"
   }
 }
