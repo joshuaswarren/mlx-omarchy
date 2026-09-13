@@ -33,8 +33,9 @@
 
 extern char** environ;
 
-#if !defined(MLX_OMARCHY_ANE_WORKER_BUILD_PATH)
-#error "private ANE worker build path must be defined"
+#if !defined(MLX_OMARCHY_ANE_LIBRARY_BUILD_PATH) || \
+    !defined(MLX_OMARCHY_ANE_WORKER_BUILD_PATH)
+#error "private ANE build paths must be defined"
 #endif
 
 namespace mlx::core::omarchy::ane {
@@ -490,16 +491,10 @@ struct AneRuntime::Impl {
       throw detail::runtime_error(system_error("host staging mmap"));
     }
     implementation->staging = static_cast<uint8_t*>(mapping);
-
-    std::string executable =
-        detail::installed_worker_path(loaded_runtime_image()).string();
-    if (::access(executable.c_str(), X_OK) != 0) {
-      executable = MLX_OMARCHY_ANE_WORKER_BUILD_PATH;
-    }
-    if (::access(executable.c_str(), X_OK) != 0) {
-      throw detail::runtime_error("private ANE worker executable not found");
-    }
-
+    std::string executable = detail::worker_executable_path(
+        loaded_runtime_image(),
+        MLX_OMARCHY_ANE_LIBRARY_BUILD_PATH,
+        MLX_OMARCHY_ANE_WORKER_BUILD_PATH).string();
     int sockets[2];
     if (::socketpair(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0, sockets) != 0) {
       throw detail::runtime_error(system_error("worker socketpair"));

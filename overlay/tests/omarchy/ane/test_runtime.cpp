@@ -136,7 +136,35 @@ TEST_CASE("ANE installed worker follows the loaded library prefix") {
       detail::installed_worker_path("/opt/venv/lib/python3.14/site-packages/mlx/lib/libmlx.so") ==
       "/opt/venv/lib/python3.14/site-packages/mlx/bin/mlx-omarchy-ane-worker");
 }
+TEST_CASE("ANE build worker fallback is restricted to the exact build library") {
+  const auto root = std::filesystem::temp_directory_path() /
+      ("mlx-omarchy-ane-worker-selection-" + std::to_string(::getpid()));
+  const auto installed_library = root / "installed/mlx/lib/libmlx.so";
+  const auto build_library = root / "build/libmlx.so";
+  const auto build_worker = root / "build/mlx-omarchy-ane-worker";
+  std::filesystem::remove_all(root);
+  std::filesystem::create_directories(installed_library.parent_path());
+  std::filesystem::create_directories(build_library.parent_path());
+  std::ofstream(installed_library).put('i');
+  std::ofstream(build_library).put('b');
+  std::ofstream(build_worker).put('w');
+  REQUIRE(::chmod(build_worker.c_str(), 0700) == 0);
 
+  CHECK_THROWS_WITH_AS(
+      detail::worker_executable_path(
+          std::filesystem::canonical(installed_library),
+          build_library,
+          build_worker),
+      "[omarchy-ane] runtime: private ANE worker executable not found.",
+      std::runtime_error);
+  CHECK(
+      detail::worker_executable_path(
+          std::filesystem::canonical(build_library),
+          build_library,
+          build_worker) == std::filesystem::canonical(build_worker));
+
+  std::filesystem::remove_all(root);
+}
 TEST_CASE("ANE worker descriptors stay above every fixed child destination") {
   CHECK(detail::worker_source_fd_floor(0, 64) == 7);
   CHECK(detail::worker_source_fd_floor(3, 64) == 19);
