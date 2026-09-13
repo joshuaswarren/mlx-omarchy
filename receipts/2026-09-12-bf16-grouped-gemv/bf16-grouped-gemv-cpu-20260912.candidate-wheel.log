@@ -1,8 +1,16 @@
 == prepare upstream tree ==
   % Total    % Received % Xferd  Average Speed  Time    Time    Time   Current
                                  Dload  Upload  Total   Spent   Left   Speed
-  0      0   0      0   0      0      0      0                              0  0      0   0      0   0      0      0      0                              0  0      0   0      0   0      0      0      0                              0
-  0      0   0      0   0      0      0      0                              0100  2.71M   0  2.71M   0      0  1.97M      0           00:01          2.69M100  4.20M   0  4.20M   0      0  2.51M      0           00:01          2.69M100  4.20M   0  4.20M   0      0  2.51M      0           00:01          2.69M100  4.20M   0  4.20M   0      0  2.51M      0           00:01          2.69M
+
+  0      0   0      0   0      0      0      0                              0
+  0      0   0      0   0      0      0      0                              0
+  0      0   0      0   0      0      0      0                              0
+
+  0      0   0      0   0      0      0      0                              0
+100  2.71M   0  2.71M   0      0  1.97M      0           00:01          2.69M
+100  4.20M   0  4.20M   0      0  2.51M      0           00:01          2.69M
+100  4.20M   0  4.20M   0      0  2.51M      0           00:01          2.69M
+100  4.20M   0  4.20M   0      0  2.51M      0           00:01          2.69M
 patching file CMakeLists.txt
 patching file mlx/CMakeLists.txt
 patching file tests/CMakeLists.txt
@@ -19,8 +27,8 @@ patching file mlx/backend/cpu/distributed.cpp
 patching file mlx/fast.cpp
 patching file mlx/backend/common/metal_kernel.cpp
 patching file setup.py
-/home/joshuawarren/src/mlx-bf16-grouped-candidate-6b1ac029/.work/mlx
-== build venv (/home/joshuawarren/src/mlx-bf16-grouped-candidate-6b1ac029/.work/venv-build) ==
+/tmp/mlx-bf16-grouped-candidate-6b1ac029/.work/mlx
+== build venv (/tmp/mlx-bf16-grouped-candidate-6b1ac029/.work/venv-build) ==
 Traceback (most recent call last):
   File "<stdin>", line 1, in <module>
 ModuleNotFoundError: No module named 'setuptools'
@@ -48,7 +56,7 @@ Building wheels for collected packages: mlx-omarchy
   Stored in directory: /tmp/pip-ephem-wheel-cache-ij3tarj4/wheels/dd/4c/93/01d3eaadf30500bc57b4f2d149c2e80fc3d9c5665498d441b3
 Successfully built mlx-omarchy
 == receipt ==
-[receipt] wheel: /home/joshuawarren/src/mlx-bf16-grouped-candidate-6b1ac029/dist/mlx_omarchy-0.32.2.dev202609130004+6b1ac029-cp314-cp314-linux_aarch64.whl
+[receipt] wheel: /tmp/mlx-bf16-grouped-candidate-6b1ac029/dist/mlx_omarchy-0.32.2.dev202609130004+6b1ac029-cp314-cp314-linux_aarch64.whl
 [receipt] size: 7620815 bytes
 [receipt] sha256: fb4b96b0e52de3a07d62fea6766baa24f409b0b6b32afef1fd5f365e246e1c50
 [receipt] source commit: 6b1ac02

@@ -34,7 +34,7 @@
       "fallback": false
     },
     "scope": {
-      "worktree": "/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/AneRuntimeBridge",
+      "worktree": "AneRuntimeBridge",
       "reviewed_head": "490bef255bd8ac7848b34ebbd2d82b9d78a9dec0",
       "implementation_commit": "382492a5896322b32d2058b20e3aa1c6c693aa4e",
       "base": "9e22a534",

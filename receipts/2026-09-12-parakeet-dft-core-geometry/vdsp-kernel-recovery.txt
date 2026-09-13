@@ -1,4 +1,4 @@
-CPU-only host: macstudio
+CPU-only host: Apple M1 Ultra, macOS
 Framework: /System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/libvDSP.dylib
 No CoreML model, ANE, or GPU was loaded. No Apple binary or implementation code is stored in this receipt.
 

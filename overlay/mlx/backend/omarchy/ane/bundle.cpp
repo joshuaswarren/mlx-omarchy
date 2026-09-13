@@ -313,9 +313,7 @@ void validate_program_contract(
   if (program.outputs.size() != header.destination_count) {
     throw bundle_error(prefix + " output count does not match ANEC destination_count");
   }
-  const uint64_t scratch =
-      align_up(program.scratch_bytes, kAneTileAlignment, prefix + " scratch allocation");
-  if (channel_size_bytes(header, 3) != scratch) {
+  if (channel_size_bytes(header, 3) != program.scratch_bytes) {
     throw bundle_error(prefix + " scratch_bytes does not match ANEC channel 3 allocation");
   }
   for (uint32_t i = 0; i < program.outputs.size(); ++i) {

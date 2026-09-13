@@ -11,7 +11,7 @@
     "failures": 0
   },
   "real_consumer": {
-    "executable": "/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/H13BundleAdapterNext/.work/build/tools/mlx-omarchy-info/mlx-omarchy-info",
+    "executable": ".work/build/tools/mlx-omarchy-info/mlx-omarchy-info",
     "invocation": "timeout 15s <executable> --check-bundle <bundle>",
     "generated_bundle": "/tmp/mlx-omarchy-combined.TZgt9P/bundle",
     "result": "OK: bundle valid; 2 task descriptors; dispatch plan 0 1; add followed by mul; intermediate sum preserved",

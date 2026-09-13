@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-base=/home/joshuawarren/src/mlx-bf16-grouped-base-b41e2b74
-candidate=/home/joshuawarren/src/mlx-bf16-grouped-candidate-6b1ac029
+base=/tmp/mlx-bf16-grouped-base-b41e2b74
+candidate=/tmp/mlx-bf16-grouped-candidate-6b1ac029
 out=/tmp/bf16-grouped-gemv-cpu-20260912.matrix
-stock_icd=/home/joshuawarren/stock-mesa/stock-icd.json
+stock_icd=/tmp/stock-mesa/stock-icd.json
 lease=/tmp/bf16-grouped-gemv-cpu-20260912.lease
 holder=/tmp/bf16-grouped-gemv-cpu-20260912.pid
 
@@ -34,7 +34,7 @@ run_one() {
       MLX_DISABLE_COMPILE=1 MLX_OMARCHY_FUSED_GEMV=1 \
       "$python" scripts/bench_matrix.py --mode run \
       --python "$python" --wheel "$wheel" \
-      --host-label "jwm1-$phase-$driver-$cell" --timeout 900 \
+      --host-label "M1-$phase-$driver-$cell" --timeout 900 \
       --expect-pins qwen25-0.5b-4bit=a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3 \
       --expect-pins qwen25-0.5b-bf16=56d07e766edd7159fbe12ed12d9cf114bf38bf1e \
       --out "$run/matrix.json" >"$run/matrix.log" 2>&1

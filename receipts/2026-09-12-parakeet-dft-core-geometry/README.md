@@ -6,7 +6,7 @@ This experiment executes the next step recorded in `receipts/2026-09-12-parakeet
 
 `dft_geometry_probe.py make-input` generated a 512 by 512 float32 identity basis. Rows `2*c` and `2*c+1` therefore isolate the real and imaginary components of packed complex index `c`, for every `c` from 0 through 255. The raw input SHA-256 is `fc6ed15324fa8fe5d0b68455503165a6b03a0df03bf86de07bd40b703281be58`.
 
-The committed Swift source SHA-256 was `b653c1ff6fc71dc50202f2670a3ce18b9104b29c9e5b56422232ef40e6d0ab0e` both locally and at `macstudio:~/parakeet-mel-stage/Sources/mel-stage-capture/main.swift`. A release build completed in 5.19 seconds. On macstudio, `probe-dft` and the new direct `probe-dft-core` mode each captured 512 frames. This was CPU-only Accelerate execution. It did not load a CoreML model or use ANE or GPU execution.
+The committed Swift source SHA-256 was `b653c1ff6fc71dc50202f2670a3ce18b9104b29c9e5b56422232ef40e6d0ab0e` locally and at `/tmp/parakeet-mel-stage/Sources/mel-stage-capture/main.swift`. A release build completed in 5.19 seconds. On Apple M1 Ultra, macOS, `probe-dft` and the new direct `probe-dft-core` mode each captured 512 frames. This was CPU-only Accelerate execution. It did not load a CoreML model or use ANE or GPU execution.
 
 The real-DFT manifest SHA-256 is `4c24b59e0eff5c9a6a65ef372f789005b1fdda6fbf83070c0132c40359a769a1`; the direct complex-core manifest SHA-256 is `850d6f48b863eebac1dc0c758a9c2cfa07277e3338217bb901307c981344ba6a`. The preserved general-probe manifest is `94e84e95d5fc44ce49b358a6a413b7d5e1d1c8bdf471ab81a927c08ae052d2fd`. The certified 3001-frame stage manifest is `67ecd46384c33040869093cde9b0615e0a0e7aaaa8450212c46a366405c61a14`. `comparison.json` contains the complete signed-ULP histograms and validates every manifest before scoring.
 
@@ -53,10 +53,10 @@ No tolerance, reference lock, golden capture, execution policy, or release gate 
 
 ```bash
 python3 overlay/tools/coreml/dft_geometry_probe.py make-input /tmp/coreml-dft-impulses.f32
-scp -q overlay/tools/coreml/capture/Sources/mel-stage-capture/main.swift macstudio:parakeet-mel-stage/Sources/mel-stage-capture/main.swift
-ssh macstudio 'cd ~/parakeet-mel-stage && swift build -c release --product mel-stage-capture'
-ssh macstudio 'cd ~/parakeet-mel-stage && .build/release/mel-stage-capture --mode probe-dft --waveform coreml-dft-impulses.f32 --out probe-dft-impulses-18248be2 && .build/release/mel-stage-capture --mode probe-dft-core --waveform coreml-dft-impulses.f32 --out probe-dft-core-impulses-18248be2'
+cp overlay/tools/coreml/capture/Sources/mel-stage-capture/main.swift /tmp/parakeet-mel-stage/Sources/mel-stage-capture/main.swift
+cd /tmp/parakeet-mel-stage && swift build -c release --product mel-stage-capture
+cd /tmp/parakeet-mel-stage && .build/release/mel-stage-capture --mode probe-dft --waveform coreml-dft-impulses.f32 --out probe-dft-impulses-18248be2 && .build/release/mel-stage-capture --mode probe-dft-core --waveform coreml-dft-impulses.f32 --out probe-dft-core-impulses-18248be2
 python3 overlay/tools/coreml/dft_geometry_probe.py compare --impulse-dump /tmp/coreml-dft-impulses-18248be2 --core-dump /tmp/coreml-dft-core-impulses-18248be2 --general-dump ~/.cache/mlx-omarchy/parakeet-reference/captures/b650695c-75aec2a/mel-stage-probes/dft --stage-dump ~/.cache/mlx-omarchy/parakeet-reference/captures/b650695c-75aec2a/mel-stage-probes/stage-capture --json-out receipts/2026-09-12-parakeet-dft-core-geometry/comparison.json
 python3 overlay/tools/coreml/mel_stage_compare.py ~/.cache/mlx-omarchy/parakeet-reference/captures/b650695c-75aec2a/20260912T154759Z-librispeech/ane ~/.cache/mlx-omarchy/parakeet-reference/captures/b650695c-75aec2a/mel-stage-probes/stage-capture
-ssh macstudio '/tmp/vdsp_compare ~/parakeet-mel-stage/coreml-dft-impulses.f32; /tmp/vdsp_compare ~/parakeet-mel-stage/dft-stage-pairs.f32; /tmp/vdsp_setup_resolution ~/parakeet-mel-stage/dft_in.f32; /tmp/vdsp_setup_resolution ~/parakeet-mel-stage/dft-stage-3001.f32; /tmp/vdsp_twiddle'
+/tmp/vdsp_compare /tmp/parakeet-mel-stage/coreml-dft-impulses.f32; /tmp/vdsp_compare /tmp/parakeet-mel-stage/dft-stage-pairs.f32; /tmp/vdsp_setup_resolution /tmp/parakeet-mel-stage/dft_in.f32; /tmp/vdsp_setup_resolution /tmp/parakeet-mel-stage/dft-stage-3001.f32; /tmp/vdsp_twiddle
 ```

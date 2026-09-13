@@ -81,8 +81,8 @@
       "honeykrisp": 0.8245382585752026,
       "stock_mesa": 0.7518796992481258
     },
-    "new_jwm1_run": false,
-    "jwm1_touched": false
+    "new_m1_run": false,
+    "m1_touched": false
   },
   "scope_limit": "This qualifies the grouped eager BF16 GEMV candidate only. It does not claim full native parity."
 }

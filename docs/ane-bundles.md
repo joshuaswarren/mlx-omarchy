@@ -74,7 +74,8 @@ Each tensor has `name`, `index`, `dtype`, `shape`, `byte_size`, and
 `stride`. Shapes, byte sizes, and strides are positive. Byte size must equal
 the dtype size times the shape product. Stride must cover the tensor and be
 `0x4000`-aligned. Zero ordinary tensors are invalid. Program scratch is not a
-tensor; `scratch_bytes: 0` represents a program with no channel-3 allocation.
+tensor; `scratch_bytes` must equal the ANEC channel-3 allocation exactly, with
+no rounding. `scratch_bytes: 0` represents a program with no channel-3 allocation.
 
 ### Program entries
 

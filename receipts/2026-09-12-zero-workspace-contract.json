@@ -4,7 +4,7 @@
   "source_commit": "b41e2b74c330f910b24cab0e7516e306527858f0",
   "scope": "Host-only build and bundle-consumer qualification for the zero-workspace contract.",
   "source": {
-    "worktree": "/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/main-land2",
+    "worktree": "mlx-omarchy",
     "prepared_source": "/tmp/mlx-zero-workspace-qualification/work/mlx",
     "isolated_build": "/tmp/mlx-zero-workspace-qualification/build",
     "published": false
