@@ -243,5 +243,9 @@ compute gate includes any lazy work. The comparator maps the `mel_mask`,
 `mel_pinned`, and `mel_stepwise` aliases explicitly. The
 comparison receipt is
 [`2026-09-13-parakeet-vulkan-mel`](../receipts/2026-09-13-parakeet-vulkan-mel/receipt.json).
-The recorded Apple run remains evidence for the pinned ordinary-input fixture;
-the full finite-float arithmetic correction still requires a new Apple run.
+The historical Apple run remains evidence only for the pinned ordinary-input
+fixture. A corrected-source Apple regression passed 8,192 full-exponent FMA
+triples, then failed the `2^-120` DFT with 1,028 real-component bit mismatches
+(first `0x02349b98`, expected `0x026c5098`). Full finite-input Apple arithmetic
+is not qualified. The fixed window expired before the corrected 18-comparison
+fixture CLI could run.
