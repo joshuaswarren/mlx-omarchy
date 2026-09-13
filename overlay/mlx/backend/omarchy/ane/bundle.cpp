@@ -380,6 +380,12 @@ AneAnecHeader parse_anec_header(const std::filesystem::path& path) {
   if (header.task_descriptor_size % sizeof(uint32_t) != 0) {
     throw bundle_error("ANEC task descriptor size is not a multiple of 4");
   }
+  if (header.task_descriptor_count > 0xffff) {
+    throw bundle_error("ANEC task descriptor count exceeds driver limit 0xffff");
+  }
+  if (header.task_descriptor_size > 0x40000) {
+    throw bundle_error("ANEC task descriptor size exceeds driver limit 0x40000");
+  }
   if (header.task_size == 0) {
     throw bundle_error("ANEC task size is zero");
   }
