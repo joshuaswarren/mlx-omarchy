@@ -405,19 +405,63 @@ def _merged_histogram(functions: list[dict]) -> dict[str, int]:
     return dict(sorted(merged.items()))
 
 
-def _validity(model: Any, functions: list[dict]) -> dict:
-    """Parse validity and explicit confidence notes.
+def _block_ssa_findings(
+    block: dict, inherited: set[str], location: str
+) -> list[str]:
+    """Return unresolved SSA bindings in one block and its nested blocks."""
+    defined = set(inherited)
+    defined.update(item["name"] for item in block["inputs"] if item["name"])
+    findings: list[str] = []
+    for op in block["operations"]:
+        op_location = f"{location}/op[{op['index']}] {op['type']!r}"
+        for parameter, bindings in op["bindings"].items():
+            for binding in bindings:
+                name = binding.get("name")
+                if name is not None and name not in defined:
+                    findings.append(
+                        f"{op_location} parameter {parameter!r} consumes "
+                        f"undefined value {name!r}"
+                    )
+                elif binding.get("binding") == "UNSET":
+                    findings.append(
+                        f"{op_location} parameter {parameter!r} has an unset binding"
+                    )
+        for index, child in enumerate(op["blocks"]):
+            findings.extend(
+                _block_ssa_findings(child, defined, f"{op_location}/block[{index}]")
+            )
+        defined.update(item["name"] for item in op["outputs"] if item["name"])
+    for name in block["outputs"]:
+        if name not in defined:
+            findings.append(f"{location} returns undefined value {name!r}")
+    return findings
 
-    The protobuf schema is open (unknown op types and unknown fields
-    are legal), so validity never claims semantic completeness: each
-    finding is listed with what is and is not known.
-    """
+
+def _ssa_findings(functions: list[dict]) -> list[str]:
+    findings: list[str] = []
+    for function in functions:
+        inherited = {item["name"] for item in function["inputs"] if item["name"]}
+        for specialization, block in function["block_specializations"].items():
+            findings.extend(
+                _block_ssa_findings(
+                    block,
+                    inherited,
+                    f"function {function['name']!r} specialization {specialization!r}",
+                )
+            )
+    return findings
+
+
+def _validity(model: Any, functions: list[dict]) -> dict:
+    """Report parse confidence without claiming semantic completeness."""
     notes: list[str] = []
     for fn in functions:
         if fn["opset_consistency"] != "ok":
             notes.append(f"function {fn['name']}: {fn['opset_consistency']}")
         if fn["program_version"] is None:
             notes.append(f"function {fn['name']}: program.version is unset (0)")
+    ssa_findings = _ssa_findings(functions)
+    notes.extend(ssa_findings)
     unknown = proto.count_unknown_fields(model)
     if unknown:
         notes.append(
@@ -428,6 +472,7 @@ def _validity(model: Any, functions: list[dict]) -> dict:
         "protobuf_parse": "ok",
         "model_type_set": model.WhichOneof("Type") is not None,
         "unknown_schema_fields": unknown,
+        "ssa_bindings": "invalid" if ssa_findings else "ok",
         "notes": notes,
         "confidence": (
             "full structure read through the official schema, zero unknown "
