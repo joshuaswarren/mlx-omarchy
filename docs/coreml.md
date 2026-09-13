@@ -232,9 +232,13 @@ qualify the Linux encoder or the full Core ML plan.
 ## Exact Vulkan mel execution
 
 `overlay/tools/coreml/vulkan_mel.py` implements the same pinned contract with
-workload-owned MLX custom kernels. Runtime waveform tensors do not enter NumPy
-or a CPU fallback. The path emits `[3001,128]` float32 mel, an all-one
-`[3001]` int32 mask, and exact `[1,3000,128]` / `[1,3000]` encoder inputs.
-Its comparator verifies every certified intermediate before success and records
-the device and Omarchy trace deltas. The comparison receipt is
+workload-owned MLX custom kernels. The runtime extraction path performs no
+NumPy or CPU tensor arithmetic. The path emits `[3001,128]` float32 mel, an
+all-one `[3001]` int32 mask, and `[1,3000,128]` / `[1,3000]` encoder
+inputs. Its comparator authenticates all five final capture files and all 14
+stage files, maps the `mel_mask`, `mel_pinned`, and `mel_stepwise` stage
+aliases explicitly, and accepts exactly eight Vulkan compute dispatches. The
+comparison receipt is
 [`2026-09-13-parakeet-vulkan-mel`](../receipts/2026-09-13-parakeet-vulkan-mel/receipt.json).
+The recorded Apple run remains evidence for the pinned ordinary-input fixture;
+the full finite-float arithmetic correction still requires a new Apple run.

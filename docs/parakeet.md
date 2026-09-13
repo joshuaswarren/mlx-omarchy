@@ -46,27 +46,30 @@ reference library (SwiftPM `exact revision` dependency); the capture harness
 
 ## Exact CPU and Vulkan mel frontends
 
-The earlier approximate NumPy diagnostic is superseded. The pinned frontend now
-has two exact implementations. `overlay/tools/coreml/mel_reference.py` is the
-CPU fixture oracle. `overlay/tools/coreml/vulkan_mel.py` dispatches every
-waveform-dependent stage through workload-owned `mx.fast.metal_kernel` calls
-on the MLX GPU stream. NumPy is imported only after GPU evaluation by the
-fixture-comparison CLI; it is not a runtime tensor path or fallback.
+The earlier approximate NumPy diagnostic is superseded. The pinned frontend has
+a CPU fixture oracle in `overlay/tools/coreml/mel_reference.py` and a Vulkan
+implementation in `overlay/tools/coreml/vulkan_mel.py`. The Vulkan runtime
+dispatches every waveform-dependent stage through workload-owned
+`mx.fast.metal_kernel` calls on the MLX GPU stream. Its extraction path
+performs no NumPy or CPU tensor arithmetic; the host-side comparator imports
+NumPy before dispatch and uses it only to check completed GPU outputs.
 
 Both implementations preserve the fixed Hann bits, recovered vDSP radix-4 DFT,
 vDSP dot-product order, sqrt-then-square boundary, guarded float64-equivalent
 log rounding, sequential mean and sample standard deviation, and final int32
-mask. The Vulkan path carries an explicit compensated binary32 FMA because the
-Omarchy translator cannot rely on native IEEE fused results. It also separates
-sqrt from the final square so the shader compiler cannot fold away the required
-float32 rounding boundary.
+mask. The Vulkan path implements binary32 fused multiply-add from float fields
+and uint32 significands. This is required because the custom-kernel native
+`fma` path returns `0x4748616a` instead of the correctly rounded
+`0x4748616b` for the retained finite probe. The integer implementation also
+avoids the overflow and underflow failures of the former unscaled Dekker split.
 
 The CPU comparison receipt is
 [`2026-09-12-parakeet-mel-frontend`](../receipts/2026-09-12-parakeet-mel-frontend/receipt.json).
 The Vulkan implementation and device trace are recorded in
 [`2026-09-13-parakeet-vulkan-mel`](../receipts/2026-09-13-parakeet-vulkan-mel/receipt.json).
-Each receipt states its execution boundary; neither claims encoder, decoder, or
-full-plan completion.
+The previous Apple result covers the pinned ordinary-input fixture. The
+full-finite correction is locally verified and awaits a new Apple run. Neither
+receipt claims encoder, decoder, or full-plan completion.
 
 ```bash
 python3 overlay/tools/coreml/mel_reference.py <pinned-capture-directory>
