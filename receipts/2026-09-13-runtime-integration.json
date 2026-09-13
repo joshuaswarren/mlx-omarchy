@@ -33,8 +33,17 @@
     "trace_delta": {"gpu_primitive_dispatches": 15, "vk_compute_dispatches": 8, "vk_submissions": 1, "vk_buffer_copies": 0, "vk_buffer_fills": 0},
     "scope": "Merged Python frontend on local software Vulkan using the previously built CoremlVulkanMel Python extension. Not a rebuilt combined wheel or new Apple hardware qualification."
   },
+  "independent_review": {
+    "source": "RuntimeMergeReview",
+    "status": "changes required before hardware qualification",
+    "findings": [
+      "freeze_bundle snapshots only manifest-listed payloads and bypasses strict directory enumeration; runtime must reject unlisted files and symlinks through the descriptor-relative path.",
+      "ANEC task counts above 0xffff and descriptor sizes above 0x40000 pass host validation despite qualified driver refusal; reject before worker submission."
+    ],
+    "hardware_action": "4ef85f27 staged and preflighted only; no acquisition, build, install, or device execution. Candidate withheld pending source corrections."
+  },
   "qualification": {
-    "merged_host_contract": "verified",
+    "merged_host_contract": "focused checks passed; independent review found two unresolved loader defects",
     "merged_hardware_execution": "not run",
     "prior_installed_hardware_receipt": "receipts/2026-09-12-ane-runtime-hardening/corrected-source-qualification.json",
     "prior_installed_hardware_source": "9ea7501fc748cc031f7cbdc58afbed984fc00d51",

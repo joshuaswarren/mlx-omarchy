@@ -13,7 +13,7 @@
     "python": "3.11.2"
   },
   "companion_compiler": {
-    "commit": "a66ab595cfd4fc98bed5fba944f465d764ec1b93",
+    "commit": "a1bfea0cd52208ac9f168791e8c6e9a83ddc8efb",
     "input_mil_sha256": "ac8e9526154ac8b8d4c08b83e44dbc1a2208d7ec33e42a7838d57b698b14f133",
     "result": "The ordinary normalized program(1)/CoreML8 source parsed and reached H13 lowering; exit 65 at line 265 with h13.unsupported-multi-result-operation on the first ordered two-way split",
     "receipt": "mil-hwx-compiler/receipts/2026-09-13-mil-ordered-results.md"
@@ -61,6 +61,16 @@
       "emission": "emission.json"
     }
   ],
+  "root_integration": {
+    "commit": "7f4a17f3",
+    "unit_result": "Ran 3 tests in 0.103s; OK",
+    "real_cli_result": "Integrated package-to-compiler invocation emitted all 3351 operations and 3375 results, then returned compiler exit 65 at line 265 with h13.unsupported-multi-result-operation. No compiler artifact was created.",
+    "emission": "/tmp/ane-runtime-adapter-integrated-20260913-emission.json",
+    "compiler_log": "/tmp/ane-runtime-adapter-integrated-20260913-compiler.log",
+    "independent_constant_check": "PinnedEncoderTest: Ran 1 test in 17.653s; OK. Compared all 194 normalized LUT constants, 1016332288 dense bytes, and 120 FP16 immediates against the Apple decompressor and original bytes.",
+    "reviewed_compiler_fix": "a1bfea0: graph import PASS; malformed split SSA/payload type mismatch now stops with ane.verify.split-constant-parameters rather than reaching backend lowering.",
+    "adapter_review": "in progress"
+  },
   "limits": {
     "hardware_execution": "not run",
     "inference": "not run",
