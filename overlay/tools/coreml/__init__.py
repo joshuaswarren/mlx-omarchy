@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Core ML frontend tools for mlx-omarchy.
 
-Phase 2 ships the public ``.mlpackage`` inspector under this package:
+The package currently provides:
 
 * :mod:`coreml.schema` — the officially vendored Core ML protobuf
   schema (Apple coremltools 9.0 generated bindings plus ``.proto``
@@ -21,6 +21,11 @@ Phase 2 ships the public ``.mlpackage`` inspector under this package:
 
 * :mod:`coreml.reference` — parakeet-reference lock and cache
   verification (owned with the reference freeze; see docs/parakeet.md).
+* :mod:`coreml.compiled_cache` — content-addressed storage for Linux-compiled
+  ANE bundles. Keys bind model artifact hashes, selected function and static
+  shapes, compiler identity, operation set, bundle/driver ABI, firmware
+  compatibility identity, and frontend version. Every hit re-hashes payloads;
+  corrupt entries are invalidated before the producer runs again.
 
 Inspection never opens the ANE device, never imports coremltools or
 MLX, and never reads or computes tensor data. It runs on any Linux
