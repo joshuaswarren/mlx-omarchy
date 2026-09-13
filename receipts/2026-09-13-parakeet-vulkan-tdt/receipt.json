@@ -1129,6 +1129,142 @@
     "quantization": "fp16 compute precision; encoder 4-bit palettized (kmeans, per-grouped-channel, conv excluded); decoder/joint fp16",
     "revision": "b650695c2322ee5281dff48d7345b2f3a58ff018"
   },
+  "diagnosis": {
+    "status": "localized; exact native operator remains unproven",
+    "method": "Offline replay of authenticated capture 20260913T105550Z before any hardware escalation",
+    "jwm1_used": false,
+    "failing_step": {
+      "name": "decision-142 decoder transition for input token 8135 into joint token argmax",
+      "decision_index": 142,
+      "emission_index": 101,
+      "frame_index": 373,
+      "symbol_count": 7,
+      "duration_index": 0,
+      "duration": 0,
+      "actual_token_id": 8029,
+      "native_token_id": 7892
+    },
+    "offline_full_replay": {
+      "source_commit": "1f8804cd087e60b7ab34a2a730510977f5aca0c3",
+      "runtime_source_commit": "e4d079c883b8606dddef7720bd302c5756be0692",
+      "source_hashes_equal_to_apple_run": true,
+      "host": "omp-studio-local",
+      "backend": "software-vulkan",
+      "device": "llvmpipe (LLVM 15.0.6, 256 bits)",
+      "runtime_version": "0.32.2.dev202609130346+e4d079c8",
+      "model_revision": "b650695c2322ee5281dff48d7345b2f3a58ff018",
+      "elapsed_seconds": 57.81975218933076,
+      "decoder_calls": 145,
+      "joint_calls": 146,
+      "actual_emission_sequence_matches_apple_vulkan": true,
+      "actual_emission_sequence_sha256": "d8d9c1f1400cf1901df48c2094b6c764065cc3a10cca54c0aa2b3fb4e556e993",
+      "sequence_hash_encoding": "SHA-256 of UTF-8 JSON.stringify(array)",
+      "first_divergence": {
+        "emission_index": 101,
+        "actual": {
+          "token_id": 8029,
+          "frame_index": 373,
+          "duration": 0
+        },
+        "native": {
+          "token_id": 7892,
+          "frame_index": 373,
+          "duration": 0
+        }
+      },
+      "command": "MLX_OMARCHY_ALLOW_NON_APPLE=1 PYTHONPATH=<installed-mlx-site>:overlay/tools:overlay/tools/coreml python3 -m coreml.parakeet_tdt <authenticated-20260913T105550Z-capture>/ane <pinned-b650695c-model> --source-commit 1f8804cd087e60b7ab34a2a730510977f5aca0c3 --runtime-source-commit e4d079c883b8606dddef7720bd302c5756be0692 --allow-non-apple --output /tmp/tdt-divergence-full-offline.json"
+    },
+    "native_path_replay": {
+      "mode": "inject authenticated native decisions through target while executing decoder and joint",
+      "target_decision_index": 142,
+      "target_emission_index": 101,
+      "decoder_calls": 142,
+      "token_decisions_matching_before_target": 142,
+      "token_decisions_compared_before_target": 142,
+      "duration_decisions_matching_through_target": 143,
+      "duration_decisions_compared_through_target": 143,
+      "elapsed_seconds": 55.2408717982471,
+      "decoder_input_token": 8135,
+      "actual_token_id": 8029,
+      "native_token_id": 7892,
+      "native_token_rank": 2,
+      "actual_logit": -12.640625,
+      "native_token_logit": -12.875,
+      "actual_minus_native_logit": 0.234375,
+      "duration_index": 0,
+      "duration_logits": [13.203125, 8.71875, -10.0546875, -45.96875, -8.3828125],
+      "encoder_frame_raw_sha256": "421387a213f3d218dfd55d08a0a22446b7252810711aceb31307b0e598c2d56d",
+      "decoder_state_raw_sha256": "fb820c60707759d9deeea80ce7c0874afd6735ba9cb36f1af7ab75eeb3738970"
+    },
+    "target_joint_arithmetic_variants": {
+      "baseline_fp16_matmul_then_fp16_bias": {
+        "token_id": 8029,
+        "native_token_rank": 2,
+        "winner_minus_native": 0.234375
+      },
+      "mx_addmm_fp16": {
+        "token_id": 8029,
+        "native_token_rank": 2,
+        "winner_minus_native": 0.234375
+      },
+      "explicit_fp32_dot_then_fp16_bias": {
+        "token_id": 8029,
+        "native_token_rank": 2,
+        "winner_minus_native": 0.234375
+      },
+      "fused_fp32_dot_and_bias_then_fp16": {
+        "token_id": 8029,
+        "native_token_rank": 2,
+        "winner_minus_native": 0.234375
+      },
+      "fp16_products_fp32_reduce_then_fp16_bias": {
+        "token_id": 8029,
+        "native_token_rank": 2,
+        "winner_minus_native": 0.234375
+      },
+      "balanced_tree_fp16_then_fp16_bias": {
+        "token_id": 8029,
+        "native_token_rank": 2,
+        "winner_minus_native": 0.234375
+      },
+      "sequential_fp16_then_fp16_bias": {
+        "token_id": 8029,
+        "native_token_rank": 2,
+        "winner_minus_native": 0.296875
+      }
+    },
+    "captured_component_evidence": {
+      "tensor_trace_limit": 16,
+      "target_decision_tensor_present": false,
+      "decoder": {
+        "native_comparison_traces": 15,
+        "non_bit_exact_from_trace_0": true,
+        "trace_0_next_cell_max_absolute_error": 0.0028076171875,
+        "trace_10_next_cell_max_absolute_error": 0.03125,
+        "trace_15_next_cell_max_absolute_error": 0.0234375,
+        "worst_next_cell_max_absolute_error": 0.03125
+      },
+      "joint": {
+        "native_input_traces": 16,
+        "token_decisions_matching": 16,
+        "duration_decisions_matching": 16,
+        "full_tensor_bit_exact": false
+      }
+    },
+    "conclusion": {
+      "not_honeykrisp_specific": "The complete software-Vulkan emission sequence is byte-for-byte identical to the Apple M1 Honeykrisp sequence with identical TDT, decoder, and joint source hashes.",
+      "control_path": "Native-injected replay matches every token decision before decision 142 and every duration decision through decision 142, so host control first fails only when the target token argmax is observed.",
+      "joint_variant_result": "All seven tested joint accumulation and fusion variants retain token 8029 at the target state; changing among them does not recover native token 7892.",
+      "most_supported_cause": "Cumulative recurrent decoder-state numerical drift is the leading cause because decoder outputs differ from native Core ML at the first captured transition and grow across the captured prefix, while joint execution fed native captured states preserves all 16 captured decisions.",
+      "proof_limit": "The native capture stops tensor traces at decision 15. It has no native decoder state or token logits for decision 142, so the exact decoder operation and a late-state joint contribution cannot be proven from this capture.",
+      "required_next_evidence": "Capture authenticated decoder input/state/output and joint input/token logits for native decision 142, plus the immediately preceding recurrent state, before changing decoder or joint arithmetic."
+    },
+    "excluded_candidate": {
+      "commit": "8289b1bc77f3797d42611339efa6723824ea08e6",
+      "promote": false,
+      "reason": "The fp32-LSTM candidate improves weighted aggregate tensor error by only 1.52711865565479 percent, worsens decoder_hidden maxima and means, and does not establish native Core ML accumulator semantics."
+    }
+  },
   "schema": "parakeet-vulkan-tdt-comparison/1",
   "source": {
     "base_commit": "c4768af65f1fd263c2ee55b6767291896ee18381",
