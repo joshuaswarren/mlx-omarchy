@@ -291,8 +291,10 @@ void validate_binding(
   if (allocation != binding.allocation_bytes) {
     throw bundle_error(label + " allocation_bytes does not match ANEC channel allocation");
   }
-  if (binding.dtype != "float16" && binding.dtype != "bfloat16") {
-    throw bundle_error(label + " ANEC channel requires a 16-bit tensor dtype");
+  if (binding.dtype != "float16" && binding.dtype != "bfloat16" &&
+      binding.dtype != "bool") {
+    throw bundle_error(
+        label + " ANEC channel requires a 16-bit or 1-byte bool tensor dtype");
   }
   if (header.nchw[expected_channel] != binding.nchw) {
     throw bundle_error(label + " NCHW does not match ANEC channel geometry");
