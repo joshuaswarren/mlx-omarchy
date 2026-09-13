@@ -7299,12 +7299,14 @@ bool dispatch_dense_gemv_group(
     }
     const array& node_x = node.inputs()[0];
     const bool direct_input = node_x.id() == x.id();
+    const bool planned_input = dense_gemv_source(node_x).id() == x.id();
     const bool aliased_input = node_x.dtype() == x.dtype() &&
         node_x.size() == x.size() && node_x.data_shared_ptr() != nullptr &&
         node_x.data_shared_ptr() == x.data_shared_ptr() &&
         node_x.offset() == x.offset() && node_x.flags().row_contiguous &&
         node_x.strides().back() == 1;
-    if ((!direct_input && !aliased_input) || node_x.shape() != x_view.shape()) {
+    if ((!direct_input && !planned_input && !aliased_input) ||
+        node_x.shape() != x_view.shape()) {
       MLX_DENSE_GEMV_REJECT("input_identity_or_shape");
     }
     const array& weight = node.inputs()[1];

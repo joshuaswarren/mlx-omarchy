@@ -1357,6 +1357,57 @@ TEST_CASE("eager dense bf16 decode gemv groups qkv and gate up") {
   unsetenv("MLX_OMARCHY_FUSED_GEMV");
 }
 
+TEST_CASE("eager dense bf16 decode gemv groups separate flatten views") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  if (!dense_group_available(stream)) {
+    skip("dense grouped bf16 GEMV requires a 32-lane shuffle subgroup.");
+    return;
+  }
+  enable_fusion();
+  set_compile_mode(CompileMode::disabled);
+  constexpr int k = 896;
+  auto weight = [&] {
+    array w = astype(
+        random::normal(Shape{128, k}, float32, std::nullopt, stream),
+        bfloat16,
+        stream);
+    w.eval();
+    return transpose(w, {1, 0}, stream);
+  };
+  array a = weight();
+  array b = weight();
+  array x = astype(
+      random::normal(Shape{1, 1, k}, float32, std::nullopt, stream),
+      bfloat16,
+      stream);
+  eval({a, b, x});
+  sync_stream(stream);
+  auto forward = [&] {
+    array xa = flatten(x, 1, -1, stream);
+    array xb = flatten(x, 1, -1, stream);
+    return std::vector<array>{
+        matmul(xa, a, stream), matmul(xb, b, stream)};
+  };
+
+  setenv("MLX_OMARCHY_FUSED_GEMV", "0", 1);
+  auto baseline = forward();
+  eval(baseline);
+  sync_stream(stream);
+  setenv("MLX_OMARCHY_FUSED_GEMV", "1", 1);
+  auto candidate = forward();
+  uint64_t before = counters().vk_compute_dispatches.load();
+  eval(candidate);
+  sync_stream(stream);
+  CHECK_EQ(counters().vk_compute_dispatches.load() - before, 1);
+  for (size_t i = 0; i < baseline.size(); ++i) {
+    expect_bit_exact(baseline[i], candidate[i], stream);
+  }
+  unsetenv("MLX_OMARCHY_FUSED_GEMV");
+}
+
 TEST_CASE("eager dense bf16 decode gemv rejects a partial row group") {
   if (!compute_available()) {
     return;

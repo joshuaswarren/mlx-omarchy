@@ -166,6 +166,7 @@ struct GemvFusionMember {
 bool dispatch_quantized_gemv_group(
     std::vector<GemvFusionMember>& members,
     const Stream& stream);
+const array& dense_gemv_source(const array& input);
 
 bool dispatch_dense_gemv_group(
     std::vector<array>& nodes,
