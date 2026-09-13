@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 // mlx-omarchy-info: capability report and runtime smoke tool for the Omarchy
-// Vulkan backend of MLX.
+// Vulkan backend of MLX. Also reports ANE FDT/accel0/module visibility and
+// Core ML frontend/cache presence (plan §73 installed-state surface).
 //
 //   mlx-omarchy-info                 human-readable capability report
 //   mlx-omarchy-info --json          the same report as JSON
@@ -16,13 +17,17 @@
 // Exit codes: 0 success, 1 the backend, smoke, or bundle check failed,
 // 2 usage error or bundle directory not found.
 
+#include <algorithm>
 #include <cctype>
 #include <cstdlib>
-#include <filesystem>
 #include <cstring>
+#include <filesystem>
+#include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <iterator>
 #include <string>
+#include <sys/stat.h>
 #include <vector>
 
 #include "mlx/backend/omarchy/allocator.h"
@@ -73,6 +78,240 @@ bool env_flag(const char* name) {
   }
   return s == "1" || s == "on" || s == "true" || s == "yes";
 }
+
+std::filesystem::path sysroot_path() {
+  const char* raw = std::getenv("MLX_OMARCHY_SYSROOT");
+  if (raw != nullptr && raw[0] != '\0') {
+    return raw;
+  }
+  return "/";
+}
+
+std::string read_text_file(const std::filesystem::path& path) {
+  std::ifstream input(path, std::ios::binary);
+  if (!input) {
+    return {};
+  }
+  std::string value((std::istreambuf_iterator<char>(input)), {});
+  while (!value.empty() &&
+         (value.back() == '\0' || value.back() == '\n' || value.back() == '\r')) {
+    value.pop_back();
+  }
+  return value;
+}
+
+bool ane_compatible_token(const std::string& token) {
+  return token == "apple,ane" ||
+      (token.size() > 4 && token.compare(token.size() - 4, 4, "-ane") == 0);
+}
+
+struct AneCapability {
+  bool fdt_node{false};
+  std::vector<std::string> fdt_compatible;
+  bool accel0{false};
+  bool accel0_character_device{false};
+  bool module_present{false};
+  std::string module_version;
+  bool available{false};
+};
+
+struct CoremlCapability {
+  bool frontend_present{false};
+  bool command_present{false};
+  std::string cache_root;
+  bool cache_present{false};
+  unsigned long long cache_entries{0};
+};
+
+AneCapability collect_ane() {
+  AneCapability out;
+  const auto root = sysroot_path();
+  const auto dt = root == "/"
+      ? std::filesystem::path("/sys/firmware/devicetree/base")
+      : root / "sys/firmware/devicetree/base";
+  std::error_code ec;
+  if (std::filesystem::exists(dt, ec)) {
+    for (auto it = std::filesystem::recursive_directory_iterator(
+             dt,
+             std::filesystem::directory_options::skip_permission_denied,
+             ec);
+         it != std::filesystem::recursive_directory_iterator();
+         it.increment(ec)) {
+      if (ec || !it->is_directory()) {
+        continue;
+      }
+      const std::string name = it->path().filename().string();
+      const bool named = name == "ane" || name.rfind("ane@", 0) == 0;
+      const std::string raw = read_text_file(it->path() / "compatible");
+      std::vector<std::string> tokens;
+      size_t offset = 0;
+      while (offset < raw.size()) {
+        size_t end = raw.find('\0', offset);
+        if (end == std::string::npos) {
+          end = raw.size();
+        }
+        std::string token = raw.substr(offset, end - offset);
+        if (!token.empty()) {
+          tokens.push_back(std::move(token));
+        }
+        offset = end + 1;
+      }
+      bool hit = false;
+      for (const auto& token : tokens) {
+        if (ane_compatible_token(token)) {
+          hit = true;
+          out.fdt_compatible.push_back(token);
+        }
+      }
+      if (named || hit) {
+        out.fdt_node = true;
+        if (!hit) {
+          out.fdt_compatible.insert(
+              out.fdt_compatible.end(), tokens.begin(), tokens.end());
+        }
+      }
+    }
+  }
+  std::sort(out.fdt_compatible.begin(), out.fdt_compatible.end());
+  out.fdt_compatible.erase(
+      std::unique(out.fdt_compatible.begin(), out.fdt_compatible.end()),
+      out.fdt_compatible.end());
+  if (out.fdt_compatible.size() > 8) {
+    out.fdt_compatible.resize(8);
+  }
+
+  std::filesystem::path accel = root == "/"
+      ? std::filesystem::path("/dev/accel/accel0")
+      : root / "dev/accel/accel0";
+  const char* accel_env = std::getenv("MLX_OMARCHY_ACCEL_DEV");
+  if (accel_env != nullptr && accel_env[0] != '\0') {
+    accel = accel_env;
+  }
+  struct stat status {};
+  if (::lstat(accel.c_str(), &status) == 0) {
+    out.accel0 = true;
+    out.accel0_character_device = S_ISCHR(status.st_mode);
+  }
+
+  const auto module = root == "/"
+      ? std::filesystem::path("/sys/module/ane")
+      : root / "sys/module/ane";
+  if (std::filesystem::is_directory(module, ec)) {
+    out.module_present = true;
+    out.module_version = read_text_file(module / "version");
+  }
+  out.available =
+      out.fdt_node && out.accel0_character_device && out.module_present;
+  return out;
+}
+
+CoremlCapability collect_coreml() {
+  CoremlCapability out;
+  const char* home = std::getenv("HOME");
+  const std::filesystem::path home_path =
+      (home != nullptr && home[0] != '\0') ? home : std::filesystem::path();
+  const char* cache_env = std::getenv("MLX_OMARCHY_CACHE_DIR");
+  if (cache_env != nullptr && cache_env[0] != '\0') {
+    out.cache_root = (std::filesystem::path(cache_env) / "coreml").string();
+  } else if (!home_path.empty()) {
+    out.cache_root = (home_path / ".cache/mlx-omarchy/coreml").string();
+  }
+  std::error_code ec;
+  out.cache_present = !out.cache_root.empty() &&
+      std::filesystem::is_directory(out.cache_root, ec);
+  if (out.cache_present) {
+    for (const auto& entry :
+         std::filesystem::directory_iterator(out.cache_root, ec)) {
+      const std::string name = entry.path().filename().string();
+      if (entry.is_directory() && !name.empty() && name.front() != '.') {
+        out.cache_entries++;
+      }
+    }
+  }
+  const char* frontend = std::getenv("MLX_OMARCHY_COREML_ROOT");
+  if (frontend != nullptr && frontend[0] != '\0') {
+    out.frontend_present = std::filesystem::is_regular_file(
+        std::filesystem::path(frontend) / "__init__.py", ec);
+  }
+  if (!home_path.empty()) {
+    out.command_present = std::filesystem::is_regular_file(
+        home_path / ".local/bin/mlx-omarchy-coreml", ec);
+  }
+  return out;
+}
+
+void print_ane_json(const AneCapability& ane) {
+  std::cout << "  \"ane\": {\n";
+  std::cout << "    \"fdt_node\": " << (ane.fdt_node ? 1 : 0) << ",\n";
+  std::cout << "    \"fdt_compatible\": [";
+  for (size_t i = 0; i < ane.fdt_compatible.size(); ++i) {
+    if (i > 0) {
+      std::cout << ", ";
+    }
+    std::cout << "\"" << json_escape(ane.fdt_compatible[i]) << "\"";
+  }
+  std::cout << "],\n";
+  std::cout << "    \"accel0\": " << (ane.accel0 ? 1 : 0) << ",\n";
+  std::cout << "    \"accel0_character_device\": "
+            << (ane.accel0_character_device ? 1 : 0) << ",\n";
+  std::cout << "    \"module_present\": " << (ane.module_present ? 1 : 0)
+            << ",\n";
+  std::cout << "    \"module_version\": \"" << json_escape(ane.module_version)
+            << "\",\n";
+  std::cout << "    \"available\": " << (ane.available ? 1 : 0) << "\n";
+  std::cout << "  }";
+}
+
+void print_coreml_json(const CoremlCapability& coreml) {
+  std::cout << "  \"coreml\": {\n";
+  std::cout << "    \"frontend_present\": " << (coreml.frontend_present ? 1 : 0)
+            << ",\n";
+  std::cout << "    \"command_present\": " << (coreml.command_present ? 1 : 0)
+            << ",\n";
+  std::cout << "    \"cache_root\": \"" << json_escape(coreml.cache_root)
+            << "\",\n";
+  std::cout << "    \"cache_present\": " << (coreml.cache_present ? 1 : 0)
+            << ",\n";
+  std::cout << "    \"cache_entries\": " << coreml.cache_entries << "\n";
+  std::cout << "  }";
+}
+
+void print_ane_text(const AneCapability& ane) {
+  std::cout << "  ane fdt node:      " << (ane.fdt_node ? "yes" : "no") << "\n";
+  std::cout << "  ane compatible:    ";
+  if (ane.fdt_compatible.empty()) {
+    std::cout << "none\n";
+  } else {
+    for (size_t i = 0; i < ane.fdt_compatible.size(); ++i) {
+      if (i > 0) {
+        std::cout << ",";
+      }
+      std::cout << ane.fdt_compatible[i];
+    }
+    std::cout << "\n";
+  }
+  std::cout << "  ane accel0:        "
+            << (ane.accel0_character_device ? "yes" : "no") << "\n";
+  std::cout << "  ane module:        " << (ane.module_present ? "yes" : "no")
+            << "\n";
+  if (!ane.module_version.empty()) {
+    std::cout << "  ane module ver:    " << ane.module_version << "\n";
+  }
+  std::cout << "  ane available:     " << (ane.available ? "yes" : "no")
+            << "\n";
+}
+
+void print_coreml_text(const CoremlCapability& coreml) {
+  std::cout << "  coreml frontend:   "
+            << (coreml.frontend_present ? "yes" : "no") << "\n";
+  std::cout << "  coreml command:    "
+            << (coreml.command_present ? "yes" : "no") << "\n";
+  std::cout << "  coreml cache:      "
+            << (coreml.cache_root.empty() ? "none" : coreml.cache_root) << "\n";
+  std::cout << "  coreml cache ents: " << coreml.cache_entries
+            << (coreml.cache_present ? "" : " (absent)") << "\n";
+}
+
 
 void print_json(uint32_t index) {
   const auto& caps = omarchy::capability_report(index);
@@ -159,8 +398,11 @@ void print_json(uint32_t index) {
       "compiled_tape_node_evaluations",
       trace.compiled_tape_node_evaluations.load(),
       false);
-  std::cout << "  }\n";
-  std::cout << "}\n";
+  std::cout << "  },\n";
+  print_ane_json(collect_ane());
+  std::cout << ",\n";
+  print_coreml_json(collect_coreml());
+  std::cout << "\n}\n";
 }
 
 void print_text(uint32_t index) {
@@ -208,6 +450,8 @@ void print_text(uint32_t index) {
               << caps.simulation_profile << "' (stands in for driver_variant "
               << caps.simulated_driver_variant << "); NOT hardware results\n";
   }
+  print_ane_text(collect_ane());
+  print_coreml_text(collect_coreml());
 }
 
 // Execute one real buffer round trip: host write -> vkCmdCopyBuffer ->
