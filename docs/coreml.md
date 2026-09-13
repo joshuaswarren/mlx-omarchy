@@ -253,6 +253,9 @@ power, mel reduction, and subnormal square-root scaling. These stages now use
 the exact integer binary32 helpers while preserving the certified reduction
 order. Software Vulkan passes the retained low-scale waveform-to-power-and-mel-
 projection, signed-zero, overflow, pinned ordinary-input, and stage-comparison
-regressions. The corrected helper path has not run on Apple hardware, so
-finite-input Apple arithmetic
-remains unqualified.
+regressions. Source-frozen Apple M1/Honeykrisp requalification at
+`aa13b105cafb12fb60854417f68cac1aa946ef05` passes the original `2^-120`
+DFT trigger, the low-scale power and mel-projection regression with 1,280
+nonzero subnormal power values, and all 18 authenticated stage/final
+comparisons. The run recorded 15 GPU primitives, eight Vulkan compute
+dispatches, and one Vulkan submission.

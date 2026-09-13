@@ -31,8 +31,8 @@
     "tests/coreml/test_vulkan_mel.py": "4dfa53690fdb5790423e37f12121ce5d3dd8c7ce484c8b81ea658829b9e291df",
     "tests/coreml/test_vulkan_mel_arithmetic.py": "ef6c328c40f38a48ce7afd4398761beb3e38b7aa475ecdaaf3cf196608123dac",
     "tests/coreml/test_vulkan_mel_qualification.py": "631a6074d5f4cad44f3bd71281fc7e9e2ccbe0e0a0abe04e2d1ca5ea98011bdb",
-    "docs/parakeet.md": "21429e11d2e1a580d344012c88a01ed28b8d72edc6c4d7d1d94bba5101bfab98",
-    "docs/coreml.md": "6ae24e4380fb915a849ed60605474042922ce6db88e95c38ee9c280fff437d42"
+    "docs/parakeet.md": "a7180ccce48c4bf74731e852c8fb921df5f67445456e2981f247249aadbc8a91",
+    "docs/coreml.md": "4432b273338e171372815b6237a98b23003e697bb3a6dbfc4b7183dd9d473e7c"
   },
   "local_runtime": {
     "source_commit": "e4d079c883b8606dddef7720bd302c5756be0692",
@@ -216,11 +216,35 @@
     "remaining_native_arithmetic_review": "For finite nonnegative mel projection, the 2^-24 guard makes nonzero log output and every reachable stats/normalize operand normal. No concrete FTZ trigger remains in log, statistics, or normalization.",
     "local_command": "MLX_OMARCHY_ALLOW_NON_APPLE=1 PYTHONPATH=.work/venv-run/lib/python3.11/site-packages python3 -m pytest -q tests/coreml/test_vulkan_mel.py tests/coreml/test_vulkan_mel_arithmetic.py tests/coreml/test_vulkan_mel_qualification.py",
     "local_result": "26 passed in 15.51s",
-    "apple_physical_status": "not rerun after this source correction; prior first-divergence evidence remains preserved and Apple finite-input qualification remains false"
+    "apple_physical_status": "qualified at source-frozen aa13b105: original underflow trigger, low-scale power/mel-projection regression, and all 18 stage/final comparisons passed bit-exact on Device(gpu, 0)"
+  },
+  "final_denormal_apple_verification": {
+    "source_commit": "aa13b105cafb12fb60854417f68cac1aa946ef05",
+    "implementation_commit": "3ea8334b087a6b01175193c1b3b0970e4931b967",
+    "source_sha256": "4f61cd5cd1ebabb2a96d3270e347d3a6607be9b9c186f56663c5f9d14ba095c0",
+    "host": "jwm1-linux",
+    "device": "Device(gpu, 0)",
+    "runtime": "mlx-omarchy 0.32.2.dev202609121216+8f6de34c",
+    "acquired": "2026-09-13T08:18:52Z",
+    "completed": "2026-09-13T08:20:25Z",
+    "acquire_by_epoch": 1789288094,
+    "execution_deadline_epoch": 1789288432,
+    "outer_deadline_epoch": 1789289084,
+    "regression": "original 2^-120 DFT real/imaginary and low-scale waveform-to-power-and-mel-projection were bit-exact; low-scale reference contained 1280 nonzero subnormal power values",
+    "full_comparator": "qualified=true, all_bit_exact=true, stage_set_exact=true, 18 comparisons",
+    "trace_delta": {"gpu_primitive_dispatches": 15, "vk_compute_dispatches": 8, "vk_submissions": 1, "commit_calls_with_work": 1, "commit_calls_noop": 1, "omarchy_finalize_calls": 1, "vk_buffer_copies": 0, "vk_buffer_fills": 0},
+    "cleanup": "CHILD_PIDS_CLEAR and LOCK_RELEASED rc=0 in the launcher; independent checks found launcher_alive=false, workers_clear=true, lock_free=true, and lease_absent=true",
+    "artifacts": {
+      "aa13-launcher.log": "2f6e2e47b14120e87bd145ebb134ebf67069a46323191033f24f7c52600a5aae",
+      "aa13-regression.log": "19c260f449ebf07fd65d69ffb2d0a42810978054111337bb6602d37fb7e742f1",
+      "aa13-apple-gpu.json": "3a87ee5f83377b4da64656c56a0f4afdb65f2af1cb09e113b13aeb592e49df78",
+      "aa13-load.log": "3931eb9cec2440412a647a99216c47dc3a6c0b5f535ff71086dca1fdb30441ae",
+      "aa13-lease.txt": "7d548e69284140ef76645bb0646f719d41d0e9355bf7cffd82f80831bc4c3f35"
+    }
   },
   "qualification_boundary": {
     "local_frontend": "qualified on software Vulkan: full-finite FMA regressions pass and all 18 authenticated stage/final comparisons are byte-exact",
-    "apple_physical_gpu": "not qualified: corrected fma32 passed 8192 full-exponent triples, but the 2^-120 DFT failed with 1028 real-component bit mismatches; corrected 18-comparison fixture CLI was not reached before the fixed deadline",
+    "apple_physical_gpu": "qualified at aa13b105: the original 2^-120 DFT trigger, low-scale subnormal power/mel projection, and all 18 authenticated stage/final comparisons passed bit-exact with explicit GPU trace evidence",
     "encoder_and_full_plan": "not claimed"
   }
 }
