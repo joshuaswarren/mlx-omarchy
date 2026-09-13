@@ -27,6 +27,9 @@
 #include "mlx/backend/omarchy/device.h"
 #include "mlx/backend/omarchy/encoder.h"
 #include "mlx/backend/omarchy/fused_chain.h"
+#ifdef MLX_OMARCHY_GPU_PROFILING
+#include "mlx/backend/omarchy/gpu_profiler.h"
+#endif
 #include "mlx/distributed/primitives.h"
 #include "mlx/fast_primitives.h"
 #include "mlx/backend/gpu/copy.h"
@@ -7238,8 +7241,23 @@ bool dispatch_dense_gemv_group(
     std::vector<array>& nodes,
     const array& x,
     const Stream& stream) {
+#ifdef MLX_OMARCHY_GPU_PROFILING
+#define MLX_DENSE_GEMV_REJECT(reason)                                      \
+  do {                                                                     \
+    prof::get().diagnosticf(                                               \
+        "{\"k\":\"fg_dispatch\",\"result\":\"%s\",\"members\":%zu" \
+        ",\"first\":%" PRIu64 ",\"x\":%" PRIu64 "}",                   \
+        reason,                                                            \
+        nodes.size(),                                                       \
+        nodes.empty() ? 0u : static_cast<uint64_t>(nodes.front().id()),    \
+        static_cast<uint64_t>(x.id()));                                    \
+    return false;                                                          \
+  } while (false)
+#else
+#define MLX_DENSE_GEMV_REJECT(reason) return false
+#endif
   if (nodes.size() < 2 || nodes.size() > kDenseVecMultiWeights) {
-    return false;
+    MLX_DENSE_GEMV_REJECT("group_size");
   }
   auto& encoder = get_command_encoder(stream);
   const auto& caps = encoder.device().capabilities();
@@ -7248,7 +7266,7 @@ bool dispatch_dense_gemv_group(
       caps.subgroup_size != 32u ||
       (caps.subgroup_operations &
        VK_SUBGROUP_FEATURE_SHUFFLE_RELATIVE_BIT) == 0u) {
-    return false;
+    MLX_DENSE_GEMV_REJECT("device_caps");
   }
   const array& x_view = nodes[0].inputs().at(0);
   if (x_view.dtype() != bfloat16 || x_view.ndim() < 2 ||
@@ -7258,13 +7276,13 @@ bool dispatch_dense_gemv_group(
       x.data_shared_ptr() == nullptr || !x.flags().row_contiguous ||
       x.strides().back() != 1 || !input_ready(x, stream) ||
       x.offset() % x.itemsize() != 0) {
-    return false;
+    MLX_DENSE_GEMV_REJECT("input_layout_or_readiness");
   }
   const int k = x_view.shape(-1);
   const uint64_t x_offset = x.offset() / x.itemsize();
   if (k <= 0 || k % 128 != 0 || (x_offset & 3u) != 0u ||
       !compute_index_span_fits(x_offset, x.size())) {
-    return false;
+    MLX_DENSE_GEMV_REJECT("k_or_input_span");
   }
 
   ComputeParams params;
@@ -7277,7 +7295,7 @@ bool dispatch_dense_gemv_group(
     if (node.inputs().size() != 2 || node.dtype() != bfloat16 ||
         node.primitive().stream() != stream ||
         typeid(node.primitive()) != typeid(Matmul)) {
-      return false;
+      MLX_DENSE_GEMV_REJECT("node_contract");
     }
     const array& node_x = node.inputs()[0];
     const bool direct_input = node_x.id() == x.id();
@@ -7287,7 +7305,7 @@ bool dispatch_dense_gemv_group(
         node_x.offset() == x.offset() && node_x.flags().row_contiguous &&
         node_x.strides().back() == 1;
     if ((!direct_input && !aliased_input) || node_x.shape() != x_view.shape()) {
-      return false;
+      MLX_DENSE_GEMV_REJECT("input_identity_or_shape");
     }
     const array& weight = node.inputs()[1];
     if (weight.dtype() != bfloat16 || weight.ndim() != node_x.ndim() ||
@@ -7296,7 +7314,7 @@ bool dispatch_dense_gemv_group(
         weight.strides().back() != k ||
         weight.data_shared_ptr() == nullptr || !input_ready(weight, stream) ||
         weight.offset() % weight.itemsize() != 0) {
-      return false;
+      MLX_DENSE_GEMV_REJECT("weight_layout_or_readiness");
     }
     const uint32_t n = static_cast<uint32_t>(weight.shape(-1));
     const uint64_t weight_offset = weight.offset() / weight.itemsize();
@@ -7304,13 +7322,13 @@ bool dispatch_dense_gemv_group(
     if ((n & 3u) != 0u || node.size() != n ||
         (weight_offset & 3u) != 0u ||
         !compute_index_span_fits(weight_offset, weight_count)) {
-      return false;
+      MLX_DENSE_GEMV_REJECT("output_or_weight_span");
     }
     params.shape[i] = n;
     params.in_strides[i] = static_cast<uint32_t>(weight_offset);
     total_groups += n / 4u;
     if (total_groups > kMaxComputeGroupCountX) {
-      return false;
+      MLX_DENSE_GEMV_REJECT("group_count");
     }
   }
 
@@ -7339,6 +7357,17 @@ bool dispatch_dense_gemv_group(
       encoder.device().hardware_capabilities().subgroup_size == 32u &&
           (encoder.device().hardware_capabilities().subgroup_operations &
            VK_SUBGROUP_FEATURE_SHUFFLE_RELATIVE_BIT) != 0u);
+#ifdef MLX_OMARCHY_GPU_PROFILING
+  prof::get().diagnosticf(
+      "{\"k\":\"fg_dispatch\",\"result\":\"success\",\"members\":%zu"
+      ",\"first\":%" PRIu64 ",\"x\":%" PRIu64
+      ",\"kdim\":%u,\"groups\":%u}",
+      nodes.size(),
+      static_cast<uint64_t>(nodes.front().id()),
+      static_cast<uint64_t>(x.id()),
+      params.matrix_k,
+      total_groups);
+#endif
   encoder.dispatch_compute(
       ComputeKernel::MatmulVecMultiBF16,
       bindings,
@@ -7348,6 +7377,7 @@ bool dispatch_dense_gemv_group(
       1u);
   return true;
 }
+#undef MLX_DENSE_GEMV_REJECT
 
 SliceUpdatePairDispatch dispatch_slice_update_pair(
     std::array<array, 2>& nodes,

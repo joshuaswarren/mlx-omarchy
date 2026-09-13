@@ -23,6 +23,9 @@
 #include "mlx/backend/omarchy/compute.h"
 #include "mlx/backend/omarchy/device.h"
 #include "mlx/backend/omarchy/encoder.h"
+#ifdef MLX_OMARCHY_GPU_PROFILING
+#include "mlx/backend/omarchy/gpu_profiler.h"
+#endif
 #include "mlx/primitives.h"
 #include "mlx/utils.h"
 
@@ -910,9 +913,27 @@ DirectPlan plan_values_window(
 EagerFusionScope::EagerFusionScope(const std::deque<array>& tape)
     : previous_(eager_state) {
   eager_state = nullptr;
+#ifdef MLX_OMARCHY_GPU_PROFILING
+  const bool chain_enabled = fused_chain_enabled();
+  const bool gemv_enabled = fused_gemv_enabled();
+  const uint64_t diagnostic_scope = prof::get().next_diagnostic_scope();
+  prof::get().diagnosticf(
+      "{\"k\":\"fg_scope\",\"sc\":%" PRIu64
+      ",\"tape\":%zu,\"chain\":%u,\"gemv\":%u,\"chain_env\":%u,\"gemv_env\":%u}",
+      diagnostic_scope,
+      tape.size(),
+      chain_enabled ? 1u : 0u,
+      gemv_enabled ? 1u : 0u,
+      std::getenv("MLX_OMARCHY_FUSED_CHAIN") != nullptr ? 1u : 0u,
+      std::getenv("MLX_OMARCHY_FUSED_GEMV") != nullptr ? 1u : 0u);
+  if (!chain_enabled) {
+    return;
+  }
+#else
   if (!fused_chain_enabled()) {
     return;
   }
+#endif
 
   auto* state = new EagerFusionState;
   eager_state = state;
@@ -997,9 +1018,15 @@ EagerFusionScope::EagerFusionScope(const std::deque<array>& tape)
     ++i;
   }
 
+#ifdef MLX_OMARCHY_GPU_PROFILING
+  if (!gemv_enabled) {
+    return;
+  }
+#else
   if (!fused_gemv_enabled()) {
     return;
   }
+#endif
 
   // Decode GEMV groups. Candidates: affine transposed 4-bit/group-64
   // QuantizedMatmul nodes whose x is a single row and whose weight,
@@ -1104,17 +1131,80 @@ EagerFusionScope::EagerFusionScope(const std::deque<array>& tape)
   }
   std::unordered_map<std::uintptr_t, std::vector<const array*>> dense_by_x;
   std::vector<std::uintptr_t> dense_x_order;
+#ifdef MLX_OMARCHY_GPU_PROFILING
+  size_t dense_candidates = 0;
+  auto trace_dense_reject = [&](const array& node, const char* reason) {
+    prof::get().diagnosticf(
+        "{\"k\":\"fg_candidate\",\"sc\":%" PRIu64
+        ",\"result\":\"%s\",\"node\":%" PRIu64 "}",
+        diagnostic_scope,
+        reason,
+        static_cast<uint64_t>(node.id()));
+  };
+#endif
   for (const auto& node : tape) {
-    if (!is_op(&node, typeid(Matmul)) || node.inputs().size() != 2 ||
-        node.dtype() != bfloat16 || claimed.count(node.id())) {
+    if (!is_op(&node, typeid(Matmul))) {
+      continue;
+    }
+    if (node.inputs().size() != 2) {
+#ifdef MLX_OMARCHY_GPU_PROFILING
+      trace_dense_reject(node, "inputs");
+#endif
+      continue;
+    }
+    if (node.dtype() != bfloat16) {
+#ifdef MLX_OMARCHY_GPU_PROFILING
+      trace_dense_reject(node, "dtype");
+#endif
+      continue;
+    }
+    if (claimed.count(node.id())) {
+#ifdef MLX_OMARCHY_GPU_PROFILING
+      trace_dense_reject(node, "claimed");
+#endif
       continue;
     }
     const array& x = node.inputs()[0];
     if (x.ndim() < 2 || x.shape(-2) != 1 ||
         x.size() != static_cast<size_t>(x.shape(-1))) {
+#ifdef MLX_OMARCHY_GPU_PROFILING
+      trace_dense_reject(node, "x_shape");
+#endif
       continue;
     }
     const array& source = dense_gemv_source(x);
+#ifdef MLX_OMARCHY_GPU_PROFILING
+    const array& weight = node.inputs()[1];
+    prof::get().diagnosticf(
+        "{\"k\":\"fg_candidate\",\"sc\":%" PRIu64
+        ",\"result\":\"accepted\",\"node\":%" PRIu64
+        ",\"x\":%" PRIu64 ",\"src\":%" PRIu64
+        ",\"xoff\":%zu,\"srcoff\":%zu,\"xnd\":%zu"
+        ",\"xsize\":%zu,\"xm\":%d,\"xk\":%d"
+        ",\"xs0\":%zu,\"xs1\":%zu,\"weight\":%" PRIu64
+        ",\"woff\":%zu,\"wnd\":%zu,\"wk\":%d,\"wn\":%d"
+        ",\"ws0\":%zu,\"ws1\":%zu}",
+        diagnostic_scope,
+        static_cast<uint64_t>(node.id()),
+        static_cast<uint64_t>(x.id()),
+        static_cast<uint64_t>(source.id()),
+        x.offset(),
+        source.offset(),
+        x.ndim(),
+        x.size(),
+        x.shape(-2),
+        x.shape(-1),
+        x.strides()[x.ndim() - 2],
+        x.strides().back(),
+        static_cast<uint64_t>(weight.id()),
+        weight.offset(),
+        weight.ndim(),
+        weight.ndim() >= 2 ? weight.shape(-2) : -1,
+        weight.ndim() >= 1 ? weight.shape(-1) : -1,
+        weight.ndim() >= 2 ? weight.strides()[weight.ndim() - 2] : 0,
+        weight.ndim() >= 1 ? weight.strides().back() : 0);
+    ++dense_candidates;
+#endif
     auto [it, inserted] = dense_by_x.try_emplace(source.id());
     if (inserted) {
       dense_x_order.push_back(source.id());
@@ -1135,6 +1225,17 @@ EagerFusionScope::EagerFusionScope(const std::deque<array>& tape)
       if (group.nodes.size() < 2) {
         continue;
       }
+#ifdef MLX_OMARCHY_GPU_PROFILING
+      prof::get().diagnosticf(
+          "{\"k\":\"fg_group\",\"sc\":%" PRIu64
+          ",\"src\":%" PRIu64 ",\"members\":%zu"
+          ",\"first\":%" PRIu64 ",\"last\":%" PRIu64 "}",
+          diagnostic_scope,
+          static_cast<uint64_t>(x_id),
+          group.nodes.size(),
+          static_cast<uint64_t>(group.nodes.front().id()),
+          static_cast<uint64_t>(group.nodes.back().id()));
+#endif
       const size_t index = state->dense_gemv_groups.size();
       for (const auto& node : group.nodes) {
         state->dense_gemv_roles.emplace(node.id(), index);
@@ -1143,6 +1244,14 @@ EagerFusionScope::EagerFusionScope(const std::deque<array>& tape)
       state->dense_gemv_groups.push_back(std::move(group));
     }
   }
+#ifdef MLX_OMARCHY_GPU_PROFILING
+  prof::get().diagnosticf(
+      "{\"k\":\"fg_summary\",\"sc\":%" PRIu64
+      ",\"candidates\":%zu,\"groups\":%zu}",
+      diagnostic_scope,
+      dense_candidates,
+      state->dense_gemv_groups.size());
+#endif
   // Producer-direct KV cache writes: when one pair member's new rows
   // come from a RoPE node (keys) and the other's from a fused GEMV
   // Add epilogue through a provable chain of view-only ops (values),
