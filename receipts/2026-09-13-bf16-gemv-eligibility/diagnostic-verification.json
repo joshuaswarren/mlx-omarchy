@@ -41,9 +41,12 @@
     "inspection": "strings over all three release objects found none of fg_scope, fg_candidate, fg_group, fg_summary, or fg_dispatch",
     "result": "RELEASE_DIAGNOSTICS_ABSENT"
   },
-  "target_limitation": "The local Vulkan device lacks a 32-lane shuffle subgroup, so the BF16 grouped-GEMV target test skipped before planner execution. The exact M1 diagnostic wheel built successfully, but both granted attempts stopped before inference: the first at an invalid sys.prefix identity assertion and the second at a pre-lock source-cleanliness check after the known build directory appeared as untracked.",
   "hardware_attempts": "hardware-attempts.json",
   "non_gpu_preflight": "non-gpu-preflight.json",
-  "next_command_after_hardware_grant": "Reuse the exact 3e26a6a7 diagnostic wheel through preflight d8c482117ff72e3f06fcd3a8e2db5fcd6778e3b1a60b649f232673fa50286e1f and canonical package runtime identity helper e5a5f70943ca7054a117389bc0bb256e8627930ec57eb4ebdab9c70119821eeb, then pass the resulting profile plus exact compute.h to analyze_diagnostic.py.",
+  "hardware_window": "hardware-window/",
+  "hardware_root_cause": "hardware-root-cause.json",
+  "hardware_result": "All 912 planned two-member groups reached the dispatcher and all 912 were rejected at input_identity_or_shape. Every dispatcher used the shared pre-Flatten source while both member inputs were distinct Flatten views with equal 1x896 shape, stride [896,1], and zero offsets.",
+  "source_fix": "The dispatcher now accepts the exact dense_gemv_source relation used by the planner while preserving direct identity, physical alias, shape, stride, offset, dtype, readiness, and different-source rejection checks. The new separate-Flatten-view regression compiled locally but skipped execution because llvmpipe lacks the required 32-lane shuffle subgroup.",
+  "next_command_after_hardware_grant": "Build the source fix, run the existing exact-output grouped-GEMV regression including the separate-Flatten-view case, then run the full unprofiled release control/candidate matrix before making any speedup claim.",
   "performance_result": null
 }

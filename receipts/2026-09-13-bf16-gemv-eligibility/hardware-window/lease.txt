@@ -1,0 +1,2 @@
+lease=Main-grant-LongContextCostAttribution phase=gemv-eligibility-runtime expected=3e26a6a7f373303f6ae417936edc2f57ab372264 fixed_deadline=1789286987
+released_epoch=1789286715 released_utc=2026-09-13T08:05:15Z rc=0

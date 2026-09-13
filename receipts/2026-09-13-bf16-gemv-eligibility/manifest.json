@@ -3,11 +3,21 @@
   "files": {
     "analyze.py": "0c696e3a3047d5790daf90e5c68feaf3d82e0b944f472ba2feba0339116feda6",
     "analyze_diagnostic.py": "c95eb8e266b3c9516f5349b9557cde8012450d5e6a9eee81fab6fba6008733cc",
-    "verdict.json": "c685646ec61086d6da1c87388df245fcb303dbbe7280ee7ff61430ab3dc77e7e",
-    "local-plan-smoke.jsonl": "21e584cb88de1d3b5a760f24c9df68e9603befea0672a544ca7e8194f7371612",
+    "analyze_hardware.py": "104f3377d0b61b8d848e9a7a23fbe48ebc705ebf0ec188ec0706ddcf7c329acf",
+    "diagnostic-verification.json": "b0dc235a11d45f09831ea66c6e40927752f854fa646b40e6d6868ef0d9a51b85",
+    "hardware-attempts.json": "ffea6ab1579f2e470202aa58884abb689c010b74044aaff9c4b98ea7078e01e9",
+    "hardware-root-cause.json": "86dcd23da36343a76ad5d55737f37cf498bf7496fb48429f791d3ab675ea0304",
+    "hardware-window/compute.h": "314f5b021363ae933cbc245042bd2f2c1e48e5223402a4dd8765ef2b72c228ad",
+    "hardware-window/diag-longctx.log": "08cc9b1a249519b8b720a5a53fc86cfbda33f8542bce0a5b68d01866ce8f9018",
+    "hardware-window/lease.txt": "1a7817be9c03e7a680607e26d44eea64c0bca9c7a083d68b5f09b4c5729532dc",
+    "hardware-window/loadavg.txt": "53e5aa743ba41e255b8fc80ffb312f9ea4bb5707374352ef37777ea906998da2",
+    "hardware-window/markers-longctx.jsonl": "e6617767459d62bad11bf970a070d5709f21ed5e468d02446d93e344d5a5f819",
+    "hardware-window/profile-longctx.jsonl": "5e66fb6e0a36dce8833b0b6a2697724ef3b9f6900c350ee51019f3e47df27a5a",
+    "hardware-window/runtime-identity.json": "5d5457baa74629f4a718ca905d102153f914447faf0071e1d6b17cd0e484ccfd",
+    "hardware-window/window.log": "04b955ed779be8dc1ded9fa0471efb33a3c529114a075b42eb9a48df7b06cfe3",
     "local-plan-smoke-verdict.json": "c9147f923841e7c3eef07d8cb6260fa451bd0c21636ee0186e2c37b22693c7e5",
-    "diagnostic-verification.json": "f67dfca09941787d5dc511a12a17cd2fbd934c2e086672640bace1560c7de8c7",
-    "hardware-attempts.json": "d0d27207dcff61cb6c7103536880470842d41fedf52a2bb443123b086c31ec1c",
-    "non-gpu-preflight.json": "457270310c926e789a9c0871a261b9a0016ecf50e5f6c5be832e4a9c80729b04"
+    "local-plan-smoke.jsonl": "21e584cb88de1d3b5a760f24c9df68e9603befea0672a544ca7e8194f7371612",
+    "non-gpu-preflight.json": "457270310c926e789a9c0871a261b9a0016ecf50e5f6c5be832e4a9c80729b04",
+    "verdict.json": "c685646ec61086d6da1c87388df245fcb303dbbe7280ee7ff61430ab3dc77e7e"
   }
 }

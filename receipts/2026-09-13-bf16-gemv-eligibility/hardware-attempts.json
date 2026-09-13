@@ -32,6 +32,23 @@
       "lock_acquired": false,
       "lease_created": false,
       "child_processes": "clear"
+    },
+    {
+      "kind": "no_build_diagnostic",
+      "identity_helper_sha256": "e5a5f70943ca7054a117389bc0bb256e8627930ec57eb4ebdab9c70119821eeb",
+      "preflight_sha256": "d8c482117ff72e3f06fcd3a8e2db5fcd6778e3b1a60b649f232673fa50286e1f",
+      "harness_sha256": "83b2cdc7b8f906021ce469f72c2c67fe3eb2663ef1e8ba65c28bf86b8b74b13b",
+      "wheel_sha256": "d311e7e3faaf7425c02adaf8b0a0c4301ae91fb3f893e7e172795f6b6248aebf",
+      "acquired_epoch": 1789286687,
+      "fixed_deadline_epoch": 1789286987,
+      "probe_start_epoch": 1789286708,
+      "probe_end_epoch": 1789286715,
+      "runtime_result": "success",
+      "generated_ids_sha256_16": "ff502900d2a179a5",
+      "released_epoch": 1789286715,
+      "exit_code": 0,
+      "child_processes": "clear",
+      "lock_released": true
     }
   ],
   "performance_claim": null

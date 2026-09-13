@@ -1,0 +1,78 @@
+{
+  "candidate_rejections": {
+    "x_shape": 184
+  },
+  "classification": "dispatcher_rejects_planned_flatten_views",
+  "device": "Apple M1 (G13G B1)",
+  "dispatcher_results": {
+    "input_identity_or_shape": 912
+  },
+  "effective_scope_gates": [
+    {
+      "chain": 1,
+      "chain_env": 0,
+      "count": 41,
+      "gemv": 1,
+      "gemv_env": 0
+    }
+  ],
+  "execution_model": "openai-codex/gpt-5.6-sol",
+  "fallback_model": null,
+  "generated_ids_sha256_16": [
+    "ff502900d2a179a5"
+  ],
+  "group_sizes": {
+    "2": 912
+  },
+  "input_contracts": [
+    {
+      "count": 1824,
+      "k": 896,
+      "m": 1,
+      "ndim": 2,
+      "offset": 0,
+      "size": 896,
+      "source_offset": 0,
+      "stride0": 896,
+      "stride1": 1
+    }
+  ],
+  "matmul_vec_multi_bf16_dispatches": 0,
+  "mechanism": "The planner groups distinct Flatten views by their shared pre-Flatten source and passes that source to the dispatcher. The dispatcher then rejects the unevaluated view ids because their materialized buffer identity is not yet available.",
+  "planned_dispatch_pairs": 912,
+  "schema": "bf16-gemv-hardware-root-cause/1",
+  "scope_summaries": [
+    {
+      "candidates": 0,
+      "count": 3,
+      "groups": 0
+    },
+    {
+      "candidates": 97,
+      "count": 38,
+      "groups": 24
+    }
+  ],
+  "source_commit": "3e26a6a7f373303f6ae417936edc2f57ab372264",
+  "source_relations": [
+    {
+      "count": 912,
+      "dispatcher_uses_group_source": true,
+      "member_ids_are_distinct": true,
+      "member_ids_differ_from_source": true
+    }
+  ],
+  "speedup_claim": null,
+  "token_markers": 32,
+  "weight_contracts": [
+    {
+      "count": 1824,
+      "k": 896,
+      "n": 4864,
+      "ndim": 2,
+      "offset": 0,
+      "stride0": 4864,
+      "stride1": 1
+    }
+  ]
+}
