@@ -1,4 +1,4 @@
-"""Canonical identity for a schema-3 compiled payload collection."""
+"""Canonical identity for a compiled payload collection."""
 
 import hashlib
 import json

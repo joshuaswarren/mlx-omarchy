@@ -228,7 +228,7 @@ def main() -> int:
     args = parser.parse_args()
 
     if args.target.lower() != "h13":
-        die("--target must be exactly h13 for bundle schema 3")
+        die("--target must be h13")
     descriptor = json.loads(args.descriptor.read_text())
     op = descriptor.get("op")
     if op not in ("add", "mul", "matmul"):

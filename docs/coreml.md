@@ -221,25 +221,22 @@ of a known H13 graph. These are host checks, not ANE execution proof.
 
 The [integration review](../receipts/2026-09-12-coreml-integration-review.json)
 records the executed checks and links the complete encoder coverage table.
-The public encoder remains unqualified. Ordered split results survive semantic
-import, but H13 lowering still rejects them, and the compiler program model
-does not support the encoder's mixed-type, two-output function contract.
-Compiler and runtime work continues against these gaps without CPU tensor
-fallback or changes to the model contract.
+The public encoder remains unqualified. Compiler source `b12b03f` preserves
+contiguous split views and imports the normalized encoder, but rejects its
+terminal mixed-type conversion. Distinct reordered terminal returns also
+remain unsupported. Neither gap permits CPU tensor fallback.
 
-The [schema-3 adapter receipt](../receipts/2026-09-12-h13-bundle-schema3/receipt.md)
-replaces the blocked bundle-v2 contract. Schema 3 removes the top-level
-workspace tensor and dotted firmware range. Each compiler program declares
-unsigned `scratch_bytes` (zero is valid and must match ANEC channel 3),
-explicit input and output bindings, allocation bytes, tensor slices, and
-dispatch order. The manifest requires unsigned `driver_abi_major: 1` and
-compiler target `h13` exactly; the loader rejects schema 2 without a shim.
+The current [schema-4 contract](ane-bundles.md) separates physical outputs
+from ordered logical return views. It accepts only v2 compiler packages and
+identity conversions with checked dtype, shape, offset, and count. Programs
+retain exact scratch bytes, bindings, allocations, and dispatch order. Target
+`h13` and unsigned `driver_abi_major: 1` remain required; old schemas are rejected.
 
-This proves declared structural compatibility in the host loader. It does not
-prove physical t8103 or t6000 eligibility, device numerical qualification,
-compiler-wide qualification, or runtime execution. The adapter receipt covers
-explicit `--format anec` generation. The HWX extraction regression remains
-separate.
+Real ordinary, duplicate, reshaped, and sliced-add packages pass the host
+loader. This does not qualify the new runtime on hardware. Installed execution
+at `57cc36a2` remains historical schema-3 evidence. The old compiler release
+archive is incompatible with the new adapter; full compiler qualification
+and a matching immutable archive are required before replacing the pin.
 
 The [licensed reference receipt](../receipts/2026-09-12-licensed-parakeet-reference.json)
 replaces the undocumented-rights JFK clip with a byte-verified CC-BY-4.0
