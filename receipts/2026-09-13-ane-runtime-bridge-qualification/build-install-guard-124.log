@@ -1,0 +1,136 @@
+guardian_identity=true guardian_pid=3383430 comm=timeout pgid=3383430
+ownership_state path=/run/lock/mlx-omarchy-ane inode=9765 uid=0 gid=987 mode=750 links=2
+ownership_state path=/run/lock/mlx-omarchy-ane/device.lock inode=9766 uid=0 gid=987 mode=660 links=1
+ownership_state path=/run/lock/mlx-omarchy-ane/quarantine inode=9767 uid=0 gid=987 mode=660 links=1
+worker_clearance=true runtime_quarantine=empty
+preflight_identity host=jwm1-linux machine=aarch64 user=joshuawarren uid=1001 groups=1001 962 987 992 998 render_gid=987 source=57cc36a2e8ece78dd979b5344752d04c76b4d49d libane=f261a6cb537aca62f267ad3d01beda0d6877544c source_bundle_sha256=aebef2154ed0b0c543d796c4d68f52ef3670b2826e17879237dc762f589bf7af
+lock_acquired=true time=2026-09-13T04:51:57-05:00 pid=3383431 pgid=3383430 guardian_pid=3383430 lease=/tmp/m1-gpu.lease.AneRuntimeBridge source=57cc36a2e8ece78dd979b5344752d04c76b4d49d work_deadline_epoch=1789293957 outer_deadline_epoch=1789294017 cleanup_reserve_seconds=60 source_build=true install=true
+deadline_guard=pass phase=acquired remaining_seconds=840 required_seconds=760
+worker_clearance=true runtime_quarantine=empty
+Note: switching to '57cc36a2e8ece78dd979b5344752d04c76b4d49d'.
+
+You are in 'detached HEAD' state. You can look around, make experimental
+changes and commit them, and you can discard any commits you make in this
+state without impacting any branches by switching back to a branch.
+
+If you want to create a new branch to retain commits you create, you may
+do so (now or later) by using -c with the switch command. Example:
+
+  git switch -c <new-branch-name>
+
+Or undo this operation with:
+
+  git switch -
+
+Turn off this advice by setting config variable advice.detachedHead to false
+
+Note: switching to 'f261a6cb537aca62f267ad3d01beda0d6877544c'.
+
+You are in 'detached HEAD' state. You can look around, make experimental
+changes and commit them, and you can discard any commits you make in this
+state without impacting any branches by switching back to a branch.
+
+If you want to create a new branch to retain commits you create, you may
+do so (now or later) by using -c with the switch command. Example:
+
+  git switch -c <new-branch-name>
+
+Or undo this operation with:
+
+  git switch -
+
+Turn off this advice by setting config variable advice.detachedHead to false
+
+source_commit=57cc36a2e8ece78dd979b5344752d04c76b4d49d libane_commit=f261a6cb537aca62f267ad3d01beda0d6877544c host=jwm1-linux kernel=7.1.6-1-1-ARCH machine=aarch64
+deadline_guard=pass phase=wheel_build remaining_seconds=836 required_seconds=700
+== prepare upstream tree ==
+  % Total    % Received % Xferd  Average Speed  Time    Time    Time   Current
+                                 Dload  Upload  Total   Spent   Left   Speed
+  0      0   0      0   0      0      0      0                              0  0      0   0      0   0      0      0      0                              0  0      0   0      0   0      0      0      0                              0
+  0      0   0      0   0      0      0      0                              0100  4.20M   0  4.20M   0      0  3.75M      0           00:01              0100  4.20M   0  4.20M   0      0  3.75M      0           00:01              0100  4.20M   0  4.20M   0      0  3.75M      0           00:01              0
+patching file CMakeLists.txt
+patching file mlx/CMakeLists.txt
+patching file tests/CMakeLists.txt
+patching file mlx/transforms.cpp
+patching file setup.py
+patching file mlx/io/safetensors.cpp
+patching file mlx/io/load.cpp
+patching file mlx/export.cpp
+patching file mlx/linalg.cpp
+patching file python/src/buffer.h
+patching file mlx/ops.cpp
+Hunk #2 succeeded at 5051 (offset 1 line).
+patching file mlx/backend/cpu/distributed.cpp
+patching file mlx/fast.cpp
+patching file mlx/backend/common/metal_kernel.cpp
+patching file setup.py
+/var/tmp/AneRuntimeBridge-57cc36a2/wheel-work/mlx
+== build venv (/var/tmp/AneRuntimeBridge-57cc36a2/wheel-work/venv-build) ==
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+ModuleNotFoundError: No module named 'setuptools'
+Collecting setuptools>=80
+  Using cached setuptools-84.0.0-py3-none-any.whl.metadata (6.6 kB)
+Requirement already satisfied: typing_extensions in /usr/lib/python3.14/site-packages (4.16.0)
+Using cached setuptools-84.0.0-py3-none-any.whl (818 kB)
+Installing collected packages: setuptools
+Successfully installed setuptools-84.0.0
+== wheel build ==
+Processing /var/tmp/AneRuntimeBridge-57cc36a2/wheel-work/mlx
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Building wheels for collected packages: mlx-omarchy
+  Building wheel for mlx-omarchy (pyproject.toml): started
+  Building wheel for mlx-omarchy (pyproject.toml): still running...
+  Building wheel for mlx-omarchy (pyproject.toml): still running...
+  Building wheel for mlx-omarchy (pyproject.toml): still running...
+  Building wheel for mlx-omarchy (pyproject.toml): still running...
+  Building wheel for mlx-omarchy (pyproject.toml): still running...
+  Building wheel for mlx-omarchy (pyproject.toml): still running...
+  Building wheel for mlx-omarchy (pyproject.toml): still running...
+  Building wheel for mlx-omarchy (pyproject.toml): finished with status 'done'
+  Created wheel for mlx-omarchy: filename=mlx_omarchy-0.32.2.dev202609130952+57cc36a2e8ece78dd979b5344752d04c76b4d49d-cp314-cp314-linux_aarch64.whl size=7731209 sha256=69e381c7ea91ca228a0d4ffa23e9409b3cd1b9026ed102179d05ee1043ab42d3
+  Stored in directory: /tmp/pip-ephem-wheel-cache-0kchyej9/wheels/84/e1/9c/9bc30c804b6529398f20afa2f347aa4a61c1b892f7aee0e3bc
+Successfully built mlx-omarchy
+== receipt ==
+[receipt] wheel: /var/tmp/AneRuntimeBridge-57cc36a2/source/dist/mlx_omarchy-0.32.2.dev202609130952+57cc36a2e8ece78dd979b5344752d04c76b4d49d-cp314-cp314-linux_aarch64.whl
+[receipt] size: 7731209 bytes
+[receipt] sha256: 69e381c7ea91ca228a0d4ffa23e9409b3cd1b9026ed102179d05ee1043ab42d3
+[receipt] source commit: 57cc36a
+[receipt] NEXT STEP - do not skip: after you upload this wheel to a
+[receipt] release, verify the UPLOADED asset with
+[receipt]   python3 scripts/verify-release-assets.py <tag>
+[receipt] It must print VERIFIED before the release is announced as
+[receipt] usable. See docs/release.md. A local build check does not
+[receipt] verify what users download.
+wheel=mlx_omarchy-0.32.2.dev202609130952+57cc36a2e8ece78dd979b5344752d04c76b4d49d-cp314-cp314-linux_aarch64.whl version=0.32.2.dev202609130952+57cc36a2e8ece78dd979b5344752d04c76b4d49d wheel_sha256=69e381c7ea91ca228a0d4ffa23e9409b3cd1b9026ed102179d05ee1043ab42d3
+deadline_guard=pass phase=installer remaining_seconds=277 required_seconds=220
+[1;32m==>[0m Installing runtime packages (lapack, blas, openblas)
+[1;32m==>[0m Fetching v0.4.2 checksums
+[1;32m==>[0m Fetching mlx_omarchy-0.32.2.dev202609130952+57cc36a2e8ece78dd979b5344752d04c76b4d49d-cp314-cp314-linux_aarch64.whl
+[1;32m==>[0m Provisioning host-global ANE ownership
+  0:987 750 /run/lock/mlx-omarchy-ane
+  0:987 660 /run/lock/mlx-omarchy-ane/device.lock
+  0:987 660 /run/lock/mlx-omarchy-ane/quarantine
+[1;32m==>[0m Creating /var/tmp/AneRuntimeBridge-57cc36a2/install/venv
+[1;32m==>[0m Installing launchers into /var/tmp/AneRuntimeBridge-57cc36a2/home/.local/bin
+[1;32m==>[0m Smoke test
+  device: Apple M1 (G13G B1)
+  mlx-omarchy 0.32.2.dev202609130952+57cc36a2e8ece78dd979b5344752d04c76b4d49d: matmul OK
+[1;32m==>[0m Done.
+  Run the demo:        mlx-omarchy-demo      (also in the Omarchy app launcher as 'MLX Chat')
+  Use in your scripts: mlx-omarchy your_script.py   (import mlx.core as mx)
+  Remove everything:   bash install.sh --uninstall
+  note: /var/tmp/AneRuntimeBridge-57cc36a2/home/.local/bin is not on your PATH in this shell; open a new terminal or add it.
+ownership_state path=/run/lock/mlx-omarchy-ane inode=9765 uid=0 gid=987 mode=750 links=2
+ownership_state path=/run/lock/mlx-omarchy-ane/device.lock inode=9766 uid=0 gid=987 mode=660 links=1
+ownership_state path=/run/lock/mlx-omarchy-ane/quarantine inode=9767 uid=0 gid=987 mode=660 links=1
+worker_clearance=true runtime_quarantine=empty
+wheel_record_identity=pass installed_version=0.32.2.dev202609130952+57cc36a2e8ece78dd979b5344752d04c76b4d49d dist_root=/var/tmp/AneRuntimeBridge-57cc36a2/install/venv/lib/python3.14/site-packages mapped_core=/var/tmp/AneRuntimeBridge-57cc36a2/install/venv/lib/python3.14/site-packages/mlx/core.cpython-314-aarch64-linux-gnu.so mapped_core_sha256=4ad850da16c300ea9f60aa7247f034f358aa16d7ba2fd146979a01c867e3cfa5 mapped_libmlx=/var/tmp/AneRuntimeBridge-57cc36a2/install/venv/lib/python3.14/site-packages/mlx/lib/libmlx.so mapped_libmlx_sha256=402d4da86cd09482344c9cf624eb085323a73d6a38790f60b9e96a5210a0a3f0 installed_worker=/var/tmp/AneRuntimeBridge-57cc36a2/install/venv/lib/python3.14/site-packages/mlx/bin/mlx-omarchy-ane-worker installed_worker_sha256=52fa2959b0d2cfb7e7a0af877deaac605b7141b033879da1f8f5b908575e2198 wheel_sha256=69e381c7ea91ca228a0d4ffa23e9409b3cd1b9026ed102179d05ee1043ab42d3
+installed_core_identity inode=460819 mode=755 uid=1001 gid=1001 bytes=1582104
+installed_libmlx_identity inode=461136 mode=755 uid=1001 gid=1001 bytes=23787504
+installed_worker_identity inode=460828 mode=755 uid=1001 gid=1001 bytes=152360
+ 0x000000000000001d (RUNPATH)            Library runpath: [$ORIGIN/../lib]
+worker_clearance=true runtime_quarantine=empty
+deadline_guard=failed phase=smoke_harness_compile remaining_seconds=258 required_seconds=300
+clearance=true outer_lock=free process_group_scan=pass process_group=empty worker_scan=pass workers=absent quarantine=empty lease=removed finished_epoch=1789293699 session_deadline_epoch=1789294017 cleanup_deadline=within exit_rc=124
