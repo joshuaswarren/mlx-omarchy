@@ -43,6 +43,7 @@ import subprocess
 import sys
 import datetime
 from pathlib import Path
+from bundle_payload_identity import payload_collection_sha256
 
 TILE_ALIGNMENT = 0x4000
 FP16_SIZES = {"fp16": 2}
@@ -63,7 +64,11 @@ def log(message: str) -> None:
 
 
 def sha256_file(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def product(shape: list) -> int:
@@ -71,6 +76,25 @@ def product(shape: list) -> int:
     for dim in shape:
         result *= int(dim)
     return result
+
+
+def anec_physical_elements(
+    nchw: tuple,
+    logical_elements: int,
+    allocation_bytes: int,
+    element_bytes: int,
+    label: str,
+) -> int:
+    physical = product(list(nchw[:4]))
+    if logical_elements > physical:
+        die(f"{label} logical elements exceed NCHW physical elements")
+    if (nchw[4] % nchw[5] or nchw[5] % element_bytes or
+            nchw[4] // nchw[5] < nchw[2] or
+            nchw[5] // element_bytes < nchw[3]):
+        die(f"{label} NCHW packed tile is smaller than logical data")
+    if nchw[0] * nchw[1] * nchw[4] > allocation_bytes:
+        die(f"{label} NCHW physical bytes exceed channel allocation")
+    return physical
 
 
 def tile_stride(byte_size: int) -> int:
@@ -293,7 +317,8 @@ def main() -> int:
         )
 
     anec_sha = sha256_file(anec_path)
-    header = anec_path.read_bytes()[:0x6a8]
+    with anec_path.open("rb") as stream:
+        header = stream.read(0x6a8)
     if len(header) != 0x6a8:
         die("compiled ANEC is smaller than its libane header")
     source_count, destination_count = struct.unpack_from("<II", header, 32)
@@ -306,6 +331,19 @@ def main() -> int:
     input_channel = 4 + destination_count
     input_allocation = tiles[input_channel] * TILE_ALIGNMENT
     output_allocation = tiles[4] * TILE_ALIGNMENT
+    input_physical = anec_physical_elements(
+        nchw[input_channel], in_elems, input_allocation, elem_size, "input"
+    )
+    output_physical = anec_physical_elements(
+        nchw[4], out_elems, output_allocation, elem_size, "output"
+    )
+    payloads = [
+        {"role": "anec", "path": "model.anec", "sha256": anec_sha,
+         "byte_size": anec_path.stat().st_size},
+        {"role": "weights", "path": "weights.bin",
+         "sha256": sha256_file(bundle_weights),
+         "byte_size": bundle_weights.stat().st_size},
+    ]
     manifest = {
         "manifest_version": 3,
         "name": name,
@@ -337,7 +375,7 @@ def main() -> int:
                 "logical_bytes": in_elems * elem_size,
                 "allocation_bytes": input_allocation,
                 "element_offset": 0, "element_count": in_elems,
-                "physical_elements": in_elems,
+                "physical_elements": input_physical,
             }],
             "outputs": [{
                 "tensor": "t2", "channel": 4, "dtype": "float16",
@@ -345,17 +383,11 @@ def main() -> int:
                 "logical_bytes": out_elems * elem_size,
                 "allocation_bytes": output_allocation,
                 "element_offset": 0, "element_count": out_elems,
-                "physical_elements": out_elems,
+                "physical_elements": output_physical,
             }],
         }],
         "dispatch_plan": [0],
-        "payloads": [
-            {"role": "anec", "path": "model.anec", "sha256": anec_sha,
-             "byte_size": anec_path.stat().st_size},
-            {"role": "weights", "path": "weights.bin",
-             "sha256": sha256_file(bundle_weights),
-             "byte_size": bundle_weights.stat().st_size},
-        ],
+        "payloads": payloads,
         "compiler": {"host_build": macos_build, "toolchain": anecompiler,
                      "target": "h13"},
         "driver_abi_major": 1,
@@ -365,7 +397,10 @@ def main() -> int:
             "exported_at": datetime.datetime.now(datetime.timezone.utc)
             .strftime("%Y-%m-%d"),
         },
-        "release_asset": {"model": name, "model_sha256": anec_sha},
+        "release_asset": {
+            "model": name,
+            "model_sha256": payload_collection_sha256(payloads),
+        },
     }
     (bundle_dir / "manifest.json").write_text(
         json.dumps(manifest, indent=2) + "\n"

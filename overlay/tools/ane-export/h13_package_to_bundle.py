@@ -11,6 +11,7 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+from bundle_payload_identity import payload_collection_sha256
 
 SCHEMA = "mil-hwxc.h13-anec-package.v1"
 TILE = 0x4000
@@ -133,8 +134,17 @@ def convert_binding(binding: dict, where: str) -> tuple[dict, str]:
             f"{where}.slice.physicalElements",
             positive=True,
         )
-        if physical < count:
-            fail(f"{where}.slice.physicalElements is smaller than elementCount")
+    physical_from_nchw = product(nchw[:4])
+    if physical != physical_from_nchw:
+        fail(f"{where}.physicalElements does not match NCHW geometry")
+    if count > physical:
+        fail(f"{where}.slice.elementCount exceeds physicalElements")
+    if nchw[4] % nchw[5] or nchw[5] % DTYPE_BYTES[dtype]:
+        fail(f"{where}.nchw has invalid packed tile geometry")
+    if nchw[4] // nchw[5] < nchw[2] or nchw[5] // DTYPE_BYTES[dtype] < nchw[3]:
+        fail(f"{where}.nchw packed tile is smaller than logical shape")
+    if nchw[0] * nchw[1] * nchw[4] > allocation:
+        fail(f"{where}.allocationBytes is smaller than NCHW physical bytes")
     return ({
         "tensor": tensor,
         "channel": channel,
@@ -331,23 +341,30 @@ def adapt(package: Path, output: Path, identity: dict) -> dict:
             ranges.append((binding["element_offset"],
                            binding["element_offset"] + binding["element_count"]))
             ranges.sort()
-            merged = []
+            merged: list[tuple[int, int]] = []
             for start, stop in ranges:
                 if not merged or start > merged[-1][1]:
-                    merged.append([start, stop])
+                    merged.append((start, stop))
                 else:
-                    merged[-1][1] = max(merged[-1][1], stop)
+                    merged[-1] = (merged[-1][0], max(merged[-1][1], stop))
             available[binding["tensor"]] = merged
+    for name, role in tensor_roles.items():
+        if role != "output":
+            continue
+        complete = any(start == 0 and stop >= tensor_elements[name]
+                       for start, stop in available.get(name, []))
+        if not complete:
+            fail(f"output tensor '{name}' is not fully written")
 
     required_identity = {
         "name", "graph_hash", "compiler_host_build", "compiler_toolchain",
-        "source_repo", "source_commit", "exported_at", "model", "model_sha256",
+        "source_repo", "source_commit", "exported_at", "model",
     }
     require_fields(identity, required_identity, required_identity, "identity")
     for field in required_identity:
         if not isinstance(identity[field], str) or not identity[field]:
             fail(f"identity.{field} must be a non-empty string")
-    for field, length in (("graph_hash", 64), ("source_commit", 40), ("model_sha256", 64)):
+    for field, length in (("graph_hash", 64), ("source_commit", 40)):
         value = identity[field]
         if len(value) != length or any(character not in "0123456789abcdef" for character in value):
             fail(f"identity.{field} must be {length} lowercase hex characters")
@@ -376,7 +393,7 @@ def adapt(package: Path, output: Path, identity: dict) -> dict:
         },
         "release_asset": {
             "model": identity["model"],
-            "model_sha256": identity["model_sha256"],
+            "model_sha256": payload_collection_sha256(payloads),
         },
     }
 
@@ -406,7 +423,12 @@ def main() -> int:
     parser.add_argument("package", type=Path)
     parser.add_argument("--out-dir", type=Path, required=True)
     parser.add_argument("--graph-source", type=Path, required=True)
-    parser.add_argument("--compiler-source", type=Path, required=True)
+    parser.add_argument(
+        "--compiler-source",
+        type=Path,
+        required=True,
+        help="repository witness used only to prove the generation commit exists",
+    )
     parser.add_argument("--compiler-receipt", type=Path)
     parser.add_argument("--name", required=True)
     parser.add_argument("--source-repo", required=True)
@@ -419,7 +441,8 @@ def main() -> int:
         required = {
             "artifact_format", "compiler_binary_sha256",
             "compiler_executable_source_commit", "compiler_host_build",
-            "graph_source_sha256", "payloads", "schema", "target",
+            "compiler_manifest_sha256", "graph_source_sha256", "payloads",
+            "schema", "target",
         }
         require_fields(receipt, required, set(receipt), "compiler receipt")
         if receipt["artifact_format"] != "anec" or receipt["target"] != "H13":
@@ -429,11 +452,14 @@ def main() -> int:
         compiler_commit = receipt["compiler_executable_source_commit"]
         for field, length in (("compiler_executable_source_commit", 40),
                               ("compiler_binary_sha256", 64),
+                              ("compiler_manifest_sha256", 64),
                               ("graph_source_sha256", 64)):
             value = receipt[field]
             if not isinstance(value, str) or len(value) != length or any(
                     character not in "0123456789abcdef" for character in value):
                 fail(f"compiler receipt {field} must be {length} lowercase hex characters")
+        if sha256(args.package / "manifest.json") != receipt["compiler_manifest_sha256"]:
+            fail("compiler receipt compiler_manifest_sha256 does not match compiler manifest")
         if sha256(args.graph_source) != receipt["graph_source_sha256"]:
             fail("compiler receipt graph_source_sha256 does not match --graph-source")
         git_output(args.compiler_source, "cat-file", "-e", f"{compiler_commit}^{{commit}}")
@@ -462,7 +488,6 @@ def main() -> int:
             "source_commit": args.source_commit,
             "exported_at": args.exported_at,
             "model": args.model,
-            "model_sha256": graph_hash,
         }
         manifest = adapt(args.package, args.out_dir, identity)
     except (AdapterError, OSError, subprocess.TimeoutExpired) as error:

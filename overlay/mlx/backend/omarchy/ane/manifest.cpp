@@ -253,10 +253,32 @@ AneProgramBinding parse_binding(
       binding.logical_bytes != checked_mul(shape_elements, size, where)) {
     throw manifest_error(where + " logical allocation does not match dtype geometry");
   }
-  if (binding.physical_elements < binding.element_count ||
-      binding.allocation_bytes < binding.logical_bytes ||
+  uint64_t physical_elements = 1;
+  for (size_t i = 0; i < 4; ++i) {
+    physical_elements = checked_mul(physical_elements, binding.nchw[i], where);
+  }
+  if (binding.physical_elements != physical_elements) {
+    throw manifest_error(where + " physical_elements does not match NCHW geometry");
+  }
+  if (binding.element_count > binding.physical_elements) {
+    throw manifest_error(where + " element_count exceeds physical_elements");
+  }
+  if (binding.allocation_bytes < binding.logical_bytes ||
       binding.allocation_bytes % kAneTileAlignment != 0) {
-    throw manifest_error(where + " physical allocation is smaller than logical data or unaligned");
+    throw manifest_error(where + " allocation is smaller than logical data or unaligned");
+  }
+  if (binding.nchw[4] % binding.nchw[5] != 0 ||
+      binding.nchw[5] % size != 0 ||
+      binding.nchw[4] / binding.nchw[5] < binding.nchw[2] ||
+      binding.nchw[5] / size < binding.nchw[3]) {
+    throw manifest_error(where + " NCHW packed tile is smaller than logical data");
+  }
+  uint64_t physical_bytes = checked_mul(
+      checked_mul(binding.nchw[0], binding.nchw[1], where),
+      binding.nchw[4],
+      where);
+  if (physical_bytes > binding.allocation_bytes) {
+    throw manifest_error(where + " NCHW physical bytes exceed allocation_bytes");
   }
   return binding;
 }
@@ -357,7 +379,7 @@ void parse_release(const nlohmann::json& value, AneManifest& manifest) {
   reject_unknown_fields(value, {"model", "model_sha256"});
   manifest.release_asset.model = require_non_empty_string(value, "model");
   manifest.release_asset.model_sha256 =
-      require_hex(value, "model_sha256", 64, "a model SHA-256 digest");
+      require_hex(value, "model_sha256", 64, "a compiled-payload collection SHA-256 digest");
 }
 
 void validate_bindings(AneManifest& manifest) {
@@ -482,6 +504,18 @@ void validate_bindings(AneManifest& manifest) {
           binding.tensor,
           binding.element_offset,
           binding.element_offset + binding.element_count);
+    }
+  }
+  for (const auto& output : manifest.outputs) {
+    const uint64_t total = element_count(output.shape, output.name);
+    auto found = available.find(output.name);
+    bool complete = found != available.end() &&
+        std::any_of(
+            found->second.begin(),
+            found->second.end(),
+            [&](const Range& range) { return range.first == 0 && range.second >= total; });
+    if (!complete) {
+      throw manifest_error("output tensor '" + output.name + "' is not fully written");
     }
   }
 }
