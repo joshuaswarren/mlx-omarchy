@@ -75,9 +75,11 @@
     "hardening_origin_commit": "7fc406453b50cabffcead19f74ab8ee7e0b113e1",
     "hardening_local_cherry_pick": "4891d921fb9153b4e16101dbbb0f482ae154fc7c",
     "symlink_hardening_origin_commit": "ba324bfcfa0249f6ce70f5a24d27f7ad327c17f3",
-    "symlink_hardening_local_cherry_pick": "5d30a52e",
+    "symlink_hardening_local_cherry_pick": "5d30a52e95c8d6b3d68cb9c6c4f0737b57e48a60",
+    "nonregular_entry_origin_commit": "b999f9ea88748fe9e5f792ea87901ba318a3a643",
+    "nonregular_entry_local_cherry_pick": "d86d4080",
     "api": "load_pinned_component(package_path, component) -> PinnedComponent",
-    "source_sha256": "542886626c49c17a34bcccdaebd3f284c0f7f16679fe9040b1d94c62b348097e"
+    "source_sha256": "9f40e6e3068ca18b7e202d0a4138443e184ca7089d5bba2d3a33d567dc8d4e2f"
   },
   "official_mil_sources": {
     "tag": "9.0",
@@ -104,7 +106,7 @@
     "qualification_scope": "Host software Vulkan only; this is not Apple GPU execution and not native CoreML parity.",
     "tests": {
       "command": "MLX_OMARCHY_ALLOW_NON_APPLE=1 PYTHONPATH=$MLX_SITE_PACKAGES python3 -m pytest -q tests/coreml/test_vulkan_decoder.py tests/coreml/test_pinned_component.py",
-      "result": "13 passed in 3.09s after symlink hardening"
+      "result": "14 passed in 3.68s after nonregular-entry hardening"
     },
     "compile": {
       "command": "python3 -m py_compile overlay/tools/coreml/vulkan_decoder.py tests/coreml/test_vulkan_decoder.py",
