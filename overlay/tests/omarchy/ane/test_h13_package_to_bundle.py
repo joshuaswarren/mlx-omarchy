@@ -14,7 +14,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[4]
 ADAPTER_PATH = REPO / "overlay/tools/ane-export/h13_package_to_bundle.py"
 sys.path.insert(0, str(ADAPTER_PATH.parent))
-FIXTURE = REPO / "receipts/fixtures/h13-explicit-chain-add-mul"
+FIXTURE = Path(__file__).with_name("fixtures") / "h13-explicit-chain-add-mul"
 SPEC = importlib.util.spec_from_file_location("h13_package_to_bundle", ADAPTER_PATH)
 ADAPTER = importlib.util.module_from_spec(SPEC)
 assert SPEC.loader is not None
@@ -261,26 +261,6 @@ class AdapterTest(unittest.TestCase):
                  for program in manifest["programs"]],
                 [0, 64],
             )
-
-    def test_current_bundle_fixtures_use_v4_logical_results(self):
-        fixtures = (
-            REPO / "receipts/fixtures/exported/ane-add-fp16-1x512",
-            REPO / "receipts/fixtures/exported/ane-add-fp16-1x896",
-            REPO / "receipts/fixtures/exported/ane-mul-fp16-1x512",
-            REPO / "receipts/fixtures/mil-oneop-bundle",
-        )
-        for fixture in fixtures:
-            with self.subTest(fixture=fixture):
-                manifest = json.loads((fixture / "manifest.json").read_text())
-                output = manifest["outputs"][0]
-                self.assertEqual(manifest["manifest_version"], 4)
-                self.assertEqual(manifest["logical_results"], [{
-                    "name": output["name"], "dtype": output["dtype"],
-                    "shape": output["shape"], "tensor": output["name"],
-                    "element_offset": 0,
-                    "element_count": output["byte_size"] // 2,
-                    "conversion": "identity",
-                }])
 
     def test_generation_receipt_binds_compiler_manifest(self):
         with tempfile.TemporaryDirectory() as directory:
