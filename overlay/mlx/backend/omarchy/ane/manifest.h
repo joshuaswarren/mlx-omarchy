@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <filesystem>
 #include <string>
@@ -12,14 +13,10 @@
 
 namespace mlx::core::omarchy::ane {
 
-// ANE DMA rows use 0x4000 tiles. Grounded in ane-linux-experiments:
-// tools/hwxv2-to-anec.py (TILE_SIZE = 0x4000) and the task-layout receipt
-// (KDMA offsets 0x28000..0x3c000 step 0x4000).
 constexpr uint64_t kAneTileAlignment = 0x4000;
+constexpr int kAneManifestVersion = 3;
+constexpr uint64_t kAneDriverAbiMajor = 1;
 
-// Tight dtype geometry and DMA stride. Inputs, outputs, and state require
-// positive sizes and tile-aligned strides. An absent workspace alone uses
-// uint8 shape [0], byte_size 0, stride 0 and no ANEC channel-3 allocation.
 struct AneTensor {
   std::string name;
   uint64_t index{0};
@@ -29,8 +26,29 @@ struct AneTensor {
   uint64_t stride{0};
 };
 
-// One file inside the bundle directory. `sha256` is the lowercase hex digest
-// of the file contents. Roles: "anec" (compiled program) and "weights".
+struct AneProgramBinding {
+  std::string tensor;
+  uint64_t channel{0};
+  std::string dtype;
+  std::vector<uint64_t> shape;
+  std::array<uint64_t, 6> nchw{};
+  uint64_t logical_bytes{0};
+  uint64_t allocation_bytes{0};
+  uint64_t element_offset{0};
+  uint64_t element_count{0};
+  uint64_t physical_elements{0};
+};
+
+struct AneProgram {
+  std::string payload;
+  std::string operation;
+  std::string encoder;
+  uint64_t task_descriptors{0};
+  uint64_t scratch_bytes{0};
+  std::vector<AneProgramBinding> inputs;
+  std::vector<AneProgramBinding> outputs;
+};
+
 struct AnePayload {
   std::string role;
   std::string path;
@@ -44,11 +62,6 @@ struct AneCompilerIdentity {
   std::string target;
 };
 
-struct AneFirmwareRange {
-  std::string min;
-  std::string max;
-};
-
 struct AneProvenance {
   std::string source_repo;
   std::string source_commit;
@@ -60,8 +73,6 @@ struct AneReleaseAsset {
   std::string model_sha256;
 };
 
-// The typed result of strict manifest parsing. Every field was validated
-// before this struct is returned; no field is optional after parse.
 struct AneManifest {
   int manifest_version{0};
   std::string name;
@@ -70,18 +81,18 @@ struct AneManifest {
   std::vector<AneTensor> inputs;
   std::vector<AneTensor> outputs;
   std::vector<AneTensor> state;
-  std::vector<AneTensor> workspace;
+  std::vector<AneTensor> intermediates;
+  std::vector<AneProgram> programs;
+  std::vector<uint64_t> dispatch_plan;
   std::vector<AnePayload> payloads;
   AneCompilerIdentity compiler;
-  AneFirmwareRange firmware;
+  uint64_t driver_abi_major{0};
   AneProvenance provenance;
   AneReleaseAsset release_asset;
 };
 
-// Parses and validates manifest.json. Every check fails closed with an
-// exception whose message names the field and the reason. Manifest validation
-// performs no payload access; U6 requires every field check to pass before
-// Linux maps or submits a descriptor.
+// Strict structural parsing only. A valid manifest is not proof that the
+// current machine is H13-qualified or eligible for model execution.
 MLX_API AneManifest
 parse_ane_manifest(const std::filesystem::path& manifest_path);
 

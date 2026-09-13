@@ -301,50 +301,44 @@ void print_anec_nchw(
   std::cout << "]";
 }
 
-void print_anec_channel(
+void print_anec_binding(
     const char* kind,
-    const omarchy::ane::AneTensor& tensor,
-    const omarchy::ane::AneAnecHeader& header,
-    uint32_t channel) {
-  std::cout << "[receipt] anec " << kind << " " << tensor.name
-            << ": descriptor_index=" << tensor.index
-            << " channel=" << channel
-            << " channel_bytes=" << anec_channel_bytes(header, channel);
-  print_anec_nchw(header, channel);
+    const omarchy::ane::AneProgramBinding& binding,
+    const omarchy::ane::AneAnecHeader& header) {
+  std::cout << "[receipt] anec " << kind << " " << binding.tensor
+            << ": channel=" << binding.channel
+            << " logical_bytes=" << binding.logical_bytes
+            << " allocation_bytes=" << binding.allocation_bytes
+            << " element_offset=" << binding.element_offset
+            << " element_count=" << binding.element_count
+            << " physical_elements=" << binding.physical_elements;
+  print_anec_nchw(header, static_cast<uint32_t>(binding.channel));
   std::cout << "\n";
 }
 
-void print_anec_contract(
-    const omarchy::ane::AneManifest& manifest,
-    const omarchy::ane::AneAnecHeader& header) {
-  std::cout << "[receipt] anec: payload_size=" << header.payload_size
+void print_anec_program(
+    size_t index,
+    const omarchy::ane::AneValidatedProgram& validated,
+    const omarchy::ane::AneManifest& manifest) {
+  const auto& program = manifest.programs.at(validated.manifest_index);
+  const auto& header = validated.anec_header;
+  std::cout << "[receipt] dispatch " << index
+            << ": program=" << validated.manifest_index
+            << " payload=" << program.payload
+            << " operation=" << program.operation
+            << " encoder=" << program.encoder
+            << " scratch_bytes=" << program.scratch_bytes
+            << " payload_size=" << header.payload_size
             << " td_size=" << header.task_descriptor_size
             << " td_count=" << header.task_descriptor_count
-            << " task_size=" << header.task_size
-            << " kernel_size=" << header.kernel_size
             << " sources=" << header.source_count
             << " destinations=" << header.destination_count
-            << " bootstrap_channel_size=" << header.bootstrap_channel_size
             << "\n";
-  for (uint32_t i = 0; i < manifest.outputs.size(); ++i) {
-    print_anec_channel("output", manifest.outputs[i], header, 4 + i);
+  for (const auto& binding : program.inputs) {
+    print_anec_binding("input", binding, header);
   }
-  for (uint32_t i = 0; i < manifest.state.size(); ++i) {
-    print_anec_channel(
-        "state-destination",
-        manifest.state[i],
-        header,
-        4 + static_cast<uint32_t>(manifest.outputs.size() + i));
-  }
-  for (uint32_t i = 0; i < manifest.inputs.size(); ++i) {
-    print_anec_channel("input", manifest.inputs[i], header, 4 + header.destination_count + i);
-  }
-  for (uint32_t i = 0; i < manifest.state.size(); ++i) {
-    print_anec_channel(
-        "state-source",
-        manifest.state[i],
-        header,
-        4 + header.destination_count + static_cast<uint32_t>(manifest.inputs.size() + i));
+  for (const auto& binding : program.outputs) {
+    print_anec_binding("output", binding, header);
   }
 }
 
@@ -364,8 +358,15 @@ int check_bundle(const std::string& dir_arg) {
     print_tensor_list("input", m.inputs);
     print_tensor_list("output", m.outputs);
     print_tensor_list("state", m.state);
-    print_tensor_list("workspace", m.workspace);
-    print_anec_contract(m, bundle.anec_header);
+    print_tensor_list("intermediate", m.intermediates);
+    std::cout << "[receipt] dispatch_plan:";
+    for (uint64_t index : m.dispatch_plan) {
+      std::cout << " " << index;
+    }
+    std::cout << "\n";
+    for (size_t index = 0; index < bundle.programs.size(); ++index) {
+      print_anec_program(index, bundle.programs[index], m);
+    }
     for (const auto& payload : m.payloads) {
       std::cout << "[receipt] payload " << payload.role << ": " << payload.path
                 << " sha256=" << payload.sha256
@@ -374,8 +375,7 @@ int check_bundle(const std::string& dir_arg) {
     std::cout << "[receipt] compiler: host_build=" << m.compiler.host_build
               << " toolchain=" << m.compiler.toolchain
               << " target=" << m.compiler.target << "\n";
-    std::cout << "[receipt] firmware: min=" << m.firmware.min
-              << " max=" << m.firmware.max << "\n";
+    std::cout << "[receipt] driver_abi_major: " << m.driver_abi_major << "\n";
     std::cout << "[receipt] provenance: repo=" << m.provenance.source_repo
               << " commit=" << m.provenance.source_commit << "\n";
     std::cout << "[receipt] OK: bundle valid\n";

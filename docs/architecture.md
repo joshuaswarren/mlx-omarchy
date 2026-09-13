@@ -64,16 +64,14 @@ The partitioner uses an exact capability key:
 - operation sequence
 - dtype and quantization
 - static shape and layout
-- input, output, state, and workspace contracts
-- graph and descriptor hashes
-- compiler and firmware identifiers
+- input, output, state, intermediate, slice, and per-program scratch contracts
+- graph, dispatch-plan, descriptor, and payload hashes
+- compiler target and source identity plus exact driver ABI major
 - measured transfer and execution cost
 
-ANE compilation must run on Linux without private Apple frameworks. Reuse an open-source compiler rather than require a Mac export service. The preserved maderix MIL-to-HWX compiler generates new HWX objects for H16G/M4; making its host tools run on Linux does not establish M1 target support.
+ANE compilation must run on Linux without private Apple frameworks. The schema-3 adapter accepts only explicit H13 ANEC compiler packages and preserves every program, dispatch dependency, tensor slice, channel allocation, and payload digest. It requires generation-time compiler provenance, exact compiler target `h13`, and exact driver ABI major 1. Versions 1 and 2 and dotted firmware fields are rejected rather than upgraded.
 
-First compile a supported single operation on Linux, then validate its target-specific output and execute it through the bounded M1 worker. General MLX lowering follows that proof. The compiler and HWX-to-ANEC path must preserve graph identity, tensor bindings, target, toolchain provenance, and payload hashes. The bundle schema must record host-neutral compiler identity instead of requiring a macOS build. GitHub release assets may cache qualified bundles, but creating them must not require a Mac.
-Linux rejects a bundle before device access if any contract field differs.
-A missing bundle keeps only the affected region on Vulkan.
+Bundle validation is structural and device-free. It does not establish that H13 bytes are eligible for a physical t8103 or t6000 device, and the current compiler's separate HWX-extraction regression prevents compiler-wide qualification or a release pin. Physical-device and numerical qualification still run through the bounded worker before general MLX lowering can use a region. Runtime-generated, content-addressed bundles may be cached, but each cache hit passes the same strict loader. Linux rejects a bundle before device access if any contract field differs. A missing bundle keeps only the affected region on Vulkan.
 
 Current `libane` buffer objects expose host mappings but no PRIME or dma-buf API.
 The first hybrid path uses explicit Vulkan-to-host-to-ANE staging with fences and cache maintenance.
