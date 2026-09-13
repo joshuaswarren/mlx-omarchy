@@ -1,0 +1,70 @@
+{
+  "schema": "mlx-omarchy.jwm1-ane-hardware-window.v1",
+  "host": "jwm1-linux",
+  "runner": "/var/tmp/ParakeetCoreml-hardware-window/run-once.sh",
+  "log": "/var/tmp/ParakeetCoreml-hardware-window/hardware-window.log",
+  "log_sha256": "09b5ea2958c28b2719284a9f53e6f308ec0dd0cc829885dd59172745b8432c52",
+  "source_root": "/var/tmp/Jwm1AneAccelSmoke2-a9f14124",
+  "source_commit": "a9f14124e3e23b3eb5c538a1b99e9a72b74fa892",
+  "compiler_witness": "/home/joshuawarren/src/mil-hwxc-h13-ea903c4",
+  "compiler_commit": "b12b03f17619c76b77c48a83510847de2245ea1a",
+  "producer_schema": "mil-hwxc.h13-anec-package.v2",
+  "bundle_schema": 4,
+  "driver_abi_major": 1,
+  "graph_hash": "5584d0fd8d40027229890408e924e6f7930cd5f02516466a442193408482ce76",
+  "contract_sha256": "c6dd3ce5a1c5f684a665406106937a455957f61c61d95a2c0eeeb6e7fd2698bd",
+  "model_sha256": "eddf1f251990ee72d24f53f9bf72eb1e8f71966af5551118fe4c2d0c1e32a5a5",
+  "payload_sha256": {
+    "program-0.anec": "9a6a6a9a701ce207d4a8ea80ee1ca6d5ade076be2115b73a9aed6f4236aa56ab",
+    "program-1.anec": "62595e4a61db24066b83a4f7c077d459c69a6a740109098ee0122b4b46dcd3cc"
+  },
+  "programs": ["add", "mul"],
+  "shape": [1, 64, 1, 1],
+  "command": "/var/tmp/ParakeetCoreml-hardware-window/run-once.sh",
+  "actual": {
+    "started_at": "2026-09-13T10:18:41-05:00",
+    "finished_at": "2026-09-13T10:18:41-05:00",
+    "preflight": {
+      "device": "char",
+      "module": "loaded",
+      "power": "on-active",
+      "gpu_lock": "free",
+      "workers": "clear",
+      "quarantine_bytes": 0
+    },
+    "worker_pid": 4766,
+    "iterations": [
+      {"iteration": 0, "exact_fp16": "PASS", "physical_buffers": 1, "logical_results": 1},
+      {"iteration": 1, "exact_fp16": "PASS", "physical_buffers": 1, "logical_results": 1}
+    ],
+    "released_programs": 2,
+    "process_released": true,
+    "hardware_command_exit": 0,
+    "post_verify": {
+      "device": "character special file",
+      "module": "loaded",
+      "power_control": "on",
+      "runtime_status": "active",
+      "workers_released": true,
+      "device_lock_reacquired": true,
+      "quarantine_bytes": 0
+    },
+    "result": "PASS"
+  },
+  "hardware_identity": {
+    "kernel": "7.1.6-1-1-ARCH",
+    "machine": "aarch64",
+    "dt_node": "ane@26bc04000",
+    "dt_compatible": "apple,t8103-ane",
+    "driver_version": "f2a3e5e+lifecycle6",
+    "driver_srcversion": "DD43701FCB506056A340587",
+    "runtime_pm": "on/active",
+    "libane_commit": "f261a6cb537aca62f267ad3d01beda0d6877544c",
+    "driver_abi": 1
+  },
+  "prohibited_actions_observed": {
+    "ane_unloaded": false,
+    "rebooted": false,
+    "executed_1x896": false
+  }
+}

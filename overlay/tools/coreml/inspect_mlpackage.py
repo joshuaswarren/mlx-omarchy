@@ -16,7 +16,7 @@ or compiler is opened; runs on any Linux host.
 
 Exit codes: 0 = inspected, 1 = invalid package or usage error,
 2 = ``--strict`` validation failure (missing weight files, unset
-model type, opset inconsistencies).
+model type, opset inconsistencies, or unresolved SSA bindings).
 """
 
 from __future__ import annotations
@@ -155,6 +155,7 @@ def human_report(inv: dict) -> str:
         lines.append("Control flow: none")
     validity = inv["validity"]
     lines.append(f"Parse validity: {validity['protobuf_parse']}")
+    lines.append(f"SSA bindings: {validity['ssa_bindings']}")
     for note in validity["notes"]:
         lines.append(f"  note: {note}")
     eligibility = inv["eligibility"]
@@ -187,8 +188,8 @@ def main(argv: list[str] | None = None) -> int:
     p_inspect.add_argument(
         "--strict",
         action="store_true",
-        help="exit 2 if unresolved weight files, unset model type, or "
-        "opset inconsistencies are found (parse validity is unaffected)",
+        help="exit 2 if unresolved weight files, unset model type, opset "
+        "inconsistencies, or unresolved SSA bindings are found",
     )
     p_inspect.add_argument(
         "--compiler-coverage",
