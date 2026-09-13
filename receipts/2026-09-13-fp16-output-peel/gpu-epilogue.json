@@ -1,0 +1,19 @@
+{
+  "schema": "mlx-omarchy.gpu-boundary-epilogue.v1",
+  "casts": [
+    {
+      "input": "linear_217_cast_fp16",
+      "input_dtype": "fp16",
+      "input_shape": "[1, 375, 640]",
+      "output": "encoder_hidden",
+      "output_dtype": "fp32"
+    },
+    {
+      "input": "output_mask",
+      "input_dtype": "bool",
+      "input_shape": "[1, 375]",
+      "output": "encoder_mask",
+      "output_dtype": "int32"
+    }
+  ]
+}
