@@ -1,0 +1,21 @@
+host=jwm1-linux started_at=2026-09-13T14:23:43-05:00
+preflight_device=character special file preflight_module=loaded
+preflight_power=unknown preflight_gpu_lock=free
+preflight_quarantine_bytes=0
+[doctest] doctest version is "2.4.12"
+[doctest] run with "--help" for options
+===============================================================================
+[doctest] test cases:  6 |  6 passed | 0 failed | 0 skipped
+[doctest] assertions: 32 | 32 passed | 0 failed |
+[doctest] Status: SUCCESS!
+h13_package_to_bundle: PASS programs=2 payloads=2 output=/var/tmp/AneWorkerValidation-c05ba1df/receipts/2026-09-13-ane-worker-validation/bundle
+bundle name=schema4-add-mul-worker programs=2 driver_abi=1 graph=5584d0fd8d40027229890408e924e6f7930cd5f02516466a442193408482ce76
+worker status=0 iterations=2 released=2 elapsed_ms=2
+worker detail=worker completed 2 iteration(s) and released its programs
+verified output y exact
+hardware_command_exit=0
+post_device=character special file
+post_module=loaded post_power_control=unknown
+post_runtime_status=unknown post_quarantine_bytes=0
+finished_at=2026-09-13T14:27:02-05:00
+result=PASS
