@@ -35,7 +35,6 @@ class RuntimeOwnership {
   RuntimeOwnership(RuntimeOwnership&& other) noexcept
       : lock_fd_(other.lock_fd_),
         state_fd_(other.state_fd_),
-        state_path_(std::move(other.state_path_)),
         preserve_quarantine_(other.preserve_quarantine_) {
     other.lock_fd_ = -1;
     other.state_fd_ = -1;
@@ -49,7 +48,6 @@ class RuntimeOwnership {
       close_fds();
       lock_fd_ = other.lock_fd_;
       state_fd_ = other.state_fd_;
-      state_path_ = std::move(other.state_path_);
       preserve_quarantine_ = other.preserve_quarantine_;
       other.lock_fd_ = -1;
       other.state_fd_ = -1;
@@ -58,23 +56,51 @@ class RuntimeOwnership {
   }
 
   static RuntimeOwnership acquire() {
+    struct stat device {};
+    if (::lstat("/dev/accel/accel0", &device) != 0 ||
+        !S_ISCHR(device.st_mode)) {
+      throw runtime_error("qualified ANE device identity is unavailable");
+    }
+    validate_shared_paths_at(
+        kRuntimeOwnershipDirectory,
+        kRuntimeOwnershipLockPath,
+        kRuntimeQuarantinePath,
+        0,
+        device.st_gid);
     return acquire_at(
         kRuntimeOwnershipLockPath,
         kRuntimeQuarantinePath,
-        read_text_file("/proc/sys/kernel/random/boot_id"));
+        read_text_file("/proc/sys/kernel/random/boot_id"),
+        false);
+  }
+
+  static void validate_shared_paths_at(
+      const std::filesystem::path& directory,
+      const std::filesystem::path& lock_path,
+      const std::filesystem::path& state_path,
+      uid_t owner,
+      gid_t group) {
+    if (lock_path.parent_path() != directory ||
+        state_path.parent_path() != directory) {
+      throw runtime_error("ANE ownership files are outside the provisioned directory");
+    }
+    validate_shared_directory(directory, owner, group);
+    validate_shared_file(lock_path, owner, group);
+    validate_shared_file(state_path, owner, group);
   }
 
   static RuntimeOwnership acquire_at(
       const std::filesystem::path& lock_path,
       const std::filesystem::path& state_path,
-      std::string boot_id) {
+      std::string boot_id,
+      bool create = true) {
     trim_line_end(boot_id);
     if (!valid_boot_id(boot_id)) {
       throw runtime_error("current boot identity is invalid");
     }
 
     RuntimeOwnership ownership;
-    ownership.lock_fd_ = open_regular(lock_path);
+    ownership.lock_fd_ = open_regular(lock_path, create);
     if (::flock(ownership.lock_fd_, LOCK_EX | LOCK_NB) != 0) {
       const int error = errno;
       if (error == EWOULDBLOCK || error == EAGAIN) {
@@ -83,9 +109,8 @@ class RuntimeOwnership {
       throw runtime_error(
           "ANE ownership lock failed: " + std::string(std::strerror(error)));
     }
-    ownership.state_path_ = state_path;
     ownership.preserve_quarantine_ = true;
-    ownership.state_fd_ = open_regular(state_path);
+    ownership.state_fd_ = open_regular(state_path, create);
     std::string current_state = read_fd(ownership.state_fd_);
     trim_line_end(current_state);
     if (!current_state.empty() && !valid_boot_id(current_state)) {
@@ -118,12 +143,10 @@ class RuntimeOwnership {
   }
 
   void release_cleanly() {
-    if (!state_path_.empty() && ::unlink(state_path_.c_str()) != 0 &&
-        errno != ENOENT) {
-      throw runtime_error(
-          "ANE ownership state removal failed: " +
-          std::string(std::strerror(errno)));
+    if (state_fd_ < 0) {
+      throw runtime_error("ANE ownership state is not active");
     }
+    write_fd(state_fd_, "");
     preserve_quarantine_ = false;
     close_fds();
   }
@@ -149,6 +172,35 @@ class RuntimeOwnership {
     return true;
   }
 
+  static void validate_shared_directory(
+      const std::filesystem::path& path,
+      uid_t owner,
+      gid_t group) {
+    struct stat status {};
+    if (::lstat(path.c_str(), &status) != 0 || !S_ISDIR(status.st_mode) ||
+        status.st_uid != owner || status.st_gid != group ||
+        (status.st_mode & 07777) != 0750 || ::access(path.c_str(), X_OK) != 0) {
+      throw runtime_error(
+          "ANE ownership directory is not a provisioned shared directory: " +
+          path.string());
+    }
+  }
+
+  static void validate_shared_file(
+      const std::filesystem::path& path,
+      uid_t owner,
+      gid_t group) {
+    struct stat status {};
+    if (::lstat(path.c_str(), &status) != 0 || !S_ISREG(status.st_mode) ||
+        status.st_nlink != 1 || status.st_uid != owner ||
+        status.st_gid != group || (status.st_mode & 07777) != 0660 ||
+        ::access(path.c_str(), R_OK | W_OK) != 0) {
+      throw runtime_error(
+          "ANE ownership state is not a provisioned shared regular file: " +
+          path.string());
+    }
+  }
+
   static std::string read_text_file(const std::filesystem::path& path) {
     int fd = ::open(path.c_str(), O_RDONLY | O_CLOEXEC | O_NOFOLLOW);
     if (fd < 0) {
@@ -166,9 +218,9 @@ class RuntimeOwnership {
     return value;
   }
 
-  static int open_regular(const std::filesystem::path& path) {
-    int fd = ::open(
-        path.c_str(), O_RDWR | O_CREAT | O_CLOEXEC | O_NOFOLLOW, 0666);
+  static int open_regular(const std::filesystem::path& path, bool create) {
+    const int flags = O_RDWR | O_CLOEXEC | O_NOFOLLOW | (create ? O_CREAT : 0);
+    int fd = ::open(path.c_str(), flags, 0666);
     if (fd < 0) {
       throw runtime_error(
           "cannot open ANE ownership state " + path.string() + ": " +
@@ -233,8 +285,9 @@ class RuntimeOwnership {
   }
 
   void clear_state_noexcept() noexcept {
-    if (!state_path_.empty()) {
-      ::unlink(state_path_.c_str());
+    if (state_fd_ >= 0) {
+      ::ftruncate(state_fd_, 0);
+      ::fsync(state_fd_);
     }
   }
 
@@ -251,7 +304,6 @@ class RuntimeOwnership {
 
   int lock_fd_{-1};
   int state_fd_{-1};
-  std::filesystem::path state_path_;
   bool preserve_quarantine_{false};
 };
 

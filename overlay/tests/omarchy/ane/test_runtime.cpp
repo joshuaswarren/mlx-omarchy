@@ -16,6 +16,7 @@
 #include <fstream>
 #include <limits>
 #include <vector>
+#include <sys/stat.h>
 #include <unistd.h>
 #include <sys/wait.h>
 
@@ -204,6 +205,7 @@ TEST_CASE("ANE ownership excludes peers and preserves a same-boot quarantine") {
   const auto state = root / "quarantine";
   const std::string boot_a = "11111111-1111-1111-1111-111111111111";
   const std::string boot_b = "22222222-2222-2222-2222-222222222222";
+  struct stat first_state {};
 
   {
     auto owner = detail::RuntimeOwnership::acquire_at(lock, state, boot_a);
@@ -229,8 +231,15 @@ TEST_CASE("ANE ownership excludes peers and preserves a same-boot quarantine") {
     REQUIRE(::waitpid(peer, &peer_status, 0) == peer);
     CHECK(WIFEXITED(peer_status));
     CHECK(WEXITSTATUS(peer_status) == 0);
+    REQUIRE(::stat(state.c_str(), &first_state) == 0);
     owner.release_cleanly();
   }
+  struct stat clean_state {};
+  REQUIRE(::stat(state.c_str(), &clean_state) == 0);
+  CHECK(clean_state.st_dev == first_state.st_dev);
+  CHECK(clean_state.st_ino == first_state.st_ino);
+  CHECK(std::filesystem::exists(state));
+  CHECK(std::filesystem::file_size(state) == 0);
   {
     auto owner = detail::RuntimeOwnership::acquire_at(lock, state, boot_a);
     owner.arm();
@@ -244,7 +253,8 @@ TEST_CASE("ANE ownership excludes peers and preserves a same-boot quarantine") {
     auto owner = detail::RuntimeOwnership::acquire_at(lock, state, boot_b);
     owner.release_cleanly();
   }
-  CHECK_FALSE(std::filesystem::exists(state));
+  CHECK(std::filesystem::exists(state));
+  CHECK(std::filesystem::file_size(state) == 0);
 
   std::ofstream(state) << std::string(129, 'x');
   CHECK_THROWS_WITH_AS(
@@ -255,6 +265,50 @@ TEST_CASE("ANE ownership excludes peers and preserves a same-boot quarantine") {
   CHECK_THROWS_WITH_AS(
       detail::RuntimeOwnership::acquire_at(lock, state, boot_a),
       "[omarchy-ane] runtime: ANE ownership state is invalid.",
+      std::runtime_error);
+  std::filesystem::remove_all(root);
+}
+
+TEST_CASE("ANE shared ownership paths require frozen provisioned identities") {
+  const auto root = std::filesystem::temp_directory_path() /
+      ("mlx-omarchy-ane-shared-ownership-" + std::to_string(::getpid()));
+  std::filesystem::remove_all(root);
+  std::filesystem::create_directory(root);
+  REQUIRE(::chmod(root.c_str(), 0750) == 0);
+  const auto lock = root / "device.lock";
+  const auto state = root / "quarantine";
+  std::ofstream{lock};
+  std::ofstream{state};
+  REQUIRE(::chmod(lock.c_str(), 0660) == 0);
+  REQUIRE(::chmod(state.c_str(), 0660) == 0);
+
+  detail::RuntimeOwnership::validate_shared_paths_at(
+      root, lock, state, ::geteuid(), ::getegid());
+  REQUIRE(::chmod(root.c_str(), 02750) == 0);
+  CHECK_THROWS_AS(
+      detail::RuntimeOwnership::validate_shared_paths_at(
+          root, lock, state, ::geteuid(), ::getegid()),
+      std::runtime_error);
+  REQUIRE(::chmod(root.c_str(), 0750) == 0);
+  REQUIRE(::chmod(lock.c_str(), 0640) == 0);
+  CHECK_THROWS_WITH_AS(
+      detail::RuntimeOwnership::validate_shared_paths_at(
+          root, lock, state, ::geteuid(), ::getegid()),
+      doctest::String{
+          ("[omarchy-ane] runtime: ANE ownership state is not a provisioned shared regular file: " +
+           lock.string() + ".")
+              .c_str()},
+      std::runtime_error);
+  REQUIRE(::chmod(lock.c_str(), 0660) == 0);
+  std::filesystem::remove(state);
+  std::filesystem::create_symlink(lock, state);
+  CHECK_THROWS_WITH_AS(
+      detail::RuntimeOwnership::validate_shared_paths_at(
+          root, lock, state, ::geteuid(), ::getegid()),
+      doctest::String{
+          ("[omarchy-ane] runtime: ANE ownership state is not a provisioned shared regular file: " +
+           state.string() + ".")
+              .c_str()},
       std::runtime_error);
   std::filesystem::remove_all(root);
 }

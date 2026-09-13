@@ -584,6 +584,8 @@ if(MLX_OMARCHY_ANE_SOURCE_DIR)
     MLX_OMARCHY_ANE_WORKER_INSTALL_PATH="${CMAKE_INSTALL_FULL_BINDIR}/mlx-omarchy-ane-worker")
   install(TARGETS mlx-omarchy-ane-worker
           RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+  install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/ane/mlx-omarchy-ane.conf
+          DESTINATION lib/tmpfiles.d)
 endif()
 
 

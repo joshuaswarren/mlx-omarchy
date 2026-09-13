@@ -21,10 +21,12 @@ constexpr int kWorkerControlFd = 3;
 constexpr int kWorkerStagingFd = 4;
 constexpr int kWorkerManifestFd = 5;
 constexpr int kWorkerHardwareLockFd = 6;
+constexpr const char* kRuntimeOwnershipDirectory =
+    "/run/lock/mlx-omarchy-ane";
 constexpr const char* kRuntimeOwnershipLockPath =
-    "/run/lock/mlx-omarchy-ane.lock";
+    "/run/lock/mlx-omarchy-ane/device.lock";
 constexpr const char* kRuntimeQuarantinePath =
-    "/run/lock/mlx-omarchy-ane.quarantine";
+    "/run/lock/mlx-omarchy-ane/quarantine";
 constexpr int kWorkerPayloadFdBase = 16;
 constexpr size_t kWorkerDetailBytes = 1024;
 constexpr uint32_t kWorkerProtocolVersion = 1;
