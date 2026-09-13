@@ -149,34 +149,6 @@ def make_package(model: Model_pb2.Model, **kwargs) -> Path:
     return write_package(Path(tmp.name) / "model.mlpackage", model, **kwargs)
 
 
-def walk_bindings(inv: dict, *, expect_error: bool) -> None:
-    """Consumer-side SSA check over the inventory contract.
-
-    Mirrors what a compiler adapter does with the inspector output:
-    every name binding must resolve to a defined producer. Raises a
-    ValueError naming the operation, parameter, and missing value.
-    """
-    errors = []
-    for fn in inv["program"]["functions"]:
-        defined = {t["name"] for t in fn["inputs"]}
-        for block in fn["block_specializations"].values():
-            for op in block["operations"]:
-                for param, bindings in op["bindings"].items():
-                    for binding in bindings:
-                        name = binding.get("name")
-                        if name is not None and name not in defined:
-                            errors.append(
-                                f"function {fn['name']}: op #{op['index']} "
-                                f"{op['type']!r} param {param!r} consumes "
-                                f"undefined value {name!r}"
-                            )
-                for out in op["outputs"]:
-                    defined.add(out["name"])
-    if expect_error:
-        raise ValueError(errors[0])
-    assert not errors, errors
-
-
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
@@ -250,11 +222,8 @@ class InventorySemanticsTest(unittest.TestCase):
         raw = json.dumps(self.inv)
         self.assertNotIn("immediate_data", raw)
 
-    def test_consumer_walk_succeeds_on_wellformed_package(self):
-        # A phase-3 style consumer: walk every operation binding and
-        # require each name binding to resolve to a producer (an op
-        # output or a function input). Well-formed package → no error.
-        walk_bindings(self.inv, expect_error=False)
+    def test_ssa_bindings_are_validated(self):
+        self.assertEqual(self.inv["validity"]["ssa_bindings"], "ok")
 
 
 class ConsumerContractTest(unittest.TestCase):
@@ -270,13 +239,13 @@ class ConsumerContractTest(unittest.TestCase):
         # Point the linear's weight at a value nobody produces.
         block.operations[1].inputs["weight"].arguments[0].name = "ghost_value"
         pkg = make_package(model)
-        inv = inspect(pkg)  # parse validity is unaffected
-        with self.assertRaises(ValueError) as ctx:
-            walk_bindings(inv, expect_error=True)
-        message = str(ctx.exception)
+        inv = inspect(pkg)
+        self.assertEqual(inv["validity"]["ssa_bindings"], "invalid")
+        message = "\n".join(inv["validity"]["notes"])
         self.assertIn("ghost_value", message)
         self.assertIn("linear", message)
         self.assertIn("weight", message)
+        self.assertEqual(main(["inspect", str(pkg), "--strict"]), 2)
 
     def test_corrupt_package_fails_with_named_cause(self):
         pkg = make_package(build_model())
@@ -366,6 +335,7 @@ class CompleteInventoryTest(unittest.TestCase):
         outer.type = "while_loop"
         inner = outer.blocks.add().operations.add()
         inner.type = "cond"
+        inner.inputs["x"].arguments.add().name = "audio"
         const = inner.blocks.add().operations.add()
         const.type = "const"
         value = const.attributes["val"]
@@ -377,6 +347,7 @@ class CompleteInventoryTest(unittest.TestCase):
         self.assertEqual(inv["op_histogram"]["const"], 2)
         self.assertEqual(inv["control_flow"]["ops"], ["cond", "while_loop"])
         self.assertEqual(inv["weights"]["blob_references"][0]["offsets"], [64, 96])
+        self.assertEqual(inv["validity"]["ssa_bindings"], "ok")
 
     def test_manifest_root_selects_model_independent_of_filename(self):
         with tempfile.TemporaryDirectory() as tmp:
