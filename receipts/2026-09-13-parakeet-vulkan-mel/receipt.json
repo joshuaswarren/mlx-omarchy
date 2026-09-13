@@ -25,14 +25,14 @@
     "sha256": "753fda5580a1fdc8c1535cc291a962c3be3207e819d42b2eb6869b731a7ebf62"
   },
   "source_sha256": {
-    "overlay/tools/coreml/vulkan_mel.py": "13ac9d04af0d0248d6f667dd84bdd4dbb5faec509b989a158c04f5cafe63d3df",
+    "overlay/tools/coreml/vulkan_mel.py": "263e0bb3c46f7b3b731393bbc251d568c6f26ba8ed0571751b54a3b1fc98015e",
     "overlay/tools/coreml/mel_stage_compare.py": "210b38995c1491890fd71a7ae6c5c79b79c6d8d583289e3b3831a86b7066b7f8",
     "overlay/tools/coreml/vulkan_mel_constants.py": "caad0ac74d60a4d7378326d5c6d2e0f0fa7d1fd807157f9d203e7348874d258f",
     "tests/coreml/test_vulkan_mel.py": "4dfa53690fdb5790423e37f12121ce5d3dd8c7ce484c8b81ea658829b9e291df",
-    "tests/coreml/test_vulkan_mel_arithmetic.py": "c76ad7c35353b6a62bea665795a4f8da82d9590ad88b228a563432f65ddf341c",
+    "tests/coreml/test_vulkan_mel_arithmetic.py": "1971d7477f6d9e92b05dee120b38770fddce49b2efa46a26cbf36a46a921ea62",
     "tests/coreml/test_vulkan_mel_qualification.py": "631a6074d5f4cad44f3bd71281fc7e9e2ccbe0e0a0abe04e2d1ca5ea98011bdb",
-    "docs/parakeet.md": "4915df25425e8b840b896483b5a3066d6e70c566ae8f2d852b3353dff0fcc459",
-    "docs/coreml.md": "d731bbf1d680b32c06f0bafbaaed92c683ea41e8adb114b951b74342ceefc366"
+    "docs/parakeet.md": "0346bc263a77c336a05c3eebf1f0bd182230bb1186070464fd066589440cc05c",
+    "docs/coreml.md": "2aee203ba2888d3967278be8e8f4300b9fe898e1f4a2bd7b3e3da0d0a8e5ca6f"
   },
   "local_runtime": {
     "source_commit": "e4d079c883b8606dddef7720bd302c5756be0692",
