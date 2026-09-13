@@ -9,6 +9,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
+#include <map>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -53,6 +54,9 @@ struct AneBundle {
 
 MLX_API AneAnecHeader parse_anec_header(const std::filesystem::path& path);
 MLX_API AneBundle load_bundle(const std::filesystem::path& dir);
+MLX_API AneBundle load_bundle_snapshot(
+    const std::filesystem::path& manifest,
+    const std::map<std::string, std::filesystem::path>& payloads);
 MLX_API std::string sha256_hex(const uint8_t* data, size_t size);
 MLX_API std::string sha256_file(const std::filesystem::path& path);
 

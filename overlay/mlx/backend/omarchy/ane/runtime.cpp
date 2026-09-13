@@ -6,12 +6,16 @@
 #include "mlx/backend/omarchy/ane/bundle.h"
 #include "mlx/backend/omarchy/ane/runtime_detail.h"
 
+#include <array>
 #include <cerrno>
 #include <chrono>
+#include <condition_variable>
 #include <cstring>
 #include <fcntl.h>
 #include <fstream>
 #include <linux/memfd.h>
+#include <map>
+#include <mutex>
 #include <poll.h>
 #include <spawn.h>
 #include <stdexcept>
@@ -19,6 +23,7 @@
 #include <sys/mman.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/wait.h>
 #include <thread>
 #include <unistd.h>
@@ -128,11 +133,187 @@ bool wait_for_exit(pid_t pid, TimePoint deadline) {
 }
 
 int duplicate_owned_fd(int fd) {
-  int duplicate = ::fcntl(fd, F_DUPFD_CLOEXEC, 10);
+  int duplicate = ::fcntl(fd, F_DUPFD_CLOEXEC, 64);
   if (duplicate < 0) {
     throw detail::runtime_error(system_error("file descriptor duplication"));
   }
   return duplicate;
+}
+
+class OwnedFd {
+ public:
+  explicit OwnedFd(int fd = -1) : fd_(fd) {}
+  ~OwnedFd() {
+    if (fd_ >= 0) {
+      ::close(fd_);
+    }
+  }
+  OwnedFd(const OwnedFd&) = delete;
+  OwnedFd& operator=(const OwnedFd&) = delete;
+  OwnedFd(OwnedFd&& other) noexcept : fd_(other.fd_) {
+    other.fd_ = -1;
+  }
+  OwnedFd& operator=(OwnedFd&& other) noexcept {
+    if (this != &other) {
+      if (fd_ >= 0) {
+        ::close(fd_);
+      }
+      fd_ = other.fd_;
+      other.fd_ = -1;
+    }
+    return *this;
+  }
+  int get() const {
+    return fd_;
+  }
+
+ private:
+  int fd_;
+};
+
+OwnedFd snapshot_file_at(
+    int directory_fd,
+    const std::string& name,
+    TimePoint deadline) {
+  OwnedFd source(::openat(
+      directory_fd, name.c_str(), O_RDONLY | O_CLOEXEC | O_NOFOLLOW));
+  if (source.get() < 0) {
+    throw detail::runtime_error(system_error("bundle snapshot open " + name));
+  }
+  struct stat status {};
+  if (::fstat(source.get(), &status) != 0 || !S_ISREG(status.st_mode)) {
+    throw detail::runtime_error("bundle snapshot source is not a regular file: " + name);
+  }
+  OwnedFd snapshot(::memfd_create(
+      "mlx-omarchy-ane-bundle", MFD_CLOEXEC | MFD_ALLOW_SEALING));
+  if (snapshot.get() < 0) {
+    throw detail::runtime_error(system_error("bundle snapshot memfd_create"));
+  }
+  std::array<uint8_t, 64 * 1024> bytes{};
+  while (true) {
+    if (Clock::now() >= deadline) {
+      throw detail::runtime_error("startup deadline expired while freezing bundle bytes");
+    }
+    ssize_t count = ::read(source.get(), bytes.data(), bytes.size());
+    if (count == 0) {
+      break;
+    }
+    if (count < 0) {
+      if (errno == EINTR) {
+        continue;
+      }
+      throw detail::runtime_error(system_error("bundle snapshot read " + name));
+    }
+    size_t written = 0;
+    while (written < static_cast<size_t>(count)) {
+      ssize_t result = ::write(
+          snapshot.get(), bytes.data() + written, size_t(count) - written);
+      if (result < 0 && errno == EINTR) {
+        continue;
+      }
+      if (result <= 0) {
+        throw detail::runtime_error(system_error("bundle snapshot write " + name));
+      }
+      written += static_cast<size_t>(result);
+    }
+  }
+  if (::lseek(snapshot.get(), 0, SEEK_SET) < 0 ||
+      ::fcntl(
+          snapshot.get(),
+          F_ADD_SEALS,
+          F_SEAL_WRITE | F_SEAL_GROW | F_SEAL_SHRINK | F_SEAL_SEAL) != 0) {
+    throw detail::runtime_error(system_error("bundle snapshot seal " + name));
+  }
+  return snapshot;
+}
+
+struct FrozenBundle {
+  AneBundle bundle;
+  OwnedFd manifest;
+  std::vector<OwnedFd> payloads;
+  std::string contract_sha256;
+};
+
+FrozenBundle freeze_bundle(
+    const std::filesystem::path& directory,
+    TimePoint deadline) {
+  AneBundle preliminary = load_bundle(directory);
+  if (Clock::now() >= deadline) {
+    throw detail::runtime_error("startup deadline expired after bundle validation");
+  }
+  OwnedFd directory_fd(::open(
+      directory.c_str(), O_RDONLY | O_CLOEXEC | O_NOFOLLOW | O_DIRECTORY));
+  if (directory_fd.get() < 0) {
+    throw detail::runtime_error(system_error("bundle snapshot directory open"));
+  }
+
+  FrozenBundle frozen;
+  frozen.manifest =
+      snapshot_file_at(directory_fd.get(), "manifest.json", deadline);
+  frozen.payloads.reserve(preliminary.manifest.payloads.size());
+  std::map<std::string, std::filesystem::path> paths;
+  for (const auto& payload : preliminary.manifest.payloads) {
+    frozen.payloads.push_back(
+        snapshot_file_at(directory_fd.get(), payload.path, deadline));
+    paths.emplace(
+        payload.path,
+        std::filesystem::path("/proc/self/fd") /
+            std::to_string(frozen.payloads.back().get()));
+  }
+  const auto manifest_path = std::filesystem::path("/proc/self/fd") /
+      std::to_string(frozen.manifest.get());
+  frozen.bundle = load_bundle_snapshot(manifest_path, paths);
+  frozen.contract_sha256 = sha256_file(manifest_path);
+  return frozen;
+}
+
+void ensure_before(TimePoint deadline, const std::string& phase) {
+  if (Clock::now() >= deadline) {
+    throw detail::runtime_error("deadline expired before " + phase);
+  }
+}
+
+class AneChildReaper {
+ public:
+  AneChildReaper() : thread_([this] { run(); }) {}
+
+  void adopt(pid_t pid) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    pids_.push_back(pid);
+    ready_.notify_one();
+  }
+
+ private:
+  void run() {
+    std::unique_lock<std::mutex> lock(mutex_);
+    while (true) {
+      ready_.wait(lock, [&] { return !pids_.empty(); });
+      bool reaped = false;
+      for (auto pid = pids_.begin(); pid != pids_.end();) {
+        int status = 0;
+        pid_t result = ::waitpid(*pid, &status, WNOHANG);
+        if (result == *pid || (result < 0 && errno == ECHILD)) {
+          pid = pids_.erase(pid);
+          reaped = true;
+        } else {
+          ++pid;
+        }
+      }
+      if (!reaped && !pids_.empty()) {
+        ready_.wait_for(lock, std::chrono::milliseconds(10));
+      }
+    }
+  }
+
+  std::vector<pid_t> pids_;
+  std::mutex mutex_;
+  std::condition_variable ready_;
+  std::thread thread_;
+};
+
+AneChildReaper& child_reaper() {
+  static auto* reaper = new AneChildReaper();
+  return *reaper;
 }
 
 } // namespace
@@ -161,8 +342,10 @@ struct AneRuntime::Impl {
       ::close(staging_fd);
     }
     if (pid > 0) {
-      int status = 0;
-      ::waitpid(pid, &status, WNOHANG);
+      try {
+        child_reaper().adopt(pid);
+      } catch (...) {
+      }
     }
   }
 
@@ -192,12 +375,12 @@ struct AneRuntime::Impl {
   }
 
   static std::unique_ptr<Impl> start(
-      AneBundle loaded_bundle,
-      std::chrono::milliseconds startup_deadline,
+      FrozenBundle frozen,
+      TimePoint deadline,
       const std::filesystem::path& diagnostic) {
-    detail::validate_deadline(startup_deadline);
+    ensure_before(deadline, "runtime initialization");
     auto implementation = std::make_unique<Impl>();
-    implementation->bundle = std::move(loaded_bundle);
+    implementation->bundle = std::move(frozen.bundle);
     implementation->diagnostic_path = diagnostic;
     if (implementation->diagnostic_path.empty()) {
       throw std::invalid_argument("ANE diagnostic path must not be empty");
@@ -219,12 +402,12 @@ struct AneRuntime::Impl {
     }
     implementation->staging_bytes = staging_size(implementation->bundle.manifest);
 
-    int memory = ::memfd_create("mlx-omarchy-ane", MFD_CLOEXEC | MFD_ALLOW_SEALING);
-    if (memory < 0) {
+    OwnedFd memory(::memfd_create(
+        "mlx-omarchy-ane", MFD_CLOEXEC | MFD_ALLOW_SEALING));
+    if (memory.get() < 0) {
       throw detail::runtime_error(system_error("memfd_create"));
     }
-    implementation->staging_fd = duplicate_owned_fd(memory);
-    ::close(memory);
+    implementation->staging_fd = duplicate_owned_fd(memory.get());
     if (::ftruncate(
             implementation->staging_fd,
             static_cast<off_t>(implementation->staging_bytes)) != 0) {
@@ -254,23 +437,32 @@ struct AneRuntime::Impl {
     if (::socketpair(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0, sockets) != 0) {
       throw detail::runtime_error(system_error("worker socketpair"));
     }
-    implementation->control_fd = duplicate_owned_fd(sockets[0]);
-    int child_control = duplicate_owned_fd(sockets[1]);
-    ::close(sockets[0]);
-    ::close(sockets[1]);
+    OwnedFd parent_socket(sockets[0]);
+    OwnedFd child_socket(sockets[1]);
+    implementation->control_fd = duplicate_owned_fd(parent_socket.get());
+    OwnedFd child_control(duplicate_owned_fd(child_socket.get()));
 
     posix_spawn_file_actions_t actions;
     int spawn_error = ::posix_spawn_file_actions_init(&actions);
     if (spawn_error != 0) {
-      ::close(child_control);
       throw detail::runtime_error(system_error("posix_spawn_file_actions_init", spawn_error));
     }
     auto destroy_actions = [&] { ::posix_spawn_file_actions_destroy(&actions); };
     spawn_error = ::posix_spawn_file_actions_adddup2(
-        &actions, child_control, detail::kWorkerControlFd);
+        &actions, child_control.get(), detail::kWorkerControlFd);
     if (spawn_error == 0) {
       spawn_error = ::posix_spawn_file_actions_adddup2(
           &actions, implementation->staging_fd, detail::kWorkerStagingFd);
+    }
+    if (spawn_error == 0) {
+      spawn_error = ::posix_spawn_file_actions_adddup2(
+          &actions, frozen.manifest.get(), detail::kWorkerManifestFd);
+    }
+    for (size_t i = 0; spawn_error == 0 && i < frozen.payloads.size(); ++i) {
+      spawn_error = ::posix_spawn_file_actions_adddup2(
+          &actions,
+          frozen.payloads[i].get(),
+          detail::kWorkerPayloadFdBase + static_cast<int>(i));
     }
     if (spawn_error == 0) {
       spawn_error = ::posix_spawn_file_actions_addclose(
@@ -278,16 +470,11 @@ struct AneRuntime::Impl {
     }
     if (spawn_error != 0) {
       destroy_actions();
-      ::close(child_control);
       throw detail::runtime_error(system_error("worker file actions", spawn_error));
     }
 
     std::string size = std::to_string(implementation->staging_bytes);
-    std::string bundle_path = implementation->bundle.manifest.name.empty()
-        ? std::string()
-        : implementation->bundle.programs.front().anec.parent_path().string();
-    char* arguments[] = {
-        executable.data(), bundle_path.data(), size.data(), nullptr};
+    char* arguments[] = {executable.data(), size.data(), nullptr};
     spawn_error = ::posix_spawn(
         &implementation->pid,
         executable.c_str(),
@@ -296,13 +483,12 @@ struct AneRuntime::Impl {
         arguments,
         environ);
     destroy_actions();
-    ::close(child_control);
     if (spawn_error != 0) {
       implementation->pid = -1;
       throw detail::runtime_error(system_error("ANE worker spawn", spawn_error));
     }
 
-    const TimePoint deadline = Clock::now() + startup_deadline;
+    ensure_before(deadline, "worker readiness wait");
     detail::WorkerReply reply;
     try {
       reply = receive_reply(implementation->control_fd, deadline);
@@ -318,10 +504,13 @@ struct AneRuntime::Impl {
       }
       throw detail::runtime_error(std::string(reply.detail));
     }
-    const std::string graph_prefix = "graph_hash=" +
-        implementation->bundle.manifest.graph_hash + "\n";
+    const std::string identity_prefix =
+        "graph_hash=" + implementation->bundle.manifest.graph_hash +
+        "\ncontract_sha256=" + frozen.contract_sha256 +
+        "\nmodel_sha256=" +
+        implementation->bundle.manifest.release_asset.model_sha256 + "\n";
     const std::string worker_detail(reply.detail);
-    if (worker_detail.rfind(graph_prefix, 0) != 0) {
+    if (worker_detail.rfind(identity_prefix, 0) != 0) {
       implementation->mark_unusable(
           "worker loaded a different bundle identity", false);
       ::close(implementation->control_fd);
@@ -331,7 +520,7 @@ struct AneRuntime::Impl {
       }
       throw detail::runtime_error("worker loaded a different bundle identity");
     }
-    implementation->identity = worker_detail.substr(graph_prefix.size());
+    implementation->identity = worker_detail.substr(identity_prefix.size());
     implementation->is_usable = true;
     return implementation;
   }
@@ -344,9 +533,11 @@ std::unique_ptr<AneRuntime> AneRuntime::load(
     const std::filesystem::path& bundle,
     std::chrono::milliseconds startup_deadline,
     const std::filesystem::path& diagnostic_path) {
-  AneBundle validated = load_bundle(bundle);
+  const auto deadline = detail::checked_deadline(startup_deadline);
+  FrozenBundle frozen = freeze_bundle(bundle, deadline.time);
+  ensure_before(deadline.time, "worker startup");
   return std::unique_ptr<AneRuntime>(new AneRuntime(
-      Impl::start(std::move(validated), startup_deadline, diagnostic_path)));
+      Impl::start(std::move(frozen), deadline.time, diagnostic_path)));
 }
 
 AneRuntime::~AneRuntime() {
@@ -363,7 +554,8 @@ AneRuntime::~AneRuntime() {
 AneBufferMap AneRuntime::execute(
     const AneBufferMap& inputs,
     std::chrono::milliseconds deadline_duration) {
-  detail::validate_deadline(deadline_duration);
+  const auto checked_deadline = detail::checked_deadline(deadline_duration);
+  const TimePoint deadline = checked_deadline.time;
   if (!implementation_->is_usable) {
     throw detail::runtime_error("runtime is unusable; no ANE work was submitted");
   }
@@ -386,7 +578,7 @@ AneBufferMap AneRuntime::execute(
     offset += found->second.size();
   }
 
-  const TimePoint deadline = Clock::now() + deadline_duration;
+  ensure_before(deadline, "worker command submission");
   detail::WorkerCommand command;
   command.operation = detail::WorkerOperation::execute;
   command.serial = ++implementation_->serial;
@@ -410,7 +602,7 @@ AneBufferMap AneRuntime::execute(
         std::string("completion became uncertain: ") + error.what(), true);
     throw detail::runtime_error(
         std::string(error.what()) +
-        "; runtime marked unusable and no worker signal was sent; reboot is required before further ANE use");
+        "; runtime marked unusable; no signal was sent to the worker, and reboot is required before further ANE use");
   }
   if (reply.serial != command.serial) {
     implementation_->mark_unusable("worker reply serial mismatch", true);
@@ -443,12 +635,13 @@ AneBufferMap AneRuntime::execute(
 
 AneShutdownReceipt AneRuntime::shutdown(
     std::chrono::milliseconds deadline_duration) {
-  detail::validate_deadline(deadline_duration);
+  const auto checked_deadline = detail::checked_deadline(deadline_duration);
+  const TimePoint deadline = checked_deadline.time;
   if (!implementation_->is_usable) {
     throw detail::runtime_error("runtime is unusable and cannot claim clean shutdown");
   }
 
-  const TimePoint deadline = Clock::now() + deadline_duration;
+  ensure_before(deadline, "shutdown command submission");
   detail::WorkerCommand command;
   command.operation = detail::WorkerOperation::shutdown;
   command.serial = ++implementation_->serial;

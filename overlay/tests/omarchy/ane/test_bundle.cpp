@@ -12,6 +12,7 @@
 #include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <map>
 #include <stdexcept>
 #include <string>
 #include <system_error>
@@ -245,6 +246,25 @@ TEST_CASE("valid multi-program bundle preserves dispatch and bindings") {
   CHECK(bundle.manifest.programs[bundle.programs[0].manifest_index].inputs[0].tensor == "a");
   CHECK(bundle.manifest.programs[bundle.programs[1].manifest_index].inputs[0].tensor == "sum");
   CHECK(bundle.programs[1].anec_header.source_count == 2);
+}
+
+TEST_CASE("snapshot loader uses supplied immutable payload paths") {
+  Fixture caller;
+  caller.write();
+  TempDir snapshot;
+  write_file(snapshot.path() / "manifest.json", caller.manifest.dump(2) + "\n");
+  write_file(snapshot.path() / "program-0.anec", caller.payload_bytes[0]);
+  write_file(snapshot.path() / "program-1.anec", caller.payload_bytes[1]);
+  std::map<std::string, std::filesystem::path> payloads{
+      {"program-0.anec", snapshot.path() / "program-0.anec"},
+      {"program-1.anec", snapshot.path() / "program-1.anec"}};
+
+  AneBundle loaded =
+      load_bundle_snapshot(snapshot.path() / "manifest.json", payloads);
+  write_file(caller.dir.path() / "program-0.anec", anec_bytes('Z'));
+
+  CHECK(sha256_file(loaded.programs[0].anec) == caller.digest(0));
+  CHECK(loaded.programs[0].anec.parent_path() == snapshot.path());
 }
 
 TEST_CASE("release identity uses the producer's canonical payload byte domain") {
