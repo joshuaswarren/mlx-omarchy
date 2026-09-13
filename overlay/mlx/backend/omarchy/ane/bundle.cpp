@@ -3,6 +3,9 @@
 
 #include "mlx/backend/omarchy/ane/bundle.h"
 
+#include <json.hpp>
+
+#include <algorithm>
 #include <array>
 #include <fstream>
 #include <limits>
@@ -188,6 +191,30 @@ std::string sha256_file(const std::filesystem::path& path) {
 
 namespace {
 
+std::string payload_collection_sha256(const std::vector<AnePayload>& payloads) {
+  std::vector<const AnePayload*> ordered;
+  ordered.reserve(payloads.size());
+  for (const auto& payload : payloads) {
+    ordered.push_back(&payload);
+  }
+  std::sort(ordered.begin(), ordered.end(), [](const auto* lhs, const auto* rhs) {
+    return lhs->path < rhs->path;
+  });
+
+  nlohmann::json records = nlohmann::json::array();
+  for (const auto* payload : ordered) {
+    records.push_back({
+        {"role", payload->role},
+        {"path", payload->path},
+        {"byte_size", payload->byte_size},
+        {"sha256", payload->sha256},
+    });
+  }
+  const std::string encoded = records.dump(-1, ' ', true);
+  return sha256_hex(
+      reinterpret_cast<const uint8_t*>(encoded.data()), encoded.size());
+}
+
 uint64_t file_size_checked(const std::filesystem::path& path) {
   std::error_code ec;
   const auto size = std::filesystem::file_size(path, ec);
@@ -252,104 +279,56 @@ uint32_t input_bdx(const AneAnecHeader& header, uint32_t ordinal) {
   return 4 + header.destination_count + ordinal;
 }
 
-void validate_nchw_geometry(
+void validate_binding(
     const std::string& label,
-    const AneTensor& tensor,
+    const AneProgramBinding& binding,
     const AneAnecHeader& header,
-    uint32_t bdx) {
-  const auto& nchw = header.nchw.at(bdx);
-  for (size_t i = 0; i < 4; ++i) {
-    if (nchw[i] == 0) {
-      throw bundle_error(label + " ANEC NCHW geometry is incomplete");
-    }
+    uint32_t expected_channel) {
+  if (binding.channel != expected_channel || binding.channel >= kAnecTileCount) {
+    throw bundle_error(label + " channel does not match ANEC binding order");
   }
-  if (nchw[4] == 0 || nchw[5] == 0) {
-    throw bundle_error(label + " ANEC tile geometry is incomplete");
+  const uint64_t allocation = channel_size_bytes(header, expected_channel);
+  if (allocation != binding.allocation_bytes) {
+    throw bundle_error(label + " allocation_bytes does not match ANEC channel allocation");
   }
-
-  uint64_t header_elements = 1;
-  for (size_t i = 0; i < 4; ++i) {
-    header_elements = checked_mul(header_elements, nchw[i], label + " ANEC NCHW");
+  if (binding.dtype != "float16" && binding.dtype != "bfloat16") {
+    throw bundle_error(label + " ANEC channel requires a 16-bit tensor dtype");
   }
-  if (header_elements != shape_elements(tensor.shape, label)) {
-    throw bundle_error(label + " ANEC NCHW does not match manifest shape");
-  }
-  if (tensor.dtype != "float16" && tensor.dtype != "bfloat16") {
-    throw bundle_error(label + " ANEC tiled channel requires a 16-bit tensor dtype");
-  }
-  constexpr uint64_t element_bytes = sizeof(uint16_t);
-  if (nchw[4] % nchw[5] != 0 || nchw[5] % element_bytes != 0) {
-    throw bundle_error(label + " ANEC tile geometry is not 16-bit aligned");
-  }
-  if (nchw[4] / nchw[5] < nchw[2] || nchw[5] / element_bytes < nchw[3]) {
-    throw bundle_error(label + " ANEC packed tile is smaller than logical shape");
-  }
-
-  const uint64_t physical_bytes = checked_mul(
-      checked_mul(nchw[0], nchw[1], label + " ANEC physical bytes"),
-      nchw[4],
-      label + " ANEC physical bytes");
-  if (physical_bytes > channel_size_bytes(header, bdx)) {
-    throw bundle_error(label + " ANEC physical tile bytes exceed channel allocation");
+  if (header.nchw[expected_channel] != binding.nchw) {
+    throw bundle_error(label + " NCHW does not match ANEC channel geometry");
   }
 }
 
-void validate_channel_contract(
-    const std::string& label,
-    const AneTensor& tensor,
+void validate_program_contract(
+    const AneProgram& program,
     const AneAnecHeader& header,
-    uint32_t bdx) {
-  if (bdx >= kAnecTileCount) {
-    throw bundle_error(label + " ANEC channel index is out of range");
+    size_t program_index) {
+  const std::string prefix = "program " + std::to_string(program_index);
+  if (program.task_descriptors != header.task_descriptor_count) {
+    throw bundle_error(prefix + " task_descriptors does not match ANEC header");
   }
-  const auto channel_bytes = channel_size_bytes(header, bdx);
-  if (channel_bytes == 0) {
-    throw bundle_error(label + " ANEC channel allocation is zero");
+  if (program.inputs.size() != header.source_count) {
+    throw bundle_error(prefix + " input count does not match ANEC source_count");
   }
-  if (tensor.byte_size > channel_bytes) {
-    throw bundle_error(label + " byte_size exceeds ANEC channel allocation");
+  if (program.outputs.size() != header.destination_count) {
+    throw bundle_error(prefix + " output count does not match ANEC destination_count");
   }
-  if (tensor.stride > channel_bytes) {
-    throw bundle_error(label + " stride exceeds ANEC channel allocation");
+  if (channel_size_bytes(header, 3) != program.scratch_bytes) {
+    throw bundle_error(prefix + " scratch_bytes does not match ANEC channel 3 allocation");
   }
-  validate_nchw_geometry(label, tensor, header, bdx);
-}
-
-void validate_manifest_anec_contract(const AneManifest& manifest, const AneAnecHeader& header) {
-  if (manifest.task_descriptors != header.task_descriptor_count) {
-    throw bundle_error("ANEC task_descriptors does not match manifest");
-  }
-
-  const auto expected_sources = static_cast<uint32_t>(manifest.inputs.size() + manifest.state.size());
-  const auto expected_destinations = static_cast<uint32_t>(manifest.outputs.size() + manifest.state.size());
-  if (header.source_count != expected_sources) {
-    throw bundle_error("ANEC source_count does not match manifest inputs plus state");
-  }
-  if (header.destination_count != expected_destinations) {
-    throw bundle_error("ANEC destination_count does not match manifest outputs plus state");
-  }
-
-  for (uint32_t i = 0; i < manifest.outputs.size(); ++i) {
-    validate_channel_contract(
-        "output " + manifest.outputs[i].name, manifest.outputs[i], header, output_bdx(i));
-  }
-  for (uint32_t i = 0; i < manifest.state.size(); ++i) {
-    validate_channel_contract(
-        "state destination " + manifest.state[i].name,
-        manifest.state[i],
+  for (uint32_t i = 0; i < program.outputs.size(); ++i) {
+    validate_binding(
+        prefix + " output " + program.outputs[i].tensor,
+        program.outputs[i],
         header,
-        output_bdx(static_cast<uint32_t>(manifest.outputs.size() + i)));
+        output_bdx(i));
   }
-  for (uint32_t i = 0; i < manifest.inputs.size(); ++i) {
-    validate_channel_contract(
-        "input " + manifest.inputs[i].name, manifest.inputs[i], header, input_bdx(header, i));
-  }
-  for (uint32_t i = 0; i < manifest.state.size(); ++i) {
-    validate_channel_contract(
-        "state source " + manifest.state[i].name,
-        manifest.state[i],
+  for (uint32_t i = 0; i < program.inputs.size(); ++i) {
+    validate_binding(
+        prefix + " input " + program.inputs[i].tensor,
+        program.inputs[i],
         header,
-        input_bdx(header, static_cast<uint32_t>(manifest.inputs.size() + i)));
+        input_bdx(header, i));
   }
 }
 
@@ -401,6 +380,12 @@ AneAnecHeader parse_anec_header(const std::filesystem::path& path) {
   if (header.task_descriptor_size % sizeof(uint32_t) != 0) {
     throw bundle_error("ANEC task descriptor size is not a multiple of 4");
   }
+  if (header.task_descriptor_count > 0xffff) {
+    throw bundle_error("ANEC task descriptor count exceeds driver limit 0xffff");
+  }
+  if (header.task_descriptor_size > 0x40000) {
+    throw bundle_error("ANEC task descriptor size exceeds driver limit 0x40000");
+  }
   if (header.task_size == 0) {
     throw bundle_error("ANEC task size is zero");
   }
@@ -408,8 +393,9 @@ AneAnecHeader parse_anec_header(const std::filesystem::path& path) {
       kAnecTileCount) {
     throw bundle_error("ANEC source/destination count exceeds libane channel table");
   }
-  if (checked_add(kAnecPayloadOffset, header.payload_size, "ANEC payload end") > file_size) {
-    throw bundle_error("ANEC executable payload extends past file");
+  if (checked_add(kAnecPayloadOffset, header.payload_size, "ANEC payload end") !=
+      file_size) {
+    throw bundle_error("ANEC file size does not match payload_size");
   }
   if (header.tiles[0] == 0) {
     throw bundle_error("ANEC command channel allocation is zero");
@@ -439,60 +425,33 @@ AneAnecHeader parse_anec_header(const std::filesystem::path& path) {
   return header;
 }
 
-AneBundle load_bundle(const std::filesystem::path& dir) {
-  if (!std::filesystem::is_directory(dir)) {
-    throw AneBundleNotFound(
-        "[omarchy-ane] bundle directory not found: " + dir.string() +
-        " (the affected region stays on Vulkan)");
+AneBundle load_bundle_snapshot(
+    const std::filesystem::path& manifest_path,
+    const std::map<std::string, std::filesystem::path>& payload_paths) {
+  AneManifest manifest = parse_ane_manifest(manifest_path);
+  const std::string payload_identity = payload_collection_sha256(manifest.payloads);
+  if (manifest.release_asset.model_sha256 != payload_identity) {
+    throw bundle_error(
+        "release_asset.model_sha256 does not match compiled payload collection");
   }
 
-  // Manifest validation first: every field check passes before any payload
-  // is opened or mapped. A changed graph, shape, compiler, or firmware field
-  // fails here, before device access.
-  AneManifest manifest = parse_ane_manifest(dir / "manifest.json");
 
-  // Unknown extra files are rejected so a bundle cannot smuggle payloads the
-  // manifest does not describe. The scan reads no payload bytes.
-  std::vector<std::filesystem::path> actual_files;
-  for (const auto& entry : std::filesystem::directory_iterator(dir)) {
-    if (entry.is_directory()) {
-      throw bundle_error(
-          "unexpected directory '" + entry.path().filename().string() +
-          "' inside bundle");
-    }
-    if (!entry.is_regular_file()) {
-      throw bundle_error(
-          "unexpected non-regular file '" + entry.path().filename().string() +
-          "' inside bundle");
-    }
-    actual_files.push_back(entry.path());
-  }
-  for (const auto& file : actual_files) {
-    std::string name = file.filename().string();
-    if (name == "manifest.json") {
-      continue;
-    }
-    bool listed = false;
-    for (const auto& payload : manifest.payloads) {
-      if (payload.path == name) {
-        listed = true;
-        break;
-      }
-    }
-    if (!listed) {
-      throw bundle_error("unknown payload file '" + name + "' not listed in manifest");
-    }
-  }
-
-  // Presence, then byte size, then digest: cheapest failure first.
   std::vector<std::filesystem::path> resolved;
   resolved.reserve(manifest.payloads.size());
   for (const auto& payload : manifest.payloads) {
-    std::filesystem::path payload_path = dir / payload.path;
-    if (!std::filesystem::is_regular_file(payload_path)) {
+    auto path = payload_paths.find(payload.path);
+    if (path == payload_paths.end()) {
       throw bundle_error("payload file missing: " + payload.path);
     }
-    resolved.push_back(payload_path);
+    resolved.push_back(path->second);
+  }
+  for (const auto& [name, path] : payload_paths) {
+    if (std::none_of(
+            manifest.payloads.begin(),
+            manifest.payloads.end(),
+            [&](const AnePayload& payload) { return payload.path == name; })) {
+      throw bundle_error("unknown snapshot payload '" + name + "'");
+    }
   }
   for (size_t i = 0; i < manifest.payloads.size(); ++i) {
     const auto& payload = manifest.payloads[i];
@@ -517,15 +476,74 @@ AneBundle load_bundle(const std::filesystem::path& dir) {
   AneBundle bundle;
   bundle.manifest = std::move(manifest);
   for (size_t i = 0; i < bundle.manifest.payloads.size(); ++i) {
-    if (bundle.manifest.payloads[i].role == "anec") {
-      bundle.anec = resolved[i];
-    } else if (bundle.manifest.payloads[i].role == "weights") {
+    if (bundle.manifest.payloads[i].role == "weights") {
       bundle.weights = resolved[i];
     }
   }
-  bundle.anec_header = parse_anec_header(bundle.anec);
-  validate_manifest_anec_contract(bundle.manifest, bundle.anec_header);
+  for (uint64_t p : bundle.manifest.dispatch_plan) {
+    const AneProgram& program = bundle.manifest.programs[p];
+    std::filesystem::path path;
+    for (size_t i = 0; i < bundle.manifest.payloads.size(); ++i) {
+      if (bundle.manifest.payloads[i].path == program.payload) {
+        path = resolved[i];
+        break;
+      }
+    }
+    if (path.empty()) {
+      throw bundle_error("program payload mapping disappeared after manifest validation");
+    }
+    AneAnecHeader header = parse_anec_header(path);
+    validate_program_contract(program, header, p);
+    bundle.programs.push_back({p, std::move(header), std::move(path)});
+  }
   return bundle;
+}
+
+AneBundle load_bundle(const std::filesystem::path& dir) {
+  if (!std::filesystem::is_directory(dir)) {
+    throw AneBundleNotFound(
+        "[omarchy-ane] bundle directory not found: " + dir.string() +
+        " (the affected region stays on Vulkan)");
+  }
+
+  AneManifest manifest = parse_ane_manifest(dir / "manifest.json");
+  std::map<std::string, std::filesystem::path> payloads;
+  for (const auto& entry : std::filesystem::directory_iterator(dir)) {
+    std::error_code status_error;
+    const auto status = entry.symlink_status(status_error);
+    if (status_error) {
+      throw bundle_error(
+          "cannot stat '" + entry.path().filename().string() +
+          "' inside bundle");
+    }
+    if (std::filesystem::is_symlink(status)) {
+      throw bundle_error(
+          "unexpected link '" + entry.path().filename().string() +
+          "' inside bundle");
+    }
+    if (std::filesystem::is_directory(status)) {
+      throw bundle_error(
+          "unexpected directory '" + entry.path().filename().string() +
+          "' inside bundle");
+    }
+    if (!std::filesystem::is_regular_file(status)) {
+      throw bundle_error(
+          "unexpected non-regular file '" + entry.path().filename().string() +
+          "' inside bundle");
+    }
+    std::string name = entry.path().filename().string();
+    if (name == "manifest.json") {
+      continue;
+    }
+    if (std::none_of(
+            manifest.payloads.begin(),
+            manifest.payloads.end(),
+            [&](const AnePayload& payload) { return payload.path == name; })) {
+      throw bundle_error("unknown payload file '" + name + "' not listed in manifest");
+    }
+    payloads.emplace(std::move(name), entry.path());
+  }
+  return load_bundle_snapshot(dir / "manifest.json", payloads);
 }
 
 } // namespace mlx::core::omarchy::ane

@@ -5,7 +5,10 @@
 
 #include <json.hpp>
 
+#include <algorithm>
 #include <fstream>
+#include <limits>
+#include <map>
 #include <set>
 #include <sstream>
 #include <stdexcept>
@@ -16,7 +19,6 @@ namespace mlx::core::omarchy::ane {
 namespace {
 
 constexpr const char* kManifestName = "manifest.json";
-constexpr int kSupportedManifestVersion = 2;
 
 std::runtime_error manifest_error(const std::string& reason) {
   return std::runtime_error("[omarchy-ane] manifest: " + reason + ".");
@@ -32,8 +34,6 @@ const nlohmann::json& required_field(
   return *found;
 }
 
-// Rejects any key not in `allowed`. Fail closed on unknown fields: a bundle
-// from a newer exporter must not silently drop its new meaning.
 void reject_unknown_fields(
     const nlohmann::json& object,
     const std::vector<const char*>& allowed) {
@@ -63,19 +63,21 @@ std::string require_non_empty_string(
   return value;
 }
 
-uint64_t require_positive_integer(
-    const nlohmann::json& object,
-    const char* field) {
+uint64_t require_unsigned(const nlohmann::json& object, const char* field) {
   const auto& value = required_field(object, field);
   if (!value.is_number_unsigned()) {
     throw manifest_error(
         std::string("field '") + field + "' must be a non-negative integer");
   }
-  uint64_t parsed = value.get<uint64_t>();
-  if (parsed == 0) {
+  return value.get<uint64_t>();
+}
+
+uint64_t require_positive(const nlohmann::json& object, const char* field) {
+  uint64_t value = require_unsigned(object, field);
+  if (value == 0) {
     throw manifest_error(std::string("field '") + field + "' must be positive");
   }
-  return parsed;
+  return value;
 }
 
 bool is_lower_hex(const std::string& value, size_t length) {
@@ -83,16 +85,14 @@ bool is_lower_hex(const std::string& value, size_t length) {
     return false;
   }
   for (char c : value) {
-    bool digit = (c >= '0' && c <= '9');
-    bool lower = (c >= 'a' && c <= 'f');
-    if (!digit && !lower) {
+    if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'))) {
       return false;
     }
   }
   return true;
 }
 
-std::string require_hex_field(
+std::string require_hex(
     const nlohmann::json& object,
     const char* field,
     size_t length,
@@ -106,41 +106,59 @@ std::string require_hex_field(
   return value;
 }
 
-std::vector<uint64_t> require_positive_shape(
+uint64_t checked_mul(uint64_t lhs, uint64_t rhs, const std::string& field) {
+  if (lhs != 0 && rhs > std::numeric_limits<uint64_t>::max() / lhs) {
+    throw manifest_error(field + " geometry overflows uint64");
+  }
+  return lhs * rhs;
+}
+
+uint64_t checked_add(uint64_t lhs, uint64_t rhs, const std::string& field) {
+  if (rhs > std::numeric_limits<uint64_t>::max() - lhs) {
+    throw manifest_error(field + " range overflows uint64");
+  }
+  return lhs + rhs;
+}
+
+uint64_t dtype_size(const std::string& dtype) {
+  if (dtype == "float16" || dtype == "bfloat16") return 2;
+  if (dtype == "float32" || dtype == "int32") return 4;
+  if (dtype == "uint8") return 1;
+  return 0;
+}
+
+std::vector<uint64_t> require_shape(
     const nlohmann::json& object,
-    const char* field) {
+    const char* field,
+    const std::string& where) {
   const auto& value = required_field(object, field);
   if (!value.is_array() || value.empty()) {
-    throw manifest_error(std::string("field '") + field + "' must be a non-empty array");
+    throw manifest_error(where + " field '" + field + "' must be a non-empty array");
   }
   std::vector<uint64_t> shape;
   for (const auto& dim : value) {
     if (!dim.is_number_unsigned() || dim.get<uint64_t>() == 0) {
-      throw manifest_error(
-          std::string("field '") + field + "' must contain positive integers");
+      throw manifest_error(where + " field '" + field + "' must contain positive integers");
     }
     shape.push_back(dim.get<uint64_t>());
   }
   return shape;
 }
 
-uint64_t dtype_size(const std::string& dtype) {
-  if (dtype == "float16") return 2;
-  if (dtype == "float32") return 4;
-  if (dtype == "bfloat16") return 2;
-  if (dtype == "int32") return 4;
-  if (dtype == "uint8") return 1;
-  return 0;
+uint64_t element_count(
+    const std::vector<uint64_t>& shape,
+    const std::string& where) {
+  uint64_t count = 1;
+  for (uint64_t dim : shape) {
+    count = checked_mul(count, dim, where);
+  }
+  return count;
 }
 
-// Validates one tensor entry and returns it. Checks, in order: object shape,
-// name, dtype, positive shape, byte size against the dtype geometry, and the
-// tile-aligned stride contract.
 AneTensor parse_tensor(
     const nlohmann::json& value,
     const std::string& list_name,
-    size_t position,
-    bool require_aligned_stride) {
+    size_t position) {
   std::string where = list_name + "[" + std::to_string(position) + "]";
   if (!value.is_object()) {
     throw manifest_error(where + " must be an object");
@@ -150,142 +168,442 @@ AneTensor parse_tensor(
 
   AneTensor tensor;
   tensor.name = require_non_empty_string(value, "name");
-  const auto& index = required_field(value, "index");
-  if (!index.is_number_unsigned()) {
-    throw manifest_error(where + " field 'index' must be a non-negative integer");
-  }
-  tensor.index = index.get<uint64_t>();
+  tensor.index = require_unsigned(value, "index");
   tensor.dtype = require_non_empty_string(value, "dtype");
-  tensor.shape = require_positive_shape(value, "shape");
-  tensor.byte_size = require_positive_integer(value, "byte_size");
-  tensor.stride = require_positive_integer(value, "stride");
+  tensor.shape = require_shape(value, "shape", where);
+  tensor.byte_size = require_positive(value, "byte_size");
+  tensor.stride = require_positive(value, "stride");
 
-  uint64_t element_size = dtype_size(tensor.dtype);
-  if (element_size == 0) {
+  uint64_t size = dtype_size(tensor.dtype);
+  if (size == 0) {
+    throw manifest_error(where + " has unsupported dtype '" + tensor.dtype + "'");
+  }
+  uint64_t expected = checked_mul(element_count(tensor.shape, where), size, where);
+  if (tensor.byte_size != expected) {
     throw manifest_error(
-        where + " has unsupported dtype '" + tensor.dtype +
-        "' (expected float16, float32, bfloat16, int32, or uint8)");
+        where + " byte_size " + std::to_string(tensor.byte_size) +
+        " does not match dtype geometry " + std::to_string(expected));
   }
-  uint64_t logical_size = element_size;
-  for (uint64_t dim : tensor.shape) {
-    logical_size *= dim;
-  }
-  if (tensor.byte_size != logical_size) {
-    std::ostringstream expected;
-    expected << where << " byte_size " << tensor.byte_size
-             << " does not match dtype geometry " << logical_size;
-    throw manifest_error(expected.str());
-  }
-  // Descriptor DMAs address inputs, outputs, and state through tile-aligned
-  // rows (KDMA offsets step 0x4000 in the task-layout receipt). The workspace
-  // is a flat scratch buffer whose size the compiler chooses; the
-  // terminal-task receipt records 0x66000, not a 0x4000 multiple.
-  if (require_aligned_stride && tensor.stride % kAneTileAlignment != 0) {
-    std::ostringstream aligned;
-    aligned << where << " stride " << tensor.stride << " is not a multiple of 0x"
-            << std::hex << kAneTileAlignment;
-    throw manifest_error(aligned.str());
-  }
-  if (tensor.stride < tensor.byte_size) {
-    throw manifest_error(where + " stride must be at least byte_size");
+  if (tensor.stride < tensor.byte_size || tensor.stride % kAneTileAlignment != 0) {
+    throw manifest_error(where + " stride must cover byte_size and be 0x4000-aligned");
   }
   return tensor;
 }
 
 std::vector<AneTensor> parse_tensor_list(
-    const nlohmann::json& object,
+    const nlohmann::json& root,
     const char* field,
-    bool require_aligned_stride) {
-  const auto& value = required_field(object, field);
-  if (!value.is_array()) {
-    throw manifest_error(std::string("field '") + field + "' must be an array");
+    bool required_non_empty) {
+  const auto& values = required_field(root, field);
+  if (!values.is_array() || (required_non_empty && values.empty())) {
+    throw manifest_error(
+        std::string("field '") + field + "' must be " +
+        (required_non_empty ? "a non-empty array" : "an array"));
   }
-  std::vector<AneTensor> list;
-  std::set<std::string> names;
+  std::vector<AneTensor> tensors;
   std::set<uint64_t> indices;
-  for (size_t i = 0; i < value.size(); ++i) {
-    AneTensor tensor = parse_tensor(value[i], field, i, require_aligned_stride);
-    if (!names.insert(tensor.name).second) {
-      throw manifest_error(
-          std::string("field '") + field + "' has duplicate tensor name '" +
-          tensor.name + "'");
-    }
+  for (size_t i = 0; i < values.size(); ++i) {
+    AneTensor tensor = parse_tensor(values[i], field, i);
     if (!indices.insert(tensor.index).second) {
-      throw manifest_error(
-          std::string("field '") + field + "' has duplicate tensor index " +
-          std::to_string(tensor.index));
+      throw manifest_error(std::string("field '") + field + "' has duplicate index");
     }
-    list.push_back(std::move(tensor));
+    tensors.push_back(std::move(tensor));
   }
-  return list;
+  return tensors;
 }
 
-AnePayload parse_payload(
+AneLogicalResult parse_logical_result(
     const nlohmann::json& value,
     size_t position) {
+  const std::string where =
+      "logical_results[" + std::to_string(position) + "]";
+  if (!value.is_object()) {
+    throw manifest_error(where + " must be an object");
+  }
+  reject_unknown_fields(
+      value,
+      {"name", "dtype", "shape", "tensor", "element_offset",
+       "element_count", "conversion"});
+
+  AneLogicalResult result;
+  result.name = require_non_empty_string(value, "name");
+  result.dtype = require_non_empty_string(value, "dtype");
+  result.shape = require_shape(value, "shape", where);
+  result.tensor = require_non_empty_string(value, "tensor");
+  result.element_offset = require_unsigned(value, "element_offset");
+  result.element_count = require_positive(value, "element_count");
+  result.conversion = require_non_empty_string(value, "conversion");
+  if (result.conversion != "identity") {
+    throw manifest_error(
+        where + " has unsupported conversion '" + result.conversion + "'");
+  }
+  if (element_count(result.shape, where) != result.element_count) {
+    throw manifest_error(where + " shape does not match element_count");
+  }
+  return result;
+}
+
+std::vector<AneLogicalResult> parse_logical_results(
+    const nlohmann::json& root) {
+  const auto& values = required_field(root, "logical_results");
+  if (!values.is_array() || values.empty()) {
+    throw manifest_error("field 'logical_results' must be a non-empty array");
+  }
+  std::vector<AneLogicalResult> results;
+  results.reserve(values.size());
+  for (size_t i = 0; i < values.size(); ++i) {
+    results.push_back(parse_logical_result(values[i], i));
+  }
+  return results;
+}
+
+void validate_logical_results(const AneManifest& manifest) {
+  struct OutputRecord {
+    const AneTensor* tensor;
+    bool referenced{false};
+  };
+  std::map<std::string, OutputRecord> outputs;
+  for (const auto& output : manifest.outputs) {
+    outputs.emplace(output.name, OutputRecord{&output});
+  }
+  for (size_t i = 0; i < manifest.logical_results.size(); ++i) {
+    const auto& result = manifest.logical_results[i];
+    const std::string where =
+        "logical_results[" + std::to_string(i) + "]";
+    auto found = outputs.find(result.tensor);
+    if (found == outputs.end()) {
+      throw manifest_error(
+          where + " references unknown physical output tensor '" +
+          result.tensor + "'");
+    }
+    const AneTensor& output = *found->second.tensor;
+    found->second.referenced = true;
+    if (result.dtype != output.dtype) {
+      throw manifest_error(
+          where + " dtype does not match physical output tensor '" +
+          result.tensor + "'");
+    }
+    const uint64_t physical_count = element_count(output.shape, where);
+    if (result.element_offset > physical_count ||
+        result.element_count > physical_count - result.element_offset) {
+      throw manifest_error(
+          where + " range exceeds physical output tensor '" +
+          result.tensor + "'");
+    }
+  }
+  for (const auto& [name, output] : outputs) {
+    if (!output.referenced) {
+      throw manifest_error(
+          "logical_results must reference every physical output; missing " + name);
+    }
+  }
+}
+
+AneProgramBinding parse_binding(
+    const nlohmann::json& value,
+    const std::string& where) {
+  if (!value.is_object()) {
+    throw manifest_error(where + " must be an object");
+  }
+  reject_unknown_fields(
+      value,
+      {"tensor", "channel", "dtype", "shape", "nchw", "logical_bytes",
+       "allocation_bytes", "element_offset", "element_count", "physical_elements"});
+
+  AneProgramBinding binding;
+  binding.tensor = require_non_empty_string(value, "tensor");
+  binding.channel = require_unsigned(value, "channel");
+  binding.dtype = require_non_empty_string(value, "dtype");
+  binding.shape = require_shape(value, "shape", where);
+  const auto& nchw = required_field(value, "nchw");
+  if (!nchw.is_array() || nchw.size() != binding.nchw.size()) {
+    throw manifest_error(where + " field 'nchw' must contain exactly 6 integers");
+  }
+  for (size_t i = 0; i < binding.nchw.size(); ++i) {
+    if (!nchw[i].is_number_unsigned() || nchw[i].get<uint64_t>() == 0) {
+      throw manifest_error(where + " field 'nchw' must contain positive integers");
+    }
+    binding.nchw[i] = nchw[i].get<uint64_t>();
+  }
+  binding.logical_bytes = require_positive(value, "logical_bytes");
+  binding.allocation_bytes = require_positive(value, "allocation_bytes");
+  binding.element_offset = require_unsigned(value, "element_offset");
+  binding.element_count = require_positive(value, "element_count");
+  binding.physical_elements = require_positive(value, "physical_elements");
+
+  uint64_t size = dtype_size(binding.dtype);
+  if (size == 0) {
+    throw manifest_error(where + " has unsupported dtype '" + binding.dtype + "'");
+  }
+  uint64_t shape_elements = element_count(binding.shape, where);
+  if (binding.element_count != shape_elements ||
+      binding.logical_bytes != checked_mul(shape_elements, size, where)) {
+    throw manifest_error(where + " logical allocation does not match dtype geometry");
+  }
+  uint64_t physical_elements = 1;
+  for (size_t i = 0; i < 4; ++i) {
+    physical_elements = checked_mul(physical_elements, binding.nchw[i], where);
+  }
+  if (binding.physical_elements != physical_elements) {
+    throw manifest_error(where + " physical_elements does not match NCHW geometry");
+  }
+  if (binding.element_count > binding.physical_elements) {
+    throw manifest_error(where + " element_count exceeds physical_elements");
+  }
+  if (binding.allocation_bytes < binding.logical_bytes ||
+      binding.allocation_bytes % kAneTileAlignment != 0) {
+    throw manifest_error(where + " allocation is smaller than logical data or unaligned");
+  }
+  if (binding.nchw[4] % binding.nchw[5] != 0 ||
+      binding.nchw[5] % size != 0 ||
+      binding.nchw[4] / binding.nchw[5] < binding.nchw[2] ||
+      binding.nchw[5] / size < binding.nchw[3]) {
+    throw manifest_error(where + " NCHW packed tile is smaller than logical data");
+  }
+  uint64_t physical_bytes = checked_mul(
+      checked_mul(binding.nchw[0], binding.nchw[1], where),
+      binding.nchw[4],
+      where);
+  if (physical_bytes > binding.allocation_bytes) {
+    throw manifest_error(where + " NCHW physical bytes exceed allocation_bytes");
+  }
+  return binding;
+}
+
+std::vector<AneProgramBinding> parse_bindings(
+    const nlohmann::json& program,
+    const char* field,
+    size_t program_index,
+    bool require_non_empty) {
+  const auto& values = required_field(program, field);
+  std::string prefix = "programs[" + std::to_string(program_index) + "]." + field;
+  if (!values.is_array() || (require_non_empty && values.empty())) {
+    throw manifest_error(prefix + " must be " +
+                         (require_non_empty ? "a non-empty array" : "an array"));
+  }
+  std::vector<AneProgramBinding> bindings;
+  std::set<uint64_t> channels;
+  for (size_t i = 0; i < values.size(); ++i) {
+    AneProgramBinding binding =
+        parse_binding(values[i], prefix + "[" + std::to_string(i) + "]");
+    if (!channels.insert(binding.channel).second) {
+      throw manifest_error(prefix + " has duplicate channel");
+    }
+    bindings.push_back(std::move(binding));
+  }
+  return bindings;
+}
+
+AneProgram parse_program(const nlohmann::json& value, size_t index) {
+  std::string where = "programs[" + std::to_string(index) + "]";
+  if (!value.is_object()) {
+    throw manifest_error(where + " must be an object");
+  }
+  reject_unknown_fields(
+      value,
+      {"payload", "operation", "encoder", "task_descriptors", "scratch_bytes",
+       "inputs", "outputs"});
+  AneProgram program;
+  program.payload = require_non_empty_string(value, "payload");
+  program.operation = require_non_empty_string(value, "operation");
+  program.encoder = require_non_empty_string(value, "encoder");
+  program.task_descriptors = require_positive(value, "task_descriptors");
+  program.scratch_bytes = require_unsigned(value, "scratch_bytes");
+  program.inputs = parse_bindings(value, "inputs", index, false);
+  program.outputs = parse_bindings(value, "outputs", index, true);
+  return program;
+}
+
+AnePayload parse_payload(const nlohmann::json& value, size_t position) {
   std::string where = "payloads[" + std::to_string(position) + "]";
   if (!value.is_object()) {
     throw manifest_error(where + " must be an object");
   }
   reject_unknown_fields(value, {"role", "path", "sha256", "byte_size"});
-
   AnePayload payload;
   payload.role = require_non_empty_string(value, "role");
-  payload.path = require_non_empty_string(value, "path");
-  payload.sha256 = require_hex_field(value, "sha256", 64, "a sha256 digest");
-  payload.byte_size = require_positive_integer(value, "byte_size");
-
-  std::filesystem::path path(payload.path);
-  if (path.is_absolute() || payload.path.find("..") != std::string::npos) {
-    throw manifest_error(
-        where + " path '" + payload.path +
-        "' must be relative and stay inside the bundle directory");
+  if (payload.role != "anec" && payload.role != "weights") {
+    throw manifest_error(where + " field 'role' must be 'anec' or 'weights'");
   }
+  payload.path = require_non_empty_string(value, "path");
+  std::filesystem::path path(payload.path);
+  if (path.is_absolute() || path.has_parent_path() || path.filename() != path) {
+    throw manifest_error(where + " field 'path' must be a plain filename");
+  }
+  payload.sha256 = require_hex(value, "sha256", 64, "a SHA-256 digest");
+  payload.byte_size = require_positive(value, "byte_size");
   return payload;
 }
 
-// Firmware identifiers are dotted integer versions. The range check matches
-// the inclusive firmware compatibility gate the runtime applies before any
-// device access.
-std::vector<uint64_t> parse_version(const std::string& text) {
-  if (text.empty()) {
-    throw manifest_error("field 'firmware' versions must not be empty");
+void parse_compiler(const nlohmann::json& value, AneManifest& manifest) {
+  if (!value.is_object()) {
+    throw manifest_error("field 'compiler' must be an object");
   }
-  std::vector<uint64_t> parts;
-  size_t start = 0;
-  while (true) {
-    size_t dot = text.find('.', start);
-    std::string part = text.substr(start, dot - start);
-    if (part.empty()) {
-      throw manifest_error(
-          "field 'firmware' version '" + text + "' is not a dotted integer version");
-    }
-    for (char c : part) {
-      if (c < '0' || c > '9') {
-        throw manifest_error(
-            "field 'firmware' version '" + text +
-            "' is not a dotted integer version");
-      }
-    }
-    parts.push_back(std::stoull(part));
-    if (dot == std::string::npos) {
-      break;
-    }
-    start = dot + 1;
+  reject_unknown_fields(value, {"host_build", "toolchain", "target"});
+  manifest.compiler.host_build = require_non_empty_string(value, "host_build");
+  manifest.compiler.toolchain = require_non_empty_string(value, "toolchain");
+  manifest.compiler.target = require_non_empty_string(value, "target");
+  if (manifest.compiler.target != "h13") {
+    throw manifest_error("field 'compiler.target' must be exactly 'h13'");
   }
-  return parts;
 }
 
-void parse_firmware_range(const nlohmann::json& object, AneManifest& manifest) {
-  const auto& value = required_field(object, "firmware");
+void parse_provenance(const nlohmann::json& value, AneManifest& manifest) {
   if (!value.is_object()) {
-    throw manifest_error("field 'firmware' must be an object");
+    throw manifest_error("field 'provenance' must be an object");
   }
-  reject_unknown_fields(value, {"min", "max"});
-  manifest.firmware.min = require_non_empty_string(value, "min");
-  manifest.firmware.max = require_non_empty_string(value, "max");
-  if (parse_version(manifest.firmware.max) < parse_version(manifest.firmware.min)) {
-    throw manifest_error("field 'firmware' range max must be at least min");
+  reject_unknown_fields(value, {"source_repo", "source_commit", "exported_at"});
+  manifest.provenance.source_repo = require_non_empty_string(value, "source_repo");
+  manifest.provenance.source_commit =
+      require_hex(value, "source_commit", 40, "a source commit");
+  manifest.provenance.exported_at = require_non_empty_string(value, "exported_at");
+}
+
+void parse_release(const nlohmann::json& value, AneManifest& manifest) {
+  if (!value.is_object()) {
+    throw manifest_error("field 'release_asset' must be an object");
+  }
+  reject_unknown_fields(value, {"model", "model_sha256"});
+  manifest.release_asset.model = require_non_empty_string(value, "model");
+  manifest.release_asset.model_sha256 =
+      require_hex(value, "model_sha256", 64, "a compiled-payload collection SHA-256 digest");
+}
+
+void validate_bindings(AneManifest& manifest) {
+  struct TensorRecord {
+    const AneTensor* tensor;
+    std::string role;
+    bool read{false};
+    bool written{false};
+  };
+  std::map<std::string, TensorRecord> tensors;
+  auto add = [&](const std::vector<AneTensor>& list, const char* role) {
+    for (const auto& tensor : list) {
+      if (!tensors.emplace(tensor.name, TensorRecord{&tensor, role}).second) {
+        throw manifest_error("tensor name '" + tensor.name + "' appears in multiple roles");
+      }
+    }
+  };
+  add(manifest.inputs, "input");
+  add(manifest.outputs, "output");
+  add(manifest.state, "state");
+  add(manifest.intermediates, "intermediate");
+
+  auto validate = [&](const AneProgramBinding& binding, bool output, const std::string& where) {
+    auto found = tensors.find(binding.tensor);
+    if (found == tensors.end()) {
+      throw manifest_error(where + " references unknown tensor '" + binding.tensor + "'");
+    }
+    TensorRecord& record = found->second;
+    bool role_ok = output ? (record.role != "input") : (record.role != "output");
+    if (!role_ok) {
+      throw manifest_error(where + " uses tensor '" + binding.tensor + "' in the wrong direction");
+    }
+    if (binding.dtype != record.tensor->dtype) {
+      throw manifest_error(where + " dtype does not match tensor '" + binding.tensor + "'");
+    }
+    uint64_t total = element_count(record.tensor->shape, where);
+    uint64_t end = checked_add(binding.element_offset, binding.element_count, where);
+    if (end > total || binding.allocation_bytes > record.tensor->stride) {
+      throw manifest_error(where + " range or allocation exceeds tensor '" + binding.tensor + "'");
+    }
+    record.read = record.read || !output;
+    record.written = record.written || output;
+  };
+
+  uint64_t total_descriptors = 0;
+  std::set<std::string> program_payloads;
+  for (size_t p = 0; p < manifest.programs.size(); ++p) {
+    const AneProgram& program = manifest.programs[p];
+    total_descriptors = checked_add(total_descriptors, program.task_descriptors, "task_descriptors");
+    if (!program_payloads.insert(program.payload).second) {
+      throw manifest_error("program payload '" + program.payload + "' is referenced more than once");
+    }
+    for (size_t i = 0; i < program.inputs.size(); ++i) {
+      validate(program.inputs[i], false,
+               "programs[" + std::to_string(p) + "].inputs[" + std::to_string(i) + "]");
+    }
+    for (size_t i = 0; i < program.outputs.size(); ++i) {
+      validate(program.outputs[i], true,
+               "programs[" + std::to_string(p) + "].outputs[" + std::to_string(i) + "]");
+    }
+  }
+  if (total_descriptors != manifest.task_descriptors) {
+    throw manifest_error("field 'task_descriptors' does not equal the program total");
+  }
+
+  std::set<std::string> anec_payloads;
+  for (const auto& payload : manifest.payloads) {
+    if (payload.role == "anec") {
+      anec_payloads.insert(payload.path);
+    }
+  }
+  if (anec_payloads != program_payloads) {
+    throw manifest_error("program payload mapping does not bind every ANEC payload exactly once");
+  }
+
+  for (const auto& [name, record] : tensors) {
+    if ((record.role == "input" && !record.read) ||
+        (record.role == "output" && !record.written) ||
+        ((record.role == "state" || record.role == "intermediate") &&
+         (!record.read || !record.written))) {
+      throw manifest_error("tensor '" + name + "' is not fully bound for role '" + record.role + "'");
+    }
+  }
+
+  using Range = std::pair<uint64_t, uint64_t>;
+  std::map<std::string, std::vector<Range>> available;
+  auto add_range = [&](const std::string& name, uint64_t begin, uint64_t end) {
+    auto& ranges = available[name];
+    ranges.emplace_back(begin, end);
+    std::sort(ranges.begin(), ranges.end());
+    std::vector<Range> merged;
+    for (const Range& range : ranges) {
+      if (merged.empty() || range.first > merged.back().second) {
+        merged.push_back(range);
+      } else {
+        merged.back().second = std::max(merged.back().second, range.second);
+      }
+    }
+    ranges = std::move(merged);
+  };
+  auto add_tensor = [&](const AneTensor& tensor) {
+    add_range(tensor.name, 0, element_count(tensor.shape, tensor.name));
+  };
+  for (const auto& tensor : manifest.inputs) add_tensor(tensor);
+  for (const auto& tensor : manifest.state) add_tensor(tensor);
+  for (uint64_t program_index : manifest.dispatch_plan) {
+    const AneProgram& program = manifest.programs[program_index];
+    for (const auto& binding : program.inputs) {
+      uint64_t end = binding.element_offset + binding.element_count;
+      bool covered = false;
+      for (const Range& range : available[binding.tensor]) {
+        covered = covered ||
+            (range.first <= binding.element_offset && range.second >= end);
+      }
+      if (!covered) {
+        throw manifest_error(
+            "dispatch_plan reads tensor '" + binding.tensor + "' before its range is written");
+      }
+    }
+    for (const auto& binding : program.outputs) {
+      add_range(
+          binding.tensor,
+          binding.element_offset,
+          binding.element_offset + binding.element_count);
+    }
+  }
+  for (const auto& output : manifest.outputs) {
+    const uint64_t total = element_count(output.shape, output.name);
+    auto found = available.find(output.name);
+    bool complete = found != available.end() &&
+        std::any_of(
+            found->second.begin(),
+            found->second.end(),
+            [&](const Range& range) { return range.first == 0 && range.second >= total; });
+    if (!complete) {
+      throw manifest_error("output tensor '" + output.name + "' is not fully written");
+    }
   }
 }
 
@@ -298,136 +616,96 @@ AneManifest parse_ane_manifest(const std::filesystem::path& manifest_path) {
         std::string("cannot open ") + kManifestName + " at " +
         manifest_path.parent_path().string());
   }
+
   nlohmann::json root;
   try {
     input >> root;
   } catch (const nlohmann::json::exception& error) {
-    throw manifest_error(std::string("invalid JSON (") + error.what() + ")");
+    throw manifest_error(std::string("invalid JSON: ") + error.what());
   }
   if (!root.is_object()) {
-    throw manifest_error("root must be a JSON object");
+    throw manifest_error("root must be an object");
   }
   reject_unknown_fields(
       root,
-      {"manifest_version",
-       "name",
-       "graph_hash",
-       "task_descriptors",
-       "inputs",
-       "outputs",
-       "state",
-       "workspace",
-       "payloads",
-       "compiler",
-       "firmware",
-       "provenance",
-       "release_asset"});
+      {"manifest_version", "name", "graph_hash", "task_descriptors", "inputs",
+       "outputs", "logical_results", "state", "intermediates", "programs",
+       "dispatch_plan", "payloads", "compiler", "driver_abi_major",
+       "provenance", "release_asset"});
 
   AneManifest manifest;
   const auto& version = required_field(root, "manifest_version");
-  if (!version.is_number_integer()) {
-    throw manifest_error("field 'manifest_version' must be an integer");
-  }
-  if (version.get<int64_t>() != kSupportedManifestVersion) {
+  bool supported_version =
+      (version.is_number_unsigned() && version.get<uint64_t>() == kAneManifestVersion) ||
+      (version.is_number_integer() && !version.is_number_unsigned() &&
+       version.get<int64_t>() == kAneManifestVersion);
+  if (!supported_version) {
     throw manifest_error(
-        "unsupported manifest_version " + version.dump() + " (expected " +
-        std::to_string(kSupportedManifestVersion) + ")");
+        "unsupported manifest_version (expected " +
+        std::to_string(kAneManifestVersion) + ")");
   }
-  manifest.manifest_version = version.get<int>();
+  manifest.manifest_version = kAneManifestVersion;
   manifest.name = require_non_empty_string(root, "name");
-  manifest.graph_hash =
-      require_hex_field(root, "graph_hash", 64, "a sha256 digest");
-  manifest.task_descriptors = require_positive_integer(root, "task_descriptors");
-
+  manifest.graph_hash = require_hex(root, "graph_hash", 64, "a graph SHA-256 digest");
+  manifest.task_descriptors = require_positive(root, "task_descriptors");
   manifest.inputs = parse_tensor_list(root, "inputs", true);
-  if (manifest.inputs.empty()) {
-    throw manifest_error("field 'inputs' must list at least one tensor");
-  }
   manifest.outputs = parse_tensor_list(root, "outputs", true);
-  if (manifest.outputs.empty()) {
-    throw manifest_error("field 'outputs' must list at least one tensor");
+  manifest.logical_results = parse_logical_results(root);
+  manifest.state = parse_tensor_list(root, "state", false);
+  manifest.intermediates = parse_tensor_list(root, "intermediates", false);
+
+  const auto& programs = required_field(root, "programs");
+  if (!programs.is_array() || programs.empty()) {
+    throw manifest_error("field 'programs' must be a non-empty array");
   }
-  manifest.state = parse_tensor_list(root, "state", true);
-  // The workspace is the scratch buffer bound at submit time. Grounded in the
-  // terminal-task receipt: workspace binds as its own buffer (0x66000), and
-  // submission requires it before enqueue.
-  manifest.workspace = parse_tensor_list(root, "workspace", false);
-  if (manifest.workspace.size() != 1) {
-    throw manifest_error("field 'workspace' must list exactly one tensor");
+  for (size_t i = 0; i < programs.size(); ++i) {
+    manifest.programs.push_back(parse_program(programs[i], i));
+  }
+
+  const auto& dispatch = required_field(root, "dispatch_plan");
+  if (!dispatch.is_array() || dispatch.size() != manifest.programs.size()) {
+    throw manifest_error("field 'dispatch_plan' must contain every program exactly once");
+  }
+  std::set<uint64_t> dispatched;
+  for (const auto& index : dispatch) {
+    if (!index.is_number_unsigned() || index.get<uint64_t>() >= manifest.programs.size() ||
+        !dispatched.insert(index.get<uint64_t>()).second) {
+      throw manifest_error("field 'dispatch_plan' must be a permutation of program indices");
+    }
+    manifest.dispatch_plan.push_back(index.get<uint64_t>());
   }
 
   const auto& payloads = required_field(root, "payloads");
   if (!payloads.is_array() || payloads.empty()) {
     throw manifest_error("field 'payloads' must be a non-empty array");
   }
+  std::set<std::string> paths;
   size_t anec_count = 0;
   size_t weights_count = 0;
-  std::set<std::string> paths;
   for (size_t i = 0; i < payloads.size(); ++i) {
     AnePayload payload = parse_payload(payloads[i], i);
-    if (payload.role == "anec") {
-      ++anec_count;
-    } else if (payload.role == "weights") {
-      ++weights_count;
-    } else {
-      throw manifest_error(
-          "payloads[" + std::to_string(i) + "] has unknown role '" + payload.role +
-          "' (expected anec or weights)");
-    }
     if (!paths.insert(payload.path).second) {
-      throw manifest_error(
-          "field 'payloads' has duplicate path '" + payload.path + "'");
+      throw manifest_error("duplicate payload path '" + payload.path + "'");
     }
+    anec_count += payload.role == "anec";
+    weights_count += payload.role == "weights";
     manifest.payloads.push_back(std::move(payload));
   }
-  if (anec_count != 1) {
-    throw manifest_error("field 'payloads' must list exactly one 'anec' payload");
-  }
-  if (weights_count > 1) {
-    throw manifest_error("field 'payloads' must list at most one 'weights' payload");
+  if (anec_count == 0 || weights_count > 1) {
+    throw manifest_error("payloads require at least one ANEC and at most one weights file");
   }
 
-  const auto& compiler = required_field(root, "compiler");
-  if (!compiler.is_object()) {
-    throw manifest_error("field 'compiler' must be an object");
-  }
-  reject_unknown_fields(compiler, {"host_build", "toolchain", "target"});
-  manifest.compiler.host_build = require_non_empty_string(compiler, "host_build");
-  manifest.compiler.toolchain = require_non_empty_string(compiler, "toolchain");
-  manifest.compiler.target = require_non_empty_string(compiler, "target");
-  if (manifest.compiler.target != "h13") {
-    throw manifest_error("unsupported compiler target " + manifest.compiler.target +
-                         " (expected h13)");
-  }
-
-  parse_firmware_range(root, manifest);
-
-  const auto& provenance = required_field(root, "provenance");
-  if (!provenance.is_object()) {
-    throw manifest_error("field 'provenance' must be an object");
-  }
-  reject_unknown_fields(provenance, {"source_repo", "source_commit", "exported_at"});
-  manifest.provenance.source_repo =
-      require_non_empty_string(provenance, "source_repo");
-  manifest.provenance.source_commit =
-      require_hex_field(provenance, "source_commit", 40, "a git commit hash");
-  manifest.provenance.exported_at = require_non_empty_string(provenance, "exported_at");
-  if (manifest.provenance.exported_at.size() != 10 ||
-      manifest.provenance.exported_at[4] != '-' ||
-      manifest.provenance.exported_at[7] != '-') {
+  parse_compiler(required_field(root, "compiler"), manifest);
+  manifest.driver_abi_major = require_unsigned(root, "driver_abi_major");
+  if (manifest.driver_abi_major != kAneDriverAbiMajor) {
     throw manifest_error(
-        "field 'provenance' exported_at must have the form YYYY-MM-DD");
+        "unsupported driver_abi_major " + std::to_string(manifest.driver_abi_major) +
+        " (expected " + std::to_string(kAneDriverAbiMajor) + ")");
   }
-
-  const auto& release_asset = required_field(root, "release_asset");
-  if (!release_asset.is_object()) {
-    throw manifest_error("field 'release_asset' must be an object");
-  }
-  reject_unknown_fields(release_asset, {"model", "model_sha256"});
-  manifest.release_asset.model = require_non_empty_string(release_asset, "model");
-  manifest.release_asset.model_sha256 =
-      require_hex_field(release_asset, "model_sha256", 64, "a sha256 digest");
-
+  parse_provenance(required_field(root, "provenance"), manifest);
+  parse_release(required_field(root, "release_asset"), manifest);
+  validate_logical_results(manifest);
+  validate_bindings(manifest);
   return manifest;
 }
 
