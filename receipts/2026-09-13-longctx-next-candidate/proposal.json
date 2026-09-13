@@ -79,8 +79,8 @@
   "future_hardware_acceptance": {
     "requires_new_main_grant": true,
     "control_commit": "e4d079c883b8606dddef7720bd302c5756be0692",
-    "candidate_commit": null,
-    "candidate_commit_status": "set only after offline exactness qualification",
+    "candidate_commit": "2278ca259618c51cd5ec99fa68c272ffe55b69a5",
+    "candidate_commit_status": "offline exact-word qualified; parent hardware grant still required",
     "workload": "mlx-community/Qwen2.5-0.5B-Instruct-bf16 snapshot 56d07e766edd7159fbe12ed12d9cf114bf38bf1e, ctx1024, 1053 prompt tokens, 32 generated tokens",
     "strict_output_digest": "ff502900d2a179a5",
     "matrix_order": [

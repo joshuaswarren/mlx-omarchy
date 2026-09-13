@@ -20,6 +20,7 @@ assert proposal["fallback_model"] is None
 candidate = proposal["selected_candidate"]
 assert candidate["status"] == "offline_exact_word_qualified_pending_hardware_grant"
 assert candidate["candidate_commit"] == "2278ca259618c51cd5ec99fa68c272ffe55b69a5"
+assert proposal["future_hardware_acceptance"]["candidate_commit"] == candidate["candidate_commit"]
 candidate_shader = subprocess.check_output(
     [
         "git",
