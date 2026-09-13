@@ -110,3 +110,23 @@ def test_loader_rejects_non_regular_package_entry(tmp_path):
 
     with pytest.raises(ValueError, match="non-regular entry"):
         load_pinned_component(target, "joint")
+
+
+def test_loader_authenticates_exact_weight_bytes_it_decodes(tmp_path, monkeypatch):
+    target = _package_copy(tmp_path)
+    weight_path = target / "Data/com.apple.CoreML/weights/weight.bin"
+    original_read = Path.read_bytes
+    original = original_read(weight_path)
+    _, _, _, payload_offset = struct.unpack("<IIQQ", original[64:88])
+
+    def altered_read(path):
+        data = original_read(path)
+        if path == weight_path:
+            changed = bytearray(data)
+            changed[payload_offset] ^= 1
+            return bytes(changed)
+        return data
+
+    monkeypatch.setattr(Path, "read_bytes", altered_read)
+    with pytest.raises(ValueError, match="weight.bin.*differs"):
+        load_pinned_component(target, "joint")
