@@ -1,0 +1,9 @@
+=== baseline ===
+3353:5: error [h13.unsupported-logical-result-conversion]: H13 logical result conversions require explicit hardware or GPU coverage
+exit=65
+=== full peel ===
+156:5: error [h13.unsupported-logical-result-conversion]: H13 logical result conversions require explicit hardware or GPU coverage
+exit=65
+=== hidden-only ===
+36:5: error [h13.invalid-shape-alias]: H13 shape aliases require static fp16 input and result shapes with equal element counts and constant shape parameters
+exit=65
