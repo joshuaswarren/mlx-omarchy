@@ -169,7 +169,7 @@ EOF
   omarchy-menu refresh >/dev/null 2>&1 || true
 fi
 
-# 6. Smoke test on the real GPU: import, device, one matmul.
+# 6. Smoke test on the real GPU: import, device, one matmul. Always runs.
 say "Smoke test"
 "$VENV/bin/python" - <<'EOF'
 import mlx.core as mx
@@ -182,6 +182,80 @@ assert mx.isfinite(c).item(), "matmul produced a non-finite result"
 print(f"  device: {info.get('device_name', info)}")
 print(f"  mlx-omarchy {mx.__version__}: matmul OK")
 EOF
+
+# 7. ANE smoke only when the accelerator node exists. Missing accel0 is a
+#    GPU-only success. Present accel0 without an FDT ANE node or loaded
+#    ane module refuses the install. This never installs kmod-ane.
+if [[ -c "${MLX_OMARCHY_ACCEL_DEV:-/dev/accel/accel0}" ]]; then
+  say "ANE smoke"
+  "$VENV/bin/python" - <<'ANE_SMOKE' || die "ANE smoke failed"
+import os
+import stat
+import sys
+
+accel = os.environ.get("MLX_OMARCHY_ACCEL_DEV", "/dev/accel/accel0")
+sysroot = os.environ.get("MLX_OMARCHY_SYSROOT", "/")
+try:
+    status = os.stat(accel, follow_symlinks=False)
+except OSError as exc:
+    raise SystemExit(f"ANE smoke: cannot stat {accel}: {exc}") from exc
+if not stat.S_ISCHR(status.st_mode):
+    raise SystemExit("ANE smoke: accel0 is not a character device")
+dt = (
+    "/sys/firmware/devicetree/base"
+    if sysroot in ("", "/")
+    else os.path.join(sysroot, "sys/firmware/devicetree/base")
+)
+module = (
+    "/sys/module/ane"
+    if sysroot in ("", "/")
+    else os.path.join(sysroot, "sys/module/ane")
+)
+
+def ane_fdt(base):
+    matches = []
+    if not os.path.isdir(base):
+        return False, None
+    for dirpath, _dirs, _files in os.walk(base):
+        name = os.path.basename(dirpath)
+        named = name == "ane" or name.startswith("ane@")
+        tokens = []
+        try:
+            with open(os.path.join(dirpath, "compatible"), "rb") as fh:
+                tokens = [t.decode("utf-8", "replace") for t in fh.read().split(b"\0") if t]
+        except OSError:
+            pass
+        hit = [t for t in tokens if t == "apple,ane" or t.endswith("-ane")]
+        if named or hit:
+            matches.extend(hit or tokens or [name])
+    if not matches:
+        return False, None
+    return True, sorted(set(matches))[:8]
+
+fdt_node, compatible = ane_fdt(dt)
+module_present = os.path.isdir(module)
+version = None
+if module_present:
+    try:
+        with open(os.path.join(module, "version"), encoding="utf-8") as fh:
+            version = fh.read().strip() or None
+    except OSError:
+        version = None
+print(
+    "  ANE fdt: "
+    + ("yes" if fdt_node else "no")
+    + " compatible="
+    + (",".join(compatible or []) or "none")
+)
+print("  ANE module: " + ("yes" if module_present else "no") + (f" ({version})" if version else ""))
+print("  ANE accel0: yes")
+if not (fdt_node and module_present):
+    raise SystemExit("ANE smoke failed: missing FDT node or ane module")
+print("  ANE smoke OK")
+ANE_SMOKE
+else
+  echo "  ANE: unavailable (no /dev/accel/accel0); GPU-only install"
+fi
 
 say "Done."
 echo "  Run the demo:        mlx-omarchy-demo      (also in the Omarchy app launcher as 'MLX Chat')"
