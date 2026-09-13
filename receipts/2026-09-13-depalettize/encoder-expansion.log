@@ -1,0 +1,9 @@
+before: total=3351 types=29 constexpr_lut_to_dense=194 const=1783
+expanded 194 ops in 13.6s; 1016332288 dense bytes total
+after:  total=3351 types=28 constexpr_lut_to_dense=0 const=1977
+cross-check encoder_layers_0_feed_forward1_linear1_weight_to_fp16_palett shape=[4096, 1024] lut=[256, 1, 16, 1] exact=True
+cross-check encoder_layers_17_feed_forward1_linear1_weight_to_fp16_palet shape=[4096, 1024] lut=[256, 1, 16, 1] exact=True
+cross-check encoder_layers_2_feed_forward1_linear1_weight_to_fp16_palett shape=[4096, 1024] lut=[256, 1, 16, 1] exact=True
+sanity: first expanded tensor finite=True max_abs=4.1641
+weight.bin after expansion: 1460361472 bytes
+ENCODER-EXPANSION: PASS

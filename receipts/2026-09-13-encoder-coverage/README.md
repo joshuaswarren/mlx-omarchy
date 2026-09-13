@@ -64,11 +64,12 @@ the mlx-omarchy Core ML frontend owns package-level weight semantics).
 
 The 485 unsupported ops cluster into three work streams:
 
-1. **Weight palettization (194 ops)** — every
-   `constexpr_lut_to_dense` expands palettized weights. The frontend
-   can pre-expand them to dense fp16 consts at package-conversion
-   time; this needs no H13 work and unblocks 194 ops plus their
-   dependent consts. Cheapest first move.
+1. **Weight palettization (194 ops)** — IMPLEMENTED 2026-09-13 in the
+   mlx-omarchy frontend (`overlay/tools/coreml/depalettize.py`, receipt
+   `receipts/2026-09-13-depalettize/`): byte-exact pre-expansion to
+   dense fp16 consts, verified on the real encoder (194/194 ops,
+   histogram `constexpr_lut_to_dense` 194 → 0, `const` 1783 → 1977).
+   No H13 work was needed.
 2. **Layout/data movement (146 + 48 + 24 + 1 = 219 ops)** —
    `transpose`, `slice_by_index`, `pad`, `tile`. `transpose` is
    already IR-known; the others need registry entries plus H13
