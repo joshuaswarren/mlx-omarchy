@@ -142,13 +142,18 @@ TEST_CASE("ANE build worker fallback is restricted to the exact build library") 
   const auto installed_library = root / "installed/mlx/lib/libmlx.so";
   const auto build_library = root / "build/libmlx.so";
   const auto build_worker = root / "build/mlx-omarchy-ane-worker";
+  const auto installed_worker = detail::installed_worker_path(installed_library);
+  const auto stale_derived_worker = detail::installed_worker_path(build_library);
   std::filesystem::remove_all(root);
   std::filesystem::create_directories(installed_library.parent_path());
   std::filesystem::create_directories(build_library.parent_path());
+  std::filesystem::create_directories(stale_derived_worker.parent_path());
   std::ofstream(installed_library).put('i');
   std::ofstream(build_library).put('b');
   std::ofstream(build_worker).put('w');
+  std::ofstream(stale_derived_worker).put('s');
   REQUIRE(::chmod(build_worker.c_str(), 0700) == 0);
+  REQUIRE(::chmod(stale_derived_worker.c_str(), 0700) == 0);
 
   CHECK_THROWS_WITH_AS(
       detail::worker_executable_path(
@@ -162,7 +167,24 @@ TEST_CASE("ANE build worker fallback is restricted to the exact build library") 
           std::filesystem::canonical(build_library),
           build_library,
           build_worker) == std::filesystem::canonical(build_worker));
+  std::filesystem::remove(build_worker);
+  CHECK_THROWS_WITH_AS(
+      detail::worker_executable_path(
+          std::filesystem::canonical(build_library),
+          build_library,
+          build_worker),
+      "[omarchy-ane] runtime: private ANE worker executable not found.",
+      std::runtime_error);
 
+  std::filesystem::create_directories(installed_worker.parent_path());
+  std::ofstream(installed_worker).put('w');
+  REQUIRE(::chmod(installed_worker.c_str(), 0700) == 0);
+  std::filesystem::remove(build_library);
+  CHECK(
+      detail::worker_executable_path(
+          std::filesystem::canonical(installed_library),
+          build_library,
+          build_worker) == std::filesystem::canonical(installed_worker));
   std::filesystem::remove_all(root);
 }
 TEST_CASE("ANE worker descriptors stay above every fixed child destination") {

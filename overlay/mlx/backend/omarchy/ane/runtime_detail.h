@@ -49,26 +49,28 @@ inline std::filesystem::path worker_executable_path(
     const std::filesystem::path& loaded_library,
     const std::filesystem::path& build_library,
     const std::filesystem::path& build_worker) {
-  const auto installed_worker = installed_worker_path(loaded_library);
   std::error_code error;
-  auto worker = std::filesystem::canonical(installed_worker, error);
-  if (!error && ::access(worker.c_str(), X_OK) == 0) {
-    return worker;
-  }
-
-  error.clear();
   const auto loaded_image = std::filesystem::canonical(loaded_library, error);
   if (error) {
     throw runtime_error("private ANE worker executable not found");
   }
+
   error.clear();
   const auto build_image = std::filesystem::canonical(build_library, error);
   if (!error && loaded_image == build_image) {
     error.clear();
-    worker = std::filesystem::canonical(build_worker, error);
+    const auto worker = std::filesystem::canonical(build_worker, error);
     if (!error && ::access(worker.c_str(), X_OK) == 0) {
       return worker;
     }
+    throw runtime_error("private ANE worker executable not found");
+  }
+
+  error.clear();
+  const auto worker = std::filesystem::canonical(
+      installed_worker_path(loaded_image), error);
+  if (!error && ::access(worker.c_str(), X_OK) == 0) {
+    return worker;
   }
   throw runtime_error("private ANE worker executable not found");
 }
