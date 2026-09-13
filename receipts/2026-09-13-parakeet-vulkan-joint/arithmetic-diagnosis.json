@@ -1,0 +1,469 @@
+{
+  "artifact_evidence": {
+    "capture_file_count": 175,
+    "compiled_compute_plan_artifacts": [],
+    "compiled_compute_plan_available": false,
+    "mil_linear_contract": {
+      "accumulator_precision_or_reduction_order_declared": false,
+      "attribute_keys": [
+        "name"
+      ],
+      "bias_dtype": "float16",
+      "input_dtype": "FLOAT16",
+      "input_names": {
+        "bias": [
+          "head_bias_to_fp16"
+        ],
+        "weight": [
+          "head_weight_to_fp16"
+        ],
+        "x": [
+          "input_cast_fp16"
+        ]
+      },
+      "output_dtype": "FLOAT16",
+      "weight_dtype": "float16"
+    },
+    "source_package_files": [
+      "Data/com.apple.CoreML/model.mlmodel",
+      "Data/com.apple.CoreML/weights/weight.bin",
+      "Manifest.json"
+    ]
+  },
+  "candidates": {
+    "balanced_tree_fp16_then_fp16_bias": {
+      "duration_decisions_matching": 16,
+      "duration_logits": {
+        "actual_dtype": "<f4",
+        "actual_inf_count": 0,
+        "actual_nan_count": 0,
+        "actual_raw_bitpattern_sha256": "4601f716f116e67674600c8e1a7d3d399c346de28adde405abd961cf14dfe27b",
+        "actual_shape": [
+          16,
+          5
+        ],
+        "bit_exact": false,
+        "different_bitpatterns": 39,
+        "element_count": 80,
+        "golden_dtype": "<f4",
+        "golden_inf_count": 0,
+        "golden_nan_count": 0,
+        "golden_raw_bitpattern_sha256": "e345114c3397c1cad2fb783e73734cc9f2c75d629227b794e743a0651ce365a3",
+        "golden_shape": [
+          16,
+          5
+        ],
+        "max_absolute_error": 0.015625,
+        "mean_absolute_error": 0.00283203125,
+        "relative_l2_error": 0.00044194183053883915
+      },
+      "mechanism": "Products and every level of a balanced binary reduction rounded to fp16, then bias added in fp16.",
+      "token_decisions_matching": 16,
+      "token_logits": {
+        "actual_dtype": "<f4",
+        "actual_inf_count": 0,
+        "actual_nan_count": 0,
+        "actual_raw_bitpattern_sha256": "ca1da8db67d1fa5cb1ac4e341cfbabd30fee61a25f28660c9da279a060687923",
+        "actual_shape": [
+          16,
+          8193
+        ],
+        "bit_exact": false,
+        "different_bitpatterns": 53364,
+        "element_count": 131088,
+        "golden_dtype": "<f4",
+        "golden_inf_count": 0,
+        "golden_nan_count": 0,
+        "golden_raw_bitpattern_sha256": "88e41f138998fefa04417682c7718dee9a18666826afb5d0750ca74802d7e77f",
+        "golden_shape": [
+          16,
+          8193
+        ],
+        "max_absolute_error": 0.125,
+        "mean_absolute_error": 0.015504250141722546,
+        "relative_l2_error": 0.000500753737124371
+      }
+    },
+    "baseline_fp16_matmul_then_fp16_bias": {
+      "duration_decisions_matching": 16,
+      "duration_logits": {
+        "actual_dtype": "<f4",
+        "actual_inf_count": 0,
+        "actual_nan_count": 0,
+        "actual_raw_bitpattern_sha256": "b79a57b12640ccebf7f37b06667b0a2c34075d7dacaf6af9a424a2a519bcf847",
+        "actual_shape": [
+          16,
+          5
+        ],
+        "bit_exact": false,
+        "different_bitpatterns": 33,
+        "element_count": 80,
+        "golden_dtype": "<f4",
+        "golden_inf_count": 0,
+        "golden_nan_count": 0,
+        "golden_raw_bitpattern_sha256": "e345114c3397c1cad2fb783e73734cc9f2c75d629227b794e743a0651ce365a3",
+        "golden_shape": [
+          16,
+          5
+        ],
+        "max_absolute_error": 0.015625,
+        "mean_absolute_error": 0.002264404296875,
+        "relative_l2_error": 0.0004050075558492747
+      },
+      "mechanism": "MLX fp16 matmul rounded to fp16, followed by a separate fp16 bias add.",
+      "token_decisions_matching": 16,
+      "token_logits": {
+        "actual_dtype": "<f4",
+        "actual_inf_count": 0,
+        "actual_nan_count": 0,
+        "actual_raw_bitpattern_sha256": "30284d975e02603bd44c95f4f9598e39ac928dd22f66a41e89c1549ea76c3948",
+        "actual_shape": [
+          16,
+          8193
+        ],
+        "bit_exact": false,
+        "different_bitpatterns": 43692,
+        "element_count": 131088,
+        "golden_dtype": "<f4",
+        "golden_inf_count": 0,
+        "golden_nan_count": 0,
+        "golden_raw_bitpattern_sha256": "88e41f138998fefa04417682c7718dee9a18666826afb5d0750ca74802d7e77f",
+        "golden_shape": [
+          16,
+          8193
+        ],
+        "max_absolute_error": 0.125,
+        "mean_absolute_error": 0.011879949710547495,
+        "relative_l2_error": 0.0004178244055096587
+      }
+    },
+    "explicit_fp32_dot_then_fp16_bias": {
+      "duration_decisions_matching": 16,
+      "duration_logits": {
+        "actual_dtype": "<f4",
+        "actual_inf_count": 0,
+        "actual_nan_count": 0,
+        "actual_raw_bitpattern_sha256": "b79a57b12640ccebf7f37b06667b0a2c34075d7dacaf6af9a424a2a519bcf847",
+        "actual_shape": [
+          16,
+          5
+        ],
+        "bit_exact": false,
+        "different_bitpatterns": 33,
+        "element_count": 80,
+        "golden_dtype": "<f4",
+        "golden_inf_count": 0,
+        "golden_nan_count": 0,
+        "golden_raw_bitpattern_sha256": "e345114c3397c1cad2fb783e73734cc9f2c75d629227b794e743a0651ce365a3",
+        "golden_shape": [
+          16,
+          5
+        ],
+        "max_absolute_error": 0.015625,
+        "mean_absolute_error": 0.002264404296875,
+        "relative_l2_error": 0.0004050075558492747
+      },
+      "mechanism": "Operands widened to fp32 for the dot product, dot rounded to fp16, then bias added in fp16.",
+      "token_decisions_matching": 16,
+      "token_logits": {
+        "actual_dtype": "<f4",
+        "actual_inf_count": 0,
+        "actual_nan_count": 0,
+        "actual_raw_bitpattern_sha256": "30284d975e02603bd44c95f4f9598e39ac928dd22f66a41e89c1549ea76c3948",
+        "actual_shape": [
+          16,
+          8193
+        ],
+        "bit_exact": false,
+        "different_bitpatterns": 43692,
+        "element_count": 131088,
+        "golden_dtype": "<f4",
+        "golden_inf_count": 0,
+        "golden_nan_count": 0,
+        "golden_raw_bitpattern_sha256": "88e41f138998fefa04417682c7718dee9a18666826afb5d0750ca74802d7e77f",
+        "golden_shape": [
+          16,
+          8193
+        ],
+        "max_absolute_error": 0.125,
+        "mean_absolute_error": 0.011879949710547495,
+        "relative_l2_error": 0.0004178244055096587
+      }
+    },
+    "fp16_products_fp32_reduce_then_fp16_bias": {
+      "duration_decisions_matching": 16,
+      "duration_logits": {
+        "actual_dtype": "<f4",
+        "actual_inf_count": 0,
+        "actual_nan_count": 0,
+        "actual_raw_bitpattern_sha256": "f7bc2aea4834465114e2c1d219536812b6404da9e31aeffa33c4edc6e5e95f04",
+        "actual_shape": [
+          16,
+          5
+        ],
+        "bit_exact": false,
+        "different_bitpatterns": 29,
+        "element_count": 80,
+        "golden_dtype": "<f4",
+        "golden_inf_count": 0,
+        "golden_nan_count": 0,
+        "golden_raw_bitpattern_sha256": "e345114c3397c1cad2fb783e73734cc9f2c75d629227b794e743a0651ce365a3",
+        "golden_shape": [
+          16,
+          5
+        ],
+        "max_absolute_error": 0.015625,
+        "mean_absolute_error": 0.002166748046875,
+        "relative_l2_error": 0.0004024701483557039
+      },
+      "mechanism": "Products rounded to fp16, widened for an MLX fp32 reduction, rounded to fp16, then bias added in fp16.",
+      "token_decisions_matching": 16,
+      "token_logits": {
+        "actual_dtype": "<f4",
+        "actual_inf_count": 0,
+        "actual_nan_count": 0,
+        "actual_raw_bitpattern_sha256": "69e5c98a85e29bccc959e1d9ade7357f80cbdd969a7a0fa9a99809b374973cd0",
+        "actual_shape": [
+          16,
+          8193
+        ],
+        "bit_exact": false,
+        "different_bitpatterns": 43824,
+        "element_count": 131088,
+        "golden_dtype": "<f4",
+        "golden_inf_count": 0,
+        "golden_nan_count": 0,
+        "golden_raw_bitpattern_sha256": "88e41f138998fefa04417682c7718dee9a18666826afb5d0750ca74802d7e77f",
+        "golden_shape": [
+          16,
+          8193
+        ],
+        "max_absolute_error": 0.125,
+        "mean_absolute_error": 0.011916127176376747,
+        "relative_l2_error": 0.00041848327098226564
+      }
+    },
+    "fused_fp32_dot_and_bias_then_fp16": {
+      "duration_decisions_matching": 16,
+      "duration_logits": {
+        "actual_dtype": "<f4",
+        "actual_inf_count": 0,
+        "actual_nan_count": 0,
+        "actual_raw_bitpattern_sha256": "17c037556a920b19f30e5f906fe2109445289a0beedcc7cde2f1354b08c7117a",
+        "actual_shape": [
+          16,
+          5
+        ],
+        "bit_exact": false,
+        "different_bitpatterns": 39,
+        "element_count": 80,
+        "golden_dtype": "<f4",
+        "golden_inf_count": 0,
+        "golden_nan_count": 0,
+        "golden_raw_bitpattern_sha256": "e345114c3397c1cad2fb783e73734cc9f2c75d629227b794e743a0651ce365a3",
+        "golden_shape": [
+          16,
+          5
+        ],
+        "max_absolute_error": 0.015625,
+        "mean_absolute_error": 0.0023590087890625,
+        "relative_l2_error": 0.0003568577758023467
+      },
+      "mechanism": "Operands and bias widened to fp32, with one fp16 rounding after dot product and bias.",
+      "token_decisions_matching": 16,
+      "token_logits": {
+        "actual_dtype": "<f4",
+        "actual_inf_count": 0,
+        "actual_nan_count": 0,
+        "actual_raw_bitpattern_sha256": "6d66cc426c696486e089d1c58391374d25e103eda6bdf767e47d49cd30d429f3",
+        "actual_shape": [
+          16,
+          8193
+        ],
+        "bit_exact": false,
+        "different_bitpatterns": 53833,
+        "element_count": 131088,
+        "golden_dtype": "<f4",
+        "golden_inf_count": 0,
+        "golden_nan_count": 0,
+        "golden_raw_bitpattern_sha256": "88e41f138998fefa04417682c7718dee9a18666826afb5d0750ca74802d7e77f",
+        "golden_shape": [
+          16,
+          8193
+        ],
+        "max_absolute_error": 0.125,
+        "mean_absolute_error": 0.01454673831343258,
+        "relative_l2_error": 0.00046166718680204445
+      }
+    },
+    "mx_addmm_fp16": {
+      "duration_decisions_matching": 16,
+      "duration_logits": {
+        "actual_dtype": "<f4",
+        "actual_inf_count": 0,
+        "actual_nan_count": 0,
+        "actual_raw_bitpattern_sha256": "17c037556a920b19f30e5f906fe2109445289a0beedcc7cde2f1354b08c7117a",
+        "actual_shape": [
+          16,
+          5
+        ],
+        "bit_exact": false,
+        "different_bitpatterns": 39,
+        "element_count": 80,
+        "golden_dtype": "<f4",
+        "golden_inf_count": 0,
+        "golden_nan_count": 0,
+        "golden_raw_bitpattern_sha256": "e345114c3397c1cad2fb783e73734cc9f2c75d629227b794e743a0651ce365a3",
+        "golden_shape": [
+          16,
+          5
+        ],
+        "max_absolute_error": 0.015625,
+        "mean_absolute_error": 0.0023590087890625,
+        "relative_l2_error": 0.0003568577758023467
+      },
+      "mechanism": "MLX addmm receives the fp16 bias, hidden state, and transposed weight in one GPU primitive.",
+      "token_decisions_matching": 16,
+      "token_logits": {
+        "actual_dtype": "<f4",
+        "actual_inf_count": 0,
+        "actual_nan_count": 0,
+        "actual_raw_bitpattern_sha256": "6d66cc426c696486e089d1c58391374d25e103eda6bdf767e47d49cd30d429f3",
+        "actual_shape": [
+          16,
+          8193
+        ],
+        "bit_exact": false,
+        "different_bitpatterns": 53833,
+        "element_count": 131088,
+        "golden_dtype": "<f4",
+        "golden_inf_count": 0,
+        "golden_nan_count": 0,
+        "golden_raw_bitpattern_sha256": "88e41f138998fefa04417682c7718dee9a18666826afb5d0750ca74802d7e77f",
+        "golden_shape": [
+          16,
+          8193
+        ],
+        "max_absolute_error": 0.125,
+        "mean_absolute_error": 0.01454673831343258,
+        "relative_l2_error": 0.00046166718680204445
+      }
+    },
+    "sequential_fp16_then_fp16_bias": {
+      "duration_decisions_matching": 16,
+      "duration_logits": {
+        "actual_dtype": "<f4",
+        "actual_inf_count": 0,
+        "actual_nan_count": 0,
+        "actual_raw_bitpattern_sha256": "545d859b3b5b1fcdb2cacf3f1357465d75264d59efbdb125cf4cefe8206115b0",
+        "actual_shape": [
+          16,
+          5
+        ],
+        "bit_exact": false,
+        "different_bitpatterns": 70,
+        "element_count": 80,
+        "golden_dtype": "<f4",
+        "golden_inf_count": 0,
+        "golden_nan_count": 0,
+        "golden_raw_bitpattern_sha256": "e345114c3397c1cad2fb783e73734cc9f2c75d629227b794e743a0651ce365a3",
+        "golden_shape": [
+          16,
+          5
+        ],
+        "max_absolute_error": 0.125,
+        "mean_absolute_error": 0.013433837890625,
+        "relative_l2_error": 0.0019086186203577475
+      },
+      "mechanism": "Products accumulated left to right with fp16 rounding after every add, then bias added in fp16.",
+      "token_decisions_matching": 16,
+      "token_logits": {
+        "actual_dtype": "<f4",
+        "actual_inf_count": 0,
+        "actual_nan_count": 0,
+        "actual_raw_bitpattern_sha256": "aea61ef8c18ccdd5ff7f19179a706362d1528c09f22697852f6b465ac2250e07",
+        "actual_shape": [
+          16,
+          8193
+        ],
+        "bit_exact": false,
+        "different_bitpatterns": 113546,
+        "element_count": 131088,
+        "golden_dtype": "<f4",
+        "golden_inf_count": 0,
+        "golden_nan_count": 0,
+        "golden_raw_bitpattern_sha256": "88e41f138998fefa04417682c7718dee9a18666826afb5d0750ca74802d7e77f",
+        "golden_shape": [
+          16,
+          8193
+        ],
+        "max_absolute_error": 0.8125,
+        "mean_absolute_error": 0.08573727332438419,
+        "relative_l2_error": 0.0021428332638550817
+      }
+    }
+  },
+  "capture": {
+    "backend_claim": "The environment records requested compute_units=ane; this receipt does not claim every CoreML operation executed exclusively on ANE.",
+    "compute_units_requested": "ane",
+    "manifest_entries_verified": 170,
+    "manifest_sha256": "ab37e0317ced1587cbe35aca39a08265b9af01120ffd668ee4cbf706e1ecbe19",
+    "model_revision": "b650695c2322ee5281dff48d7345b2f3a58ff018",
+    "path": "/home/joshuawarren/.cache/mlx-omarchy/parakeet-reference/captures/b650695c-75aec2a/20260913T105550Z-librispeech-tdt-tensors/ane",
+    "validation_counts": {
+      "decisions": 146,
+      "manifest_entries": 170,
+      "npy": 157,
+      "traces": 16
+    }
+  },
+  "hypothesis_result": {
+    "input_pipeline": "The authenticated float32 uploads, fp16 casts, fp16 add, and fp16 ReLU are bit-exact against the reference algorithm.",
+    "linear": "On this backend, baseline is bit-identical to an fp32 dot rounded before an fp16 bias add, while mx.addmm is bit-identical to fused fp32 dot-and-bias. Neither fused fp32 bias nor the tested explicit fp16 product and accumulator orders reproduce the native tensors. The package and capture contain no compiled compute plan that identifies the native accumulator or reduction order.",
+    "source_decision": "Keep the existing fp16 matmul followed by fp16 bias. It is the closest tested full-tensor result and every tested candidate preserves all 16 token and duration decisions."
+  },
+  "input_pipeline_against_numpy_ieee_fp16": {
+    "decoder_fp16_cast": {
+      "bit_exact": true,
+      "different_bitpatterns": 0,
+      "element_count": 10240
+    },
+    "decoder_fp32_upload": {
+      "bit_exact": true,
+      "different_bitpatterns": 0,
+      "element_count": 10240
+    },
+    "encoder_fp16_cast": {
+      "bit_exact": true,
+      "different_bitpatterns": 0,
+      "element_count": 10240
+    },
+    "encoder_fp32_upload": {
+      "bit_exact": true,
+      "different_bitpatterns": 0,
+      "element_count": 10240
+    },
+    "fp16_add": {
+      "bit_exact": true,
+      "different_bitpatterns": 0,
+      "element_count": 10240
+    },
+    "fp16_relu": {
+      "bit_exact": true,
+      "different_bitpatterns": 0,
+      "element_count": 10240
+    }
+  },
+  "observed_equivalences": {
+    "baseline_equals_explicit_fp32_dot_then_fp16_bias": true,
+    "mx_addmm_equals_fused_fp32_dot_and_bias_then_fp16": true
+  },
+  "package_path": "/home/joshuawarren/.cache/mlx-omarchy/parakeet-reference/mweinbach1/parakeet-tdt-0.6b-v3-coreml/b650695c2322ee5281dff48d7345b2f3a58ff018/joint.mlpackage",
+  "runtime": {
+    "architecture": "vulkan",
+    "device": "llvmpipe (LLVM 15.0.6, 256 bits)",
+    "version": "0.32.2.dev202609130346+e4d079c8"
+  },
+  "schema": "mlx-omarchy.parakeet-vulkan-joint-arithmetic-diagnosis/2",
+  "tolerance_policy": "No numerical acceptance tolerance was introduced or applied; complete tensor errors and bit patterns are reported."
+}
