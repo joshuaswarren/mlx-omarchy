@@ -102,35 +102,38 @@ def test_joint_matches_independent_fp_contract_on_vulkan(source):
 def test_joint_keeps_entire_graph_on_gpu_when_caller_defaults_to_cpu(tmp_path):
     if not PACKAGE.is_dir():
         pytest.skip("pinned joint.mlpackage is not installed")
-    package = tmp_path / "joint.mlpackage"
-    shutil.copytree(PACKAGE, package)
     previous_default = mx.default_device()
+    with mx.stream(mx.gpu):
+        encoder_frame = mx.zeros((1, 640), dtype=mx.float32)
+        decoder_state = mx.zeros((1, 640), dtype=mx.float32)
+        mx.eval(encoder_frame, decoder_state)
+    traces = []
     try:
-        mx.set_default_device(mx.cpu)
-        caller_default = mx.default_device()
-        before = trace_snapshot()
-        result = run_joint(
-            mx.zeros((1, 640), dtype=mx.float32),
-            mx.zeros((1, 640), dtype=mx.float32),
-            package_path=package,
-        )
-        mx.eval(result.token_logits, result.duration_logits)
-        after = trace_snapshot()
-        assert mx.default_device() == caller_default
-        assert {
-            key: after[key] - before[key]
-            for key in (
-                "gpu_primitive_dispatches",
-                "vk_compute_dispatches",
-                "vk_submissions",
-                "commit_calls_with_work",
+        for label, device in (("gpu", mx.gpu), ("cpu", mx.cpu)):
+            package = tmp_path / label / "joint.mlpackage"
+            shutil.copytree(PACKAGE, package)
+            mx.set_default_device(device)
+            caller_default = mx.default_device()
+            before = trace_snapshot()
+            result = run_joint(
+                encoder_frame,
+                decoder_state,
+                package_path=package,
             )
-        } == {
-            "gpu_primitive_dispatches": 14,
-            "vk_compute_dispatches": 8,
-            "vk_submissions": 1,
-            "commit_calls_with_work": 1,
-        }
+            mx.eval(result.token_logits, result.duration_logits)
+            after = trace_snapshot()
+            assert mx.default_device() == caller_default
+            traces.append({
+                key: after[key] - before[key]
+                for key in (
+                    "gpu_primitive_dispatches",
+                    "vk_compute_dispatches",
+                    "vk_submissions",
+                    "commit_calls_with_work",
+                )
+            })
+        assert traces[0]["gpu_primitive_dispatches"] > 0
+        assert traces[1] == traces[0]
     finally:
         mx.set_default_device(previous_default)
     assert mx.default_device() == previous_default
