@@ -83,6 +83,14 @@ Send the rest of the graph through Vulkan fusion.
 
 ## Hardware safety
 
+The owner authorized both the 13-inch M1 and 16-inch M1 Max Omarchy
+laptops for installation, hardware testing, and necessary reboots
+(2026-09-12). Consult the private fleet inventory for SSH targets.
+Use an independent `/tmp/m1-gpu.lock` on each physical host. Exclude a
+serving host from LiteLLM and confirm it is quiescent before benchmarking.
+Native performance comparisons must match the physical machine; never
+use the base M1 as the M1 Max denominator.
+
 New descriptor, synchronization, and dma-buf tests can reset the device or machine.
 Use a bounded timeout for every new hardware path.
 Run one new failure mode at a time.
