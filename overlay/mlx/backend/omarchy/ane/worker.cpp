@@ -378,12 +378,13 @@ int run_worker(
     int control_fd,
     int staging_fd,
     size_t expected_staging_size,
-    const std::filesystem::path& bundle_path) {
+    const std::filesystem::path& manifest_path,
+    const std::map<std::string, std::filesystem::path>& payload_paths) {
   uint8_t* staging = nullptr;
   std::vector<LoadedProgram> programs;
   try {
     std::string identity = verify_hardware_eligibility();
-    AneBundle bundle = load_bundle(bundle_path);
+    AneBundle bundle = load_bundle_snapshot(manifest_path, payload_paths);
     if (staging_size(bundle.manifest) != expected_staging_size) {
       throw runtime_error("parent and worker staging sizes differ");
     }
@@ -406,7 +407,9 @@ int run_worker(
     ready.kind = WorkerReplyKind::ready;
     set_detail(
         ready,
-        "graph_hash=" + bundle.manifest.graph_hash + "\n" + identity);
+        "graph_hash=" + bundle.manifest.graph_hash + "\ncontract_sha256=" +
+            sha256_file(manifest_path) + "\nmodel_sha256=" +
+            bundle.manifest.release_asset.model_sha256 + "\n" + identity);
     if (!send_reply(control_fd, ready)) {
       throw runtime_error("parent closed before worker readiness reply");
     }

@@ -7,6 +7,7 @@
 #include "doctest/doctest.h"
 
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cstdint>
 #include <vector>
@@ -81,6 +82,31 @@ TEST_CASE("ANE runtime preserves tensor regions outside a sliced binding") {
   CHECK(restored.back() == 0x5a);
 }
 
+TEST_CASE("ANE runtime honors plane stride for multiple channels") {
+  AneProgramBinding binding;
+  binding.tensor = "x";
+  binding.dtype = "float16";
+  binding.shape = {1, 2, 2, 2};
+  binding.nchw = {1, 2, 2, 2, 32, 8};
+  binding.logical_bytes = 16;
+  binding.allocation_bytes = 64;
+  binding.element_count = 8;
+  binding.physical_elements = 32;
+  const auto dense = dense_values(8);
+
+  const auto packed = detail::pack_binding(binding, dense);
+  const std::array<size_t, 8> offsets = {0, 2, 8, 10, 32, 34, 40, 42};
+  for (size_t i = 0; i < offsets.size(); ++i) {
+    CHECK(packed[offsets[i]] == dense[i * 2]);
+    CHECK(packed[offsets[i] + 1] == dense[i * 2 + 1]);
+  }
+  CHECK(packed[16] == 0);
+
+  std::vector<uint8_t> restored(dense.size());
+  detail::unpack_binding(binding, packed, restored);
+  CHECK(restored == dense);
+}
+
 TEST_CASE("ANE runtime rejects invalid staging and deadlines before device work") {
   const auto binding = lane_binding();
   CHECK_THROWS_WITH_AS(
@@ -88,7 +114,11 @@ TEST_CASE("ANE runtime rejects invalid staging and deadlines before device work"
       "[omarchy-ane] runtime: tensor 'x' dense staging byte count is 126, expected at least 128.",
       std::runtime_error);
   CHECK_THROWS_WITH_AS(
-      detail::validate_deadline(std::chrono::milliseconds(0)),
+      detail::checked_deadline(std::chrono::milliseconds(0)),
       "[omarchy-ane] runtime: deadline must be positive.",
+      std::invalid_argument);
+  CHECK_THROWS_WITH_AS(
+      detail::checked_deadline(std::chrono::milliseconds::max()),
+      "[omarchy-ane] runtime: deadline exceeds the monotonic clock range.",
       std::invalid_argument);
 }

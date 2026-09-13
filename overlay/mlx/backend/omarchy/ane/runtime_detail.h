@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <cstring>
 #include <limits>
+#include <map>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -18,6 +19,8 @@ namespace mlx::core::omarchy::ane::detail {
 
 constexpr int kWorkerControlFd = 3;
 constexpr int kWorkerStagingFd = 4;
+constexpr int kWorkerManifestFd = 5;
+constexpr int kWorkerPayloadFdBase = 16;
 constexpr size_t kWorkerDetailBytes = 1024;
 constexpr uint32_t kWorkerProtocolVersion = 1;
 
@@ -25,10 +28,35 @@ inline std::runtime_error runtime_error(const std::string& reason) {
   return std::runtime_error("[omarchy-ane] runtime: " + reason + ".");
 }
 
-inline void validate_deadline(std::chrono::milliseconds deadline) {
-  if (deadline.count() <= 0) {
+using RuntimeClock = std::chrono::steady_clock;
+
+struct CheckedDeadline {
+  RuntimeClock::time_point time;
+  int64_t monotonic_nanoseconds;
+};
+
+inline CheckedDeadline checked_deadline(std::chrono::milliseconds duration) {
+  if (duration.count() <= 0) {
     throw std::invalid_argument("[omarchy-ane] runtime: deadline must be positive.");
   }
+  const auto now = RuntimeClock::now();
+  const auto remaining = std::chrono::duration_cast<std::chrono::milliseconds>(
+      RuntimeClock::time_point::max() - now);
+  if (duration > remaining) {
+    throw std::invalid_argument("[omarchy-ane] runtime: deadline exceeds the monotonic clock range.");
+  }
+  const auto deadline = now + std::chrono::duration_cast<RuntimeClock::duration>(duration);
+  const auto maximum_nanoseconds = std::chrono::duration_cast<RuntimeClock::duration>(
+      std::chrono::nanoseconds::max());
+  if (deadline.time_since_epoch() > maximum_nanoseconds) {
+    throw std::invalid_argument("[omarchy-ane] runtime: deadline exceeds the worker protocol range.");
+  }
+  const int64_t nanoseconds = std::chrono::duration_cast<std::chrono::nanoseconds>(
+      deadline.time_since_epoch()).count();
+  if (nanoseconds <= 0) {
+    throw std::invalid_argument("[omarchy-ane] runtime: deadline is not representable.");
+  }
+  return {deadline, nanoseconds};
 }
 
 inline size_t checked_size(uint64_t value, const std::string& label) {
@@ -38,6 +66,52 @@ inline size_t checked_size(uint64_t value, const std::string& label) {
   return static_cast<size_t>(value);
 }
 
+inline uint64_t checked_product(uint64_t lhs, uint64_t rhs, const std::string& label) {
+  if (lhs != 0 && rhs > std::numeric_limits<uint64_t>::max() / lhs) {
+    throw runtime_error(label + " overflows uint64");
+  }
+  return lhs * rhs;
+}
+
+inline uint64_t checked_sum(uint64_t lhs, uint64_t rhs, const std::string& label) {
+  if (rhs > std::numeric_limits<uint64_t>::max() - lhs) {
+    throw runtime_error(label + " overflows uint64");
+  }
+  return lhs + rhs;
+}
+
+inline size_t packed_element_offset(
+    const AneProgramBinding& binding,
+    uint64_t element) {
+  const uint64_t batch = binding.nchw[0];
+  const uint64_t channels = binding.nchw[1];
+  const uint64_t height = binding.nchw[2];
+  const uint64_t width = binding.nchw[3];
+  const uint64_t plane_stride = binding.nchw[4];
+  const uint64_t row_stride = binding.nchw[5];
+  if (batch == 0 || channels == 0 || height == 0 || width == 0) {
+    throw runtime_error("tensor '" + binding.tensor + "' packed NCHW is empty");
+  }
+  const uint64_t plane_elements =
+      checked_product(height, width, "packed plane element count");
+  const uint64_t plane_count =
+      checked_product(batch, channels, "packed plane count");
+  if (element >= checked_product(
+                     plane_count, plane_elements, "packed tensor element count")) {
+    throw runtime_error("tensor '" + binding.tensor + "' packed element exceeds NCHW");
+  }
+  const uint64_t plane = element / plane_elements;
+  const uint64_t within_plane = element % plane_elements;
+  const uint64_t row = within_plane / width;
+  const uint64_t column = within_plane % width;
+  uint64_t offset = checked_product(plane, plane_stride, "packed plane offset");
+  offset = checked_sum(
+      offset, checked_product(row, row_stride, "packed row offset"), "packed offset");
+  offset = checked_sum(
+      offset, checked_product(column, uint64_t{2}, "packed column offset"), "packed offset");
+  return checked_size(offset, "packed byte offset");
+}
+
 inline void pack_binding(
     const AneProgramBinding& binding,
     const std::vector<uint8_t>& dense,
@@ -45,7 +119,9 @@ inline void pack_binding(
   const size_t logical = checked_size(binding.logical_bytes, "logical byte count");
   const size_t allocation =
       checked_size(binding.allocation_bytes, "allocation byte count");
-  const size_t begin = checked_size(binding.element_offset, "element offset") * 2;
+  const size_t begin = checked_size(
+      checked_product(binding.element_offset, uint64_t{2}, "element byte offset"),
+      "element byte offset");
   if (begin > dense.size() || logical > dense.size() - begin) {
     throw runtime_error(
         "tensor '" + binding.tensor + "' dense staging byte count is " +
@@ -59,12 +135,10 @@ inline void pack_binding(
         std::to_string(allocation));
   }
 
-  const size_t width = checked_size(binding.nchw[3], "packed width");
-  const size_t row = checked_size(binding.nchw[5], "packed row stride");
   std::fill(packed.begin(), packed.end(), 0);
   for (size_t element = 0; element < logical / 2; ++element) {
-    const size_t destination = (element / width) * row + (element % width) * 2;
-    if (destination > packed.size() - 2) {
+    const size_t destination = packed_element_offset(binding, element);
+    if (destination > packed.size() || packed.size() - destination < 2) {
       throw runtime_error("tensor '" + binding.tensor + "' packed layout exceeds allocation");
     }
     std::memcpy(packed.data() + destination, dense.data() + begin + element * 2, 2);
@@ -87,7 +161,9 @@ inline void unpack_binding(
   const size_t logical = checked_size(binding.logical_bytes, "logical byte count");
   const size_t allocation =
       checked_size(binding.allocation_bytes, "allocation byte count");
-  const size_t begin = checked_size(binding.element_offset, "element offset") * 2;
+  const size_t begin = checked_size(
+      checked_product(binding.element_offset, uint64_t{2}, "element byte offset"),
+      "element byte offset");
   if (packed.size() != allocation) {
     throw runtime_error(
         "tensor '" + binding.tensor + "' packed byte count is " +
@@ -100,11 +176,9 @@ inline void unpack_binding(
         std::to_string(begin + logical));
   }
 
-  const size_t width = checked_size(binding.nchw[3], "packed width");
-  const size_t row = checked_size(binding.nchw[5], "packed row stride");
   for (size_t element = 0; element < logical / 2; ++element) {
-    const size_t source = (element / width) * row + (element % width) * 2;
-    if (source > packed.size() - 2) {
+    const size_t source = packed_element_offset(binding, element);
+    if (source > packed.size() || packed.size() - source < 2) {
       throw runtime_error("tensor '" + binding.tensor + "' packed layout exceeds allocation");
     }
     std::memcpy(dense.data() + begin + element * 2, packed.data() + source, 2);
@@ -143,6 +217,7 @@ int run_worker(
     int control_fd,
     int staging_fd,
     size_t staging_size,
-    const std::filesystem::path& bundle_path);
+    const std::filesystem::path& manifest_path,
+    const std::map<std::string, std::filesystem::path>& payload_paths);
 
 } // namespace mlx::core::omarchy::ane::detail
