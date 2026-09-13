@@ -535,7 +535,8 @@ target_sources(
           ${CMAKE_CURRENT_SOURCE_DIR}/stream.cpp
           ${CMAKE_CURRENT_SOURCE_DIR}/ane/manifest.cpp
           ${CMAKE_CURRENT_SOURCE_DIR}/ane/bundle.cpp
-          ${CMAKE_CURRENT_SOURCE_DIR}/vulkan.cpp)
+          ${CMAKE_CURRENT_SOURCE_DIR}/ane/worker.cpp
+          ${CMAKE_CURRENT_SOURCE_DIR}/ane/worker_libane.cpp)
 target_include_directories(mlx PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/shaders")
 
 # The backend dlopens libvulkan at runtime; only headers are needed at compile
