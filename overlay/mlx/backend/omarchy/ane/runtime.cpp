@@ -12,6 +12,7 @@
 #include <chrono>
 #include <condition_variable>
 #include <cstring>
+#include <dlfcn.h>
 #include <fcntl.h>
 #include <fstream>
 #include <linux/memfd.h>
@@ -32,9 +33,8 @@
 
 extern char** environ;
 
-#if !defined(MLX_OMARCHY_ANE_WORKER_BUILD_PATH) || \
-    !defined(MLX_OMARCHY_ANE_WORKER_INSTALL_PATH)
-#error "private ANE worker build and install paths must be defined"
+#if !defined(MLX_OMARCHY_ANE_WORKER_BUILD_PATH)
+#error "private ANE worker build path must be defined"
 #endif
 
 namespace mlx::core::omarchy::ane {
@@ -45,6 +45,21 @@ using TimePoint = Clock::time_point;
 
 std::string system_error(const std::string& operation, int error = errno) {
   return operation + " failed: " + std::strerror(error);
+}
+
+const char kRuntimeImageAnchor = 0;
+
+std::filesystem::path loaded_runtime_image() {
+  Dl_info image {};
+  if (::dladdr(&kRuntimeImageAnchor, &image) == 0 || image.dli_fname == nullptr) {
+    throw detail::runtime_error("cannot resolve loaded libmlx image");
+  }
+  std::error_code error;
+  auto path = std::filesystem::canonical(image.dli_fname, error);
+  if (error) {
+    throw detail::runtime_error("cannot resolve loaded libmlx image");
+  }
+  return path;
 }
 
 size_t staging_size(const AneManifest& manifest) {
@@ -476,9 +491,10 @@ struct AneRuntime::Impl {
     }
     implementation->staging = static_cast<uint8_t*>(mapping);
 
-    std::string executable = MLX_OMARCHY_ANE_WORKER_BUILD_PATH;
+    std::string executable =
+        detail::installed_worker_path(loaded_runtime_image()).string();
     if (::access(executable.c_str(), X_OK) != 0) {
-      executable = MLX_OMARCHY_ANE_WORKER_INSTALL_PATH;
+      executable = MLX_OMARCHY_ANE_WORKER_BUILD_PATH;
     }
     if (::access(executable.c_str(), X_OK) != 0) {
       throw detail::runtime_error("private ANE worker executable not found");

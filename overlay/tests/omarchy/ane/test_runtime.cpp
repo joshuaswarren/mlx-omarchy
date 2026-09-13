@@ -131,6 +131,12 @@ TEST_CASE("ANE runtime rejects invalid staging and deadlines before device work"
       std::invalid_argument);
 }
 
+TEST_CASE("ANE installed worker follows the loaded library prefix") {
+  CHECK(
+      detail::installed_worker_path("/opt/venv/lib/python3.14/site-packages/mlx/lib/libmlx.so") ==
+      "/opt/venv/lib/python3.14/site-packages/mlx/bin/mlx-omarchy-ane-worker");
+}
+
 TEST_CASE("ANE worker descriptors stay above every fixed child destination") {
   CHECK(detail::worker_source_fd_floor(0, 64) == 7);
   CHECK(detail::worker_source_fd_floor(3, 64) == 19);

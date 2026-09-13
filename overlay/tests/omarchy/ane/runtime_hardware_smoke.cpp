@@ -72,6 +72,10 @@ int main(int argc, char** argv) {
     auto runtime = AneRuntime::load(argv[1], deadline, argv[4]);
     const int worker = runtime->worker_pid();
     std::cout << "runtime_identity " << runtime->runtime_identity() << '\n';
+    std::cout << "worker_executable "
+              << std::filesystem::canonical(
+                     "/proc/" + std::to_string(worker) + "/exe")
+              << std::endl;
     std::cout << "worker_pid " << worker << '\n';
 
     AneBufferMap inputs{

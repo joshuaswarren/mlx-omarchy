@@ -580,8 +580,7 @@ if(MLX_OMARCHY_ANE_SOURCE_DIR)
   target_link_libraries(mlx-omarchy-ane-worker PRIVATE mlx mlx_omarchy_libane)
   target_compile_definitions(
     mlx PRIVATE
-    MLX_OMARCHY_ANE_WORKER_BUILD_PATH="$<TARGET_FILE:mlx-omarchy-ane-worker>"
-    MLX_OMARCHY_ANE_WORKER_INSTALL_PATH="${CMAKE_INSTALL_FULL_BINDIR}/mlx-omarchy-ane-worker")
+    MLX_OMARCHY_ANE_WORKER_BUILD_PATH="$<TARGET_FILE:mlx-omarchy-ane-worker>")
   install(TARGETS mlx-omarchy-ane-worker
           RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
   install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/ane/mlx-omarchy-ane.conf
