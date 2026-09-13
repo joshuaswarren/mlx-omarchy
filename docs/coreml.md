@@ -251,7 +251,8 @@ to native preemphasis arithmetic, with independent loss in windowing and the
 DFT. A source audit found the same reachable denormal boundary in magnitude,
 power, mel reduction, and subnormal square-root scaling. These stages now use
 the exact integer binary32 helpers while preserving the certified reduction
-order. Software Vulkan passes the retained low-scale full-chain, signed-zero,
-overflow, pinned ordinary-input, and stage-comparison regressions. The corrected
-helper path has not run on Apple hardware, so finite-input Apple arithmetic
+order. Software Vulkan passes the retained low-scale waveform-to-power-and-mel-
+projection, signed-zero, overflow, pinned ordinary-input, and stage-comparison
+regressions. The corrected helper path has not run on Apple hardware, so
+finite-input Apple arithmetic
 remains unqualified.
