@@ -1,0 +1,1355 @@
+{
+  "aggregate": {
+    "duration_decisions_matching": 16,
+    "duration_logits": {
+      "actual_dtype": "<f4",
+      "actual_inf_count": 0,
+      "actual_nan_count": 0,
+      "actual_raw_bitpattern_sha256": "b79a57b12640ccebf7f37b06667b0a2c34075d7dacaf6af9a424a2a519bcf847",
+      "actual_shape": [
+        16,
+        5
+      ],
+      "bit_exact": false,
+      "different_bitpatterns": 33,
+      "element_count": 80,
+      "golden_dtype": "<f4",
+      "golden_inf_count": 0,
+      "golden_nan_count": 0,
+      "golden_raw_bitpattern_sha256": "e345114c3397c1cad2fb783e73734cc9f2c75d629227b794e743a0651ce365a3",
+      "golden_shape": [
+        16,
+        5
+      ],
+      "max_absolute_error": 0.015625,
+      "mean_absolute_error": 0.002264404296875,
+      "relative_l2_error": 0.0004050075558492747
+    },
+    "token_decisions_matching": 16,
+    "token_logits": {
+      "actual_dtype": "<f4",
+      "actual_inf_count": 0,
+      "actual_nan_count": 0,
+      "actual_raw_bitpattern_sha256": "30284d975e02603bd44c95f4f9598e39ac928dd22f66a41e89c1549ea76c3948",
+      "actual_shape": [
+        16,
+        8193
+      ],
+      "bit_exact": false,
+      "different_bitpatterns": 43692,
+      "element_count": 131088,
+      "golden_dtype": "<f4",
+      "golden_inf_count": 0,
+      "golden_nan_count": 0,
+      "golden_raw_bitpattern_sha256": "88e41f138998fefa04417682c7718dee9a18666826afb5d0750ca74802d7e77f",
+      "golden_shape": [
+        16,
+        8193
+      ],
+      "max_absolute_error": 0.125,
+      "mean_absolute_error": 0.011879949710547495,
+      "relative_l2_error": 0.0004178244055096587
+    }
+  },
+  "capture": {
+    "backend_claim": "The environment records requested compute_units=ane; this receipt does not claim every CoreML operation executed exclusively on ANE.",
+    "compute_units_requested": "ane",
+    "manifest_entries_verified": 170,
+    "manifest_sha256": "ab37e0317ced1587cbe35aca39a08265b9af01120ffd668ee4cbf706e1ecbe19",
+    "model_revision": "b650695c2322ee5281dff48d7345b2f3a58ff018",
+    "path": "/home/joshuawarren/.cache/mlx-omarchy/parakeet-reference/captures/b650695c-75aec2a/20260913T105550Z-librispeech-tdt-tensors/ane",
+    "validation_counts": {
+      "decisions": 146,
+      "manifest_entries": 170,
+      "npy": 157,
+      "traces": 16
+    }
+  },
+  "implementation": {
+    "callable": "coreml.vulkan_joint.run_joint",
+    "comparison_source": "overlay/tools/coreml/compare_vulkan_joint_golden.py",
+    "comparison_source_sha256": "5750565a0e6a4c96e803789b169bc9f5bd6ebf5a257223e925a4ec4e84234aae",
+    "joint_source": "overlay/tools/coreml/vulkan_joint.py",
+    "joint_source_sha256": "bf31537d504612c6d9873051c9ad5f7b84a978268e6d7ed4eaec173a18626115"
+  },
+  "package_path": "/home/joshuawarren/.cache/mlx-omarchy/parakeet-reference/mweinbach1/parakeet-tdt-0.6b-v3-coreml/b650695c2322ee5281dff48d7345b2f3a58ff018/joint.mlpackage",
+  "parity_verdict": {
+    "captured_joint_decisions_exact": true,
+    "full_tensor_bit_exact": false,
+    "statement": "All captured joint token and duration decisions match; full output tensors are not bit-exact.",
+    "tolerance_policy": "No numerical acceptance tolerance was introduced or applied; complete tensor errors and bit patterns are reported."
+  },
+  "runtime": {
+    "architecture": "vulkan",
+    "device": "llvmpipe (LLVM 15.0.6, 256 bits)",
+    "version": "0.32.2.dev202609130346+e4d079c8"
+  },
+  "schema": "mlx-omarchy.parakeet-vulkan-joint-native-comparison/1",
+  "traces": [
+    {
+      "decision": {
+        "actual_duration_index": 3,
+        "actual_token_id": 8192,
+        "duration_match": true,
+        "golden_duration_index": 3,
+        "golden_token_id": 8192,
+        "token_match": true
+      },
+      "duration_logits": {
+        "actual_dtype": "<f4",
+        "actual_inf_count": 0,
+        "actual_nan_count": 0,
+        "actual_raw_bitpattern_sha256": "a6766768b04bbba33bbd3b244eff5ceaa5eafb22f73b392bf1b209b035660f04",
+        "actual_shape": [
+          1,
+          5
+        ],
+        "bit_exact": true,
+        "different_bitpatterns": 0,
+        "element_count": 5,
+        "golden_dtype": "<f4",
+        "golden_inf_count": 0,
+        "golden_nan_count": 0,
+        "golden_raw_bitpattern_sha256": "a6766768b04bbba33bbd3b244eff5ceaa5eafb22f73b392bf1b209b035660f04",
+        "golden_shape": [
+          1,
+          5
+        ],
+        "max_absolute_error": 0.0,
+        "mean_absolute_error": 0.0,
+        "relative_l2_error": 0.0
+      },
+      "index": 0,
+      "inputs": {
+        "joint_decoder_state": {
+          "dtype": "<f4",
+          "npy_sha256": "c934dec36b0ba1819dca51dd238d38780a8a5b8a0e850122cc952c4a3dcfde75",
+          "raw_bitpattern_sha256": "d8d5d9178ec71518144b9a17bbea49c93d4d846ecb706d4482bd8d2fee290428",
+          "shape": [
+            1,
+            640
+          ]
+        },
+        "joint_encoder_frame": {
+          "dtype": "<f4",
+          "npy_sha256": "df046e09210403e1b2f839cc0d9596533532325affe3a89ca6058ff45619a7c1",
+          "raw_bitpattern_sha256": "e88d86731720ba4526f57d120ce212365a67118508c76eacd296456bc9d9878e",
+          "shape": [
+            1,
+            640
+          ]
+        }
+      },
+      "token_logits": {
+        "actual_dtype": "<f4",
+        "actual_inf_count": 0,
+        "actual_nan_count": 0,
+        "actual_raw_bitpattern_sha256": "57052b8dd5f99049a43866d8c9274a319adc55d17997a461d5738a582f08afcf",
+        "actual_shape": [
+          1,
+          8193
+        ],
+        "bit_exact": false,
+        "different_bitpatterns": 2711,
+        "element_count": 8193,
+        "golden_dtype": "<f4",
+        "golden_inf_count": 0,
+        "golden_nan_count": 0,
+        "golden_raw_bitpattern_sha256": "5c458c95f9cc2c3ad54372247e8f82720688cd5b9d375b676ee5b78f044e39fa",
+        "golden_shape": [
+          1,
+          8193
+        ],
+        "max_absolute_error": 0.0625,
+        "mean_absolute_error": 0.007041071646527524,
+        "relative_l2_error": 0.00043541512843736543
+      }
+    },
+    {
+      "decision": {
+        "actual_duration_index": 3,
+        "actual_token_id": 1876,
+        "duration_match": true,
+        "golden_duration_index": 3,
+        "golden_token_id": 1876,
+        "token_match": true
+      },
+      "duration_logits": {
+        "actual_dtype": "<f4",
+        "actual_inf_count": 0,
+        "actual_nan_count": 0,
+        "actual_raw_bitpattern_sha256": "158d72d0f6f3b4ed0b77030617e3dab53210d1e9a73464ef456e7064798b46b0",
+        "actual_shape": [
+          1,
+          5
+        ],
+        "bit_exact": false,
+        "different_bitpatterns": 2,
+        "element_count": 5,
+        "golden_dtype": "<f4",
+        "golden_inf_count": 0,
+        "golden_nan_count": 0,
+        "golden_raw_bitpattern_sha256": "5d56b314ad91e13aa0dcc7e39e275d85e2745b29bee5975d08cbabe1e0f00a8b",
+        "golden_shape": [
+          1,
+          5
+        ],
+        "max_absolute_error": 0.015625,
+        "mean_absolute_error": 0.003515625,
+        "relative_l2_error": 0.0008554042638457454
+      },
+      "index": 1,
+      "inputs": {
+        "joint_decoder_state": {
+          "dtype": "<f4",
+          "npy_sha256": "c934dec36b0ba1819dca51dd238d38780a8a5b8a0e850122cc952c4a3dcfde75",
+          "raw_bitpattern_sha256": "d8d5d9178ec71518144b9a17bbea49c93d4d846ecb706d4482bd8d2fee290428",
+          "shape": [
+            1,
+            640
+          ]
+        },
+        "joint_encoder_frame": {
+          "dtype": "<f4",
+          "npy_sha256": "628b0b34e2d8f78ebf97aeb7e09e8063524b0a714b801db8c731cbf6ddb0b778",
+          "raw_bitpattern_sha256": "3673467c038283ddbb77205bbc53aec5f69393b4fbef70c02d4a3999d0a84706",
+          "shape": [
+            1,
+            640
+          ]
+        }
+      },
+      "token_logits": {
+        "actual_dtype": "<f4",
+        "actual_inf_count": 0,
+        "actual_nan_count": 0,
+        "actual_raw_bitpattern_sha256": "109f5e57a015e3251cc12ff2c60283c13ee19f5adff395530106376eec5fb949",
+        "actual_shape": [
+          1,
+          8193
+        ],
+        "bit_exact": false,
+        "different_bitpatterns": 2606,
+        "element_count": 8193,
+        "golden_dtype": "<f4",
+        "golden_inf_count": 0,
+        "golden_nan_count": 0,
+        "golden_raw_bitpattern_sha256": "9906a7ae259b4169734bedd3c33bcc8373b8125d87046b75171fc3e3107d7954",
+        "golden_shape": [
+          1,
+          8193
+        ],
+        "max_absolute_error": 0.0625,
+        "mean_absolute_error": 0.009122748172983034,
+        "relative_l2_error": 0.0004222894577880657
+      }
+    },
+    {
+      "decision": {
+        "actual_duration_index": 2,
+        "actual_token_id": 303,
+        "duration_match": true,
+        "golden_duration_index": 2,
+        "golden_token_id": 303,
+        "token_match": true
+      },
+      "duration_logits": {
+        "actual_dtype": "<f4",
+        "actual_inf_count": 0,
+        "actual_nan_count": 0,
+        "actual_raw_bitpattern_sha256": "837e8c3cc542f2c20984df2a020580bd9e09c5fa73122e99da19e85aa7a4b3c2",
+        "actual_shape": [
+          1,
+          5
+        ],
+        "bit_exact": false,
+        "different_bitpatterns": 1,
+        "element_count": 5,
+        "golden_dtype": "<f4",
+        "golden_inf_count": 0,
+        "golden_nan_count": 0,
+        "golden_raw_bitpattern_sha256": "6c30f75ed922b94ce7d795221fff0676a363affd57660e54273b87b1abf76f15",
+        "golden_shape": [
+          1,
+          5
+        ],
+        "max_absolute_error": 0.00390625,
+        "mean_absolute_error": 0.00078125,
+        "relative_l2_error": 0.00018659609473989632
+      },
+      "index": 2,
+      "inputs": {
+        "joint_decoder_state": {
+          "dtype": "<f4",
+          "npy_sha256": "babecbe6241c5bae871334f8585162dfb40c0f77cb9a33e319d082bf8bd6004b",
+          "raw_bitpattern_sha256": "09f05b3bd9301a0ac2663df1c40ca0f4979550b4453bf3ae9f237e971aa938d2",
+          "shape": [
+            1,
+            640
+          ]
+        },
+        "joint_encoder_frame": {
+          "dtype": "<f4",
+          "npy_sha256": "737ea37eac1ea2f32ba4c808a1e97c3257f08185b68fd942fc4c956d5e070bf9",
+          "raw_bitpattern_sha256": "4809c3339160e51702bbb552597ed273805a1baa2bd56451aeb1e1ebc33817cf",
+          "shape": [
+            1,
+            640
+          ]
+        }
+      },
+      "token_logits": {
+        "actual_dtype": "<f4",
+        "actual_inf_count": 0,
+        "actual_nan_count": 0,
+        "actual_raw_bitpattern_sha256": "58f602c66153c947c4d365ad2e9eda8bc9ede03fbb4fc4ae6a1b8eb140a6bb6f",
+        "actual_shape": [
+          1,
+          8193
+        ],
+        "bit_exact": false,
+        "different_bitpatterns": 2744,
+        "element_count": 8193,
+        "golden_dtype": "<f4",
+        "golden_inf_count": 0,
+        "golden_nan_count": 0,
+        "golden_raw_bitpattern_sha256": "061597fef9ba92a33c68047a77ce1da52174ce2709df8654607d26ee307ebcb7",
+        "golden_shape": [
+          1,
+          8193
+        ],
+        "max_absolute_error": 0.125,
+        "mean_absolute_error": 0.012301373886244355,
+        "relative_l2_error": 0.0004081965922156417
+      }
+    },
+    {
+      "decision": {
+        "actual_duration_index": 2,
+        "actual_token_id": 669,
+        "duration_match": true,
+        "golden_duration_index": 2,
+        "golden_token_id": 669,
+        "token_match": true
+      },
+      "duration_logits": {
+        "actual_dtype": "<f4",
+        "actual_inf_count": 0,
+        "actual_nan_count": 0,
+        "actual_raw_bitpattern_sha256": "6df3236a5abf21af98c21eb7fdb9c71cce2fe3c8e3faeee9ac511b232a6affb8",
+        "actual_shape": [
+          1,
+          5
+        ],
+        "bit_exact": false,
+        "different_bitpatterns": 2,
+        "element_count": 5,
+        "golden_dtype": "<f4",
+        "golden_inf_count": 0,
+        "golden_nan_count": 0,
+        "golden_raw_bitpattern_sha256": "b2546185a58d335a668ba03145bce153184be72cf6b59dea8bb77305f02d0044",
+        "golden_shape": [
+          1,
+          5
+        ],
+        "max_absolute_error": 0.0078125,
+        "mean_absolute_error": 0.0029296875,
+        "relative_l2_error": 0.00042745538788693154
+      },
+      "index": 3,
+      "inputs": {
+        "joint_decoder_state": {
+          "dtype": "<f4",
+          "npy_sha256": "bd0c1d2d61297a9dacc0ecf3f83d27481c529465c9c96bd023677cac00725a9f",
+          "raw_bitpattern_sha256": "5201034d28cb2a577211a753a5e32870a18cf0d7f9aa3a0c1ae844a527e32b31",
+          "shape": [
+            1,
+            640
+          ]
+        },
+        "joint_encoder_frame": {
+          "dtype": "<f4",
+          "npy_sha256": "8c05582a09f1582c891c8a91d6d4fd26fbd29351f78380b5abd6c8759fa551cd",
+          "raw_bitpattern_sha256": "af80b21a85c66d1f9b4be0852836a503c06577f2a963394e6c17165f097ed6ee",
+          "shape": [
+            1,
+            640
+          ]
+        }
+      },
+      "token_logits": {
+        "actual_dtype": "<f4",
+        "actual_inf_count": 0,
+        "actual_nan_count": 0,
+        "actual_raw_bitpattern_sha256": "a74797d236341950fb25bbf82d07427ed32e81ac5fd0c6d44358b6d82f0ff23a",
+        "actual_shape": [
+          1,
+          8193
+        ],
+        "bit_exact": false,
+        "different_bitpatterns": 2730,
+        "element_count": 8193,
+        "golden_dtype": "<f4",
+        "golden_inf_count": 0,
+        "golden_nan_count": 0,
+        "golden_raw_bitpattern_sha256": "b3da66282d70bbc506a3430e3c9ce32084f98d8e186b8d95581cad5ef694e6b1",
+        "golden_shape": [
+          1,
+          8193
+        ],
+        "max_absolute_error": 0.125,
+        "mean_absolute_error": 0.017886839375076284,
+        "relative_l2_error": 0.0004296318406960458
+      }
+    },
+    {
+      "decision": {
+        "actual_duration_index": 2,
+        "actual_token_id": 326,
+        "duration_match": true,
+        "golden_duration_index": 2,
+        "golden_token_id": 326,
+        "token_match": true
+      },
+      "duration_logits": {
+        "actual_dtype": "<f4",
+        "actual_inf_count": 0,
+        "actual_nan_count": 0,
+        "actual_raw_bitpattern_sha256": "98ab0d57a3cce7efe0a1a250c9b3ebc0c83d2eea5f5a17a646fe830d74f6e7ab",
+        "actual_shape": [
+          1,
+          5
+        ],
+        "bit_exact": true,
+        "different_bitpatterns": 0,
+        "element_count": 5,
+        "golden_dtype": "<f4",
+        "golden_inf_count": 0,
+        "golden_nan_count": 0,
+        "golden_raw_bitpattern_sha256": "98ab0d57a3cce7efe0a1a250c9b3ebc0c83d2eea5f5a17a646fe830d74f6e7ab",
+        "golden_shape": [
+          1,
+          5
+        ],
+        "max_absolute_error": 0.0,
+        "mean_absolute_error": 0.0,
+        "relative_l2_error": 0.0
+      },
+      "index": 4,
+      "inputs": {
+        "joint_decoder_state": {
+          "dtype": "<f4",
+          "npy_sha256": "279d12dab3d66a0f233157f311e59ba470e915b7a118f3b60e0de05d43cbd34e",
+          "raw_bitpattern_sha256": "f4a61d67afe64b7a0fa34a3d77b92cf3cd1b61ba33cf6cd05ec566c41f325d01",
+          "shape": [
+            1,
+            640
+          ]
+        },
+        "joint_encoder_frame": {
+          "dtype": "<f4",
+          "npy_sha256": "74fa8406ca95eb2aca5a2cd5b421a0dd5cdfa188f7ca3d0a8d6a71239517aca3",
+          "raw_bitpattern_sha256": "1a9455693ce307b5500f47cea1d493a060e44c958d2ea85632c4bacad6f3714b",
+          "shape": [
+            1,
+            640
+          ]
+        }
+      },
+      "token_logits": {
+        "actual_dtype": "<f4",
+        "actual_inf_count": 0,
+        "actual_nan_count": 0,
+        "actual_raw_bitpattern_sha256": "3127e8e3ddc78f9b2727f9ee8399f2d364014fdac9bcc9c45ea4defcfad591d0",
+        "actual_shape": [
+          1,
+          8193
+        ],
+        "bit_exact": false,
+        "different_bitpatterns": 2739,
+        "element_count": 8193,
+        "golden_dtype": "<f4",
+        "golden_inf_count": 0,
+        "golden_nan_count": 0,
+        "golden_raw_bitpattern_sha256": "3d5b54badee9af3ca244618465238e41e8084f6164b3c6ca75c0c10672d0a383",
+        "golden_shape": [
+          1,
+          8193
+        ],
+        "max_absolute_error": 0.125,
+        "mean_absolute_error": 0.011997904079702184,
+        "relative_l2_error": 0.00040989388280363205
+      }
+    },
+    {
+      "decision": {
+        "actual_duration_index": 2,
+        "actual_token_id": 3357,
+        "duration_match": true,
+        "golden_duration_index": 2,
+        "golden_token_id": 3357,
+        "token_match": true
+      },
+      "duration_logits": {
+        "actual_dtype": "<f4",
+        "actual_inf_count": 0,
+        "actual_nan_count": 0,
+        "actual_raw_bitpattern_sha256": "051690ceb9f02eeda19201adfe0ad421fa22c8e575772d115edee3b26409049c",
+        "actual_shape": [
+          1,
+          5
+        ],
+        "bit_exact": false,
+        "different_bitpatterns": 2,
+        "element_count": 5,
+        "golden_dtype": "<f4",
+        "golden_inf_count": 0,
+        "golden_nan_count": 0,
+        "golden_raw_bitpattern_sha256": "39c9d98d6ded9618acdd754c628801ec295aa4c2dec928cb5817ed12450391c6",
+        "golden_shape": [
+          1,
+          5
+        ],
+        "max_absolute_error": 0.00390625,
+        "mean_absolute_error": 0.0015625,
+        "relative_l2_error": 0.0004312977738401719
+      },
+      "index": 5,
+      "inputs": {
+        "joint_decoder_state": {
+          "dtype": "<f4",
+          "npy_sha256": "26333e58989193ad0b36059f062e0224077c109465acd062b4df9782ca91167d",
+          "raw_bitpattern_sha256": "ac1a0577cfc2f09cda436fa954300b7899cb53a8e10aeaf4e8115a24f6da6566",
+          "shape": [
+            1,
+            640
+          ]
+        },
+        "joint_encoder_frame": {
+          "dtype": "<f4",
+          "npy_sha256": "2e1b80dbc16183bd3393ec7e269382d1aac259a878ce68354a318a3c62f14691",
+          "raw_bitpattern_sha256": "6669377ccf849c9a456d5908f5ab435bbdfe8e3b52ddbd7edcbb18ce5ea14554",
+          "shape": [
+            1,
+            640
+          ]
+        }
+      },
+      "token_logits": {
+        "actual_dtype": "<f4",
+        "actual_inf_count": 0,
+        "actual_nan_count": 0,
+        "actual_raw_bitpattern_sha256": "c1553926fcbf770fc7a8bf44c99b0325fefae6939d5507d0a1a54819eb44604b",
+        "actual_shape": [
+          1,
+          8193
+        ],
+        "bit_exact": false,
+        "different_bitpatterns": 2702,
+        "element_count": 8193,
+        "golden_dtype": "<f4",
+        "golden_inf_count": 0,
+        "golden_nan_count": 0,
+        "golden_raw_bitpattern_sha256": "22d9938e65f91460632d58bf5bb08dda5500816b120032a383458841ebfc37c7",
+        "golden_shape": [
+          1,
+          8193
+        ],
+        "max_absolute_error": 0.125,
+        "mean_absolute_error": 0.010598796228487733,
+        "relative_l2_error": 0.00041290017235732574
+      }
+    },
+    {
+      "decision": {
+        "actual_duration_index": 3,
+        "actual_token_id": 4223,
+        "duration_match": true,
+        "golden_duration_index": 3,
+        "golden_token_id": 4223,
+        "token_match": true
+      },
+      "duration_logits": {
+        "actual_dtype": "<f4",
+        "actual_inf_count": 0,
+        "actual_nan_count": 0,
+        "actual_raw_bitpattern_sha256": "ce94bca020869f19aa33340466e50241641b7b59b40d4a78791ec4e220336c66",
+        "actual_shape": [
+          1,
+          5
+        ],
+        "bit_exact": false,
+        "different_bitpatterns": 3,
+        "element_count": 5,
+        "golden_dtype": "<f4",
+        "golden_inf_count": 0,
+        "golden_nan_count": 0,
+        "golden_raw_bitpattern_sha256": "1db006022065455cfdb9fea546c9de535b6baf855c62236cea0114ec731b69cb",
+        "golden_shape": [
+          1,
+          5
+        ],
+        "max_absolute_error": 0.015625,
+        "mean_absolute_error": 0.0041015625,
+        "relative_l2_error": 0.0011645690269795428
+      },
+      "index": 6,
+      "inputs": {
+        "joint_decoder_state": {
+          "dtype": "<f4",
+          "npy_sha256": "dafc939bc093e31212465e5fb8b426944298efd3dd838b17fbf3cd83c8c55479",
+          "raw_bitpattern_sha256": "dd9c4c094bff5747f07223cb5bcae7db4308058e659bb802a7cdb9a153ff01ed",
+          "shape": [
+            1,
+            640
+          ]
+        },
+        "joint_encoder_frame": {
+          "dtype": "<f4",
+          "npy_sha256": "76831d136c6ece8e70cdaae92336e03f1e536107df4022eb77ee3ed11b912ade",
+          "raw_bitpattern_sha256": "d7d95021659d587cca246cefeee00b1bcf1b6bd891b7aedf73472b273a2de83f",
+          "shape": [
+            1,
+            640
+          ]
+        }
+      },
+      "token_logits": {
+        "actual_dtype": "<f4",
+        "actual_inf_count": 0,
+        "actual_nan_count": 0,
+        "actual_raw_bitpattern_sha256": "d7e837ba6f7736187b3d1c0f8e3e4faa92c501cff25c4fd45b2f75211f5cdd0a",
+        "actual_shape": [
+          1,
+          8193
+        ],
+        "bit_exact": false,
+        "different_bitpatterns": 2658,
+        "element_count": 8193,
+        "golden_dtype": "<f4",
+        "golden_inf_count": 0,
+        "golden_nan_count": 0,
+        "golden_raw_bitpattern_sha256": "d3ee05f0fb9dfc99bee95b1d74986104ac861a311582a2ba85c7595c23626d97",
+        "golden_shape": [
+          1,
+          8193
+        ],
+        "max_absolute_error": 0.125,
+        "mean_absolute_error": 0.01084576772854876,
+        "relative_l2_error": 0.0003999484911886146
+      }
+    },
+    {
+      "decision": {
+        "actual_duration_index": 2,
+        "actual_token_id": 555,
+        "duration_match": true,
+        "golden_duration_index": 2,
+        "golden_token_id": 555,
+        "token_match": true
+      },
+      "duration_logits": {
+        "actual_dtype": "<f4",
+        "actual_inf_count": 0,
+        "actual_nan_count": 0,
+        "actual_raw_bitpattern_sha256": "2ede06a774971799d39f7028c0d6932a5db2e42b315ed5b1a9ad2193fd0772a5",
+        "actual_shape": [
+          1,
+          5
+        ],
+        "bit_exact": false,
+        "different_bitpatterns": 4,
+        "element_count": 5,
+        "golden_dtype": "<f4",
+        "golden_inf_count": 0,
+        "golden_nan_count": 0,
+        "golden_raw_bitpattern_sha256": "46df6f82310ff340d7deb38d4fcadbefcad1d074de99ba957fdb3ffa43c0f0fe",
+        "golden_shape": [
+          1,
+          5
+        ],
+        "max_absolute_error": 0.00390625,
+        "mean_absolute_error": 0.00185546875,
+        "relative_l2_error": 0.0004171546289540131
+      },
+      "index": 7,
+      "inputs": {
+        "joint_decoder_state": {
+          "dtype": "<f4",
+          "npy_sha256": "2174b2ce19e0beae7785db98d5d84e6621badb3904419430dfc713f4e1c36c0d",
+          "raw_bitpattern_sha256": "35e3dc9f1307f30d62795eb3883a09ec4e0523442ab063ef172e3c068caa0f76",
+          "shape": [
+            1,
+            640
+          ]
+        },
+        "joint_encoder_frame": {
+          "dtype": "<f4",
+          "npy_sha256": "eaf0dec02a721e4064f03aa9c76ee63ee624f5bef3235b518824517f7718233b",
+          "raw_bitpattern_sha256": "39ffdf54edbf36126adca72099b07e71c73294924b7d43131f8925ac7f36c0a8",
+          "shape": [
+            1,
+            640
+          ]
+        }
+      },
+      "token_logits": {
+        "actual_dtype": "<f4",
+        "actual_inf_count": 0,
+        "actual_nan_count": 0,
+        "actual_raw_bitpattern_sha256": "d16ea281ae3d1e8f6bc35cf662c5cd37c163a7184da99363cdcba1b24512e636",
+        "actual_shape": [
+          1,
+          8193
+        ],
+        "bit_exact": false,
+        "different_bitpatterns": 2863,
+        "element_count": 8193,
+        "golden_dtype": "<f4",
+        "golden_inf_count": 0,
+        "golden_nan_count": 0,
+        "golden_raw_bitpattern_sha256": "14a777cbb267c8d13b2156f2a16a795adeb06a9fb264eba3a10e84c915733a48",
+        "golden_shape": [
+          1,
+          8193
+        ],
+        "max_absolute_error": 0.125,
+        "mean_absolute_error": 0.012571707555230075,
+        "relative_l2_error": 0.00041415236190094263
+      }
+    },
+    {
+      "decision": {
+        "actual_duration_index": 2,
+        "actual_token_id": 1269,
+        "duration_match": true,
+        "golden_duration_index": 2,
+        "golden_token_id": 1269,
+        "token_match": true
+      },
+      "duration_logits": {
+        "actual_dtype": "<f4",
+        "actual_inf_count": 0,
+        "actual_nan_count": 0,
+        "actual_raw_bitpattern_sha256": "f38c8a8fbecad076bee200b36fe5d4d91a0554569b0ac5ccede8ff9d3a8dca81",
+        "actual_shape": [
+          1,
+          5
+        ],
+        "bit_exact": false,
+        "different_bitpatterns": 1,
+        "element_count": 5,
+        "golden_dtype": "<f4",
+        "golden_inf_count": 0,
+        "golden_nan_count": 0,
+        "golden_raw_bitpattern_sha256": "f331b985383eba18b325f44d1e42c9da5790b145b0dea90aea52dfae2ac675b7",
+        "golden_shape": [
+          1,
+          5
+        ],
+        "max_absolute_error": 0.001953125,
+        "mean_absolute_error": 0.000390625,
+        "relative_l2_error": 0.00011141059468674396
+      },
+      "index": 8,
+      "inputs": {
+        "joint_decoder_state": {
+          "dtype": "<f4",
+          "npy_sha256": "40435248c475fd28de8f684d4cf104ce73344b8da7fb45d7e49cd4877d4681ee",
+          "raw_bitpattern_sha256": "580e6e241e17671fc50531a3be8cd1fe14cd4c5dc021d2cbcb3e929f804b226e",
+          "shape": [
+            1,
+            640
+          ]
+        },
+        "joint_encoder_frame": {
+          "dtype": "<f4",
+          "npy_sha256": "8fa3e75d3a8335fafef3d2cdbf2500872c9a7c33d431440f0361f25ce670c6eb",
+          "raw_bitpattern_sha256": "4723a1d067085143894c7bdf423ae3c88b5cd3ff18e26e972d156844ed436f0b",
+          "shape": [
+            1,
+            640
+          ]
+        }
+      },
+      "token_logits": {
+        "actual_dtype": "<f4",
+        "actual_inf_count": 0,
+        "actual_nan_count": 0,
+        "actual_raw_bitpattern_sha256": "f31cb9df7ee4a2f061c108f5d72de80025e4c83ca60e89979a4c5e66932c1d39",
+        "actual_shape": [
+          1,
+          8193
+        ],
+        "bit_exact": false,
+        "different_bitpatterns": 2787,
+        "element_count": 8193,
+        "golden_dtype": "<f4",
+        "golden_inf_count": 0,
+        "golden_nan_count": 0,
+        "golden_raw_bitpattern_sha256": "4a6e44582482f7848a9398b38613fb5a79b8e56400b2daea76a580730f767751",
+        "golden_shape": [
+          1,
+          8193
+        ],
+        "max_absolute_error": 0.125,
+        "mean_absolute_error": 0.011969058952764556,
+        "relative_l2_error": 0.00042095992058136455
+      }
+    },
+    {
+      "decision": {
+        "actual_duration_index": 3,
+        "actual_token_id": 7898,
+        "duration_match": true,
+        "golden_duration_index": 3,
+        "golden_token_id": 7898,
+        "token_match": true
+      },
+      "duration_logits": {
+        "actual_dtype": "<f4",
+        "actual_inf_count": 0,
+        "actual_nan_count": 0,
+        "actual_raw_bitpattern_sha256": "579b6c029e4a8f50504fbb72137226d3fb621629d6b124cc409d155bcb419962",
+        "actual_shape": [
+          1,
+          5
+        ],
+        "bit_exact": false,
+        "different_bitpatterns": 3,
+        "element_count": 5,
+        "golden_dtype": "<f4",
+        "golden_inf_count": 0,
+        "golden_nan_count": 0,
+        "golden_raw_bitpattern_sha256": "4cb6065f530bfa1f6a61778918845a71e87d41fe34f51ac9ee9e05d0501a144c",
+        "golden_shape": [
+          1,
+          5
+        ],
+        "max_absolute_error": 0.015625,
+        "mean_absolute_error": 0.005859375,
+        "relative_l2_error": 0.0012521696880091033
+      },
+      "index": 9,
+      "inputs": {
+        "joint_decoder_state": {
+          "dtype": "<f4",
+          "npy_sha256": "92b57de0c45541b2099ec147fda2f9c139f4e49552dbb98965313a5664b8c208",
+          "raw_bitpattern_sha256": "18413c747230fba16b5e765cf26c6cfef960ae1d406eb00e73595d9137ec7cca",
+          "shape": [
+            1,
+            640
+          ]
+        },
+        "joint_encoder_frame": {
+          "dtype": "<f4",
+          "npy_sha256": "74ead8dc989c79bab493cb29fbc6fb0bcc1a229dfa2fbd2b28cbff1963cabd58",
+          "raw_bitpattern_sha256": "f679e23d0148a4d725d20439695f162e4e18b0403e5de4277e6bb64314c97f72",
+          "shape": [
+            1,
+            640
+          ]
+        }
+      },
+      "token_logits": {
+        "actual_dtype": "<f4",
+        "actual_inf_count": 0,
+        "actual_nan_count": 0,
+        "actual_raw_bitpattern_sha256": "b2692cdae340f8827481bb0381e4c6628a9b0a6366f0bde31431ceb128996919",
+        "actual_shape": [
+          1,
+          8193
+        ],
+        "bit_exact": false,
+        "different_bitpatterns": 2735,
+        "element_count": 8193,
+        "golden_dtype": "<f4",
+        "golden_inf_count": 0,
+        "golden_nan_count": 0,
+        "golden_raw_bitpattern_sha256": "9f4cf2dd9e4b69dbcfd0c931f45430271405951b45b56283e4d49af833178345",
+        "golden_shape": [
+          1,
+          8193
+        ],
+        "max_absolute_error": 0.0625,
+        "mean_absolute_error": 0.011490372879287196,
+        "relative_l2_error": 0.00040135616540773277
+      }
+    },
+    {
+      "decision": {
+        "actual_duration_index": 1,
+        "actual_token_id": 509,
+        "duration_match": true,
+        "golden_duration_index": 1,
+        "golden_token_id": 509,
+        "token_match": true
+      },
+      "duration_logits": {
+        "actual_dtype": "<f4",
+        "actual_inf_count": 0,
+        "actual_nan_count": 0,
+        "actual_raw_bitpattern_sha256": "e9dc89945b3f8b4f868a92cff7971f9b340ea4f6d755e5bef308350091a43b83",
+        "actual_shape": [
+          1,
+          5
+        ],
+        "bit_exact": false,
+        "different_bitpatterns": 1,
+        "element_count": 5,
+        "golden_dtype": "<f4",
+        "golden_inf_count": 0,
+        "golden_nan_count": 0,
+        "golden_raw_bitpattern_sha256": "47cfe7c2a7e2f394a7ec02d7576bef3370c1fa1f4f10cfeae747a6c0051d4b98",
+        "golden_shape": [
+          1,
+          5
+        ],
+        "max_absolute_error": 0.00390625,
+        "mean_absolute_error": 0.00078125,
+        "relative_l2_error": 5.257277721441355e-05
+      },
+      "index": 10,
+      "inputs": {
+        "joint_decoder_state": {
+          "dtype": "<f4",
+          "npy_sha256": "cb3d1115f75ceaa2bef103caba6ae9e26a821a2f2f48dac32f6e6b97d933ad39",
+          "raw_bitpattern_sha256": "d70e501232b1399e4e67b098f6fd8f7ca4f4c63b05accd8e8d519bc2594668a2",
+          "shape": [
+            1,
+            640
+          ]
+        },
+        "joint_encoder_frame": {
+          "dtype": "<f4",
+          "npy_sha256": "3508b86d115d40bc06a8f2fb7a9fa69afb67b768efc1490a3eb8662dbc2f58b2",
+          "raw_bitpattern_sha256": "e456517a6708870728a47502746cf0edf643dc3787f2b0e28954901ad900a769",
+          "shape": [
+            1,
+            640
+          ]
+        }
+      },
+      "token_logits": {
+        "actual_dtype": "<f4",
+        "actual_inf_count": 0,
+        "actual_nan_count": 0,
+        "actual_raw_bitpattern_sha256": "7ac97fb400decdc8ecdae18852151b56d8e260ae0a704c32dacc311493c7936b",
+        "actual_shape": [
+          1,
+          8193
+        ],
+        "bit_exact": false,
+        "different_bitpatterns": 2759,
+        "element_count": 8193,
+        "golden_dtype": "<f4",
+        "golden_inf_count": 0,
+        "golden_nan_count": 0,
+        "golden_raw_bitpattern_sha256": "7ceb825ef3761737ab91361c1fb1103130abad2445c194b7d9ad32f808a6524d",
+        "golden_shape": [
+          1,
+          8193
+        ],
+        "max_absolute_error": 0.125,
+        "mean_absolute_error": 0.010911086445746369,
+        "relative_l2_error": 0.00041169459056131084
+      }
+    },
+    {
+      "decision": {
+        "actual_duration_index": 2,
+        "actual_token_id": 1150,
+        "duration_match": true,
+        "golden_duration_index": 2,
+        "golden_token_id": 1150,
+        "token_match": true
+      },
+      "duration_logits": {
+        "actual_dtype": "<f4",
+        "actual_inf_count": 0,
+        "actual_nan_count": 0,
+        "actual_raw_bitpattern_sha256": "ec78f183d7f5c56709c4fe0435713d934d39f11f48feeed2b8814eb9ac2787a1",
+        "actual_shape": [
+          1,
+          5
+        ],
+        "bit_exact": false,
+        "different_bitpatterns": 4,
+        "element_count": 5,
+        "golden_dtype": "<f4",
+        "golden_inf_count": 0,
+        "golden_nan_count": 0,
+        "golden_raw_bitpattern_sha256": "18dd470fea2939afdef30e51ead694a274cb9fef2e449a76952304359fcb3685",
+        "golden_shape": [
+          1,
+          5
+        ],
+        "max_absolute_error": 0.0078125,
+        "mean_absolute_error": 0.00390625,
+        "relative_l2_error": 0.0006491708161063987
+      },
+      "index": 11,
+      "inputs": {
+        "joint_decoder_state": {
+          "dtype": "<f4",
+          "npy_sha256": "0a593c7168d15d752b88ed0612743796a4a49f52770edba1d91d30064191afed",
+          "raw_bitpattern_sha256": "0789a099bad7ecabf0c57d2e281c2cd21b48e2690403910ba5267c1fc3750b24",
+          "shape": [
+            1,
+            640
+          ]
+        },
+        "joint_encoder_frame": {
+          "dtype": "<f4",
+          "npy_sha256": "aaf358ea07631807f6678d781ca8d42477ab94cf0eaccc83a822496ba23ae084",
+          "raw_bitpattern_sha256": "928b96666c49cb5da139d92cdff42df2f8ca67ea5b25a263cd3432d2d7f1631e",
+          "shape": [
+            1,
+            640
+          ]
+        }
+      },
+      "token_logits": {
+        "actual_dtype": "<f4",
+        "actual_inf_count": 0,
+        "actual_nan_count": 0,
+        "actual_raw_bitpattern_sha256": "6b43713df2bc5c53b5e03ff3139005ef265bf2789c9f9f687f2ffe8257220450",
+        "actual_shape": [
+          1,
+          8193
+        ],
+        "bit_exact": false,
+        "different_bitpatterns": 2823,
+        "element_count": 8193,
+        "golden_dtype": "<f4",
+        "golden_inf_count": 0,
+        "golden_nan_count": 0,
+        "golden_raw_bitpattern_sha256": "e81ac18d369cb70898321f47b904ccfbdcafca9cc56d6ed9f02496194467d877",
+        "golden_shape": [
+          1,
+          8193
+        ],
+        "max_absolute_error": 0.125,
+        "mean_absolute_error": 0.011670595325277675,
+        "relative_l2_error": 0.00040806582084244994
+      }
+    },
+    {
+      "decision": {
+        "actual_duration_index": 2,
+        "actual_token_id": 1742,
+        "duration_match": true,
+        "golden_duration_index": 2,
+        "golden_token_id": 1742,
+        "token_match": true
+      },
+      "duration_logits": {
+        "actual_dtype": "<f4",
+        "actual_inf_count": 0,
+        "actual_nan_count": 0,
+        "actual_raw_bitpattern_sha256": "2e08bc21de87718a6199c59330c76dc12476b3b2e132f85c17a6df1a85ea16f0",
+        "actual_shape": [
+          1,
+          5
+        ],
+        "bit_exact": false,
+        "different_bitpatterns": 1,
+        "element_count": 5,
+        "golden_dtype": "<f4",
+        "golden_inf_count": 0,
+        "golden_nan_count": 0,
+        "golden_raw_bitpattern_sha256": "63b0537e18c36ef77a7157874c784e652655568b2101cb8b80faf7c86cde5355",
+        "golden_shape": [
+          1,
+          5
+        ],
+        "max_absolute_error": 0.0009765625,
+        "mean_absolute_error": 0.0001953125,
+        "relative_l2_error": 5.9635005363913e-05
+      },
+      "index": 12,
+      "inputs": {
+        "joint_decoder_state": {
+          "dtype": "<f4",
+          "npy_sha256": "6fee5e63186a45d6d54d01cbb6e773034db66029d8e6355512a9ddceee2bd02e",
+          "raw_bitpattern_sha256": "ec3e3f4a1978ce81e0e95cea04f9a919fce29f0aabf9875e16ee81ce5f9468e1",
+          "shape": [
+            1,
+            640
+          ]
+        },
+        "joint_encoder_frame": {
+          "dtype": "<f4",
+          "npy_sha256": "764f8d216017ae34f49dc810bc281a5510d5bd83e699116b9b87f659dcf3f81a",
+          "raw_bitpattern_sha256": "f2c175fde7bb73abc2579bf539a27f0581acf4b3a7b0622227f0032e61046bf7",
+          "shape": [
+            1,
+            640
+          ]
+        }
+      },
+      "token_logits": {
+        "actual_dtype": "<f4",
+        "actual_inf_count": 0,
+        "actual_nan_count": 0,
+        "actual_raw_bitpattern_sha256": "3b6e15f8057110f06f841ce1eeea9a921684c58c3e377e138d73cbd1e2343a10",
+        "actual_shape": [
+          1,
+          8193
+        ],
+        "bit_exact": false,
+        "different_bitpatterns": 2705,
+        "element_count": 8193,
+        "golden_dtype": "<f4",
+        "golden_inf_count": 0,
+        "golden_nan_count": 0,
+        "golden_raw_bitpattern_sha256": "255b5097a593c4e4a4d2fb8b5cf03af77b2179592c85c211ce6eeef63701598d",
+        "golden_shape": [
+          1,
+          8193
+        ],
+        "max_absolute_error": 0.125,
+        "mean_absolute_error": 0.01316148312583913,
+        "relative_l2_error": 0.0004200120022212522
+      }
+    },
+    {
+      "decision": {
+        "actual_duration_index": 2,
+        "actual_token_id": 7877,
+        "duration_match": true,
+        "golden_duration_index": 2,
+        "golden_token_id": 7877,
+        "token_match": true
+      },
+      "duration_logits": {
+        "actual_dtype": "<f4",
+        "actual_inf_count": 0,
+        "actual_nan_count": 0,
+        "actual_raw_bitpattern_sha256": "cc7686844ff888609480bd4e0dd1f78e213b452fcb2ce2b9502cd94d617d3e38",
+        "actual_shape": [
+          1,
+          5
+        ],
+        "bit_exact": false,
+        "different_bitpatterns": 3,
+        "element_count": 5,
+        "golden_dtype": "<f4",
+        "golden_inf_count": 0,
+        "golden_nan_count": 0,
+        "golden_raw_bitpattern_sha256": "82da9692c7777ea8a1a3a68d48eae575a51f11f3d0d8b3427a4cf85c457474a3",
+        "golden_shape": [
+          1,
+          5
+        ],
+        "max_absolute_error": 0.00390625,
+        "mean_absolute_error": 0.0013671875,
+        "relative_l2_error": 0.00037703971551988343
+      },
+      "index": 13,
+      "inputs": {
+        "joint_decoder_state": {
+          "dtype": "<f4",
+          "npy_sha256": "5a5d98a634f18ff7d4b891945fda2642b5a9861bec4fd1d764e5e36431c79be3",
+          "raw_bitpattern_sha256": "d94e803c4cf39e7f326e2d8b51ab210ae34d89cfe310ba6ca5b21a6f7ff1e171",
+          "shape": [
+            1,
+            640
+          ]
+        },
+        "joint_encoder_frame": {
+          "dtype": "<f4",
+          "npy_sha256": "a6c12d01e98c5807818476df70eaa850feea08054e8865785dce95548d25669d",
+          "raw_bitpattern_sha256": "562e9dd688c45b2af37e489519aafce69dee40a20a0c823c0d721d56417b2e4c",
+          "shape": [
+            1,
+            640
+          ]
+        }
+      },
+      "token_logits": {
+        "actual_dtype": "<f4",
+        "actual_inf_count": 0,
+        "actual_nan_count": 0,
+        "actual_raw_bitpattern_sha256": "478d0df3b89da30654f096614fe3d4e2c152ce09005854c2fdec5a38bc47827c",
+        "actual_shape": [
+          1,
+          8193
+        ],
+        "bit_exact": false,
+        "different_bitpatterns": 2645,
+        "element_count": 8193,
+        "golden_dtype": "<f4",
+        "golden_inf_count": 0,
+        "golden_nan_count": 0,
+        "golden_raw_bitpattern_sha256": "a22658e04b3d2ea40c3334a04624b988b929c2a76fd082718aaa1f703f1d086f",
+        "golden_shape": [
+          1,
+          8193
+        ],
+        "max_absolute_error": 0.0625,
+        "mean_absolute_error": 0.009930828908824607,
+        "relative_l2_error": 0.0004361458824034081
+      }
+    },
+    {
+      "decision": {
+        "actual_duration_index": 3,
+        "actual_token_id": 1503,
+        "duration_match": true,
+        "golden_duration_index": 3,
+        "golden_token_id": 1503,
+        "token_match": true
+      },
+      "duration_logits": {
+        "actual_dtype": "<f4",
+        "actual_inf_count": 0,
+        "actual_nan_count": 0,
+        "actual_raw_bitpattern_sha256": "8bc0c4328f29189a88bd22c6f5f7d146423917a64acdd1556562a59342413c26",
+        "actual_shape": [
+          1,
+          5
+        ],
+        "bit_exact": false,
+        "different_bitpatterns": 2,
+        "element_count": 5,
+        "golden_dtype": "<f4",
+        "golden_inf_count": 0,
+        "golden_nan_count": 0,
+        "golden_raw_bitpattern_sha256": "77bf55ae65f02897d26b758b77206e440c5ecc333ff6e98a1c2dc36756415e34",
+        "golden_shape": [
+          1,
+          5
+        ],
+        "max_absolute_error": 0.0078125,
+        "mean_absolute_error": 0.00234375,
+        "relative_l2_error": 0.0004568576128409185
+      },
+      "index": 14,
+      "inputs": {
+        "joint_decoder_state": {
+          "dtype": "<f4",
+          "npy_sha256": "ec2df42439c570d62a303289faa29ac6619a5ffabe07b58a478e969665637fac",
+          "raw_bitpattern_sha256": "d0ffee48da0d6b9641d1faf94ca916975902c986b92e9452aa8d4e35c852a029",
+          "shape": [
+            1,
+            640
+          ]
+        },
+        "joint_encoder_frame": {
+          "dtype": "<f4",
+          "npy_sha256": "0baa694e8af4ac568712dbf149cd8420005ad77a0d65801dae94a0d899d98944",
+          "raw_bitpattern_sha256": "07620533a57da81eb020d3b2c69b5a0332998684f87a392660a97a5cec99f5a5",
+          "shape": [
+            1,
+            640
+          ]
+        }
+      },
+      "token_logits": {
+        "actual_dtype": "<f4",
+        "actual_inf_count": 0,
+        "actual_nan_count": 0,
+        "actual_raw_bitpattern_sha256": "46afa6dee22c50c074a46d22a5598357d0ab9c86cee17e841f8e42155988e634",
+        "actual_shape": [
+          1,
+          8193
+        ],
+        "bit_exact": false,
+        "different_bitpatterns": 2783,
+        "element_count": 8193,
+        "golden_dtype": "<f4",
+        "golden_inf_count": 0,
+        "golden_nan_count": 0,
+        "golden_raw_bitpattern_sha256": "fe7cfa17618a20d4e927e474c0c5d761140a7b23d4b63fc160d42eaf56c77568",
+        "golden_shape": [
+          1,
+          8193
+        ],
+        "max_absolute_error": 0.125,
+        "mean_absolute_error": 0.011208596515317954,
+        "relative_l2_error": 0.0004138349488856592
+      }
+    },
+    {
+      "decision": {
+        "actual_duration_index": 3,
+        "actual_token_id": 479,
+        "duration_match": true,
+        "golden_duration_index": 3,
+        "golden_token_id": 479,
+        "token_match": true
+      },
+      "duration_logits": {
+        "actual_dtype": "<f4",
+        "actual_inf_count": 0,
+        "actual_nan_count": 0,
+        "actual_raw_bitpattern_sha256": "f6bca107c5691ca468166cb710859a9a32763f35eb88a59935564381357a93fa",
+        "actual_shape": [
+          1,
+          5
+        ],
+        "bit_exact": false,
+        "different_bitpatterns": 4,
+        "element_count": 5,
+        "golden_dtype": "<f4",
+        "golden_inf_count": 0,
+        "golden_nan_count": 0,
+        "golden_raw_bitpattern_sha256": "18203d9423855ecad9bbf160a1641043a9102fa25f5e616894ddb532fc2e7ae7",
+        "golden_shape": [
+          1,
+          5
+        ],
+        "max_absolute_error": 0.015625,
+        "mean_absolute_error": 0.006640625,
+        "relative_l2_error": 0.000788269446570946
+      },
+      "index": 15,
+      "inputs": {
+        "joint_decoder_state": {
+          "dtype": "<f4",
+          "npy_sha256": "159f3b5c37b8c589211b6c07804f41b41900245ff006a574e304b744d2e277f1",
+          "raw_bitpattern_sha256": "2f9a6c157286c97e1b70a340b8db8177b5dd2d14bcfbff6258a7559b75ba4c43",
+          "shape": [
+            1,
+            640
+          ]
+        },
+        "joint_encoder_frame": {
+          "dtype": "<f4",
+          "npy_sha256": "e1563b41bb92df45916be71de394e7f6640adea5b428484677adffd7beaf3624",
+          "raw_bitpattern_sha256": "95e8316cdcc18e060e43e6f9b234e33d346780beb95b82b0756b91e40fd46d12",
+          "shape": [
+            1,
+            640
+          ]
+        }
+      },
+      "token_logits": {
+        "actual_dtype": "<f4",
+        "actual_inf_count": 0,
+        "actual_nan_count": 0,
+        "actual_raw_bitpattern_sha256": "a0745c8a2fd1101a43e646a888fcd0067a5a4a900030c313f3c97aadc4fa739d",
+        "actual_shape": [
+          1,
+          8193
+        ],
+        "bit_exact": false,
+        "different_bitpatterns": 2702,
+        "element_count": 8193,
+        "golden_dtype": "<f4",
+        "golden_inf_count": 0,
+        "golden_nan_count": 0,
+        "golden_raw_bitpattern_sha256": "3a8b24fdf01d241af550dc2991b82f2109e00908cc7095bd3fc72c5c1b8cff19",
+        "golden_shape": [
+          1,
+          8193
+        ],
+        "max_absolute_error": 0.125,
+        "mean_absolute_error": 0.01737096454290248,
+        "relative_l2_error": 0.0004301041609277319
+      }
+    }
+  ],
+  "traces_compared": 16
+}
