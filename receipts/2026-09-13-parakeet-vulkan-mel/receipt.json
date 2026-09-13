@@ -31,8 +31,8 @@
     "tests/coreml/test_vulkan_mel.py": "4dfa53690fdb5790423e37f12121ce5d3dd8c7ce484c8b81ea658829b9e291df",
     "tests/coreml/test_vulkan_mel_arithmetic.py": "c76ad7c35353b6a62bea665795a4f8da82d9590ad88b228a563432f65ddf341c",
     "tests/coreml/test_vulkan_mel_qualification.py": "631a6074d5f4cad44f3bd71281fc7e9e2ccbe0e0a0abe04e2d1ca5ea98011bdb",
-    "docs/parakeet.md": "0377b9a7cc4951e283b8a691bfa22c86320f3b797ef9bfe3daa037fa2d6ceed8",
-    "docs/coreml.md": "39183adb24530101dce9d7590f177702402c1b9be71204b7ae0cb0bf89061fa5"
+    "docs/parakeet.md": "4915df25425e8b840b896483b5a3066d6e70c566ae8f2d852b3353dff0fcc459",
+    "docs/coreml.md": "d731bbf1d680b32c06f0bafbaaed92c683ea41e8adb114b951b74342ceefc366"
   },
   "local_runtime": {
     "source_commit": "e4d079c883b8606dddef7720bd302c5756be0692",
@@ -167,11 +167,52 @@
       }
     ],
     "negative_gates": "Missing or extra stage keys reject qualification. Vulkan compute counts 1, 7, and 9 reject qualification. Non-int32 or non-[3001] API masks reject comparison. Tampering any of the five final capture files fails the named SHA-256 gate.",
-    "apple_rerun": "pending; the historical Apple run is not reused as general full-domain qualification"
+    "apple_rerun": {
+      "status": "failed at the first reviewed finite-scale DFT regression; corrected Apple qualification is not claimed",
+      "source_commit": "9438a06fd3394b30834976dcc8af322bd1b05493",
+      "source_sha256": "13ac9d04af0d0248d6f667dd84bdd4dbb5faec509b989a158c04f5cafe63d3df",
+      "host": "jwm1-linux, aarch64, Apple M1 (G13G B1), Honeykrisp",
+      "runtime_version": "0.32.2.dev202609130646+3172b41563eeb516de40c9fe1029a014d43b54a8",
+      "runtime_core_sha256": "4ad850da16c300ea9f60aa7247f034f358aa16d7ba2fd146979a01c867e3cfa5",
+      "runtime_libmlx_sha256": "db44d0ee60d3c010e09a1b77a27cf7e88a92318e9d9f07cfff5e0efae3dddc77",
+      "runtime_worker_sha256": "15f66a2d3e0d014e453ab04ebb0e05877edd369e43e3045d2343f9d479924bf8",
+      "acquired": "2026-09-13T07:08:46Z",
+      "released": "2026-09-13T07:09:29Z",
+      "fixed_deadline_epoch": 1789283419,
+      "probe_sha256": "28cbeca260197b90d7b24aed181a2da8e2ecb612ff467d0836f94a336ead2d6e",
+      "passing_prefix": "corrected fma32 matched 8192 deterministic finite binary32 triples spanning all exponents",
+      "first_failure": "DFT real at waveform scale 2^-120: 1028 mismatches; first index [0,0], actual 0x02349b98, expected 0x026c5098",
+      "corrected_fixture_cli": "not run; after the diagnostic failure and dependency correction, the fixed deadline expired before a CLI-only launcher could acquire",
+      "capability_evidence": "The Honeykrisp-specific cast path records that the device lacks DenormPreserve and flushes float32 subnormal operands. The physical probe preserved subnormal bits through upload and raw roundtrip, while preemphasis first diverged when native arithmetic consumed them.",
+      "artifact": {
+        "path": "corrected-apple-arithmetic.log",
+        "sha256": "ca742061ccd5223575fb95f9e10becfccc8b8398d1cdaef9ea248b2d5e3f5ca6"
+      },
+      "cleanup": "At remote epoch 1789283452 launcher PIDs 3342225, 3342465, and 3342944 were absent; ANE workers and mel processes were absent; no m1-gpu lease path was printed; a nonblocking /tmp/m1-gpu.lock acquisition succeeded.",
+      "first_divergence_diagnosis": {
+        "acquired": "2026-09-13T07:21:14Z",
+        "released": "2026-09-13T07:21:36Z",
+        "fixed_deadline_epoch": 1789284321,
+        "waveform_upload": "0 mismatches across 480000 float32 values",
+        "preemphasis": "first divergence: 16 mismatches; index 4 actual 0x00000000, expected 0x00565b00",
+        "hann_upload": "0 mismatches across 400 float32 values",
+        "frames": "181 mismatches; first [0,316] actual 0x00000000, expected 0x004432b7",
+        "direct_dft_real": "1028 mismatches; first [0,0] actual 0x02349b98, expected 0x026c5098",
+        "direct_dft_imag": "1020 mismatches; first [0,1] actual 0x0202f104, expected 0x022a29d8",
+        "native_ops": "Across 2056 encoded values, raw roundtrip, multiply by one, and exact fma by one were bit-exact. Add zero differed only at two signed-zero inputs because the shader preserved negative zero while the CPU addition returned positive zero.",
+        "vulkaninfo": "The --json invocation exited successfully but produced an empty file, so it is not treated as capability evidence. Its stderr contains only display-property warnings.",
+        "artifacts": {
+          "apple-denormal-diagnostic.json": "76f5e69bb1a1e3f425f0b2ae217c70dc30c9c47b9d83108235a8dcc096a28a27",
+          "apple-denormal-launcher.log": "d0171204c107d51bee2e89a8298e572f6d29f34a26446a4b268f9e88da3f5ca2",
+          "vulkaninfo-denorm.stderr": "a5192b6a4615347af0dbf1a72506251346807433b3060d067907056ac5bf0372"
+        },
+        "cleanup": "At remote epoch 1789284144 launcher PID 3344798 was absent; ANE workers and the diagnostic process were absent; no m1-gpu lease path was printed; a nonblocking /tmp/m1-gpu.lock acquisition succeeded."
+      }
+    }
   },
   "qualification_boundary": {
     "local_frontend": "qualified on software Vulkan: full-finite FMA regressions pass and all 18 authenticated stage/final comparisons are byte-exact",
-    "apple_physical_gpu": "historical evidence only for the pinned ordinary-input fixture; corrected source awaits a new Apple run",
+    "apple_physical_gpu": "not qualified: corrected fma32 passed 8192 full-exponent triples, but the 2^-120 DFT failed with 1028 real-component bit mismatches; corrected 18-comparison fixture CLI was not reached before the fixed deadline",
     "encoder_and_full_plan": "not claimed"
   }
 }

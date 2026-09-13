@@ -1,0 +1,27 @@
+DIAGNOSTIC_LOCK_ACQUIRED pid=3344799 pgid=3344798 deadline_epoch=1789284321 utc=2026-09-13T07:21:14Z
+QUIET_SAMPLE sample=1 load1=0.03 quiet=1 utc=2026-09-13T07:21:14Z
+QUIET_SAMPLE sample=2 load1=0.02 quiet=1 utc=2026-09-13T07:21:24Z
+QUIET_SAMPLE sample=3 load1=0.02 quiet=1 utc=2026-09-13T07:21:34Z
+f7f6f46d7a142a8e83459519749791fc1da0b00d09467890c513ea84650ae178  /var/tmp/CoremlVulkanMel-9438a06f/apple_denormal_diagnostic.py
+13ac9d04af0d0248d6f667dd84bdd4dbb5faec509b989a158c04f5cafe63d3df  /var/tmp/CoremlVulkanMel-9438a06f/overlay/tools/coreml/vulkan_mel.py
+VULKANINFO_JSON_CAPTURED
+STAGE waveform_upload {"bit_exact": true, "mismatches": 0, "shape": [480000]}
+STAGE preemphasis {"actual": "0x00000000", "bit_exact": false, "expected": "0x00565b00", "first": [4], "mismatches": 16, "shape": [480000]}
+STAGE hann_upload {"bit_exact": true, "mismatches": 0, "shape": [400]}
+STAGE frames {"actual": "0x00000000", "bit_exact": false, "expected": "0x004432b7", "first": [0, 316], "mismatches": 181, "shape": [3001, 512]}
+STAGE dft_direct_real {"actual": "0x02349b98", "bit_exact": false, "expected": "0x026c5098", "first": [0, 0], "mismatches": 1028, "shape": [4, 257]}
+STAGE dft_direct_imag {"actual": "0x0202f104", "bit_exact": false, "expected": "0x022a29d8", "first": [0, 1], "mismatches": 1020, "shape": [4, 257]}
+NATIVE_OP roundtrip {"bit_exact": true, "mismatches": 0, "values": 2056}
+NATIVE_OP mul_one {"bit_exact": true, "mismatches": 0, "values": 2056}
+NATIVE_OP add_zero {"actual": "0x80000000", "bit_exact": false, "expected": "0x00000000", "first": 1487, "input": "0x80000000", "mismatches": 2, "values": 2056}
+NATIVE_OP exact_mul_one {"bit_exact": true, "mismatches": 0, "values": 2056}
+DIAGNOSTIC_WRITTEN /var/tmp/CoremlVulkanMel-9438a06f/apple-denormal-diagnostic.json
+76f5e69bb1a1e3f425f0b2ae217c70dc30c9c47b9d83108235a8dcc096a28a27  /var/tmp/CoremlVulkanMel-9438a06f/apple-denormal-diagnostic.json
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  /var/tmp/CoremlVulkanMel-9438a06f/vulkaninfo-denorm.json
+a5192b6a4615347af0dbf1a72506251346807433b3060d067907056ac5bf0372  /var/tmp/CoremlVulkanMel-9438a06f/vulkaninfo-denorm.stderr
+DIAGNOSTIC_COMPLETE utc=2026-09-13T07:21:36Z
+CLEANUP_WORKERS_CLEAR
+CLEANUP_DIAGNOSTIC_CLEAR
+CLEANUP_LOCK_FREE
+CLEANUP_LEASE_REMOVED
+DIAGNOSTIC_RELEASED rc=0 residue=0 utc=2026-09-13T07:21:36Z
