@@ -66,13 +66,18 @@ runtime-test trace counters.
    newer, Vulkan development headers, a C++ compiler, and the BLAS/LAPACK
    development packages the CPU backend links (`liblapack-dev libblas-dev
    liblapacke-dev` on Debian-family distributions).
+   On Arch/Omarchy, install `blas-openblas` and set
+   `CMAKE_INCLUDE_PATH=/usr/include/openblas` for the build; both BLAS and
+   LAPACK headers live in that package-owned directory. No source or linker
+   flag changes are needed.
 2. Run `./scripts/build-wheel.sh`
 3. Read the wheel path, size, and sha256 from the receipt lines.
 
 The script prepares the pinned upstream tree, builds with
 `MLX_BUILD_OMARCHY=ON`, the CPU backend on, and the Metal and CUDA backends
-off, and writes one wheel into `dist/`. The built wheel needs
-`liblapack.so.3` and `libblas.so.3` at runtime.
+off, and writes one wheel into `dist/`. Keep the selected BLAS/LAPACK
+provider installed at runtime: `libblas`/`liblapack` on Debian-family
+distributions, or `openblas` on Arch/Omarchy.
 
 ## Install and smoke-test
 

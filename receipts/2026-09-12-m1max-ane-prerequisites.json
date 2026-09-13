@@ -1,0 +1,92 @@
+{
+  "date": "2026-09-12",
+  "scope": "M1 Max ANE prerequisite qualification only; compilation is not ANE device execution",
+  "status": "complete_build_readiness_not_hardware_readiness",
+  "source": {
+    "repository": "joshuaswarren/omarchy-ane",
+    "commit": "061b461410a595eb9884e48a250dcc47fc77be8d",
+    "staging_path_on_laptop": "/tmp/m1max-ane-prereq/source-061b461410a595eb9884e48a250dcc47fc77be8d",
+    "source_staging_command": "git -C /home/joshuawarren/.config/superpowers/worktrees/omarchy-ane/m1max-bringup archive --format=tar HEAD | ssh -o ConnectTimeout=8 -o BatchMode=yes jw16mbp1-linux 'mkdir -p … && tar -x -C …'"
+  },
+  "target": {
+    "host": "jw16mbp1-linux",
+    "kernel_release": "7.1.6-1-1-ARCH",
+    "headers_package": "linux-asahi-headers 7.1.6.asahi1-1",
+    "headers_path": "/usr/lib/modules/7.1.6-1-1-ARCH/build",
+    "module_symvers_lines": 20310,
+    "headers_makefile_sha256": "137a58ad1417e413962dbe6e91dbb0b2385fbc8733db7d4ecf659959cd9bac82",
+    "module_symvers_sha256": "d5eea549b9333f717fdc932683ea6633d58049c1e3f8f9e0be12e05d7610dd82",
+    "kernel_compiler": "gcc (GCC) 16.1.1 20260430",
+    "binding_packages_installed": {
+      "python-setuptools": "84.0.0",
+      "python-construct": "2.10.70",
+      "python-numpy": "2.5.3"
+    }
+  },
+  "native_build": {
+    "commands": [
+      "make -C /tmp/m1max-ane-prereq/source-061b461410a595eb9884e48a250dcc47fc77be8d/ane KERNELDIR=/lib/modules/$(uname -r)/build modules",
+      "make -C /tmp/m1max-ane-prereq/source-061b461410a595eb9884e48a250dcc47fc77be8d/libane libane",
+      "make -C /tmp/m1max-ane-prereq/source-061b461410a595eb9884e48a250dcc47fc77be8d/bindings/python/dylib libane_python",
+      "PYTHONPATH=/tmp/m1max-ane-prereq/source-061b461410a595eb9884e48a250dcc47fc77be8d/bindings/python/python python -c 'import ane; print(ane.__file__)'"
+    ],
+    "artifacts": [
+      {
+        "path": "/tmp/m1max-ane-prereq/source-061b461410a595eb9884e48a250dcc47fc77be8d/ane/ane.ko",
+        "sha256": "7b3691b4fcb01fbe8f4d92e507e95f49c183c2083ed78bb9d1ed2a03607ac1f0",
+        "format": "ELF64 AArch64 kernel module",
+        "name": "ane",
+        "vermagic": "7.1.6-1-1-ARCH SMP preempt mod_unload aarch64"
+      },
+      {
+        "path": "/tmp/m1max-ane-prereq/source-061b461410a595eb9884e48a250dcc47fc77be8d/libane/libane.a",
+        "sha256": "dd638073d8161924402cb6cea43b17e125f8072629d70d7a8c2d7ea69248137f",
+        "contents": "libane.o"
+      },
+      {
+        "path": "/tmp/m1max-ane-prereq/source-061b461410a595eb9884e48a250dcc47fc77be8d/bindings/python/dylib/libane_python.so",
+        "sha256": "8795e4c8d2b7b4440217ee5bebf342dc6795e909719e78bacbfc02e973231aa9",
+        "format": "ELF64 AArch64 shared object"
+      }
+    ],
+    "binding_import": "/tmp/m1max-ane-prereq/source-061b461410a595eb9884e48a250dcc47fc77be8d/bindings/python/python/ane/__init__.py"
+  },
+  "cross_build_fallback": {
+    "aarch64_toolchain": "aarch64-linux-gnu-gcc (Debian 12.2.0-14)",
+    "successful_user_space_artifacts": [
+      {
+        "path": "/tmp/m1max-ane-cross-source/libane/libane.a",
+        "sha256": "e2a77b07d3fc8de2c93d5da1b9161886d28f3a39a62b921890d6136281d99883"
+      },
+      {
+        "path": "/tmp/m1max-ane-cross-source/bindings/python/dylib/libane_python.so",
+        "sha256": "1e9ce0b25688fee42aaac2a9bbe8f29aea41860daf1deecc580fe905105b2beb"
+      }
+    ],
+    "module_result": "Not accepted as a target module build: Debian cross GCC 12.2 rejects the target kernel's GCC-16-only -fmin-function-alignment=4, and clang-19 also rejects that flag and -fconserve-stack. No kernel flags were stripped or bypassed."
+  },
+  "compiler": {
+    "baseline_bootstrap_receipt": "receipts/2026-09-12-compiler-preparation/README.md",
+    "baseline_commit": "a0ce354cf800011a84420da4e12013eb8140b2a5",
+    "current_candidate": "783dbe1",
+    "current_candidate_owner": "BaseM1H13Qualification",
+    "statement": "The baseline receipt is bootstrap evidence only, not a qualification claim for the current candidate."
+  },
+  "hardware_blocker": {
+    "observed": [
+      "NO_DEV_ANE0",
+      "NO_SYS_CLASS_ANE",
+      "ANE_MODULE_NOT_LOADED"
+    ],
+    "established_root_cause": "No ANE device-tree node exists on the stock M1 Max kernel.",
+    "prohibited_actions_not_taken": [
+      "modprobe or insmod",
+      "fabricating ANE addresses",
+      "installing DT overlays",
+      "changing kernel or firmware",
+      "rebooting"
+    ],
+    "readiness_statement": "The successful builds establish source, kernel-header ABI, and userspace binding build readiness only. They do not establish ANE hardware readiness or device execution."
+  },
+  "resolved_model": "openai-codex/gpt-5.6-terra"
+}
