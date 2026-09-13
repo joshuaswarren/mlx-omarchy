@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Contract checks for pinned decoder and joint component loading."""
 
+import os
 import shutil
 import struct
 import sys
@@ -100,4 +101,12 @@ def test_loader_rejects_dangling_package_symlink(tmp_path):
     (target / "unlisted.bin").symlink_to("/definitely/not/a/pinned/package/file")
 
     with pytest.raises(ValueError, match="symbolic link"):
+        load_pinned_component(target, "joint")
+
+
+def test_loader_rejects_non_regular_package_entry(tmp_path):
+    target = _package_copy(tmp_path)
+    os.mkfifo(target / "unlisted")
+
+    with pytest.raises(ValueError, match="non-regular entry"):
         load_pinned_component(target, "joint")

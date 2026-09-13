@@ -126,8 +126,12 @@ def _verify_package_files(package: Any, component: str, lock: ReferenceLock) -> 
             raise PinnedComponentError(
                 f"{component}.mlpackage contains a symbolic link"
             )
-        if not path.is_file():
+        if path.is_dir():
             continue
+        if not path.is_file():
+            raise PinnedComponentError(
+                f"{component}.mlpackage contains a non-regular entry"
+            )
         resolved = path.resolve()
         if not resolved.is_relative_to(package.path):
             raise PinnedComponentError(
