@@ -1,0 +1,3 @@
+compiler invocation: /home/joshuawarren/src/mil-hwx-compiler/build/mil-hwxc --mil /tmp/coreml-text-adapter-pinned-source-v2/model.mil --model-root /tmp/coreml-text-adapter-pinned-source-v2/model-root --output /tmp/coreml-text-adapter-pinned-compiled-v2 --target H13 --format anec
+265:5: error [mil.parse.expected-token]: expected type, found '('
+mil_adapter: compiler failed with exit 65

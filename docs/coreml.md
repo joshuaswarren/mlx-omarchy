@@ -169,6 +169,49 @@ histogram is now independently verified), while the old artifact's
 boundary dtype/shape entries were all `None` — blank values presented
 as data, which the new inspector refuses to emit.
 
+## Textual MIL adapter
+
+`overlay/tools/coreml/mil_adapter.py` converts only the locked encoder from
+`mweinbach1/parakeet-tdt-0.6b-v3-coreml` at revision
+`b650695c2322ee5281dff48d7345b2f3a58ff018`. It verifies the complete
+package against `parakeet-reference.lock`, rejects unknown protobuf fields,
+state, nested blocks, dynamic or optional model boundaries, unsupported value
+storage, and non-unit bindings, then emits textual `program(1)` MIL with a
+`CoreML8` main function.
+
+The adapter preserves operation and result order. Multi-result operations use
+ordered parenthesized typed bindings. It replaces each supported
+`constexpr_lut_to_dense` in place with an FP16 `const`, expanding one
+constant at a time from LSB-first UINT4 indices and block-indexed palettes.
+All FP16 byte immediates, including non-finite bit patterns, move unchanged to
+standard Core ML blob-v2 records. Existing external weights remain under the
+ordinary model root. The output has no alternate graph or CPU tensor path.
+
+Emission and compilation are separate explicit actions:
+
+```bash
+python3 overlay/tools/coreml/mil_adapter.py emit ENCODER.mlpackage OUTPUT \
+  --reference-lock overlay/tools/coreml/parakeet-reference.lock
+
+python3 overlay/tools/coreml/mil_adapter.py compile ENCODER.mlpackage OUTPUT \
+  --reference-lock overlay/tools/coreml/parakeet-reference.lock \
+  --compiler /absolute/path/to/mil-hwxc \
+  --compiler-output /absolute/path/to/output
+```
+
+`compile` requires an absolute executable path and invokes that binary with
+the emitted `model.mil`, ordinary `model-root`, H13 target, and ANEC format.
+It returns the compiler's actual nonzero status. The adapter receipt records
+the baseline compiler at `a0ce354cf800011a84420da4e12013eb8140b2a5`
+rejecting the first parenthesized binding. Companion compiler commit
+`a66ab595cfd4fc98bed5fba944f465d764ec1b93` accepts the ordered result
+syntax: the same `program(1)`/`CoreML8` MIL hash parses completely and
+reaches H13 lowering, where it fails explicitly at the first two-result split
+with `h13.unsupported-multi-result-operation`. This is semantic round-trip
+progress, not a compiler artifact or encoder qualification. The exact
+emission, Apple-reference comparison, local invocation, and cross-repository
+compiler receipt are in `receipts/2026-09-13-coreml-text-adapter/`.
+
 ## Compiler preparation and execution boundary
 
 `scripts/prepare-ane-compiler.sh` downloads and hash-verifies the external
