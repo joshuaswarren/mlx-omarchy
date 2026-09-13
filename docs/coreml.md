@@ -221,10 +221,11 @@ of a known H13 graph. These are host checks, not ANE execution proof.
 
 The [integration review](../receipts/2026-09-12-coreml-integration-review.json)
 records the executed checks and links the complete encoder coverage table.
-The public encoder remains unqualified: required H13 semantics and shapes
-are missing, and the mixed-type, two-output contract is not represented by
-the current compiler program model. Execution work stops at plan section 62;
-no CPU fallback or altered model contract substitutes for these gaps.
+The public encoder remains unqualified. Ordered split results survive semantic
+import, but H13 lowering still rejects them, and the compiler program model
+does not support the encoder's mixed-type, two-output function contract.
+Compiler and runtime work continues against these gaps without CPU tensor
+fallback or changes to the model contract.
 
 The [schema-3 adapter receipt](../receipts/2026-09-12-h13-bundle-schema3/receipt.md)
 replaces the blocked bundle-v2 contract. Schema 3 removes the top-level
