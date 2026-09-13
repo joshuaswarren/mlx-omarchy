@@ -271,7 +271,7 @@ def main() -> int:
 
     # 5: manifest.
     elem_size = FP16_SIZES[dtype]
-    ws_bytes = max(TILE_ALIGNMENT, facts["workspace_bytes"])
+    ws_bytes = facts["workspace_bytes"]
     commit = args.source_commit
     if not re.fullmatch(r"[0-9a-f]{40}", commit):
         die("--source-commit must be a 40-hex commit hash")

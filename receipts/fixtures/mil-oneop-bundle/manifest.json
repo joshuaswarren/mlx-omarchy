@@ -11,7 +11,7 @@
   ],
   "state": [],
   "workspace": [
-    {"name": "workspace", "index": 0, "dtype": "uint8", "shape": [16384], "byte_size": 16384, "stride": 16384}
+    {"name": "workspace", "index": 0, "dtype": "uint8", "shape": [0], "byte_size": 0, "stride": 0}
   ],
   "payloads": [
     {"role": "anec", "path": "model-512.anec", "sha256": "479a30e8197bce9130f5d78939ab2862b83d015ca27e8623b8855747981f527e", "byte_size": 20480},

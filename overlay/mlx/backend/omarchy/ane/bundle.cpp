@@ -329,6 +329,16 @@ void validate_manifest_anec_contract(const AneManifest& manifest, const AneAnecH
     throw bundle_error("ANEC destination_count does not match manifest outputs plus state");
   }
 
+  const auto& workspace = manifest.workspace.front();
+  const auto workspace_bytes = channel_size_bytes(header, 3);
+  if (workspace_bytes !=
+      align_up(workspace.byte_size, kAneTileAlignment, "workspace allocation")) {
+    throw bundle_error("workspace byte_size does not match ANEC channel 3 allocation");
+  }
+  if (workspace.stride > workspace_bytes) {
+    throw bundle_error("workspace stride exceeds ANEC channel 3 allocation");
+  }
+
   for (uint32_t i = 0; i < manifest.outputs.size(); ++i) {
     validate_channel_contract(
         "output " + manifest.outputs[i].name, manifest.outputs[i], header, output_bdx(i));

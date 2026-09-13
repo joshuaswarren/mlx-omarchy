@@ -10,6 +10,7 @@
 
 #include "mlx/backend/omarchy/ane/bundle.h"
 #include "mlx/backend/omarchy/ane/manifest.h"
+#include "json.hpp"
 
 #include <array>
 #include <cstring>
@@ -135,6 +136,7 @@ struct FixtureManifest {
   uint64_t anec_kernel_size = 0x400;
   uint32_t command_tiles = 1;
   uint32_t kernel_tiles = 0;
+  uint32_t workspace_tiles = 1;
   int64_t anec_source_count_override = -1;
   int64_t anec_destination_count_override = -1;
   uint32_t input_tiles = 2;
@@ -173,6 +175,7 @@ struct FixtureManifest {
 
     write_le<uint32_t>(bytes, 40, command_tiles);
     write_le<uint32_t>(bytes, 40 + sizeof(uint32_t), kernel_tiles);
+    write_le<uint32_t>(bytes, 40 + 3 * sizeof(uint32_t), workspace_tiles);
     write_le<uint32_t>(bytes, 40 + output_bdx() * sizeof(uint32_t), output_tiles);
     write_le<uint32_t>(bytes, 40 + input_bdx(0) * sizeof(uint32_t), input_tiles);
     write_nchw(bytes, output_bdx(), {1, 512, 1, 1, 64, 64});
@@ -693,13 +696,78 @@ TEST_CASE("ANEC tiled channels reject non-16-bit manifest tensors") {
         std::string::npos);
 }
 
-TEST_CASE("manifest workspace is separate from libane's bootstrap allocation") {
+TEST_CASE("workspace allocation matches ANEC channel three") {
   TempDir temp;
   FixtureManifest fixture;
   fixture.workspace_byte_size = 1024;
   fixture.workspace_stride = 1024;
-  auto dir = write_bundle(temp, fixture);
-  CHECK_NOTHROW(load_bundle(dir));
+  auto bundle = load_bundle(write_bundle(temp, fixture));
+  CHECK(bundle.anec_header.tiles[3] * kAneTileAlignment >=
+        bundle.manifest.workspace[0].byte_size);
+  fixture.workspace_tiles = 0;
+  CHECK_THROWS_AS(load_bundle(write_bundle(temp, fixture)), std::runtime_error);
+  fixture.workspace_tiles = 2;
+  CHECK_THROWS_AS(load_bundle(write_bundle(temp, fixture)), std::runtime_error);
+  fixture.workspace_tiles = 1;
+  fixture.workspace_stride = static_cast<int>(kAneTileAlignment + 1);
+  CHECK_THROWS_AS(load_bundle(write_bundle(temp, fixture)), std::runtime_error);
+}
+
+TEST_CASE("absent workspace requires canonical geometry and no allocation") {
+  TempDir temp;
+  FixtureManifest fixture;
+  fixture.workspace_byte_size = 0;
+  fixture.workspace_stride = 0;
+  fixture.workspace_tiles = 0;
+  const auto dir = write_bundle(temp, fixture);
+  const auto bundle = load_bundle(dir);
+  CHECK(bundle.manifest.workspace[0].shape == std::vector<uint64_t>{0});
+  CHECK(bundle.manifest.workspace[0].byte_size == 0);
+  CHECK(bundle.manifest.workspace[0].stride == 0);
+  CHECK(bundle.anec_header.tiles[3] == 0);
+
+  fixture.workspace_tiles = 1;
+  CHECK_THROWS_AS(load_bundle(write_bundle(temp, fixture)), std::runtime_error);
+  fixture.workspace_tiles = 0;
+  fixture.workspace_stride = 1;
+  CHECK_THROWS_AS(load_bundle(write_bundle(temp, fixture)), std::runtime_error);
+}
+
+TEST_CASE("absent workspace does not bypass tensor validation") {
+  TempDir temp;
+  FixtureManifest fixture;
+  fixture.workspace_byte_size = 0;
+  fixture.workspace_stride = 0;
+  fixture.workspace_tiles = 0;
+  const auto dir = write_bundle(temp, fixture);
+  auto manifest = nlohmann::json::parse(fixture.render());
+  auto& workspace = manifest["workspace"][0];
+  SUBCASE("positive shape cannot describe zero bytes") {
+    workspace["shape"] = {1};
+  }
+  SUBCASE("mixed dimensions are not canonical absence") {
+    workspace["shape"] = {0, 1};
+  }
+  SUBCASE("empty shape does not describe a tensor") {
+    workspace["shape"] = nlohmann::json::array();
+  }
+  SUBCASE("multiple zero dimensions are not canonical absence") {
+    workspace["shape"] = {0, 0};
+  }
+  SUBCASE("zero dimension must be an integer") {
+    workspace["shape"] = {0.0};
+  }
+  SUBCASE("absence has byte dtype") {
+    workspace["dtype"] = "float16";
+  }
+  SUBCASE("zero stride must be an integer") {
+    workspace["stride"] = 0.0;
+  }
+  SUBCASE("input tensors cannot use the workspace exception") {
+    manifest["inputs"][0] = workspace;
+  }
+  write_file(dir / "manifest.json", manifest.dump());
+  CHECK_THROWS_AS(load_bundle(dir), std::runtime_error);
 }
 
 TEST_CASE("ANEC NCHW must match manifest shape") {

@@ -184,11 +184,14 @@ the current compiler program model. Execution work stops at plan section 62;
 no CPU fallback or altered model contract substitutes for these gaps.
 
 The [known-H13 adapter review](../receipts/2026-09-12-h13-adapter-review.json)
-finds a separate bundle-v2 blocker. All 4,097 known-graph programs have no
-workspace tiles, but the schema requires positive workspace geometry, size,
-and stride. Removing only the byte-size check would not resolve the other
-constraints. No workspace or firmware identity is fabricated; the adapter
-remains unimplemented pending an explicit absent-workspace contract.
+identified a bundle-v2 mismatch: all 4,097 known-graph programs have no
+workspace tiles, while the schema required positive workspace geometry.
+The loader now accepts only the canonical absent-workspace tensor
+(`uint8`, shape `[0]`, byte size and stride zero) and cross-checks ANEC
+channel 3 for both absent and positive scratch. The exporter no longer
+invents a minimum allocation. This resolves the workspace representation,
+not compiler adaptation, firmware applicability, or ANE execution. Those
+remaining gates stay open.
 
 
 The [licensed reference receipt](../receipts/2026-09-12-licensed-parakeet-reference.json)

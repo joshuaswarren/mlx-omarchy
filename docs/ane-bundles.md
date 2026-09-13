@@ -48,7 +48,7 @@ Version 1 is rejected rather than inferred or silently upgraded. Current referen
 | `inputs` | tensor list | see below | Descriptor buffer geometry: `source-nchw=(1, 2048, 1, 1, 64, 64)` (`qwen-linux-task-layout.log`). |
 | `outputs` | tensor list | see below | `output=0x90c000` with matching NCHW (`qwen-linux-terminal-task.log`). |
 | `state` | tensor list | see below | Device-resident K/V state with stable indices across decode steps: 2 kv heads, 128 context, 256 dim (`qwen-linux-kv-state-validation.json`). |
-| `workspace` | tensor list | exactly one entry | One scratch buffer bound at submit time before enqueue: `workspace=0x66000` (`qwen-linux-terminal-task.log`). |
+| `workspace` | tensor list | exactly one entry; allocation matches ANEC channel 3 | Scratch buffer when emitted; canonical zero tensor when the program needs none. |
 | `payloads` | payload list | exactly one `anec`, at most one `weights`; unique safe relative paths | MIL `program(1.3)` plus `weights.bin` per KTD6; sha256 per payload per `qwen-linux-kv-state-validation.json` (`anec_sha256`, `hwx_sha256`). |
 | `compiler.host_build` | string | non-empty | Build-host identity, independent of operating system. Retained Mac reference fixtures preserve `25G83`. |
 | `compiler.toolchain` | string | non-empty | Compiler identity, including version or source revision. |
@@ -71,6 +71,16 @@ Each entry in `inputs`, `outputs`, `state`, and `workspace` has:
 | `shape` | non-empty array of positive integers |
 | `byte_size` | positive; must equal `dtype size x product(shape)` exactly |
 | `stride` | positive; at least `byte_size` |
+
+Only an absent `workspace` may use `dtype: "uint8"`, `shape: [0]`,
+`byte_size: 0`, and `stride: 0`. These values must occur together. Empty
+shapes, mixed zero/positive dimensions, and zero-sized input, output, or
+state tensors remain invalid. The dtype-size identity still holds.
+
+The loader requires channel 3 allocation to equal `round_up(byte_size,
+0x4000)`, including zero. Workspace stride must fit that allocation. A zero
+workspace binds no channel-3 buffer; it does not describe libane bootstrap
+storage. Positive scratch sizes retain their existing geometry checks.
 
 The kernel window needs no separate manifest field: it lives inside the
 `anec` payload at converter-defined offsets (`kernel@content+0xea300`,
@@ -161,8 +171,8 @@ output `t2`, const through `weights.bin`). Field derivations:
   digests hash the shipped `model-512.anec` and `weights.bin`.
 - `task_descriptors` is 1, the converter's `td-count=1` for this graph.
 - The compiled task stream needs no scratch (`workspace=0x0` in the
-  conversion receipt), so the manifest records the one-tile submit-time
-  scratch: 0x4000 bytes.
+  conversion receipt), so the manifest records `uint8 shape [0]`, zero
+  byte size, and zero stride, matching the zero ANEC channel-3 allocation.
 - The compiler identity and firmware range record the compile host:
   macOS 26.6.2 (25G83), ANECompiler 9.509.0, coremlcompiler 3520.5.1.
   On-device execution is not yet proven; see the proof receipt.
@@ -171,7 +181,7 @@ The reference exporter, `tools/ane-export/`, reproduces the retained Apple-compi
 
 ## Community submissions
 
-The product build must generate bundles on Linux without private Apple frameworks or compiler binaries. The open-source compiler's Linux host port emits H16G/M4 HWX; a distinct H13 backend and a compatible conversion path are still required for this M1 loader. A submission must record the real target, compiler revision, firmware range, graph identity, and tensor contracts. Renaming H16G metadata to H13 is not a conversion. Release assets may cache qualified bundles; a missing compatible asset leaves the region on Vulkan.
+The product build must generate bundles on Linux without private Apple frameworks or compiler binaries. The separately pinned H13 compiler now emits ANEC packages on Linux; strict bundle adaptation and device qualification remain separate gates. A submission must record the real target, compiler revision, firmware range, graph identity, and tensor contracts. Renaming another target to H13 is not a conversion. Release assets may cache qualified bundles; a missing compatible asset leaves the region on Vulkan.
 
 ## Tests
 

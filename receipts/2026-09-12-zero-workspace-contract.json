@@ -1,0 +1,85 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-12",
+  "source_commit": "b41e2b74c330f910b24cab0e7516e306527858f0",
+  "scope": "Host-only build and bundle-consumer qualification for the zero-workspace contract.",
+  "source": {
+    "worktree": "/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/main-land2",
+    "prepared_source": "/tmp/mlx-zero-workspace-qualification/work/mlx",
+    "isolated_build": "/tmp/mlx-zero-workspace-qualification/build",
+    "published": false
+  },
+  "normal_cmake_build": {
+    "configure": "cmake -S /tmp/mlx-zero-workspace-qualification/work/mlx -B /tmp/mlx-zero-workspace-qualification/build -G Ninja -DCMAKE_BUILD_TYPE=Release -DMLX_BUILD_OMARCHY=ON -DMLX_BUILD_TESTS=ON -DMLX_BUILD_PYTHON_BINDINGS=OFF -DMLX_BUILD_EXAMPLES=OFF -DMLX_BUILD_BENCHMARKS=OFF",
+    "build": "cmake --build /tmp/mlx-zero-workspace-qualification/build --target omarchy_ane_bundle_tests mlx-omarchy-info --parallel 4",
+    "targets": [
+      "tests/omarchy/omarchy_ane_bundle_tests",
+      "tools/mlx-omarchy-info/mlx-omarchy-info"
+    ],
+    "result": "built"
+  },
+  "unit_consumer": {
+    "command": "/tmp/mlx-zero-workspace-qualification/build/tests/omarchy/omarchy_ane_bundle_tests",
+    "result": "27 test cases passed; 4285 assertions passed; 0 failed"
+  },
+  "real_fixture_loader": {
+    "command": "/tmp/mlx-zero-workspace-qualification/build/tools/mlx-omarchy-info/mlx-omarchy-info --check-bundle <fixture>",
+    "result": "all four fixtures loaded with every declared payload hash checked by the real loader",
+    "fixtures": [
+      {
+        "path": "receipts/fixtures/exported/ane-add-fp16-1x512",
+        "manifest_sha256": "66d01d6302e7ec743da41099546a19f81497a2d4bac137224735b9d0b82b3778",
+        "workspace": "uint8 [0], byte_size 0, stride 0",
+        "result": "valid"
+      },
+      {
+        "path": "receipts/fixtures/exported/ane-add-fp16-1x896",
+        "manifest_sha256": "3a6033c23d9db750f060951d27ef08bd6f0c0f49f9a9d7a31101be2aa247c646",
+        "workspace": "uint8 [0], byte_size 0, stride 0",
+        "result": "valid"
+      },
+      {
+        "path": "receipts/fixtures/exported/ane-mul-fp16-1x512",
+        "manifest_sha256": "9c1644ba345ec70fa016df6b4e5f5e4e079f01291498b7310302f8382bd54acc",
+        "workspace": "uint8 [0], byte_size 0, stride 0",
+        "result": "valid"
+      },
+      {
+        "path": "receipts/fixtures/mil-oneop-bundle",
+        "manifest_sha256": "9a6d8d7368ac67c8274ee03038000d45a077a9c9a98d20f2df0bb8c521fcc042",
+        "workspace": "uint8 [0], byte_size 0, stride 0",
+        "result": "valid"
+      }
+    ]
+  },
+  "negative_real_fixture_copies": {
+    "source_fixture": "receipts/fixtures/exported/ane-add-fp16-1x512",
+    "device_access": "none; mlx-omarchy-info --check-bundle rejected each copy before any runtime submission",
+    "cases": [
+      {
+        "mutation": "byte_size 0, shape [0], stride 16384",
+        "result": "refused",
+        "message": "[omarchy-ane] manifest: workspace[0] absent workspace requires uint8 shape [0] and stride 0."
+      },
+      {
+        "mutation": "byte_size 0, shape [1], stride 0",
+        "result": "refused",
+        "message": "[omarchy-ane] manifest: workspace[0] absent workspace requires uint8 shape [0] and stride 0."
+      },
+      {
+        "mutation": "byte_size 1, shape [1], stride 1 with the unchanged zero-sized ANEC channel 3",
+        "result": "refused",
+        "message": "[omarchy-ane] bundle: workspace byte_size does not match ANEC channel 3 allocation."
+      }
+    ]
+  },
+  "qualification": {
+    "local_verified": true,
+    "published": false,
+    "rendered_surface": "none",
+    "hardware_execution": "not run",
+    "compiler_adapter": "unqualified",
+    "runtime": "unqualified",
+    "firmware": "unqualified"
+  }
+}
