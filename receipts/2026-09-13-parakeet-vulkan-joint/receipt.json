@@ -20,7 +20,8 @@
       "overlay/tools/coreml/pinned_component.py": "25730aa8de275e3431112f2f205b2dde75b87f873210ff0ef6c1eafae8f6ea20",
       "overlay/tools/coreml/vulkan_joint.py": "bf31537d504612c6d9873051c9ad5f7b84a978268e6d7ed4eaec173a18626115",
       "tests/coreml/test_pinned_component.py": "2101eacb8da05adc3e14833001d3a7d640ae96caad71988c7feabcc329c86141",
-      "tests/coreml/test_vulkan_joint.py": "315cd3fb93e6f2d3135a93307e79f461b073b2e17432dcc95e531076b5fa1d73"
+      "tests/coreml/test_vulkan_joint.py": "315cd3fb93e6f2d3135a93307e79f461b073b2e17432dcc95e531076b5fa1d73",
+      "overlay/tools/coreml/compare_vulkan_joint_golden.py": "5750565a0e6a4c96e803789b169bc9f5bd6ebf5a257223e925a4ec4e84234aae"
     }
   },
   "model": {
@@ -112,6 +113,16 @@
       "command": "MLX_OMARCHY_ALLOW_NON_APPLE=1 PYTHONPATH=/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/CoremlVulkanMel/.work/venv-run/lib/python3.11/site-packages:overlay/tools python3 -c \"from pathlib import Path; import mlx.core as mx; from coreml.vulkan_joint import run_joint; p=Path('/home/joshuawarren/.cache/mlx-omarchy/parakeet-reference/mweinbach1/parakeet-tdt-0.6b-v3-coreml/b650695c2322ee5281dff48d7345b2f3a58ff018/joint.mlpackage'); o=run_joint(mx.zeros((1,640),dtype=mx.float32),mx.zeros((1,640),dtype=mx.float32),package_path=p); mx.eval(*o); print(mx.device_info()['device_name'], o.token_logits.shape, o.token_logits.dtype, o.duration_logits.shape, o.duration_logits.dtype)\"",
       "result": "llvmpipe (LLVM 15.0.6, 256 bits) (1, 8193) mlx.core.float32 (1, 5) mlx.core.float32"
     },
+    "native_joint_comparison": {
+      "command": "MLX_OMARCHY_ALLOW_NON_APPLE=1 PYTHONPATH=/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/CoremlVulkanMel/.work/venv-run/lib/python3.11/site-packages:overlay/tools python3 overlay/tools/coreml/compare_vulkan_joint_golden.py --capture-dir /home/joshuawarren/.cache/mlx-omarchy/parakeet-reference/captures/b650695c-75aec2a/20260913T105550Z-librispeech-tdt-tensors/ane --package /home/joshuawarren/.cache/mlx-omarchy/parakeet-reference/mweinbach1/parakeet-tdt-0.6b-v3-coreml/b650695c2322ee5281dff48d7345b2f3a58ff018/joint.mlpackage --output receipts/2026-09-13-parakeet-vulkan-joint/native-comparison.json",
+      "receipt": "native-comparison.json",
+      "receipt_sha256": "a2cdba729e584e9076d05bedaa8ded822c6d3ad43953cdaed460a1cefe9cf4ef",
+      "traces_compared": 16,
+      "token_decisions_matching": 16,
+      "duration_decisions_matching": 16,
+      "full_tensor_bit_exact": false,
+      "tolerance_applied": false
+    },
     "reference": "Independent NumPy execution of the package's exact fp16 cast/add/relu/linear/slice sequence, followed by fp32 output casts. This is an FP contract reference, not Core ML output.",
     "cases": [
       {
@@ -164,8 +175,13 @@
     ]
   },
   "qualification_boundary": {
-    "native_coreml_parity_claimed": false,
+    "native_coreml_comparison": "native-comparison.json",
+    "native_compute_units_requested": "ane",
+    "native_backend_claim": "The capture requested ANE compute units; it does not prove every Core ML operation executed exclusively on ANE.",
+    "software_vulkan_device": "llvmpipe (LLVM 15.0.6, 256 bits)",
     "apple_gpu_claimed": false,
-    "remaining_capture_gap": "No independent decoder_state, token_logits, or duration_logits tensor golden from the pinned native Core ML TDT loop existed for this run. A later bounded capture must compare those exact tensors before native Core ML parity can be claimed."
+    "broad_native_coreml_parity_claimed": false,
+    "captured_joint_decision_parity_claimed": true,
+    "full_tensor_bit_exact_parity_claimed": false
   }
 }
