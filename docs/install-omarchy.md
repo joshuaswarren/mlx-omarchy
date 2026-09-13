@@ -11,7 +11,12 @@ Linux only.
 The repository installer, `install.sh`, exposes `mlx-omarchy-info` in
 `~/.local/bin`. It launches the native capability reporter from the installed
 wheel; uninstall removes the launcher. Command presence records installation,
-not a working GPU or qualified ANE support.
+not a working GPU or qualified ANE support. The reporter also prints ANE
+visibility (FDT `apple,*-ane` compatible, `/dev/accel/accel0`, and the `ane`
+module) and Core ML frontend/cache presence. GPU smoke always runs. ANE smoke
+runs only when `/dev/accel/accel0` exists and refuses the install if that
+node is present without a matching FDT node and loaded module. The installer
+does not install `kmod-ane`.
 
 ## Development override
 
