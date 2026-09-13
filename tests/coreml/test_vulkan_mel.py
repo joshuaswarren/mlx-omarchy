@@ -89,6 +89,36 @@ def test_vulkan_dft_matches_certified_fma_bits():
     assert np.asarray(real).tobytes() == expected_real.tobytes()
     assert np.asarray(imaginary).tobytes() == expected_imaginary.tobytes()
 
+def test_vulkan_sqrt_matches_float32_reference_at_rounding_boundaries():
+    bits = np.array(
+        [0, 1, 2, 0x007FFFFF, 0x00800000, 0x01847B48,
+         0x3F7FFFFF, 0x3F800000, 0x3F800001, 0x7F7FFFFF],
+        dtype=np.uint32,
+    )
+    values = bits.view(np.float32)
+    kernel = mx.fast.metal_kernel(
+        name="parakeet_sqrt32_rounding_boundaries",
+        input_names=["values"],
+        output_names=["results"],
+        header=vulkan_mel._SQRT_HEADER,
+        source="""
+            uint i = thread_position_in_grid.x;
+            results[i] = sqrt32(values[i]);
+        """,
+        compile_options={"math_mode": "safe"},
+    )
+    actual = kernel(
+        inputs=[mx.array(values)],
+        output_shapes=[values.shape],
+        output_dtypes=[mx.float32],
+        grid=(values.size, 1, 1),
+        threadgroup=(32, 1, 1),
+        stream=mx.gpu,
+    )[0]
+    mx.eval(actual)
+    expected = np.sqrt(values.astype(np.float64)).astype(np.float32)
+    assert np.asarray(actual).tobytes() == expected.tobytes()
+
 
 def test_vulkan_mel_constants_match_the_certified_reference():
     lock = ReferenceLock.load(TOOLS / "parakeet-reference.lock")
