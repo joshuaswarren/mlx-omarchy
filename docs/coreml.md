@@ -204,7 +204,7 @@ the emitted `model.mil`, ordinary `model-root`, H13 target, and ANEC format.
 It returns the compiler's actual nonzero status. The adapter receipt records
 the baseline compiler at `a0ce354cf800011a84420da4e12013eb8140b2a5`
 rejecting the first parenthesized binding. Companion compiler commit
-`a66ab595cfd4fc98bed5fba944f465d764ec1b93` accepts the ordered result
+`a1bfea0cd52208ac9f168791e8c6e9a83ddc8efb` accepts the ordered result
 syntax: the same `program(1)`/`CoreML8` MIL hash parses completely and
 reaches H13 lowering, where it fails explicitly at the first two-result split
 with `h13.unsupported-multi-result-operation`. This is semantic round-trip
