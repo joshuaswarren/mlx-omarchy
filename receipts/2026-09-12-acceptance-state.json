@@ -1,10 +1,10 @@
 {
-  "source_commit": "9e22a534",
+  "source_commit": "4ef85f27",
   "scope": "Current task state, not full feature qualification; completed policy invariants describe this source scope only",
   "stop_conditions": [
     "Plan §62: required encoder semantics/geometries and mixed-type multi-output representation remain unavailable.",
-    "Explicit H13 ANEC schema-3 host adaptation is qualified; integrated MLX worker execution and host applicability are not. Standalone base-M1 compiler qualification remains separately scoped to source aa688df.",
-    "Pinned CPU audio-to-mel reference is bit-exact; installed Vulkan/ANE preprocessing, backend trace, and full transcription remain unqualified.",
+    "Explicit H13 ANEC schema-3 host adaptation is qualified. Installed base-M1 add/add-mul and GPU postcheck are qualified at 9ea7501f; combined 4ef85f27 installed execution and other-host applicability remain unqualified. Standalone base-M1 compiler qualification remains scoped to aa688df.",
+    "The exact Vulkan mel frontend has 18 bit-exact Apple GPU stage/final comparisons with backend trace at 604b0435. Combined-source local CLI also passes; full encoder, decoder, and transcription remain unqualified.",
     "Installed-state platform adoption awaits upstream review in omacom/omarchy-mac PR 425."
   ],
   "tasks": [
@@ -280,9 +280,9 @@
     {
       "phase": "Core ML requirements",
       "task": "Match exact reference mel preprocessing values",
-      "status": "in_progress",
-      "evidence": "CoremlFrontendIntegration b7ff5c2c: receipts/2026-09-12-parakeet-mel-frontend/receipt.json; root ran 47 focused tests and both real CLIs after review corrections. All 11 captured stages and 384128/384128 final mel values remain byte-identical, with all seven structural gates true. Joint integration with schema 3 is pending; no installed-runtime qualification.",
-      "reason": "CPU reference exactness is proven for the pinned fixture. Installed Vulkan/ANE preprocessing and its no-CPU-tensor backend trace remain outstanding; reference arithmetic alone does not qualify the deployed frontend."
+      "status": "completed",
+      "evidence": "receipts/2026-09-13-parakeet-vulkan-mel/receipt.json and aa13-apple-gpu.json: 18/18 authenticated Apple GPU comparisons bit-exact with 15 GPU primitives, 8 Vulkan compute dispatches, and 1 submission. receipts/2026-09-13-runtime-integration.json: merged-source 26-test pass and real software-Vulkan CLI all 18 comparisons bit-exact.",
+      "reason": "Pinned frontend arithmetic is qualified on Apple GPU, including the full-finite FMA regressions. This does not qualify encoder, decoder, full transcription, or a rebuilt combined installed wheel."
     },
     {
       "phase": "Core ML requirements",
@@ -917,9 +917,9 @@
     {
       "phase": "Transcription",
       "task": "Implement exact public reference mel frontend",
-      "status": "blocked",
-      "evidence": "CoremlFrontendIntegration b7ff5c2c: receipts/2026-09-12-parakeet-mel-frontend/receipt.json; review corrections verified locally, joint integration pending.",
-      "reason": "The old numerical mismatch is resolved for the pinned CPU oracle: all 384128 mel values match exactly. This remains blocked as an installed frontend because the NumPy implementation performs CPU tensor work and provides no Vulkan/ANE backend trace."
+      "status": "completed",
+      "evidence": "604b0435976b50c0d2d01abf9aaca693667a7c46 merged as 4ef85f27; receipts/2026-09-13-parakeet-vulkan-mel/receipt.json; receipts/2026-09-13-runtime-integration.json.",
+      "reason": "Exact frontend tensor arithmetic executes through Vulkan rather than NumPy. All 18 authenticated stage/final comparisons pass on Apple GPU. The separate combined runtime installation and end-to-end transcription gates remain open."
     },
     {
       "phase": "Transcription",
