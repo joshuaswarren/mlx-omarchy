@@ -30,6 +30,7 @@
 //                     entry/return host clocks
 //   {"k":"j",...}     per join: host cost of the completion-timeline wait
 //                     and of the noncoherent invalidate, plus the caller reason
+//   {"k":"fg_*",...}  BF16 dense-GEMV planner/dispatcher diagnostics
 //   {"k":"end",...}   at exit: totals incl. barrier decisions ("barriers",
 //                     "barriers_skipped"; transfer/fill decisions included)
 //
@@ -64,6 +65,7 @@
 #include <memory>
 #include <span>
 #include <unordered_map>
+#include <string>
 #include <vector>
 
 #include "mlx/backend/omarchy/compute.h"
@@ -88,6 +90,28 @@ class GpuProfiler {
 
   bool profiling() const {
     return out_ != nullptr;
+  }
+  uint64_t next_diagnostic_scope() {
+    return ++diagnostic_scope_;
+  }
+
+  void diagnosticf(const char* fmt, ...) {
+    if (out_ == nullptr && std::getenv("MLX_OMARCHY_GPU_PROFILE") == nullptr) {
+      return;
+    }
+    std::array<char, 1024> line{};
+    va_list args;
+    va_start(args, fmt);
+    const int written = std::vsnprintf(line.data(), line.size(), fmt, args);
+    va_end(args);
+    if (written <= 0 || static_cast<size_t>(written) >= line.size()) {
+      return;
+    }
+    if (out_ != nullptr) {
+      emitf("%s\n", line.data());
+    } else {
+      diagnostic_events_.emplace_back(line.data());
+    }
   }
 
   // Called once per CommandEncoder construction. Keyed by the encoder
@@ -221,6 +245,7 @@ class GpuProfiler {
     p.kernel = static_cast<uint32_t>(kernel);
     p.operation = params.operation;
     p.count = params.count;
+    p.params = params;
     p.gx = gx;
     p.gy = gy;
     p.gz = gz;
@@ -319,6 +344,7 @@ class GpuProfiler {
     uint32_t kernel{0};
     uint32_t operation{0};
     uint32_t count{0};
+    ComputeParams params{};
     uint32_t gx{0};
     uint32_t gy{0};
     uint32_t gz{0};
@@ -413,7 +439,11 @@ class GpuProfiler {
       }
       emitf("{\"k\":\"d\",\"s\":%" PRIu64 ",\"e\":%u,\"op\":%u,\"n\":%u"
             ",\"gx\":%u,\"gy\":%u,\"gz\":%u,\"h\":%" PRIu64 ",\"tp\":%u"
-            ",\"bar\":%u",
+            ",\"bar\":%u,\"pc\":{\"ls\":%u,\"rs\":%u,\"os\":%u"
+            ",\"lo\":%u,\"ro\":%u,\"oo\":%u,\"m\":%u,\"n\":%u"
+            ",\"k\":%u,\"f\":%u,\"dims\":%u,\"shape\":[%u,%u,%u,%u]"
+            ",\"is\":[%u,%u,%u,%u],\"osv\":[%u,%u,%u,%u]"
+            ",\"lg\":%u,\"rg\":%u}",
             sub,
             p.kernel,
             p.operation,
@@ -423,7 +453,32 @@ class GpuProfiler {
             p.gz,
             p.host_cost,
             p.tape,
-            p.bar);
+            p.bar,
+            p.params.lhs_size,
+            p.params.rhs_size,
+            p.params.output_size,
+            p.params.lhs_offset,
+            p.params.rhs_offset,
+            p.params.output_offset,
+            p.params.matrix_m,
+            p.params.matrix_n,
+            p.params.matrix_k,
+            p.params.flags,
+            p.params.dims,
+            p.params.shape[0],
+            p.params.shape[1],
+            p.params.shape[2],
+            p.params.shape[3],
+            p.params.in_strides[0],
+            p.params.in_strides[1],
+            p.params.in_strides[2],
+            p.params.in_strides[3],
+            p.params.out_strides[0],
+            p.params.out_strides[1],
+            p.params.out_strides[2],
+            p.params.out_strides[3],
+            p.params.lhs_gap,
+            p.params.rhs_gap);
       if (p.tick_index + 1 < queries &&
           ticks[p.tick_index + 1] >= ticks[p.tick_index]) {
         emitf(",\"t0\":%" PRIu64 ",\"t1\":%" PRIu64,
@@ -469,6 +524,10 @@ class GpuProfiler {
           kPoolQueries,
           label != nullptr ? label : "",
           host_t0_);
+    for (const auto& event : diagnostic_events_) {
+      emitf("%s\n", event.c_str());
+    }
+    diagnostic_events_.clear();
     if (valid_bits_ == 0) {
       std::fprintf(
           stderr,
@@ -504,6 +563,8 @@ class GpuProfiler {
   uint32_t dropped_{0};
   uint64_t barriers_emitted_{0};
   uint64_t barriers_skipped_{0};
+  uint64_t diagnostic_scope_{0};
+  std::vector<std::string> diagnostic_events_;
 };
 
 // Namespace-level accessor used by encoder.cpp call sites.
