@@ -134,14 +134,15 @@ def _preemphasis_kernel(mx=None):
         name="parakeet_preemphasis_f32",
         input_names=["waveform"],
         output_names=["preemph"],
+        header=_FMA_HEADER,
         source="""
             uint i = thread_position_in_grid.x;
             uint length = uint(waveform_shape[0]);
             precise float current = i < length ? waveform[i] : 0.0f;
             precise float previous = (i > 0u && i - 1u < length)
                 ? waveform[i - 1u] : 0.0f;
-            precise float product = 0.97f * previous;
-            preemph[i] = i == 0u ? current : current - product;
+            precise float product = mul32(0.97f, previous);
+            preemph[i] = i == 0u ? current : sub32(current, product);
         """,
         compile_options={"math_mode": "safe"},
     )
@@ -166,6 +167,7 @@ def _frames_kernel(mx=None):
         name="parakeet_frames_f32",
         input_names=["preemph", "hann"],
         output_names=["frames"],
+        header=_FMA_HEADER,
         source="""
             uint index = thread_position_in_grid.x;
             uint frame = index / 512u;
@@ -176,7 +178,7 @@ def _frames_kernel(mx=None):
                 int pre_index = int(frame * 160u + window_index) - 256;
                 if (pre_index >= 0 && pre_index < 480000) {
                     precise float input_value = preemph[uint(pre_index)];
-                    value = input_value * hann[window_index];
+                    value = mul32(input_value, hann[window_index]);
                 }
             }
             frames[index] = value;
@@ -383,86 +385,122 @@ uint round_big96(Big96 magnitude, int top_exponent, uint sign) {
     return sign | significand;
 }
 
+uint fma32_bits(uint a_bits, uint b_bits, uint c_bits) {
+uint a_exp = (a_bits >> 23u) & 0xffu;
+uint b_exp = (b_bits >> 23u) & 0xffu;
+uint c_exp = (c_bits >> 23u) & 0xffu;
+uint a_fraction = a_bits & 0x007fffffu;
+uint b_fraction = b_bits & 0x007fffffu;
+uint c_fraction = c_bits & 0x007fffffu;
+bool a_nan = a_exp == 0xffu && a_fraction != 0u;
+bool b_nan = b_exp == 0xffu && b_fraction != 0u;
+bool c_nan = c_exp == 0xffu && c_fraction != 0u;
+if (a_nan || b_nan || c_nan) return 0x7fc00000u;
+bool a_infinite = a_exp == 0xffu;
+bool b_infinite = b_exp == 0xffu;
+bool c_infinite = c_exp == 0xffu;
+bool a_zero = (a_bits & 0x7fffffffu) == 0u;
+bool b_zero = (b_bits & 0x7fffffffu) == 0u;
+uint product_sign = (a_bits ^ b_bits) & 0x80000000u;
+uint c_sign = c_bits & 0x80000000u;
+if ((a_infinite && b_zero) || (b_infinite && a_zero)) {
+return 0x7fc00000u;
+}
+if (a_infinite || b_infinite) {
+if (c_infinite && product_sign != c_sign) return 0x7fc00000u;
+return product_sign | 0x7f800000u;
+}
+if (c_infinite) return c_bits;
+
+uint a_significand = a_exp == 0u ? a_fraction : a_fraction | 0x00800000u;
+uint b_significand = b_exp == 0u ? b_fraction : b_fraction | 0x00800000u;
+uint c_significand = c_exp == 0u ? c_fraction : c_fraction | 0x00800000u;
+int a_lsb_exponent = a_exp == 0u ? -149 : int(a_exp) - 150;
+int b_lsb_exponent = b_exp == 0u ? -149 : int(b_exp) - 150;
+int c_lsb_exponent = c_exp == 0u ? -149 : int(c_exp) - 150;
+
+uint a_low = a_significand & 0xffffu;
+uint a_high = a_significand >> 16u;
+uint b_low = b_significand & 0xffffu;
+uint b_high = b_significand >> 16u;
+uint product0 = a_low * b_low;
+uint product1 = a_low * b_high + a_high * b_low;
+uint product_low = product0 + (product1 << 16u);
+uint carry = product_low < product0 ? 1u : 0u;
+uint product_high = a_high * b_high + (product1 >> 16u) + carry;
+bool product_zero = product_low == 0u && product_high == 0u;
+int product_lsb_exponent = a_lsb_exponent + b_lsb_exponent;
+int product_top_exponent = product_zero ? -10000 : product_lsb_exponent +
+(product_high != 0u ? 32 + msb32(product_high) : msb32(product_low));
+int c_top_exponent = c_significand == 0u ? -10000 :
+c_lsb_exponent + msb32(c_significand);
+
+if (product_zero && c_significand == 0u) {
+return product_sign == c_sign ? product_sign : 0u;
+}
+int top_exponent = product_top_exponent > c_top_exponent ?
+product_top_exponent : c_top_exponent;
+Big96 product = product_zero ? zero_big96() : shifted48(
+product_low, product_high, 94 - (top_exponent - product_lsb_exponent));
+Big96 addend = c_significand == 0u ? zero_big96() : shifted48(
+c_significand, 0u, 94 - (top_exponent - c_lsb_exponent));
+Big96 magnitude;
+uint result_sign;
+if (product_sign == c_sign) {
+magnitude = add_big(product, addend);
+result_sign = product_sign;
+} else {
+int order = compare_big(product, addend);
+if (order == 0) return 0u;
+Big96 larger = order > 0 ? product : addend;
+Big96 smaller = order > 0 ? addend : product;
+result_sign = order > 0 ? product_sign : c_sign;
+magnitude = subtract_big(larger, smaller);
+if (smaller.sticky != 0u && larger.sticky == 0u && big_msb(magnitude) >= 0) {
+magnitude = decrement_big(magnitude);
+magnitude.sticky = 1u;
+}
+}
+return round_big96(magnitude, top_exponent, result_sign);
+}
+
+uint add32_bits(uint a_bits, uint b_bits) {
+return fma32_bits(a_bits, 0x3f800000u, b_bits);
+}
+
+uint sub32_bits(uint a_bits, uint b_bits) {
+return add32_bits(a_bits, b_bits ^ 0x80000000u);
+}
+
+uint mul32_bits(uint a_bits, uint b_bits) {
+uint a_magnitude = a_bits & 0x7fffffffu;
+uint b_magnitude = b_bits & 0x7fffffffu;
+if ((a_magnitude == 0u && b_magnitude < 0x7f800000u) ||
+(b_magnitude == 0u && a_magnitude < 0x7f800000u)) {
+return (a_bits ^ b_bits) & 0x80000000u;
+}
+return fma32_bits(a_bits, b_bits, 0u);
+}
+
 float fma32(float a, float b, float c) {
-    uint a_bits = floatBitsToUint(a);
-    uint b_bits = floatBitsToUint(b);
-    uint c_bits = floatBitsToUint(c);
-    uint a_exp = (a_bits >> 23u) & 0xffu;
-    uint b_exp = (b_bits >> 23u) & 0xffu;
-    uint c_exp = (c_bits >> 23u) & 0xffu;
-    uint a_fraction = a_bits & 0x007fffffu;
-    uint b_fraction = b_bits & 0x007fffffu;
-    uint c_fraction = c_bits & 0x007fffffu;
-    bool a_nan = a_exp == 0xffu && a_fraction != 0u;
-    bool b_nan = b_exp == 0xffu && b_fraction != 0u;
-    bool c_nan = c_exp == 0xffu && c_fraction != 0u;
-    if (a_nan || b_nan || c_nan) return uintBitsToFloat(0x7fc00000u);
-    bool a_infinite = a_exp == 0xffu;
-    bool b_infinite = b_exp == 0xffu;
-    bool c_infinite = c_exp == 0xffu;
-    bool a_zero = (a_bits & 0x7fffffffu) == 0u;
-    bool b_zero = (b_bits & 0x7fffffffu) == 0u;
-    uint product_sign = (a_bits ^ b_bits) & 0x80000000u;
-    uint c_sign = c_bits & 0x80000000u;
-    if ((a_infinite && b_zero) || (b_infinite && a_zero)) {
-        return uintBitsToFloat(0x7fc00000u);
-    }
-    if (a_infinite || b_infinite) {
-        if (c_infinite && product_sign != c_sign) return uintBitsToFloat(0x7fc00000u);
-        return uintBitsToFloat(product_sign | 0x7f800000u);
-    }
-    if (c_infinite) return c;
+return uintBitsToFloat(fma32_bits(
+floatBitsToUint(a), floatBitsToUint(b), floatBitsToUint(c)));
+}
 
-    uint a_significand = a_exp == 0u ? a_fraction : a_fraction | 0x00800000u;
-    uint b_significand = b_exp == 0u ? b_fraction : b_fraction | 0x00800000u;
-    uint c_significand = c_exp == 0u ? c_fraction : c_fraction | 0x00800000u;
-    int a_lsb_exponent = a_exp == 0u ? -149 : int(a_exp) - 150;
-    int b_lsb_exponent = b_exp == 0u ? -149 : int(b_exp) - 150;
-    int c_lsb_exponent = c_exp == 0u ? -149 : int(c_exp) - 150;
+float add32(float a, float b) {
+return uintBitsToFloat(add32_bits(floatBitsToUint(a), floatBitsToUint(b)));
+}
 
-    uint a_low = a_significand & 0xffffu;
-    uint a_high = a_significand >> 16u;
-    uint b_low = b_significand & 0xffffu;
-    uint b_high = b_significand >> 16u;
-    uint product0 = a_low * b_low;
-    uint product1 = a_low * b_high + a_high * b_low;
-    uint product_low = product0 + (product1 << 16u);
-    uint carry = product_low < product0 ? 1u : 0u;
-    uint product_high = a_high * b_high + (product1 >> 16u) + carry;
-    bool product_zero = product_low == 0u && product_high == 0u;
-    int product_lsb_exponent = a_lsb_exponent + b_lsb_exponent;
-    int product_top_exponent = product_zero ? -10000 : product_lsb_exponent +
-        (product_high != 0u ? 32 + msb32(product_high) : msb32(product_low));
-    int c_top_exponent = c_significand == 0u ? -10000 :
-        c_lsb_exponent + msb32(c_significand);
+float sub32(float a, float b) {
+return uintBitsToFloat(sub32_bits(floatBitsToUint(a), floatBitsToUint(b)));
+}
 
-    if (product_zero && c_significand == 0u) {
-        return uintBitsToFloat(product_sign == c_sign ? product_sign : 0u);
-    }
-    int top_exponent = product_top_exponent > c_top_exponent ?
-        product_top_exponent : c_top_exponent;
-    Big96 product = product_zero ? zero_big96() : shifted48(
-        product_low, product_high, 94 - (top_exponent - product_lsb_exponent));
-    Big96 addend = c_significand == 0u ? zero_big96() : shifted48(
-        c_significand, 0u, 94 - (top_exponent - c_lsb_exponent));
-    Big96 magnitude;
-    uint result_sign;
-    if (product_sign == c_sign) {
-        magnitude = add_big(product, addend);
-        result_sign = product_sign;
-    } else {
-        int order = compare_big(product, addend);
-        if (order == 0) return 0.0f;
-        Big96 larger = order > 0 ? product : addend;
-        Big96 smaller = order > 0 ? addend : product;
-        result_sign = order > 0 ? product_sign : c_sign;
-        magnitude = subtract_big(larger, smaller);
-        if (smaller.sticky != 0u && larger.sticky == 0u && big_msb(magnitude) >= 0) {
-            magnitude = decrement_big(magnitude);
-            magnitude.sticky = 1u;
-        }
-    }
-    return uintBitsToFloat(round_big96(magnitude, top_exponent, result_sign));
+float mul32(float a, float b) {
+    return uintBitsToFloat(mul32_bits(floatBitsToUint(a), floatBitsToUint(b)));
+}
+
+float neg32(float value) {
+    return uintBitsToFloat(floatBitsToUint(value) ^ 0x80000000u);
 }
 """
 
@@ -673,71 +711,71 @@ def _dft_kernel(mx=None):
                     xi2 = imag1[source2]; xi3 = imag1[source3];
                 }
 
-                precise float ac_real = xr0 + xr2;
-                precise float ac_imag = xi0 + xi2;
-                precise float ad_real = xr0 - xr2;
-                precise float ad_imag = xi0 - xi2;
-                precise float bd_real = xr1 + xr3;
-                precise float bd_imag = xi1 + xi3;
-                precise float bm_real = xr1 - xr3;
-                precise float bm_imag = xi1 - xi3;
-                precise float yr0;
-                precise float yr1;
-                precise float yr2;
-                precise float yr3;
-                precise float yi0;
-                precise float yi1;
-                precise float yi2;
-                precise float yi3;
+            precise float ac_real = add32(xr0, xr2);
+            precise float ac_imag = add32(xi0, xi2);
+            precise float ad_real = sub32(xr0, xr2);
+            precise float ad_imag = sub32(xi0, xi2);
+            precise float bd_real = add32(xr1, xr3);
+            precise float bd_imag = add32(xi1, xi3);
+            precise float bm_real = sub32(xr1, xr3);
+            precise float bm_imag = sub32(xi1, xi3);
+            precise float yr0;
+            precise float yr1;
+            precise float yr2;
+            precise float yr3;
+            precise float yi0;
+            precise float yi1;
+            precise float yi2;
+            precise float yi3;
 
-                if (stage == 0u) {
-                    yr0 = ac_real + bd_real;
-                    yr1 = ad_real + bm_imag;
-                    yr2 = ac_real - bd_real;
-                    yr3 = ad_real - bm_imag;
-                    yi0 = ac_imag + bd_imag;
-                    yi1 = ad_imag - bm_real;
-                    yi2 = ac_imag - bd_imag;
-                    yi3 = ad_imag + bm_real;
-                } else {
-                    uint table_base = (stage - 1u) * 384u;
-                    precise float cos1 = tables[table_base + p];
-                    precise float tan1 = tables[table_base + 64u + p];
-                    precise float cos2 = tables[table_base + 128u + p];
-                    precise float tan2 = tables[table_base + 192u + p];
-                    precise float ratio3 = tables[table_base + 256u + p];
-                    precise float tan3 = tables[table_base + 320u + p];
-                    precise float ti1 = fma32(-xr1, tan1, xi1);
-                    precise float tr1 = fma32(xi1, tan1, xr1);
-                    precise float ti2 = fma32(-xr2, tan2, xi2);
-                    precise float tr2 = fma32(xi2, tan2, xr2);
-                    if (stage == 2u && p == 8u) {
-                        ti2 = -xr2;
-                        tr2 = xi2;
-                    }
-                    precise float ti3 = fma32(-xr3, tan3, xi3);
-                    precise float tr3 = fma32(xi3, tan3, xr3);
-                    precise float eip = fma32(ti2, cos2, xi0);
-                    precise float eim = fma32(-ti2, cos2, xi0);
-                    precise float erp = fma32(tr2, cos2, xr0);
-                    precise float erm = fma32(-tr2, cos2, xr0);
-                    if (stage == 2u && p == 8u) {
-                        eip = xi0 + ti2; eim = xi0 - ti2;
-                        erp = xr0 + tr2; erm = xr0 - tr2;
-                    }
-                    precise float oip = fma32(ti3, ratio3, ti1);
-                    precise float oim = fma32(-ti3, ratio3, ti1);
-                    precise float orp = fma32(tr3, ratio3, tr1);
-                    precise float orm = fma32(-tr3, ratio3, tr1);
-                    yr0 = fma32(orp, cos1, erp);
-                    yr1 = fma32(oim, cos1, erm);
-                    yr2 = fma32(-orp, cos1, erp);
-                    yr3 = fma32(-oim, cos1, erm);
-                    yi0 = fma32(oip, cos1, eip);
-                    yi1 = fma32(-orm, cos1, eim);
-                    yi2 = fma32(-oip, cos1, eip);
-                    yi3 = fma32(orm, cos1, eim);
+            if (stage == 0u) {
+                yr0 = add32(ac_real, bd_real);
+                yr1 = add32(ad_real, bm_imag);
+                yr2 = sub32(ac_real, bd_real);
+                yr3 = sub32(ad_real, bm_imag);
+                yi0 = add32(ac_imag, bd_imag);
+                yi1 = sub32(ad_imag, bm_real);
+                yi2 = sub32(ac_imag, bd_imag);
+                yi3 = add32(ad_imag, bm_real);
+            } else {
+                uint table_base = (stage - 1u) * 384u;
+                precise float cos1 = tables[table_base + p];
+                precise float tan1 = tables[table_base + 64u + p];
+                precise float cos2 = tables[table_base + 128u + p];
+                precise float tan2 = tables[table_base + 192u + p];
+                precise float ratio3 = tables[table_base + 256u + p];
+                precise float tan3 = tables[table_base + 320u + p];
+                precise float ti1 = fma32(neg32(xr1), tan1, xi1);
+                precise float tr1 = fma32(xi1, tan1, xr1);
+                precise float ti2 = fma32(neg32(xr2), tan2, xi2);
+                precise float tr2 = fma32(xi2, tan2, xr2);
+                if (stage == 2u && p == 8u) {
+                    ti2 = neg32(xr2);
+                    tr2 = xi2;
                 }
+                precise float ti3 = fma32(neg32(xr3), tan3, xi3);
+                precise float tr3 = fma32(xi3, tan3, xr3);
+                precise float eip = fma32(ti2, cos2, xi0);
+                precise float eim = fma32(neg32(ti2), cos2, xi0);
+                precise float erp = fma32(tr2, cos2, xr0);
+                precise float erm = fma32(neg32(tr2), cos2, xr0);
+                if (stage == 2u && p == 8u) {
+                    eip = add32(xi0, ti2); eim = sub32(xi0, ti2);
+                    erp = add32(xr0, tr2); erm = sub32(xr0, tr2);
+                }
+                precise float oip = fma32(ti3, ratio3, ti1);
+                precise float oim = fma32(neg32(ti3), ratio3, ti1);
+                precise float orp = fma32(tr3, ratio3, tr1);
+                precise float orm = fma32(neg32(tr3), ratio3, tr1);
+                yr0 = fma32(orp, cos1, erp);
+                yr1 = fma32(oim, cos1, erm);
+                yr2 = fma32(neg32(orp), cos1, erp);
+                yr3 = fma32(neg32(oim), cos1, erm);
+                yi0 = fma32(oip, cos1, eip);
+                yi1 = fma32(neg32(orm), cos1, eim);
+                yi2 = fma32(neg32(oip), cos1, eip);
+                yi3 = fma32(orm, cos1, eim);
+            }
 
                 uint target0 = (group * 4u) * prefix + p;
                 uint target1 = target0 + prefix;
@@ -759,33 +797,33 @@ def _dft_kernel(mx=None):
 
             uint output_base = frame * 257u;
             if (lane == 0u) {
-                precise float twice_real = real0[0] + real0[0];
-                precise float twice_imag = imag0[0] + imag0[0];
-                dft_real[output_base] = 0.5f * (twice_real + twice_imag);
-                dft_real[output_base + 256u] = 0.5f * (twice_real - twice_imag);
-                dft_imag[output_base] = 0.0f;
-                dft_imag[output_base + 256u] = 0.0f;
-            }
-            for (uint low = lane + 1u; low <= 128u; low += 64u) {
-                uint mirrored = 256u - low;
-                precise float direct_real = real0[low];
-                precise float direct_imag = imag0[low];
-                precise float mirror_real = real0[mirrored];
-                precise float mirror_imag = imag0[mirrored];
-                precise float imag_sum = direct_imag + mirror_imag;
-                precise float real_diff = mirror_real - direct_real;
-                precise float real_sum = direct_real + mirror_real;
-                precise float imag_diff = direct_imag - mirror_imag;
-                precise float weighted_real_a = untangle_cos[low - 1u] * imag_sum;
-                precise float weighted_real_b = untangle_sin[low - 1u] * real_diff;
-                precise float weighted_real = weighted_real_a + weighted_real_b;
-                precise float weighted_imag_a = untangle_cos[low - 1u] * real_diff;
-                precise float weighted_imag_b = untangle_sin[low - 1u] * imag_sum;
-                precise float weighted_imag = weighted_imag_a - weighted_imag_b;
-                dft_real[output_base + low] = 0.5f * (real_sum + weighted_real);
-                dft_imag[output_base + low] = 0.5f * (weighted_imag + imag_diff);
-                dft_real[output_base + mirrored] = 0.5f * (real_sum - weighted_real);
-                dft_imag[output_base + mirrored] = 0.5f * (weighted_imag - imag_diff);
+            precise float twice_real = add32(real0[0], real0[0]);
+            precise float twice_imag = add32(imag0[0], imag0[0]);
+            dft_real[output_base] = mul32(0.5f, add32(twice_real, twice_imag));
+            dft_real[output_base + 256u] = mul32(0.5f, sub32(twice_real, twice_imag));
+            dft_imag[output_base] = 0.0f;
+            dft_imag[output_base + 256u] = 0.0f;
+        }
+        for (uint low = lane + 1u; low <= 128u; low += 64u) {
+            uint mirrored = 256u - low;
+            precise float direct_real = real0[low];
+            precise float direct_imag = imag0[low];
+            precise float mirror_real = real0[mirrored];
+            precise float mirror_imag = imag0[mirrored];
+            precise float imag_sum = add32(direct_imag, mirror_imag);
+            precise float real_diff = sub32(mirror_real, direct_real);
+            precise float real_sum = add32(direct_real, mirror_real);
+            precise float imag_diff = sub32(direct_imag, mirror_imag);
+            precise float weighted_real_a = mul32(untangle_cos[low - 1u], imag_sum);
+            precise float weighted_real_b = mul32(untangle_sin[low - 1u], real_diff);
+            precise float weighted_real = add32(weighted_real_a, weighted_real_b);
+            precise float weighted_imag_a = mul32(untangle_cos[low - 1u], real_diff);
+            precise float weighted_imag_b = mul32(untangle_sin[low - 1u], imag_sum);
+            precise float weighted_imag = sub32(weighted_imag_a, weighted_imag_b);
+            dft_real[output_base + low] = mul32(0.5f, add32(real_sum, weighted_real));
+            dft_imag[output_base + low] = mul32(0.5f, add32(weighted_imag, imag_diff));
+            dft_real[output_base + mirrored] = mul32(0.5f, sub32(real_sum, weighted_real));
+            dft_imag[output_base + mirrored] = mul32(0.5f, sub32(weighted_imag, imag_diff));
             }
         """,
         compile_options={"math_mode": "safe"},

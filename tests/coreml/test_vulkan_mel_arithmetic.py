@@ -46,6 +46,30 @@ def _gpu_fma(
     return np.asarray(result)
 
 
+def _gpu_bit_binary(lhs, rhs, function):
+    kernel = mx.fast.metal_kernel(
+        name=f"parakeet_{function}_full_range",
+        input_names=["lhs", "rhs"],
+        output_names=["result"],
+        header=vulkan_mel._FMA_HEADER,
+        source=f"""
+            uint i = thread_position_in_grid.x;
+            result[i] = {function}(lhs[i], rhs[i]);
+        """,
+        compile_options={"math_mode": "safe"},
+    )
+    result = kernel(
+        inputs=[mx.array(lhs.view(np.uint32)), mx.array(rhs.view(np.uint32))],
+        output_shapes=[lhs.shape],
+        output_dtypes=[mx.uint32],
+        grid=(lhs.size, 1, 1),
+        threadgroup=(256, 1, 1),
+        stream=mx.gpu,
+    )[0]
+    mx.eval(result)
+    return np.asarray(result).view(np.float32)
+
+
 def _finite_randoms(seed, size):
     rng = np.random.default_rng(seed)
     bits = rng.integers(0, 2**32, size=size, dtype=np.uint32)
@@ -123,6 +147,68 @@ def test_native_fma_does_not_meet_the_exact_custom_kernel_contract():
 
     assert int(expected.view(np.uint32)[0]) == 0x4748616B
     assert int(actual.view(np.uint32)[0]) == 0x4748616A
+
+
+def test_bit_arithmetic_preserves_finite_subnormals_and_signed_zero():
+    lhs = np.array(
+        [0x00000001, 0x007FFFFF, 0x00800000, 0x80000000, 0x00000000,
+         0x7F7FFFFF, 0xFF7FFFFF],
+        dtype=np.uint32,
+    ).view(np.float32)
+    rhs = np.array(
+        [0x3F800000, 0x3F000000, 0x3F000000, 0x3F800000, 0xBF800000,
+         0x40000000, 0x40000000],
+        dtype=np.uint32,
+    ).view(np.float32)
+    with np.errstate(over="ignore"):
+        expected_add = np.add(lhs, rhs, dtype=np.float32)
+        expected_mul = np.multiply(lhs, rhs, dtype=np.float32)
+
+    _assert_same_bits(_gpu_bit_binary(lhs, rhs, "add32_bits"), expected_add)
+    _assert_same_bits(_gpu_bit_binary(lhs, rhs, "mul32_bits"), expected_mul)
+
+
+def test_preemphasis_preserves_subnormal_results():
+    lock = ReferenceLock.load(TOOLS / "parakeet-reference.lock")
+    rng = np.random.default_rng(916)
+    waveform = (
+        rng.uniform(-1, 1, vulkan_mel.CHUNK_SAMPLES) * np.float32(2.0**-120)
+    ).astype(np.float32)
+    expected = np.empty_like(waveform)
+    expected[0] = waveform[0]
+    expected[1:] = (
+        waveform[1:] - np.float32(lock.mel.preemphasis) * waveform[:-1]
+    ).astype(np.float32)
+
+    actual = vulkan_mel._preemphasize(mx.array(waveform))
+    mx.eval(actual)
+
+    _assert_same_bits(np.asarray(actual), expected)
+
+
+def test_frame_windowing_preserves_subnormal_products():
+    rng = np.random.default_rng(917)
+    preemphasis = (
+        rng.uniform(-1, 1, vulkan_mel.CHUNK_SAMPLES) * np.float32(2.0**-120)
+    ).astype(np.float32)
+    hann = np.asarray(vulkan_mel._constant_floats(), dtype=np.float32)[
+        vulkan_mel.HANN_OFFSET:vulkan_mel.HANN_OFFSET + 400
+    ]
+    indices = (
+        np.arange(vulkan_mel.N_FRAMES, dtype=np.int32)[:, None] * 160
+        + np.arange(400, dtype=np.int32)[None, :]
+        - 256
+    )
+    valid = (indices >= 0) & (indices < vulkan_mel.CHUNK_SAMPLES)
+    windowed = np.zeros(indices.shape, dtype=np.float32)
+    windowed[valid] = preemphasis[indices[valid]]
+    expected = np.zeros((vulkan_mel.N_FRAMES, vulkan_mel.N_FFT), dtype=np.float32)
+    expected[:, 56:456] = (windowed * hann[None, :]).astype(np.float32)
+
+    actual = vulkan_mel._frame(mx.array(preemphasis), mx.array(hann))
+    mx.eval(actual)
+
+    _assert_same_bits(np.asarray(actual), expected)
 
 
 def _reference_frames(scale):

@@ -210,6 +210,13 @@
       }
     }
   },
+  "denormal_source_correction": {
+    "implementation": "Software binary32 add, subtract, multiply, and negation now reuse the Big96 FMA bit path. Preemphasis, Hann windowing, every DFT butterfly, twiddle, and untangle operation use those helpers instead of native float arithmetic.",
+    "regressions": "Retained tests cover subnormal preemphasis, subnormal Hann products, subnormal DFT terms, signed zero, finite overflow, all binary32 exponent fields, and the pinned ordinary-input stage/final comparison.",
+    "local_command": "MLX_OMARCHY_ALLOW_NON_APPLE=1 PYTHONPATH=.work/venv-run/lib/python3.11/site-packages python3 -m pytest -q tests/coreml/test_vulkan_mel.py tests/coreml/test_vulkan_mel_arithmetic.py tests/coreml/test_vulkan_mel_qualification.py",
+    "local_result": "25 passed in 9.21s",
+    "apple_physical_status": "not rerun after this source correction; prior first-divergence evidence remains preserved and Apple finite-input qualification remains false"
+  },
   "qualification_boundary": {
     "local_frontend": "qualified on software Vulkan: full-finite FMA regressions pass and all 18 authenticated stage/final comparisons are byte-exact",
     "apple_physical_gpu": "not qualified: corrected fma32 passed 8192 full-exponent triples, but the 2^-120 DFT failed with 1028 real-component bit mismatches; corrected 18-comparison fixture CLI was not reached before the fixed deadline",
