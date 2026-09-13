@@ -1,15 +1,26 @@
 {
-  "status": "source-qualified; hardware and encoder qualification pending root scheduling",
+  "status": "exact source built, installed, ANE-submission-qualified, and GPU-postcheck-qualified",
   "source": {
     "review_base": "be60b40dd38c6942763a6b557d9c39482438b006",
-    "follow_up": "7dd259d1966c1e1203285a9b56dc4547a2ac1da8",
+    "qualified_commit": "9ea7501fc748cc031f7cbdc58afbed984fc00d51",
+    "runpath_fix": "d74f5424",
+    "shared_only_boundary": "9ea7501f",
     "integration_root_at_assignment": "9e22a534",
-    "hardware_executed_for_corrected_source": false
+    "hardware_executed_for_qualified_source": true
   },
   "model": {
     "requested_route": "mlx-openai-deep",
     "actual": "openai-codex/gpt-5.6-sol",
     "fallback": false
+  },
+  "qualification_scope": {
+    "qualified": "Exact 9ea7501f wheel installed on jwm1-linux: real add and add-mul ANE fixtures, exact FP16 output, explicit MLX GPU matmul-add, and post-ANE Vulkan reopen.",
+    "not_qualified": [
+      "full-model ANE execution or output quality",
+      "other hardware or hosts",
+      "performance or throughput",
+      "graphs beyond the recorded add and add-mul contracts"
+    ]
   },
   "finding_to_source_to_proof": [
     {
@@ -59,43 +70,153 @@
       "source": "overlay/mlx/backend/omarchy/ane/runtime_detail.h; overlay/tests/omarchy/ane/test_runtime.cpp:92-115",
       "resolution": "Use the checked plane-stride formula with a valid 0x4000-byte allocation fixture and exact physical offsets.",
       "proof": "Exact packing and unpacking assertions are included in the passing scoped doctest; binding review reported the fixture clean."
+    },
+    {
+      "finding": "An installed worker could be found correctly but fail before main because it had no runtime search path for the sibling libmlx.so.",
+      "source": "overlay/mlx/backend/omarchy/CMakeLists.txt:584-589",
+      "resolution": "Install the worker with the existing mlx-omarchy-info `$ORIGIN/../lib` RUNPATH pattern.",
+      "proof": "The preserved 3172 run fails at dynamic loading in jwm1-3172-installed-startup-failure.log:27; the exact 9ea wheel records RUNPATH and both real workers execute and release in jwm1-9ea7501f-acceptance.log:132-180."
+    },
+    {
+      "finding": "In a static libmlx build, dladdr on the runtime anchor resolves the consumer executable, never the TARGET_FILE:mlx archive, so worker selection cannot establish a loaded-library installation prefix.",
+      "source": "overlay/mlx/backend/omarchy/CMakeLists.txt:12-17; docs/ane-runtime.md:5",
+      "resolution": "Reject private ANE runtime configuration unless BUILD_SHARED_LIBS=ON. Preserve static Omarchy GPU and host bundle builds when the private runtime is disabled.",
+      "proof": "Actual static+ANE CMake configure exits 1 with the named requirement; actual static libmlx.a bundle consumer has no dynamic libmlx dependency and passes 20/20 cases and 1802/1802 assertions."
+    },
+    {
+      "finding": "Shell probe output could fail before filling an array, after which an unbound subscript hid the real metadata error.",
+      "source": "Hardware acceptance harness /tmp/AneRuntimeBridge-9ea7501f-acceptance.sh",
+      "resolution": "Use importlib.metadata.version(\"mlx-omarchy\") and atomic, exact-cardinality files before any shell field extraction; validate mapped core/libmlx and worker bytes against wheel RECORD.",
+      "proof": "jwm1-9ea7501f-acceptance.log:128 records the exact version, mapped paths, hashes, and RECORD match before either hardware submission."
     }
   ],
   "local_commands": [
     {
-      "command": "g++ -std=c++17 -pthread -Wall -Wextra -Werror -I overlay -I /home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/main-land2/.work/mlx -I /home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/main-land2/.work/build/_deps/doctest-src overlay/tests/omarchy/ane/test_runtime.cpp -o /tmp/AneRuntimeBridge-runtime-tests && /tmp/AneRuntimeBridge-runtime-tests",
-      "result": "8/8 test cases and 244/244 assertions passed; doctest SUCCESS; wall 2.93 seconds"
+      "command": "CMake configure with BUILD_SHARED_LIBS=OFF and MLX_OMARCHY_ANE_SOURCE_DIR set",
+      "result": "rejected rc=1 with exact shared-library requirement; preexisting libmlx.a confirms this was the former static ANE shape"
     },
     {
-      "command": "g++ -std=c++17 -pthread -Wall -Wextra -Werror -I overlay -I /home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/main-land2/.work/mlx -DMLX_OMARCHY_ANE_WORKER_BUILD_PATH='\"/tmp/worker\"' -DMLX_OMARCHY_ANE_WORKER_INSTALL_PATH='\"/usr/bin/worker\"' -c overlay/mlx/backend/omarchy/ane/runtime.cpp -o /tmp/AneRuntimeBridge-runtime.o",
-      "result": "success with no compiler output; wall 1.58 seconds"
+      "command": "build and run static omarchy_ane_bundle_tests with private ANE disabled",
+      "result": "actual libmlx.a consumer; no dynamic libmlx; 20/20 cases and 1802/1802 assertions passed"
     },
     {
-      "command": "g++ -std=c++17 -Wall -Wextra -Werror -I overlay -I /home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/main-land2/.work/mlx -I /home/joshuawarren/src/omarchy-ane-m1-lifecycle/libane -c overlay/mlx/backend/omarchy/ane/worker.cpp -o /tmp/AneRuntimeBridge-worker.o && g++ -std=c++17 -Wall -Wextra -Werror -I overlay -I /home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/main-land2/.work/mlx -c overlay/mlx/backend/omarchy/ane/worker_main.cpp -o /tmp/AneRuntimeBridge-worker-main.o",
-      "result": "success with no compiler output; wall 2.36 seconds"
+      "command": "build shared worker; install to /tmp/AneRuntimeBridge-local-build/shared-install-d74f5424-2; run with LD_LIBRARY_PATH unset",
+      "result": "RUNPATH $ORIGIN/../lib; exact sibling libmlx resolved; worker reached main and returned expected STAGING_BYTES usage error, rc=2"
     },
     {
-      "command": "git diff --check",
-      "result": "success with no output"
+      "command": "build and run shared omarchy_ane_runtime_tests",
+      "result": "11/11 cases and 269/269 assertions passed"
     }
   ],
   "reviews": [
     {
       "reviewer": "AneLifecycleHardeningReview",
-      "commit": "7dd259d1966c1e1203285a9b56dc4547a2ac1da8",
-      "verdict": "clean; no actionable findings in the follow-up or combined lifecycle mechanisms",
-      "independent_repro": "first invalid 129-byte marker left state_exists=1; second acquire returned the same invalid-state error"
+      "commit": "3172b41563eeb516de40c9fe1029a014d43b54a8",
+      "verdict": "clean; no actionable lifecycle finding"
     },
     {
       "reviewer": "AneBindingHardeningReview",
-      "commit": "7dd259d1966c1e1203285a9b56dc4547a2ac1da8",
-      "verdict": "clean; no remaining actionable source finding",
-      "independent_repro": "state_after_first=present and retry produced the identical invalid-state failure"
+      "commit": "3172b41563eeb516de40c9fe1029a014d43b54a8",
+      "verdict": "clean; exact shared build worker selected and installed fallback isolation preserved"
+    },
+    {
+      "reviewer": "Main",
+      "commit": "9ea7501fc748cc031f7cbdc58afbed984fc00d51",
+      "verdict": "accepted RUNPATH fix, explicit shared-only ANE boundary, disposable startup, static GPU-host consumer proof, and shared runtime tests"
     }
   ],
   "remaining_prerequisites": [
-    "Root must grant and schedule exclusive jwm1 hardware acceptance for this exact corrected source.",
-    "Project-wide suite and encoder qualification remain root-owned integration work.",
-    "Hardware evidence captured for bab2549c is historical and does not qualify 7dd259d1."
-  ]
+    "Project-wide integration and validation remain root-owned."
+  ],
+  "artifact": {
+    "source_bundle": "/tmp/AneRuntimeBridge-9ea7501f.bundle",
+    "source_bundle_sha256": "119cd04229ed2cdbf5d53251d04e5474df425421dcc4de5b4778b4181cada00a",
+    "source_bundle_bytes": 112637947,
+    "wheel": "mlx_omarchy-0.32.2.dev202609130744+9ea7501fc748cc031f7cbdc58afbed984fc00d51-cp314-cp314-linux_aarch64.whl",
+    "wheel_sha256": "b672dbd592878335e5180fdadd2193e25bdc5ed1cc3c759c2805e590642d1d93",
+    "wheel_bytes": 7722206,
+    "installed_version": "0.32.2.dev202609130744+9ea7501fc748cc031f7cbdc58afbed984fc00d51",
+    "mapped_core_sha256": "4ad850da16c300ea9f60aa7247f034f358aa16d7ba2fd146979a01c867e3cfa5",
+    "mapped_libmlx_sha256": "bcb6e25d5d7063fdb7fcb10cb787110bc614355f452798b27ef95c4eb1b98187",
+    "installed_worker_sha256": "3052ee7710a24a3b3ce3d2f9843309db486c8530d3961635d95de1b7144f4f75"
+  },
+  "hardware": {
+    "host": "jwm1-linux",
+    "kernel": "7.1.6-1-1-ARCH",
+    "machine": "aarch64",
+    "device": "Apple M1 (G13G B1)",
+    "driver_version": "f2a3e5e+lifecycle6",
+    "driver_srcversion": "DD43701FCB506056A340587",
+    "runtime_pm": "on/active",
+    "libane_commit": "f261a6cb537aca62f267ad3d01beda0d6877544c",
+    "acquisition": {
+      "pid": 3351928,
+      "pgid": 3351928,
+      "started": "2026-09-13T02:44:35-05:00",
+      "deadline_epoch": 1789286375
+    },
+    "smokes": [
+      {
+        "operation": "add",
+        "graph_hash": "5584d0fd8d40027229890408e924e6f7930cd5f02516466a442193408482ce76",
+        "contract_sha256": "f974e82eca49726a9eafb58f95a6578a458d423bab12efcdc3c3b780f1bbf680",
+        "model_sha256": "41adbbc6a4d9b6f23316e743d0d840f6cab722123f3b47b7b9b980dd94517a26",
+        "worker_pid": 3357124,
+        "exact_fp16_iterations": 2,
+        "bytes_per_output": 128,
+        "released_programs": 1,
+        "process_released": true
+      },
+      {
+        "operation": "add-mul",
+        "graph_hash": "5584d0fd8d40027229890408e924e6f7930cd5f02516466a442193408482ce76",
+        "contract_sha256": "065f2acd0a0668c0911fcc728bc8bfef56812e0e64c0064de6287ac29dc98619",
+        "model_sha256": "eddf1f251990ee72d24f53f9bf72eb1e8f71966af5551118fe4c2d0c1e32a5a5",
+        "worker_pid": 3357157,
+        "exact_fp16_iterations": 2,
+        "bytes_per_output": 128,
+        "released_programs": 2,
+        "process_released": true
+      }
+    ],
+    "post_smoke": {
+      "device_lock_reacquired": true,
+      "quarantine_inode_preserved": true,
+      "quarantine_empty": true,
+      "initial_vulkan_error": "sudo: vulkaninfo: command not found",
+      "gpu_postcheck": {
+        "source_commit": "9ea7501fc748cc031f7cbdc58afbed984fc00d51",
+        "installed_version": "0.32.2.dev202609130744+9ea7501fc748cc031f7cbdc58afbed984fc00d51",
+        "wheel_sha256": "b672dbd592878335e5180fdadd2193e25bdc5ed1cc3c759c2805e590642d1d93",
+        "script_sha256": "b291ab3598b3440455e0cc5134407414f92753af6c7e0e7275c51b684c33cdd7",
+        "acquired": "2026-09-13T03:04:02-05:00",
+        "pid": 3358455,
+        "execution_deadline_epoch": 1789286702,
+        "default_device": "Device(gpu, 0)",
+        "device_name": "Apple M1 (G13G B1)",
+        "architecture": "honeykrisp",
+        "numerical_result": [[20.0, 23.0], [44.0, 51.0]],
+        "vulkan_reopen": true,
+        "vulkaninfo": "/home/joshuawarren/.local/bin/vulkaninfo",
+        "clearance": "outer lock free; workers absent; quarantine empty; lease removed; exit 0",
+        "log": "receipts/2026-09-12-ane-runtime-hardening/jwm1-9ea7501f-gpu-postcheck.log"
+      }
+    },
+    "release": {
+      "epoch": 1789286057,
+      "outer_lock": "free",
+      "process_group_scan": "pass/empty",
+      "worker_scan": "pass/absent",
+      "quarantine": "empty",
+      "lease": "removed"
+    },
+    "log": "receipts/2026-09-12-ane-runtime-hardening/jwm1-9ea7501f-acceptance.log"
+  },
+  "failed_startup_preserved": {
+    "source_commit": "3172b41563eeb516de40c9fe1029a014d43b54a8",
+    "finding": "installed worker lacked a libmlx runtime search path",
+    "hardware_submitted": false,
+    "cleanup": "outer lock free; process group empty; workers absent; quarantine empty; lease removed",
+    "log": "receipts/2026-09-12-ane-runtime-hardening/jwm1-3172-installed-startup-failure.log"
+  }
 }

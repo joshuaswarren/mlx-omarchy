@@ -1,0 +1,39 @@
+ownership_state path=/run/lock/mlx-omarchy-ane inode=9765 uid=0 gid=987 mode=750 links=2
+ownership_state path=/run/lock/mlx-omarchy-ane/device.lock inode=9766 uid=0 gid=987 mode=660 links=1
+ownership_state path=/run/lock/mlx-omarchy-ane/quarantine inode=9767 uid=0 gid=987 mode=660 links=1
+worker_clearance=true runtime_quarantine=empty
+preflight_identity host=jwm1-linux machine=aarch64 user=joshuawarren uid=1001 groups=1001 962 987 992 998 render_gid=987 source=3172b41563eeb516de40c9fe1029a014d43b54a8 libane=f261a6cb537aca62f267ad3d01beda0d6877544c wheel_sha256=b309156ac7eb57a9079dde55c164070bb487a5df9d91e1d5ed40541e317c35f5
+lock_acquired=true time=2026-09-13T02:15:38-05:00 pid=3343943 pgid=3343943 lease=/tmp/m1-gpu.lease.AneRuntimeBridge source=3172b41563eeb516de40c9fe1029a014d43b54a8 deadline_epoch=1789284338 no_build=true no_install=true
+deadline_guard=pass phase=acquired remaining_seconds=600 required_seconds=420
+worker_clearance=true runtime_quarantine=empty
+wheel_record_identity=pass installed_version=0.32.2.dev202609130646+3172b41563eeb516de40c9fe1029a014d43b54a8 dist_root=/var/tmp/AneRuntimeBridge-3172b415/install/venv/lib/python3.14/site-packages mapped_core=/var/tmp/AneRuntimeBridge-3172b415/install/venv/lib/python3.14/site-packages/mlx/core.cpython-314-aarch64-linux-gnu.so mapped_core_sha256=4ad850da16c300ea9f60aa7247f034f358aa16d7ba2fd146979a01c867e3cfa5 mapped_libmlx=/var/tmp/AneRuntimeBridge-3172b415/install/venv/lib/python3.14/site-packages/mlx/lib/libmlx.so mapped_libmlx_sha256=db44d0ee60d3c010e09a1b77a27cf7e88a92318e9d9f07cfff5e0efae3dddc77 installed_worker=/var/tmp/AneRuntimeBridge-3172b415/install/venv/lib/python3.14/site-packages/mlx/bin/mlx-omarchy-ane-worker installed_worker_sha256=15f66a2d3e0d014e453ab04ebb0e05877edd369e43e3045d2343f9d479924bf8 wheel_sha256=b309156ac7eb57a9079dde55c164070bb487a5df9d91e1d5ed40541e317c35f5
+installed_core_identity inode=402271 mode=755 uid=1001 gid=1001 bytes=1582104
+installed_libmlx_identity inode=402588 mode=755 uid=1001 gid=1001 bytes=23720632
+installed_worker_identity inode=402280 mode=755 uid=1001 gid=1001 bytes=152360
+worker_clearance=true runtime_quarantine=empty
+deadline_guard=pass phase=smoke_harness_compile remaining_seconds=599 required_seconds=300
+   linux-vdso.so.1 (0x0000ffff1c73c000)
+   libmlx.so => /var/tmp/AneRuntimeBridge-3172b415/install/venv/lib/python3.14/site-packages/mlx/lib/libmlx.so (0x0000ffff1b340000)
+   libstdc++.so.6 => /usr/lib/libstdc++.so.6 (0x0000ffff1b010000)
+   libm.so.6 => /usr/lib/libm.so.6 (0x0000ffff1af30000)
+   libgcc_s.so.1 => /usr/lib/libgcc_s.so.1 (0x0000ffff1aef0000)
+   libc.so.6 => /usr/lib/libc.so.6 (0x0000ffff1ad20000)
+   /lib/ld-linux-aarch64.so.1 => /usr/lib/ld-linux-aarch64.so.1 (0x0000ffff1c740000)
+   libopenblas.so.0 => /usr/lib/libopenblas.so.0 (0x0000ffff1a200000)
+   libgfortran.so.5 => /usr/lib/libgfortran.so.5 (0x0000ffff1a010000)
+   libgomp.so.1 => /usr/lib/libgomp.so.1 (0x0000ffff19f90000)
+deadline_guard=pass phase=add remaining_seconds=598 required_seconds=55
+smoke_effective_identity uid=1001 groups=1001 962 987 992 998 render_gid=987
+/var/tmp/AneRuntimeBridge-3172b415/install/venv/lib/python3.14/site-packages/mlx/bin/mlx-omarchy-ane-worker: error while loading shared libraries: libmlx.so: cannot open shared object file: No such file or directory
+ANE runtime smoke failed: [omarchy-ane] runtime: worker completion deadline expired.
+diagnostic_begin
+runtime_load_graph_hash=5584d0fd8d40027229890408e924e6f7930cd5f02516466a442193408482ce76
+reason=worker startup failed: [omarchy-ane] runtime: worker completion deadline expired.
+graph_hash=5584d0fd8d40027229890408e924e6f7930cd5f02516466a442193408482ce76
+worker_pid=3344082
+current_operation_submitted=false
+runtime_identity=
+recovery=worker control closed before another submission; hardware recovery not required
+diagnostic_end
+clearance=true outer_lock=free process_group_scan=pass process_group=empty worker_scan=pass workers=absent quarantine=empty lease=removed exit_rc=1
+[ane-runtime-3172-installed-smoke: exited; cursor=4014]
