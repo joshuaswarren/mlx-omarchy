@@ -1,0 +1,99 @@
+{
+  "native_ops": {
+    "add_zero": {
+      "actual": "0x80000000",
+      "bit_exact": false,
+      "expected": "0x00000000",
+      "first": 1487,
+      "input": "0x80000000",
+      "mismatches": 2,
+      "values": 2056
+    },
+    "exact_mul_one": {
+      "bit_exact": true,
+      "mismatches": 0,
+      "values": 2056
+    },
+    "mul_one": {
+      "bit_exact": true,
+      "mismatches": 0,
+      "values": 2056
+    },
+    "roundtrip": {
+      "bit_exact": true,
+      "mismatches": 0,
+      "values": 2056
+    }
+  },
+  "scale": "0x1p-120",
+  "stages": {
+    "dft_direct_imag": {
+      "actual": "0x0202f104",
+      "bit_exact": false,
+      "expected": "0x022a29d8",
+      "first": [
+        0,
+        1
+      ],
+      "mismatches": 1020,
+      "shape": [
+        4,
+        257
+      ]
+    },
+    "dft_direct_real": {
+      "actual": "0x02349b98",
+      "bit_exact": false,
+      "expected": "0x026c5098",
+      "first": [
+        0,
+        0
+      ],
+      "mismatches": 1028,
+      "shape": [
+        4,
+        257
+      ]
+    },
+    "frames": {
+      "actual": "0x00000000",
+      "bit_exact": false,
+      "expected": "0x004432b7",
+      "first": [
+        0,
+        316
+      ],
+      "mismatches": 181,
+      "shape": [
+        3001,
+        512
+      ]
+    },
+    "hann_upload": {
+      "bit_exact": true,
+      "mismatches": 0,
+      "shape": [
+        400
+      ]
+    },
+    "preemphasis": {
+      "actual": "0x00000000",
+      "bit_exact": false,
+      "expected": "0x00565b00",
+      "first": [
+        4
+      ],
+      "mismatches": 16,
+      "shape": [
+        480000
+      ]
+    },
+    "waveform_upload": {
+      "bit_exact": true,
+      "mismatches": 0,
+      "shape": [
+        480000
+      ]
+    }
+  }
+}

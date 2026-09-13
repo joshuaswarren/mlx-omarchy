@@ -1,0 +1,7 @@
+original_underflow_dft_real: bit_exact=true shape=[4, 257]
+original_underflow_dft_imag: bit_exact=true shape=[4, 257]
+low_scale_reference_subnormal_power=1280
+low_scale_power: bit_exact=true shape=[3001, 257]
+low_scale_mel_projection: bit_exact=true shape=[3001, 128]
+device=Device(gpu, 0)
+APPLE_MEL_REGRESSION_VALID

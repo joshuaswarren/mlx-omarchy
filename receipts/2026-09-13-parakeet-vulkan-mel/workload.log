@@ -1,0 +1,141 @@
+{
+  "all_bit_exact": false,
+  "comparisons": {
+    "dft_imag": {
+      "bit_exact": true,
+      "dtype": "float32",
+      "shape": [
+        3001,
+        257
+      ]
+    },
+    "dft_real": {
+      "bit_exact": true,
+      "dtype": "float32",
+      "shape": [
+        3001,
+        257
+      ]
+    },
+    "encoder_features": {
+      "bit_exact": false,
+      "dtype": "float32",
+      "shape": [
+        1,
+        3000,
+        128
+      ]
+    },
+    "encoder_mask": {
+      "bit_exact": true,
+      "dtype": "int32",
+      "shape": [
+        1,
+        3000
+      ]
+    },
+    "frames": {
+      "bit_exact": true,
+      "dtype": "float32",
+      "shape": [
+        3001,
+        512
+      ]
+    },
+    "hann": {
+      "bit_exact": true,
+      "dtype": "float32",
+      "shape": [
+        400
+      ]
+    },
+    "logmel": {
+      "bit_exact": false,
+      "dtype": "float32",
+      "shape": [
+        3001,
+        128
+      ]
+    },
+    "mask": {
+      "bit_exact": true,
+      "dtype": "int32",
+      "shape": [
+        3001
+      ]
+    },
+    "mean": {
+      "bit_exact": false,
+      "dtype": "float32",
+      "shape": [
+        128
+      ]
+    },
+    "mel": {
+      "bit_exact": false,
+      "dtype": "float32",
+      "shape": [
+        3001,
+        128
+      ]
+    },
+    "mel_fb": {
+      "bit_exact": true,
+      "dtype": "float32",
+      "shape": [
+        128,
+        257
+      ]
+    },
+    "melproj": {
+      "bit_exact": false,
+      "dtype": "float32",
+      "shape": [
+        3001,
+        128
+      ]
+    },
+    "power": {
+      "bit_exact": false,
+      "dtype": "float32",
+      "shape": [
+        3001,
+        257
+      ]
+    },
+    "preemph": {
+      "bit_exact": true,
+      "dtype": "float32",
+      "shape": [
+        480000
+      ]
+    },
+    "std": {
+      "bit_exact": false,
+      "dtype": "float32",
+      "shape": [
+        128
+      ]
+    }
+  },
+  "device": "Device(gpu, 0)",
+  "gpu_execution": {
+    "gpu_primitive_dispatches": true,
+    "vk_compute_dispatches": true,
+    "vk_submissions": true
+  },
+  "qualified": false,
+  "reference_model": "mweinbach1/parakeet-tdt-0.6b-v3-coreml",
+  "reference_revision": "b650695c2322ee5281dff48d7345b2f3a58ff018",
+  "schema": "mlx-omarchy.parakeet-vulkan-mel/1",
+  "trace_delta": {
+    "commit_calls_noop": 1,
+    "commit_calls_with_work": 1,
+    "gpu_primitive_dispatches": 15,
+    "omarchy_finalize_calls": 1,
+    "vk_buffer_copies": 0,
+    "vk_buffer_fills": 0,
+    "vk_compute_dispatches": 8,
+    "vk_submissions": 1
+  }
+}

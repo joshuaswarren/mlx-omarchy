@@ -1,0 +1,26 @@
+LOCK_ACQUIRED pid=3342945 pgid=3342944 deadline_epoch=1789283419 utc=2026-09-13T07:08:46Z
+QUIET_SAMPLE sample=1 load1=0.00 quiet=1 utc=2026-09-13T07:08:46Z
+QUIET_SAMPLE sample=2 load1=0.00 quiet=1 utc=2026-09-13T07:09:07Z
+QUIET_SAMPLE sample=3 load1=0.00 quiet=1 utc=2026-09-13T07:09:27Z
+13ac9d04af0d0248d6f667dd84bdd4dbb5faec509b989a158c04f5cafe63d3df  /var/tmp/CoremlVulkanMel-9438a06f/overlay/tools/coreml/vulkan_mel.py
+caad0ac74d60a4d7378326d5c6d2e0f0fa7d1fd807157f9d203e7348874d258f  /var/tmp/CoremlVulkanMel-9438a06f/overlay/tools/coreml/vulkan_mel_constants.py
+28cbeca260197b90d7b24aed181a2da8e2ecb612ff467d0836f94a336ead2d6e  /var/tmp/CoremlVulkanMel-9438a06f/apple_arithmetic_probe.py
+RUNTIME_VERSION 0.32.2.dev202609130646+3172b41563eeb516de40c9fe1029a014d43b54a8
+MLX_CORE_MODULE /var/tmp/AneRuntimeBridge-3172b415/install/venv/lib/python3.14/site-packages/mlx/core.cpython-314-aarch64-linux-gnu.so
+MAPPED_SHA256 4ad850da16c300ea9f60aa7247f034f358aa16d7ba2fd146979a01c867e3cfa5 /var/tmp/AneRuntimeBridge-3172b415/install/venv/lib/python3.14/site-packages/mlx/core.cpython-314-aarch64-linux-gnu.so
+MAPPED_SHA256 db44d0ee60d3c010e09a1b77a27cf7e88a92318e9d9f07cfff5e0efae3dddc77 /var/tmp/AneRuntimeBridge-3172b415/install/venv/lib/python3.14/site-packages/mlx/lib/libmlx.so
+WORKER_SHA256 15f66a2d3e0d014e453ab04ebb0e05877edd369e43e3045d2343f9d479924bf8 /var/tmp/AneRuntimeBridge-3172b415/install/venv/lib/python3.14/site-packages/mlx/bin/mlx-omarchy-ane-worker
+ARITHMETIC_EXACT name=fma-all-exponents values=8192
+Traceback (most recent call last):
+  File "/var/tmp/CoremlVulkanMel-9438a06f/apple_arithmetic_probe.py", line 73, in <module>
+    same_bits(f"dft-real-scale-{scale.hex()}", np.asarray(actual_real), expected_real)
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/tmp/CoremlVulkanMel-9438a06f/apple_arithmetic_probe.py", line 20, in same_bits
+    raise AssertionError(
+    ...<3 lines>...
+    )
+AssertionError: dft-real-scale-0x1.0000000000000p-120: 1028 mismatches; first=(0, 0) actual=0x02349b98 expected=0x026c5098
+CLEANUP_WORKERS_CLEAR
+CLEANUP_LOCK_FREE
+CLEANUP_LEASE_REMOVED
+WINDOW_RELEASED rc=1 residue=0 utc=2026-09-13T07:09:29Z

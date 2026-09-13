@@ -23,6 +23,16 @@
     {"path": "/tmp/mlx-omarchy-h13-bundle-v3", "error": "release_asset.model_sha256 does not match compiled payload collection"},
     {"path": "receipts/fixtures/h13-explicit-chain-add-mul", "error": "unknown field 'artifactFormat'", "reason": "This is a compiler package, not an adapted runtime bundle. The real adapter invocation above is required."}
   ],
+  "frontend_integration": {
+    "merged_parent": "604b0435976b50c0d2d01abf9aaca693667a7c46",
+    "resolution": "Replace the obsolete NumPy frontend instructions with the qualified exact CPU and Vulkan instructions.",
+    "tests": "MLX_OMARCHY_ALLOW_NON_APPLE=1 PYTHONPATH=/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/CoremlVulkanMel/.work/venv-run/lib/python3.11/site-packages python3 -m pytest -q tests/coreml/test_vulkan_mel.py tests/coreml/test_vulkan_mel_arithmetic.py tests/coreml/test_vulkan_mel_qualification.py",
+    "test_result": "26 passed in 15.00s",
+    "cli": "MLX_OMARCHY_ALLOW_NON_APPLE=1 PYTHONPATH=/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/CoremlVulkanMel/.work/venv-run/lib/python3.11/site-packages timeout -k 10s 180s python3 overlay/tools/coreml/vulkan_mel.py /home/joshuawarren/.cache/mlx-omarchy/parakeet-reference/captures/b650695c-75aec2a/20260912T154759Z-librispeech/ane /home/joshuawarren/.cache/mlx-omarchy/parakeet-reference/captures/b650695c-75aec2a/mel-stage-probes/stage-capture --json-out /tmp/ane-runtime-integrated-mel-20260913.json",
+    "cli_result": "qualified=true, all_bit_exact=true, stage_set_exact=true; all 18 comparisons bit-exact",
+    "trace_delta": {"gpu_primitive_dispatches": 15, "vk_compute_dispatches": 8, "vk_submissions": 1, "vk_buffer_copies": 0, "vk_buffer_fills": 0},
+    "scope": "Merged Python frontend on local software Vulkan using the previously built CoremlVulkanMel Python extension. Not a rebuilt combined wheel or new Apple hardware qualification."
+  },
   "qualification": {
     "merged_host_contract": "verified",
     "merged_hardware_execution": "not run",

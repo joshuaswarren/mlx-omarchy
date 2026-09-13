@@ -1,0 +1,250 @@
+{
+  "schema": "mlx-omarchy.parakeet-vulkan-mel/1",
+  "date": "2026-09-13",
+  "branch": "wave/CoremlVulkanMel",
+  "integration_base": "e4d079c883b8606dddef7720bd302c5756be0692",
+  "scope": "Exact workload-owned MLX custom-kernel implementation of the pinned Parakeet waveform-to-mel frontend",
+  "reference": {
+    "repository": "mweinbach/parakeet-coreml-swift",
+    "commit": "75aec2a1c991319657ff4dec5f602c12da6c5012",
+    "model_repository": "mweinbach1/parakeet-tdt-0.6b-v3-coreml",
+    "model_revision": "b650695c2322ee5281dff48d7345b2f3a58ff018",
+    "audio": "LibriSpeech test-clean/1089/134686/1089-134686-0000.flac",
+    "audio_sha256": "30885601173f96b0d8ddd020dc959b055c6c1582b85a33e3fcab8c4b08ed94c2",
+    "macos_fixture": "20260912T154759Z-librispeech/ane",
+    "stage_fixture": "mel-stage-probes/stage-capture"
+  },
+  "contract": {
+    "input": "One non-empty float32 waveform at 16 kHz, no longer than 480000 samples",
+    "output": "float32 mel [3001,128], all-one int32 mask [3001], float32 encoder features [1,3000,128], and int32 encoder mask [1,3000]",
+    "execution": "Every waveform-dependent stage uses workload-owned mx.fast.metal_kernel calls on stream=mx.gpu. The runtime extraction path performs no NumPy or CPU tensor arithmetic. The host comparator materializes and validates the completed int32 API mask, converts only its comparison copy to the frozen float32 stage dtype, and takes its final trace snapshot after every comparison.",
+    "success": "All five final capture hashes, all 14 stage hashes, and all 18 stage/final comparisons must match; the expected stage set must be exact; GPU primitive and submission counters must be positive; Vulkan compute dispatches must equal the frozen count of eight."
+  },
+  "immutable_constants": {
+    "float_count": 34704,
+    "sha256": "753fda5580a1fdc8c1535cc291a962c3be3207e819d42b2eb6869b731a7ebf62"
+  },
+  "source_sha256": {
+    "overlay/tools/coreml/vulkan_mel.py": "4f61cd5cd1ebabb2a96d3270e347d3a6607be9b9c186f56663c5f9d14ba095c0",
+    "overlay/tools/coreml/mel_stage_compare.py": "210b38995c1491890fd71a7ae6c5c79b79c6d8d583289e3b3831a86b7066b7f8",
+    "overlay/tools/coreml/vulkan_mel_constants.py": "caad0ac74d60a4d7378326d5c6d2e0f0fa7d1fd807157f9d203e7348874d258f",
+    "tests/coreml/test_vulkan_mel.py": "4dfa53690fdb5790423e37f12121ce5d3dd8c7ce484c8b81ea658829b9e291df",
+    "tests/coreml/test_vulkan_mel_arithmetic.py": "ef6c328c40f38a48ce7afd4398761beb3e38b7aa475ecdaaf3cf196608123dac",
+    "tests/coreml/test_vulkan_mel_qualification.py": "631a6074d5f4cad44f3bd71281fc7e9e2ccbe0e0a0abe04e2d1ca5ea98011bdb",
+    "docs/parakeet.md": "a7180ccce48c4bf74731e852c8fb921df5f67445456e2981f247249aadbc8a91",
+    "docs/coreml.md": "4432b273338e171372815b6237a98b23003e697bb3a6dbfc4b7183dd9d473e7c"
+  },
+  "local_runtime": {
+    "source_commit": "e4d079c883b8606dddef7720bd302c5756be0692",
+    "wheel": "dist/mlx_omarchy-0.32.2.dev202609130346+e4d079c8-cp311-cp311-linux_x86_64.whl",
+    "wheel_sha256": "481b93ecbb9118b2623add84931aa18ad6b770d945987b0e8dc0c440c5e032a2",
+    "core_extension_sha256": "d8bfcf627df57a07a75fed49dd989ae5321323c5008cb768ea46f619409ca442",
+    "libmlx_sha256": "4c499ba19e3b5f8f96402fdca4304e0dfa50d6e6a8e6a949eb7a4d9738fc8276",
+    "provenance": "installed files matched wheel RECORD and mlx version matched the distribution"
+  },
+  "local_postfix_verification": [
+    {
+      "command": "custom sqrt32 kernel over 1,000,009 positive finite float32 bit patterns, including zero, subnormal/normal boundaries, power-of-two boundaries, and max finite",
+      "result": "0 mismatches against np.sqrt(float64).astype(float32)"
+    },
+    {
+      "command": "timeout 75s python3 -m pytest -q tests/coreml/test_vulkan_mel.py",
+      "result": "8 passed in 1.85s"
+    },
+    {
+      "command": "timeout 75s python3 overlay/tools/coreml/vulkan_mel.py <pinned-capture> <certified-stage-capture> --json-out .work/vulkan-mel-local-final.json",
+      "result": "exit 0; qualified=true; all 15 stage/final comparisons bit-exact; Device(gpu, 0); 15 GPU primitives, 8 Vulkan computes, and 1 Vulkan submission"
+    }
+  ],
+  "apple_red_reproduction": {
+    "host_class": "qualified Apple M1 Linux test host",
+    "device": "Apple M1 (G13G B1)",
+    "driver": "Honeykrisp, Mesa 26.3.0-devel (git-6f6afc8968)",
+    "runtime": "mlx-omarchy 0.32.2.dev202609121216+8f6de34c",
+    "runtime_reconciliation": "Installed hashes matched wheel RECORD. 8f6de34c and e4d079c8 have no diff in custom-kernel-relevant runtime paths.",
+    "acquired": "2026-09-13T04:37:35Z",
+    "released": "2026-09-13T04:38:16Z",
+    "result": "qualified=false before the sqrt32 correction; DFT real/imag, preemphasis, frames, Hann, filterbank, mask, and encoder mask were exact. Power diverged first and cascaded into mel projection, log, statistics, normalized mel, and encoder features.",
+    "trace_delta": {
+      "gpu_primitive_dispatches": 15,
+      "vk_compute_dispatches": 8,
+      "vk_submissions": 1,
+      "commit_calls_with_work": 1,
+      "commit_calls_noop": 1,
+      "omarchy_finalize_calls": 1,
+      "vk_buffer_copies": 0,
+      "vk_buffer_fills": 0
+    },
+    "cleanup": "CHILD_PIDS_CLEAR, launcher PID/PGID clear, lock_released=true, and a post-run nonblocking lock probe succeeded",
+    "artifacts": {
+      "apple-gpu.json": "35a058ddcf2b6baff8f871f7d2c7cef0e29aacf07665b18ef4e2426c4ecaa455",
+      "vulkaninfo.txt": "7341441f6ff7e3a052ffc20a3fb0572e910645260475bdc1d57f4df4ee0ac393",
+      "lease.txt": "a9351b949aaf4bcd9d289ea35ca272a590049a3049ddfe97be5b3094eed39001",
+      "attempt1-launcher.log": "862e918b883c98f09088bcb4bedae1423f46c025d4cb6fcbeb1db4d3fa92d4f5",
+      "attempt2-launcher.log": "e58d6c8b5d5b5fb7c63f8fff0fcc9d3330159f616c8466766909c28b10a55f34"
+    }
+  },
+  "postfix_apple_red_reproduction": {
+    "source_sha256": "c3c01af30647e613c5707f97bc986d8585fcdbd04b371fdad605593a5800d6d8",
+    "acquired": "2026-09-13T05:10:18Z",
+    "released": "2026-09-13T05:10:59Z",
+    "result": "qualified=false; the corrected magnitude path made power, mel projection, logmel, and mean exact. The remaining native sqrt in standard deviation diverged and cascaded only to normalized mel and encoder features.",
+    "exact": ["preemph", "hann", "mel_fb", "frames", "dft_real", "dft_imag", "power", "melproj", "logmel", "mean", "mask", "encoder_mask"],
+    "mismatched": ["std", "mel", "encoder_features"],
+    "trace_delta": {"gpu_primitive_dispatches": 15, "vk_compute_dispatches": 8, "vk_submissions": 1},
+    "cleanup": "CHILD_PIDS_CLEAR, launcher PID/PGID clear, lock_released=true, and a post-run nonblocking lock probe succeeded",
+    "artifacts": {
+      "postfix-apple-gpu.json": "5b5fbd40a0748ed1ca10b3cca3212711a69900aa9fbf3c7f4ccd4c515c7b2fea",
+      "postfix-workload.log": "5b5fbd40a0748ed1ca10b3cca3212711a69900aa9fbf3c7f4ccd4c515c7b2fea",
+      "postfix-load.log": "8ff8c2d5bb54c7fbd1a57e603a2a024acc8228f241b0c068d0b7dc1e834442d2",
+      "postfix-lease.txt": "62dc536174d854c07248f35cd22648f40d2004564f802ed35a7b7d2b9ba385c0",
+      "postfix-launcher.log": "e207950e201d780df6d1e5554fd2bab5f01c6f5ab72b8a01e2e64f3a8a75aa62"
+    }
+  },
+  "final_apple_verification": {
+    "status": "historical pinned ordinary-input pass; superseded for general qualification",
+    "source_commit": "976c3bad5db57314dc06a913fda9c7f0b4bead21",
+    "source_sha256": "3d05d810aec2455680eedabc04c61ed947ebc18f3c2d892f9029dce949c3eac6",
+    "host_class": "qualified Apple M1 Linux test host",
+    "device": "Apple M1 (G13G B1)",
+    "driver": "Honeykrisp, Mesa 26.3.0-devel (git-6f6afc8968)",
+    "runtime": "mlx-omarchy 0.32.2.dev202609121216+8f6de34c",
+    "acquired": "2026-09-13T05:30:53Z",
+    "released": "2026-09-13T05:31:34Z",
+    "fixed_deadline_epoch": 1789278277,
+    "command_cwd": "isolated staging root; private host and path omitted",
+    "command": "nohup setsid timeout -k 10s 824s tools/CoremlVulkanMel-final.sh",
+    "result": "historical ordinary-input result: all 15 then-compared certified stage and final tensors were byte-exact on Device(gpu, 0); this predates the full-finite FMA and 18-comparison gate corrections",
+    "observed_output": "APPLE_GPU_RECEIPT_VALID comparisons=15 trace={\"commit_calls_noop\": 1, \"commit_calls_with_work\": 1, \"gpu_primitive_dispatches\": 15, \"omarchy_finalize_calls\": 1, \"vk_buffer_copies\": 0, \"vk_buffer_fills\": 0, \"vk_compute_dispatches\": 8, \"vk_submissions\": 1}",
+    "trace_delta": {
+      "gpu_primitive_dispatches": 15,
+      "vk_compute_dispatches": 8,
+      "vk_submissions": 1,
+      "commit_calls_with_work": 1,
+      "commit_calls_noop": 1,
+      "omarchy_finalize_calls": 1,
+      "vk_buffer_copies": 0,
+      "vk_buffer_fills": 0
+    },
+    "cleanup": "CHILD_PIDS_CLEAR; launcher PID 3319655 and PGID 3319655 independently clear; /tmp/m1-gpu.lease absent; /tmp/m1-gpu.lock free; no ANE workers",
+    "artifacts": {
+      "final-apple-gpu.json": "2d58dabb6d804e7bb61ae41e25f65e2811cc2fe2b8a16eda2f3ecbb5282706e8",
+      "final-workload.log": "2d58dabb6d804e7bb61ae41e25f65e2811cc2fe2b8a16eda2f3ecbb5282706e8",
+      "final-load.log": "ad374250b8babf85e1896cb27d8c208249c54726a25eb170e7615fe4eb194a08",
+      "final-lease.txt": "c7b5016678e1320ccfb5163bf1e38fa24d979c775d0e45dbc7791152bcecdcfd",
+      "final-launcher.log": "87b8c1248659847cb340f0805fc733d8670ede38d2049f4559a9134f042a4b57"
+    }
+  },
+  "review_correction": {
+    "status": "qualified on local software Vulkan; corrected source awaits Apple rerun",
+    "source_commits": [
+      "2f08632097d21342924ea74b598607746af10dc6",
+      "a5b209e4b45f26d809d0e7d3ab6539f33b243777",
+      "9438a06fd3394b30834976dcc8af322bd1b05493"
+    ],
+    "root_cause": "The former unscaled Dekker split multiplied finite operands by 4097, which overflowed at large magnitudes and lost subnormal products. It did not implement the declared finite binary32 FMA contract.",
+    "native_fma_limit": {
+      "probe": "lhs=0x5a58d667 rhs=0x2c6c9263 acc=0xbe6a1737 through mx.fast.metal_kernel",
+      "native": "0x4748616a",
+      "correctly_rounded": "0x4748616b",
+      "broader_probe": "4371 mismatches in 200000 finite triples"
+    },
+    "implementation": "The replacement combines unpacked binary32 significands in a 96-bit uint32 magnitude with sticky state, then rounds once to binary32. It does not clamp or narrow legal finite inputs.",
+    "comparison_boundary": "The real API mask stays int32. After mx.eval completes the outputs, the comparator materializes and validates mask dtype and shape on the host, creates the float32-only stage copy with NumPy, completes every comparison, and only then reads the final trace snapshot. No comparison operation is outside the measured dispatch window.",
+    "local_verification": [
+      {
+        "command": "200000 deterministic finite binary32 triples across all exponents through the replacement custom-kernel fma32",
+        "result": "0 mismatches; 0 actual NaNs; 0 expected NaNs"
+      },
+      {
+        "command": "python3 -m pytest -q tests/coreml/test_vulkan_mel.py tests/coreml/test_vulkan_mel_arithmetic.py tests/coreml/test_vulkan_mel_qualification.py",
+        "result": "22 passed in 4.37s"
+      },
+      {
+        "command": "python3 overlay/tools/coreml/vulkan_mel.py <pinned-capture> <certified-stage-capture> --json-out .work/vulkan-mel-review-correction.json",
+        "result": "qualified=true; all 18 comparisons bit-exact; exact expected stage set; Device(gpu, 0); final trace captured after every comparison; 15 GPU primitives, 8 Vulkan computes, and 1 Vulkan submission",
+        "artifact_sha256": "3a87ee5f83377b4da64656c56a0f4afdb65f2af1cb09e113b13aeb592e49df78"
+      }
+    ],
+    "negative_gates": "Missing or extra stage keys reject qualification. Vulkan compute counts 1, 7, and 9 reject qualification. Non-int32 or non-[3001] API masks reject comparison. Tampering any of the five final capture files fails the named SHA-256 gate.",
+    "apple_rerun": {
+      "status": "failed at the first reviewed finite-scale DFT regression; corrected Apple qualification is not claimed",
+      "source_commit": "9438a06fd3394b30834976dcc8af322bd1b05493",
+      "source_sha256": "13ac9d04af0d0248d6f667dd84bdd4dbb5faec509b989a158c04f5cafe63d3df",
+      "host": "jwm1-linux, aarch64, Apple M1 (G13G B1), Honeykrisp",
+      "runtime_version": "0.32.2.dev202609130646+3172b41563eeb516de40c9fe1029a014d43b54a8",
+      "runtime_core_sha256": "4ad850da16c300ea9f60aa7247f034f358aa16d7ba2fd146979a01c867e3cfa5",
+      "runtime_libmlx_sha256": "db44d0ee60d3c010e09a1b77a27cf7e88a92318e9d9f07cfff5e0efae3dddc77",
+      "runtime_worker_sha256": "15f66a2d3e0d014e453ab04ebb0e05877edd369e43e3045d2343f9d479924bf8",
+      "acquired": "2026-09-13T07:08:46Z",
+      "released": "2026-09-13T07:09:29Z",
+      "fixed_deadline_epoch": 1789283419,
+      "probe_sha256": "28cbeca260197b90d7b24aed181a2da8e2ecb612ff467d0836f94a336ead2d6e",
+      "passing_prefix": "corrected fma32 matched 8192 deterministic finite binary32 triples spanning all exponents",
+      "first_failure": "DFT real at waveform scale 2^-120: 1028 mismatches; first index [0,0], actual 0x02349b98, expected 0x026c5098",
+      "corrected_fixture_cli": "not run; after the diagnostic failure and dependency correction, the fixed deadline expired before a CLI-only launcher could acquire",
+      "capability_evidence": "The Honeykrisp-specific cast path records that the device lacks DenormPreserve and flushes float32 subnormal operands. The physical probe preserved subnormal bits through upload and raw roundtrip, while preemphasis first diverged when native arithmetic consumed them.",
+      "artifact": {
+        "path": "corrected-apple-arithmetic.log",
+        "sha256": "ca742061ccd5223575fb95f9e10becfccc8b8398d1cdaef9ea248b2d5e3f5ca6"
+      },
+      "cleanup": "At remote epoch 1789283452 launcher PIDs 3342225, 3342465, and 3342944 were absent; ANE workers and mel processes were absent; no m1-gpu lease path was printed; a nonblocking /tmp/m1-gpu.lock acquisition succeeded.",
+      "first_divergence_diagnosis": {
+        "acquired": "2026-09-13T07:21:14Z",
+        "released": "2026-09-13T07:21:36Z",
+        "fixed_deadline_epoch": 1789284321,
+        "waveform_upload": "0 mismatches across 480000 float32 values",
+        "preemphasis": "first divergence: 16 mismatches; index 4 actual 0x00000000, expected 0x00565b00",
+        "hann_upload": "0 mismatches across 400 float32 values",
+        "frames": "181 mismatches; first [0,316] actual 0x00000000, expected 0x004432b7",
+        "direct_dft_real": "1028 mismatches; first [0,0] actual 0x02349b98, expected 0x026c5098",
+        "direct_dft_imag": "1020 mismatches; first [0,1] actual 0x0202f104, expected 0x022a29d8",
+        "native_ops": "Across 2056 encoded values, raw roundtrip, multiply by one, and exact fma by one were bit-exact. Add zero differed only at two signed-zero inputs because the shader preserved negative zero while the CPU addition returned positive zero.",
+        "vulkaninfo": "The --json invocation exited successfully but produced an empty file, so it is not treated as capability evidence. Its stderr contains only display-property warnings.",
+        "artifacts": {
+          "apple-denormal-diagnostic.json": "76f5e69bb1a1e3f425f0b2ae217c70dc30c9c47b9d83108235a8dcc096a28a27",
+          "apple-denormal-launcher.log": "d0171204c107d51bee2e89a8298e572f6d29f34a26446a4b268f9e88da3f5ca2",
+          "vulkaninfo-denorm.stderr": "a5192b6a4615347af0dbf1a72506251346807433b3060d067907056ac5bf0372"
+        },
+        "cleanup": "At remote epoch 1789284144 launcher PID 3344798 was absent; ANE workers and the diagnostic process were absent; no m1-gpu lease path was printed; a nonblocking /tmp/m1-gpu.lock acquisition succeeded."
+      }
+    }
+  },
+  "denormal_source_correction": {
+    "implementation": "Software binary32 add, subtract, multiply, and negation reuse the Big96 FMA bit path. Preemphasis, Hann windowing, DFT, magnitude, power, mel reduction, guard addition, and subnormal sqrt scaling use those helpers without changing the certified reduction order.",
+    "regressions": "Retained tests cover the low-scale waveform-to-power-and-mel-projection path, subnormal preemphasis, Hann products and DFT terms, signed zero, finite overflow, all binary32 exponent fields, and the separate pinned ordinary-input stage/final comparison.",
+    "remaining_native_arithmetic_review": "For finite nonnegative mel projection, the 2^-24 guard makes nonzero log output and every reachable stats/normalize operand normal. No concrete FTZ trigger remains in log, statistics, or normalization.",
+    "local_command": "MLX_OMARCHY_ALLOW_NON_APPLE=1 PYTHONPATH=.work/venv-run/lib/python3.11/site-packages python3 -m pytest -q tests/coreml/test_vulkan_mel.py tests/coreml/test_vulkan_mel_arithmetic.py tests/coreml/test_vulkan_mel_qualification.py",
+    "local_result": "26 passed in 15.51s",
+    "apple_physical_status": "qualified at source-frozen aa13b105: original underflow trigger, low-scale power/mel-projection regression, and all 18 stage/final comparisons passed bit-exact on Device(gpu, 0)"
+  },
+  "final_denormal_apple_verification": {
+    "source_commit": "aa13b105cafb12fb60854417f68cac1aa946ef05",
+    "implementation_commit": "3ea8334b087a6b01175193c1b3b0970e4931b967",
+    "source_sha256": "4f61cd5cd1ebabb2a96d3270e347d3a6607be9b9c186f56663c5f9d14ba095c0",
+    "host": "jwm1-linux",
+    "device": "Device(gpu, 0)",
+    "runtime": "mlx-omarchy 0.32.2.dev202609121216+8f6de34c",
+    "acquired": "2026-09-13T08:18:52Z",
+    "completed": "2026-09-13T08:20:25Z",
+    "acquire_by_epoch": 1789288094,
+    "execution_deadline_epoch": 1789288432,
+    "outer_deadline_epoch": 1789289084,
+    "regression": "original 2^-120 DFT real/imaginary and low-scale waveform-to-power-and-mel-projection were bit-exact; low-scale reference contained 1280 nonzero subnormal power values",
+    "full_comparator": "qualified=true, all_bit_exact=true, stage_set_exact=true, 18 comparisons",
+    "trace_delta": {"gpu_primitive_dispatches": 15, "vk_compute_dispatches": 8, "vk_submissions": 1, "commit_calls_with_work": 1, "commit_calls_noop": 1, "omarchy_finalize_calls": 1, "vk_buffer_copies": 0, "vk_buffer_fills": 0},
+    "cleanup": "CHILD_PIDS_CLEAR and LOCK_RELEASED rc=0 in the launcher; independent checks found launcher_alive=false, workers_clear=true, lock_free=true, and lease_absent=true",
+    "artifacts": {
+      "aa13-launcher.log": "2f6e2e47b14120e87bd145ebb134ebf67069a46323191033f24f7c52600a5aae",
+      "aa13-regression.log": "19c260f449ebf07fd65d69ffb2d0a42810978054111337bb6602d37fb7e742f1",
+      "aa13-apple-gpu.json": "3a87ee5f83377b4da64656c56a0f4afdb65f2af1cb09e113b13aeb592e49df78",
+      "aa13-load.log": "3931eb9cec2440412a647a99216c47dc3a6c0b5f535ff71086dca1fdb30441ae",
+      "aa13-lease.txt": "7d548e69284140ef76645bb0646f719d41d0e9355bf7cffd82f80831bc4c3f35"
+    }
+  },
+  "qualification_boundary": {
+    "local_frontend": "qualified on software Vulkan: full-finite FMA regressions pass and all 18 authenticated stage/final comparisons are byte-exact",
+    "apple_physical_gpu": "qualified at aa13b105: the original 2^-120 DFT trigger, low-scale subnormal power/mel projection, and all 18 authenticated stage/final comparisons passed bit-exact with explicit GPU trace evidence",
+    "encoder_and_full_plan": "not claimed"
+  }
+}
