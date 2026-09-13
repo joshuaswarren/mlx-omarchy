@@ -26,6 +26,9 @@ The package currently provides:
   shapes, compiler identity, operation set, bundle/driver ABI, firmware
   compatibility identity, and frontend version. Every hit re-hashes payloads;
   corrupt entries are invalidated before the producer runs again.
+* :mod:`coreml.tdt_control` — the pinned greedy Parakeet TDT state machine.
+  Tensor backends own decoder and joint execution; host control handles only
+  scalar decisions, opaque recurrent-state handles, and frame/token progress.
 
 Inspection never opens the ANE device, never imports coremltools or
 MLX, and never reads or computes tensor data. It runs on any Linux
