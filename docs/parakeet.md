@@ -32,9 +32,10 @@ joint:    encoder_frame f32 [1,640], decoder_state f32 [1,640]
 * Audio: `AVAudioConverter` (quality `high`) → 16 kHz mono f32 in [-1, 1];
   fixed 30 s chunks (3000 frames × hop 160), last chunk zero-padded.
 * Mel (matches HF `ParakeetFeatureExtractor`): preemphasis 0.97 (`y[0]=x[0]`);
-  centred STFT, `n_fft=512`, `win_length=400` (symmetric Hann), hop 160,
+  STFT, `n_fft=512`, `win_length=400` (symmetric Hann), hop 160,
   zero pad-mode (Swift places the window 56 bins earlier than
   `torch.stft` center framing; see [Exact pinned mel reference](coreml.md#exact-pinned-mel-reference));
+  `|STFT|²` via sqrt-then-square; Slaney mel, 128 bins,
   0–8000 Hz; `log(mel + 2^-24)`; per-bin mean/std over frames with Bessel
   correction and `eps=1e-5`: `(x - mean) / (std + eps)`.
 * Decode: greedy TDT, blank id 8192, durations `[0,1,2,3,4]`, vocab 8193,

@@ -29,10 +29,11 @@ If you have not read these yet, do that first:
 
 ## The hardware split — read this first
 
-The project has exactly one Apple Silicon Linux machine (`m1-test-host`, M1,
-Honeykrisp). Every Linux dev box without an M1 runs against
-`llvmpipe`/`lavapipe`, which is correct for structure, dispatch counts,
-and code paths, and meaningless for timing and per-kernel numerics.
+Hardware testing is authorized on the 13-inch M1 and 16-inch M1 Max
+Omarchy laptops (`AGENTS.md` Hardware safety). Every Linux dev box
+without an Apple GPU runs against `llvmpipe`/`lavapipe`, which is
+correct for structure, dispatch counts, and code paths, and
+meaningless for timing and per-kernel numerics.
 This is not a wish — it is a hard split the rest of the guide depends on.
 
 | if you have | you can do | you cannot do |

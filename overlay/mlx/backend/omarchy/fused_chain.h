@@ -196,7 +196,8 @@ void commit_values_kv_write(const array& sum_node);
 // dispatch (the MLX_OMARCHY_FUSED_CHAIN gate also covers it).
 bool kv_direct_enabled();
 
-// MLX_OMARCHY_FUSED_GEMV=0 keeps every QuantizedMatmul and Add on the
-// per-node path (the MLX_OMARCHY_FUSED_CHAIN gate also covers it).
+// MLX_OMARCHY_FUSED_GEMV=0 keeps every QuantizedMatmul, dense BF16
+// decode GEMV group, and Add on the per-node path (the
+// MLX_OMARCHY_FUSED_CHAIN gate also covers it).
 bool fused_gemv_enabled();
 } // namespace mlx::core::omarchy
