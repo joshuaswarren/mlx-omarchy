@@ -401,9 +401,10 @@ TEST_CASE("fused bf16 decode is bit-identical to the f32 composition") {
     return;
   }
   Stream stream = gpu_stream();
-  for (int keys : {1, 5, 16, 17, 64, 263, 320}) {
+  for (int keys : {1, 5, 16, 17, 64, 256, 263, 320, 1024, 2048}) {
     CAPTURE(keys);
-    CacheInputs in = make_cache_len(bfloat16, keys, 320, stream);
+    CacheInputs in = make_cache_len(
+        bfloat16, keys, keys < 320 ? 320 : keys, stream);
     if (bf16_route_ready(stream)) {
       uint64_t dispatches = dispatches_for(
           [&] { return sdpa_call(in, stream); }, stream);

@@ -1,0 +1,14 @@
+{
+  "schema": "receipt-manifest/1",
+  "base_commit": "a7d1b7513c9f9253c8b9fb7d7c84dc925b51004d",
+  "files": {
+    "verification.txt": "db4684d74e24fb7f83ffaab925d5033865bbfb4dcdaa63c7ce08ec45bded185c",
+    "verdict.json": "b10ed52ab80460587d715000cb3078d2dc6126b7af424dcab999d8416b7b3aaf"
+  },
+  "source_sha256": {
+    "overlay/mlx/backend/omarchy/shaders/sdpa_decode_native.comp": "55803983fe12b6e04d581469d123cbcc1cc632c39d822a326e2cd1da4160114b",
+    "overlay/mlx/backend/omarchy/primitives.cpp": "383924228286df1363034e757a3511efdc9a15fb029a577e5f3d9fbb590683ee",
+    "overlay/mlx/backend/omarchy/compute.h": "2ef766362275d116b7db345ceb9a94a87822eb166dc33db267fbad6e7c3cd78a",
+    "overlay/tests/omarchy/test_sdpa_decode_fused.cpp": "c8611d1920719498d5f6d625bf8aec640463476ec564ec696a838792350ec82d"
+  }
+}

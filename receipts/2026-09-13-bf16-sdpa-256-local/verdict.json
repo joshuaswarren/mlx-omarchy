@@ -1,0 +1,35 @@
+{
+  "schema": "bf16-sdpa-256-local/1",
+  "execution_model": "openai-codex/gpt-5.6-sol",
+  "fallback_model": null,
+  "base_commit": "a7d1b7513c9f9253c8b9fb7d7c84dc925b51004d",
+  "candidate": {
+    "bf16_local_size_x": 256,
+    "bf16_key_stride": 256,
+    "fp16_local_size_x": 1024,
+    "fp16_spirv_byte_identical_to_base": true,
+    "bf16_semantic_delta_only": [
+      "local_size_x:1024->256",
+      "key_stride:1024->256"
+    ],
+    "k_len_eligibility": [256, 2048],
+    "device_qualification_max_workgroup_minimum": 1024,
+    "compiled_bf16_refusal_preserved": true
+  },
+  "local_verification": {
+    "sdpa_test_cases_passed": 3,
+    "sdpa_assertions_passed": 13467,
+    "exact_word_identity_keys": [256, 263, 320, 1024, 2048],
+    "fused_dispatches_per_eligible_case": 1,
+    "below_route_keys": [1, 5, 16, 17, 64],
+    "below_route_dispatches_per_case": 10,
+    "compiled_bf16_refusal_test_cases_passed": 1,
+    "compiled_bf16_refusal_assertions_passed": 1
+  },
+  "artifacts": {
+    "fp16_spirv_sha256": "a301a801f73640c3c2fe11888bb85526618f1cc4ac839f4557d4143b0e3a6e60",
+    "bf16_spirv_sha256": "1fea3c7417aa6c60cb7b1ef23031d1164b4c4882c11e64c23bb4c94ba3e1c555"
+  },
+  "hardware_performance_claim": null,
+  "next_required_evidence": "One bounded jwm1 release-control comparison after Main grants hardware ownership."
+}

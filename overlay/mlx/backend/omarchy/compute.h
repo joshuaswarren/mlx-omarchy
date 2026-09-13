@@ -604,9 +604,9 @@ enum class ComputeKernel : uint16_t {
   // Affine quantize/dequantize bfloat16; append-only profile id.
   QuantizeBF16,
   DequantBF16,
-  // Same shader compiled with -DBF16_IO=1 (uint16 word view, exact
-  // widening, RNE stores, f32 internals, composition-exact arm); appended
-  // to keep profile kernel ids stable.
+  // Same shader compiled with -DBF16_IO=1 (256-thread workgroup, uint16 word
+  // view, exact widening, RNE stores, f32 internals, composition-exact arm);
+  // appended to keep profile kernel ids stable.
   SdpaDecodeNativeBF16,
   // Scalar-FMA prefill kernels that leave the 8x8x8 cooperative matrix
   // (shaders/qmm_fma.comp, shaders/matmul_fma_bf16.comp); append-only

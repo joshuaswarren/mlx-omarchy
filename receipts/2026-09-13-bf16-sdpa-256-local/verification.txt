@@ -1,0 +1,67 @@
+BF16 SDPA decode 256-thread local verification
+UTC: 2026-09-13T05:40:31Z
+Base commit: a7d1b7513c9f9253c8b9fb7d7c84dc925b51004d
+Execution model: openai-codex/gpt-5.6-sol
+Fallback model: none
+
+Shader compiler and identity check
+Command:
+  glslc -O --target-env=vulkan1.3 [old/current shader] -o [old/current f16 SPIR-V]
+  glslc -O --target-env=vulkan1.3 -DBF16_IO=1 [old/current shader] -o [old/current bf16 SPIR-V]
+  python3 semantic/SPIR-V assertion script
+Observed:
+  BF16_SEMANTIC_DELTA_ONLY=local_size_x:1024->256,key_stride:1024->256
+  BF16_OLD_LOCAL_SIZE=1024,1,1
+  BF16_NEW_LOCAL_SIZE=256,1,1
+  FP16_LOCAL_SIZE=1024,1,1
+  FP16_SPIRV_BYTE_IDENTICAL=true
+  FP16_SPIRV_SHA256=a301a801f73640c3c2fe11888bb85526618f1cc4ac839f4557d4143b0e3a6e60
+  BF16_SPIRV_SHA256=1fea3c7417aa6c60cb7b1ef23031d1164b4c4882c11e64c23bb4c94ba3e1c555
+
+Source invariants
+Observed:
+  COMMENT_ONLY_DIFF=overlay/mlx/backend/omarchy/primitives.cpp
+  COMMENT_ONLY_DIFF=overlay/mlx/backend/omarchy/compute.h
+  K_LEN_ELIGIBILITY_UNCHANGED=256..2048
+  BF16_DEVICE_QUALIFICATION_UNCHANGED=1024
+  git diff --check: clean
+
+Targeted build
+Command:
+  /usr/bin/timeout -k 5s 600s cmake --build .work/build-local --target omarchy_sdpa_decode_fused_tests -j4
+Observed:
+  exit=0
+  [100%] Built target omarchy_sdpa_decode_fused_tests
+
+Exact BF16 word-identity and routing check
+Command:
+  env MLX_OMARCHY_ALLOW_NON_APPLE=1 LP_NUM_THREADS=4 /usr/bin/timeout -k 5s 90s .work/build-local/tests/omarchy/omarchy_sdpa_decode_fused_tests
+Observed:
+  keys 1 dispatches 10
+  keys 5 dispatches 10
+  keys 16 dispatches 10
+  keys 17 dispatches 10
+  keys 64 dispatches 10
+  keys 256 dispatches 1
+  keys 263 dispatches 1
+  keys 320 dispatches 1
+  keys 1024 dispatches 1
+  keys 2048 dispatches 1
+  test cases: 3 | 3 passed | 0 failed | 0 skipped
+  assertions: 13467 | 13467 passed | 0 failed
+  Status: SUCCESS
+  wall: 3.52 s
+
+Compiled BF16 refusal check
+Build command:
+  /usr/bin/timeout -k 5s 90s cmake --build .work/build-local --target omarchy_compiled_tape_tests -j4
+Run command:
+  env MLX_OMARCHY_ALLOW_NON_APPLE=1 LP_NUM_THREADS=4 /usr/bin/timeout -k 5s 90s .work/build-local/tests/omarchy/omarchy_compiled_tape_tests --test-case='bf16 tapes stay gated for the widened op set'
+Observed:
+  test cases: 1 | 1 passed | 0 failed | 10 skipped
+  assertions: 1 | 1 passed | 0 failed
+  Status: SUCCESS
+  wall: 0.41 s
+
+Scope statement
+This receipt proves local compilation, FP16 binary identity, BF16 semantic delta confinement, exact BF16 output words at the route boundaries and long contexts, unchanged route eligibility, and unchanged compiled-BF16 refusal. It makes no hardware performance claim. A release-control comparison on jwm1 requires Main's explicit ownership grant.
