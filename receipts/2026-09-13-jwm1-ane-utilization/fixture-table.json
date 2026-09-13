@@ -1,0 +1,99 @@
+{
+  "schema": "mlx-omarchy.jwm1-ane-utilization-fixtures.v1",
+  "device_after": {
+    "hostname": "jwm1-linux",
+    "nproc": "8",
+    "cpu_online": "0-7",
+    "accel": "character special file 666",
+    "module": "f2a3e5e+lifecycle6",
+    "service": "active",
+    "workers": "none"
+  },
+  "smoke_sha256": "5e31501727921108116c9e2b597193529e5981d75e4f43c9731a559acfa256da",
+  "worker_sha256": "575e2acd0152cec13f06dd9b09e4af0d7e4a91bfe4d8fa086b633b8b82a83e59",
+  "libane_sha256": "1ab9d95debcc8b5fee3b6653dfce0b50412bc7efef43c2d2167dc83ce270ca49",
+  "gpu_lock": "not acquired",
+  "prohibited": {
+    "reboot": false,
+    "ane_unloaded": false,
+    "executed_1x896": false,
+    "took_gpu_lock": false
+  },
+  "fixtures": [
+    {
+      "fixture": "schema4-add-mul",
+      "path": "/var/tmp/Jwm1AneAccelSmoke2-a9f14124/schema4-add-mul",
+      "elements": 64,
+      "mode": "add-mul",
+      "tool": "/var/tmp/Jwm1AneAccelSmoke2-a9f14124/.work/build-ane-runtime/tests/omarchy/mlx-omarchy-ane-smoke",
+      "exit": 0,
+      "elapsed_ms": 9,
+      "stdout": "logical_result 0 name=y tensor=y element_offset=0 element_count=64\nruntime_identity graph_hash=5584d0fd8d40027229890408e924e6f7930cd5f02516466a442193408482ce76\ncontract_sha256=8081c00348fc7be04d00a1ec2af8ef857f1ae207a1b25be1ee97370df83bbb0e\nmodel_sha256=eddf1f251990ee72d24f53f9bf72eb1e8f71966af5551118fe4c2d0c1e32a5a5\nhost=jwm1-linux kernel=7.1.6-1-1-ARCH machine=aarch64 dt_node=ane@26bc04000 dt_compatible=apple,t8103-ane driver_version=f2a3e5e+lifecycle6 driver_srcversion=DD43701FCB506056A340587 runtime_pm=on/active libane_commit=f261a6cb537aca62f267ad3d01beda0d6877544c driver_abi=1\nworker_executable \"/var/tmp/Jwm1AneAccelSmoke2-a9f14124/.work/build-ane-runtime/mlx/backend/omarchy/mlx-omarchy-ane-worker\"\nworker_pid 53130\niteration 0 exact_fp16=PASS physical_buffers=1 logical_results=1\niteration 1 exact_fp16=PASS physical_buffers=1 logical_results=1\nshutdown worker_pid=53130 released_programs=2 process_released=true\n",
+      "stderr": "",
+      "result": "PASS",
+      "diagnostic": "runtime_load_graph_hash=5584d0fd8d40027229890408e924e6f7930cd5f02516466a442193408482ce76\nruntime_load_graph_hash=5584d0fd8d40027229890408e924e6f7930cd5f02516466a442193408482ce76\n",
+      "submitted": true
+    },
+    {
+      "fixture": "schema4-add-mul-worker",
+      "path": "/var/tmp/AneWorkerValidation-c05ba1df/receipts/2026-09-13-ane-worker-validation/bundle",
+      "elements": 64,
+      "mode": "add-mul",
+      "tool": "mlx-omarchy-ane-worker 100 x --iterations 1",
+      "result": "PASS",
+      "submitted": true,
+      "note": "covered by 100-run report; exact y, released=2 each run"
+    },
+    {
+      "fixture": "mil-oneop-bundle",
+      "path": "/var/tmp/Jwm1AneAccelSmoke2-a9f14124/receipts/fixtures/mil-oneop-bundle",
+      "elements": 512,
+      "mode": "add",
+      "manifest_version": 4,
+      "graph_hash": "0417bba9b253e8ada7ab60357aaa7cd05d0000dde58d2c578e6174c310ad3151",
+      "submitted": false,
+      "result": "SKIP",
+      "reason": "not 64-element; smoke CLI binds 64-element a/b; 1x512 is unproven on device and 1x896 hangs, so not submitted"
+    },
+    {
+      "fixture": "ane-add-fp16-1x512",
+      "path": "/var/tmp/Jwm1AneAccelSmoke2-a9f14124/receipts/fixtures/exported/ane-add-fp16-1x512",
+      "elements": 512,
+      "mode": "add",
+      "manifest_version": 4,
+      "graph_hash": "0417bba9b253e8ada7ab60357aaa7cd05d0000dde58d2c578e6174c310ad3151",
+      "submitted": false,
+      "result": "SKIP",
+      "reason": "not 64-element; smoke CLI binds 64-element a/b; 1x512 is unproven on device and 1x896 hangs, so not submitted"
+    },
+    {
+      "fixture": "ane-mul-fp16-1x512",
+      "path": "/var/tmp/Jwm1AneAccelSmoke2-a9f14124/receipts/fixtures/exported/ane-mul-fp16-1x512",
+      "elements": 512,
+      "mode": "mul",
+      "manifest_version": 4,
+      "graph_hash": "fcd8aed34f664f6972866e46c49486a8ba70e92eccc61d9078f32f49261ce65d",
+      "submitted": false,
+      "result": "SKIP",
+      "reason": "not 64-element; smoke CLI binds 64-element a/b; 1x512 is unproven on device and 1x896 hangs, so not submitted"
+    },
+    {
+      "fixture": "ane-add-fp16-1x896",
+      "path": "/var/tmp/Jwm1AneAccelSmoke2-a9f14124/receipts/fixtures/exported/ane-add-fp16-1x896",
+      "elements": 896,
+      "mode": "add",
+      "manifest_version": 4,
+      "graph_hash": "9048326d6335b6bec29296d0ce521fa528c09c4558d93e15bf1830d7ec777da1",
+      "submitted": false,
+      "result": "SKIP",
+      "reason": "forbidden 1x896 (-110)"
+    },
+    {
+      "fixture": "h13-explicit-chain-add-mul",
+      "path": "/var/tmp/Jwm1AneAccelSmoke2-a9f14124/receipts/fixtures/h13-explicit-chain-add-mul",
+      "submitted": false,
+      "result": "SKIP",
+      "reason": "not schema-4 (mil-hwxc.h13-anec-package.v2); adapted form is schema4-add-mul"
+    }
+  ]
+}

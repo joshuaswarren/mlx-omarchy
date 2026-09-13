@@ -1,0 +1,64 @@
+{
+  "schema": "mlx-omarchy.jwm1-ane-utilization.v1",
+  "date": "2026-09-13",
+  "host": "jwm1-linux",
+  "result": "PASS",
+  "source": {
+    "inference_driver_commit": "c48ccd59fe1d1f8148a62040197a2d15d4daae9e",
+    "inference_driver_added": "5b2bfe14",
+    "worker_tree_commit": "c05ba1df2aa0427a36685a4e4661e6a1f47ff33d",
+    "smoke_tree_commit": "a9f14124e3e23b3eb5c538a1b99e9a72b74fa892",
+    "worker_sha256": "575e2acd0152cec13f06dd9b09e4af0d7e4a91bfe4d8fa086b633b8b82a83e59",
+    "libane_sha256": "1ab9d95debcc8b5fee3b6653dfce0b50412bc7efef43c2d2167dc83ce270ca49",
+    "smoke_sha256": "5e31501727921108116c9e2b597193529e5981d75e4f43c9731a559acfa256da",
+    "graph_hash": "5584d0fd8d40027229890408e924e6f7930cd5f02516466a442193408482ce76"
+  },
+  "device": {
+    "path": "/dev/accel/accel0",
+    "module_version": "f2a3e5e+lifecycle6",
+    "nproc": 8,
+    "cpu_online": "0-7",
+    "service": "active",
+    "healthy_at_end": true
+  },
+  "hundred_run": {
+    "driver": "overlay/tools/coreml/inference_driver.py via receipts/2026-09-13-jwm1-ane-utilization/run_100.py",
+    "worker": "mlx-omarchy-ane-worker --iterations 1 --expect y (one process per run)",
+    "bundle": "/var/tmp/AneWorkerValidation-c05ba1df/receipts/2026-09-13-ane-worker-validation/bundle",
+    "successful_runs": 100,
+    "timeouts": 0,
+    "device_loss": false,
+    "all_matched_baseline": true,
+    "workers_released_each_run": true,
+    "exact_y": "fp16 value match (--expect) every run; 100 saved y.bin files share sha256 bade941d7d8f1e1097b9ce0298ff05617d85a9928de0e8c7eead5743f3f24352 (128 bytes). Expect-file bits differ only by IEEE +/-0.",
+    "median_ms": 6,
+    "p95_ms": 7,
+    "ane_exec_ns_sum": 207000000,
+    "memory_available_kb_before": 13321792,
+    "memory_available_kb_after": 13324176,
+    "post_workers": "none",
+    "report": "100-run-report.json"
+  },
+  "fixtures": {
+    "table": "fixture-table.json",
+    "submitted_pass": ["schema4-add-mul", "schema4-add-mul-worker"],
+    "skipped_not_64": ["mil-oneop-bundle", "ane-add-fp16-1x512", "ane-mul-fp16-1x512"],
+    "skipped_forbidden_1x896": ["ane-add-fp16-1x896"],
+    "skipped_not_schema4": ["h13-explicit-chain-add-mul"]
+  },
+  "smoke_schema4_add_mul": {
+    "result": "PASS",
+    "iterations": 2,
+    "exact_fp16": true,
+    "element_count": 64,
+    "released_programs": 2,
+    "process_released": true,
+    "worker_pid": 53130
+  },
+  "prohibited_actions_observed": {
+    "ane_unloaded": false,
+    "rebooted": false,
+    "executed_1x896": false,
+    "took_gpu_lock": false
+  }
+}
