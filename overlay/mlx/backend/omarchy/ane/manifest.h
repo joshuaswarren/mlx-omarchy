@@ -17,10 +17,9 @@ namespace mlx::core::omarchy::ane {
 // (KDMA offsets 0x28000..0x3c000 step 0x4000).
 constexpr uint64_t kAneTileAlignment = 0x4000;
 
-// One tensor contract entry. Inputs, outputs, state, and workspace all use
-// this shape. `byte_size` is the tight logical size. `stride` is the
-// tile-aligned DMA stride; it must be a multiple of kAneTileAlignment and at
-// least byte_size.
+// Tight dtype geometry and DMA stride. Inputs, outputs, and state require
+// positive sizes and tile-aligned strides. An absent workspace alone uses
+// uint8 shape [0], byte_size 0, stride 0 and no ANEC channel-3 allocation.
 struct AneTensor {
   std::string name;
   uint64_t index{0};

@@ -133,9 +133,8 @@ uint64_t dtype_size(const std::string& dtype) {
   return 0;
 }
 
-// Validates one tensor entry and returns it. Checks, in order: object shape,
-// name, dtype, positive shape, byte size against the dtype geometry, and the
-// tile-aligned stride contract.
+// Zero geometry is reserved for an absent workspace; all tensors retain the
+// dtype-size identity and role-specific stride checks.
 AneTensor parse_tensor(
     const nlohmann::json& value,
     const std::string& list_name,
@@ -156,9 +155,23 @@ AneTensor parse_tensor(
   }
   tensor.index = index.get<uint64_t>();
   tensor.dtype = require_non_empty_string(value, "dtype");
-  tensor.shape = require_positive_shape(value, "shape");
-  tensor.byte_size = require_positive_integer(value, "byte_size");
-  tensor.stride = require_positive_integer(value, "stride");
+  const auto& byte_size = required_field(value, "byte_size");
+  if (list_name == "workspace" && byte_size.is_number_unsigned() &&
+      byte_size.get<uint64_t>() == 0) {
+    const auto& shape = required_field(value, "shape");
+    const auto& stride = required_field(value, "stride");
+    if (tensor.dtype != "uint8" || !shape.is_array() || shape.size() != 1 ||
+        !shape[0].is_number_unsigned() || shape[0].get<uint64_t>() != 0 ||
+        !stride.is_number_unsigned() || stride.get<uint64_t>() != 0) {
+      throw manifest_error(
+          where + " absent workspace requires uint8 shape [0] and stride 0");
+    }
+    tensor.shape = {0};
+  } else {
+    tensor.shape = require_positive_shape(value, "shape");
+    tensor.byte_size = require_positive_integer(value, "byte_size");
+    tensor.stride = require_positive_integer(value, "stride");
+  }
 
   uint64_t element_size = dtype_size(tensor.dtype);
   if (element_size == 0) {
@@ -348,9 +361,6 @@ AneManifest parse_ane_manifest(const std::filesystem::path& manifest_path) {
     throw manifest_error("field 'outputs' must list at least one tensor");
   }
   manifest.state = parse_tensor_list(root, "state", true);
-  // The workspace is the scratch buffer bound at submit time. Grounded in the
-  // terminal-task receipt: workspace binds as its own buffer (0x66000), and
-  // submission requires it before enqueue.
   manifest.workspace = parse_tensor_list(root, "workspace", false);
   if (manifest.workspace.size() != 1) {
     throw manifest_error("field 'workspace' must list exactly one tensor");
