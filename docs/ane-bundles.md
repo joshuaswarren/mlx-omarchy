@@ -11,187 +11,174 @@ reconciliation; this doc only carries the bundle-schema-relevant
 findings.
 
 
-An ANE bundle is a directory that carries one compiled region for Linux
-execution: a `manifest.json` plus the payload files it lists. The Linux
-runtime validates every manifest field before it maps or submits a
-descriptor. A bundle that fails any check never reaches the device. This is
-the U6 validation layer in
-`docs/plans/2026-08-29-mlx-omarchy-ane-compatibility-plan.md`.
+An ANE bundle is a directory containing a strict schema-3 manifest and every
+payload needed to execute one compiled graph region. A region can contain more
+than one ANEC program. The manifest preserves program order, tensor slices,
+channel indices, allocation sizes, and intermediate-tensor flow.
 
-Status: the Linux validator checks the manifest and libane file layout without opening a device. Schema version 2 accepts host-neutral compiler provenance and requires an explicit H13 target. The retained reference exporter uses macOS; it is not the required Linux compiler path. Linux-host H16G compilation and M1/H13 code generation are separate gates. General MLX lowering and M1 execution remain unqualified; see `docs/compatibility.md`.
-See `docs/ane-hwx-format-notes.md` for the HWX container and task-descriptor
-format reference (external guide evaluation).
+The loader is a pre-device gate. It validates the complete manifest, every
+payload digest, and every ANEC header before a caller can map a payload or open
+a device. Passing this gate proves structure and declared H13/ABI compatibility.
+It does not prove that the bytes are valid for a physical t8103 or t6000 device,
+or that the graph is numerically correct on that device.
 
 ## Layout
 
 ```
 my-bundle/
-  manifest.json      required, manifest_version 2
-  model.anec         required, exactly one "anec" payload
-  weights.bin        optional "weights" payload
+  manifest.json
+  program-0.anec
+  program-1.anec
+  weights.bin       optional
 ```
 
-The directory holds regular files only. Every file must be `manifest.json` or
-a listed payload. An unlisted file is an error: a bundle cannot carry payloads
-the manifest does not describe.
+Every directory entry must be a regular file named by `manifest.json` or by
+one payload record. Payload paths are plain filenames. Unknown files,
+directories, links, missing files, wrong sizes, and digest mismatches fail
+closed.
 
-## Manifest schema (manifest_version 2)
+## Manifest schema 3
 
-Version 1 is rejected rather than inferred or silently upgraded. Current reference manifests have been migrated without changing their payloads or historical compiler identity. Schema validation does not prove that the declared target matches the machine code; target-correct generation and on-device qualification remain required before execution.
+Schema 3 is a clean cutover. Versions 1 and 2 are rejected. The removed dotted
+firmware range is not parsed as an alias. Applicability is declared with an
+exact unsigned `driver_abi_major`; the current contract requires major 1.
 
-| Field | Type | Checks | Receipt ground |
-| --- | --- | --- | --- |
-| `manifest_version` | int | must be `2` | Host-neutral provenance and explicit target; version 1 is rejected. |
-| `name` | string | non-empty | Region name used in traces and release keys. |
-| `graph_hash` | string | 64 lowercase hex | Identity of the lowered graph; the export receipt hashes artifacts with `shasum -a 256` (`qwen-hwx-export-convert.log`). |
-| `task_descriptors` | int | positive | Task counts are receipted: 1403 and 1175 for the 13- and 11-layer Qwen graphs, 3072 for the production graph (`qwen-linux-terminal-task.log`). |
-| `inputs` | tensor list | see below | Descriptor buffer geometry: `source-nchw=(1, 2048, 1, 1, 64, 64)` (`qwen-linux-task-layout.log`). |
-| `outputs` | tensor list | see below | `output=0x90c000` with matching NCHW (`qwen-linux-terminal-task.log`). |
-| `state` | tensor list | see below | Device-resident K/V state with stable indices across decode steps: 2 kv heads, 128 context, 256 dim (`qwen-linux-kv-state-validation.json`). |
-| `workspace` | tensor list | exactly one entry; allocation matches ANEC channel 3 | Scratch buffer when emitted; canonical zero tensor when the program needs none. |
-| `payloads` | payload list | exactly one `anec`, at most one `weights`; unique safe relative paths | MIL `program(1.3)` plus `weights.bin` per KTD6; sha256 per payload per `qwen-linux-kv-state-validation.json` (`anec_sha256`, `hwx_sha256`). |
-| `compiler.host_build` | string | non-empty | Build-host identity, independent of operating system. Retained Mac reference fixtures preserve `25G83`. |
-| `compiler.toolchain` | string | non-empty | Compiler identity, including version or source revision. |
-| `compiler.target` | string | exactly `h13` | Current M1-only ANEC contract; H16G/M4 output is rejected before payload access. |
-| `firmware.min`, `firmware.max` | dotted integer versions | `min <= max` | The macOS 26 compiler emits TD encodings "this firmware/KMD cannot execute" (`ane-static-graph-loop.log`), so a bundle must record the firmware range it was proven against (R19). |
-| `provenance.source_repo` | string | non-empty | Experiment receipts name their source repo. |
-| `provenance.source_commit` | string | 40 lowercase hex | `7f80713` push-before-hardware discipline (`qwen-linux-task-layout.log`). |
-| `provenance.exported_at` | string | `YYYY-MM-DD` | Receipt dating convention. |
-| `release_asset.model`, `release_asset.model_sha256` | strings | model sha256 is 64 lowercase hex | Release assets are keyed by exact model, shapes, compiler, firmware, and graph hash (R19, KTD10); reference model sha256 in `docs/compatibility.md`. |
+| Field | Contract |
+| --- | --- |
+| `manifest_version` | Exact integer `3`. |
+| `name` | Non-empty graph-region name. |
+| `graph_hash` | 64 lowercase hexadecimal characters. |
+| `task_descriptors` | Positive sum of all program task-descriptor counts. |
+| `inputs`, `outputs` | Non-empty ordinary tensor lists. |
+| `state`, `intermediates` | Ordinary tensor lists; they can be empty. State and intermediate tensors must be bound for both read and write. |
+| `programs` | Non-empty ordered program definitions. Each ANEC payload is referenced exactly once. |
+| `dispatch_plan` | A complete permutation of program indices. |
+| `payloads` | At least one `anec`; at most one `weights`; unique filename, byte size, and SHA-256 for each. |
+| `compiler.target` | Exact string `h13`. This compiler target is not a physical-device identity. |
+| `compiler.host_build`, `compiler.toolchain` | Non-empty, actual compiler provenance. |
+| `driver_abi_major` | Exact unsigned integer `1`. |
+| `provenance.source_repo`, `source_commit`, `exported_at` | Non-empty repository and date; commit is exactly 40 lowercase hexadecimal characters. |
+| `release_asset.model`, `model_sha256` | Non-empty model name and 64-character lowercase SHA-256. |
 
 ### Tensor entries
 
-Each entry in `inputs`, `outputs`, `state`, and `workspace` has:
+Each tensor has `name`, `index`, `dtype`, `shape`, `byte_size`, and
+`stride`. Shapes, byte sizes, and strides are positive. Byte size must equal
+the dtype size times the shape product. Stride must cover the tensor and be
+`0x4000`-aligned. Zero ordinary tensors are invalid. Program scratch is not a
+tensor; `scratch_bytes: 0` represents a program with no channel-3 allocation.
 
-| Field | Checks |
+### Program entries
+
+Each program names its ANEC `payload`, `operation`, `encoder`, positive
+`task_descriptors`, unsigned `scratch_bytes`, and its input and output
+bindings. A binding records:
+
+| Field | Contract |
 | --- | --- |
-| `name` | non-empty, unique inside its list |
-| `index` | non-negative integer, unique inside its list; this is the descriptor buffer index |
-| `dtype` | one of `float16`, `float32`, `bfloat16`, `int32`, `uint8` |
-| `shape` | non-empty array of positive integers |
-| `byte_size` | positive; must equal `dtype size x product(shape)` exactly |
-| `stride` | positive; at least `byte_size` |
+| `tensor` | Existing top-level tensor with a compatible direction and dtype. |
+| `channel` | Exact libane channel index. Outputs start at 4. Inputs start at `4 + destination_count`. |
+| `shape`, `logical_bytes` | Positive local slice geometry with exact dtype size. |
+| `nchw` | Exactly six positive integers; must equal the ANEC channel header. |
+| `allocation_bytes` | Positive, `0x4000`-aligned, and exactly equal to the ANEC channel allocation. |
+| `element_offset`, `element_count` | Unsigned slice range within the top-level tensor. Count is positive and matches the local shape. |
+| `physical_elements` | Positive and no smaller than `element_count`. |
 
-Only an absent `workspace` may use `dtype: "uint8"`, `shape: [0]`,
-`byte_size: 0`, and `stride: 0`. These values must occur together. Empty
-shapes, mixed zero/positive dimensions, and zero-sized input, output, or
-state tensors remain invalid. The dtype-size identity still holds.
-
-The loader requires channel 3 allocation to equal `round_up(byte_size,
-0x4000)`, including zero. Workspace stride must fit that allocation. A zero
-workspace binds no channel-3 buffer; it does not describe libane bootstrap
-storage. Positive scratch sizes retain their existing geometry checks.
-
-The kernel window needs no separate manifest field: it lives inside the
-`anec` payload at converter-defined offsets (`kernel@content+0xea300`,
-`qwen-linux-task-layout.log`), and `task_descriptors` cross-checks the
-converted stream.
-
-### Tile alignment
-
-`stride` must be a multiple of `0x4000` for `inputs`, `outputs`, and `state`.
-Descriptor DMAs address these tensors through tile-aligned rows: the converter
-fixes `TILE_SIZE = 0x4000` (`ane-linux-experiments/tools/hwxv2-to-anec.py`),
-and task KDMA offsets step `0x28000..0x3c000` in `0x4000` increments
-(`ane-static-graph-loop.log`).
-
-`workspace` is exempt. Its size is the compiler's choice of scratch bytes, and
-the receipts record sizes that are not `0x4000` multiples, such as `0x66000`
-(`qwen-linux-terminal-task.log`).
-
-The manifest `stride` is the logical DMA stride recorded for compatibility.
-The full libane staging allocation is derived from the `.anec` header as
-`tiles[channel] * 0x4000`; `mlx-omarchy-info --check-bundle` prints those
-channel byte counts beside the manifest fields. The current libane tile and
-untile ABI copies 16-bit elements, so this ANEC channel preflight accepts only
-`float16` and `bfloat16` input, output, and state tensors.
+The loader also requires each program's task count, source count, destination
+count, scratch allocation, channel order, NCHW values, and packed tile envelope
+to match its ANEC header.
 
 ## Validation order
 
-`load_bundle(dir)` performs these steps in order. Steps 1 and 2 touch no
-payload; a changed graph, shape, compiler, or firmware field fails before any
-payload mapping, and nothing here accesses a device.
+`load_bundle(dir)` performs these steps without device access:
 
-1. **Directory exists.** A missing directory returns the distinct
-   `AneBundleNotFound` outcome. Callers treat it as "region stays on Vulkan";
-   it is a normal runtime condition, not an error.
-2. **Manifest parse and field validation.** JSON parse, unknown-field
-   rejection, then every field check in the tables above.
-3. **Directory scan.** Regular files only; every file must be `manifest.json`
-   or a listed payload.
-4. **Payload presence.** Each listed payload must exist.
-5. **Payload byte size.** The file size must match the manifest.
-6. **Payload sha256.** The digest must match the manifest.
-7. **ANEC header and channel ABI.** After digest verification, the loader
-   parses the libane header at file offset 0 and confirms the executable
-   payload starts at `0x1000`. It checks the task count and source and
-   destination counts against the manifest, proves the payload and task stream
-   fit command channel 0, requires reserved kernel channel 1 to be unbound,
-   checks the task-descriptor word units and aligned kernel envelope, and
-   checks each manifest tensor against its 16-bit tile/NCHW allocation.
+1. Distinguish a missing directory as `AneBundleNotFound` so the region stays
+   on Vulkan.
+2. Parse schema 3, reject unknown fields, and validate the complete tensor,
+   program, dispatch, ABI, provenance, and payload mapping contract.
+3. Reject every unlisted or non-regular directory entry.
+4. Confirm all listed payloads exist and match their declared byte sizes.
+5. Hash every listed payload and compare every digest.
+6. Parse each ANEC header and validate that program's task and allocation
+   contract.
+
+All payload digests are checked before any ANEC header is parsed. A malformed
+first ANEC cannot hide a later payload digest mismatch.
 
 ## Failure contract
 
 | Condition | Outcome |
 | --- | --- |
-| Bundle directory missing | `AneBundleNotFound`; the affected region stays on Vulkan |
-| `manifest.json` unreadable or invalid JSON | named manifest error |
-| Any field missing, wrong type, or out of contract | named manifest error |
-| Extra file, missing payload, size mismatch, hash mismatch | named bundle error |
-| ANEC task or channel count, payload or task envelope, reserved channel, task-descriptor units, kernel envelope, dtype, or NCHW mismatch | named bundle error before worker/device access |
+| Missing bundle directory | `AneBundleNotFound`; the affected region stays on Vulkan. |
+| Unsupported schema, missing or unknown field, wrong type, bad mapping, wrong target, or wrong ABI | Named manifest error. |
+| Unknown file, missing payload, size mismatch, or digest mismatch | Named bundle error. |
+| ANEC task, channel, allocation, scratch, dtype, or NCHW mismatch | Named bundle error before worker or device access. |
+
+## Explicit compiler package adapter
+
+`overlay/tools/ane-export/h13_package_to_bundle.py` converts
+`mil-hwxc.h13-anec-package.v1` packages emitted with exact target `H13` and
+exact format `anec`. It preserves every program, dispatch index, binding,
+slice, intermediate, allocation, NCHW record, and payload byte. It derives
+payload digests and compiler executable identity from the supplied source tree.
+The adapter refuses HWX packages, non-H13 packages, unknown schema fields,
+invalid mappings, and packages with embedded `constantInputs`; schema 3 does
+not yet have a constant-input payload representation.
+
+The committed fixture at `receipts/fixtures/h13-explicit-chain-add-mul/` contains
+an actual two-program explicit-ANEC compiler package. Its `source.json`
+records the generating command, compiler commits, graph hash, binary hash, and
+payload hashes. It is host-only structural evidence. It makes no device or
+compiler-wide qualification claim.
+
+The current compiler has a separate HWX-extraction regression in its host test
+path. Explicit `--format anec` adaptation remains testable, but that result
+must not be used as a compiler release pin or as compiler-wide qualification.
+
+## Runtime-generated cache policy
+
+The product compiles from the selected `.mlpackage` on Linux and caches the
+adapted schema-3 bundle. A cache key binds the source package hash, selected
+function and shapes, compiler commit, compiler target, compiler package schema,
+bundle schema, driver ABI major, firmware/device identity used for device
+qualification, and frontend version. A cached bundle remains subject to the
+same strict loader checks. A cache miss or ineligible bundle leaves the region
+on Vulkan.
 
 ## Check a bundle
 
-`mlx-omarchy-info --check-bundle <dir>` validates one bundle directory and
-prints its parsed contract as `[receipt]` lines: graph name and hash, task
-descriptor count, every tensor, libane ANEC header fields, each input/output/
-state channel binding with channel bytes and NCHW, payload names and digests,
-and the compiler and firmware identity. The check runs `load_bundle` only. It
-opens no Vulkan device, so it works on any Linux host.
+`mlx-omarchy-info --check-bundle <dir>` runs `load_bundle` only. It opens no
+Vulkan or ANE device. On success it prints the graph identity, tensor lists,
+dispatch plan, every program and channel binding, payload digests, compiler
+identity, and driver ABI as `[receipt]` lines.
 
-Exit codes:
-
-| Code | Meaning |
+| Exit | Meaning |
 | --- | --- |
-| 0 | Bundle valid; contract printed. |
-| 1 | Invalid; the loader's named error is printed. |
-| 2 | Directory not found; the region stays on Vulkan. |
+| 0 | Bundle is structurally valid and declares compatible H13/ABI fields. |
+| 1 | Named validation error. |
+| 2 | Bundle absent; region stays on Vulkan. |
 
 ```
 ./.work/build/tools/mlx-omarchy-info/mlx-omarchy-info \
-  --check-bundle receipts/fixtures/mil-oneop-bundle
+  --check-bundle /path/to/adapted-bundle
 ```
 
-The reference example is `receipts/fixtures/mil-oneop-bundle/`, the real
-compiled one-op MIL add artifact from
-`receipts/2026-08-31-mil-oneop-proof.md` ([1, 512] fp16 add, input `t1`,
-output `t2`, const through `weights.bin`). Field derivations:
+## Reference exporter and fixtures
 
-- `graph_hash` is the sha256 of the MIL program `model.mil`; the payload
-  digests hash the shipped `model-512.anec` and `weights.bin`.
-- `task_descriptors` is 1, the converter's `td-count=1` for this graph.
-- The compiled task stream needs no scratch (`workspace=0x0` in the
-  conversion receipt), so the manifest records `uint8 shape [0]`, zero
-  byte size, and zero stride, matching the zero ANEC channel-3 allocation.
-- The compiler identity and firmware range record the compile host:
-  macOS 26.6.2 (25G83), ANECompiler 9.509.0, coremlcompiler 3520.5.1.
-  On-device execution is not yet proven; see the proof receipt.
-
-The reference exporter, `tools/ane-export/`, reproduces the retained Apple-compiled fixtures. Its output includes the selected target in schema version 2. The fixtures under `receipts/fixtures/exported/` cover add [1, 512], add [1, 896], and mul [1, 512]; see `receipts/2026-09-01-ane-exporter.md`. Their presence is not proof of Linux-native compilation or device execution.
-
-## Community submissions
-
-The product build must generate bundles on Linux without private Apple frameworks or compiler binaries. The separately pinned H13 compiler now emits ANEC packages on Linux; strict bundle adaptation and device qualification remain separate gates. A submission must record the real target, compiler revision, firmware range, graph identity, and tensor contracts. Renaming another target to H13 is not a conversion. Release assets may cache qualified bundles; a missing compatible asset leaves the region on Vulkan.
+The macOS reference exporter now emits schema 3 for its one-program captures.
+The retained payload bytes and historical compiler provenance under
+`receipts/fixtures/exported/` and `receipts/fixtures/mil-oneop-bundle/` are
+unchanged; their manifests now express one program, one dispatch index, exact
+channel allocation, and driver ABI major 1. They do not prove Linux-native
+compilation or device execution.
 
 ## Tests
 
-`omarchy_ane_bundle_tests` builds fixture bundles at runtime and covers the
-manifest contract, libane ANEC header and channel exposure, state bound as both
-source and destination, validation ordering, the not-found contract, unsupported targets, unknown payloads, and malformed ANEC envelopes, channels, task fields, dtypes, and NCHW geometry. The synthetic unit fixtures use Linux compiler metadata; they do not claim to be compiler-generated. Run:
-
-```
-./tools/ci/run-ane-bundle-tests.sh
-```
+`tools/ci/run-ane-bundle-tests.sh` runs the real-package Python adapter tests
+and the host-only C++ loader suite. The tests cover schema rejection, exact ABI,
+program/payload mapping, dispatch order, tensor ranges, zero ordinary tensors,
+allocation and channel mismatches, digest ordering, unknown files, and the
+not-found contract.
 
 ## External reference: maderix (Inside the M4 ANE)
 
@@ -249,7 +236,7 @@ This section reconciles the maderix bundle/runtime findings against
   only for two-branch-convolution graphs; plain chains stay on the
   internal solver. This is a macOS framework detail and does not
   affect bundle payloads.
-- **Reconciled with our work:** schema version 2 records `compiler.host_build`, `compiler.toolchain`, and `compiler.target`. Apple reference identities remain historical facts; they are not required build dependencies.
+- **Reconciled with our work:** schema 3 records `compiler.host_build`, `compiler.toolchain`, `compiler.target`, and exact `driver_abi_major`. Apple reference identities remain historical facts; they are not required build dependencies.
 
 ### Compiler options the exporter can capture (Part 4b "Compiler options and retained debug output")
 
@@ -290,9 +277,7 @@ This section reconciles the maderix bundle/runtime findings against
   thing to a structured "compiled tensor layout" we have, and it
   comes from the private framework itself rather than from our
   reverse-engineered offsets.
-- **Reconciled with our work:** the manifest's `inputs`, `outputs`,
-  `state`, and `workspace` arrays are filled from the MIL graph at
-  export time. The status plist provides the **compiler's own view**
+- **Reconciled with our work:** the manifest's tensor lists and per-program bindings are filled from the MIL graph at export time. The status plist provides the **compiler's own view**
   of the same tensors after fusion, lowering, and tiling. A future
   exporter could dump both and cross-check that they agree on
   dimensions and strides.

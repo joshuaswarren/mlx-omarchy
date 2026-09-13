@@ -195,8 +195,6 @@ def main() -> int:
     parser.add_argument("--source-repo", default="joshuaswarren/mlx-omarchy")
     parser.add_argument("--source-commit", default="",
                         help="40-hex commit of the source repo")
-    parser.add_argument("--firmware-min", default="26.0")
-    parser.add_argument("--firmware-max", default="26.6")
     parser.add_argument("--macos-build", default="",
                         help="override probed sw_vers -buildVersion")
     parser.add_argument("--anecompiler", default="",
@@ -205,6 +203,8 @@ def main() -> int:
                         help="ANECompiler hardware target passed to ane-compile-hwx")
     args = parser.parse_args()
 
+    if args.target.lower() != "h13":
+        die("--target must be exactly h13 for bundle schema 3")
     descriptor = json.loads(args.descriptor.read_text())
     op = descriptor.get("op")
     if op not in ("add", "mul", "matmul"):
@@ -293,8 +293,21 @@ def main() -> int:
         )
 
     anec_sha = sha256_file(anec_path)
+    header = anec_path.read_bytes()[:0x6a8]
+    if len(header) != 0x6a8:
+        die("compiled ANEC is smaller than its libane header")
+    source_count, destination_count = struct.unpack_from("<II", header, 32)
+    if source_count != 1 or destination_count != 1:
+        die("reference exporter expected one ANEC source and one destination")
+    tiles = struct.unpack_from("<32I", header, 40)
+    nchw_offset = 40 + 32 * 4
+    nchw = [struct.unpack_from("<6Q", header, nchw_offset + index * 48)
+            for index in range(32)]
+    input_channel = 4 + destination_count
+    input_allocation = tiles[input_channel] * TILE_ALIGNMENT
+    output_allocation = tiles[4] * TILE_ALIGNMENT
     manifest = {
-        "manifest_version": 2,
+        "manifest_version": 3,
         "name": name,
         "graph_hash": sha256_file(mil_path),
         "task_descriptors": facts["task_descriptors"],
@@ -302,19 +315,40 @@ def main() -> int:
             "name": "t1", "index": 0, "dtype": "float16",
             "shape": in_shape,
             "byte_size": in_elems * elem_size,
-            "stride": tile_stride(in_elems * elem_size),
+            "stride": input_allocation,
         }],
         "outputs": [{
-            "name": "t2", "index": 1, "dtype": "float16",
+            "name": "t2", "index": 0, "dtype": "float16",
             "shape": out_shape,
             "byte_size": out_elems * elem_size,
-            "stride": tile_stride(out_elems * elem_size),
+            "stride": output_allocation,
         }],
         "state": [],
-        "workspace": [{
-            "name": "workspace", "index": 0, "dtype": "uint8",
-            "shape": [ws_bytes], "byte_size": ws_bytes, "stride": ws_bytes,
+        "intermediates": [],
+        "programs": [{
+            "payload": "model.anec",
+            "operation": op,
+            "encoder": "ANECompiler",
+            "task_descriptors": facts["task_descriptors"],
+            "scratch_bytes": facts["workspace_bytes"],
+            "inputs": [{
+                "tensor": "t1", "channel": input_channel, "dtype": "float16",
+                "shape": in_shape, "nchw": list(nchw[input_channel]),
+                "logical_bytes": in_elems * elem_size,
+                "allocation_bytes": input_allocation,
+                "element_offset": 0, "element_count": in_elems,
+                "physical_elements": in_elems,
+            }],
+            "outputs": [{
+                "tensor": "t2", "channel": 4, "dtype": "float16",
+                "shape": out_shape, "nchw": list(nchw[4]),
+                "logical_bytes": out_elems * elem_size,
+                "allocation_bytes": output_allocation,
+                "element_offset": 0, "element_count": out_elems,
+                "physical_elements": out_elems,
+            }],
         }],
+        "dispatch_plan": [0],
         "payloads": [
             {"role": "anec", "path": "model.anec", "sha256": anec_sha,
              "byte_size": anec_path.stat().st_size},
@@ -323,8 +357,8 @@ def main() -> int:
              "byte_size": bundle_weights.stat().st_size},
         ],
         "compiler": {"host_build": macos_build, "toolchain": anecompiler,
-                     "target": args.target.lower()},
-        "firmware": {"min": args.firmware_min, "max": args.firmware_max},
+                     "target": "h13"},
+        "driver_abi_major": 1,
         "provenance": {
             "source_repo": args.source_repo,
             "source_commit": commit,

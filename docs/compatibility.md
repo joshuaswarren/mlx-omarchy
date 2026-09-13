@@ -625,20 +625,24 @@ replaces (`receipts/2026-09-09-prefill-speed/`):
 ## ANE
 
 mlx-omarchy ANE bundle validation is device-free and fail-closed. The Linux
-host gate parses `manifest_version: 1`, verifies graph identity, tensor
-geometry, tile-aligned logical strides, compiler and firmware identity, and
-payload sha256. It also checks the libane `.anec` header: the payload and task
-stream fit the command channel, the reserved kernel channel is unbound, task
-descriptor fields are nonzero and word-aligned, the kernel starts at its
-16-byte boundary inside the payload, and each input, output, and state tensor
-fits the 16-bit tile/NCHW allocation. A missing bundle directory is the
-keep-on-Vulkan outcome. See `docs/ane-bundles.md`.
+host gate accepts only `manifest_version: 3`, exact compiler target `h13`,
+and exact unsigned `driver_abi_major: 1`; versions 1 and 2 and the removed
+dotted firmware range are rejected. It validates graph identity, ordinary
+tensor geometry, multi-program dispatch dependencies, tensor slices, exact
+channel allocations, compiler provenance, and every payload digest before it
+parses any ANEC header. Each program's task count, source and destination
+counts, scratch allocation, channel order, and 16-bit tile/NCHW geometry must
+then match its ANEC payload. A missing bundle keeps the region on Vulkan. See
+`docs/ane-bundles.md`.
 
-macOS export is limited to small hand-authored MIL descriptors today. The
-exporter builds fp16 add and mul fixtures through `ANECompiler` and records the
-exact macOS build, compiler identity, firmware range, source commit, graph hash,
-payload digests, and model key. General MLX-to-MIL lowering, complete Qwen graph
-export, and execution of a mlx-omarchy validated bundle on M1 remain open.
+The explicit Linux package adapter preserves two-program H13 ANEC packages and
+requires generation-time compiler and payload receipts. That host result proves
+structure and declared target/ABI compatibility only. The current compiler's
+separate HWX-extraction regression prevents compiler-wide qualification or a
+release pin, and physical t8103/t6000 eligibility, numerical device
+qualification, general MLX-to-MIL lowering, complete Qwen graph export, and M1
+execution remain open. The macOS exporter remains a reference path for its
+retained fp16 add and mul fixtures.
 
 ANE performance remains unsupported. A future claim needs the same model,
 prompt, output-token budget, transfer and staging policy, warmup, exact target,

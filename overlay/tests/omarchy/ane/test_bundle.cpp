@@ -1,15 +1,10 @@
 // Copyright © 2026 Joshua Warren / mlx-omarchy contributors.
 // SPDX-License-Identifier: MIT
 
-// Linux-side ANE bundle validation tests (U6). These run on the host with no
-// device access: they prove the manifest and libane ANEC header contract reject
-// malformed fields before any payload mapping or device submit.
-
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "doctest/doctest.h"
 
 #include "mlx/backend/omarchy/ane/bundle.h"
-#include "mlx/backend/omarchy/ane/manifest.h"
 #include "json.hpp"
 
 #include <array>
@@ -26,17 +21,12 @@ using namespace mlx::core::omarchy::ane;
 
 namespace {
 
-constexpr uint64_t kStride0x4000 = 0x4000;
-constexpr uint64_t kWorkspace0x4000 = 0x4000;
-constexpr uint64_t kDefaultPayloadSize = 0x4000;
-const std::string kWeightsContent(32, 'B');
+constexpr uint64_t kPayloadBytes = 0x4000;
+constexpr uint64_t kAllocationBytes = 0x4000;
+const std::array<uint64_t, 6> kNchw{1, 64, 1, 1, 64, 64};
 
-std::string hex64(char seed) {
-  return std::string(64, seed);
-}
-
-std::string hex40(char seed) {
-  return std::string(40, seed);
+std::string hex(size_t size, char value) {
+  return std::string(size, value);
 }
 
 template <typename T>
@@ -46,30 +36,92 @@ void write_le(std::string& bytes, size_t offset, T value) {
   std::memcpy(bytes.data() + offset, &value, sizeof(T));
 }
 
-void write_nchw(std::string& bytes, uint32_t bdx, const std::array<uint64_t, 6>& dims) {
-  size_t offset = 40 + kAnecTileCount * sizeof(uint32_t) + bdx * dims.size() * sizeof(uint64_t);
-  for (uint64_t dim : dims) {
-    write_le(bytes, offset, dim);
-    offset += sizeof(uint64_t);
+void write_nchw(std::string& bytes, uint32_t channel) {
+  size_t offset = 40 + kAnecTileCount * sizeof(uint32_t) +
+      channel * kNchw.size() * sizeof(uint64_t);
+  for (uint64_t value : kNchw) {
+    write_le(bytes, offset, value);
+    offset += sizeof(value);
   }
+}
+
+std::string anec_bytes(char seed) {
+  std::string bytes(kAnecPayloadOffset + kPayloadBytes, '\0');
+  for (uint64_t i = 0; i < kPayloadBytes; ++i) {
+    bytes[kAnecPayloadOffset + i] = static_cast<char>(seed + (i % 7));
+  }
+  write_le<uint64_t>(bytes, 0, kPayloadBytes);
+  write_le<uint32_t>(bytes, 8, 0x274);
+  write_le<uint32_t>(bytes, 12, 1);
+  write_le<uint64_t>(bytes, 16, 0x1f8);
+  write_le<uint64_t>(bytes, 24, 0x400);
+  write_le<uint32_t>(bytes, 32, 2);
+  write_le<uint32_t>(bytes, 36, 1);
+  write_le<uint32_t>(bytes, 40, 1);
+  for (uint32_t channel : {4u, 5u, 6u}) {
+    write_le<uint32_t>(bytes, 40 + channel * sizeof(uint32_t), 1);
+    write_nchw(bytes, channel);
+  }
+  return bytes;
+}
+
+nlohmann::json tensor(const std::string& name, uint64_t index) {
+  return {
+      {"name", name},
+      {"index", index},
+      {"dtype", "float16"},
+      {"shape", {1, 64, 1, 1}},
+      {"byte_size", 128},
+      {"stride", kAllocationBytes},
+  };
+}
+
+nlohmann::json binding(const std::string& name, uint64_t channel) {
+  return {
+      {"tensor", name},
+      {"channel", channel},
+      {"dtype", "float16"},
+      {"shape", {1, 64, 1, 1}},
+      {"nchw", kNchw},
+      {"logical_bytes", 128},
+      {"allocation_bytes", kAllocationBytes},
+      {"element_offset", 0},
+      {"element_count", 64},
+      {"physical_elements", 64},
+  };
+}
+
+nlohmann::json program(
+    const std::string& payload,
+    const std::string& operation,
+    const std::array<std::string, 2>& inputs,
+    const std::string& output) {
+  return {
+      {"payload", payload},
+      {"operation", operation},
+      {"encoder", "h13-oracle-parity"},
+      {"task_descriptors", 1},
+      {"scratch_bytes", 0},
+      {"inputs", {binding(inputs[0], 5), binding(inputs[1], 6)}},
+      {"outputs", {binding(output, 4)}},
+  };
 }
 
 class TempDir {
  public:
   TempDir() {
-    namespace fs = std::filesystem;
-    fs::path base = fs::temp_directory_path() / "mlx-omarchy-ane-bundle-test";
-    fs::create_directories(base);
+    auto base = std::filesystem::temp_directory_path() / "mlx-omarchy-ane-bundle-test";
+    std::filesystem::create_directories(base);
     for (int attempt = 0; attempt < 64; ++attempt) {
-      fs::path candidate =
-          base / ("case-" + std::to_string(attempt) + "-" + std::to_string(::getpid()));
+      auto candidate = base /
+          ("case-" + std::to_string(::getpid()) + "-" + std::to_string(attempt));
       std::error_code error;
-      if (fs::create_directory(candidate, error) && !error) {
-        path_ = candidate;
+      if (std::filesystem::create_directory(candidate, error) && !error) {
+        path_ = std::move(candidate);
         return;
       }
     }
-    throw std::runtime_error("cannot create temp directory");
+    throw std::runtime_error("cannot create test directory");
   }
 
   ~TempDir() {
@@ -85,732 +137,238 @@ class TempDir {
   std::filesystem::path path_;
 };
 
-int bundle_dir_count = 0;
-
-void write_file(const std::filesystem::path& path, const std::string& content) {
-  std::ofstream out(path, std::ios::binary | std::ios::trunc);
-  out << content;
-  REQUIRE(out.good());
+void write_file(const std::filesystem::path& path, const std::string& bytes) {
+  std::ofstream output(path, std::ios::binary | std::ios::trunc);
+  output.write(bytes.data(), static_cast<std::streamsize>(bytes.size()));
+  REQUIRE(output.good());
 }
 
-struct FixtureManifest {
-  int manifest_version = 2;
-  bool omit_manifest_version = false;
-  std::string name = "ane-add-fp16-1x512";
-  std::string graph_hash = hex64('1');
-  int task_descriptors = 1;
-  std::string input_shape = "[1, 512]";
-  int input_byte_size = 1024;
-  int input_stride = static_cast<int>(kStride0x4000);
-  std::string output_shape = "[1, 512]";
-  std::string output_dtype = "float16";
-  int output_byte_size = 1024;
-  int output_stride = static_cast<int>(kStride0x4000);
-  bool include_state = false;
-  int state_byte_size = 131072;
-  int state_stride = 131072;
-  int workspace_byte_size = static_cast<int>(kWorkspace0x4000);
-  int workspace_stride = static_cast<int>(kWorkspace0x4000);
-  bool include_anec = true;
-  std::string anec_path = "model.anec";
-  std::string anec_sha256_override;
-  bool include_weights = true;
-  std::string weights_path = "weights.bin";
-  std::string weights_sha256_override;
-  bool omit_compiler = false;
-  std::string host_build = "Linux test host";
-  std::string toolchain = "test compiler";
-  std::string target = "h13";
-  std::string firmware_min = "13.0";
-  std::string firmware_max = "13.5";
-  std::string source_repo = "joshuaswarren/mlx-omarchy";
-  std::string source_commit = hex40('c');
-  std::string exported_at = "2026-08-30";
-  std::string model = "ane-add-fp16-1x512";
-  std::string model_sha256 = hex64('4');
-  uint64_t anec_payload_size = kDefaultPayloadSize;
-  uint64_t anec_file_payload_bytes = kDefaultPayloadSize;
-  uint32_t anec_td_size = 0x274;
-  int anec_td_count_override = -1;
-  uint64_t anec_task_size = 0x1f8;
-  uint64_t anec_kernel_size = 0x400;
-  uint32_t command_tiles = 1;
-  uint32_t kernel_tiles = 0;
-  uint32_t workspace_tiles = 1;
-  int64_t anec_source_count_override = -1;
-  int64_t anec_destination_count_override = -1;
-  uint32_t input_tiles = 2;
-  uint32_t output_tiles = 2;
-  uint32_t state_tiles = 8;
+struct Fixture {
+  TempDir dir;
+  std::array<std::string, 2> payload_bytes{anec_bytes('A'), anec_bytes('K')};
+  nlohmann::json manifest;
 
-  uint32_t source_count() const {
-    return anec_source_count_override >= 0 ? static_cast<uint32_t>(anec_source_count_override)
-                                           : static_cast<uint32_t>(1 + (include_state ? 1 : 0));
+  Fixture() {
+    manifest = {
+        {"manifest_version", 3},
+        {"name", "h13-chain-add-mul"},
+        {"graph_hash", hex(64, '1')},
+        {"task_descriptors", 2},
+        {"inputs", {tensor("a", 0), tensor("b", 1)}},
+        {"outputs", {tensor("y", 0)}},
+        {"state", nlohmann::json::array()},
+        {"intermediates", {tensor("sum", 0)}},
+        {"programs",
+         {program("program-0.anec", "add", {"a", "b"}, "sum"),
+          program("program-1.anec", "mul", {"sum", "b"}, "y")}},
+        {"dispatch_plan", {0, 1}},
+        {"payloads",
+         {{{"role", "anec"},
+           {"path", "program-0.anec"},
+           {"sha256", digest(0)},
+           {"byte_size", payload_bytes[0].size()}},
+          {{"role", "anec"},
+           {"path", "program-1.anec"},
+           {"sha256", digest(1)},
+           {"byte_size", payload_bytes[1].size()}}}},
+        {"compiler",
+         {{"host_build", "Linux test host"},
+          {"toolchain", "mil-hwxc test source"},
+          {"target", "h13"}}},
+        {"driver_abi_major", 1},
+        {"provenance",
+         {{"source_repo", "joshuaswarren/mlx-omarchy"},
+          {"source_commit", hex(40, 'c')},
+          {"exported_at", "2026-09-12"}}},
+        {"release_asset",
+         {{"model", "h13-chain-add-mul"}, {"model_sha256", hex(64, '4')}}},
+    };
   }
 
-  uint32_t destination_count() const {
-    return anec_destination_count_override >= 0
-        ? static_cast<uint32_t>(anec_destination_count_override)
-        : static_cast<uint32_t>(1 + (include_state ? 1 : 0));
-  }
-
-  uint32_t task_descriptor_count() const {
-    return anec_td_count_override >= 0 ? static_cast<uint32_t>(anec_td_count_override)
-                                       : static_cast<uint32_t>(task_descriptors);
-  }
-
-  std::string anec_bytes() const {
-    std::string bytes(kAnecPayloadOffset + anec_file_payload_bytes, '\0');
-    for (uint64_t i = 0; i < anec_file_payload_bytes; ++i) {
-      bytes[kAnecPayloadOffset + i] = static_cast<char>('A' + (i % 23));
-    }
-
-    write_le<uint64_t>(bytes, 0, anec_payload_size);
-    write_le<uint32_t>(bytes, 8, anec_td_size);
-    write_le<uint32_t>(bytes, 12, task_descriptor_count());
-    write_le<uint64_t>(bytes, 16, anec_task_size);
-    write_le<uint64_t>(bytes, 24, anec_kernel_size);
-    write_le<uint32_t>(bytes, 32, source_count());
-    write_le<uint32_t>(bytes, 36, destination_count());
-
-    write_le<uint32_t>(bytes, 40, command_tiles);
-    write_le<uint32_t>(bytes, 40 + sizeof(uint32_t), kernel_tiles);
-    write_le<uint32_t>(bytes, 40 + 3 * sizeof(uint32_t), workspace_tiles);
-    write_le<uint32_t>(bytes, 40 + output_bdx() * sizeof(uint32_t), output_tiles);
-    write_le<uint32_t>(bytes, 40 + input_bdx(0) * sizeof(uint32_t), input_tiles);
-    write_nchw(bytes, output_bdx(), {1, 512, 1, 1, 64, 64});
-    write_nchw(bytes, input_bdx(0), {1, 512, 1, 1, 64, 64});
-    if (include_state) {
-      write_le<uint32_t>(bytes, 40 + state_dst_bdx() * sizeof(uint32_t), state_tiles);
-      write_le<uint32_t>(bytes, 40 + state_src_bdx() * sizeof(uint32_t), state_tiles);
-      write_nchw(bytes, state_dst_bdx(), {1, 2, 128, 256, 65536, 512});
-      write_nchw(bytes, state_src_bdx(), {1, 2, 128, 256, 65536, 512});
-    }
-    return bytes;
-  }
-
-  uint32_t output_bdx() const {
-    return 4;
-  }
-
-  uint32_t state_dst_bdx() const {
-    return 5;
-  }
-
-  uint32_t input_bdx(uint32_t ordinal) const {
-    return 4 + destination_count() + ordinal;
-  }
-
-  uint32_t state_src_bdx() const {
-    return input_bdx(1);
-  }
-
-  std::string anec_sha256() const {
-    if (!anec_sha256_override.empty()) {
-      return anec_sha256_override;
-    }
-    const auto bytes = anec_bytes();
+  std::string digest(size_t index) const {
+    const auto& bytes = payload_bytes.at(index);
     return sha256_hex(reinterpret_cast<const uint8_t*>(bytes.data()), bytes.size());
   }
 
-  std::string weights_sha256() const {
-    if (!weights_sha256_override.empty()) {
-      return weights_sha256_override;
-    }
-    return sha256_hex(
-        reinterpret_cast<const uint8_t*>(kWeightsContent.data()),
-        kWeightsContent.size());
+  void refresh_payload(size_t index) {
+    manifest["payloads"][index]["sha256"] = digest(index);
+    manifest["payloads"][index]["byte_size"] = payload_bytes[index].size();
   }
 
-  std::string render() const {
-    const auto anec = anec_bytes();
-    std::string json = "{\n";
-    if (!omit_manifest_version) {
-      json += "  \"manifest_version\": " + std::to_string(manifest_version) + ",\n";
-    }
-    json += "  \"name\": \"" + name + "\",\n";
-    json += "  \"graph_hash\": \"" + graph_hash + "\",\n";
-    json += "  \"task_descriptors\": " + std::to_string(task_descriptors) + ",\n";
-    json += "  \"inputs\": [\n";
-    json += "    {\"name\": \"input\", \"index\": 0, \"dtype\": \"float16\",";
-    json += " \"shape\": " + input_shape + ",";
-    json += " \"byte_size\": " + std::to_string(input_byte_size) + ",";
-    json += " \"stride\": " + std::to_string(input_stride) + "}\n";
-    json += "  ],\n";
-    json += "  \"outputs\": [\n";
-    json += "    {\"name\": \"output\", \"index\": 1, \"dtype\": \"" +
-        output_dtype + "\",";
-    json += " \"shape\": " + output_shape + ",";
-    json += " \"byte_size\": " + std::to_string(output_byte_size) + ",";
-    json += " \"stride\": " + std::to_string(output_stride) + "}\n";
-    json += "  ],\n";
-    json += "  \"state\": ";
-    if (include_state) {
-      json += "[\n";
-      json += "    {\"name\": \"kv_state\", \"index\": 2, \"dtype\": \"float16\",";
-      json += " \"shape\": [1, 2, 128, 256],";
-      json += " \"byte_size\": " + std::to_string(state_byte_size) + ",";
-      json += " \"stride\": " + std::to_string(state_stride) + "}\n";
-      json += "  ],\n";
-    } else {
-      json += "[],\n";
-    }
-    json += "  \"workspace\": [\n";
-    json += "    {\"name\": \"workspace\", \"index\": 0, \"dtype\": \"uint8\",";
-    json += " \"shape\": [" + std::to_string(workspace_byte_size) + "],";
-    json += " \"byte_size\": " + std::to_string(workspace_byte_size) + ",";
-    json += " \"stride\": " + std::to_string(workspace_stride) + "}\n";
-    json += "  ],\n";
-    json += "  \"payloads\": [\n";
-    if (include_anec) {
-      json += "    {\"role\": \"anec\", \"path\": \"" + anec_path + "\",";
-      json += " \"sha256\": \"" + anec_sha256() + "\", \"byte_size\": " +
-          std::to_string(anec.size()) + "}";
-      if (include_weights) {
-        json += ",\n";
-      }
-    }
-    if (include_weights) {
-      json += "    {\"role\": \"weights\", \"path\": \"" + weights_path + "\",";
-      json += " \"sha256\": \"" + weights_sha256() + "\", \"byte_size\": " +
-          std::to_string(kWeightsContent.size()) + "}";
-    }
-    json += "\n  ],\n";
-    if (!omit_compiler) {
-      json += "  \"compiler\": {\"host_build\": \"" + host_build + "\",";
-      json += " \"toolchain\": \"" + toolchain + "\",";
-      json += " \"target\": \"" + target + "\"},\n";
-    }
-    json += "  \"firmware\": {\"min\": \"" + firmware_min + "\",";
-    json += " \"max\": \"" + firmware_max + "\"},\n";
-    json += "  \"provenance\": {\"source_repo\": \"" + source_repo + "\",";
-    json += " \"source_commit\": \"" + source_commit + "\",";
-    json += " \"exported_at\": \"" + exported_at + "\"},\n";
-    json += "  \"release_asset\": {\"model\": \"" + model + "\",";
-    json += " \"model_sha256\": \"" + model_sha256 + "\"}\n";
-    json += "}\n";
-    return json;
+  void write() const {
+    write_file(dir.path() / "program-0.anec", payload_bytes[0]);
+    write_file(dir.path() / "program-1.anec", payload_bytes[1]);
+    write_file(dir.path() / "manifest.json", manifest.dump(2) + "\n");
   }
 };
 
-std::filesystem::path write_bundle(
-    const TempDir& temp,
-    const FixtureManifest& fixture,
-    bool write_anec = true,
-    bool write_weights = true,
-    const std::string& extra_file = "") {
-  namespace fs = std::filesystem;
-  fs::path dir = temp.path() / ("bundle-" + std::to_string(bundle_dir_count++));
-  fs::create_directories(dir);
-  write_file(dir / "manifest.json", fixture.render());
-  if (fixture.include_anec && write_anec) {
-    write_file(dir / fixture.anec_path, fixture.anec_bytes());
-  }
-  if (fixture.include_weights && write_weights) {
-    write_file(dir / fixture.weights_path, kWeightsContent);
-  }
-  if (!extra_file.empty()) {
-    write_file(dir / extra_file, "unlisted");
-  }
-  return dir;
-}
-
-std::string load_error(const std::filesystem::path& dir) {
+template <typename Function>
+void check_error(Function&& function, const std::string& expected) {
   try {
-    load_bundle(dir);
-  } catch (const AneBundleNotFound& error) {
-    return std::string("not_found: ") + error.what();
+    function();
+    FAIL("expected exception");
   } catch (const std::exception& error) {
-    return error.what();
+    CHECK(std::string(error.what()).find(expected) != std::string::npos);
   }
-  return {};
 }
 
 } // namespace
 
-TEST_CASE("valid bundle exposes its exact contracts") {
-  TempDir temp;
-  FixtureManifest fixture;
-  auto dir = write_bundle(temp, fixture);
-
-  AneBundle bundle = load_bundle(dir);
-  CHECK(bundle.manifest.name == "ane-add-fp16-1x512");
-  CHECK(bundle.manifest.graph_hash == hex64('1'));
-  CHECK(bundle.manifest.task_descriptors == 1);
-
-  REQUIRE_EQ(bundle.manifest.inputs.size(), size_t(1));
-  CHECK(bundle.manifest.inputs[0].name == "input");
-  CHECK(bundle.manifest.inputs[0].index == 0);
-  CHECK(bundle.manifest.inputs[0].dtype == "float16");
-  REQUIRE_EQ(bundle.manifest.inputs[0].shape.size(), size_t(2));
-  CHECK(bundle.manifest.inputs[0].shape[0] == 1);
-  CHECK(bundle.manifest.inputs[0].shape[1] == 512);
-  CHECK(bundle.manifest.inputs[0].byte_size == 1024);
-  CHECK(bundle.manifest.inputs[0].stride == kStride0x4000);
-
-  REQUIRE_EQ(bundle.manifest.outputs.size(), size_t(1));
-  CHECK(bundle.manifest.outputs[0].name == "output");
-  CHECK(bundle.manifest.outputs[0].index == 1);
-  CHECK(bundle.manifest.outputs[0].dtype == "float16");
-  CHECK(bundle.manifest.outputs[0].byte_size == 1024);
-
-  REQUIRE_EQ(bundle.manifest.workspace.size(), size_t(1));
-  CHECK(bundle.manifest.workspace[0].dtype == "uint8");
-  CHECK(bundle.manifest.workspace[0].byte_size == kWorkspace0x4000);
-  CHECK(bundle.manifest.workspace[0].stride == kWorkspace0x4000);
-
-  CHECK(bundle.anec == dir / "model.anec");
-  REQUIRE(bundle.weights.has_value());
-  CHECK(bundle.weights.value() == dir / "weights.bin");
-
-  CHECK(bundle.anec_header.payload_size == kDefaultPayloadSize);
-  CHECK(bundle.anec_header.task_descriptor_size == 0x274);
-  CHECK(bundle.anec_header.task_descriptor_count == 1);
-  CHECK(bundle.anec_header.source_count == 1);
-  CHECK(bundle.anec_header.destination_count == 1);
-  CHECK(bundle.anec_header.bootstrap_channel_size == kStride0x4000);
-  CHECK(bundle.anec_header.tiles[fixture.output_bdx()] == 2);
-  CHECK(bundle.anec_header.tiles[fixture.input_bdx(0)] == 2);
-  CHECK(bundle.anec_header.nchw[fixture.output_bdx()][1] == 512);
-  CHECK(bundle.anec_header.nchw[fixture.input_bdx(0)][4] == 64);
-
-  CHECK(bundle.manifest.firmware.min == "13.0");
-  CHECK(bundle.manifest.firmware.max == "13.5");
-  CHECK(bundle.manifest.provenance.source_repo == "joshuaswarren/mlx-omarchy");
-  CHECK(bundle.manifest.provenance.source_commit == hex40('c'));
-  CHECK(bundle.manifest.provenance.exported_at == "2026-08-30");
-  CHECK(bundle.manifest.release_asset.model == "ane-add-fp16-1x512");
-  CHECK(bundle.manifest.release_asset.model_sha256 == hex64('4'));
+TEST_CASE("valid multi-program bundle preserves dispatch and bindings") {
+  Fixture fixture;
+  fixture.write();
+  AneBundle bundle = load_bundle(fixture.dir.path());
+  REQUIRE(bundle.programs.size() == 2);
+  CHECK(bundle.manifest.manifest_version == 3);
+  CHECK(bundle.manifest.driver_abi_major == 1);
+  CHECK(bundle.manifest.dispatch_plan == std::vector<uint64_t>{0, 1});
+  CHECK(bundle.manifest.programs[bundle.programs[0].manifest_index].inputs[0].tensor == "a");
+  CHECK(bundle.manifest.programs[bundle.programs[1].manifest_index].inputs[0].tensor == "sum");
+  CHECK(bundle.programs[1].anec_header.source_count == 2);
 }
 
-TEST_CASE("state channels bind as both source and destination") {
-  TempDir temp;
-  FixtureManifest fixture;
-  fixture.include_state = true;
-  auto dir = write_bundle(temp, fixture);
-
-  AneBundle bundle = load_bundle(dir);
-  REQUIRE_EQ(bundle.manifest.state.size(), size_t(1));
-  CHECK(bundle.anec_header.source_count == 2);
-  CHECK(bundle.anec_header.destination_count == 2);
-  CHECK(bundle.anec_header.tiles[fixture.output_bdx()] == 2);
-  CHECK(bundle.anec_header.tiles[fixture.state_dst_bdx()] == 8);
-  CHECK(bundle.anec_header.tiles[fixture.input_bdx(0)] == 2);
-  CHECK(bundle.anec_header.tiles[fixture.state_src_bdx()] == 8);
+TEST_CASE("schema 2 is rejected without compatibility shim") {
+  Fixture fixture;
+  fixture.manifest["manifest_version"] = 2;
+  fixture.write();
+  check_error([&] { load_bundle(fixture.dir.path()); }, "unsupported manifest_version");
 }
 
-TEST_CASE("missing bundle directory returns not_found") {
-  TempDir temp;
-  auto missing = temp.path() / "does-not-exist";
+TEST_CASE("removed firmware field is rejected") {
+  Fixture fixture;
+  fixture.manifest["firmware"] = {{"min", "13.0"}, {"max", "13.5"}};
+  fixture.write();
+  check_error([&] { load_bundle(fixture.dir.path()); }, "unknown field 'firmware'");
+}
+
+TEST_CASE("driver ABI is required, unsigned, and exact") {
+  SUBCASE("missing") {
+    Fixture fixture;
+    fixture.manifest.erase("driver_abi_major");
+    fixture.write();
+    check_error([&] { load_bundle(fixture.dir.path()); }, "missing field 'driver_abi_major'");
+  }
+  SUBCASE("signed") {
+    Fixture fixture;
+    fixture.manifest["driver_abi_major"] = -1;
+    fixture.write();
+    check_error([&] { load_bundle(fixture.dir.path()); }, "must be a non-negative integer");
+  }
+  SUBCASE("wrong major") {
+    Fixture fixture;
+    fixture.manifest["driver_abi_major"] = 2;
+    fixture.write();
+    check_error([&] { load_bundle(fixture.dir.path()); }, "unsupported driver_abi_major 2");
+  }
+}
+
+TEST_CASE("dispatch plan must be a complete permutation") {
+  Fixture fixture;
+  fixture.manifest["dispatch_plan"] = {0, 0};
+  fixture.write();
+  check_error([&] { load_bundle(fixture.dir.path()); }, "must be a permutation");
+}
+
+TEST_CASE("dispatch plan rejects use-before-write") {
+  Fixture fixture;
+  fixture.manifest["dispatch_plan"] = {1, 0};
+  fixture.write();
+  check_error([&] { load_bundle(fixture.dir.path()); }, "reads tensor 'sum' before its range is written");
+}
+
+TEST_CASE("each ANEC payload must map to one program") {
+  Fixture fixture;
+  fixture.manifest["programs"][1]["payload"] = "program-0.anec";
+  fixture.write();
+  check_error([&] { load_bundle(fixture.dir.path()); }, "referenced more than once");
+}
+
+TEST_CASE("bindings reject unknown tensors and invalid ranges") {
+  SUBCASE("unknown tensor") {
+    Fixture fixture;
+    fixture.manifest["programs"][0]["inputs"][0]["tensor"] = "missing";
+    fixture.write();
+    check_error([&] { load_bundle(fixture.dir.path()); }, "references unknown tensor 'missing'");
+  }
+  SUBCASE("range") {
+    Fixture fixture;
+    fixture.manifest["programs"][0]["inputs"][0]["element_offset"] = 1;
+    fixture.write();
+    check_error([&] { load_bundle(fixture.dir.path()); }, "range or allocation exceeds tensor 'a'");
+  }
+}
+
+TEST_CASE("ordinary tensors cannot use zero geometry") {
+  Fixture fixture;
+  fixture.manifest["inputs"][0]["shape"] = {0};
+  fixture.manifest["inputs"][0]["byte_size"] = 0;
+  fixture.write();
+  check_error([&] { load_bundle(fixture.dir.path()); }, "must contain positive integers");
+}
+
+TEST_CASE("binding channel mapping must match ANEC order") {
+  Fixture fixture;
+  fixture.manifest["programs"][0]["inputs"][0]["channel"] = 6;
+  fixture.manifest["programs"][0]["inputs"][1]["channel"] = 5;
+  fixture.write();
+  check_error([&] { load_bundle(fixture.dir.path()); }, "channel does not match ANEC binding order");
+}
+
+TEST_CASE("binding allocation must match ANEC channel") {
+  Fixture fixture;
+  fixture.manifest["programs"][0]["inputs"][0]["allocation_bytes"] = 0x8000;
+  fixture.manifest["inputs"][0]["stride"] = 0x8000;
+  fixture.write();
+  check_error([&] { load_bundle(fixture.dir.path()); }, "allocation_bytes does not match ANEC");
+}
+
+TEST_CASE("program task count and scratch allocation match each ANEC") {
+  SUBCASE("task descriptors") {
+    Fixture fixture;
+    fixture.manifest["programs"][0]["task_descriptors"] = 2;
+    fixture.manifest["task_descriptors"] = 3;
+    fixture.write();
+    check_error([&] { load_bundle(fixture.dir.path()); }, "task_descriptors does not match ANEC");
+  }
+  SUBCASE("scratch") {
+    Fixture fixture;
+    fixture.manifest["programs"][0]["scratch_bytes"] = 1;
+    fixture.write();
+    check_error([&] { load_bundle(fixture.dir.path()); }, "scratch_bytes does not match ANEC");
+  }
+}
+
+TEST_CASE("all payload digests are checked before ANEC parsing") {
+  Fixture fixture;
+  fixture.manifest["payloads"][1]["sha256"] = hex(64, '0');
+  fixture.payload_bytes[0].resize(8);
+  fixture.manifest["payloads"][0]["byte_size"] = 8;
+  fixture.manifest["payloads"][0]["sha256"] = fixture.digest(0);
+  fixture.write();
+  check_error([&] { load_bundle(fixture.dir.path()); }, "program-1.anec sha256 mismatch");
+}
+
+TEST_CASE("unknown files and missing payloads fail closed") {
+  SUBCASE("unknown") {
+    Fixture fixture;
+    fixture.write();
+    write_file(fixture.dir.path() / "extra.bin", "unexpected");
+    check_error([&] { load_bundle(fixture.dir.path()); }, "unknown payload file 'extra.bin'");
+  }
+  SUBCASE("missing") {
+    Fixture fixture;
+    fixture.write();
+    std::filesystem::remove(fixture.dir.path() / "program-1.anec");
+    check_error([&] { load_bundle(fixture.dir.path()); }, "payload file missing: program-1.anec");
+  }
+}
+
+TEST_CASE("missing bundle is a normal not-found outcome") {
+  TempDir parent;
   try {
-    load_bundle(missing);
+    load_bundle(parent.path() / "absent");
     FAIL("expected AneBundleNotFound");
   } catch (const AneBundleNotFound& error) {
-    CHECK(std::string(error.what()).find("not found") != std::string::npos);
-    CHECK(std::string(error.what()).find("Vulkan") != std::string::npos);
+    CHECK(std::string(error.what()).find("stays on Vulkan") != std::string::npos);
   }
-}
-
-TEST_CASE("directory without manifest.json is a manifest error") {
-  TempDir temp;
-  auto dir = temp.path() / ("empty-" + std::to_string(bundle_dir_count++));
-  std::filesystem::create_directories(dir);
-  std::string message = load_error(dir);
-  CHECK(message.find("cannot open") != std::string::npos);
-}
-
-
-TEST_CASE("sha256_file matches the manifest descriptor digest") {
-  TempDir temp;
-  FixtureManifest fixture;
-  auto dir = write_bundle(temp, fixture);
-  AneBundle bundle = load_bundle(dir);
-  CHECK(sha256_file(dir / "model.anec") == bundle.manifest.payloads[0].sha256);
-  CHECK(sha256_file(dir / "weights.bin") == bundle.manifest.payloads[1].sha256);
-}
-
-TEST_CASE("single-field mutations fail before payload access") {
-  TempDir temp;
-
-  SUBCASE("unknown manifest_version") {
-    FixtureManifest fixture;
-    fixture.manifest_version = 1;
-    std::string message = load_error(write_bundle(temp, fixture, false, false));
-    CHECK(message.find("unsupported manifest_version") != std::string::npos);
-  }
-  SUBCASE("missing manifest_version") {
-    FixtureManifest fixture;
-    fixture.omit_manifest_version = true;
-    std::string message = load_error(write_bundle(temp, fixture, false, false));
-    CHECK(message.find("missing field 'manifest_version'") != std::string::npos);
-  }
-  SUBCASE("short graph_hash") {
-    FixtureManifest fixture;
-    fixture.graph_hash = "42";
-    std::string message = load_error(write_bundle(temp, fixture, false, false));
-    CHECK(message.find("'graph_hash' must be a sha256 digest") != std::string::npos);
-  }
-  SUBCASE("uppercase graph_hash") {
-    FixtureManifest fixture;
-    fixture.graph_hash = std::string(64, 'G');
-    std::string message = load_error(write_bundle(temp, fixture, false, false));
-    CHECK(message.find("'graph_hash' must be a sha256 digest") != std::string::npos);
-  }
-  SUBCASE("missing compiler") {
-    FixtureManifest fixture;
-    fixture.omit_compiler = true;
-    std::string message = load_error(write_bundle(temp, fixture, false, false));
-    CHECK(message.find("missing field 'compiler'") != std::string::npos);
-  }
-  SUBCASE("empty toolchain") {
-    FixtureManifest fixture;
-    fixture.toolchain = "";
-    std::string message = load_error(write_bundle(temp, fixture, false, false));
-    CHECK(message.find("'toolchain' must not be empty") != std::string::npos);
-  }
-  SUBCASE("unsupported target fails before payload access") {
-    FixtureManifest fixture;
-    fixture.target = "H16G";
-    std::string message = load_error(write_bundle(temp, fixture, false, false));
-    CHECK(message.find("unsupported compiler target") != std::string::npos);
-  }
-  SUBCASE("empty compiler host fails before payload access") {
-    FixtureManifest fixture;
-    fixture.host_build = "";
-    std::string message = load_error(write_bundle(temp, fixture, false, false));
-    CHECK(message.find("'host_build' must not be empty") != std::string::npos);
-  }
-  SUBCASE("changed shape") {
-    FixtureManifest fixture;
-    fixture.input_shape = "[1, 1024]";
-    std::string message = load_error(write_bundle(temp, fixture, false, false));
-    CHECK(message.find("does not match dtype geometry") != std::string::npos);
-  }
-  SUBCASE("non-positive shape") {
-    FixtureManifest fixture;
-    fixture.input_shape = "[1, 0]";
-    std::string message = load_error(write_bundle(temp, fixture, false, false));
-    CHECK(message.find("must contain positive integers") != std::string::npos);
-  }
-  SUBCASE("misaligned stride") {
-    FixtureManifest fixture;
-    fixture.input_stride = 4096;
-    std::string message = load_error(write_bundle(temp, fixture, false, false));
-    CHECK(message.find("not a multiple of 0x4000") != std::string::npos);
-  }
-  SUBCASE("stride below byte_size") {
-    FixtureManifest fixture;
-    fixture.include_state = true;
-    fixture.state_stride = static_cast<int>(kStride0x4000);
-    std::string message = load_error(write_bundle(temp, fixture, false, false));
-    CHECK(message.find("stride must be at least byte_size") != std::string::npos);
-  }
-  SUBCASE("malformed firmware version") {
-    FixtureManifest fixture;
-    fixture.firmware_min = "thirteen";
-    std::string message = load_error(write_bundle(temp, fixture, false, false));
-    CHECK(message.find("not a dotted integer version") != std::string::npos);
-  }
-  SUBCASE("inverted firmware range") {
-    FixtureManifest fixture;
-    fixture.firmware_min = "13.5";
-    fixture.firmware_max = "13.0";
-    std::string message = load_error(write_bundle(temp, fixture, false, false));
-    CHECK(message.find("max must be at least min") != std::string::npos);
-  }
-  SUBCASE("malformed descriptor hash format") {
-    FixtureManifest fixture;
-    fixture.anec_sha256_override = "short";
-    std::string message = load_error(write_bundle(temp, fixture, false, false));
-    CHECK(message.find("must be a sha256 digest") != std::string::npos);
-  }
-  SUBCASE("malformed provenance commit") {
-    FixtureManifest fixture;
-    fixture.source_commit = std::string(40, 'x');
-    std::string message = load_error(write_bundle(temp, fixture, false, false));
-    CHECK(message.find("git commit hash") != std::string::npos);
-  }
-  SUBCASE("malformed exported_at") {
-    FixtureManifest fixture;
-    fixture.exported_at = "yesterday";
-    std::string message = load_error(write_bundle(temp, fixture, false, false));
-    CHECK(message.find("YYYY-MM-DD") != std::string::npos);
-  }
-  SUBCASE("malformed release model hash") {
-    FixtureManifest fixture;
-    fixture.model_sha256 = "deadbeef";
-    std::string message = load_error(write_bundle(temp, fixture, false, false));
-    CHECK(message.find("must be a sha256 digest") != std::string::npos);
-  }
-  SUBCASE("unknown top-level field") {
-    FixtureManifest fixture;
-    std::string json = fixture.render();
-    json.insert(1, "\"surprise\": true,\n");
-    auto dir = write_bundle(temp, fixture, false, false);
-    write_file(dir / "manifest.json", json);
-    std::string message = load_error(dir);
-    CHECK(message.find("unknown field 'surprise'") != std::string::npos);
-  }
-  SUBCASE("wrong task_descriptors type") {
-    FixtureManifest fixture;
-    std::string json = fixture.render();
-    auto value = json.find("\"task_descriptors\": ");
-    REQUIRE(value != std::string::npos);
-    auto line_end = json.find(",\n", value);
-    REQUIRE(line_end != std::string::npos);
-    json.replace(value, line_end - value, "\"task_descriptors\": \"many\"");
-    auto dir = write_bundle(temp, fixture, false, false);
-    write_file(dir / "manifest.json", json);
-    std::string message = load_error(dir);
-    CHECK(message.find("'task_descriptors' must be a non-negative integer") !=
-          std::string::npos);
-  }
-}
-
-TEST_CASE("descriptor hash mismatch fails after field checks") {
-  TempDir temp;
-  FixtureManifest fixture;
-  fixture.anec_sha256_override = hex64('f');
-  auto dir = write_bundle(temp, fixture);
-  std::string message = load_error(dir);
-  CHECK(message.find("sha256 mismatch") != std::string::npos);
-  CHECK(message.find("model.anec") != std::string::npos);
-}
-
-TEST_CASE("payload byte size mismatch fails before hashing") {
-  TempDir temp;
-  auto dir = write_bundle(temp, FixtureManifest{});
-  write_file(dir / "model.anec", std::string(32, 'A'));
-  std::string message = load_error(dir);
-  CHECK(message.find("byte size") != std::string::npos);
-}
-
-TEST_CASE("ANEC task count mismatch fails after digest verification") {
-  TempDir temp;
-  FixtureManifest fixture;
-  fixture.anec_td_count_override = 2;
-  auto dir = write_bundle(temp, fixture);
-  std::string message = load_error(dir);
-  CHECK(message.find("ANEC task_descriptors") != std::string::npos);
-}
-
-TEST_CASE("ANEC source and destination counts must match manifest channels") {
-  TempDir temp;
-  FixtureManifest fixture;
-  fixture.anec_source_count_override = 0;
-  auto dir = write_bundle(temp, fixture);
-  std::string message = load_error(dir);
-  CHECK(message.find("ANEC source_count") != std::string::npos);
-}
-TEST_CASE("ANEC channel count arithmetic cannot wrap") {
-  TempDir temp;
-  FixtureManifest fixture;
-  fixture.anec_source_count_override = 0xffffffffu;
-  auto dir = write_bundle(temp, fixture);
-  std::string message = load_error(dir);
-  CHECK(message.find("exceeds libane channel table") != std::string::npos);
-}
-TEST_CASE("ANEC executable payload envelope is checked after digest verification") {
-  TempDir temp;
-  FixtureManifest fixture;
-  fixture.anec_payload_size = 0x8000;
-  fixture.anec_file_payload_bytes = 0x4000;
-  auto dir = write_bundle(temp, fixture);
-  std::string message = load_error(dir);
-  CHECK(message.find("executable payload extends past file") != std::string::npos);
-}
-
-TEST_CASE("ANEC command channel must hold the payload copied by libane") {
-  TempDir temp;
-  FixtureManifest fixture;
-  fixture.anec_payload_size = 0x8000;
-  fixture.anec_file_payload_bytes = 0x8000;
-  auto dir = write_bundle(temp, fixture);
-  std::string message = load_error(dir);
-  CHECK(message.find("payload exceeds command channel allocation") != std::string::npos);
-}
-
-TEST_CASE("ANEC kernel channel must stay unbound for the packed command buffer") {
-  TempDir temp;
-  FixtureManifest fixture;
-  fixture.kernel_tiles = 1;
-  auto dir = write_bundle(temp, fixture);
-  std::string message = load_error(dir);
-  CHECK(message.find("reserved kernel channel allocation must be zero") !=
-        std::string::npos);
-}
-
-TEST_CASE("ANEC task descriptor bytes must fit the loaded payload") {
-  TempDir temp;
-  FixtureManifest fixture;
-  fixture.anec_td_size = 0x4004;
-  auto dir = write_bundle(temp, fixture);
-  std::string message = load_error(dir);
-  CHECK(message.find("task descriptor bytes exceed executable payload") !=
-        std::string::npos);
-}
-
-TEST_CASE("ANEC task size must satisfy the driver command buffer contract") {
-  TempDir temp;
-  FixtureManifest fixture;
-  fixture.anec_task_size = 0;
-  auto dir = write_bundle(temp, fixture);
-  std::string message = load_error(dir);
-  CHECK(message.find("task size is zero") != std::string::npos);
-
-  fixture.anec_task_size = kDefaultPayloadSize;
-  dir = write_bundle(temp, fixture);
-  message = load_error(dir);
-  CHECK(message.find("task size reaches command channel end") != std::string::npos);
-}
-
-TEST_CASE("ANEC kernel bytes start at the aligned task boundary") {
-  TempDir temp;
-  FixtureManifest fixture;
-  fixture.anec_task_size = 0x1ff;
-  fixture.anec_kernel_size = kDefaultPayloadSize - fixture.anec_task_size;
-  auto dir = write_bundle(temp, fixture);
-  std::string message = load_error(dir);
-  CHECK(message.find("task plus kernel bytes exceed executable payload") !=
-        std::string::npos);
-}
-
-TEST_CASE("ANEC task descriptor size must match the driver's word unit") {
-  TempDir temp;
-  FixtureManifest fixture;
-  fixture.anec_td_size = 2;
-  auto dir = write_bundle(temp, fixture);
-  std::string message = load_error(dir);
-  CHECK(message.find("task descriptor size is not a multiple of 4") !=
-        std::string::npos);
-}
-
-TEST_CASE("ANEC tiled channels reject non-16-bit manifest tensors") {
-  TempDir temp;
-  FixtureManifest fixture;
-  fixture.output_dtype = "uint8";
-  fixture.output_byte_size = 512;
-  auto dir = write_bundle(temp, fixture);
-  std::string message = load_error(dir);
-  CHECK(message.find("tiled channel requires a 16-bit tensor dtype") !=
-        std::string::npos);
-}
-
-TEST_CASE("workspace allocation matches ANEC channel three") {
-  TempDir temp;
-  FixtureManifest fixture;
-  fixture.workspace_byte_size = 1024;
-  fixture.workspace_stride = 1024;
-  auto bundle = load_bundle(write_bundle(temp, fixture));
-  CHECK(bundle.anec_header.tiles[3] * kAneTileAlignment >=
-        bundle.manifest.workspace[0].byte_size);
-  fixture.workspace_tiles = 0;
-  CHECK_THROWS_AS(load_bundle(write_bundle(temp, fixture)), std::runtime_error);
-  fixture.workspace_tiles = 2;
-  CHECK_THROWS_AS(load_bundle(write_bundle(temp, fixture)), std::runtime_error);
-  fixture.workspace_tiles = 1;
-  fixture.workspace_stride = static_cast<int>(kAneTileAlignment + 1);
-  CHECK_THROWS_AS(load_bundle(write_bundle(temp, fixture)), std::runtime_error);
-}
-
-TEST_CASE("absent workspace requires canonical geometry and no allocation") {
-  TempDir temp;
-  FixtureManifest fixture;
-  fixture.workspace_byte_size = 0;
-  fixture.workspace_stride = 0;
-  fixture.workspace_tiles = 0;
-  const auto dir = write_bundle(temp, fixture);
-  const auto bundle = load_bundle(dir);
-  CHECK(bundle.manifest.workspace[0].shape == std::vector<uint64_t>{0});
-  CHECK(bundle.manifest.workspace[0].byte_size == 0);
-  CHECK(bundle.manifest.workspace[0].stride == 0);
-  CHECK(bundle.anec_header.tiles[3] == 0);
-
-  fixture.workspace_tiles = 1;
-  CHECK_THROWS_AS(load_bundle(write_bundle(temp, fixture)), std::runtime_error);
-  fixture.workspace_tiles = 0;
-  fixture.workspace_stride = 1;
-  CHECK_THROWS_AS(load_bundle(write_bundle(temp, fixture)), std::runtime_error);
-}
-
-TEST_CASE("absent workspace does not bypass tensor validation") {
-  TempDir temp;
-  FixtureManifest fixture;
-  fixture.workspace_byte_size = 0;
-  fixture.workspace_stride = 0;
-  fixture.workspace_tiles = 0;
-  const auto dir = write_bundle(temp, fixture);
-  auto manifest = nlohmann::json::parse(fixture.render());
-  auto& workspace = manifest["workspace"][0];
-  SUBCASE("positive shape cannot describe zero bytes") {
-    workspace["shape"] = {1};
-  }
-  SUBCASE("mixed dimensions are not canonical absence") {
-    workspace["shape"] = {0, 1};
-  }
-  SUBCASE("empty shape does not describe a tensor") {
-    workspace["shape"] = nlohmann::json::array();
-  }
-  SUBCASE("multiple zero dimensions are not canonical absence") {
-    workspace["shape"] = {0, 0};
-  }
-  SUBCASE("zero dimension must be an integer") {
-    workspace["shape"] = {0.0};
-  }
-  SUBCASE("absence has byte dtype") {
-    workspace["dtype"] = "float16";
-  }
-  SUBCASE("zero stride must be an integer") {
-    workspace["stride"] = 0.0;
-  }
-  SUBCASE("input tensors cannot use the workspace exception") {
-    manifest["inputs"][0] = workspace;
-  }
-  write_file(dir / "manifest.json", manifest.dump());
-  CHECK_THROWS_AS(load_bundle(dir), std::runtime_error);
-}
-
-TEST_CASE("ANEC NCHW must match manifest shape") {
-  TempDir temp;
-  FixtureManifest fixture;
-  fixture.output_shape = "[1, 256]";
-  fixture.output_byte_size = 512;
-  auto dir = write_bundle(temp, fixture);
-  std::string message = load_error(dir);
-  CHECK(message.find("ANEC NCHW does not match manifest shape") != std::string::npos);
-}
-
-TEST_CASE("missing payload file is named") {
-  TempDir temp;
-  auto dir = write_bundle(
-      temp, FixtureManifest{}, /*write_anec=*/false, /*write_weights=*/true);
-  std::string message = load_error(dir);
-  CHECK(message.find("payload file missing") != std::string::npos);
-  CHECK(message.find("model.anec") != std::string::npos);
-}
-
-TEST_CASE("unknown extra payload file is rejected") {
-  TempDir temp;
-  auto dir = write_bundle(temp, FixtureManifest{}, true, true, "extra.bin");
-  std::string message = load_error(dir);
-  CHECK(message.find("unknown payload file") != std::string::npos);
-  CHECK(message.find("extra.bin") != std::string::npos);
-}
-
-TEST_CASE("payload path traversal is rejected") {
-  TempDir temp;
-  FixtureManifest fixture;
-  fixture.anec_path = "../escape.anec";
-  auto dir = write_bundle(temp, fixture, /*write_anec=*/false, /*write_weights=*/true);
-  std::string message = load_error(dir);
-  CHECK(message.find("must be relative") != std::string::npos);
-}
-
-TEST_CASE("bundle without an anec payload is rejected") {
-  TempDir temp;
-  FixtureManifest fixture;
-  fixture.include_anec = false;
-  auto dir = write_bundle(temp, fixture, /*write_anec=*/false, /*write_weights=*/true);
-  std::string message = load_error(dir);
-  CHECK(message.find("exactly one 'anec'") != std::string::npos);
 }
