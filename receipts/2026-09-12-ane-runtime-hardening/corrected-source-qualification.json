@@ -1,0 +1,101 @@
+{
+  "status": "source-qualified; hardware and encoder qualification pending root scheduling",
+  "source": {
+    "review_base": "be60b40dd38c6942763a6b557d9c39482438b006",
+    "follow_up": "7dd259d1966c1e1203285a9b56dc4547a2ac1da8",
+    "integration_root_at_assignment": "9e22a534",
+    "hardware_executed_for_corrected_source": false
+  },
+  "model": {
+    "requested_route": "mlx-openai-deep",
+    "actual": "openai-codex/gpt-5.6-sol",
+    "fallback": false
+  },
+  "finding_to_source_to_proof": [
+    {
+      "finding": "Mutable or reordered bundle bytes could differ between parent validation and worker loading.",
+      "source": "overlay/mlx/backend/omarchy/ane/runtime.cpp:239-271",
+      "resolution": "Open the bundle directory once, seal the manifest first, derive payload order from that frozen manifest, and seal payloads through the same directory descriptor.",
+      "proof": "AneBindingHardeningReview clean verdict on 7dd259d1; static source review of the manifest-first snapshot path."
+    },
+    {
+      "finding": "Parent file descriptors could collide with fixed child descriptor destinations during posix_spawn actions.",
+      "source": "overlay/mlx/backend/omarchy/ane/runtime_detail.h:23-55; overlay/mlx/backend/omarchy/ane/runtime.cpp:443-522; overlay/tests/omarchy/ane/test_runtime.cpp:133-188",
+      "resolution": "Compute a source floor above every fixed child target and duplicate all sources above it before adding any child dup2 action.",
+      "proof": "Scoped doctest exercises a real fork/dup2 A/B/C payload handoff; included in the 8/8, 244/244 passing run."
+    },
+    {
+      "finding": "The public startup budget could expire during setup and still spawn a hardware-initializing worker.",
+      "source": "overlay/mlx/backend/omarchy/ane/runtime.cpp:533-543,582-590",
+      "resolution": "Carry one checked absolute deadline from API entry and check it immediately before posix_spawn, destroying spawn actions before the named error.",
+      "proof": "AneLifecycleHardeningReview clean verdict on exact 7dd259d1; runtime.cpp compiled with -Wall -Wextra -Werror."
+    },
+    {
+      "finding": "Oversized, malformed, or unreadable quarantine state could be deleted while acquisition unwound, allowing the next attempt.",
+      "source": "overlay/mlx/backend/omarchy/ane/runtime_ownership.h:67-102; overlay/tests/omarchy/ane/test_runtime.cpp:198-259",
+      "resolution": "Arm preservation before state open/read and clear it only after successful validation and marker write.",
+      "proof": "Scoped doctest asserts the 129-byte marker remains after the first error and the second acquire fails identically. Independent reviewer repro reported state_exists=1 and the same invalid-state error on retry."
+    },
+    {
+      "finding": "Concurrent execute, shutdown, and accessor calls could race shared staging, serial, socket, and usability state.",
+      "source": "overlay/mlx/backend/omarchy/ane/runtime.cpp:602-760",
+      "resolution": "Serialize complete transactions with a timed mutex against the caller's absolute deadline and synchronize accessors.",
+      "proof": "Both lifecycle and binding reviewers reported the combined mechanism clean on exact 7dd259d1."
+    },
+    {
+      "finding": "A worker could send or execute after its absolute deadline, and a later-program failure could be misclassified as pre-execution after an earlier submission.",
+      "source": "overlay/mlx/backend/omarchy/ane/worker.cpp:307-336,452-477",
+      "resolution": "Check immediately before every send and ane_exec, and track whether any program in the command was submitted before selecting the reply class.",
+      "proof": "Worker submission-boundary named-error test is included in the passing scoped doctest; both reviewers reported the full classification path clean."
+    },
+    {
+      "finding": "Independent runtimes and uncertain workers could overlap device ownership or lose eventual waitpid ownership.",
+      "source": "overlay/mlx/backend/omarchy/ane/runtime.cpp:325-406; overlay/mlx/backend/omarchy/ane/runtime_ownership.h; overlay/mlx/backend/omarchy/ane/worker_main.cpp:24-37",
+      "resolution": "Hold and validate a host lock in parent and child, persist boot-scoped quarantine after uncertainty, and adopt every live uncertain child into the process-lifetime reaper.",
+      "proof": "Scoped ownership tests cover same-process and forked-process exclusion, same-boot refusal, changed-boot release, and corrupt-state retry refusal; both reviewers reported the lifecycle mechanism clean."
+    },
+    {
+      "finding": "Multi-channel C-plane addressing could overlap plane padding and prior fixtures could conceal invalid allocation geometry.",
+      "source": "overlay/mlx/backend/omarchy/ane/runtime_detail.h; overlay/tests/omarchy/ane/test_runtime.cpp:92-115",
+      "resolution": "Use the checked plane-stride formula with a valid 0x4000-byte allocation fixture and exact physical offsets.",
+      "proof": "Exact packing and unpacking assertions are included in the passing scoped doctest; binding review reported the fixture clean."
+    }
+  ],
+  "local_commands": [
+    {
+      "command": "g++ -std=c++17 -pthread -Wall -Wextra -Werror -I overlay -I /home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/main-land2/.work/mlx -I /home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/main-land2/.work/build/_deps/doctest-src overlay/tests/omarchy/ane/test_runtime.cpp -o /tmp/AneRuntimeBridge-runtime-tests && /tmp/AneRuntimeBridge-runtime-tests",
+      "result": "8/8 test cases and 244/244 assertions passed; doctest SUCCESS; wall 2.93 seconds"
+    },
+    {
+      "command": "g++ -std=c++17 -pthread -Wall -Wextra -Werror -I overlay -I /home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/main-land2/.work/mlx -DMLX_OMARCHY_ANE_WORKER_BUILD_PATH='\"/tmp/worker\"' -DMLX_OMARCHY_ANE_WORKER_INSTALL_PATH='\"/usr/bin/worker\"' -c overlay/mlx/backend/omarchy/ane/runtime.cpp -o /tmp/AneRuntimeBridge-runtime.o",
+      "result": "success with no compiler output; wall 1.58 seconds"
+    },
+    {
+      "command": "g++ -std=c++17 -Wall -Wextra -Werror -I overlay -I /home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/main-land2/.work/mlx -I /home/joshuawarren/src/omarchy-ane-m1-lifecycle/libane -c overlay/mlx/backend/omarchy/ane/worker.cpp -o /tmp/AneRuntimeBridge-worker.o && g++ -std=c++17 -Wall -Wextra -Werror -I overlay -I /home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/main-land2/.work/mlx -c overlay/mlx/backend/omarchy/ane/worker_main.cpp -o /tmp/AneRuntimeBridge-worker-main.o",
+      "result": "success with no compiler output; wall 2.36 seconds"
+    },
+    {
+      "command": "git diff --check",
+      "result": "success with no output"
+    }
+  ],
+  "reviews": [
+    {
+      "reviewer": "AneLifecycleHardeningReview",
+      "commit": "7dd259d1966c1e1203285a9b56dc4547a2ac1da8",
+      "verdict": "clean; no actionable findings in the follow-up or combined lifecycle mechanisms",
+      "independent_repro": "first invalid 129-byte marker left state_exists=1; second acquire returned the same invalid-state error"
+    },
+    {
+      "reviewer": "AneBindingHardeningReview",
+      "commit": "7dd259d1966c1e1203285a9b56dc4547a2ac1da8",
+      "verdict": "clean; no remaining actionable source finding",
+      "independent_repro": "state_after_first=present and retry produced the identical invalid-state failure"
+    }
+  ],
+  "remaining_prerequisites": [
+    "Root must grant and schedule exclusive jwm1 hardware acceptance for this exact corrected source.",
+    "Project-wide suite and encoder qualification remain root-owned integration work.",
+    "Hardware evidence captured for bab2549c is historical and does not qualify 7dd259d1."
+  ]
+}

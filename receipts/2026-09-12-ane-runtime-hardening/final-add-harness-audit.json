@@ -1,5 +1,5 @@
 {
-  "status": "audited locally; not executed without a new jwm1 grant",
+  "status": "historical bab2549c harness audit; superseded and not valid acceptance evidence for corrected source 7dd259d1966c1e1203285a9b56dc4547a2ac1da8",
   "harness": "/tmp/AneRuntimeBridge-final-add-audited.sh",
   "scope": "one add smoke, no build, no timeout or crash experiment",
   "source_contract": [
