@@ -1,0 +1,441 @@
+{
+  "control": {
+    "short": {
+      "records": [
+        {
+          "decode_tps": 32.1395,
+          "device": "Apple M1 (G13G B1)",
+          "engine": "bench_decode",
+          "generated": 32,
+          "ids_first": [
+            9707,
+            0,
+            2585
+          ],
+          "ids_last": [
+            537,
+            2704,
+            1246
+          ],
+          "ids_sha256_16": "f26175202f3dabe9",
+          "prefill_s": 0.227316,
+          "prefill_tps": 131.9748,
+          "prompt_tokens": 30,
+          "wall_ms_per_token": 31.114360833242586
+        },
+        {
+          "decode_tps": 31.8547,
+          "device": "Apple M1 (G13G B1)",
+          "engine": "bench_decode",
+          "generated": 32,
+          "ids_first": [
+            9707,
+            0,
+            2585
+          ],
+          "ids_last": [
+            537,
+            2704,
+            1246
+          ],
+          "ids_sha256_16": "f26175202f3dabe9",
+          "prefill_s": 0.226414,
+          "prefill_tps": 132.5008,
+          "prompt_tokens": 30,
+          "wall_ms_per_token": 31.392541759928676
+        },
+        {
+          "decode_tps": 32.0166,
+          "device": "Apple M1 (G13G B1)",
+          "engine": "bench_decode",
+          "generated": 32,
+          "ids_first": [
+            9707,
+            0,
+            2585
+          ],
+          "ids_last": [
+            537,
+            2704,
+            1246
+          ],
+          "ids_sha256_16": "f26175202f3dabe9",
+          "prefill_s": 0.242215,
+          "prefill_tps": 123.857,
+          "prompt_tokens": 30,
+          "wall_ms_per_token": 31.233797467563704
+        }
+      ],
+      "wall_ms_per_token": {
+        "values": [
+          31.114360833242586,
+          31.392541759928676,
+          31.233797467563704
+        ],
+        "median": 31.233797467563704,
+        "range": 0.2781809266860904
+      }
+    },
+    "longctx": {
+      "records": [
+        {
+          "decode_tps": 25.0652,
+          "device": "Apple M1 (G13G B1)",
+          "engine": "bench_decode",
+          "generated": 32,
+          "ids_first": [
+            28715,
+            389,
+            279
+          ],
+          "ids_last": [
+            4977,
+            311,
+            12322
+          ],
+          "ids_sha256_16": "ff502900d2a179a5",
+          "prefill_s": 1.552604,
+          "prefill_tps": 678.2154,
+          "prompt_tokens": 1053,
+          "wall_ms_per_token": 39.8959513588561
+        },
+        {
+          "decode_tps": 24.9943,
+          "device": "Apple M1 (G13G B1)",
+          "engine": "bench_decode",
+          "generated": 32,
+          "ids_first": [
+            28715,
+            389,
+            279
+          ],
+          "ids_last": [
+            4977,
+            311,
+            12322
+          ],
+          "ids_sha256_16": "ff502900d2a179a5",
+          "prefill_s": 1.554433,
+          "prefill_tps": 677.4173,
+          "prompt_tokens": 1053,
+          "wall_ms_per_token": 40.009122079834206
+        },
+        {
+          "decode_tps": 24.9845,
+          "device": "Apple M1 (G13G B1)",
+          "engine": "bench_decode",
+          "generated": 32,
+          "ids_first": [
+            28715,
+            389,
+            279
+          ],
+          "ids_last": [
+            4977,
+            311,
+            12322
+          ],
+          "ids_sha256_16": "ff502900d2a179a5",
+          "prefill_s": 1.552942,
+          "prefill_tps": 678.0678,
+          "prompt_tokens": 1053,
+          "wall_ms_per_token": 40.024815385539036
+        }
+      ],
+      "wall_ms_per_token": {
+        "values": [
+          39.8959513588561,
+          40.009122079834206,
+          40.024815385539036
+        ],
+        "median": 40.009122079834206,
+        "range": 0.12886402668293329
+      }
+    }
+  },
+  "instrumented": {
+    "short": {
+      "records": [
+        {
+          "decode_tps": 31.875,
+          "device": "Apple M1 (G13G B1)",
+          "engine": "bench_decode",
+          "generated": 32,
+          "ids_first": [
+            9707,
+            0,
+            2585
+          ],
+          "ids_last": [
+            537,
+            2704,
+            1246
+          ],
+          "ids_sha256_16": "f26175202f3dabe9",
+          "prefill_s": 0.227668,
+          "prefill_tps": 131.7706,
+          "prompt_tokens": 30,
+          "wall_ms_per_token": 31.371846,
+          "process_cpu_ms_per_token": 15.946377677419354,
+          "python_thread_cpu_ms_per_token": 15.891136903225805
+        },
+        {
+          "decode_tps": 31.9126,
+          "device": "Apple M1 (G13G B1)",
+          "engine": "bench_decode",
+          "generated": 32,
+          "ids_first": [
+            9707,
+            0,
+            2585
+          ],
+          "ids_last": [
+            537,
+            2704,
+            1246
+          ],
+          "ids_sha256_16": "f26175202f3dabe9",
+          "prefill_s": 0.226719,
+          "prefill_tps": 132.3223,
+          "prompt_tokens": 30,
+          "wall_ms_per_token": 31.33523229032258,
+          "process_cpu_ms_per_token": 16.131313451612904,
+          "python_thread_cpu_ms_per_token": 16.065437225806452
+        },
+        {
+          "decode_tps": 31.8356,
+          "device": "Apple M1 (G13G B1)",
+          "engine": "bench_decode",
+          "generated": 32,
+          "ids_first": [
+            9707,
+            0,
+            2585
+          ],
+          "ids_last": [
+            537,
+            2704,
+            1246
+          ],
+          "ids_sha256_16": "f26175202f3dabe9",
+          "prefill_s": 0.227684,
+          "prefill_tps": 131.7616,
+          "prompt_tokens": 30,
+          "wall_ms_per_token": 31.411135903225805,
+          "process_cpu_ms_per_token": 16.05464348387097,
+          "python_thread_cpu_ms_per_token": 15.947518161290324
+        }
+      ],
+      "wall_ms_per_token": {
+        "values": [
+          31.371846,
+          31.33523229032258,
+          31.411135903225805
+        ],
+        "median": 31.371846,
+        "range": 0.07590361290322534
+      },
+      "process_cpu_ms_per_token": {
+        "values": [
+          15.946377677419354,
+          16.131313451612904,
+          16.05464348387097
+        ],
+        "median": 16.05464348387097,
+        "range": 0.18493577419354956
+      },
+      "python_thread_cpu_ms_per_token": {
+        "values": [
+          15.891136903225805,
+          16.065437225806452,
+          15.947518161290324
+        ],
+        "median": 15.947518161290324,
+        "range": 0.1743003225806472
+      }
+    },
+    "longctx": {
+      "records": [
+        {
+          "decode_tps": 24.9594,
+          "device": "Apple M1 (G13G B1)",
+          "engine": "bench_decode",
+          "generated": 32,
+          "ids_first": [
+            28715,
+            389,
+            279
+          ],
+          "ids_last": [
+            4977,
+            311,
+            12322
+          ],
+          "ids_sha256_16": "ff502900d2a179a5",
+          "prefill_s": 1.552569,
+          "prefill_tps": 678.2309,
+          "prompt_tokens": 1053,
+          "wall_ms_per_token": 40.064490387096775,
+          "process_cpu_ms_per_token": 20.209381903225804,
+          "python_thread_cpu_ms_per_token": 20.139789548387096
+        },
+        {
+          "decode_tps": 24.9256,
+          "device": "Apple M1 (G13G B1)",
+          "engine": "bench_decode",
+          "generated": 32,
+          "ids_first": [
+            28715,
+            389,
+            279
+          ],
+          "ids_last": [
+            4977,
+            311,
+            12322
+          ],
+          "ids_sha256_16": "ff502900d2a179a5",
+          "prefill_s": 1.554652,
+          "prefill_tps": 677.3222,
+          "prompt_tokens": 1053,
+          "wall_ms_per_token": 40.11863716129032,
+          "process_cpu_ms_per_token": 20.957730580645162,
+          "python_thread_cpu_ms_per_token": 20.861963096774193
+        },
+        {
+          "decode_tps": 24.9463,
+          "device": "Apple M1 (G13G B1)",
+          "engine": "bench_decode",
+          "generated": 32,
+          "ids_first": [
+            28715,
+            389,
+            279
+          ],
+          "ids_last": [
+            4977,
+            311,
+            12322
+          ],
+          "ids_sha256_16": "ff502900d2a179a5",
+          "prefill_s": 1.552817,
+          "prefill_tps": 678.1223,
+          "prompt_tokens": 1053,
+          "wall_ms_per_token": 40.08540374193549,
+          "process_cpu_ms_per_token": 19.716078741935483,
+          "python_thread_cpu_ms_per_token": 19.641246806451612
+        }
+      ],
+      "wall_ms_per_token": {
+        "values": [
+          40.064490387096775,
+          40.11863716129032,
+          40.08540374193549
+        ],
+        "median": 40.08540374193549,
+        "range": 0.05414677419354774
+      },
+      "process_cpu_ms_per_token": {
+        "values": [
+          20.209381903225804,
+          20.957730580645162,
+          19.716078741935483
+        ],
+        "median": 20.209381903225804,
+        "range": 1.2416518387096787
+      },
+      "python_thread_cpu_ms_per_token": {
+        "values": [
+          20.139789548387096,
+          20.861963096774193,
+          19.641246806451612
+        ],
+        "median": 20.139789548387096,
+        "range": 1.2207162903225814
+      }
+    }
+  },
+  "perf": {
+    "short": {
+      "engine": {
+        "decode_tps": 31.8149,
+        "device": "Apple M1 (G13G B1)",
+        "engine": "bench_decode",
+        "generated": 32,
+        "ids_first": [
+          9707,
+          0,
+          2585
+        ],
+        "ids_last": [
+          537,
+          2704,
+          1246
+        ],
+        "ids_sha256_16": "f26175202f3dabe9",
+        "prefill_s": 0.230083,
+        "prefill_tps": 130.3877,
+        "prompt_tokens": 30
+      },
+      "clock": {
+        "decode_end_monotonic_ns": 524124256756345,
+        "decode_start_monotonic_ns": 524123282369849,
+        "ids_sha256_16": "f26175202f3dabe9",
+        "instrument": "canonical_decode_cpu_clock_v1",
+        "intervals": 31,
+        "involuntary_context_switches": 9,
+        "major_faults": 0,
+        "minor_faults": 562,
+        "process_cpu_ms_per_token": 16.34895035483871,
+        "python_thread_cpu_ms_per_token": 16.271964741935484,
+        "scope": "first through final yielded token; excludes prefill and load",
+        "voluntary_context_switches": 364,
+        "wall_ms_per_token": 31.431822451612906
+      }
+    },
+    "longctx": {
+      "engine": {
+        "decode_tps": 24.8827,
+        "device": "Apple M1 (G13G B1)",
+        "engine": "bench_decode",
+        "generated": 32,
+        "ids_first": [
+          28715,
+          389,
+          279
+        ],
+        "ids_last": [
+          4977,
+          311,
+          12322
+        ],
+        "ids_sha256_16": "ff502900d2a179a5",
+        "prefill_s": 1.555662,
+        "prefill_tps": 676.8824,
+        "prompt_tokens": 1053
+      },
+      "clock": {
+        "decode_end_monotonic_ns": 524131310237728,
+        "decode_start_monotonic_ns": 524130064420294,
+        "ids_sha256_16": "ff502900d2a179a5",
+        "instrument": "canonical_decode_cpu_clock_v1",
+        "intervals": 31,
+        "involuntary_context_switches": 14,
+        "major_faults": 0,
+        "minor_faults": 597,
+        "process_cpu_ms_per_token": 20.80031570967742,
+        "python_thread_cpu_ms_per_token": 20.686474451612906,
+        "scope": "first through final yielded token; excludes prefill and load",
+        "voluntary_context_switches": 265,
+        "wall_ms_per_token": 40.18765916129033
+      }
+    }
+  },
+  "attribution": {
+    "control_longctx_minus_short_ms_per_token": 8.775324612270502,
+    "instrumented_longctx_minus_short_ms_per_token": 8.713557741935485,
+    "instrument_overhead_delta_ms_per_token": -0.06176687033501693,
+    "process_cpu_longctx_minus_short_ms_per_token": 4.154738419354835,
+    "control_non_cpu_residual_delta_ms_per_token": 4.620586192915667
+  }
+}

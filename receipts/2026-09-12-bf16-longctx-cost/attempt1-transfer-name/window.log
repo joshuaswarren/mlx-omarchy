@@ -1,0 +1,4 @@
+lock_acquired=true utc=2026-09-13T04:18:27Z pid=3299740
+FATAL missing /tmp/LongContextCostAttribution-contenders.py
+CHILD_PIDS_CLEAR
+lock_released=true utc=2026-09-13T04:18:27Z rc=2 result_dir=/home/joshuawarren/longctx-cost-window-20260913T041827Z

@@ -1,0 +1,227 @@
+{
+  "schema": "bf16-longctx-critical-path-attribution/1",
+  "execution_model": "openai-codex/gpt-5.6-sol",
+  "identity": {
+    "harness_commit": "e4d079c883b8606dddef7720bd302c5756be0692",
+    "wheel": {
+      "source_commit": "6b1ac0296ba65a8e0075171ca9451e222ddff06b",
+      "version": "0.32.2.dev202609130004+6b1ac029",
+      "sha256": "fb4b96b0e52de3a07d62fea6766baa24f409b0b6b32afef1fd5f365e246e1c50",
+      "grouped_source_identical_to_harness": true,
+      "intervening_non_ane_runtime_paths": 0
+    },
+    "benchmark_model": {
+      "name": "mlx-community/Qwen2.5-0.5B-Instruct-bf16",
+      "snapshot": "56d07e766edd7159fbe12ed12d9cf114bf38bf1e"
+    },
+    "hardware": {
+      "host": "jwm1-linux",
+      "device": "Apple M1 (G13G B1)",
+      "driver": "Mesa Honeykrisp",
+      "driver_package": "mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1",
+      "kernel": "7.1.6-1-1-ARCH"
+    },
+    "native": {
+      "measurement_kind": "pinned_active_reference",
+      "receipt": "receipts/native-baseline-2026-09-06/native-2026-09-06-summary.json",
+      "matched_physical_host": true,
+      "matched_model_snapshot": true,
+      "repeats": 5,
+      "short_decode_tps_median": 56.43,
+      "longctx_1024_decode_tps_median": 54.55,
+      "longctx_digest_matches": true,
+      "short_digest_matches": false
+    }
+  },
+  "window": {
+    "single_lock_window": true,
+    "original_deadline_utc": "2026-09-13T04:33:27Z",
+    "acquired_utc": "2026-09-13T04:24:58Z",
+    "released_utc": "2026-09-13T04:26:49Z",
+    "quiet_gate_passed": true,
+    "quiet_gate_load_1m": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "run_load_1m_max": 0.35,
+    "uncontended": true,
+    "env": {
+      "MLX_DISABLE_COMPILE": "1",
+      "HF_HUB_OFFLINE": "1"
+    },
+    "control": {
+      "short": {
+        "tokens": 32,
+        "digest": "f26175202f3dabe9",
+        "wall_ms_per_token": {
+          "values": [
+            31.114360833242586,
+            31.392541759928676,
+            31.233797467563704
+          ],
+          "median": 31.233797467563704,
+          "range": 0.2781809266860904
+        }
+      },
+      "longctx_1024": {
+        "tokens": 32,
+        "digest": "ff502900d2a179a5",
+        "wall_ms_per_token": {
+          "values": [
+            39.8959513588561,
+            40.009122079834206,
+            40.024815385539036
+          ],
+          "median": 40.009122079834206,
+          "range": 0.12886402668293329
+        }
+      }
+    },
+    "instrumented": {
+      "short": {
+        "tokens": 32,
+        "digest": "f26175202f3dabe9",
+        "wall_ms_per_token": {
+          "values": [
+            31.371846,
+            31.33523229032258,
+            31.411135903225805
+          ],
+          "median": 31.371846,
+          "range": 0.07590361290322534
+        },
+        "process_cpu_ms_per_token": {
+          "values": [
+            15.946377677419354,
+            16.131313451612904,
+            16.05464348387097
+          ],
+          "median": 16.05464348387097,
+          "range": 0.18493577419354956
+        }
+      },
+      "longctx_1024": {
+        "tokens": 32,
+        "digest": "ff502900d2a179a5",
+        "wall_ms_per_token": {
+          "values": [
+            40.064490387096775,
+            40.11863716129032,
+            40.08540374193549
+          ],
+          "median": 40.08540374193549,
+          "range": 0.05414677419354774
+        },
+        "process_cpu_ms_per_token": {
+          "values": [
+            20.209381903225804,
+            20.957730580645162,
+            19.716078741935483
+          ],
+          "median": 20.209381903225804,
+          "range": 1.2416518387096787
+        }
+      }
+    },
+    "digests_strict_match": true,
+    "provenance_match": true
+  },
+  "native_comparison": {
+    "strictly_output_matched_workload": "longctx_1024",
+    "current_longctx_1024_decode_tps_median": 24.9943,
+    "native_longctx_1024_decode_tps_median": 54.55,
+    "current_over_native_longctx_1024": 0.45819065077910176,
+    "native_longctx_1024_wall_ms_per_token": 18.331805682859763,
+    "short_reference_used_for_ratio": false,
+    "short_reference_exclusion_reason": "The pinned native short digest differs from the current short digest, so no strict output-matched short or cross-context native ratio is reported."
+  },
+  "attribution": {
+    "method": "critical_path_exposure",
+    "cpu_self_time_added_to_gpu_wait": false,
+    "control_longctx_minus_short_ms_per_token": 8.775324612270502,
+    "instrumented_longctx_minus_short_ms_per_token": 8.713557741935485,
+    "instrument_overhead_delta_ms_per_token": -0.06176687033501693,
+    "process_cpu_longctx_minus_short_ms_per_token": 4.154738419354835,
+    "minimum_non_cpu_longctx_minus_short_ms_per_token": 4.620586192915667,
+    "minimum_non_cpu_share_of_context_penalty": 0.5265430507783974,
+    "conservative_observed_wall_delta_ms_per_token": 8.503409598927426,
+    "maximum_observed_cpu_delta_ms_per_token": 5.0113529032258075,
+    "conservative_minimum_non_cpu_ms_per_token": 3.492056695701619,
+    "conservative_minimum_non_cpu_share": 0.4106654695478961,
+    "interpretation": "Even if every added process-CPU millisecond were exposed, it explains less than half of the median long-context wall penalty. The non-CPU remainder stays positive under the adverse observed extrema. CPU self-time cannot be added to GPU wait or treated as wholly exposed."
+  },
+  "cpu_profile": {
+    "short": {
+      "samples": 475,
+      "lost_samples": 0,
+      "estimated_user_cpu_self_ms_per_token": {
+        "eager_fusion": 0.6196252184483871,
+        "heap_memory": 2.030539634070968,
+        "dispatch_record": 0.6523231191580645,
+        "python_runtime": 2.473596188687101,
+        "eval_graph": 2.2349015135064523,
+        "driver": 1.2703134425709677,
+        "other": 7.041492917829052
+      },
+      "classification": "Mutually exclusive flat self-time groups; entries below perf's 0.1% reporting threshold are omitted."
+    },
+    "longctx_1024": {
+      "samples": 625,
+      "lost_samples": 0,
+      "estimated_user_cpu_self_ms_per_token": {
+        "eager_fusion": 1.2646591951483872,
+        "heap_memory": 2.22979384407742,
+        "dispatch_record": 0.8320126283870968,
+        "python_runtime": 3.294770008412905,
+        "eval_graph": 2.1299523286709685,
+        "driver": 1.4310617208258072,
+        "other": 9.61806598415478
+      },
+      "classification": "Mutually exclusive flat self-time groups; entries below perf's 0.1% reporting threshold are omitted."
+    },
+    "estimated_self_time_delta_ms_per_token": {
+      "eager_fusion": 0.6450339767000001,
+      "heap_memory": 0.19925421000645205,
+      "dispatch_record": 0.17968950922903226,
+      "python_runtime": 0.8211738197258036,
+      "eval_graph": -0.10494918483548377,
+      "driver": 0.1607482782548395,
+      "other": 2.5765730663257287
+    },
+    "interpretation": "The added CPU samples are distributed across eager-fusion analysis, heap work, dispatch recording, graph evaluation, Python, and driver code. No single sampled host path accounts for the wall penalty."
+  },
+  "outcome": {
+    "kind": "falsified_hypothesis",
+    "hypothesis": "Added host-side CPU bookkeeping fully explains the BF16 1024-context decode penalty.",
+    "implementation_commit": null,
+    "candidate_selected": false,
+    "reason": "At least the measured non-CPU residual remains after assigning all added process CPU to the critical path, and the sampled CPU increase is broad rather than a narrow removable source path.",
+    "next_evidence": "Use the existing compile-time MLX_OMARCHY_GPU_PROFILING harness with MLX_OMARCHY_GPU_PROFILE to measure per-dispatch GPU ticks, submit clocks, and completion waits for the same paired short and 1024-context eager BF16 prompts; compare kernel groups before selecting source work."
+  },
+  "contracts": {
+    "compiled_bf16_refusal_passed": true,
+    "refusal_rc": 1
+  },
+  "cleanup": {
+    "lock_released": true,
+    "lease_released": true,
+    "child_pids_clear": true,
+    "launcher_pgid_clear": true,
+    "device_reopen_passed": true
+  },
+  "invalid_attempts": [
+    "attempt0-false-contender",
+    "attempt1-transfer-name",
+    "attempt2-scanner-self-match"
+  ],
+  "receipts": {
+    "source_reconciliation": "source-reconciliation.txt",
+    "window": "window-final/",
+    "raw_cpu_stacks": [
+      "window-final/perf-short-scoped.txt",
+      "window-final/perf-longctx-scoped.txt"
+    ],
+    "raw_perf_data_manifest": "window-final/perf-data-manifest.txt"
+  }
+}

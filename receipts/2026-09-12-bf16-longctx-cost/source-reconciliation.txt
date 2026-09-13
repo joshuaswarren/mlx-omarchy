@@ -1,0 +1,17 @@
+base=6b1ac0296ba65a8e0075171ca9451e222ddff06b
+head=e4d079c883b8606dddef7720bd302c5756be0692
+grouped_source_identical=true
+grouped_paths=8
+grouped_path=overlay/mlx/backend/omarchy/CMakeLists.txt
+grouped_path=overlay/mlx/backend/omarchy/compute.cpp
+grouped_path=overlay/mlx/backend/omarchy/compute.h
+grouped_path=overlay/mlx/backend/omarchy/fused_chain.cpp
+grouped_path=overlay/mlx/backend/omarchy/fused_chain.h
+grouped_path=overlay/mlx/backend/omarchy/primitives.cpp
+grouped_path=overlay/mlx/backend/omarchy/shaders/matmul_vec_multi_bf16.comp
+grouped_path=overlay/tests/omarchy/test_fused_chain.cpp
+intervening_changed_paths=95
+intervening_non_ane_runtime_paths=0
+intervening_bf16_named_paths=43
+intervening_bf16_source_paths=0
+note=All 43 BF16-named intervening paths are retained qualification receipt files, not source.
