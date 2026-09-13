@@ -1,0 +1,115 @@
+{
+  "schema_version": 1,
+  "status": "rejected_pending_remediation",
+  "reviewed_source": "382492a5896322b32d2058b20e3aa1c6c693aa4e",
+  "reviewed_branch_head": "490bef255bd8ac7848b34ebbd2d82b9d78a9dec0",
+  "root_integration_base": "e4d079c883b8606dddef7720bd302c5756be0692",
+  "merge": "Automatic combined merge was prepared for checks, then aborted after lifecycle findings; the runtime was not accepted into root integration.",
+  "lifecycle_review": {
+    "source_commit": "382492a5896322b32d2058b20e3aa1c6c693aa4e",
+    "base_commit": "9e22a534b9297242f360d32d26062cf2b4c2ab0d",
+    "review_worktree_head": "490bef255bd8ac7848b34ebbd2d82b9d78a9dec0",
+    "actual_model": "openai-codex/gpt-5.6-sol",
+    "fallback": false,
+    "report": "### #1 [High] The worker can submit `ane_exec` after the absolute deadline\nThe only deadline check occurs before `execute_program`, but that function then packs every input and calls `__ane_send` before reaching `ane_exec`, with no second check. If packing or input transfer crosses the deadline, the parent can time out and return an uncertain result while the worker subsequently starts a new hardware execution after that deadline. Pass the deadline into `execute_program` and check it immediately before `ane_exec`; an expired check there must remain a pre-submission failure.\nFile: overlay/mlx/backend/omarchy/ane/worker.cpp:312-317,447-454\n\n### #2 [High] Concurrent calls race the shared staging buffer, serial, socket, and usability state\nTwo callers can both pass the `is_usable` check, overwrite the same mapped staging region, race the non-atomic `++serial`, send two commands, and receive each other's replies from the same socket. A caller can therefore execute with another caller's inputs, block beyond its deadline after another reader consumes the polled packet, or submit after a peer has made the runtime unusable. Serialize the full `execute`/`shutdown` transaction, including staging, command send, reply receive, and state transition; synchronize the state accessors with that ownership.\nVerified: A repository search found no mutex, atomic, scoped lock, file lock, or other serialization in the ANE runtime; the only real caller is the sequential hardware smoke path.\nFile: overlay/mlx/backend/omarchy/ane/runtime.cpp:383-387,392-407\n\n### #3 [High] Uncertain completion does not quarantine later runtime instances\n`mark_unusable` changes only one `Impl`, while every later `AneRuntime::load` unconditionally starts another worker and the runtime holds no host/process lock or boot-scoped recovery latch. After a completion timeout or reply mismatch says that reboot is required, ordinary catch-and-retry code can create another runtime and submit ANE work while the first worker may still be executing or holding resources; two independently loaded runtimes can also submit concurrently before any failure. Hold a host-exclusive runtime lock and persist an uncertain-completion quarantine tied to the current boot ID so only a clean shutdown releases the former and only reboot clears the latter.\nVerified: Whole-tree searches found the reboot instruction only in `runtime.cpp`, with no reader/enforcer for that state and no ANE lock implementation; the receipt's `/tmp/m1-gpu.lock` belongs only to the external acceptance command.\nFile: overlay/mlx/backend/omarchy/ane/runtime.cpp:189-192,343-349\n\n### #4 [Medium] Failure paths discard the only child PID before guaranteeing reap\nOnce a timeout or failed reply marks the runtime unusable, `AneRuntime::~AneRuntime` skips `shutdown`; `Impl::~Impl` closes the socket and performs exactly one `waitpid(..., WNOHANG)`. If the worker is still executing or clearing handles, that call returns zero, the PID ownership is then destroyed, and the child becomes a permanent zombie when it exits. Startup timeout has the same path. Transfer every live PID to a non-signaling asynchronous reaper instead of abandoning it after one nonblocking check.\nVerified: A bounded host-only fork check using the same one-shot `WNOHANG` sequence printed `initial_waitpid=(0, 0) later_state=Z (zombie)` and then explicitly reaped the test child; no repository-level SIGCHLD/SA_NOCLDWAIT reaper exists.\nFile: overlay/mlx/backend/omarchy/ane/runtime.cpp:153-166,352-359\n\n### #5 [Medium] Automatic shutdown rewrites a known pre-submission failure as reboot-required uncertainty\nWhen destructor-driven `shutdown` cannot send its command, `shutdown` correctly records `uncertain=false`, but its exception returns to `~AneRuntime`, whose catch unconditionally calls `mark_unusable(..., true)`. The append-only diagnostic therefore ends with a contradictory instruction that an idle worker failure requires a reboot even though no shutdown command was submitted. Let `shutdown` retain sole ownership of failure classification; the destructor catch must not append a second unconditional uncertain record.\nFile: overlay/mlx/backend/omarchy/ane/runtime.cpp:352-359,459-463\n\n### #6 [Medium] Positive deadline validation still permits signed monotonic-time overflow\n`validate_deadline` rejects only non-positive durations. A sufficiently large positive `milliseconds` value can overflow when added to `steady_clock::now()` or converted to absolute nanoseconds, producing a past or non-positive command deadline. Depending on scheduling, that becomes an immediate parent timeout or a worker rejection after command send and can incorrectly mark the runtime uncertain. Validate the duration against both `TimePoint::max() - now` and the representable nanosecond count before doing either conversion.\nVerified: The public API accepts arbitrary `std::chrono::milliseconds`, and the real smoke parser accepts every positive `long`, including values far beyond the nanosecond clock range on the 64-bit host; `test_runtime.cpp` covers zero only.\nFile: overlay/mlx/backend/omarchy/ane/runtime_detail.h:28-31; overlay/mlx/backend/omarchy/ane/runtime.cpp:389-395,451-457",
+    "receipts": [
+      "git show -s --format='%H%n%P%n%B' 382492a5896322b32d2058b20e3aa1c6c693aa4e -> source 382492a5896322b32d2058b20e3aa1c6c693aa4e, parent 9e22a534b9297242f360d32d26062cf2b4c2ab0d, subject `Add bounded private ANE runtime`",
+      "host-only lifecycle check -> `initial_waitpid=(0, 0) later_state=Z (zombie)`",
+      "review was read-only; no hardware, SSH, device, worker-signal, formatter, build, or project-wide test operation was performed"
+    ]
+  },
+  "lifecycle_addendum": {
+    "finding": "Startup deadline begins after validation, staging setup and spawn instead of at public API entry.",
+    "locations": [
+      "runtime.cpp:305",
+      "runtime.cpp:347",
+      "runtime.cpp:194-303"
+    ],
+    "owner": "AneLifecycleReview",
+    "corroborated_by": "AneBindingReview"
+  },
+  "binding_review": {
+    "model": {
+      "actual": "openai-codex/gpt-5.6-sol",
+      "fallback": false
+    },
+    "scope": {
+      "worktree": "/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/AneRuntimeBridge",
+      "reviewed_head": "490bef255bd8ac7848b34ebbd2d82b9d78a9dec0",
+      "implementation_commit": "382492a5896322b32d2058b20e3aa1c6c693aa4e",
+      "base": "9e22a534",
+      "canonical_libane_commit": "f261a6cb537aca62f267ad3d01beda0d6877544c",
+      "mode": "read-only; no repository edits, hardware operations, SSH, or device commands"
+    },
+    "findings": [
+      {
+        "severity": "High",
+        "title": "Pack and unpack cross channel planes with the row stride instead of the plane stride",
+        "location": [
+          "overlay/mlx/backend/omarchy/ane/runtime_detail.h:62-70",
+          "overlay/mlx/backend/omarchy/ane/runtime_detail.h:103-110"
+        ],
+        "trigger": "Any accepted 16-bit binding with more than one N/C plane and plane stride P greater than H*R. For example, NCHW/P/R = [1,2,2,2,32,8], logical_bytes=16, allocation_bytes=0x4000.",
+        "callsite": [
+          "overlay/mlx/backend/omarchy/ane/worker.cpp:307-329"
+        ],
+        "evidence": "The implementation computes `(element / W) * R + (element % W) * 2`, so it never uses P or separates N/C planes. The strict loader accepts this geometry at manifest.cpp:270-281 because P/R=4>=H=2, R/2=4>=W=2, and N*C*P=64<=allocation. Canonical libane `ane_tile`/`ane_untile` at libane/ane.c:577-624 computes N/C plane bases from P. A bounded host-only proof produced current byte offsets [0,2,8,10,16,18,24,26] versus canonical [0,2,8,10,32,34,40,42]. The existing tests use [1,64,1,1,64,64], where P==H*R, so they cannot expose this defect.",
+        "impact": "The worker writes the second and later planes into plane padding, while ANE reads their true P-spaced locations as zero. Output unpacking reads the wrong locations in the same way. Strictly valid bundles can therefore return silently incorrect tensors.",
+        "action": "Derive n/c/h/w for each logical element and address `(n*C+c)*P + h*R + w*2` in both directions. Add a C=2 fixture with P>H*R that checks the second plane starts at P, not H*R."
+      },
+      {
+        "severity": "High",
+        "title": "The worker can execute payload bytes different from the bundle the parent validated",
+        "location": [
+          "overlay/mlx/backend/omarchy/ane/runtime.cpp:285-334",
+          "overlay/mlx/backend/omarchy/ane/worker.cpp:192-198",
+          "overlay/mlx/backend/omarchy/ane/worker.cpp:385-409"
+        ],
+        "trigger": "Replace or update the bundle directory after the parent loads bundle A but before the worker loads it. Bundle B only needs the same declared graph_hash and the same aggregate input/output staging byte count to pass the cross-process checks. A second window exists after worker `load_bundle`: `__ane_init(program.anec.c_str(), 0)` reopens the mutable path.",
+        "evidence": "The parent passes a directory path and staging byte total. The worker independently reloads it, then reports only `graph_hash`; the parent checks only that prefix. `manifest.cpp:561` checks graph_hash syntax but does not bind it to manifest or payload bytes. In contrast, `bundle.cpp:432-435,474-491` verifies the separate compiled-payload identity and file SHA-256 values, but none of those identities cross the process boundary. Qualified libane commit f261a6c `libane/ane.c:419-447` opens the ANEC by pathname again in `__ane_init`.",
+        "impact": "The parent can marshal inputs and interpret outputs using A's tensor order/layout while the worker executes B's manifest and kernel. Mutation after worker validation can also make libane consume bytes that never passed the strict bundle checks. This defeats the strict bundle contract and can submit an unverified command payload to ANE.",
+        "action": "Pin the validated manifest and payload bytes to immutable snapshots before spawning, pass those descriptors to the worker, and make `__ane_init` consume the same sealed payload snapshot. Compare a digest of the complete canonical contract and compiled-payload collection, not graph_hash alone."
+      }
+    ],
+    "receipts": [
+      {
+        "command": "python3 -c '<accepted padded-plane offset comparison and assertions>'",
+        "result": "accepted=True; current=[0, 2, 8, 10, 16, 18, 24, 26]; canonical=[0, 2, 8, 10, 32, 34, 40, 42]; wall time 0.32 s"
+      },
+      {
+        "command": "git blame -L 215,290 490bef255bd8ac7848b34ebbd2d82b9d78a9dec0 -- overlay/mlx/backend/omarchy/ane/manifest.cpp",
+        "result": "Confirmed padded-plane geometry is accepted and physical bytes are checked as N*C*P."
+      },
+      {
+        "command": "git blame -L 562,624 f261a6cb537aca62f267ad3d01beda0d6877544c -- libane/ane.c",
+        "result": "Confirmed qualified libane uses P-separated N/C planes for tile and untile."
+      },
+      {
+        "command": "git blame -L 275,344 490bef255bd8ac7848b34ebbd2d82b9d78a9dec0 -- overlay/mlx/backend/omarchy/ane/runtime.cpp",
+        "result": "Confirmed path/size handoff and graph_hash-only readiness check."
+      },
+      {
+        "command": "git blame -L 375,425 490bef255bd8ac7848b34ebbd2d82b9d78a9dec0 -- overlay/mlx/backend/omarchy/ane/worker.cpp",
+        "result": "Confirmed worker reload, staging-total check, and graph_hash-only reply."
+      },
+      {
+        "command": "git blame -L 419,447 f261a6cb537aca62f267ad3d01beda0d6877544c -- libane/ane.c",
+        "result": "Confirmed qualified libane reopens the ANEC pathname."
+      }
+    ],
+    "coverage_notes": "I traced dtypes, offsets/overflow checks, channel ordering, state preservation, output/intermediate resets, ordered multi-program dispatch, scratch allocation, kernel binding, resource cleanup, and hardware-eligibility checks. I found no additional actionable binding defects at the required confidence. I did not rerun the already-reported hardware happy paths or project-wide validation; the parent owns those checks. I forwarded a separate startup-deadline addendum to Main because it belongs to AneLifecycleReview."
+  },
+  "unresolved_findings": 9,
+  "remediation_owner": "AneRuntimeBridge",
+  "remediation_worktree": "AneRuntimeHardening",
+  "combined_candidate_checks": {
+    "process": "AneCombinedConfiguredBuild",
+    "exit_code": 0,
+    "runtime_ctest": "1/1 passed, 0 failed",
+    "bundle_tests": "19 cases / 1706 assertions passed",
+    "gpu_regression_guards": "4 cases / 18975 assertions passed",
+    "unsupported_host_smoke": "Exit 1 with named Linux aarch64/base-M1 refusal; submitted=false; no hardware recovery required; worker PID 2453762 absent on ps readback",
+    "initial_build_failure": "Prior temporary canonical libane path no longer existed; restored exact commit f261a6cb537aca62f267ad3d01beda0d6877544c at /tmp/ane-joint-libane-f261 and resumed configuration without repeating preparation."
+  },
+  "qualification": "These passing checks and prior one-op/two-op hardware results do not override the nine review defects. No runtime acceptance, publication, or full-plan completion."
+}
