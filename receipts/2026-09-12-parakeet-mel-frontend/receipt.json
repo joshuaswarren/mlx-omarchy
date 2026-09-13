@@ -36,7 +36,9 @@
     "audio_sha256": "30885601173f96b0d8ddd020dc959b055c6c1582b85a33e3fcab8c4b08ed94c2",
     "macos_fixture": "20260912T154759Z-librispeech/ane",
     "macos_environment": "Apple M1 Ultra (Mac13,2), macOS 26.6.2 (25G83), Core ML 3520.5.1, cpuAndNeuralEngine",
-    "golden_mel_sha256": "4ed24d7da64c17f58419ec45f15aa24ac9d1cfd93a4de51ee4f05e1d712b4d22"
+    "golden_mel_sha256": "4ed24d7da64c17f58419ec45f15aa24ac9d1cfd93a4de51ee4f05e1d712b4d22",
+    "stage_manifest_sha256": "67ecd46384c33040869093cde9b0615e0a0e7aaaa8450212c46a366405c61a14",
+    "pinned_stage_tensor_count": 14
   },
   "consumer_contract": {
     "input": "One non-empty float32 waveform at 16 kHz, no longer than 480000 samples",
@@ -51,15 +53,16 @@
     },
     "output": "float32 mel [3001,128] and all-one int32 mask [3001]",
     "encoder_slice": "first 3000 rows, exact against encoder_input_features.npy and encoder_input_mask.npy",
-    "failure_contract": "Empty or multi-chunk input and non-400 Hann lengths raise ValueError; no approximate Hann or FFT fallback exists"
+    "failure_contract": "Empty or multi-chunk input and non-400 Hann lengths raise ValueError; DFT inputs must be float32 [batch,512]; structural, shape, dtype, signed-zero, capture-hash, stage-manifest, and stage-content mismatches fail closed"
   },
   "source_sha256": {
-    "overlay/tools/coreml/mel_reference.py": "5bf9a702c1341d8a218f7f35bc019f20493670a4342dab7ebe1cec2ecbea5d69",
-    "overlay/tools/coreml/mel_stage_compare.py": "ce3ac1d907ca2eef9f6028a0764f7c4928de06dae216218278578031960a30ff",
-    "overlay/tools/coreml/dft_geometry_probe.py": "3cfbd92cae946d2f24e2474a884ea74a0d64d15a1970fb7c10cc83cb2d625406",
+    "overlay/tools/coreml/mel_reference.py": "66903c4084fad463bc90273fe16c80297edcc07141553e731c789a6138160ba0",
+    "overlay/tools/coreml/mel_stage_compare.py": "fe49f08eb0d1ab9a7bef38816eefe184e7fa07f65c58493dc1b350f224265035",
+    "overlay/tools/coreml/dft_geometry_probe.py": "f5b6d5d5d86dc2c18a32dcdd076f250b29f82dea8322aa181b0a65755c46ef65",
     "overlay/tools/coreml/dotpr.py": "39f55b662d752d577ca33ef51ddc201c1ef01bc32e5e3077de3b1721f5056881",
-    "tests/coreml/test_mel_frontend.py": "439ad739c4fd948ab4ca7895050084ff8530549928d7d8291d417683c1b9bf8c",
-    "overlay/tools/coreml/parakeet-reference.lock": "b269c20492312b377039a5f829b0e4b407d9bcb439051a40bbd36121ccee3de6"
+    "overlay/tools/coreml/parakeet-reference.lock": "63415836246175d34748c1c44f2c8d00c79affc5be0f4d7da058eb7d5328f8d1",
+    "tests/coreml/test_mel_frontend.py": "51fd2a2cacff3325160ab8e09e46e2224a3e6621f9567e2289b32e21ef2dd00f",
+    "docs/coreml.md": "f04c48e8903cd3e76f23e1f5c64dd5b22660a9f042ee65151788513936998259"
   },
   "red_evidence": {
     "command": "python3 overlay/tools/coreml/mel_stage_compare.py ~/.cache/mlx-omarchy/parakeet-reference/captures/b650695c-75aec2a/20260912T154759Z-librispeech/ane ~/.cache/mlx-omarchy/parakeet-reference/captures/b650695c-75aec2a/mel-stage-probes/stage-capture",
@@ -67,16 +70,28 @@
   },
   "verification": [
     {
-      "command": "timeout 180s python3 overlay/tools/coreml/mel_stage_compare.py ~/.cache/mlx-omarchy/parakeet-reference/captures/b650695c-75aec2a/20260912T154759Z-librispeech/ane ~/.cache/mlx-omarchy/parakeet-reference/captures/b650695c-75aec2a/mel-stage-probes/stage-capture",
-      "result": "exit 0; manifest and golden gate passed; preemphasis 480000, Hann 400, filterbank 32896, frames 1536512, DFT real 771257, DFT imag 771257, power 771257, mel projection 384128, logmel 384128, mean 128, and std 128 values all byte-identical"
+      "command": "timeout 30s python3 -m pytest -q tests/coreml/test_mel_frontend.py tests/coreml/test_dotpr.py tests/coreml/test_reference_lock.py",
+      "result": "46 passed in 3.28s"
     },
     {
-      "command": "timeout 180s python3 overlay/tools/coreml/mel_reference.py ~/.cache/mlx-omarchy/parakeet-reference/captures/b650695c-75aec2a/20260912T154759Z-librispeech/ane",
-      "result": "exit 0; 384128/384128 mel values bit-identical, zero maximum and mean absolute difference; shape, masks, encoder slice, and silence tail exact"
+      "command": "timeout 30s python3 -m pytest -q tests/coreml/test_reference_lock.py",
+      "result": "20 passed in 1.58s"
     },
     {
-      "command": "timeout 180s python3 -m pytest -q tests/coreml/test_mel_frontend.py",
-      "result": "2 passed in 10.69s"
+      "command": "timeout 30s python3 overlay/tools/coreml/mel_stage_compare.py ~/.cache/mlx-omarchy/parakeet-reference/captures/b650695c-75aec2a/20260912T154759Z-librispeech/ane ~/.cache/mlx-omarchy/parakeet-reference/captures/b650695c-75aec2a/mel-stage-probes/stage-capture",
+      "result": "exit 0; pinned capture, manifest, and all 14 stage hashes verified; all 11 recomputed stages byte-identical"
+    },
+    {
+      "command": "timeout 30s python3 overlay/tools/coreml/mel_reference.py ~/.cache/mlx-omarchy/parakeet-reference/captures/b650695c-75aec2a/20260912T154759Z-librispeech/ane",
+      "result": "exit 0; 384128/384128 mel values bit-identical with zero maximum and mean difference; all seven structural gates true"
+    },
+    {
+      "command": "timeout 30s python3 overlay/tools/coreml/dft_geometry_probe.py compare --impulse-dump /tmp/coreml-dft-impulses-18248be2 --core-dump /tmp/coreml-dft-core-impulses-18248be2 --general-dump ~/.cache/mlx-omarchy/parakeet-reference/captures/b650695c-75aec2a/mel-stage-probes/dft --stage-dump ~/.cache/mlx-omarchy/parakeet-reference/captures/b650695c-75aec2a/mel-stage-probes/stage-capture --json-out /tmp/coreml-dft-comparison-cfi.json",
+      "result": "exit 0; vdsp-radix4-dif had zero bit, numeric, and signed-zero mismatches on 262144 complex-core, 263168 impulse, 6682 general, and 1542514 stage scalar values"
+    },
+    {
+      "command": "bounded native-fmaf, finite-frame, signed-zero, and invalid-shape Python probes",
+      "result": "native/shared FMA both 0x3fb16287; finite frame real bin 1 was 0x3ecb7a0f; signed-zero output had zero mismatches against separate-component packing; [1,2048] and [512] rejected with named ValueError diagnostics"
     }
   ],
   "qualification_boundary": {
@@ -84,5 +99,13 @@
     "installed_runtime": "not qualified",
     "reason": "The oracle performs NumPy tensor work on CPU. It does not execute through Vulkan or ANE and produces no backend trace, so it does not satisfy plan section 3.3 or the zero-CPU-tensor-dispatch gate.",
     "encoder_and_full_plan": "not claimed; Linux H13 compile, physical runtime execution, encoder numerical parity, local decoder/joint, TDT output, stability, and packaging remain separate gates"
-  }
+  },
+  "review_remediation": [
+    "The mel CLI now returns failure when any structural exactness gate is false.",
+    "Stage equality requires matching shape, dtype, and bytes; signed-zero-only differences report a bitwise divergence without crashing.",
+    "The repository lock authenticates waveform.npy, mel.npy, the exact stage manifest, and all 14 required stage tensors.",
+    "The recovered DFT imports the certified single-rounded float32 FMA from dotpr instead of keeping a double-rounding duplicate.",
+    "Complex DFT inputs assign real and imaginary components separately so negative-zero bits survive packing.",
+    "The fixed DFT frontend rejects inputs outside float32 [batch,512]."
+  ]
 }

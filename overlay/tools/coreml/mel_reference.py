@@ -297,9 +297,8 @@ def main(argv: list[str]) -> int:
               f" ({u:.0f} ulps)")
     for k, v in rep.structural.items():
         print(f"structural {k}: {v}")
-    if not rep.exact:
-        print("VERDICT: exact pinned mel gate failed. CPU fixture oracle only;"
-              " no installed-runtime qualification.")
+    if not rep.exact or not all(rep.structural.values()):
+        print("VERDICT: exact pinned mel gate failed. CPU fixture oracle only; no installed-runtime qualification.")
         return 1
     return 0
 

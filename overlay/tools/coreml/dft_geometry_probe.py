@@ -18,6 +18,8 @@ from pathlib import Path
 
 import numpy as np
 
+from dotpr import _fma32
+
 N_REAL = 512
 N_COMPLEX = N_REAL // 2
 N_BINS = N_REAL // 2 + 1
@@ -109,12 +111,7 @@ def radix4_dif(values: np.ndarray) -> np.ndarray:
         stage //= 4
     return np.take(z, digit_reverse_base4(length), axis=1)
 
-def fma32(a: np.ndarray, b: np.ndarray, c: np.ndarray) -> np.ndarray:
-    return np.asarray(
-        np.asarray(a, dtype=np.float64) * np.asarray(b, dtype=np.float64)
-        + np.asarray(c, dtype=np.float64),
-        dtype=np.float32,
-    )
+
 
 
 def vdsp_radix4_dif(values: np.ndarray) -> np.ndarray:
@@ -176,20 +173,20 @@ def vdsp_radix4_dif(values: np.ndarray) -> np.ndarray:
             tan3 = np.asarray(
                 [math.tan(3.0 * angle) for angle in angles], dtype=np.float32
             )[None, None, :]
-            ti1 = fma32(-xr[1], tan1, xi[1])
-            tr1 = fma32(xi[1], tan1, xr[1])
-            ti2 = fma32(-xr[2], tan2, xi[2])
-            tr2 = fma32(xi[2], tan2, xr[2])
+            ti1 = _fma32(-xr[1], tan1, xi[1])
+            tr1 = _fma32(xi[1], tan1, xr[1])
+            ti2 = _fma32(-xr[2], tan2, xi[2])
+            tr2 = _fma32(xi[2], tan2, xr[2])
             if remaining == 16:
                 special = prefix_count // 2
                 ti2[:, :, special] = -xr[2][:, :, special]
                 tr2[:, :, special] = xi[2][:, :, special]
-            ti3 = fma32(-xr[3], tan3, xi[3])
-            tr3 = fma32(xi[3], tan3, xr[3])
-            eip = fma32(ti2, cos2, xi[0])
-            eim = fma32(-ti2, cos2, xi[0])
-            erp = fma32(tr2, cos2, xr[0])
-            erm = fma32(-tr2, cos2, xr[0])
+            ti3 = _fma32(-xr[3], tan3, xi[3])
+            tr3 = _fma32(xi[3], tan3, xr[3])
+            eip = _fma32(ti2, cos2, xi[0])
+            eim = _fma32(-ti2, cos2, xi[0])
+            erp = _fma32(tr2, cos2, xr[0])
+            erm = _fma32(-tr2, cos2, xr[0])
             if remaining == 16:
                 special = prefix_count // 2
                 eip[:, :, special] = f32(
@@ -204,21 +201,21 @@ def vdsp_radix4_dif(values: np.ndarray) -> np.ndarray:
                 erm[:, :, special] = f32(
                     xr[0][:, :, special] - tr2[:, :, special]
                 )
-            oip = fma32(ti3, ratio3, ti1)
-            oim = fma32(-ti3, ratio3, ti1)
-            orp = fma32(tr3, ratio3, tr1)
-            orm = fma32(-tr3, ratio3, tr1)
+            oip = _fma32(ti3, ratio3, ti1)
+            oim = _fma32(-ti3, ratio3, ti1)
+            orp = _fma32(tr3, ratio3, tr1)
+            orm = _fma32(-tr3, ratio3, tr1)
             yr = (
-                fma32(orp, cos1, erp),
-                fma32(oim, cos1, erm),
-                fma32(-orp, cos1, erp),
-                fma32(-oim, cos1, erm),
+                _fma32(orp, cos1, erp),
+                _fma32(oim, cos1, erm),
+                _fma32(-orp, cos1, erp),
+                _fma32(-oim, cos1, erm),
             )
             yi = (
-                fma32(oip, cos1, eip),
-                fma32(-orm, cos1, eim),
-                fma32(-oip, cos1, eip),
-                fma32(orm, cos1, eim),
+                _fma32(oip, cos1, eip),
+                _fma32(-orm, cos1, eim),
+                _fma32(-oip, cos1, eip),
+                _fma32(orm, cos1, eim),
             )
         real = np.concatenate(yr, axis=2).reshape(batch, length)
         imag = np.concatenate(yi, axis=2).reshape(batch, length)
@@ -303,7 +300,9 @@ def untangle(core: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
 
 
 def candidate_core(frames: np.ndarray, candidate: str) -> np.ndarray:
-    packed = c64(frames[:, 0::2] + np.complex64(1j) * frames[:, 1::2])
+    packed = np.empty((frames.shape[0], N_COMPLEX), dtype=np.complex64)
+    packed.real = frames[:, 0::2]
+    packed.imag = frames[:, 1::2]
     functions = {
         "radix4-dit": radix4_dit,
         "radix4-dif": radix4_dif,
@@ -314,6 +313,13 @@ def candidate_core(frames: np.ndarray, candidate: str) -> np.ndarray:
 
 
 def candidate_spectrum(frames: np.ndarray, candidate: str) -> tuple[np.ndarray, np.ndarray]:
+    frames = np.asarray(frames)
+    if frames.dtype != np.float32:
+        raise ValueError("DFT frames must have float32 dtype")
+    if frames.ndim != 2:
+        raise ValueError("DFT frames must be two-dimensional")
+    if frames.shape[1] != N_REAL:
+        raise ValueError(f"DFT frames must have exactly {N_REAL} samples")
     return untangle(candidate_core(frames, candidate))
 
 
