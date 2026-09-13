@@ -34,7 +34,7 @@ joint:    encoder_frame f32 [1,640], decoder_state f32 [1,640]
 * Mel (matches HF `ParakeetFeatureExtractor`): preemphasis 0.97 (`y[0]=x[0]`);
   centred STFT, `n_fft=512`, `win_length=400` (symmetric Hann), hop 160,
   zero pad-mode (Swift places the window 56 bins earlier than
-  `torch.stft` center framing; see portable-status section below);
+  `torch.stft` center framing; see [Exact pinned mel reference](coreml.md#exact-pinned-mel-reference));
   0–8000 Hz; `log(mel + 2^-24)`; per-bin mean/std over frames with Bessel
   correction and `eps=1e-5`: `(x - mean) / (std + eps)`.
 * Decode: greedy TDT, blank id 8192, durations `[0,1,2,3,4]`, vocab 8193,
@@ -44,38 +44,13 @@ Every numerics-bearing step in the golden capture ran inside the pinned
 reference library (SwiftPM `exact revision` dependency); the capture harness
 (`overlay/tools/coreml/capture/`) only orchestrates and dumps `.npy`/JSON.
 
-## Portable mel diagnostic
+## Portable mel reference
 
-The tested NumPy implementation does not meet exact golden equality.
-The hash-verified capture comparison reports 215401/384128 identical float32
-bit patterns and maximum absolute error 4.769862e-05. The first difference is
-at frame 0, bin 0. Shapes and masks match; encoder input values do not.
-
-Stage isolation (2026-09-12, certified intermediates): `mel-stage-capture`
-runs the pinned `MelFeatureExtractor` on macstudio (CPU vDSP only, no
-CoreML), gates its stepwise intermediates byte-identical against the pinned
-library output, and reproduces the golden `mel.npy` hash exactly. Comparing
-each stage against that ground truth:
-
-```text
-bit-exact portable stages: preemphasis, framing geometry, Slaney
-  filterbank, sqrt-then-square power, per-bin mean/std, masks/shapes.
-divergent stages (all float32 libm/Accelerate internals):
-  hann window   243/400 values differ (Apple cosf; float64 correctly
-                rounded cos of the same argument differs on 304/400)
-  DFT           vDSP_DFT_zrop vs pocketfft: ~29% of bins, max |d| 4.8e-7
-  mel dot       vDSP_dotpr: best tested emulation (4-lane pairwise,
-                scalar tail) leaves 961/384128 values, +/-1 ulp
-  log           Apple logf vs float64-log cast: 339/384128 values
-```
-
-No approximate frontend is qualified, no tolerance changes, and no claim is
-made that exact reproduction is impossible. This implementation stays on the
-diagnostic branch rather than main.
+The pinned NumPy frontend is bit-exact on the frozen fixture. See
+[Exact pinned mel reference](coreml.md#exact-pinned-mel-reference).
 
 ```bash
 python3 overlay/tools/coreml/mel_reference.py <pinned-capture-directory>
-python3 overlay/tools/coreml/mel_stage_compare.py <capture-dir> <stage-dump-dir>
 ```
 
 Licensing: the Python port is derived from the pinned Apache-2.0

@@ -5,11 +5,10 @@
   "source": {
     "repository": "joshuaswarren/omarchy-ane",
     "commit": "061b461410a595eb9884e48a250dcc47fc77be8d",
-    "staging_path_on_laptop": "/tmp/m1max-ane-prereq/source-061b461410a595eb9884e48a250dcc47fc77be8d",
-    "source_staging_command": "git -C /home/joshuawarren/.config/superpowers/worktrees/omarchy-ane/m1max-bringup archive --format=tar HEAD | ssh -o ConnectTimeout=8 -o BatchMode=yes jw16mbp1-linux 'mkdir -p … && tar -x -C …'"
+    "staging_path_on_laptop": "/tmp/m1max-ane-prereq/source-061b461410a595eb9884e48a250dcc47fc77be8d"
   },
   "target": {
-    "host": "jw16mbp1-linux",
+    "host": "M1 Max, Asahi Linux",
     "kernel_release": "7.1.6-1-1-ARCH",
     "headers_package": "linux-asahi-headers 7.1.6.asahi1-1",
     "headers_path": "/usr/lib/modules/7.1.6-1-1-ARCH/build",
