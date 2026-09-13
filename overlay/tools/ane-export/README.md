@@ -35,6 +35,13 @@ The exporter emits `bundle/manifest.json`, `bundle/model.anec`, and
 outside the bundle. Schema 3 records one program, one dispatch index, exact
 channel allocations, and driver ABI major 1.
 
+Both producers set `release_asset.model_sha256` to the same compiled-payload
+collection identity. They sort payload records by `path`, retain exactly
+`role`, `path`, `byte_size`, and `sha256`, serialize with
+`json.dumps(records, sort_keys=True, separators=(",", ":"),
+ensure_ascii=True)`, and hash the UTF-8 bytes. ANEC and weights records are
+included.
+
 Supported descriptors use `add`, `mul`, or `matmul`, positive input shapes, and
 fp16. `matmul` also needs `weight_shape`. The retained compiler rejected the
 hand-authored matmul forms in the 2026-09-01 receipt. Const tensors use
@@ -45,9 +52,12 @@ that reference compiler.
 
 The adapter accepts only `mil-hwxc.h13-anec-package.v1`, target `H13`, and
 artifact format `anec`. The compiler invocation must use `--format anec`.
-Provide the source graph, compiler source tree, and the generation-time
-`source.json` receipt that binds the compiler commit, compiler binary digest,
-graph digest, and every emitted payload digest:
+Provide the source graph, a repository containing the recorded generation
+commit, and the generation receipt. The receipt binds the compiler manifest,
+compiler source commit, generation binary digest, graph digest, and every
+emitted payload digest. `--compiler-source` only proves that the recorded
+commit exists in the supplied repository. It does not verify the historical
+binary or require the checkout HEAD to match.
 
 ```
 python3 h13_package_to_bundle.py package \
@@ -63,9 +73,10 @@ python3 h13_package_to_bundle.py package \
 
 The adapter preserves program order, dispatch order, intermediate tensors,
 channel bindings, NCHW geometry, tensor slices, and allocation sizes. It
-refuses HWX packages, non-H13 targets, unknown package fields, invalid payload
-receipts, and embedded `constantInputs`. Schema 3 does not yet define a
-constant-input payload representation.
+requires the receipt's compiler manifest digest before it reads compiler
+wiring. It refuses HWX packages, non-H13 targets, unknown package fields,
+invalid payload receipts, and embedded `constantInputs`. Schema 3 does not yet
+define a constant-input payload representation.
 
 ## Validate
 

@@ -1,6 +1,7 @@
 {
   "artifact_format": "anec",
   "compiler_binary_sha256": "45fa6cb33e86ac9ec5e35421d338e07c9cd2cfb55b91e26242d9aa2ebeadffec",
+  "compiler_manifest_sha256": "d3be01476fa2a3b0c6d24ca3227fd88885e6370807eda6c16d0a93775ba20e19",
   "compiler_executable_source_commit": "aa688df66cbc2110e0df94f0d50fb72c7fa30a18",
   "compiler_repository_receipt_commit": "f4ad09066b560818a9dcc1f5f4f53273d941bd1e",
   "generation_command": "$COMPILER/build/mil-hwxc --target H13 --format anec --mil $WORK/model.mil --model-root $WORK/models --output $WORK/pkg-explicit",

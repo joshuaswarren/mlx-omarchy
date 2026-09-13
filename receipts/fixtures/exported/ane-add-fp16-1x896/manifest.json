@@ -56,7 +56,7 @@
   },
   "release_asset": {
     "model": "ane-add-fp16-1x896",
-    "model_sha256": "79d307207318285d9e2aa8a52b9ac06a3460c09c6628c26dfa14a9acd01a8271"
+    "model_sha256": "86203b99cb4d530d6bb99986e4d2b3351d3b04afb3253c7655e2f8b6ce9e1919"
   },
   "intermediates": [],
   "programs": [

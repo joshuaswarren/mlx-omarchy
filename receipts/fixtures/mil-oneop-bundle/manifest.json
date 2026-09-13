@@ -56,7 +56,7 @@
   },
   "release_asset": {
     "model": "mil-oneop-add-fp16-1x512",
-    "model_sha256": "479a30e8197bce9130f5d78939ab2862b83d015ca27e8623b8855747981f527e"
+    "model_sha256": "32b483bb95384444341ba194b0f48616e67880a446037197c738064cba4d764e"
   },
   "intermediates": [],
   "programs": [

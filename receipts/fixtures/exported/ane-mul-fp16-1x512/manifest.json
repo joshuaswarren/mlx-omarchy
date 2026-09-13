@@ -56,7 +56,7 @@
   },
   "release_asset": {
     "model": "ane-mul-fp16-1x512",
-    "model_sha256": "01c61e430633d4d94b3ca9b8dc426cc03f650df49a3deca6ca6845de9712d8ec"
+    "model_sha256": "a51edc356e1026ec15dacef9e4ed17e114ebaf26a7a465aa69b3e99b2acd279a"
   },
   "intermediates": [],
   "programs": [

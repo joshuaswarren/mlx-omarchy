@@ -3,6 +3,9 @@
 
 #include "mlx/backend/omarchy/ane/bundle.h"
 
+#include <json.hpp>
+
+#include <algorithm>
 #include <array>
 #include <fstream>
 #include <limits>
@@ -188,6 +191,30 @@ std::string sha256_file(const std::filesystem::path& path) {
 
 namespace {
 
+std::string payload_collection_sha256(const std::vector<AnePayload>& payloads) {
+  std::vector<const AnePayload*> ordered;
+  ordered.reserve(payloads.size());
+  for (const auto& payload : payloads) {
+    ordered.push_back(&payload);
+  }
+  std::sort(ordered.begin(), ordered.end(), [](const auto* lhs, const auto* rhs) {
+    return lhs->path < rhs->path;
+  });
+
+  nlohmann::json records = nlohmann::json::array();
+  for (const auto* payload : ordered) {
+    records.push_back({
+        {"role", payload->role},
+        {"path", payload->path},
+        {"byte_size", payload->byte_size},
+        {"sha256", payload->sha256},
+    });
+  }
+  const std::string encoded = records.dump(-1, ' ', true);
+  return sha256_hex(
+      reinterpret_cast<const uint8_t*>(encoded.data()), encoded.size());
+}
+
 uint64_t file_size_checked(const std::filesystem::path& path) {
   std::error_code ec;
   const auto size = std::filesystem::file_size(path, ec);
@@ -269,18 +296,6 @@ void validate_binding(
   }
   if (header.nchw[expected_channel] != binding.nchw) {
     throw bundle_error(label + " NCHW does not match ANEC channel geometry");
-  }
-  const auto& nchw = binding.nchw;
-  if (nchw[4] % nchw[5] != 0 || nchw[5] % sizeof(uint16_t) != 0 ||
-      nchw[4] / nchw[5] < nchw[2] || nchw[5] / sizeof(uint16_t) < nchw[3]) {
-    throw bundle_error(label + " ANEC packed tile is smaller than logical shape");
-  }
-  const uint64_t physical_bytes = checked_mul(
-      checked_mul(nchw[0], nchw[1], label + " physical bytes"),
-      nchw[4],
-      label + " physical bytes");
-  if (physical_bytes > allocation) {
-    throw bundle_error(label + " ANEC physical tile bytes exceed channel allocation");
   }
 }
 
@@ -374,8 +389,9 @@ AneAnecHeader parse_anec_header(const std::filesystem::path& path) {
       kAnecTileCount) {
     throw bundle_error("ANEC source/destination count exceeds libane channel table");
   }
-  if (checked_add(kAnecPayloadOffset, header.payload_size, "ANEC payload end") > file_size) {
-    throw bundle_error("ANEC executable payload extends past file");
+  if (checked_add(kAnecPayloadOffset, header.payload_size, "ANEC payload end") !=
+      file_size) {
+    throw bundle_error("ANEC file size does not match payload_size");
   }
   if (header.tiles[0] == 0) {
     throw bundle_error("ANEC command channel allocation is zero");
@@ -413,6 +429,11 @@ AneBundle load_bundle(const std::filesystem::path& dir) {
   }
 
   AneManifest manifest = parse_ane_manifest(dir / "manifest.json");
+  const std::string payload_identity = payload_collection_sha256(manifest.payloads);
+  if (manifest.release_asset.model_sha256 != payload_identity) {
+    throw bundle_error(
+        "release_asset.model_sha256 does not match compiled payload collection");
+  }
   std::vector<std::filesystem::path> actual_files;
   for (const auto& entry : std::filesystem::directory_iterator(dir)) {
     if (entry.is_directory()) {

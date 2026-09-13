@@ -58,7 +58,15 @@ exact unsigned `driver_abi_major`; the current contract requires major 1.
 | `compiler.host_build`, `compiler.toolchain` | Non-empty, actual compiler provenance. |
 | `driver_abi_major` | Exact unsigned integer `1`. |
 | `provenance.source_repo`, `source_commit`, `exported_at` | Non-empty repository and date; commit is exactly 40 lowercase hexadecimal characters. |
-| `release_asset.model`, `model_sha256` | Non-empty model name and 64-character lowercase SHA-256. |
+| `release_asset.model`, `model_sha256` | Non-empty release name and canonical compiled-payload collection SHA-256. |
+
+`release_asset.model_sha256` has one byte-domain for every schema-3 producer.
+Build one record per declared payload with exactly `role`, `path`, `byte_size`,
+and `sha256`. Sort records by `path`, then serialize the array with Python
+`json.dumps(records, sort_keys=True, separators=(",", ":"),
+ensure_ascii=True)`. Hash the resulting UTF-8 bytes. The collection includes
+ANEC and weights payloads. This is compiled-payload identity, not a source graph
+or hardware qualification hash.
 
 ### Tensor entries
 
@@ -80,13 +88,16 @@ bindings. A binding records:
 | `channel` | Exact libane channel index. Outputs start at 4. Inputs start at `4 + destination_count`. |
 | `shape`, `logical_bytes` | Positive local slice geometry with exact dtype size. |
 | `nchw` | Exactly six positive integers; must equal the ANEC channel header. |
-| `allocation_bytes` | Positive, `0x4000`-aligned, and exactly equal to the ANEC channel allocation. |
-| `element_offset`, `element_count` | Unsigned slice range within the top-level tensor. Count is positive and matches the local shape. |
-| `physical_elements` | Positive and no smaller than `element_count`. |
+| `allocation_bytes` | Positive, `0x4000`-aligned, exactly equal to the ANEC channel allocation, and large enough for the packed NCHW bytes. |
+| `element_offset`, `element_count` | Offset is in the top-level tensor coordinate space; offset plus count must fit that tensor. Count is positive, matches the local shape, and does not exceed `physical_elements`. |
+| `physical_elements` | Exact checked product of NCHW dimensions N, C, H, and W for the local channel geometry. It is independent of the top-level offset. |
 
 The loader also requires each program's task count, source count, destination
 count, scratch allocation, channel order, NCHW values, and packed tile envelope
-to match its ANEC header.
+to match its ANEC header. Dispatch reads require prior initialized range
+coverage. Disjoint program writes can cover one output, but every declared
+final output must be completely written. State and unused intermediate tails
+do not require complete write coverage.
 
 ## Validation order
 
@@ -99,8 +110,8 @@ to match its ANEC header.
 3. Reject every unlisted or non-regular directory entry.
 4. Confirm all listed payloads exist and match their declared byte sizes.
 5. Hash every listed payload and compare every digest.
-6. Parse each ANEC header and validate that program's task and allocation
-   contract.
+6. Parse each ANEC header, require its declared payload end to equal the file
+   size, and validate that program's task and allocation contract.
 
 All payload digests are checked before any ANEC header is parsed. A malformed
 first ANEC cannot hide a later payload digest mismatch.
@@ -112,24 +123,31 @@ first ANEC cannot hide a later payload digest mismatch.
 | Missing bundle directory | `AneBundleNotFound`; the affected region stays on Vulkan. |
 | Unsupported schema, missing or unknown field, wrong type, bad mapping, wrong target, or wrong ABI | Named manifest error. |
 | Unknown file, missing payload, size mismatch, or digest mismatch | Named bundle error. |
-| ANEC task, channel, allocation, scratch, dtype, or NCHW mismatch | Named bundle error before worker or device access. |
+| ANEC size, task, channel, allocation, scratch, dtype, or NCHW mismatch | Named bundle error before worker or device access. |
 
 ## Explicit compiler package adapter
 
 `overlay/tools/ane-export/h13_package_to_bundle.py` converts
 `mil-hwxc.h13-anec-package.v1` packages emitted with exact target `H13` and
 exact format `anec`. It preserves every program, dispatch index, binding,
-slice, intermediate, allocation, NCHW record, and payload byte. It derives
-payload digests and compiler executable identity from the supplied source tree.
-The adapter refuses HWX packages, non-H13 packages, unknown schema fields,
-invalid mappings, and packages with embedded `constantInputs`; schema 3 does
-not yet have a constant-input payload representation.
+slice, intermediate, allocation, NCHW record, and payload byte. The required
+generation receipt binds the compiler manifest, source graph, compiler source
+commit, generation binary digest, and every payload digest. `--compiler-source`
+is only a repository witness that proves the recorded generation commit exists.
+It does not recompute or verify the historical compiler binary. The adapter
+refuses HWX packages, non-H13 packages, unknown schema fields, invalid mappings,
+and packages with embedded `constantInputs`; schema 3 does not yet have a
+constant-input payload representation.
 
 The committed fixture at `receipts/fixtures/h13-explicit-chain-add-mul/` contains
-an actual two-program explicit-ANEC compiler package. Its `source.json`
-records the generating command, compiler commits, graph hash, binary hash, and
-payload hashes. It is host-only structural evidence. It makes no device or
-compiler-wide qualification claim.
+an actual two-program explicit-ANEC compiler package. Its `source.json` records
+the generating command, compiler commits, graph hash, binary hash, compiler
+manifest hash, and payload hashes. The compiler manifest hash was recorded from
+the retained generated fixture during this schema correction, not emitted by
+the compiler at generation time. It binds the adapter input but is not
+independent authentication of the historical compiler run. Future compiler
+receipts must record it when they create the package. This remains host-only
+structural evidence, with no device or compiler-wide qualification claim.
 
 The current compiler has a separate HWX-extraction regression in its host test
 path. Explicit `--format anec` adaptation remains testable, but that result

@@ -7,6 +7,7 @@
 #include "mlx/backend/omarchy/ane/bundle.h"
 #include "json.hpp"
 
+#include <algorithm>
 #include <array>
 #include <cstring>
 #include <filesystem>
@@ -36,10 +37,13 @@ void write_le(std::string& bytes, size_t offset, T value) {
   std::memcpy(bytes.data() + offset, &value, sizeof(T));
 }
 
-void write_nchw(std::string& bytes, uint32_t channel) {
+void write_nchw(
+    std::string& bytes,
+    uint32_t channel,
+    const std::array<uint64_t, 6>& nchw = kNchw) {
   size_t offset = 40 + kAnecTileCount * sizeof(uint32_t) +
-      channel * kNchw.size() * sizeof(uint64_t);
-  for (uint64_t value : kNchw) {
+      channel * nchw.size() * sizeof(uint64_t);
+  for (uint64_t value : nchw) {
     write_le(bytes, offset, value);
     offset += sizeof(value);
   }
@@ -143,6 +147,17 @@ void write_file(const std::filesystem::path& path, const std::string& bytes) {
   REQUIRE(output.good());
 }
 
+std::string payload_collection_identity(const nlohmann::json& payloads) {
+  nlohmann::json records = payloads;
+  std::sort(records.begin(), records.end(), [](const auto& lhs, const auto& rhs) {
+    return lhs.at("path").template get<std::string>() <
+        rhs.at("path").template get<std::string>();
+  });
+  const std::string encoded = records.dump(-1, ' ', true);
+  return sha256_hex(
+      reinterpret_cast<const uint8_t*>(encoded.data()), encoded.size());
+}
+
 struct Fixture {
   TempDir dir;
   std::array<std::string, 2> payload_bytes{anec_bytes('A'), anec_bytes('K')};
@@ -181,8 +196,11 @@ struct Fixture {
           {"source_commit", hex(40, 'c')},
           {"exported_at", "2026-09-12"}}},
         {"release_asset",
-         {{"model", "h13-chain-add-mul"}, {"model_sha256", hex(64, '4')}}},
+         {{"model", "h13-chain-add-mul"},
+          {"model_sha256", ""}}},
     };
+    manifest["release_asset"]["model_sha256"] =
+        payload_collection_identity(manifest["payloads"]);
   }
 
   std::string digest(size_t index) const {
@@ -193,6 +211,8 @@ struct Fixture {
   void refresh_payload(size_t index) {
     manifest["payloads"][index]["sha256"] = digest(index);
     manifest["payloads"][index]["byte_size"] = payload_bytes[index].size();
+    manifest["release_asset"]["model_sha256"] =
+        payload_collection_identity(manifest["payloads"]);
   }
 
   void write() const {
@@ -225,6 +245,30 @@ TEST_CASE("valid multi-program bundle preserves dispatch and bindings") {
   CHECK(bundle.manifest.programs[bundle.programs[0].manifest_index].inputs[0].tensor == "a");
   CHECK(bundle.manifest.programs[bundle.programs[1].manifest_index].inputs[0].tensor == "sum");
   CHECK(bundle.programs[1].anec_header.source_count == 2);
+}
+
+TEST_CASE("release identity uses the producer's canonical payload byte domain") {
+  SUBCASE("mismatch") {
+    Fixture fixture;
+    fixture.manifest["release_asset"]["model_sha256"] = hex(64, '4');
+    fixture.write();
+    check_error(
+        [&] { load_bundle(fixture.dir.path()); },
+        "model_sha256 does not match compiled payload collection");
+  }
+
+  SUBCASE("non-ASCII paths use escaped canonical JSON") {
+    Fixture fixture;
+    const std::string renamed = "prögram-0.anec";
+    fixture.manifest["programs"][0]["payload"] = renamed;
+    fixture.manifest["payloads"][0]["path"] = renamed;
+    fixture.manifest["release_asset"]["model_sha256"] =
+        "1f1a7bd31300c3578ebbe0c96a03e52a467d669cefbd23c5fc3993975fcddc90";
+    fixture.write();
+    std::filesystem::rename(fixture.dir.path() / "program-0.anec",
+                            fixture.dir.path() / renamed);
+    CHECK_NOTHROW(load_bundle(fixture.dir.path()));
+  }
 }
 
 TEST_CASE("schema 2 is rejected without compatibility shim") {
@@ -275,6 +319,43 @@ TEST_CASE("dispatch plan rejects use-before-write") {
   fixture.write();
   check_error([&] { load_bundle(fixture.dir.path()); }, "reads tensor 'sum' before its range is written");
 }
+TEST_CASE("declared final outputs require complete dispatched range coverage") {
+  const std::array<uint64_t, 6> physical_128{1, 128, 1, 1, 64, 64};
+
+  SUBCASE("a gap is rejected") {
+    Fixture fixture;
+    fixture.manifest["outputs"][0]["shape"] = {1, 128, 1, 1};
+    fixture.manifest["outputs"][0]["byte_size"] = 256;
+    auto& output = fixture.manifest["programs"][1]["outputs"][0];
+    output["nchw"] = physical_128;
+    output["physical_elements"] = 128;
+    write_nchw(fixture.payload_bytes[1], 4, physical_128);
+    fixture.refresh_payload(1);
+    fixture.write();
+    check_error(
+        [&] { load_bundle(fixture.dir.path()); },
+        "output tensor 'y' is not fully written");
+  }
+
+  SUBCASE("disjoint program tiles can cover the output") {
+    Fixture fixture;
+    fixture.manifest["outputs"][0]["shape"] = {1, 128, 1, 1};
+    fixture.manifest["outputs"][0]["byte_size"] = 256;
+    fixture.manifest["intermediates"] = nlohmann::json::array();
+    for (size_t p = 0; p < 2; ++p) {
+      fixture.manifest["programs"][p]["inputs"][0]["tensor"] = "a";
+      auto& output = fixture.manifest["programs"][p]["outputs"][0];
+      output["tensor"] = "y";
+      output["nchw"] = physical_128;
+      output["physical_elements"] = 128;
+      output["element_offset"] = p * 64;
+      write_nchw(fixture.payload_bytes[p], 4, physical_128);
+      fixture.refresh_payload(p);
+    }
+    fixture.write();
+    CHECK_NOTHROW(load_bundle(fixture.dir.path()));
+  }
+}
 
 TEST_CASE("each ANEC payload must map to one program") {
   Fixture fixture;
@@ -295,6 +376,36 @@ TEST_CASE("bindings reject unknown tensors and invalid ranges") {
     fixture.manifest["programs"][0]["inputs"][0]["element_offset"] = 1;
     fixture.write();
     check_error([&] { load_bundle(fixture.dir.path()); }, "range or allocation exceeds tensor 'a'");
+  }
+}
+TEST_CASE("binding physical geometry is exact while slices may be smaller") {
+  SUBCASE("physical elements must equal NCHW elements") {
+    for (uint64_t physical : {uint64_t{1024}, uint64_t{20000}}) {
+      Fixture fixture;
+      fixture.manifest["programs"][0]["inputs"][0]["physical_elements"] = physical;
+      fixture.write();
+      check_error(
+          [&] { load_bundle(fixture.dir.path()); },
+          "physical_elements does not match NCHW geometry");
+    }
+  }
+
+  SUBCASE("a valid slice can be smaller than physical geometry") {
+    Fixture fixture;
+    const std::array<uint64_t, 6> physical_512{1, 512, 1, 1, 32, 32};
+    fixture.manifest["inputs"][0]["shape"] = {1, 1024, 1, 1};
+    fixture.manifest["inputs"][0]["byte_size"] = 2048;
+    auto& input = fixture.manifest["programs"][0]["inputs"][0];
+    input["shape"] = {1, 384, 1, 1};
+    input["nchw"] = physical_512;
+    input["logical_bytes"] = 768;
+    input["element_offset"] = 512;
+    input["element_count"] = 384;
+    input["physical_elements"] = 512;
+    write_nchw(fixture.payload_bytes[0], 5, physical_512);
+    fixture.refresh_payload(0);
+    fixture.write();
+    CHECK_NOTHROW(load_bundle(fixture.dir.path()));
   }
 }
 
@@ -344,8 +455,20 @@ TEST_CASE("all payload digests are checked before ANEC parsing") {
   fixture.payload_bytes[0].resize(8);
   fixture.manifest["payloads"][0]["byte_size"] = 8;
   fixture.manifest["payloads"][0]["sha256"] = fixture.digest(0);
+  fixture.manifest["release_asset"]["model_sha256"] =
+      payload_collection_identity(fixture.manifest["payloads"]);
   fixture.write();
   check_error([&] { load_bundle(fixture.dir.path()); }, "program-1.anec sha256 mismatch");
+}
+
+TEST_CASE("ANEC header declares the exact file size") {
+  Fixture fixture;
+  fixture.payload_bytes[0] += "TRAILER";
+  fixture.refresh_payload(0);
+  fixture.write();
+  check_error(
+      [&] { load_bundle(fixture.dir.path()); },
+      "ANEC file size does not match payload_size");
 }
 
 TEST_CASE("unknown files and missing payloads fail closed") {
