@@ -27,7 +27,7 @@
   "source_sha256": {
     "overlay/tools/coreml/vulkan_mel.py": "c3c01af30647e613c5707f97bc986d8585fcdbd04b371fdad605593a5800d6d8",
     "overlay/tools/coreml/vulkan_mel_constants.py": "caad0ac74d60a4d7378326d5c6d2e0f0fa7d1fd807157f9d203e7348874d258f",
-    "tests/coreml/test_vulkan_mel.py": "6ea5df323f4a7352432db5e533f659c1eaa4677d45527f6dc5f55392170fa13b",
+    "tests/coreml/test_vulkan_mel.py": "4dfa53690fdb5790423e37f12121ce5d3dd8c7ce484c8b81ea658829b9e291df",
     "docs/parakeet.md": "f7243b89059a854f53932638827f6699f0d34b23973802cec34882c3547e0b76",
     "docs/coreml.md": "b0723149285bb3da9199465f1694c4d511e82d48e5843f67d641f9f2d5ed4f25"
   },
@@ -46,7 +46,7 @@
     },
     {
       "command": "timeout 75s python3 -m pytest -q tests/coreml/test_vulkan_mel.py",
-      "result": "7 passed in 1.70s"
+      "result": "8 passed in 1.85s"
     },
     {
       "command": "timeout 75s python3 overlay/tools/coreml/vulkan_mel.py <pinned-capture> <certified-stage-capture> --json-out .work/vulkan-mel-local-final.json",
