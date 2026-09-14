@@ -1,0 +1,15 @@
+1:program(1)
+2:{
+3:  func main<CoreML8>(tensor<fp16, [1, 8, 375, 749]> matrix_bd_1_cast_fp16) {
+4:    tensor<int32, [4]> matrix_bd_3_begin_0 = const()[name = tensor<string, []>("matrix_bd_3_begin_0"), val = tensor<int32, [4]>([0, 0, 0, 0])];
+5:    tensor<int32, [4]> matrix_bd_3_end_0 = const()[name = tensor<string, []>("matrix_bd_3_end_0"), val = tensor<int32, [4]>([1, 8, 375, 375])];
+6:    tensor<bool, [4]> matrix_bd_3_end_mask_0 = const()[name = tensor<string, []>("matrix_bd_3_end_mask_0"), val = tensor<bool, [4]>([true, true, true, false])];
+7:    tensor<int32, []> matrix_bd_3_cast_fp16_axis = const()[name = tensor<string, []>("matrix_bd_3_cast_fp16_axis"), val = tensor<int32, []>(1)];
+8:    tensor<int32, [4]> matrix_bd_3_cast_fp16_h0_begin = const()[name = tensor<string, []>("matrix_bd_3_cast_fp16_h0_begin"), val = tensor<int32, [4]>([0, 0, 0, 0])];
+9:    tensor<int32, [4]> matrix_bd_3_cast_fp16_h0_end = const()[name = tensor<string, []>("matrix_bd_3_cast_fp16_h0_end"), val = tensor<int32, [4]>([1, 1, 375, 749])];
+10:    tensor<fp16, [1, 1, 375, 749]> matrix_bd_3_cast_fp16_h0_plane = slice_by_index(begin = matrix_bd_3_cast_fp16_h0_begin, end = matrix_bd_3_cast_fp16_h0_end, x = matrix_bd_1_cast_fp16)[name = tensor<string, []>("matrix_bd_3_cast_fp16_h0_plane")];
+11:    tensor<int32, []> matrix_bd_3_cast_fp16_h0_axis = const()[name = tensor<string, []>("matrix_bd_3_cast_fp16_h0_axis"), val = tensor<int32, []>(2)];
+12:    tensor<int32, [4]> matrix_bd_3_cast_fp16_h0_h0_begin = const()[name = tensor<string, []>("matrix_bd_3_cast_fp16_h0_h0_begin"), val = tensor<int32, [4]>([0, 0, 0, 0])];
+2261:    tensor<fp16, [1, 1, 1, 375]> matrix_bd_3_cast_fp16_h0_h374_inner = slice_by_index(begin = matrix_bd_3_cast_fp16_h0_h374_inner_begin, end = matrix_bd_3_cast_fp16_h0_h374_inner_end, x = matrix_bd_3_cast_fp16_h0_h374_plane)[name = tensor<string, []>("matrix_bd_3_cast_fp16_h0_h374_inner")];
+2262:    tensor<fp16, [1, 1, 8, 375]> matrix_bd_3_cast_fp16_h0_c0_0 = concat(axis = matrix_bd_3_cast_fp16_h0_axis, x0 = matrix_bd_3_cast_fp16_h0_h0_inner, x1 = matrix_bd_3_cast_fp16_h0_h1_inner, x2 = matrix_bd_3_cast_fp16_h0_h2_inner, x3 = matrix_bd_3_cast_fp16_h0_h3_inner, x4 = matrix_bd_3_cast_fp16_h0_h4_inner, x5 = matrix_bd_3_cast_fp16_h0_h5_inner, x6 = matrix_bd_3_cast_fp16_h0_h6_inner, x7 = matrix_bd_3_cast_fp16_h0_h7_inner)[name = tensor<string, []>("matrix_bd_3_cast_fp16_h0_c0_0_slice_concat")];
+18472:    tensor<fp16, [1, 8, 375, 375]> matrix_bd_3_cast_fp16 = concat(axis = matrix_bd_3_cast_fp16_axis, x0 = matrix_bd_3_cast_fp16_h0_concat, x1 = matrix_bd_3_cast_fp16_h1_concat, x2 = matrix_bd_3_cast_fp16_h2_concat, x3 = matrix_bd_3_cast_fp16_h3_concat, x4 = matrix_bd_3_cast_fp16_h4_concat, x5 = matrix_bd_3_cast_fp16_h5_concat, x6 = matrix_bd_3_cast_fp16_h6_concat, x7 = matrix_bd_3_cast_fp16_h7_concat)[name = tensor<string, []>("matrix_bd_3_cast_fp16_slice_concat")];

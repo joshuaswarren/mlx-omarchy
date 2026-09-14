@@ -13,3 +13,20 @@ Line 296:
 
 The heads-layout reject (fp16 [1,8,749,375] slice_by_index x=attention_scores_5_cast_fp16, 8 chunks of 280875 spaced 281250) did not fire.
 var_367_cast_fp16 is concat(axis=1) of eight [1,1,749,375] one-dim slices of one-dim head planes.
+
+# last-dim one-layer probe (3000-chunk slice gone)
+/home/joshuawarren/src/mil-hwx-compiler/build/mil-hwxc \
+  --mil /tmp/slice-layout-prefix-20260913/one-layer.mil \
+  --model-root /tmp/slice-layout-prefix-20260913/empty-root \
+  --output /tmp/slice-layout-prefix-20260913/anec-out \
+  --target H13 --format anec
+2262:5: error [h13.unsupported-program]: H13 has no source-qualified encoder for 'concat'
+exit=65
+stdout: empty
+program emitted: no
+
+Line 2262:
+    tensor<fp16, [1, 1, 8, 375]> matrix_bd_3_cast_fp16_h0_c0_0 = concat(axis = matrix_bd_3_cast_fp16_h0_axis, x0 = matrix_bd_3_cast_fp16_h0_h0_inner, x1 = matrix_bd_3_cast_fp16_h0_h1_inner, x2 = matrix_bd_3_cast_fp16_h0_h2_inner, x3 = matrix_bd_3_cast_fp16_h0_h3_inner, x4 = matrix_bd_3_cast_fp16_h0_h4_inner, x5 = matrix_bd_3_cast_fp16_h0_h5_inner, x6 = matrix_bd_3_cast_fp16_h0_h6_inner, x7 = matrix_bd_3_cast_fp16_h0_h7_inner)[name = tensor<string, []>("matrix_bd_3_cast_fp16_h0_c0_0_slice_concat")];
+
+The matrix_bd_3 3000-chunk slice_by_index did not fire.
+Standalone 2-way concat of [1,1,375,128] axis 1 also: h13.unsupported-program concat.

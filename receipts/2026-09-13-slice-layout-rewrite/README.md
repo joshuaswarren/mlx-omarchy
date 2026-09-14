@@ -38,9 +38,8 @@ dimension because interleaved output chunks exceed the one-slice
 binding ABI". Two one-dim slices per head is the form H13 already
 names as in-bounds.
 
-24 encoder layers rewritten. 24 last-dim `matrix_bd_*` slices
-(`[1, 8, 375, 749] -> [1, 8, 375, 375]`, 3000 chunks of 375 spaced
-749) stay in the graph: two wrapping dims, not this rewrite.
+24 encoder layers rewritten for the 749-slice.
+
 
 ## Numpy proof
 
@@ -49,8 +48,11 @@ names as in-bounds.
 (random, zeros, and `-0`). Bit-exact (`uint16` view). Two-step
 `x[:, h:h+1, :, :][:, :, 1:, :]` matches. No counterexample.
 
-`numpy_relpos_drop_last` raises `SliceLayoutError` with the first
-mismatched lane.
+`numpy_last_dim_prefix` compares `x[:, :, :, :375]` against nested
+per-head per-row concat on encoder-shaped `[1, 8, 375, 749]` fp16
+(random, zeros, and `-0`). Bit-exact. `numpy_last_dim_suffix` is the
+named counterexample (same shape, wrong packing).
+
 
 ## Re-run
 
@@ -74,14 +76,45 @@ Line 296 is **not** the `var_367` slice. `var_367_cast_fp16` is a
 `matrix_bd_3_cast_fp16` fp16 `[1, 8, 375, 375]` — last-dim slice of
 the reshaped `[1, 8, 375, 749]` rel-pos scores.
 
+
+## Last-dim class (`matrix_bd_3`)
+
+The rewrite now peels every wrapping dim, not just one. For
+`x[:, :, :, :375]` on `[1, 8, 375, 749]` that is heads then time:
+unit head plane, unit time row, one-dim prefix of 375, then an 8-way
+concat tree (arity 8 is the heads concat already in this graph).
+
+Numpy is exact. A 24-layer MIL is 99 MB / 439k lines and was not
+kept. One-layer probe (`/tmp/slice-layout-prefix-20260913/one-layer.mil`,
+18474 lines):
+
+```text
+/home/joshuawarren/src/mil-hwx-compiler/build/mil-hwxc \
+  --mil /tmp/slice-layout-prefix-20260913/one-layer.mil \
+  --model-root /tmp/slice-layout-prefix-20260913/empty-root \
+  --output /tmp/slice-layout-prefix-20260913/anec-out \
+  --target H13 --format anec
+2262:5: error [h13.unsupported-program]: H13 has no source-qualified encoder for 'concat'
+exit=65
+```
+
+The 3000-chunk `slice_by_index` line is gone. Line 2262 is the first
+8-way concat of `[1, 1, 1, 375]` rows. Standalone 2-way concat of the
+heads shape `[1, 1, 375, 128]` on axis 1 fails the same way: concat
+has no H13 encoder. Slice fail-fast in the full encoder hid that.
+
+Unresolved: last-dim assembly needs a concat encoder, or another
+already-encoded op that stacks unit rows.
+
 ## Files
 
 - `model-fp16-noslice.mil` — heads-layout MIL with the 749-slice decomposed
 - `rewrite-report.json` — schema `mlx-omarchy.slice-layout-rewrite.v1`
 - `var-367-snippet.txt` — rewritten var_367 plane/inner/concat lines
-- `runs.log` — the compiler invocation above, verbatim
+- `rewrite-report-prefix.json` — last-dim rewrite of the noslice MIL (24/0)
+- `matrix-bd-3-snippet.txt` — one-layer last-dim peel + first 8-way concat
+- `runs.log` — compiler invocations, verbatim
 
 ## Verification
 
-- `overlay/tests/omarchy/coreml/test_slice_layout.py`: 5/5
-- No hardware, no device, no model-pin change; host-only throughout.
+- `overlay/tests/omarchy/coreml/test_slice_layout.py`: 7/7
