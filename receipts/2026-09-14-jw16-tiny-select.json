@@ -1,0 +1,239 @@
+{
+  "schema": "mlx-omarchy.jw16-tiny-select.v1",
+  "date": "2026-09-14",
+  "result": "PASS",
+  "exact_fp16": "yes",
+  "exact_fp16_vs_mil": true,
+  "host": "jw16mbp1-linux",
+  "ssh_alias": "jw16mbp1-linux",
+  "kernel": "7.1.6-1-1-ARCH",
+  "resolved_model": {
+    "configured": "openai-codex/gpt-5.6-sol",
+    "actual": "openai-codex/gpt-5.6-sol",
+    "fallback": false
+  },
+  "operation": "select",
+  "shape": [1, 64, 1, 1],
+  "cond_dtype": "bool",
+  "a_dtype": "float16",
+  "b_dtype": "float16",
+  "dtype": "float16",
+  "source": {
+    "ane_ko_path": "/home/joshuawarren/ane-build-abi1/ane.ko",
+    "ane_ko_sha256": "1b801564a1a6c5801dc26cfd1e4a8d820761881f4a1e98543429bc43ccc9744f",
+    "worker_path": "/var/tmp/jw16-tiny-select/mlx-omarchy-ane-worker",
+    "worker_sha256": "762dd1de868b52e4d6ffa30e18d842d9341db463b06aef2355f18fb1eb248929",
+    "libane_path": "/var/tmp/jw16-ane-first-exec/libane.so",
+    "libane_source_commit": "f261a6cb537aca62f267ad3d01beda0d6877544c",
+    "libane_sha256": "1ab9d95debcc8b5fee3b6653dfce0b50412bc7efef43c2d2167dc83ce270ca49",
+    "compiler_commit": "37fb29ed1688a22e2b2ff2dfbf032c10ba879c16",
+    "compiler_binary_sha256": "77521fb36681f8ace6e4aff97ef7ca856b57137e3808680f85dfd4742248de61",
+    "compiler_source_repo": "mil-hwxc",
+    "graph_hash": "6b490556bcdde2b522a0bf8499ab7272f9922e62c7517a82ca021c7ac1de52be",
+    "bundle": "/var/tmp/jw16-tiny-select/bundle",
+    "bundle_name": "schema4-tiny-select-polarity",
+    "bundle_manifest_version": 4,
+    "program0_anec_sha256": "732301a3cae256dca2a8483e49d92f3831c484f9873fdd9ee35e359e85ff508d",
+    "programs": 1,
+    "task_descriptors": 5,
+    "constant_bytes": 2048,
+    "encoder": "apple-parity-boolean",
+    "polarity": "37fb29e taskSurfaceChannels {7,4,5,6}: MIL select(cond ? a : b) without host invert; anec 732301a3",
+    "t8103_receipt": "receipts/2026-09-14-jwm1-tiny-tile.json"
+  },
+  "fixture": {
+    "numpy_oracle": "y = where(cond, a, b) as fp16; MIL select is cond ? a : b",
+    "a_sha256": "8387832ff327e906eaa79c188241f1b2804b65d7cb0731b6936248fc66c7c8b2",
+    "b_sha256": "dba486f693668dded9ad2fad9f62bb399b36545c771207f7c52e496e98f036aa",
+    "cond_sha256": "037d6dfb3a369a41e01100fdd53c35ee3fb69ddec5830d61e1138d066a4c2285",
+    "y_mil_sha256": "c6f78ed2e3c784f5f2fcb41b5bd44a1485c386bdf54f2e3c98726acd91b8ff03",
+    "y_invert_sha256": "fbe9419f0aee1210fbc9750f5f95c5a9cc91e5b90895819d2fa2c5065a45d0a8",
+    "element_count": 64
+  },
+  "idle_pre": {
+    "runtime_status": "suspended",
+    "refcnt": "0",
+    "set0": {
+      "phys": "0x28e08c000",
+      "raw": "0x00000300",
+      "ACTUAL": "0x0",
+      "TARGET": "0x0"
+    }
+  },
+  "set_during_worker_open": [
+    {
+      "t_ms": 0.226,
+      "set0": {
+        "raw": "0x00000300",
+        "ACTUAL": "0x0",
+        "TARGET": "0x0",
+        "phys": "0x28e08c000"
+      }
+    },
+    {
+      "t_ms": 2.475,
+      "set0": {
+        "raw": "0x0000030f",
+        "ACTUAL": "0x0",
+        "TARGET": "0xf",
+        "phys": "0x28e08c000"
+      }
+    },
+    {
+      "t_ms": 2.494,
+      "set0": {
+        "raw": "0x000003ff",
+        "ACTUAL": "0xf",
+        "TARGET": "0xf",
+        "phys": "0x28e08c000"
+      }
+    }
+  ],
+  "set0_after": {
+    "phys": "0x28e08c000",
+    "raw": "0x000003ff",
+    "ACTUAL": "0xf",
+    "TARGET": "0xf"
+  },
+  "set_post": {
+    "set0": {
+      "phys": "0x28e08c000",
+      "raw": "0x000003ff",
+      "ACTUAL": "0xf",
+      "TARGET": "0xf"
+    },
+    "base": {
+      "raw": "0x000003ff",
+      "ACTUAL": "0xf",
+      "TARGET": "0xf"
+    },
+    "set1": {
+      "raw": "0x000003ff",
+      "ACTUAL": "0xf",
+      "TARGET": "0xf"
+    },
+    "set2": {
+      "raw": "0x000003ff",
+      "ACTUAL": "0xf",
+      "TARGET": "0xf"
+    },
+    "set3": {
+      "raw": "0x000003ff",
+      "ACTUAL": "0xf",
+      "TARGET": "0xf"
+    },
+    "set4": {
+      "raw": "0x000003ff",
+      "ACTUAL": "0xf",
+      "TARGET": "0xf"
+    },
+    "set5": {
+      "raw": "0x00000000",
+      "ACTUAL": "0x0",
+      "TARGET": "0x0"
+    }
+  },
+  "device": {
+    "path": "/dev/accel/accel0",
+    "stat": "crw-rw-rw- root:render 261,0",
+    "bound": "285c04000.ane",
+    "module": "Live",
+    "nproc": 10,
+    "cpu_online": "0-9",
+    "boot_id": "f6ad865b-b85e-499e-8308-28b57b24f0c8",
+    "drm_version_ioctl": {
+      "version": "1.0.0",
+      "name": "ane",
+      "desc": "Apple Neural Engine driver"
+    },
+    "still_live_after": true
+  },
+  "submit": {
+    "attempted": true,
+    "command": "/var/tmp/jw16-tiny-select/mlx-omarchy-ane-worker --bundle /var/tmp/jw16-tiny-select/bundle --libane /var/tmp/jw16-ane-first-exec/libane.so --deadline-ms 5000 --iterations 1 --input a=/var/tmp/jw16-tiny-select/a.bin --input b=/var/tmp/jw16-tiny-select/b.bin --input cond=/var/tmp/jw16-tiny-select/cond.bin --expect y=/var/tmp/jw16-tiny-select/y.bin --save y=/var/tmp/jw16-tiny-select/y.out.bin",
+    "deadline_ms": 5000,
+    "iterations_requested": 1,
+    "iterations_completed": 1,
+    "worker_exit": 0,
+    "worker_status": 0,
+    "released_programs": 1,
+    "elapsed_ms": 202,
+    "detail": "worker completed 1 iteration(s) and released its programs",
+    "stdout": [
+      "bundle name=schema4-tiny-select-polarity programs=1 driver_abi=1 graph=6b490556bcdde2b522a0bf8499ab7272f9922e62c7517a82ca021c7ac1de52be",
+      "worker status=0 iterations=1 released=1 elapsed_ms=202",
+      "worker detail=worker completed 1 iteration(s) and released its programs",
+      "saved output y (128 bytes)",
+      "verified output y exact"
+    ],
+    "stderr": [],
+    "program_submitted_to_ane": true,
+    "hang": false,
+    "errno_110": false,
+    "box_reset": false,
+    "td_size": "0x274",
+    "started_at": "2026-09-14T05:54:08-05:00",
+    "finished_at": "2026-09-14T05:54:08-05:00"
+  },
+  "genpd_resume": {
+    "wired": true,
+    "worker_open_resumed_set": true,
+    "dmesg": [
+      "[27257.455814] JW16_TINY_SELECT_PRE 2026-09-14T05:54:08-0500 boot=f6ad865b-b85e-499e-8308-28b57b24f0c8",
+      "[27257.458106] ane 285c04000.ane: ane_drm_open called",
+      "[27257.458452] ane 285c04000.ane: resume: entry",
+      "[27257.508461] ane 285c04000.ane: power: genpd-owned on this SoC",
+      "[27257.508467] ane 285c04000.ane: resume: force_power done",
+      "[27257.558472] ane 285c04000.ane: resume: pre tm_enable",
+      "[27257.608483] ane 285c04000.ane: resume: tm_enable done",
+      "[27257.658494] ane 285c04000.ane: pm_runtime_resume_and_get returned 0",
+      "[27257.658615] ane 285c04000.ane: submit: ioctl entry",
+      "[27257.658642] ane 285c04000.ane: submit: calling execute",
+      "[27257.658646] ane 285c04000.ane: submit: doorbell survived",
+      "[27257.658686] ane 285c04000.ane: submit: execute returned 0",
+      "[27257.660205] JW16_TINY_SELECT_POST 2026-09-14T05:54:08-0500 rc=0"
+    ]
+  },
+  "numeric": {
+    "element_count": 64,
+    "worker_verified_exact": true,
+    "y_out": "/var/tmp/jw16-tiny-select/y.out.bin",
+    "y_out_sha256": "c6f78ed2e3c784f5f2fcb41b5bd44a1485c386bdf54f2e3c98726acd91b8ff03",
+    "y_out_bytes": 128,
+    "matches_mil_not_invert": true,
+    "note": "Device y sha256 equals MIL cond?a:b expect and differs from invert-cond expect fbe9419f0aee1210fbc9750f5f95c5a9cc91e5b90895819d2fa2c5065a45d0a8."
+  },
+  "post": {
+    "boot_id": "f6ad865b-b85e-499e-8308-28b57b24f0c8",
+    "boot_id_unchanged": true,
+    "device": "crw-rw-rw- root:render 261,0 /dev/accel/accel0",
+    "bound": "285c04000.ane",
+    "module": "Live",
+    "runtime_status": "suspended",
+    "refcnt": "0",
+    "device_live": true
+  },
+  "prohibited_actions_observed": {
+    "ane_unloaded": false,
+    "rebooted": false,
+    "executed_1x896": false,
+    "took_gpu_lock": false,
+    "retried_after_110": false,
+    "wrote_0xf_userspace": false,
+    "wide_375": false,
+    "td_208": false
+  },
+  "prior_host_reject": {
+    "started_at": "2026-09-14T05:50:08-05:00",
+    "worker_sha256": "575e2acd0152cec13f06dd9b09e4af0d7e4a91bfe4d8fa086b633b8b82a83e59",
+    "reason": "jw16 first-exec worker 575e2acd rejects manifest inputs[2] dtype bool before device open",
+    "worker_exit": 1,
+    "stdout": [
+      "error: [omarchy-ane] manifest: inputs[2] has unsupported dtype 'bool'."
+    ],
+    "errno_110": false,
+    "program_submitted_to_ane": false,
+    "not_a_110_retry": true
+  },
+  "prior_receipt": "receipts/2026-09-14-jw16-addmul-after-idle.json"
+}
