@@ -1,0 +1,32 @@
+{
+  "all_finite": true,
+  "capture": "/tmp/parakeet-ane-capture.GKqLhJ/capture",
+  "capture_matches_reference_lock": {
+    "encoder_input_features.npy": true,
+    "encoder_input_mask.npy": true
+  },
+  "capture_sha256": {
+    "encoder_hidden.npy": "7e442034cb42521f7b76ec9645e8d0082899a5f551ea8d046c62a9283cc6e4e5",
+    "encoder_input_features.npy": "638f1f22b36f33cdcf8cf5f63581497917fe2d8a9108da2f39dd1e99e9130731",
+    "encoder_input_mask.npy": "69afe545178dd33ed9f521b3934c77c687d64af3692a9f075b9e02c74516d804"
+  },
+  "elapsed_s": 10.6,
+  "encoder_mask_equal": true,
+  "encoder_max_abs_err": 0.15087890625,
+  "encoder_mean_abs_err": 0.004112863447517157,
+  "encoder_rel_l2_err": 0.02474028430879116,
+  "frozen_contract": {
+    "encoder_max_abs_err": 0.3,
+    "encoder_mean_abs_err": 0.02,
+    "encoder_rel_l2_err": 0.1
+  },
+  "golden_encoder_hidden_matches_capture_manifest": true,
+  "mil": "/tmp/coreml-text-adapter-pinned-source-v2/model.mil",
+  "mil_sha256": "ac8e9526154ac8b8d4c08b83e44dbc1a2208d7ec33e42a7838d57b698b14f133",
+  "normalized_bin_note": "depalettized companion blob emitted by the CoreML text adapter from the pinned mlpackage; the palettized linear weights resolve through it, and the end-to-end golden comparison below is what vouches for it",
+  "normalized_bin_sha256": "bae568a9fc856122bb4bb74b1a86a5e680569d00f98e4ca84f40ca296804cb90",
+  "schema": "mlx-omarchy.mil-numpy-validation.v1",
+  "weight_bin_matches_reference_lock": true,
+  "weight_bin_sha256": "23867a834223ee6484d0b7b9b703530e8606546efa8e710535163d51ed9aac04",
+  "within_frozen_contract": true
+}

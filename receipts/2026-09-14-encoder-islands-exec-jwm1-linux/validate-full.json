@@ -1,0 +1,21 @@
+{
+  "ops_executed": 3351,
+  "encoder_hidden_shape": [
+    1,
+    375,
+    640
+  ],
+  "max_abs_err": 0.13885498046875,
+  "mean_abs_err": 0.007216926664113998,
+  "rel_l2_err": 0.04364258423447609,
+  "lock_bounds": {
+    "encoder_max_abs_err": 0.3,
+    "encoder_mean_abs_err": 0.02,
+    "encoder_rel_l2_err": 0.1
+  },
+  "within_lock_bounds": true,
+  "nan": 0,
+  "inf": 0,
+  "encoder_mask_exact": true,
+  "encoder_mask_sum": 375
+}

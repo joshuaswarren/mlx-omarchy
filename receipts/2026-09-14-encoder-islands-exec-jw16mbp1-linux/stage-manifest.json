@@ -1,0 +1,238 @@
+{
+  "capture": "/tmp/parakeet-ane-capture.GKqLhJ/capture",
+  "mil": "/tmp/coreml-text-adapter-pinned-source-v2/model.mil",
+  "model_root": "/tmp/coreml-text-adapter-pinned-source-v2/model-root",
+  "ninf_scalar_u16": "0xfc00",
+  "schema": "mlx-omarchy.encoder-island-stage.v1",
+  "tensors": {
+    "attention_mask_9": {
+      "bytes": 2250000,
+      "dtype": "float16",
+      "finite": 1125000,
+      "max": 40.84375,
+      "mean_abs": 8.250772476196289,
+      "min": -50.71875,
+      "name": "attention_mask_9",
+      "nan": 0,
+      "neg_inf": 0,
+      "sha256": "9698b7e2ecfccad585fa583731782c1daf68c5602adbf9a1bf88322b805c690c",
+      "shape": [
+        1,
+        8,
+        375,
+        375
+      ]
+    },
+    "attention_scores_1": {
+      "bytes": 4494000,
+      "dtype": "float16",
+      "finite": 2247000,
+      "max": 475.75,
+      "mean_abs": 93.32660675048828,
+      "min": -574.0,
+      "name": "attention_scores_1",
+      "nan": 0,
+      "neg_inf": 0,
+      "sha256": "af4dc70f6645447229f19b8b00335fbf49253039a2f8e06ca5a2d8f1e1e74007",
+      "shape": [
+        1,
+        8,
+        375,
+        749
+      ]
+    },
+    "attn_output_1": {
+      "bytes": 768000,
+      "dtype": "float16",
+      "finite": 384000,
+      "max": 14.828125,
+      "mean_abs": 1.1767387390136719,
+      "min": -12.421875,
+      "name": "attn_output_1",
+      "nan": 0,
+      "neg_inf": 0,
+      "sha256": "1fa4534b058b6612d77a77bc7925bf6bc41122ee8c56c46c08bb71e386dc8a8e",
+      "shape": [
+        1,
+        8,
+        375,
+        128
+      ]
+    },
+    "cond": {
+      "bytes": 1125000,
+      "dtype": "bool",
+      "name": "cond",
+      "sha256": "f268acb26e8d325c9f23fc98eee4571ffcabd7cfe47fce3f04f3301708cf2b91",
+      "shape": [
+        1,
+        8,
+        375,
+        375
+      ],
+      "true_count": 0
+    },
+    "k_headsT": {
+      "bytes": 768000,
+      "dtype": "float16",
+      "finite": 384000,
+      "max": 17.703125,
+      "mean_abs": 0.7444774508476257,
+      "min": -11.875,
+      "name": "k_headsT",
+      "nan": 0,
+      "neg_inf": 0,
+      "sha256": "e3b084426d1e9d01c246e90956d1246674eff374c9cdf67885c5d13e238dbae8",
+      "shape": [
+        1,
+        8,
+        128,
+        375
+      ]
+    },
+    "matmul_0": {
+      "bytes": 2250000,
+      "dtype": "float16",
+      "finite": 1125000,
+      "max": 6.62109375,
+      "mean_abs": 0.9322386384010315,
+      "min": -4.2578125,
+      "name": "matmul_0",
+      "nan": 0,
+      "neg_inf": 0,
+      "sha256": "04e7d80b453c7011a6d1b0c56c76183136ce91e61a9529689d21bb59c7045f47",
+      "shape": [
+        1,
+        8,
+        375,
+        375
+      ]
+    },
+    "matrix_bd_5": {
+      "bytes": 2250000,
+      "dtype": "float16",
+      "finite": 1125000,
+      "max": 40.84375,
+      "mean_abs": 8.250772476196289,
+      "min": -50.71875,
+      "name": "matrix_bd_5",
+      "nan": 0,
+      "neg_inf": 0,
+      "sha256": "9698b7e2ecfccad585fa583731782c1daf68c5602adbf9a1bf88322b805c690c",
+      "shape": [
+        1,
+        8,
+        375,
+        375
+      ]
+    },
+    "ninf_rt": {
+      "bytes": 2250000,
+      "dtype": "float16",
+      "finite": 0,
+      "max": null,
+      "mean_abs": null,
+      "min": null,
+      "name": "ninf_rt",
+      "nan": 0,
+      "neg_inf": 1125000,
+      "sha256": "98cabc7db74c4a173e1bc2a1e22afc5c3595a5a5f91a53a19c2e89e903726d3b",
+      "shape": [
+        1,
+        8,
+        375,
+        375
+      ]
+    },
+    "pos_kT": {
+      "bytes": 1533952,
+      "dtype": "float16",
+      "finite": 766976,
+      "max": 100.5625,
+      "mean_abs": 21.34865951538086,
+      "min": -131.0,
+      "name": "pos_kT",
+      "nan": 0,
+      "neg_inf": 0,
+      "sha256": "7d659505b2eb495b0b96405ad20b07492cc0db594f5180f28687ee1bb77f04ab",
+      "shape": [
+        1,
+        8,
+        128,
+        749
+      ]
+    },
+    "probs": {
+      "bytes": 2250000,
+      "dtype": "float16",
+      "finite": 1125000,
+      "max": 0.2186279296875,
+      "mean_abs": 0.0026666675694286823,
+      "min": 0.0,
+      "name": "probs",
+      "nan": 0,
+      "neg_inf": 0,
+      "sha256": "0fb1a802d025a925cb78308ba3a816ba32285d9136edbffc8bd3ec72a6e86875",
+      "shape": [
+        1,
+        8,
+        375,
+        375
+      ]
+    },
+    "q_scaled": {
+      "bytes": 768000,
+      "dtype": "float16",
+      "finite": 384000,
+      "max": 0.310546875,
+      "mean_abs": 0.015777481719851494,
+      "min": -0.300048828125,
+      "name": "q_scaled",
+      "nan": 0,
+      "neg_inf": 0,
+      "sha256": "a2afe93e91e64a699daef9ebaca9a219817d3a8fdf07a9e3fa434d6eb12bb7a1",
+      "shape": [
+        1,
+        8,
+        375,
+        128
+      ]
+    },
+    "q_v": {
+      "bytes": 768000,
+      "dtype": "float16",
+      "finite": 384000,
+      "max": 3.9921875,
+      "mean_abs": 0.17558184266090393,
+      "min": -3.240234375,
+      "name": "q_v",
+      "nan": 0,
+      "neg_inf": 0,
+      "sha256": "f1feead11d544b3dd071a1d8ad933cc2dc8d5d12f83cac5a0c2eb9d29df6145d",
+      "shape": [
+        1,
+        8,
+        375,
+        128
+      ]
+    },
+    "v_heads": {
+      "bytes": 768000,
+      "dtype": "float16",
+      "finite": 384000,
+      "max": 25.09375,
+      "mean_abs": 2.4459948539733887,
+      "min": -25.28125,
+      "name": "v_heads",
+      "nan": 0,
+      "neg_inf": 0,
+      "sha256": "2060b1ccb51cecee984c788cb4c79452e0c217a08893fe4640b78f3e7c0b69de",
+      "shape": [
+        1,
+        8,
+        375,
+        128
+      ]
+    }
+  }
+}

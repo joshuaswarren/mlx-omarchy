@@ -1,0 +1,5 @@
+bundle name=parakeet-encoder-island-attn-a-kt programs=2 driver_abi=1 graph=85325f3059a345dee7c62c53a0072b2e869c0c8116385c992e8963587714ff88
+worker status=0 iterations=1 released=2 elapsed_ms=66
+worker detail=worker completed 1 iteration(s) and released its programs
+saved output attention_scores_1 (4494000 bytes)
+saved output matmul_0 (2250000 bytes)

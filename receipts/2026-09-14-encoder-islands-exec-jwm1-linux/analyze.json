@@ -1,0 +1,92 @@
+{
+  "A:attention_scores_1": {
+    "elements": 2247000,
+    "max_ulp": 148,
+    "ulp_histogram": {
+      "0": 2239419,
+      "1": 7171,
+      "2": 298,
+      "3": 36,
+      "4": 16,
+      "5": 9,
+      "6": 8,
+      "7": 4,
+      "8": 39
+    },
+    "all_within_1_ulp": false
+  },
+  "A:matmul_0": {
+    "elements": 1125000,
+    "max_ulp": 1444,
+    "ulp_histogram": {
+      "0": 960933,
+      "1": 142783,
+      "2": 8229,
+      "3": 3188,
+      "4": 1619,
+      "5": 1841,
+      "6": 976,
+      "7": 1061,
+      "8": 4370
+    },
+    "all_within_1_ulp": false
+  },
+  "C:attn_output_1": {
+    "elements": 384000,
+    "max_ulp": 11290,
+    "ulp_histogram": {
+      "0": 275572,
+      "1": 77516,
+      "2": 12285,
+      "3": 5514,
+      "4": 2995,
+      "5": 1858,
+      "6": 1220,
+      "7": 877,
+      "8": 6163
+    },
+    "all_within_1_ulp": false
+  },
+  "B:attention_mask_9": {
+    "cond_true_elements": 0,
+    "mismatch_total": 10728,
+    "per_head": [
+      1341,
+      1341,
+      1341,
+      1341,
+      1341,
+      1341,
+      1341,
+      1341
+    ],
+    "heads_identical_mask": true,
+    "rows_touched": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8
+    ],
+    "mismatches_per_touched_row": {
+      "0": 167,
+      "1": 167,
+      "2": 168,
+      "3": 147,
+      "4": 139,
+      "5": 139,
+      "6": 139,
+      "7": 139,
+      "8": 136
+    },
+    "first_column": 32,
+    "last_column": 374,
+    "device_inf_written": 0,
+    "device_min": -50.71875,
+    "device_max": 40.84375
+  }
+}
