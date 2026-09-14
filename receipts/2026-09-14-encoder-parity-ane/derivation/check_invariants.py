@@ -126,15 +126,35 @@ def main() -> int:
             ),
             "instrumentation_correction": (
                 "The snapshot helper's worker count is unreliable in both "
-                "directions and neither reading was used. `pgrep -c -x "
-                "mlx-omarchy-ane-worker` can never match, because the process "
-                "name is 22 characters and -x matches the name exactly, so it "
-                "reports 0 whether or not workers are alive; that is the form "
-                "the 2026-09-14 islands receipt used. `pgrep -cf "
-                "mlx-omarchy-ane-worker` matches its own shell and reported 3 "
-                "workers here when there were none. The value above is the ps "
-                "and /proc verification, not either pgrep."
+                "directions and neither reading was used. The mechanism, "
+                "verified empirically against a live long-named stand-in "
+                "process: Linux TASK_COMM_LEN is 16 bytes, so /proc/<pid>/comm "
+                "holds only the first 15 characters of a 22-character "
+                "'mlx-omarchy-ane-worker', namely 'mlx-omarchy-ane'. `pgrep -x` "
+                "compares against comm, so `pgrep -c -x mlx-omarchy-ane-worker` "
+                "returns 0 with a worker genuinely alive -- a false negative, "
+                "and the form the 2026-09-14 islands receipt used. In the other "
+                "direction `pgrep -cf mlx-omarchy-ane-worker` matches the "
+                "naming shell itself and reported 3 workers here when there "
+                "were none. `pgrep -c -x mlx-omarchy-ane` is correct in both "
+                "directions and `pgrep -a mlx-omarchy-ane` is the useful "
+                "one-liner. Credit to WorkerLivenessFix, who measured the same "
+                "two failure modes on a live stand-in worker and is landing a "
+                "shared helper plus doc for this; those paths are not on "
+                "origin/main at the time of writing, so they are described "
+                "rather than cited. An earlier version of this receipt "
+                "attributed the false negative to the name being 22 characters "
+                "rather than to comm truncating at 15, which named the wrong "
+                "cause while reaching the right conclusion."
             ),
+            "verified_commands": {
+                "with_a_worker_alive": {
+                    "pgrep -c -x mlx-omarchy-ane-worker": 0,
+                    "pgrep -c -x mlx-omarchy-ane": 1,
+                    "proc_comm": "mlx-omarchy-ane (15 of 22 characters)",
+                },
+                "with_no_worker_alive": {"pgrep -c -x mlx-omarchy-ane": 0},
+            },
         },
     }
     args.out.write_text(json.dumps(result, indent=2))

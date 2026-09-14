@@ -639,7 +639,17 @@
       "lingering_worker_processes": {
         "value": 0,
         "verified_by": "ps -eo pid,etimes,stat,comm,args filtered for ane-worker returned NONE, and /proc/*/fd showed 0 descriptors on /dev/accel/accel0 after the run.",
-        "instrumentation_correction": "The snapshot helper's worker count is unreliable in both directions and neither reading was used. `pgrep -c -x mlx-omarchy-ane-worker` can never match, because the process name is 22 characters and -x matches the name exactly, so it reports 0 whether or not workers are alive; that is the form the 2026-09-14 islands receipt used. `pgrep -cf mlx-omarchy-ane-worker` matches its own shell and reported 3 workers here when there were none. The value above is the ps and /proc verification, not either pgrep."
+        "instrumentation_correction": "The snapshot helper's worker count is unreliable in both directions and neither reading was used. The mechanism, verified empirically against a live long-named stand-in process: Linux TASK_COMM_LEN is 16 bytes, so /proc/<pid>/comm holds only the first 15 characters of a 22-character 'mlx-omarchy-ane-worker', namely 'mlx-omarchy-ane'. `pgrep -x` compares against comm, so `pgrep -c -x mlx-omarchy-ane-worker` returns 0 with a worker genuinely alive -- a false negative, and the form the 2026-09-14 islands receipt used. In the other direction `pgrep -cf mlx-omarchy-ane-worker` matches the naming shell itself and reported 3 workers here when there were none. `pgrep -c -x mlx-omarchy-ane` is correct in both directions and `pgrep -a mlx-omarchy-ane` is the useful one-liner. Credit to WorkerLivenessFix, who measured the same two failure modes on a live stand-in worker and is landing a shared helper plus doc for this; those paths are not on origin/main at the time of writing, so they are described rather than cited. An earlier version of this receipt attributed the false negative to the name being 22 characters rather than to comm truncating at 15, which named the wrong cause while reaching the right conclusion.",
+        "verified_commands": {
+          "with_a_worker_alive": {
+            "pgrep -c -x mlx-omarchy-ane-worker": 0,
+            "pgrep -c -x mlx-omarchy-ane": 1,
+            "proc_comm": "mlx-omarchy-ane (15 of 22 characters)"
+          },
+          "with_no_worker_alive": {
+            "pgrep -c -x mlx-omarchy-ane": 0
+          }
+        }
       }
     }
   },
@@ -744,7 +754,7 @@
         "dmesg_tm_execution_failed": 0,
         "dmesg_errno_110": 0,
         "worker_processes_after": 0,
-        "worker_count_caveat": "Both snapshots' worker lines are instrumentation artifacts and are not used: pre used `pgrep -c -x` which can never match a 22-character process name, post used `pgrep -cf` which matched its own shell and reported 3. The real value 0 comes from ps and from 0 descriptors on /dev/accel/accel0."
+        "worker_count_caveat": "Both snapshots' worker lines are instrumentation artifacts and neither is used. Linux TASK_COMM_LEN is 16 bytes, so comm holds only 'mlx-omarchy-ane' (15 of the 22 characters); pgrep -x compares against comm, so the pre snapshot's `pgrep -c -x mlx-omarchy-ane-worker` is a false negative that reports 0 even with a worker alive. The post snapshot's `pgrep -cf` matched its own shell and reported 3 when there were none. `pgrep -c -x mlx-omarchy-ane` is correct in both directions. The real value 0 comes from ps and from 0 descriptors on /dev/accel/accel0."
       }
     },
     "golden_capture": {
@@ -796,7 +806,7 @@
     "derivation": {
       "build_receipt.py": "29a90e89e3e6199374b06735071a721f6b1f6a6b76518998a3f141489ac0733c",
       "check_conv_semantics.py": "684f45d933625e61e5f8693107f66fa93b55975b4d9efa899135914a8aadecb0",
-      "check_invariants.py": "b33dc5ce1d8108b92a8814ca8062c9226f378fe338673d3bb2c0ecf13b5ba848",
+      "check_invariants.py": "5cedea53f0aed8407866ea9cc2248597491c1186323606030f2b1bdb1bb9c46e",
       "compare_golden.py": "7d7271d2ced2f29889844a2f7435ff05888816e09e483b500bb5c8728da5ea61",
       "vulkan_encoder.py": "0665dccd0d7f923e73a12c90616a12174485a1696d204bd51622ac4168cc837b"
     }
