@@ -1,0 +1,234 @@
+{
+  "schema": "mlx-omarchy.jw16-tiny-conv.v1",
+  "date": "2026-09-14",
+  "result": "PASS",
+  "exact_fp16": "yes",
+  "exact_vs_numpy": true,
+  "host": "jw16mbp1-linux",
+  "ssh_alias": "jw16mbp1-linux",
+  "kernel": "7.1.6-1-1-ARCH",
+  "resolved_model": {
+    "configured": "openai-codex/gpt-5.6-sol",
+    "actual": "openai-codex/gpt-5.6-sol",
+    "fallback": false
+  },
+  "operation": "conv",
+  "shape": [1, 256, 32, 32],
+  "weight_shape": [256, 256, 1, 1],
+  "kernel": 1,
+  "stride": [1, 1],
+  "pad": [0, 0, 0, 0],
+  "pad_type": "valid",
+  "groups": 1,
+  "dilations": [1, 1],
+  "bias": true,
+  "dtype": "float16",
+  "source": {
+    "ane_ko_path": "/home/joshuawarren/ane-build-abi1/ane.ko",
+    "ane_ko_sha256": "1b801564a1a6c5801dc26cfd1e4a8d820761881f4a1e98543429bc43ccc9744f",
+    "worker_path": "/var/tmp/jw16-tiny-conv/mlx-omarchy-ane-worker",
+    "worker_sha256": "762dd1de868b52e4d6ffa30e18d842d9341db463b06aef2355f18fb1eb248929",
+    "libane_path": "/var/tmp/jw16-ane-first-exec/libane.so",
+    "libane_source_commit": "f261a6cb537aca62f267ad3d01beda0d6877544c",
+    "libane_sha256": "1ab9d95debcc8b5fee3b6653dfce0b50412bc7efef43c2d2167dc83ce270ca49",
+    "compiler_commit": "37fb29ed1688a22e2b2ff2dfbf032c10ba879c16",
+    "compiler_binary_sha256": "77521fb36681f8ace6e4aff97ef7ca856b57137e3808680f85dfd4742248de61",
+    "compiler_source_repo": "mil-hwxc",
+    "graph_hash": "26e37c9416fc0df646fd58b8b3631eba66d144c1363d01958daecd8c06635740",
+    "bundle": "/var/tmp/jw16-tiny-conv/bundle",
+    "bundle_name": "schema4-conv-k1-256-32",
+    "bundle_manifest_version": 4,
+    "bundle_manifest_sha256": "d150378eab70d337c27066c42c93d4f801cfb784682560248fdf20c6335016f5",
+    "program0_anec_sha256": "777925f5ea0f8de6079a9d8be6e98a4fc04bbf3d66b6937f8fe7e2a043fffea5",
+    "programs": 1,
+    "task_descriptors": 1,
+    "constant_bytes": 132096,
+    "encoder": "apple-parity-conv",
+    "t8103_receipt": "receipts/2026-09-14-jwm1-tiny-conv.json"
+  },
+  "fixture": {
+    "generation": "identity 1x1 weights; b[c]=fp16(c*0.25-8); x[n,c,h,w]=fp16((c+h+w)*0.25-8)",
+    "x_sha256": "90ad582ec4a2774e416ef4cf6f8114007260b54268691db4ed6fe330cbe33ef5",
+    "numpy_oracle": "y = fp16(fp32(x) + fp32(b)[c]) — identity conv plus bias",
+    "y_expect_sha256": "a09ded6a09f63314a783a9aaa8e85d5d8fdd6aed85a42aa7c7f3727ae2897636",
+    "element_count": 262144
+  },
+  "idle_pre": {
+    "runtime_status": "suspended",
+    "refcnt": "0",
+    "set0": {
+      "phys": "0x28e08c000",
+      "raw": "0x00000300",
+      "ACTUAL": "0x0",
+      "TARGET": "0x0"
+    }
+  },
+  "set_during_worker_open": [
+    {
+      "t_ms": 0.228,
+      "set0": {
+        "raw": "0x00000300",
+        "ACTUAL": "0x0",
+        "TARGET": "0x0",
+        "phys": "0x28e08c000"
+      }
+    },
+    {
+      "t_ms": 5.866,
+      "set0": {
+        "raw": "0x0000030f",
+        "ACTUAL": "0x0",
+        "TARGET": "0xf",
+        "phys": "0x28e08c000"
+      }
+    },
+    {
+      "t_ms": 5.894,
+      "set0": {
+        "raw": "0x000003ff",
+        "ACTUAL": "0xf",
+        "TARGET": "0xf",
+        "phys": "0x28e08c000"
+      }
+    }
+  ],
+  "set0_after": {
+    "phys": "0x28e08c000",
+    "raw": "0x000003ff",
+    "ACTUAL": "0xf",
+    "TARGET": "0xf"
+  },
+  "set_post": {
+    "set0": {
+      "phys": "0x28e08c000",
+      "raw": "0x000003ff",
+      "ACTUAL": "0xf",
+      "TARGET": "0xf"
+    },
+    "base": {
+      "raw": "0x000003ff",
+      "ACTUAL": "0xf",
+      "TARGET": "0xf"
+    },
+    "set1": {
+      "raw": "0x000003ff",
+      "ACTUAL": "0xf",
+      "TARGET": "0xf"
+    },
+    "set2": {
+      "raw": "0x000003ff",
+      "ACTUAL": "0xf",
+      "TARGET": "0xf"
+    },
+    "set3": {
+      "raw": "0x000003ff",
+      "ACTUAL": "0xf",
+      "TARGET": "0xf"
+    },
+    "set4": {
+      "raw": "0x000003ff",
+      "ACTUAL": "0xf",
+      "TARGET": "0xf"
+    },
+    "set5": {
+      "raw": "0x00000000",
+      "ACTUAL": "0x0",
+      "TARGET": "0x0"
+    }
+  },
+  "device": {
+    "path": "/dev/accel/accel0",
+    "stat": "crw-rw-rw- root:render 261,0",
+    "bound": "285c04000.ane",
+    "dt_compatible": "apple,t6000-ane",
+    "module": "Live",
+    "nproc": 10,
+    "cpu_online": "0-9",
+    "boot_id": "f6ad865b-b85e-499e-8308-28b57b24f0c8",
+    "drm_version_ioctl": {
+      "version": "1.0.0",
+      "name": "ane",
+      "desc": "Apple Neural Engine driver"
+    },
+    "still_live_after": true
+  },
+  "submit": {
+    "attempted": true,
+    "command": "/var/tmp/jw16-tiny-conv/mlx-omarchy-ane-worker --bundle /var/tmp/jw16-tiny-conv/bundle --libane /var/tmp/jw16-ane-first-exec/libane.so --deadline-ms 5000 --iterations 1 --input x=/var/tmp/jw16-tiny-conv/x.bin --expect y=/var/tmp/jw16-tiny-conv/y_expect.bin --save y=/var/tmp/jw16-tiny-conv/y.out.bin",
+    "deadline_ms": 5000,
+    "iterations_requested": 1,
+    "iterations_completed": 1,
+    "worker_exit": 0,
+    "worker_status": 0,
+    "released_programs": 1,
+    "elapsed_ms": 207,
+    "detail": "worker completed 1 iteration(s) and released its programs",
+    "stdout": [
+      "bundle name=schema4-conv-k1-256-32 programs=1 driver_abi=1 graph=26e37c9416fc0df646fd58b8b3631eba66d144c1363d01958daecd8c06635740",
+      "worker status=0 iterations=1 released=1 elapsed_ms=207",
+      "worker detail=worker completed 1 iteration(s) and released its programs",
+      "saved output y (524288 bytes)",
+      "verified output y exact"
+    ],
+    "stderr": [],
+    "program_submitted_to_ane": true,
+    "hang": false,
+    "errno_110": false,
+    "box_reset": false,
+    "td_size": "0x274",
+    "started_at": "2026-09-14T06:04:25-05:00",
+    "finished_at": "2026-09-14T06:04:25-05:00"
+  },
+  "genpd_resume": {
+    "wired": true,
+    "worker_open_resumed_set": true,
+    "dmesg": [
+      "[27875.225630] JW16_TINY_CONV_PRE 2026-09-14T06:04:25-0500 boot=f6ad865b-b85e-499e-8308-28b57b24f0c8",
+      "[27875.231322] ane 285c04000.ane: ane_drm_open called",
+      "[27875.231651] ane 285c04000.ane: resume: entry",
+      "[27875.281659] ane 285c04000.ane: power: genpd-owned on this SoC",
+      "[27875.281666] ane 285c04000.ane: resume: force_power done",
+      "[27875.331669] ane 285c04000.ane: resume: pre tm_enable",
+      "[27875.381681] ane 285c04000.ane: resume: tm_enable done",
+      "[27875.431689] ane 285c04000.ane: pm_runtime_resume_and_get returned 0",
+      "[27875.432839] ane 285c04000.ane: submit: ioctl entry",
+      "[27875.432843] ane 285c04000.ane: submit: enqueue qid=4 td_size=0x274 nid=0x40 iova=0x128000",
+      "[27875.432861] ane 285c04000.ane: submit: calling execute",
+      "[27875.432867] ane 285c04000.ane: submit: doorbell survived",
+      "[27875.432963] ane 285c04000.ane: submit: execute returned 0",
+      "[27875.440073] JW16_TINY_CONV_POST 2026-09-14T06:04:25-0500 rc=0"
+    ]
+  },
+  "numeric": {
+    "element_count": 262144,
+    "worker_verified_exact": true,
+    "y_out": "/var/tmp/jw16-tiny-conv/y.out.bin",
+    "y_out_sha256": "a09ded6a09f63314a783a9aaa8e85d5d8fdd6aed85a42aa7c7f3727ae2897636",
+    "y_out_bytes": 524288,
+    "exact_vs_numpy_lanes": "262144/262144 bit-identical",
+    "lanes_differing": 0,
+    "max_abs_diff": 0.0,
+    "note": "Device y sha256 equals numpy identity-plus-bias expect a09ded6a from receipts/2026-09-14-jwm1-tiny-conv.json."
+  },
+  "post": {
+    "boot_id": "f6ad865b-b85e-499e-8308-28b57b24f0c8",
+    "boot_id_unchanged": true,
+    "device": "crw-rw-rw- root:render 261,0 /dev/accel/accel0",
+    "bound": "285c04000.ane",
+    "module": "Live",
+    "runtime_status": "suspended",
+    "refcnt": "0",
+    "device_live": true
+  },
+  "prohibited_actions_observed": {
+    "ane_unloaded": false,
+    "rebooted": false,
+    "executed_1x896": false,
+    "took_gpu_lock": false,
+    "retried_after_110": false,
+    "wrote_0xf_userspace": false,
+    "wide_375": false,
+    "td_208": false
+  },
+  "prior_receipt": "receipts/2026-09-14-jw16-tiny-select.json"
+}
