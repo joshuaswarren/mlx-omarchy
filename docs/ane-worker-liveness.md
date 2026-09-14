@@ -10,18 +10,32 @@ two ways, both measured on m1-test-host-class Linux with a live stand-in worker
 | `pgrep -c -x mlx-omarchy-ane-worker` | **0** (never matches) | 0 |
 | `pgrep -cf mlx-omarchy-ane-worker` | 1 | **1** (its own shell) |
 | `pgrep -a mlx-omarchy-ane` | 1 | 0 (correct) |
+| `pgrep -c -x mlx-omarchy-ane` | 1 | 0 (correct) |
 | `tools/ane_worker_liveness.py` | 1 | 0 (correct) |
 
-`-x` compares the whole `/proc/<pid>/comm`, which holds only the first 15 bytes
-of the 22-character name (`mlx-omarchy-ane`), so it can never match. `-f`
-matches any command line containing the string, including the caller's own
-shell and the driver that launched the worker.
+`-x` compares the whole `/proc/<pid>/comm`, and TASK_COMM_LEN is 16 bytes, so
+comm holds 15 characters plus a NUL: `mlx-omarchy-ane`. The 22-character full
+name can therefore never equal it. `-x` does not reject the long pattern; the
+string it is compared against is short. Spelled against the truncation
+(`-x mlx-omarchy-ane`) it is correct in both directions. `-f` matches any
+command line containing the string, including the caller's own shell and the
+driver that launched the worker.
+
+Every comm-matching form shares one residual weakness: any unrelated process
+whose own comm truncates to those 15 bytes reads as a worker. That is the safe
+direction for a "no workers" claim, since it over-reports rather than missing a
+live worker, but it does not separate a real worker from a stand-in. Only the
+`/proc/<pid>/fd` half does that: a real worker holds `/dev/accel/accel0` open
+and a stand-in does not, which is why `device_holders` is reported next to
+`worker_count` instead of in place of it.
 
 The two failures are not equally dangerous. A `-c -x` zero reads as "nothing
 found" and invites a second look, so it corrupts a receipt by omission. A `-cf`
 one from the naming shell looks exactly like a healthy worker and passes
-review, so it corrupts a receipt by assertion — including in the other
-direction, where a clearance gate refuses to start because it found itself.
+review, so it corrupts a receipt by assertion. Where the self-match sits
+decides its direction: in a pre-submit clearance gate it fails closed, which
+refuses to start on a clean box and is survivable; as a post-run health probe
+the same expression fails open and reports a worker that does not exist.
 Any `-f` check needs to exclude its own pid and its parents' before its answer
 means anything; matching `basename(argv[0])` sidesteps that instead of
 patching it.
