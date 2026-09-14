@@ -1,0 +1,235 @@
+{
+  "schema": "mlx-omarchy.jw16-linear-32-256-128.v1",
+  "date": "2026-09-14",
+  "result": "PASS",
+  "exact_fp16": "yes",
+  "exact_vs_numpy": true,
+  "host": "jw16mbp1-linux",
+  "ssh_alias": "jw16mbp1-linux",
+  "kernel": "7.1.6-1-1-ARCH",
+  "resolved_model": {
+    "configured": "openai-codex/gpt-5.6-sol",
+    "actual": "openai-codex/gpt-5.6-sol",
+    "fallback": false
+  },
+  "operation": "linear",
+  "shape": [1, 32, 256],
+  "weight_shape": [128, 256],
+  "geometry": [32, 256, 128],
+  "transpose_x": false,
+  "transpose_y": true,
+  "runtime_weight": false,
+  "bias": false,
+  "dtype": "float16",
+  "source": {
+    "worker_path": "/var/tmp/jw16-linear-32-256-128/mlx-omarchy-ane-worker",
+    "worker_sha256": "762dd1de868b52e4d6ffa30e18d842d9341db463b06aef2355f18fb1eb248929",
+    "libane_path": "/var/tmp/jw16-ane-first-exec/libane.so",
+    "libane_source_commit": "f261a6cb537aca62f267ad3d01beda0d6877544c",
+    "libane_sha256": "1ab9d95debcc8b5fee3b6653dfce0b50412bc7efef43c2d2167dc83ce270ca49",
+    "compiler_commit": "37fb29ed1688a22e2b2ff2dfbf032c10ba879c16",
+    "compiler_binary_sha256": "77521fb36681f8ace6e4aff97ef7ca856b57137e3808680f85dfd4742248de61",
+    "compiler_source_repo": "mil-hwxc",
+    "graph_hash": "a6410dc53d5eb184908e23610620b970813bd6dbd42192a910f48aeeef994d30",
+    "bundle": "/var/tmp/jw16-linear-32-256-128/bundle",
+    "bundle_name": "schema4-linear-32-256-128",
+    "bundle_manifest_version": 4,
+    "bundle_manifest_sha256": "e34a9ca28857a6c3bde423d08c40314be5c4d379147de5930a01067c8760e036",
+    "program0_anec_sha256": "e30df3159ef237b7f43a14a4f6b0e998753ca56349293cffce10397a7233aaaf",
+    "programs": 1,
+    "task_descriptors": 2,
+    "constant_bytes": 65536,
+    "scratch_bytes": 16384,
+    "encoder": "apple-parity-matvec",
+    "matmul_envelope": true,
+    "matmul_envelope_key": [32, 256, 128, false, true, false],
+    "native_matvec_preferred": false,
+    "t8103_receipt": "receipts/2026-09-14-jwm1-linear-32-256-128.json"
+  },
+  "fixture": {
+    "generation": "identity-padded W[n,k]=1 iff n==k else 0; x[0,m,k]=fp16((k+m)*0.25-8) for m in 0..31, k in 0..255",
+    "x_sha256": "8da74c4c3df160cde191856d6ed3dd40f4b373b3189c06a9945f00e10e2d1781",
+    "numpy_oracle": "y = fp16(fp32(x) @ fp32(W).T) with x shape [1,32,256] and W shape [128,256]; identity-padded so y[0,m,n]=x[0,m,n] for n in 0..127",
+    "y_expect_sha256": "fba254bc7b3e05c4eb579f35d9fdb7d9f92a48820ee38a69d92d5a8a093bf098",
+    "element_count": 4096
+  },
+  "idle_pre": {
+    "runtime_status": "suspended",
+    "refcnt": "0",
+    "idle_wait_s": 8.5e-05,
+    "set0": {
+      "phys": "0x28e08c000",
+      "raw": "0x00000300",
+      "ACTUAL": "0x0",
+      "TARGET": "0x0"
+    }
+  },
+  "set_during_worker_open": [
+    {
+      "t_ms": 0.327,
+      "set0": {
+        "raw": "0x00000300",
+        "ACTUAL": "0x0",
+        "TARGET": "0x0",
+        "phys": "0x28e08c000"
+      }
+    },
+    {
+      "t_ms": 3.624,
+      "set0": {
+        "raw": "0x0000030f",
+        "ACTUAL": "0x0",
+        "TARGET": "0xf",
+        "phys": "0x28e08c000"
+      }
+    },
+    {
+      "t_ms": 3.643,
+      "set0": {
+        "raw": "0x000003ff",
+        "ACTUAL": "0xf",
+        "TARGET": "0xf",
+        "phys": "0x28e08c000"
+      }
+    }
+  ],
+  "set0_after": {
+    "phys": "0x28e08c000",
+    "raw": "0x000003ff",
+    "ACTUAL": "0xf",
+    "TARGET": "0xf"
+  },
+  "set_post": {
+    "set0": {
+      "phys": "0x28e08c000",
+      "raw": "0x000003ff",
+      "ACTUAL": "0xf",
+      "TARGET": "0xf"
+    },
+    "base": {
+      "raw": "0x000003ff",
+      "ACTUAL": "0xf",
+      "TARGET": "0xf"
+    },
+    "set1": {
+      "raw": "0x000003ff",
+      "ACTUAL": "0xf",
+      "TARGET": "0xf"
+    },
+    "set2": {
+      "raw": "0x000003ff",
+      "ACTUAL": "0xf",
+      "TARGET": "0xf"
+    },
+    "set3": {
+      "raw": "0x000003ff",
+      "ACTUAL": "0xf",
+      "TARGET": "0xf"
+    },
+    "set4": {
+      "raw": "0x000003ff",
+      "ACTUAL": "0xf",
+      "TARGET": "0xf"
+    },
+    "set5": {
+      "raw": "0x00000000",
+      "ACTUAL": "0x0",
+      "TARGET": "0x0"
+    }
+  },
+  "device": {
+    "path": "/dev/accel/accel0",
+    "stat": "crw-rw-rw- root:render 261,0",
+    "bound": "285c04000.ane",
+    "dt_compatible": "apple,t6000-ane",
+    "module": "Live",
+    "nproc": 10,
+    "cpu_online": "0-9",
+    "boot_id": "f6ad865b-b85e-499e-8308-28b57b24f0c8",
+    "drm_version_ioctl": {
+      "version": "1.0.0",
+      "name": "ane",
+      "desc": "Apple Neural Engine driver"
+    },
+    "still_live_after": true
+  },
+  "submit": {
+    "attempted": true,
+    "command": "/var/tmp/jw16-linear-32-256-128/mlx-omarchy-ane-worker --bundle /var/tmp/jw16-linear-32-256-128/bundle --libane /var/tmp/jw16-ane-first-exec/libane.so --deadline-ms 5000 --iterations 1 --input x=/var/tmp/jw16-linear-32-256-128/x.bin --expect y=/var/tmp/jw16-linear-32-256-128/y_expect.bin --save y=/var/tmp/jw16-linear-32-256-128/y.out.bin",
+    "deadline_ms": 5000,
+    "iterations_requested": 1,
+    "iterations_completed": 1,
+    "worker_exit": 0,
+    "worker_status": 0,
+    "released_programs": 1,
+    "elapsed_ms": 202,
+    "detail": "worker completed 1 iteration(s) and released its programs",
+    "stdout": [
+      "bundle name=schema4-linear-32-256-128 programs=1 driver_abi=1 graph=a6410dc53d5eb184908e23610620b970813bd6dbd42192a910f48aeeef994d30",
+      "worker status=0 iterations=1 released=1 elapsed_ms=202",
+      "worker detail=worker completed 1 iteration(s) and released its programs",
+      "saved output y (8192 bytes)",
+      "verified output y exact"
+    ],
+    "stderr": [],
+    "program_submitted_to_ane": true,
+    "hang": false,
+    "errno_110": false,
+    "box_reset": false,
+    "td_size": "0x1f8",
+    "started_at": "2026-09-14T06:28:33-05:00",
+    "finished_at": "2026-09-14T06:28:34-05:00"
+  },
+  "genpd_resume": {
+    "wired": true,
+    "worker_open_resumed_set": true,
+    "dmesg": [
+      "[29323.244835] JW16_LINEAR_32_PRE 2026-09-14T06:28:33-0500 boot=f6ad865b-b85e-499e-8308-28b57b24f0c8",
+      "[29323.248297] ane 285c04000.ane: ane_drm_open called",
+      "[29323.248616] ane 285c04000.ane: resume: entry",
+      "[29323.298628] ane 285c04000.ane: power: genpd-owned on this SoC",
+      "[29323.298636] ane 285c04000.ane: resume: force_power done",
+      "[29323.348640] ane 285c04000.ane: resume: pre tm_enable",
+      "[29323.398651] ane 285c04000.ane: resume: tm_enable done",
+      "[29323.448660] ane 285c04000.ane: pm_runtime_resume_and_get returned 0",
+      "[29323.448817] ane 285c04000.ane: submit: ioctl entry",
+      "[29323.448819] ane 285c04000.ane: submit: enqueue qid=4 td_size=0x1f8 nid=0x40 iova=0x24000",
+      "[29323.448833] ane 285c04000.ane: submit: calling execute",
+      "[29323.448837] ane 285c04000.ane: submit: doorbell survived",
+      "[29323.448879] ane 285c04000.ane: submit: execute returned 0",
+      "[29323.450505] JW16_LINEAR_32_POST 2026-09-14T06:28:34-0500 rc=0"
+    ]
+  },
+  "numeric": {
+    "element_count": 4096,
+    "worker_verified_exact": true,
+    "y_out": "/var/tmp/jw16-linear-32-256-128/y.out.bin",
+    "y_out_sha256": "fba254bc7b3e05c4eb579f35d9fdb7d9f92a48820ee38a69d92d5a8a093bf098",
+    "y_out_bytes": 8192,
+    "exact_vs_numpy_lanes": "4096/4096 bit-identical",
+    "lanes_differing": 0,
+    "max_abs_diff": 0.0,
+    "note": "Device y sha256 equals numpy identity-padded expect fba254bc from receipts/2026-09-14-jwm1-linear-32-256-128.json."
+  },
+  "post": {
+    "boot_id": "f6ad865b-b85e-499e-8308-28b57b24f0c8",
+    "boot_id_unchanged": true,
+    "device": "crw-rw-rw- root:render 261,0 /dev/accel/accel0",
+    "bound": "285c04000.ane",
+    "module": "Live",
+    "runtime_status": "suspended",
+    "refcnt": "0",
+    "device_live": true
+  },
+  "prohibited_actions_observed": {
+    "ane_unloaded": false,
+    "rebooted": false,
+    "executed_1x896": false,
+    "took_gpu_lock": false,
+    "retried_after_110": false,
+    "wrote_0xf_userspace": false,
+    "wide_375": false,
+    "td_208": false
+  },
+  "prior_receipt": "receipts/2026-09-14-jw16-tiny-linear.json"
+}
