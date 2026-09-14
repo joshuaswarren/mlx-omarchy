@@ -1355,10 +1355,12 @@ TEST_CASE("eager q4 decode gemv group folds RoPE into the q/k store") {
           }
           float x1 = sp[head * head_dim + i];
           float x2 = sp[head * head_dim + i + half];
-          float xr = sp[head * head_dim + e % head_dim];
+          float br = bp[head * head_dim + (e % head_dim) + half];
+          float cr = cp[head * head_dim + (e % head_dim) + half];
           std::printf(
               "MISMATCH draw=%d offset=%d row=%zu head=%zu dim=%zu "
-              "i=%u x1=%.9g x2=%.9g xin=%.9g base=%.9g cand=%.9g\n",
+              "i=%u x1=%.9g x2=%.9g base=%.9g cand=%.9g "
+              "basep=%.9g candp=%.9g\n",
               draw,
               offset,
               row,
@@ -1367,9 +1369,10 @@ TEST_CASE("eager q4 decode gemv group folds RoPE into the q/k store") {
               i,
               (double)x1,
               (double)x2,
-              (double)xr,
               (double)bp[e],
-              (double)cp[e]);
+              (double)cp[e],
+              (double)br,
+              (double)cr);
         }
       }
     }
