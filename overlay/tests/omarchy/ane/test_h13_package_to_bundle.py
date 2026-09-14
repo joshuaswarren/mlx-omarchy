@@ -100,6 +100,27 @@ class AdapterTest(unittest.TestCase):
             with self.assertRaisesRegex(ADAPTER.AdapterError, "artifactFormat"):
                 ADAPTER.adapt(package, Path(directory) / "bundle", IDENTITY)
 
+    def test_graph_tensor_dtype_is_accepted_and_checked(self):
+        # The compiler spells `dtype` on a graph tensor for a bool surface,
+        # so an island with a bool select cond adapts without hand-editing
+        # the compiler manifest. A dtype that contradicts the program
+        # binding is still a hard refusal.
+        for declared, expect in (("float16", None), ("bool", "dtype")):
+            with self.subTest(dtype=declared), tempfile.TemporaryDirectory() as directory:
+                package = Path(directory) / "package"
+                output = Path(directory) / "bundle"
+                shutil.copytree(FIXTURE, package)
+                source = json.loads((package / "manifest.json").read_text())
+                source["tensors"]["a"]["dtype"] = declared
+                (package / "manifest.json").write_text(json.dumps(source))
+                if expect is None:
+                    manifest = ADAPTER.adapt(package, output, IDENTITY)
+                    self.assertEqual(manifest["inputs"][0]["dtype"], "float16")
+                else:
+                    with self.assertRaisesRegex(ADAPTER.AdapterError, expect):
+                        ADAPTER.adapt(package, output, IDENTITY)
+                    self.assertFalse(output.exists())
+
     def test_logical_result_order_duplicates_and_overlapping_views_are_preserved(self):
         with tempfile.TemporaryDirectory() as directory:
             package = Path(directory) / "package"

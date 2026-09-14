@@ -1,0 +1,9 @@
+program(1.3)
+[buildInfo = dict<string, string>({})]
+{
+  func main<ios18>(tensor<fp16, [1, 8, 375, 128]> q_v, tensor<fp16, [1, 8, 128, 749]> pos_kT) {
+    bool tx = const()[name = string("tx"), val = bool(false)];
+    bool ty = const()[name = string("ty"), val = bool(false)];
+    tensor<fp16, [1, 8, 375, 749]> attention_scores_1 = matmul(transpose_x = tx, transpose_y = ty, x = q_v, y = pos_kT)[name = string("attention_scores_1")];
+  } -> (attention_scores_1);
+}
