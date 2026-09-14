@@ -1,0 +1,15 @@
+/home/joshuawarren/src/mil-hwx-compiler/build/mil-hwxc \
+  --mil /home/joshuawarren/src/ane-linux-experiments/parakeet-mel-exact/receipts/2026-09-13-heads-layout-rewrite/model-fp16-noheads.mil \
+  --model-root /tmp/heads-layout-rewrite-20260913/model-root \
+  --output /tmp/heads-layout-rewrite-20260913/anec-out \
+  --target H13 --format anec
+255:5: error [h13.noncontiguous-slice]: H13 slice_by_index over non-unit head dimensions reads 8 chunks of 280875 elements spaced 281250 apart, and one binding slice cannot represent interleaved chunks: a chunked consumer decomposition has no MIL-expressible direct reference to byte-prove against, because no view op exposes mid-range head slices
+exit=65
+stdout: empty
+program emitted: no
+
+Line 255:
+    tensor<fp16, [1, 8, 749, 375]> var_367_cast_fp16 = slice_by_index(begin = var_367_begin_0, end = var_367_end_0, end_mask = var_367_end_mask_0, x = attention_scores_5_cast_fp16)[name = tensor<string, []>("op_367_cast_fp16")];
+
+The attempt-4 reject (fp16 [1,8,375,128] perm [0,2,1,3] x=var_332_cast_fp16, two add consumers) did not fire.
+query_states_1_cast_fp16 is concat(axis=1) of eight expand_dims of per-head linears.

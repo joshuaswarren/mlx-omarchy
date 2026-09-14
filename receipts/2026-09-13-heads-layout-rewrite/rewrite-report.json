@@ -1,0 +1,23 @@
+{
+  "schema": "mlx-omarchy.heads-layout-rewrite.v1",
+  "rewritten_count": 72,
+  "refused_count": 25,
+  "rewritten_query_states": 24,
+  "rewritten_hidden_states": 48,
+  "source": "receipts/2026-09-13-mask-layout-rewrite/model-fp16-nolayout.mil",
+  "source_sha256": "c67e29322e9d71f5c240c72145bc87fb449c0a58aaad61a5ea3d2f2b610e1d09",
+  "output": "model-fp16-noheads.mil",
+  "output_bytes": 1192882,
+  "output_sha256": "76d51e45b3b3004d1454d0cb0d7ef8341c91ff74f84bbdf5e30f69d0691e2dc5",
+  "numpy_proof": "overlay/tests/omarchy/coreml/test_heads_layout.py::NumpyProofTest 3/3 stack bit-exact at [1,375,8,128]; naive reshape and weight-row permute raise HeadsLayoutError",
+  "compiler": {
+    "binary": "/home/joshuawarren/src/mil-hwx-compiler/build/mil-hwxc",
+    "sha256": "a3b03ecab14d70fe5e262c2f4066b9c5d3b102a6a92a09f0adb7d6b693a397dd",
+    "commit": "1f672539699ce32fa4da4a876404559aec88c36e",
+    "branch": "feature/h13-bool-transpose",
+    "exit": 65,
+    "stderr": "255:5: error [h13.noncontiguous-slice]: H13 slice_by_index over non-unit head dimensions reads 8 chunks of 280875 elements spaced 281250 apart, and one binding slice cannot represent interleaved chunks: a chunked consumer decomposition has no MIL-expressible direct reference to byte-prove against, because no view op exposes mid-range head slices",
+    "reject_op": "var_367_cast_fp16 = slice_by_index(...)  # fp16 [1,8,749,375]",
+    "old_reject": "204:5 query_states_1_cast_fp16 = transpose(perm=[0,2,1,3], x=var_332_cast_fp16) fp16 [1,8,375,128] — gone"
+  }
+}
