@@ -1,0 +1,22 @@
+# mil-hwxc after mask-layout rewrite (2026-09-13)
+
+binary: /home/joshuawarren/src/mil-hwx-compiler/build/mil-hwxc
+sha256: a3b03ecab14d70fe5e262c2f4066b9c5d3b102a6a92a09f0adb7d6b693a397dd
+compiler HEAD: 1f672539699ce32fa4da4a876404559aec88c36e
+compiler branch: feature/h13-bool-transpose
+
+$ /home/joshuawarren/src/mil-hwx-compiler/build/mil-hwxc \
+    --mil /tmp/mask-layout-rewrite-20260913/model-fp16-nolayout.mil \
+    --model-root /tmp/encoder-compile-attempt-3-20260913/emitted/model-root \
+    --output /tmp/mask-layout-rewrite-20260913/anec-out \
+    --target H13 --format anec
+204:5: error [h13.nonfoldable-transpose]: H13 transpose with several consumers or a returned value needs a materialized transposed surface, and the decoded corpus holds no data-movement encoder
+exit=65
+stdout: empty
+program emitted: no
+
+Line 204:
+    tensor<fp16, [1, 8, 375, 128]> query_states_1_cast_fp16 = transpose(perm = query_states_1_perm_0, x = var_332_cast_fp16)[name = tensor<string, []>("transpose_143")];
+
+The attempt-3 reject (bool [1,375,375] perm [0,2,1] x=attention_mask_3, mul consumer) did not fire.
+var_289 is tile(reps=[1,1,375], x=expand_dims(output_mask, axes=2)).

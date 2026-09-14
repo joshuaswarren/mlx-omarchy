@@ -1,0 +1,14 @@
+157:    tensor<int32, [1]> var_285_axes_0 = const()[name = tensor<string, []>("op_285_axes_0"), val = tensor<int32, [1]>(1)];
+158:    tensor<bool, [1, 1, 375]> var_285 = expand_dims(axes = var_285_axes_0, x = output_mask)[name = tensor<string, []>("op_285")];
+159:    tensor<int32, [3]> attention_mask_3_reps_0 = const()[name = tensor<string, []>("attention_mask_3_reps_0"), val = tensor<int32, [3]>([1, 375, 1])];
+160:    tensor<bool, [1, 375, 375]> attention_mask_3 = tile(reps = attention_mask_3_reps_0, x = var_285)[name = tensor<string, []>("attention_mask_3")];
+161:    tensor<int32, [3]> var_289_perm_0 = const()[name = tensor<string, []>("op_289_perm_0"), val = tensor<int32, [3]>([0, 2, 1])];
+162:    tensor<int32, [1]> var_289_layout_axes = const()[name = tensor<string, []>("var_289_layout_axes"), val = tensor<int32, [1]>(2)];
+163:    tensor<bool, [1, 375, 1]> var_289_layout_exp = expand_dims(axes = var_289_layout_axes, x = output_mask)[name = tensor<string, []>("var_289_layout_exp")];
+164:    tensor<int32, [3]> var_289_layout_reps = const()[name = tensor<string, []>("var_289_layout_reps"), val = tensor<int32, [3]>([1, 1, 375])];
+165:    tensor<bool, [1, 375, 375]> var_289 = tile(reps = var_289_layout_reps, x = var_289_layout_exp)[name = tensor<string, []>("var_289_layout_tile")];
+166:    tensor<fp16, [1, 375, 375]> attention_mask_5 = mul(x = attention_mask_3, y = var_289)[];
+167:    tensor<int32, [1]> attention_mask_7_axes_0 = const()[name = tensor<string, []>("attention_mask_7_axes_0"), val = tensor<int32, [1]>(1)];
+168:    tensor<bool, [1, 1, 375, 375]> attention_mask_7 = expand_dims(axes = attention_mask_7_axes_0, x = attention_mask_5)[name = tensor<string, []>("attention_mask_7")];
+169:    tensor<int32, [1]> input_21_axes_0 = const()[name = tensor<string, []>("input_21_axes_0"), val = tensor<int32, [1]>(-1)];
+170:    tensor<fp16, [1024]> encoder_layers_0_norm_feed_forward1_weight_to_fp16 = const()[name = tensor<string, []>("encoder_layers_0_norm_feed_forward1_weight_to_fp16"), val = tensor<fp16, [1024]>(BLOBFILE(path = string("@model_path/weights/weight.bin"), offset = uint64(2387776)))];
