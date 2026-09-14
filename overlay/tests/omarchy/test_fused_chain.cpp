@@ -1277,6 +1277,8 @@ TEST_CASE("eager q4 decode gemv group RoPE trig bits per dispatch shape") {
   auto impulse_linear = [&](int n) {
     QuantizedLinear l;
     l.w = zeros(Shape{n, k / 8}, uint32, stream);
+    l.scales = zeros(Shape{n, k / 64}, float16, stream);
+    l.biases = zeros(Shape{n, k / 64}, float16, stream);
     array idx = arange(n, int32, stream);
     array bit = astype(
         less(remainder(idx, array(head_dim, int32), stream),
