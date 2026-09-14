@@ -90,6 +90,10 @@ class AneWorker {
   // configuration.
   AneWorker(DeviceFactory factory, AneWorkerOptions options);
 
+  // A resident child never outlives its worker: an unclosed session is
+  // killed and reaped here rather than left holding the device.
+  ~AneWorker();
+
   // Executes one bounded run. `inputs` maps manifest input tensor names
   // to payload bytes; on Completed, `outputs` receives the manifest
   // output tensors of the final iteration.
@@ -97,6 +101,44 @@ class AneWorker {
       const AneBundle& bundle,
       const std::map<std::string, Buffer>& inputs,
       std::map<std::string, Buffer>* outputs = nullptr);
+
+  // Resident session (section 24, "reuse model resources"). One
+  // supervised child owns the device for the whole session: it loads
+  // every named bundle's programs once and keeps them resident, so N
+  // submits cost one process, one bundle load, and one device load
+  // instead of N of each. It is still not an inference server (section
+  // 25): no socket, no listener, no user-managed daemon -- the child is
+  // a private helper whose lifetime the caller owns, and every submit
+  // is bounded by the same deadline and refused by the same quarantine
+  // rule as a one-shot run().
+  //
+  // Throws std::invalid_argument when a session is opened twice, when
+  // no bundle is named, or when submit()/close() is called without an
+  // open session.
+  AneWorkerReport open(const std::vector<AneBundle>& bundles);
+
+  // One bounded submit against an already-resident bundle, addressed by
+  // its index in the open() vector. A deadline expiry or an abnormal
+  // child death quarantines the worker exactly as in run(): the session
+  // is torn down and every later call is refused.
+  AneWorkerReport submit(
+      size_t bundle,
+      const std::map<std::string, Buffer>& inputs,
+      std::map<std::string, Buffer>* outputs = nullptr);
+
+  // Releases the resident programs and reaps the child.
+  AneWorkerReport close();
+
+  bool resident() const {
+    return child_ > 0;
+  }
+
+  // The resident child's pid, or -1 when no session is open. Callers
+  // that record worker liveness (docs/ane-worker-liveness.md) report
+  // this rather than pattern-matching process names.
+  pid_t resident_pid() const {
+    return child_;
+  }
 
   bool quarantined() const {
     return !quarantine_reason_.empty();
@@ -108,9 +150,41 @@ class AneWorker {
  private:
   AneWorkerReport supervise(pid_t child, int report_fd);
 
+  // Resident-session plumbing. Every wait carries an absolute deadline;
+  // a miss is a hard failure, never a longer wait.
+  struct Wait {
+    bool ok{false};
+    AneWorkerStatus status{AneWorkerStatus::WorkerDied};
+    std::string detail;
+  };
+  Wait send_request(
+      const void* data,
+      size_t size,
+      std::chrono::milliseconds until);
+  Wait recv_line(std::string& line, std::chrono::milliseconds until);
+  Wait recv_bytes(size_t count, Buffer& out, std::chrono::milliseconds until);
+  Wait recv_more(std::chrono::milliseconds until);
+  Wait recv_raw(
+      void* destination,
+      size_t size,
+      size_t& got,
+      std::chrono::milliseconds until);
+  Wait await_channel(
+      short events,
+      std::chrono::milliseconds until,
+      const char* what);
+  AneWorkerReport end_session(const Wait& failure);
+  void teardown();
+
   DeviceFactory factory_;
   AneWorkerOptions options_;
   std::string quarantine_reason_;
+
+  pid_t child_{-1};
+  int channel_{-1};
+  std::string inbox_;
+  size_t inbox_cursor_{0};
+  size_t resident_programs_{0};
 };
 
 } // namespace mlx::core::omarchy::ane
