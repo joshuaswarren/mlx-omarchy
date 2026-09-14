@@ -1,0 +1,1 @@
+vulkan_encoder.py here is frozen evidence (sha256 pinned in receipts/2026-09-14-encoder-parity-ane.json and 2026-09-14-parakeet-e2e.json); its MIL parser, blob reader and op table are maintained in overlay/tools/coreml/mil_numpy.py, see receipts/2026-09-14-mil-evaluator-collapse.md.

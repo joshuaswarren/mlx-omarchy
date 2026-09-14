@@ -1,0 +1,1 @@
+mil_numpy.py here is frozen evidence for receipts/2026-09-14-encoder-islands-exec-jw16mbp1-linux.json; the maintained evaluator is overlay/tools/coreml/mil_numpy.py, see receipts/2026-09-14-mil-evaluator-collapse.md.

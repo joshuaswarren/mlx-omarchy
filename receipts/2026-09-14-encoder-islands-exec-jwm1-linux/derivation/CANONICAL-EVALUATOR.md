@@ -1,0 +1,1 @@
+milrun.py here is frozen evidence (sha256 pinned in receipts/2026-09-14-encoder-islands-exec-jwm1-linux.json); the maintained evaluator is overlay/tools/coreml/mil_numpy.py, see receipts/2026-09-14-mil-evaluator-collapse.md.
