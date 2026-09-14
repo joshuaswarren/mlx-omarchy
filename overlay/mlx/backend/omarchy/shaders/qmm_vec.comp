@@ -118,8 +118,9 @@ layout(set = 0, binding = 0, std430) readonly buffer InputX {
 // projection into this dispatch (receipts/2026-09-14-decode-epilogue-fold).
 // Each is a map over a PAIR of columns, so the workgroup's eight
 // column slots are laid out so that every pair sits in slots s and
-// s ^ 4 of one workgroup and the two rounded values meet through
-// shared memory after the reduction; the per-column accumulation
+// s ^ 4 of one workgroup and the two STORED values meet through
+// shared memory after the reduction (the exchange carries STORE_VALUE
+// bits; see the note above Q4_MULTI_STORE); the per-column accumulation
 // chain is the one the plain layout runs, so every stored GEMV output
 // and Add sum is bit-identical to the unfolded dispatch.
 //   * RoPE (flags bit 16+i, forward, half-split, one token, scalar
@@ -424,22 +425,35 @@ const uint FLAG_SWIGLU = 1048576u;
           (column % params.matrix_m)) \
        : column)
 // Stores the output and the Add sum of weight I; `value` becomes the
-// stored sum (or the output without an Add), the value a folded
-// consumer reads. The sum is the last store only when no RoPE rides.
+// pre-store float of the last store (the Add sum, or the rounded
+// output without an Add). It is NOT the value a folded consumer
+// reads: the fold hands consumers the STORED bits through the
+// shared-memory exchange below, rounded with STORE_VALUE exactly like
+// the buffer the per-node consumer would load. ROUND_STORAGE is the
+// wrong rounding for that: Honeykrisp's packHalf2x16 deviates from
+// the typed conversion by 1-2 f16 ulps on real values (observed
+// 2026-09-14, t6001-test-host; that is why ROPE_ROUND below is typed), so a
+// packHalf-rounded exchange input disagrees with the memory bits the
+// unfolded graph rotates, rarely but deterministically — it broke the
+// ctx1053 greedy digest while every small-input test stayed green.
+// The sum is the last store only when no RoPE rides.
 #define Q4_MULTI_STORE(I, rounded, value) { \
   output##I.values[column] = STORE_VALUE(rounded); \
   if ((params.flags & (FLAG_ADD << I)) != 0u) { \
     float addend_value = LOAD_VALUE(addend##I.values[column]); \
+    value = (rounded) + addend_value; \
     uint sum_column = ((params.flags & (FLAG_ROPE << I)) != 0u) \
         ? column : Q4_LAST_COLUMN(I); \
-    sum##I.values[sum_column] = STORE_VALUE((rounded) + addend_value); \
-    value = ROUND_STORAGE((rounded) + addend_value); \
+    sum##I.values[sum_column] = STORE_VALUE(value); \
   } \
 }
 #define Q4_ROPE_STORE(I, rotated) { \
   epilogue##I.values[Q4_LAST_COLUMN(I)] = STORE_VALUE(rotated); \
 }
-shared float epilogue_exchange[COLUMNS_PER_GROUP];
+// The exchange carries STORE_VALUE bits, not floats: a memory store is
+// the one rounding neither the AGX elision of in-register float16_t
+// round trips nor the Honeykrisp packHalf deviation can rewrite.
+shared STORAGE_TYPE epilogue_exchange[COLUMNS_PER_GROUP];
 void main() {
   uint lane = gl_LocalInvocationID.x;
   uint column_slot = lane / LANES;
@@ -524,7 +538,7 @@ void main() {
     } else {
       Q4_MULTI_STORE(2, rounded, value)
     }
-    epilogue_exchange[column_slot] = value;
+    epilogue_exchange[column_slot] = STORE_VALUE(value);
   }
   // Push-constant flags are uniform across the dispatch, so every
   // invocation of a folded dispatch reaches this barrier.
@@ -535,12 +549,13 @@ void main() {
   if (lane_in_slot != 0u || !column_active) {
     return;
   }
-  float partner = epilogue_exchange[column_slot ^ 4u];
+  float stored = LOAD_VALUE(epilogue_exchange[column_slot]);
+  float partner = LOAD_VALUE(epilogue_exchange[column_slot ^ 4u]);
   if (swiglu) {
     if (!pair_slot) {
       // shaders/swiglu.comp: sig = sigmoid(gate), silu = gate * sig,
       // out = silu * up, each rounded to storage.
-      float gate = value;
+      float gate = stored;
       float sig = ROUND_STORAGE(1.0 / (1.0 + exp(-gate)));
       float silu = ROUND_STORAGE(gate * sig);
       float product = ROUND_STORAGE(silu * partner);
@@ -569,8 +584,8 @@ void main() {
   float theta = position * inv_freq;
   float cos_t = ROPE_ROUND(cos(theta));
   float sin_t = ROPE_ROUND(sin(theta));
-  float x1 = pair_slot ? partner : value;
-  float x2 = pair_slot ? value : partner;
+  float x1 = pair_slot ? partner : stored;
+  float x2 = pair_slot ? stored : partner;
   float xa = ROPE_ROUND(x1 * cos_t);
   float xb = ROPE_ROUND(x2 * sin_t);
   float xc = ROPE_ROUND(x1 * sin_t);
