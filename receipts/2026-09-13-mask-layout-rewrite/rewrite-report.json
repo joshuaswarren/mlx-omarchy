@@ -1,0 +1,23 @@
+{
+  "schema": "mlx-omarchy.mask-layout-rewrite.v1",
+  "rewritten": [
+    "var_289"
+  ],
+  "refused": [],
+  "source": "/tmp/encoder-compile-attempt-3-20260913/emitted/model-fp16-noview.mil",
+  "source_sha256": "b75801f75e3574799dd822bad3959ec6eb9dc7f9826789e48120753e7185c10b",
+  "output": "model-fp16-nolayout.mil",
+  "output_bytes": 675929,
+  "output_sha256": "c67e29322e9d71f5c240c72145bc87fb449c0a58aaad61a5ea3d2f2b610e1d09",
+  "numpy_proof": "overlay/tests/omarchy/coreml/test_mask_layout.py::NumpyProofTest 2/2 bit-exact at N=375",
+  "compiler": {
+    "binary": "/home/joshuawarren/src/mil-hwx-compiler/build/mil-hwxc",
+    "sha256": "a3b03ecab14d70fe5e262c2f4066b9c5d3b102a6a92a09f0adb7d6b693a397dd",
+    "commit": "1f672539699ce32fa4da4a876404559aec88c36e",
+    "branch": "feature/h13-bool-transpose",
+    "exit": 65,
+    "stderr": "204:5: error [h13.nonfoldable-transpose]: H13 transpose with several consumers or a returned value needs a materialized transposed surface, and the decoded corpus holds no data-movement encoder",
+    "reject_op": "query_states_1_cast_fp16 = transpose(perm = query_states_1_perm_0, x = var_332_cast_fp16)  # fp16 [1,8,375,128] transpose_143",
+    "old_reject": "162:5 transpose(perm=[0,2,1], x=attention_mask_3) bool [1,375,375] \u2014 gone"
+  }
+}
