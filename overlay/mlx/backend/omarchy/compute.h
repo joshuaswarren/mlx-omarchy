@@ -625,6 +625,10 @@ enum class ComputeKernel : uint16_t {
   // -DTILE_ROWS=16) for a grid too small to fill a wide part.
   // Appended to keep profile kernel ids stable.
   QmmPrefillCoopmatM16F16,
+  // Finer-N twin of QmmPrefillCoopmatF16 (shaders/qmm_coopmat.comp with
+  // -DTILE_COLS=16) for a fat shape under the occupancy knee.
+  // Appended to keep profile kernel ids stable.
+  QmmPrefillCoopmatN16F16,
   Count,
 };
 

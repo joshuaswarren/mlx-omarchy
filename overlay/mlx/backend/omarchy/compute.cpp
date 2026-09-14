@@ -281,6 +281,7 @@
 #include "qmm_tile_rb_precise_f16.h"
 #include "qmm_coopmat_f16.h"
 #include "qmm_coopmat_m16_f16.h"
+#include "qmm_coopmat_n16_f16.h"
 #include "qmm_fma_precise_f16.h"
 #include "matmul_fma_bf16.h"
 #include "qmm_fma_f16.h"
@@ -1214,6 +1215,8 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {qmm_coopmat_f16, qmm_coopmat_f16_size};
     case ComputeKernel::QmmPrefillCoopmatM16F16:
       return {qmm_coopmat_m16_f16, qmm_coopmat_m16_f16_size};
+    case ComputeKernel::QmmPrefillCoopmatN16F16:
+      return {qmm_coopmat_n16_f16, qmm_coopmat_n16_f16_size};
     case ComputeKernel::QmmPrefillFmaF16:
       return {qmm_fma_f16, qmm_fma_f16_size};
     case ComputeKernel::MatmulBF16Coopmat:
