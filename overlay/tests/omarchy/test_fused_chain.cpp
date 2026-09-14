@@ -1275,11 +1275,12 @@ TEST_CASE("eager q4 decode gemv group folds RoPE into the q/k store") {
   auto q = make_linear(heads * head_dim, k, float16, stream);
   auto kk = make_linear(kv_heads * head_dim, k, float16, stream);
   auto v = make_linear(kv_heads * head_dim, k, float16, stream);
-  array x = astype(
-      random::normal(Shape{1, 1, k}, float32, std::nullopt, stream), float16,
-      stream);
-  x.eval();
-  sync_stream(stream);
+  // The exchange-input rounding this fold had wrong (ROUND_STORAGE's
+  // packHalf path instead of the stored bits) flips roughly one f16
+  // value in hundreds of thousands, so a few hand-picked offsets never
+  // saw it: sweep offsets across the rope position range with a fresh
+  // draw each round.
+  array x;
   auto forward = [&](int offset) {
     array q_sum = add(project(x, q, stream), q.bias, stream);
     array k_sum = add(project(x, kk, stream), kk.bias, stream);
@@ -1296,7 +1297,20 @@ TEST_CASE("eager q4 decode gemv group folds RoPE into the q/k store") {
         std::nullopt, stream);
     return std::vector<array>{q_sum, k_sum, v_sum, q_rot, k_rot};
   };
-  for (int offset : {0, 7, 1052}) {
+  std::vector<int> offsets;
+  for (int o = 0; o <= 63; ++o) {
+    offsets.push_back(o);
+  }
+  for (int o = 1000; o <= 1120; ++o) {
+    offsets.push_back(o);
+  }
+  for (int draw = 0; draw < 3; ++draw) {
+    x = astype(
+        random::normal(Shape{1, 1, k}, float32, std::nullopt, stream),
+        float16, stream);
+    x.eval();
+    sync_stream(stream);
+    for (int offset : offsets) {
     setenv("MLX_OMARCHY_FUSED_GEMV", "0", 1);
     auto baseline = forward(offset);
     eval({baseline[3], baseline[4], baseline[2]});
@@ -1312,6 +1326,7 @@ TEST_CASE("eager q4 decode gemv group folds RoPE into the q/k store") {
     for (size_t i = 0; i < baseline.size(); ++i) {
       INFO("output ", i);
       expect_bit_exact(baseline[i], candidate[i], stream);
+    }
     }
   }
   unsetenv("MLX_OMARCHY_FUSED_GEMV");
