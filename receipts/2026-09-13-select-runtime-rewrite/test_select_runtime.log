@@ -1,0 +1,11 @@
+test_broadcast_cond_matches_full_fill (__main__.NumpyProofTest.test_broadcast_cond_matches_full_fill) ... ok
+test_const_ninf_equals_runtime_fill (__main__.NumpyProofTest.test_const_ninf_equals_runtime_fill) ... ok
+test_fp16_cond_is_refused (__main__.SelectRuntimeRewriteTest.test_fp16_cond_is_refused) ... ok
+test_real_encoder_mil_plans_the_ninf_selects (__main__.SelectRuntimeRewriteTest.test_real_encoder_mil_plans_the_ninf_selects) ... ok
+test_rewrites_encoder_ninf_select (__main__.SelectRuntimeRewriteTest.test_rewrites_encoder_ninf_select) ... ok
+test_standalone_mil_is_runtime_a (__main__.SelectRuntimeRewriteTest.test_standalone_mil_is_runtime_a) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.098s
+
+OK

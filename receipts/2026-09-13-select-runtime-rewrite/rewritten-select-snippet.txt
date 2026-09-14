@@ -1,0 +1,3 @@
+  func main<CoreML8>(tensor<fp32, [1, 3000, 128]> input_features, tensor<int32, [1, 3000]> attention_mask, tensor<fp16, [1, 8, 375, 375]> var_8_to_fp16_rt) {
+    tensor<fp16, [1, 8, 375, 375]> attention_mask_9_cast_fp16 = select(a = var_8_to_fp16_rt, b = matrix_bd_5_cast_fp16, cond = var_373)[name = tensor<string, []>("attention_mask_9_cast_fp16")];
+var_8_const_deleted=True
