@@ -1280,7 +1280,9 @@ TEST_CASE("eager q4 decode gemv group folds RoPE into the q/k store") {
   // value in hundreds of thousands, so a few hand-picked offsets never
   // saw it: sweep offsets across the rope position range with a fresh
   // draw each round.
-  array x;
+  array x = astype(
+      random::normal(Shape{1, 1, k}, float32, std::nullopt, stream), float16,
+      stream);
   auto forward = [&](int offset) {
     array q_sum = add(project(x, q, stream), q.bias, stream);
     array k_sum = add(project(x, kk, stream), kk.bias, stream);
