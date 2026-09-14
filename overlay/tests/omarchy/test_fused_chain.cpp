@@ -1294,6 +1294,9 @@ TEST_CASE("eager q4 decode gemv group RoPE trig bits per dispatch shape") {
   auto q = impulse_linear(heads * head_dim);
   auto kk = impulse_linear(kv_heads * head_dim);
   auto v = impulse_linear(kv_heads * head_dim);
+  array x = zeros(Shape{1, 1, k}, float16, stream);
+  x.eval();
+  sync_stream(stream);
   auto forward = [&](int offset) {
     array q_sum = add(project(x, q, stream), q.bias, stream);
     array k_sum = add(project(x, kk, stream), kk.bias, stream);
@@ -1304,6 +1307,9 @@ TEST_CASE("eager q4 decode gemv group RoPE trig bits per dispatch shape") {
     };
     array q_rot = fast::rope(
         split(q_sum, heads), head_dim, false, 1000000.0f, 1.0f, offset,
+        std::nullopt, stream);
+    array k_rot = fast::rope(
+        split(k_sum, kv_heads), head_dim, false, 1000000.0f, 1.0f, offset,
         std::nullopt, stream);
     return std::vector<array>{q_sum, k_sum, v_sum, q_rot, k_rot};
   };
