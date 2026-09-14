@@ -49,6 +49,41 @@ void write_nchw(
     offset += sizeof(value);
   }
 }
+void write_h13_task(
+    std::string& bytes,
+    uint32_t selectors,
+    uint32_t src1_cfg = 0x00033881u,
+    uint32_t src2_cfg = 0x00033881u,
+    uint32_t dst_cfg = 0x040000c1u) {
+  uint32_t td_size = 0;
+  std::memcpy(&td_size, bytes.data() + 8, sizeof(td_size));
+  REQUIRE(td_size >= 64);
+  REQUIRE(td_size % 8 == 0);
+  REQUIRE(kAnecPayloadOffset + td_size <= bytes.size());
+  std::fill(
+      bytes.begin() + kAnecPayloadOffset,
+      bytes.begin() + kAnecPayloadOffset + td_size,
+      0);
+  write_le<uint32_t>(
+      bytes,
+      kAnecPayloadOffset + 4,
+      ((td_size / 4 - 1) & 0x1ff) << 16);
+  write_le<uint32_t>(bytes, kAnecPayloadOffset + 8 * 4, selectors);
+  const uint32_t registers[3] = {0x13800u, 0x13804u, 0x17800u};
+  const uint32_t configs[3] = {src1_cfg, src2_cfg, dst_cfg};
+  size_t at = kAnecPayloadOffset + 40;
+  for (int slot = 0; slot < 3; ++slot) {
+    write_le<uint32_t>(bytes, at, registers[slot]);
+    write_le<uint32_t>(bytes, at + 4, configs[slot]);
+    at += 8;
+  }
+  while (at + 8 <= kAnecPayloadOffset + td_size) {
+    at += 8;
+  }
+  REQUIRE(at == kAnecPayloadOffset + td_size);
+}
+
+
 
 std::string anec_bytes(char seed) {
   std::string bytes(kAnecPayloadOffset + kPayloadBytes, '\0');
@@ -56,7 +91,7 @@ std::string anec_bytes(char seed) {
     bytes[kAnecPayloadOffset + i] = static_cast<char>(seed + (i % 7));
   }
   write_le<uint64_t>(bytes, 0, kPayloadBytes);
-  write_le<uint32_t>(bytes, 8, 0x274);
+  write_le<uint32_t>(bytes, 8, 64);
   write_le<uint32_t>(bytes, 12, 1);
   write_le<uint64_t>(bytes, 16, 0x1f8);
   write_le<uint64_t>(bytes, 24, 0x400);
@@ -67,7 +102,9 @@ std::string anec_bytes(char seed) {
     write_le<uint32_t>(bytes, 40 + channel * sizeof(uint32_t), 1);
     write_nchw(bytes, channel);
   }
+  write_h13_task(bytes, 0x00024966u);
   return bytes;
+
 }
 
 nlohmann::json tensor(const std::string& name, uint64_t index) {
@@ -310,7 +347,7 @@ TEST_CASE("release identity uses the producer's canonical payload byte domain") 
     fixture.manifest["programs"][0]["payload"] = renamed;
     fixture.manifest["payloads"][0]["path"] = renamed;
     fixture.manifest["release_asset"]["model_sha256"] =
-        "1f1a7bd31300c3578ebbe0c96a03e52a467d669cefbd23c5fc3993975fcddc90";
+        payload_collection_identity(fixture.manifest["payloads"]);
     fixture.write();
     std::filesystem::rename(fixture.dir.path() / "program-0.anec",
                             fixture.dir.path() / renamed);
@@ -586,6 +623,44 @@ TEST_CASE("binding channel mapping must match ANEC order") {
   check_error([&] { load_bundle(fixture.dir.path()); }, "channel does not match ANEC binding order");
 }
 
+TEST_CASE("positional channel map is refused") {
+  Fixture fixture;
+  fixture.payload_bytes[0] = anec_bytes('A');
+  std::fill(
+      fixture.payload_bytes[0].begin() + kAnecPayloadOffset,
+      fixture.payload_bytes[0].begin() + kAnecPayloadOffset + 64,
+      0);
+  fixture.refresh_payload(0);
+  fixture.write();
+  check_error(
+      [&] { load_bundle(fixture.dir.path()); },
+      "channel map is positional");
+}
+
+TEST_CASE("derived reverse map rejects a positional declaration") {
+  Fixture fixture;
+  write_le<uint32_t>(fixture.payload_bytes[0], 32, 1);
+  write_h13_task(fixture.payload_bytes[0], 0x00025864u);
+  fixture.manifest["programs"][0]["inputs"] = nlohmann::json::array({binding("a", 5)});
+  fixture.refresh_payload(0);
+  fixture.write();
+  check_error(
+      [&] { load_bundle(fixture.dir.path()); },
+      "channel does not match ANEC binding order");
+}
+
+TEST_CASE("derived reverse map accepts the task-stream channels") {
+  Fixture fixture;
+  write_le<uint32_t>(fixture.payload_bytes[0], 32, 1);
+  write_h13_task(fixture.payload_bytes[0], 0x00025864u);
+  fixture.manifest["programs"][0]["inputs"] = nlohmann::json::array({binding("a", 4)});
+  fixture.manifest["programs"][0]["outputs"] = nlohmann::json::array({binding("sum", 5)});
+  fixture.refresh_payload(0);
+  fixture.write();
+  CHECK_NOTHROW(load_bundle(fixture.dir.path()));
+}
+
+
 TEST_CASE("binding allocation must match ANEC channel") {
   Fixture fixture;
   fixture.manifest["programs"][0]["inputs"][0]["allocation_bytes"] = 0x8000;
@@ -655,6 +730,7 @@ TEST_CASE("ANEC task descriptor fields stay within driver submit limits") {
     write_le<uint64_t>(fixture.payload_bytes[0], 0, 0x40000);
     write_le<uint32_t>(fixture.payload_bytes[0], 8, 0x40000);
     write_le<uint32_t>(fixture.payload_bytes[0], 40, 16);
+    write_h13_task(fixture.payload_bytes[0], 0x00024966u);
     fixture.refresh_payload(0);
     fixture.write();
     CHECK_NOTHROW(load_bundle(fixture.dir.path()));
