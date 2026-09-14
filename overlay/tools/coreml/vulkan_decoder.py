@@ -8,6 +8,11 @@ forget, output, cell (IFOC) gate packing; row-major ``[4H, I]`` and
 correctly-rounded fp16 tanh cell/output activations (macOS Core ML CPU).
 CoreML8 inherits those equations from the iOS 15 operation and adds fp16
 support in the iOS 17 definition.
+
+The trailing projector is not an ``mx`` matmul. Its native arithmetic is
+established bit-exactly against the authenticated capture as a serial fp16
+accumulator over unrounded products, so it runs as the custom Vulkan kernel
+below.
 """
 
 from __future__ import annotations
@@ -105,8 +110,8 @@ class _Weights(NamedTuple):
     layer_1_ih: object
     layer_1_hh: object
     layer_1_bias: object
-    projector: object
-    projector_bias: object
+    projector_codes: object
+    projector_bias_codes: object
 
 
 @cache
@@ -130,9 +135,30 @@ def _constant(component: PinnedComponent, name: str) -> np.ndarray:
 
 
 def _load_weights(component: PinnedComponent, mx) -> _Weights:
-    values = [_constant(component, name) for name in _CONSTANT_SPECS]
+    constants = {name: _constant(component, name) for name in _CONSTANT_SPECS}
+    # The projector kernel reduces one output column per thread and walks the
+    # reduction index serially, so the weight travels transposed: element
+    # (k, column) of the transpose is what consecutive threads read at step k,
+    # which is the coalesced read the layout wants. Both projector operands
+    # travel as fp16 bit patterns, decoded in the shader, so no part of the
+    # reduction depends on the device's fp16 arithmetic, rounding mode or
+    # denormal mode.
     with mx.stream(mx.gpu):
-        arrays = [mx.array(value) for value in values]
+        arrays = [
+            mx.array(constants["embedding_weight_to_fp16"]),
+            mx.array(constants["concat_1_to_fp16"]),
+            mx.array(constants["concat_2_to_fp16"]),
+            mx.array(constants["concat_0_to_fp16"]),
+            mx.array(constants["concat_4_to_fp16"]),
+            mx.array(constants["concat_5_to_fp16"]),
+            mx.array(constants["concat_3_to_fp16"]),
+            mx.array(
+                np.ascontiguousarray(
+                    constants["projector_weight_to_fp16"].T
+                ).view(np.uint16)
+            ),
+            mx.array(constants["projector_bias_to_fp16"].view(np.uint16)),
+        ]
     mx.eval(*arrays)
     return _Weights(*arrays)
 
@@ -161,6 +187,149 @@ def _lstm(sequence, hidden, cell, weight_ih, weight_hh, bias, mx):
         fp16_tanh, next_cell, mx
     )
     return mx.expand_dims(next_hidden, axis=0), next_hidden, next_cell
+
+
+# Native Core ML evaluates the projector as an fp16 accumulator over unrounded
+# products, reduced in strictly ascending index order, with the fp16 bias added
+# after the reduction. That is bit-exact on every captured projector lane and it
+# is unique: rounding each product instead, reversing the reduction order, or
+# seeding the accumulator with the bias all break it, and no fp32 reduction
+# reaches it. The contract is serial in the reduction index, so it is not an
+# `mx` matmul; this kernel is the contract.
+#
+# Every step needs the exact sum of an fp16 accumulator and an exact fp16
+# product rounded once to fp16. Accumulating in fp32 and narrowing each step
+# rounds twice, and two roundings are not one: on the captured transitions that
+# loses 94 of 9600 lanes. So each step takes a Knuth two-sum to recover the
+# exact residual of the fp32 add, forces the fp32 sum odd whenever that residual
+# is non-zero, and narrows once. A float16 midpoint has thirteen trailing zero
+# bits in float32 and so is never odd, which is what makes the single narrowing
+# correctly rounded.
+#
+# Both the fp16 decode and the fp16 narrowing are integer arithmetic, and the
+# operands arrive as fp16 bit patterns, so the kernel needs only IEEE float32
+# multiply and add from the device. It does not depend on device fp16
+# arithmetic, on the fp16 rounding mode, or on fp16 denormal handling - and the
+# pinned projector weight does carry 437 fp16 denormals, which a driver is
+# allowed to flush.
+#
+# Three identifiers are unavailable inside the shader. `discard` is a GLSL
+# keyword, `step` would shadow a GLSL built-in, and `half` is a Metal type name
+# that the MSL-to-GLSL translation rewrites to `float16_t` wherever it appears
+# as a word.
+_PROJECTOR_HEADER = """
+float decode_fp16(uint code) {
+    uint sign = (code & 0x8000u) << 16u;
+    uint exponent = (code >> 10u) & 0x1fu;
+    uint mantissa = code & 0x3ffu;
+    if (exponent == 0u) {
+        if (mantissa == 0u) {
+            return uintBitsToFloat(sign);
+        }
+        uint leading = uint(findMSB(mantissa));
+        return uintBitsToFloat(
+            sign | ((103u + leading) << 23u)
+            | ((mantissa << (23u - leading)) & 0x7fffffu));
+    }
+    if (exponent == 31u) {
+        return uintBitsToFloat(sign | 0x7f800000u | (mantissa << 13u));
+    }
+    return uintBitsToFloat(sign | ((exponent + 112u) << 23u) | (mantissa << 13u));
+}
+
+float narrow_fp16(float value) {
+    uint bits = floatBitsToUint(value);
+    uint sign = bits & 0x80000000u;
+    uint magnitude = bits & 0x7fffffffu;
+    if (magnitude >= 0x7f800000u) {
+        return value;
+    }
+    if (magnitude < 0x33800000u) {
+        return uintBitsToFloat(
+            magnitude > 0x33000000u ? (sign | 0x33800000u) : sign);
+    }
+    int exponent = int(magnitude >> 23u) - 127;
+    uint dropped = 13u + uint(max(0, -14 - exponent));
+    uint spacing = 1u << dropped;
+    uint truncated = magnitude & ~(spacing - 1u);
+    uint remainder = magnitude - truncated;
+    uint midpoint = spacing >> 1u;
+    bool up = remainder > midpoint
+        || (remainder == midpoint && (truncated & spacing) != 0u);
+    uint rounded = up ? truncated + spacing : truncated;
+    if (rounded > 0x477fe000u) {
+        return uintBitsToFloat(sign | 0x7f800000u);
+    }
+    return uintBitsToFloat(sign | rounded);
+}
+
+float force_odd(float total, float residual) {
+    uint bits = floatBitsToUint(total);
+    if (residual == 0.0f || total == 0.0f || (bits & 1u) != 0u) {
+        return total;
+    }
+    if (isinf(total) || isnan(total)) {
+        return total;
+    }
+    bool away = (residual > 0.0f) == ((bits & 0x80000000u) == 0u);
+    return uintBitsToFloat(away ? bits + 1u : bits - 1u);
+}
+
+float accumulate_fp16(float accumulator, float addend) {
+    precise float total = accumulator + addend;
+    precise float upper = total - addend;
+    precise float lower = total - upper;
+    precise float residual = (accumulator - upper) + (addend - lower);
+    return narrow_fp16(force_odd(total, residual));
+}
+"""
+
+_PROJECTOR_SOURCE = f"""
+    uint column = thread_position_in_grid.x;
+    float accumulator = 0.0f;
+    for (uint k = 0u; k < {_HIDDEN_SIZE}u; ++k) {{
+        precise float product = decode_fp16(uint(hidden[k]))
+            * decode_fp16(uint(weight[k * {_HIDDEN_SIZE}u + column]));
+        accumulator = accumulate_fp16(accumulator, product);
+    }}
+    projected[column] = accumulate_fp16(
+        accumulator, decode_fp16(uint(bias[column])));
+"""
+
+# One output column per thread. The reduction cannot be split, so columns are
+# the only parallelism and the group size is the only launch knob. Measured on
+# the M1: 32, 64 and 128 are within noise of each other, 256 costs 6 percent
+# and a single group of 640, which is a single core, costs 39 percent.
+_PROJECTOR_GROUP = 64
+
+
+@cache
+def _projector_kernel(mx=None):
+    mx = mx or _mlx()
+    return mx.fast.metal_kernel(
+        name="parakeet_decoder_projector_fp16_serial",
+        input_names=["hidden", "weight", "bias"],
+        output_names=["projected"],
+        header=_PROJECTOR_HEADER,
+        source=_PROJECTOR_SOURCE,
+        compile_options={"math_mode": "safe"},
+    )
+
+
+def _project(hidden, weights, mx):
+    """The native projector contract: ``decoder_hidden`` for one decoder step."""
+    return _projector_kernel(mx)(
+        inputs=[
+            mx.view(hidden, mx.uint16),
+            weights.projector_codes,
+            weights.projector_bias_codes,
+        ],
+        output_shapes=[(1, 1, _HIDDEN_SIZE)],
+        output_dtypes=[mx.float32],
+        grid=(_HIDDEN_SIZE, 1, 1),
+        threadgroup=(_PROJECTOR_GROUP, 1, 1),
+        stream=mx.gpu,
+    )[0]
 
 
 class VulkanDecoder:
@@ -196,7 +365,7 @@ class VulkanDecoder:
                 weights.layer_0_bias,
                 mx,
             )
-            sequence, hidden_1, cell_1 = _lstm(
+            _, hidden_1, cell_1 = _lstm(
                 sequence,
                 hidden_fp16[1],
                 cell_fp16[1],
@@ -205,10 +374,7 @@ class VulkanDecoder:
                 weights.layer_1_bias,
                 mx,
             )
-            decoder_hidden = (
-                mx.transpose(sequence, (1, 0, 2)) @ weights.projector.T
-                + weights.projector_bias
-            ).astype(mx.float32)
+            decoder_hidden = _project(hidden_1, weights, mx)
             next_hidden = mx.stack((hidden_0, hidden_1), axis=0).astype(mx.float32)
             next_cell = mx.stack((cell_0, cell_1), axis=0).astype(mx.float32)
         return DecoderResult(decoder_hidden, next_hidden, next_cell)

@@ -318,6 +318,35 @@ class CustomKernelSmoke(unittest.TestCase):
         with tempfile.TemporaryDirectory() as root:
             self.assertEqual(self.probe("0", root), [4.0, 7.0, 10.0, 13.0])
             self.assertEqual(sorted(Path(root).iterdir()), [])
+    def test_one_source_dispatched_at_several_shapes(self):
+        """Translation is cached, and the launch geometry is part of what it is.
+
+        The generated GLSL carries the grid bounds in its entry guard and the
+        group size in its layout, so a cache keyed on the source alone would
+        serve a kernel compiled for one shape to a dispatch of another, leaving
+        the tail of the larger output unwritten.
+        """
+        kernel = mx.fast.metal_kernel(
+            name="omarchy_shape_reuse",
+            input_names=["values"],
+            output_names=["out"],
+            source="uint i = thread_position_in_grid.x; out[i] = values[0] + float(i);",
+        )
+        for size, group in ((8, 4), (64, 32), (8, 8), (64, 8)):
+            out = self.call(
+                kernel,
+                [mx.array([1.0])],
+                (size,),
+                mx.float32,
+                grid=(size, 1, 1),
+                threadgroup=(group, 1, 1),
+            )
+            mx.eval(out)
+            self.assertEqual(
+                out.tolist(),
+                [1.0 + index for index in range(size)],
+                f"size {size}, group {group}",
+            )
 
 
 if __name__ == "__main__":
