@@ -1,0 +1,241 @@
+{
+  "attribution": {
+    "dft": {
+      "max_ms": 35.222067,
+      "median_ms": 35.222067,
+      "min_ms": 35.222067,
+      "share": 0.21582
+    },
+    "frame": {
+      "max_ms": 12.415946,
+      "median_ms": 12.415946,
+      "min_ms": 12.415946,
+      "share": 0.07608
+    },
+    "mel_projection_log": {
+      "max_ms": 59.691921,
+      "median_ms": 59.691921,
+      "min_ms": 59.691921,
+      "share": 0.36576
+    },
+    "normalize": {
+      "max_ms": 2.004478,
+      "median_ms": 2.004478,
+      "min_ms": 2.004478,
+      "share": 0.01228
+    },
+    "power_magnitude": {
+      "max_ms": 25.075722,
+      "median_ms": 25.075722,
+      "min_ms": 25.075722,
+      "share": 0.15365
+    },
+    "preemphasis": {
+      "max_ms": 11.082752,
+      "median_ms": 11.082752,
+      "min_ms": 11.082752,
+      "share": 0.06791
+    },
+    "statistics": {
+      "max_ms": 17.70797,
+      "median_ms": 17.70797,
+      "min_ms": 17.70797,
+      "share": 0.1085
+    }
+  },
+  "device": "Device(gpu, 0)",
+  "exactness": {
+    "encoder_input_features": {
+      "bit_exact": true,
+      "dtype": "float32",
+      "golden_sha256": "638f1f22b36f33cdcf8cf5f63581497917fe2d8a9108da2f39dd1e99e9130731",
+      "shape": [
+        1,
+        3000,
+        128
+      ]
+    },
+    "encoder_input_mask": {
+      "bit_exact": true,
+      "dtype": "int32",
+      "golden_sha256": "69afe545178dd33ed9f521b3934c77c687d64af3692a9f075b9e02c74516d804",
+      "shape": [
+        1,
+        3000
+      ]
+    },
+    "mask": {
+      "bit_exact": true,
+      "dtype": "int32",
+      "golden_sha256": "5f3d2d4f4c9ee6aaa0e1fa1268e518dcdc1356260a27b64e1a77957838fd7ed2",
+      "shape": [
+        3001
+      ]
+    },
+    "mel": {
+      "bit_exact": true,
+      "dtype": "float32",
+      "golden_sha256": "4ed24d7da64c17f58419ec45f15aa24ac9d1cfd93a4de51ee4f05e1d712b4d22",
+      "shape": [
+        3001,
+        128
+      ]
+    }
+  },
+  "host": "jwm1-linux",
+  "label": "cache-warm",
+  "mlx_version": "0.32.2.dev202609141626+05015a76",
+  "passes": [
+    {
+      "index": 0,
+      "stages": [
+        {
+          "ms": 22.329377,
+          "stage": "preemphasis"
+        },
+        {
+          "ms": 12.33478,
+          "stage": "frame"
+        },
+        {
+          "ms": 45.328289,
+          "stage": "dft"
+        },
+        {
+          "ms": 26.404082,
+          "stage": "power_magnitude"
+        },
+        {
+          "ms": 61.34457,
+          "stage": "mel_projection_log"
+        },
+        {
+          "ms": 18.012175,
+          "stage": "statistics"
+        },
+        {
+          "ms": 2.278391,
+          "stage": "normalize"
+        }
+      ],
+      "total_ms": 188.075623,
+      "warmup": true
+    },
+    {
+      "index": 1,
+      "stages": [
+        {
+          "ms": 11.082752,
+          "stage": "preemphasis"
+        },
+        {
+          "ms": 12.415946,
+          "stage": "frame"
+        },
+        {
+          "ms": 35.222067,
+          "stage": "dft"
+        },
+        {
+          "ms": 25.075722,
+          "stage": "power_magnitude"
+        },
+        {
+          "ms": 59.691921,
+          "stage": "mel_projection_log"
+        },
+        {
+          "ms": 17.70797,
+          "stage": "statistics"
+        },
+        {
+          "ms": 2.004478,
+          "stage": "normalize"
+        }
+      ],
+      "total_ms": 163.223023,
+      "warmup": false
+    }
+  ],
+  "schema": "mlx-omarchy.mel-frontend-perf/1",
+  "source_sha256": {
+    "vulkan_mel.py": "4f61cd5cd1ebabb2a96d3270e347d3a6607be9b9c186f56663c5f9d14ba095c0",
+    "vulkan_mel_constants.py": "caad0ac74d60a4d7378326d5c6d2e0f0fa7d1fd807157f9d203e7348874d258f"
+  },
+  "stage_parity": {
+    "dft_imag": {
+      "bit_exact": true
+    },
+    "dft_real": {
+      "bit_exact": true
+    },
+    "frames": {
+      "bit_exact": true
+    },
+    "hann": {
+      "bit_exact": true
+    },
+    "logmel": {
+      "bit_exact": true
+    },
+    "mask": {
+      "bit_exact": true
+    },
+    "mean": {
+      "bit_exact": true
+    },
+    "mel": {
+      "bit_exact": true
+    },
+    "mel_fb": {
+      "bit_exact": true
+    },
+    "melproj": {
+      "bit_exact": true
+    },
+    "power": {
+      "bit_exact": true
+    },
+    "preemph": {
+      "bit_exact": true
+    },
+    "std": {
+      "bit_exact": true
+    }
+  },
+  "stage_sha256": {
+    "dft_imag": "ceeea0601ba81f7f859add8d12d0d80a2d430d76dbf5594c080469c7e2a8b315",
+    "dft_real": "b58d17f3fa2b158d937d08e6bc638f8a0f5ffa5959343e5efa9ff0a3d6849ad1",
+    "frames": "c722214b1913f3a22391cd2d91c1c075a47030c3b113d0a53c8cfe1ab041a781",
+    "hann": "b8cd66883b57e5b34cfffa7f0a1067b1561d3306ede95da2fb4ead83cb1558b7",
+    "logmel": "78f61c722ada3c2cbf1bf8696d781aeed552d5df343c887b0a40f4bec7163bb1",
+    "mask": "ff88f6583529d5d1476a345495c78ee1bf328d925087f22f25df1c13996d2b63",
+    "mean": "6ed5b6dde039b1ade594a63909911696e7e56156e2fd168a92633161259a7ff3",
+    "mel": "bcbaa3ca159cd3ddf8463b83cb832d4badd369caf93a76464b31c9cf4ac34041",
+    "mel_fb": "9bff6b60ff55c81c7ed8cc2685ad51db2bd6d4da183c2527767b7c85544ac4c9",
+    "melproj": "10a8df5e3ac0014f4fe066954dae0b1b58e58afc0cbd73062311576148816284",
+    "power": "b7576d6633a25fb02f6b0976c9e453e319bfaa848078cf2a9205f7cfe6734129",
+    "preemph": "eca0567dd9c59fa432b8a3a3acf06da8c8d9b5cc171599741e6fbd15e2a92b64",
+    "std": "dc29d1416becf53e32aa8c91579cddcc60012621491627794b105aa43e0eb94d"
+  },
+  "staged_total_median_ms": 163.200856,
+  "trace_delta": {
+    "commit_calls_noop": 1,
+    "commit_calls_with_work": 1,
+    "gpu_primitive_dispatches": 13,
+    "omarchy_finalize_calls": 1,
+    "vk_buffer_copies": 0,
+    "vk_buffer_fills": 0,
+    "vk_compute_dispatches": 8,
+    "vk_submissions": 1
+  },
+  "trace_delta_note": "counters from vulkan_mel.trace_snapshot around one whole call",
+  "waveform_samples": 166960,
+  "waveform_seconds": 10.435,
+  "whole_call_ms": {
+    "all": [
+      170.150113
+    ],
+    "median": 170.150113
+  }
+}
