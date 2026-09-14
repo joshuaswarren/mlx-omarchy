@@ -249,6 +249,17 @@ def main() -> int:
                 "This run establishes nothing about ANE select correctness and "
                 "does not close the defect."
             ),
+            "does_the_scratch_bug_touch_this_run": (
+                "No. SelectL2Fix's channel-3 scratch under-allocation is "
+                "specific to the H13 select program, and the two bundles this "
+                "run submitted contain no select: island-attn-a-kt is two "
+                "matmuls and island-pv is one. Both were compiled by the older "
+                "mil-hwxc 83d486b1 recorded in their manifests, so the question "
+                "is fair to ask, but a bundle only carries the defect if it "
+                "contains a 375-wide select. The 48 submits here are therefore "
+                "unaffected, and the accepted A and C numbers do not depend on "
+                "the fix."
+            ),
             "not_generalised": (
                 "Skipping the ANE select is a placement decision for this run. It "
                 "is not a claim that the select can be skipped in general, and "
@@ -332,8 +343,21 @@ def main() -> int:
             "bundles are compiled for these exact shapes.",
         ],
         "remaining_before_the_encoder_is_ane_complete": [
-            "Fix or route around h13.select-first-l2-tile so island B can run on "
-            "the ANE, or establish that the select belongs on the GPU by design.",
+            "Island B on the ANE now has a named root cause and a candidate "
+            "fix, reported by SelectL2Fix after this run: the H13 select "
+            "program under-allocated its channel-3 scratch surface by about 3x. "
+            "Apple uses channel 3 as a three-stage arena (cond-false half at "
+            "+0, cond expanded to fp16 at +2256000, cond-true half at +4560000, "
+            "6816000 bytes total) while the encoder declared only the output "
+            "allocation of 2310144, so task 3's write of the cond-true half and "
+            "task 4's read of it ran roughly 4.5 MB past the declared surface. "
+            "mil-hwx-compiler feature/h13-concat 7ab3eb5 declares 417 tiles = "
+            "6832128 bytes, and the manifest's programs[].scratch_bytes must be "
+            "re-stamped to match or load_bundle refuses the pair before the "
+            "device is touched. Remaining work is therefore to rebuild island B "
+            "on that compiler and re-run it, not to diagnose it. Not verified "
+            "by this receipt: the fix landed after this run and no island B "
+            "executed here.",
             "Exercise the -inf fill with a padded-frame clip, where cond has true "
             "lanes.",
             "Land the AneRegion graph-level partitioner so eval places the "

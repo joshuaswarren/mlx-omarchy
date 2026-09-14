@@ -78,6 +78,6 @@
     "dmesg_tm_execution_failed": 0,
     "dmesg_errno_110": 0,
     "worker_processes_after": 0,
-    "worker_count_caveat": "Both snapshots' worker lines are instrumentation artifacts and neither is used. Linux TASK_COMM_LEN is 16 bytes, so comm holds only 'mlx-omarchy-ane' (15 of the 22 characters); pgrep -x compares against comm, so the pre snapshot's `pgrep -c -x mlx-omarchy-ane-worker` is a false negative that reports 0 even with a worker alive. The post snapshot's `pgrep -cf` matched its own shell and reported 3 when there were none. `pgrep -c -x mlx-omarchy-ane` is correct in both directions. The real value 0 comes from ps and from 0 descriptors on /dev/accel/accel0."
+    "worker_count_caveat": "Both snapshots' worker lines are instrumentation artifacts and neither is used. Linux TASK_COMM_LEN is 16 bytes, so comm holds only 'mlx-omarchy-ane' (15 of the 22 characters); pgrep -x compares against comm, so the pre snapshot's `pgrep -c -x mlx-omarchy-ane-worker` is a false negative that reports 0 even with a worker alive. The post snapshot's `pgrep -cf` matched its own shell and reported 3 when there were none. `pgrep -c -x mlx-omarchy-ane` is conservatively safe only: sound for asserting no worker is alive, but it cannot confirm a live process IS a worker, since any unrelated process truncating to the same 15 bytes matches. The real value 0 here comes from ps plus 0 descriptors on /dev/accel/accel0, which is the only check that distinguishes a worker from a look-alike. Canonical helper: tools/ane_worker_liveness.py, origin/main 4ded332c."
   }
 }

@@ -639,7 +639,16 @@
       "lingering_worker_processes": {
         "value": 0,
         "verified_by": "ps -eo pid,etimes,stat,comm,args filtered for ane-worker returned NONE, and /proc/*/fd showed 0 descriptors on /dev/accel/accel0 after the run.",
-        "instrumentation_correction": "The snapshot helper's worker count is unreliable in both directions and neither reading was used. The mechanism, verified empirically against a live long-named stand-in process: Linux TASK_COMM_LEN is 16 bytes, so /proc/<pid>/comm holds only the first 15 characters of a 22-character 'mlx-omarchy-ane-worker', namely 'mlx-omarchy-ane'. `pgrep -x` compares against comm, so `pgrep -c -x mlx-omarchy-ane-worker` returns 0 with a worker genuinely alive -- a false negative, and the form the 2026-09-14 islands receipt used. In the other direction `pgrep -cf mlx-omarchy-ane-worker` matches the naming shell itself and reported 3 workers here when there were none. `pgrep -c -x mlx-omarchy-ane` is correct in both directions and `pgrep -a mlx-omarchy-ane` is the useful one-liner. Credit to WorkerLivenessFix, who measured the same two failure modes on a live stand-in worker and is landing a shared helper plus doc for this; those paths are not on origin/main at the time of writing, so they are described rather than cited. An earlier version of this receipt attributed the false negative to the name being 22 characters rather than to comm truncating at 15, which named the wrong cause while reaching the right conclusion.",
+        "instrumentation_correction": "The snapshot helper's worker count is unreliable in both directions and neither reading was used. The mechanism, verified empirically against a live long-named stand-in process: Linux TASK_COMM_LEN is 16 bytes, so /proc/<pid>/comm holds only the first 15 characters of a 22-character 'mlx-omarchy-ane-worker', namely 'mlx-omarchy-ane'. `pgrep -x` compares against comm, so `pgrep -c -x mlx-omarchy-ane-worker` returns 0 with a worker genuinely alive -- a false negative, and the form the 2026-09-14 islands receipt used. In the other direction `pgrep -cf mlx-omarchy-ane-worker` matches the naming shell itself and reported 3 workers here when there were none. `pgrep -c -x mlx-omarchy-ane` is the useful one-liner, but it is only conservatively safe: it is sound for asserting that NO worker is alive, and cannot by itself confirm that a live process is a real worker, because any unrelated process whose name truncates to those same 15 bytes reads as one. Only /proc/<pid>/fd showing a descriptor on /dev/accel/accel0 separates a real worker from a look-alike. That caveat is WorkerLivenessFix's and it applies directly to the verified_commands table below: the '1' there was a deliberate stand-in process, which is exactly the false-positive case, so read that row as proof the pattern matches a truncated comm and not as proof it identifies a worker. An earlier version of this receipt called the one-liner correct in both directions, which was too strong. Credit to WorkerLivenessFix, who measured the same two failure modes on a live stand-in worker. An earlier version also attributed the false negative to the name being 22 characters rather than to comm truncating at 15, which named the wrong cause while reaching the right conclusion.",
+        "canonical_helper": {
+          "tool": "tools/ane_worker_liveness.py",
+          "doc": "docs/ane-worker-liveness.md",
+          "landed": "origin/main 4ded332c",
+          "tool_sha256": "361d8e8caf7a3690b6b50e5892bac0f828d1885c33a70a488b7bc9ed338c1870",
+          "doc_sha256": "ee25373816b7e5616e2f103767edce21956d1b36784496acf8baf812948081cd",
+          "interface": "It reads the process table with `ps -ww -eo pid=,args=` (-ww because ps truncates the command column at 80 characters into a pipe and halves long argv[0] paths), matches basename(argv[0]), and inspects /proc/<pid>/fd for descriptors on /dev/accel/accel0. New receipts should import snapshot() from it rather than carry their own copy, as this one does.",
+          "verified": "Both paths resolve on origin/main and the hashes above were read from that commit. An earlier version of this receipt described the helper instead of citing it because neither path existed on origin/main yet; that is no longer true and the citation replaces the description."
+        },
         "verified_commands": {
           "with_a_worker_alive": {
             "pgrep -c -x mlx-omarchy-ane-worker": 0,
@@ -669,6 +678,7 @@
     "why_excluded": "The ANE select is a reproduced device defect that corrupts its passthrough lanes independently of cond content: 1341 wrong lanes per head on jwm1 and 1337 per head on jw16, all in H rows 0-8, max_abs_err 11.1640625, with cond genuinely false everywhere in both runs. Credit to AneChannelPolarity for correcting an earlier framing of mine that treated the all-false cond as making the clip immune to the hole; it does not.",
     "separate_coverage_gap": "Independently of the defect, this clip's cond is all false (0 of 1125000 elements true, 375 valid frames of 375), so the select's -inf fill semantics are not exercised by this input on either device. A padded-frame clip is still required to test that path. This is a gap in what the run covers, not a justification for anything.",
     "not_a_fix": "This run establishes nothing about ANE select correctness and does not close the defect.",
+    "does_the_scratch_bug_touch_this_run": "No. SelectL2Fix's channel-3 scratch under-allocation is specific to the H13 select program, and the two bundles this run submitted contain no select: island-attn-a-kt is two matmuls and island-pv is one. Both were compiled by the older mil-hwxc 83d486b1 recorded in their manifests, so the question is fair to ask, but a bundle only carries the defect if it contains a 375-wide select. The 48 submits here are therefore unaffected, and the accepted A and C numbers do not depend on the fix.",
     "not_generalised": "Skipping the ANE select is a placement decision for this run. It is not a claim that the select can be skipped in general, and not a claim that any other clip behaves this way."
   },
   "pins": {
@@ -754,7 +764,7 @@
         "dmesg_tm_execution_failed": 0,
         "dmesg_errno_110": 0,
         "worker_processes_after": 0,
-        "worker_count_caveat": "Both snapshots' worker lines are instrumentation artifacts and neither is used. Linux TASK_COMM_LEN is 16 bytes, so comm holds only 'mlx-omarchy-ane' (15 of the 22 characters); pgrep -x compares against comm, so the pre snapshot's `pgrep -c -x mlx-omarchy-ane-worker` is a false negative that reports 0 even with a worker alive. The post snapshot's `pgrep -cf` matched its own shell and reported 3 when there were none. `pgrep -c -x mlx-omarchy-ane` is correct in both directions. The real value 0 comes from ps and from 0 descriptors on /dev/accel/accel0."
+        "worker_count_caveat": "Both snapshots' worker lines are instrumentation artifacts and neither is used. Linux TASK_COMM_LEN is 16 bytes, so comm holds only 'mlx-omarchy-ane' (15 of the 22 characters); pgrep -x compares against comm, so the pre snapshot's `pgrep -c -x mlx-omarchy-ane-worker` is a false negative that reports 0 even with a worker alive. The post snapshot's `pgrep -cf` matched its own shell and reported 3 when there were none. `pgrep -c -x mlx-omarchy-ane` is conservatively safe only: sound for asserting no worker is alive, but it cannot confirm a live process IS a worker, since any unrelated process truncating to the same 15 bytes matches. The real value 0 here comes from ps plus 0 descriptors on /dev/accel/accel0, which is the only check that distinguishes a worker from a look-alike. Canonical helper: tools/ane_worker_liveness.py, origin/main 4ded332c."
       }
     },
     "golden_capture": {
@@ -804,9 +814,9 @@
       }
     },
     "derivation": {
-      "build_receipt.py": "29a90e89e3e6199374b06735071a721f6b1f6a6b76518998a3f141489ac0733c",
+      "build_receipt.py": "82efd354928c3057d09d9f00b0384090280ab935d0cce56c78c2679b7c0d3cf9",
       "check_conv_semantics.py": "684f45d933625e61e5f8693107f66fa93b55975b4d9efa899135914a8aadecb0",
-      "check_invariants.py": "5cedea53f0aed8407866ea9cc2248597491c1186323606030f2b1bdb1bb9c46e",
+      "check_invariants.py": "786eea7ce27e5155eac5cf784b6fdce56af0f439cccdb025c3712d008a987e9b",
       "compare_golden.py": "7d7271d2ced2f29889844a2f7435ff05888816e09e483b500bb5c8728da5ea61",
       "vulkan_encoder.py": "0665dccd0d7f923e73a12c90616a12174485a1696d204bd51622ac4168cc837b"
     }
@@ -828,7 +838,7 @@
     "Any clip other than the pinned golden LibriSpeech capture, and any sequence length other than this one's 375 valid frames. The island bundles are compiled for these exact shapes."
   ],
   "remaining_before_the_encoder_is_ane_complete": [
-    "Fix or route around h13.select-first-l2-tile so island B can run on the ANE, or establish that the select belongs on the GPU by design.",
+    "Island B on the ANE now has a named root cause and a candidate fix, reported by SelectL2Fix after this run: the H13 select program under-allocated its channel-3 scratch surface by about 3x. Apple uses channel 3 as a three-stage arena (cond-false half at +0, cond expanded to fp16 at +2256000, cond-true half at +4560000, 6816000 bytes total) while the encoder declared only the output allocation of 2310144, so task 3's write of the cond-true half and task 4's read of it ran roughly 4.5 MB past the declared surface. mil-hwx-compiler feature/h13-concat 7ab3eb5 declares 417 tiles = 6832128 bytes, and the manifest's programs[].scratch_bytes must be re-stamped to match or load_bundle refuses the pair before the device is touched. Remaining work is therefore to rebuild island B on that compiler and re-run it, not to diagnose it. Not verified by this receipt: the fix landed after this run and no island B executed here.",
     "Exercise the -inf fill with a padded-frame clip, where cond has true lanes.",
     "Land the AneRegion graph-level partitioner so eval places the islands, replacing 48 worker processes with in-framework submits, and only then measure ANE-on versus ANE-off for speed.",
     "Give the ANE more of the layer than the three attention matmuls: the feed-forwards and the projector linear are the remaining large accumulating ops, and they are still entirely on the GPU.",
