@@ -551,21 +551,30 @@ void main() {
     return;
   }
   // shaders/fast_rope.comp, forward half-split, one token (t = 0):
-  // theta = scale * (0 + offset) * exp(-i * beta) for pair index i,
-  // x1 the low half, x2 the high half, each product rounded.
+  // theta = scale * (float(t) + offset) * exp(-i * beta) for pair index
+  // i, x1 the low half, x2 the high half. Round every intermediate the
+  // way fast_rope.comp does (float(float16_t(x))), not the integer
+  // packHalf path the Add epilogue needs: packHalf was 1-2 f16 ulps
+  // off on Honeykrisp at nonzero offsets (jw16 2026-09-14).
+#ifdef USE_FP16
+#define ROPE_ROUND(f) float(float16_t(f))
+#else
+#define ROPE_ROUND(f) ROUND_STORAGE(f)
+#endif
   uint i = pair % params.output_size;
+  uint t = 0u;
   float offset = float(int(params.rhs_offset));
-  float position = params.alpha * (0.0 + offset);
+  float position = params.alpha * (float(t) + offset);
   float inv_freq = exp(-float(i) * params.beta);
   float theta = position * inv_freq;
-  float cos_t = ROUND_STORAGE(cos(theta));
-  float sin_t = ROUND_STORAGE(sin(theta));
+  float cos_t = ROPE_ROUND(cos(theta));
+  float sin_t = ROPE_ROUND(sin(theta));
   float x1 = pair_slot ? partner : value;
   float x2 = pair_slot ? value : partner;
-  float xa = ROUND_STORAGE(x1 * cos_t);
-  float xb = ROUND_STORAGE(x2 * sin_t);
-  float xc = ROUND_STORAGE(x1 * sin_t);
-  float xd = ROUND_STORAGE(x2 * cos_t);
+  float xa = ROPE_ROUND(x1 * cos_t);
+  float xb = ROPE_ROUND(x2 * sin_t);
+  float xc = ROPE_ROUND(x1 * sin_t);
+  float xd = ROPE_ROUND(x2 * cos_t);
   float rotated = pair_slot ? (xc + xd) : (xa - xb);
   if (which == 0u) {
     Q4_ROPE_STORE(0, rotated)
