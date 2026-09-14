@@ -1,0 +1,511 @@
+{
+ "bundles": {
+  "sigmoid": {
+   "header": [
+    -9.9375,
+    8.3203125,
+    0.0,
+    1.0
+   ],
+   "manifest_sha256": "4494cef65c02504df1f4d6b7ac19d8642c2d9682a7ecda38f7fc863600c1f514",
+   "program_sha256": "f56eba3e835a971034755c6dfdfd5630f2b9aa179f4a10ec5f34865c8725de52",
+   "table_prefix_128_sha256": "73f5680aa5f7b3833479e0ecd5a9dd0e3ec221e3aad5170e9db1e40e7a0c7469"
+  },
+  "tanh": {
+   "header": [
+    0.0,
+    4.0,
+    0.0,
+    1.0
+   ],
+   "manifest_sha256": "68c9c5378cb18f6bdf18c2d992951313432420939f83e7a3c845899a84a57424",
+   "program_sha256": "fcd9620cea5aace87096b3be3de1b28c66adf3d3d091eb69b79dd4e93399e8a2",
+   "table_prefix_128_sha256": "f4a38468b2a29430c8ffa4bb04cef84b8347394bbe2d6eb1081093ed4eaa57c6"
+  }
+ },
+ "capture_compute_units": {
+  "receipt_backend_claim": "The environment records requested compute_units=ane; this receipt does not claim every CoreML operation executed exclusively on ANE.",
+  "requested": "ane"
+ },
+ "capture_receipt_sha256": "5ee6328fa622a9440ecd1070ef02de9705294d4e73d4a989c88aeb4885175985",
+ "capture_sha256": {
+  "manifest.sha256": "ab37e0317ced1587cbe35aca39a08265b9af01120ffd668ee4cbf706e1ecbe19",
+  "tdt_tensors.json": "6eaf2bfe801584af570cd66f42e8dc17efd67776fb181f691585d2bcab590e0a"
+ },
+ "conditional_native_tanh": {
+  "correctly_rounded_equal": 703,
+  "device_equal": 59,
+  "device_minus_native_ulps": {
+   "-1": 63,
+   "-10": 3,
+   "-11": 1,
+   "-2": 81,
+   "-3": 93,
+   "-4": 89,
+   "-5": 74,
+   "-6": 36,
+   "-7": 14,
+   "-8": 10,
+   "-9": 5,
+   "0": 59,
+   "1": 55,
+   "10": 2,
+   "11": 2,
+   "2": 71,
+   "3": 82,
+   "4": 76,
+   "5": 67,
+   "6": 34,
+   "7": 19,
+   "8": 7,
+   "9": 6
+  },
+  "measured": 949
+ },
+ "device_files_sha256": {
+  "x_sigmoid_0.bin": "f19358801b9fe10791f8e650b4eca86684f8f00477a65051c3d7557c6696c154",
+  "x_sigmoid_1.bin": "4779e2ac065f72a9530ebc19295e4fd80cf0f1ed927f194f9881fa23dd402174",
+  "x_sigmoid_2.bin": "5f45aa4ee80d32c3b22c8ec1dd455cce5bf218e4f0b9639a5b7d34995843e1b3",
+  "x_tanh_0.bin": "eacdf70c84036ae08435bba1afea6c25edab9af67cd196a7384168837927d226",
+  "x_tanh_1.bin": "ceb9b9df1445ad674e8e9e688efcdda185fb97f433a3ce7b7ec8ee0c6551c37c",
+  "x_tanh_2.bin": "da08bd08eeda3e868def710e4025b22d0ec2993c550efd3defd42d61da3ec998",
+  "y_out_sigmoid_0.bin": "17cf2a425c233c12f4518ae2f902d26c32386a64cd1a2ece7c4e030dd0594c2e",
+  "y_out_sigmoid_1.bin": "a00cb59c73033efe68c918c30fca42ec636fd9415d25f2b2edbfab6060ff3a33",
+  "y_out_sigmoid_2.bin": "d2726e37a9bf1aa5ef342fb11c93b1e8cdfbfcd2b89527bdaeeca862f36cbfc2",
+  "y_out_tanh_0.bin": "1a3cd8d66b4557b0588e1bf298c7af54bd29b95b50c04f389d34ecab122e6dd0",
+  "y_out_tanh_1.bin": "d62988eff138e2d52b22f31328f9a5adcac13d9e27026e46c6583697b568632a",
+  "y_out_tanh_2.bin": "e99d486983e65f4834a59f8166fcc3e7c9a95cb19bd6a16cc258f9eb41097960"
+ },
+ "device_sigmoid_minus_correctly_rounded_ulps": {
+  "bit_exact": 116,
+  "histogram": {
+   "-1": 244,
+   "-2": 204,
+   "-3": 58,
+   "-4": 108,
+   "-5": 118,
+   "-6": 32,
+   "-7": 5,
+   "0": 116,
+   "1": 65,
+   "10": 16,
+   "12": 1,
+   "13": 1,
+   "16": 1,
+   "17": 1,
+   "19": 1,
+   "2": 79,
+   "20": 1,
+   "21": 2,
+   "22": 2,
+   "23": 1,
+   "24": 2,
+   "25": 2,
+   "3": 94,
+   "4": 68,
+   "5": 5,
+   "6": 11,
+   "7": 5,
+   "8": 11,
+   "9": 26
+  },
+  "max_abs": 25
+ },
+ "device_tanh_minus_correctly_rounded_ulps": {
+  "bit_exact": 99,
+  "histogram": {
+   "-1": 94,
+   "-10": 4,
+   "-11": 1,
+   "-2": 112,
+   "-3": 111,
+   "-4": 123,
+   "-5": 98,
+   "-6": 43,
+   "-7": 10,
+   "-8": 14,
+   "-9": 8,
+   "0": 99,
+   "1": 93,
+   "10": 9,
+   "11": 2,
+   "2": 103,
+   "3": 97,
+   "4": 104,
+   "5": 73,
+   "6": 41,
+   "7": 19,
+   "8": 15,
+   "9": 7
+  },
+  "max_abs": 11
+ },
+ "interpolator": {
+  "sigmoid": {
+   "alternatives_interior_matches": {
+    "raz(a + raz16(t*d)), lower-knot anchor": 1476,
+    "raz(b - raz16((1-t)*d)), upper-knot anchor": 1497,
+    "rne(a + rne16(t*d))": 1425,
+    "rne(a + t*d), exact lerp": 1457
+   },
+   "alternatives_interior_matches_negative_arguments": {
+    "raz(a + raz16(t*d)), lower-knot anchor": [
+     497,
+     549
+    ],
+    "raz(b - raz16((1-t)*d)), upper-knot anchor": [
+     549,
+     549
+    ],
+    "rne(a + rne16(t*d))": [
+     488,
+     549
+    ],
+    "rne(a + t*d), exact lerp": [
+     510,
+     549
+    ]
+   },
+   "clamp_probes": [
+    [
+     8.3125,
+     1.0
+    ],
+    [
+     8.3203125,
+     1.0
+    ],
+    [
+     8.328125,
+     1.0
+    ],
+    [
+     -9.9453125,
+     0.0
+    ],
+    [
+     -9.9375,
+     0.0
+    ],
+    [
+     -9.9296875,
+     1.9073486328125e-06
+    ]
+   ],
+   "identified_rule_exceptions": [
+    [
+     -8.0,
+     0.000335693359375,
+     0.00033545494079589844
+    ],
+    [
+     8.3125,
+     1.0,
+     0.99951171875
+    ],
+    [
+     -9.9296875,
+     1.9073486328125e-06,
+     -0.0005030632019042969
+    ]
+   ],
+   "identified_rule_matches": [
+    1533,
+    1536
+   ],
+   "identified_rule_matches_by_group": {
+    "args": [
+     1280,
+     1280
+    ],
+    "clamps": [
+     4,
+     6
+    ],
+    "knots": [
+     32,
+     33
+    ],
+    "mids": [
+     32,
+     32
+    ],
+    "sweep": [
+     185,
+     185
+    ]
+   },
+   "interior_lanes": 1528,
+   "knot_exceptions": [
+    [
+     -8.0,
+     0.000335693359375,
+     0.00033545494079589844
+    ]
+   ],
+   "knots_equal_table_entry": [
+    32,
+    33
+   ],
+   "midpoints_equal_fp16_average": [
+    27,
+    32
+   ]
+  },
+  "tanh": {
+   "alternatives_interior_matches": {
+    "raz(a + raz16(t*d)), lower-knot anchor": 1528,
+    "raz(b - raz16((1-t)*d)), upper-knot anchor": 1311,
+    "rne(a + rne16(t*d))": 1417,
+    "rne(a + t*d), exact lerp": 1420
+   },
+   "alternatives_interior_matches_negative_arguments": {
+    "raz(a + raz16(t*d)), lower-knot anchor": [
+     703,
+     703
+    ],
+    "raz(b - raz16((1-t)*d)), upper-knot anchor": [
+     598,
+     703
+    ],
+    "rne(a + rne16(t*d))": [
+     655,
+     703
+    ],
+    "rne(a + t*d), exact lerp": [
+     662,
+     703
+    ]
+   },
+   "clamp_probes": [
+    [
+     3.998046875,
+     0.99951171875
+    ],
+    [
+     4.0,
+     1.0
+    ],
+    [
+     4.00390625,
+     1.0
+    ],
+    [
+     -3.998046875,
+     -0.99951171875
+    ],
+    [
+     -4.0,
+     -1.0
+    ],
+    [
+     -4.00390625,
+     -1.0
+    ]
+   ],
+   "identified_rule_exceptions": [],
+   "identified_rule_matches": [
+    1536,
+    1536
+   ],
+   "identified_rule_matches_by_group": {
+    "args": [
+     1280,
+     1280
+    ],
+    "clamps": [
+     6,
+     6
+    ],
+    "knots": [
+     33,
+     33
+    ],
+    "mids": [
+     32,
+     32
+    ],
+    "sweep": [
+     185,
+     185
+    ]
+   },
+   "interior_lanes": 1528,
+   "knot_exceptions": [
+    [
+     4.0,
+     1.0,
+     0.99951171875
+    ]
+   ],
+   "knots_equal_table_entry": [
+    32,
+    33
+   ],
+   "midpoints_equal_fp16_average": [
+    23,
+    32
+   ]
+  }
+ },
+ "lanes_of_1280": {
+  "device_sigmoid_correctly_rounded_tanh": [
+   54,
+   78
+  ],
+  "device_sigmoid_device_tanh": [
+   19,
+   31
+  ],
+  "fp16_chain_sigmoid_correctly_rounded_tanh_reference": [
+   500,
+   486
+  ],
+  "fp16_chain_sigmoid_device_tanh": [
+   78,
+   32
+  ],
+  "note": "pairs are (next_cell lanes, next_hidden lanes), each of 640"
+ },
+ "named_hole": "parakeet.tdt.decoder-lstm.fp16-elementwise-activation-vs-native-coreml",
+ "partner_free_refutation": {
+  "device_sigmoid_refuting_tanh_arguments": [
+   171,
+   1198
+  ],
+  "device_tanh_refuting_sigmoid_arguments": [
+   194,
+   1172
+  ]
+ },
+ "pins": {
+  "sigmoid": {
+   "of": 11,
+   "reproduced": 0,
+   "rows": [
+    {
+     "argument": -0.2880859375,
+     "device": 0.429443359375,
+     "device_matches": false,
+     "native": 0.428466796875
+    },
+    {
+     "argument": 0.09002685546875,
+     "device": 0.52197265625,
+     "device_matches": false,
+     "native": 0.5224609375
+    },
+    {
+     "argument": 0.1544189453125,
+     "device": 0.5380859375,
+     "device_matches": false,
+     "native": 0.53857421875
+    },
+    {
+     "argument": 0.1546630859375,
+     "device": 0.5380859375,
+     "device_matches": false,
+     "native": 0.53857421875
+    },
+    {
+     "argument": 0.26123046875,
+     "device": 0.56396484375,
+     "device_matches": false,
+     "native": 0.56494140625
+    },
+    {
+     "argument": 0.314453125,
+     "device": 0.5771484375,
+     "device_matches": false,
+     "native": 0.57763671875
+    },
+    {
+     "argument": 0.43896484375,
+     "device": 0.607421875,
+     "device_matches": false,
+     "native": 0.60791015625
+    },
+    {
+     "argument": 0.52978515625,
+     "device": 0.62890625,
+     "device_matches": false,
+     "native": 0.62939453125
+    },
+    {
+     "argument": 0.56640625,
+     "device": 0.63671875,
+     "device_matches": false,
+     "native": 0.63818359375
+    },
+    {
+     "argument": 0.56689453125,
+     "device": 0.63720703125,
+     "device_matches": false,
+     "native": 0.63818359375
+    },
+    {
+     "argument": 0.56787109375,
+     "device": 0.63720703125,
+     "device_matches": false,
+     "native": 0.63818359375
+    }
+   ]
+  },
+  "tanh": {
+   "of": 8,
+   "reproduced": 1,
+   "rows": [
+    {
+     "argument": -1.099609375,
+     "device": -0.79931640625,
+     "device_matches": false,
+     "native": -0.80029296875
+    },
+    {
+     "argument": -0.681640625,
+     "device": -0.59130859375,
+     "device_matches": false,
+     "native": -0.5927734375
+    },
+    {
+     "argument": -0.560546875,
+     "device": -0.5068359375,
+     "device_matches": false,
+     "native": -0.50830078125
+    },
+    {
+     "argument": -0.11395263671875,
+     "device": -0.11334228515625,
+     "device_matches": false,
+     "native": -0.11346435546875
+    },
+    {
+     "argument": 0.28271484375,
+     "device": 0.274658203125,
+     "device_matches": false,
+     "native": 0.275390625
+    },
+    {
+     "argument": 0.319091796875,
+     "device": 0.3076171875,
+     "device_matches": false,
+     "native": 0.308837890625
+    },
+    {
+     "argument": 0.458984375,
+     "device": 0.42822265625,
+     "device_matches": false,
+     "native": 0.42919921875
+    },
+    {
+     "argument": 0.6220703125,
+     "device": 0.552734375,
+     "device_matches": true,
+     "native": 0.552734375
+    }
+   ]
+  }
+ },
+ "schema": "mlx-omarchy.parakeet-decoder-activations-on-ane/1",
+ "transition": 0
+}
