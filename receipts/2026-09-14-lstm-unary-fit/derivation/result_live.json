@@ -1,0 +1,1082 @@
+{
+ "schema": "mlx-omarchy.decoder-lstm-unary-fit-live/1",
+ "named_hole": "parakeet.tdt.decoder-lstm.fp16-recurrent-vs-native-coreml",
+ "python": "3.14.7",
+ "source": {
+  "vulkan_decoder_py_sha256": "bea0e2e6f503cb635c40928b1f52bbd0e63d09f94c67ed16bcd85ed0e241fd47",
+  "overlay_tools": "/var/tmp/TdtEmission99/overlay/tools",
+  "native_encoder": {
+   "path": "/var/tmp/EncoderParityAne/capture/encoder_hidden.npy",
+   "sha256": "7e442034cb42521f7b76ec9645e8d0082899a5f551ea8d046c62a9283cc6e4e5"
+  },
+  "native_tokens": {
+   "path": "/var/tmp/EncoderParityAne/capture/token_ids.json",
+   "sha256": "a175a5f9ce8c1e91fc28f6e1fce9deee29c24c3ef49e62ce4b144cc44f8401c8"
+  },
+  "model": "/home/joshuawarren/.cache/mlx-omarchy/parakeet-reference/mweinbach1/parakeet-tdt-0.6b-v3-coreml/b650695c2322ee5281dff48d7345b2f3a58ff018"
+ },
+ "native_emitted_96_103": [
+  {
+   "token_id": 7883,
+   "frame_index": 373,
+   "duration": 0
+  },
+  {
+   "token_id": 7883,
+   "frame_index": 373,
+   "duration": 0
+  },
+  {
+   "token_id": 7883,
+   "frame_index": 373,
+   "duration": 0
+  },
+  {
+   "token_id": 7863,
+   "frame_index": 373,
+   "duration": 0
+  },
+  {
+   "token_id": 8135,
+   "frame_index": 373,
+   "duration": 0
+  },
+  {
+   "token_id": 7892,
+   "frame_index": 373,
+   "duration": 0
+  },
+  {
+   "token_id": 7863,
+   "frame_index": 373,
+   "duration": 0
+  },
+  {
+   "token_id": 8135,
+   "frame_index": 373,
+   "duration": 0
+  }
+ ],
+ "arms": {
+  "shipped": {
+   "name": "shipped",
+   "elapsed_s": 3.6531207900115987,
+   "decoder_calls": 145,
+   "joint_calls": 146,
+   "emissions": 104,
+   "first_divergence": {
+    "emission_index": 101,
+    "actual": {
+     "token_id": 8029,
+     "frame_index": 373,
+     "duration": 0
+    },
+    "native": {
+     "token_id": 7892,
+     "frame_index": 373,
+     "duration": 0
+    }
+   },
+   "matching_prefix": 101,
+   "flipped_e101": false,
+   "snapshots": {
+    "95": {
+     "emission_index": 95,
+     "frame_index": 373,
+     "decoder_input_token": 7883,
+     "decoder_state": {
+      "shape": [
+       1,
+       640
+      ],
+      "sum": -4.599819183349609,
+      "max_abs": 2.275390625
+     },
+     "logits": {
+      "argmax": 7883,
+      "logit_argmax": -11.6875,
+      "logit_7883": -11.6875,
+      "gap_to_native": 0.0,
+      "duration_argmax": 0
+     }
+    },
+    "96": {
+     "emission_index": 96,
+     "frame_index": 373,
+     "decoder_input_token": 7883,
+     "decoder_state": {
+      "shape": [
+       1,
+       640
+      ],
+      "sum": -11.657394409179688,
+      "max_abs": 2.3359375
+     },
+     "logits": {
+      "argmax": 7883,
+      "logit_argmax": -8.953125,
+      "logit_7883": -8.953125,
+      "gap_to_native": 0.0,
+      "duration_argmax": 0
+     }
+    },
+    "97": {
+     "emission_index": 97,
+     "frame_index": 373,
+     "decoder_input_token": 7883,
+     "decoder_state": {
+      "shape": [
+       1,
+       640
+      ],
+      "sum": -3.503009796142578,
+      "max_abs": 2.24609375
+     },
+     "logits": {
+      "argmax": 7883,
+      "logit_argmax": -12.890625,
+      "logit_7883": -12.890625,
+      "gap_to_native": 0.0,
+      "duration_argmax": 0
+     }
+    },
+    "98": {
+     "emission_index": 98,
+     "frame_index": 373,
+     "decoder_input_token": 7883,
+     "decoder_state": {
+      "shape": [
+       1,
+       640
+      ],
+      "sum": -11.579566955566406,
+      "max_abs": 2.41015625
+     },
+     "logits": {
+      "argmax": 7883,
+      "logit_argmax": -9.0078125,
+      "logit_7883": -9.0078125,
+      "gap_to_native": 0.0,
+      "duration_argmax": 0
+     }
+    },
+    "99": {
+     "emission_index": 99,
+     "frame_index": 373,
+     "decoder_input_token": 7883,
+     "decoder_state": {
+      "shape": [
+       1,
+       640
+      ],
+      "sum": -1.9354667663574219,
+      "max_abs": 2.23828125
+     },
+     "logits": {
+      "argmax": 7863,
+      "logit_argmax": -14.1484375,
+      "logit_7863": -14.1484375,
+      "gap_to_native": 0.0,
+      "duration_argmax": 0
+     }
+    },
+    "100": {
+     "emission_index": 100,
+     "frame_index": 373,
+     "decoder_input_token": 7863,
+     "decoder_state": {
+      "shape": [
+       1,
+       640
+      ],
+      "sum": -89.18354797363281,
+      "max_abs": 5.55859375
+     },
+     "logits": {
+      "argmax": 8135,
+      "logit_argmax": -16.921875,
+      "logit_8135": -16.921875,
+      "gap_to_native": 0.0,
+      "duration_argmax": 0
+     }
+    },
+    "101": {
+     "emission_index": 101,
+     "frame_index": 373,
+     "decoder_input_token": 8135,
+     "decoder_state": {
+      "shape": [
+       1,
+       640
+      ],
+      "sum": -59.38329315185547,
+      "max_abs": 4.671875
+     },
+     "logits": {
+      "argmax": 8029,
+      "logit_argmax": -12.6875,
+      "logit_7892": -12.921875,
+      "gap_to_native": -0.234375,
+      "duration_argmax": 0
+     }
+    },
+    "102": {
+     "emission_index": 102,
+     "frame_index": 373,
+     "decoder_input_token": 8029,
+     "decoder_state": {
+      "shape": [
+       1,
+       640
+      ],
+      "sum": -132.70477294921875,
+      "max_abs": 10.7109375
+     },
+     "logits": {
+      "argmax": 8062,
+      "logit_argmax": -8.1015625,
+      "logit_7863": -12.46875,
+      "gap_to_native": -4.3671875,
+      "duration_argmax": 0
+     }
+    },
+    "103": {
+     "emission_index": 103,
+     "frame_index": 373,
+     "decoder_input_token": 8062,
+     "decoder_state": {
+      "shape": [
+       1,
+       640
+      ],
+      "sum": -79.28697204589844,
+      "max_abs": 6.95703125
+     },
+     "logits": {
+      "argmax": 8029,
+      "logit_argmax": -8.65625,
+      "logit_8135": -14.671875,
+      "gap_to_native": -6.015625,
+      "duration_argmax": 0
+     }
+    }
+   }
+  },
+  "tanh-fit-1e4": {
+   "name": "tanh-fit-1e4",
+   "elapsed_s": 3.4341707010025857,
+   "decoder_calls": 145,
+   "joint_calls": 146,
+   "emissions": 104,
+   "first_divergence": {
+    "emission_index": 101,
+    "actual": {
+     "token_id": 8029,
+     "frame_index": 373,
+     "duration": 0
+    },
+    "native": {
+     "token_id": 7892,
+     "frame_index": 373,
+     "duration": 0
+    }
+   },
+   "matching_prefix": 101,
+   "flipped_e101": false,
+   "snapshots": {
+    "95": {
+     "emission_index": 95,
+     "frame_index": 373,
+     "decoder_input_token": 7883,
+     "decoder_state": {
+      "shape": [
+       1,
+       640
+      ],
+      "sum": -4.723758697509766,
+      "max_abs": 2.279296875
+     },
+     "logits": {
+      "argmax": 7883,
+      "logit_argmax": -11.625,
+      "logit_7883": -11.625,
+      "gap_to_native": 0.0,
+      "duration_argmax": 0
+     }
+    },
+    "96": {
+     "emission_index": 96,
+     "frame_index": 373,
+     "decoder_input_token": 7883,
+     "decoder_state": {
+      "shape": [
+       1,
+       640
+      ],
+      "sum": -11.882095336914062,
+      "max_abs": 2.330078125
+     },
+     "logits": {
+      "argmax": 7883,
+      "logit_argmax": -8.921875,
+      "logit_7883": -8.921875,
+      "gap_to_native": 0.0,
+      "duration_argmax": 0
+     }
+    },
+    "97": {
+     "emission_index": 97,
+     "frame_index": 373,
+     "decoder_input_token": 7883,
+     "decoder_state": {
+      "shape": [
+       1,
+       640
+      ],
+      "sum": -3.756946563720703,
+      "max_abs": 2.251953125
+     },
+     "logits": {
+      "argmax": 7883,
+      "logit_argmax": -12.7734375,
+      "logit_7883": -12.7734375,
+      "gap_to_native": 0.0,
+      "duration_argmax": 0
+     }
+    },
+    "98": {
+     "emission_index": 98,
+     "frame_index": 373,
+     "decoder_input_token": 7883,
+     "decoder_state": {
+      "shape": [
+       1,
+       640
+      ],
+      "sum": -11.837493896484375,
+      "max_abs": 2.3984375
+     },
+     "logits": {
+      "argmax": 7883,
+      "logit_argmax": -8.953125,
+      "logit_7883": -8.953125,
+      "gap_to_native": 0.0,
+      "duration_argmax": 0
+     }
+    },
+    "99": {
+     "emission_index": 99,
+     "frame_index": 373,
+     "decoder_input_token": 7883,
+     "decoder_state": {
+      "shape": [
+       1,
+       640
+      ],
+      "sum": -2.2929153442382812,
+      "max_abs": 2.244140625
+     },
+     "logits": {
+      "argmax": 7863,
+      "logit_argmax": -14.03125,
+      "logit_7863": -14.03125,
+      "gap_to_native": 0.0,
+      "duration_argmax": 0
+     }
+    },
+    "100": {
+     "emission_index": 100,
+     "frame_index": 373,
+     "decoder_input_token": 7863,
+     "decoder_state": {
+      "shape": [
+       1,
+       640
+      ],
+      "sum": -89.31007385253906,
+      "max_abs": 5.55078125
+     },
+     "logits": {
+      "argmax": 8135,
+      "logit_argmax": -16.9375,
+      "logit_8135": -16.9375,
+      "gap_to_native": 0.0,
+      "duration_argmax": 0
+     }
+    },
+    "101": {
+     "emission_index": 101,
+     "frame_index": 373,
+     "decoder_input_token": 8135,
+     "decoder_state": {
+      "shape": [
+       1,
+       640
+      ],
+      "sum": -59.60252380371094,
+      "max_abs": 4.67578125
+     },
+     "logits": {
+      "argmax": 8029,
+      "logit_argmax": -12.625,
+      "logit_7892": -12.8828125,
+      "gap_to_native": -0.2578125,
+      "duration_argmax": 0
+     }
+    },
+    "102": {
+     "emission_index": 102,
+     "frame_index": 373,
+     "decoder_input_token": 8029,
+     "decoder_state": {
+      "shape": [
+       1,
+       640
+      ],
+      "sum": -132.48434448242188,
+      "max_abs": 10.703125
+     },
+     "logits": {
+      "argmax": 8062,
+      "logit_argmax": -8.0859375,
+      "logit_7863": -12.46875,
+      "gap_to_native": -4.3828125,
+      "duration_argmax": 0
+     }
+    },
+    "103": {
+     "emission_index": 103,
+     "frame_index": 373,
+     "decoder_input_token": 8062,
+     "decoder_state": {
+      "shape": [
+       1,
+       640
+      ],
+      "sum": -79.45565986633301,
+      "max_abs": 6.96875
+     },
+     "logits": {
+      "argmax": 8029,
+      "logit_argmax": -8.6484375,
+      "logit_8135": -14.65625,
+      "gap_to_native": -6.0078125,
+      "duration_argmax": 0
+     }
+    }
+   }
+  },
+  "pair-fit-1e4": {
+   "name": "pair-fit-1e4",
+   "elapsed_s": 3.3944956999912392,
+   "decoder_calls": 145,
+   "joint_calls": 146,
+   "emissions": 104,
+   "first_divergence": {
+    "emission_index": 101,
+    "actual": {
+     "token_id": 8029,
+     "frame_index": 373,
+     "duration": 0
+    },
+    "native": {
+     "token_id": 7892,
+     "frame_index": 373,
+     "duration": 0
+    }
+   },
+   "matching_prefix": 101,
+   "flipped_e101": false,
+   "snapshots": {
+    "95": {
+     "emission_index": 95,
+     "frame_index": 373,
+     "decoder_input_token": 7883,
+     "decoder_state": {
+      "shape": [
+       1,
+       640
+      ],
+      "sum": -4.639789581298828,
+      "max_abs": 2.28125
+     },
+     "logits": {
+      "argmax": 7883,
+      "logit_argmax": -11.640625,
+      "logit_7883": -11.640625,
+      "gap_to_native": 0.0,
+      "duration_argmax": 0
+     }
+    },
+    "96": {
+     "emission_index": 96,
+     "frame_index": 373,
+     "decoder_input_token": 7883,
+     "decoder_state": {
+      "shape": [
+       1,
+       640
+      ],
+      "sum": -11.863243103027344,
+      "max_abs": 2.328125
+     },
+     "logits": {
+      "argmax": 7883,
+      "logit_argmax": -8.921875,
+      "logit_7883": -8.921875,
+      "gap_to_native": 0.0,
+      "duration_argmax": 0
+     }
+    },
+    "97": {
+     "emission_index": 97,
+     "frame_index": 373,
+     "decoder_input_token": 7883,
+     "decoder_state": {
+      "shape": [
+       1,
+       640
+      ],
+      "sum": -3.689716339111328,
+      "max_abs": 2.25
+     },
+     "logits": {
+      "argmax": 7883,
+      "logit_argmax": -12.75,
+      "logit_7883": -12.75,
+      "gap_to_native": 0.0,
+      "duration_argmax": 0
+     }
+    },
+    "98": {
+     "emission_index": 98,
+     "frame_index": 373,
+     "decoder_input_token": 7883,
+     "decoder_state": {
+      "shape": [
+       1,
+       640
+      ],
+      "sum": -11.807655334472656,
+      "max_abs": 2.400390625
+     },
+     "logits": {
+      "argmax": 7883,
+      "logit_argmax": -8.953125,
+      "logit_7883": -8.953125,
+      "gap_to_native": 0.0,
+      "duration_argmax": 0
+     }
+    },
+    "99": {
+     "emission_index": 99,
+     "frame_index": 373,
+     "decoder_input_token": 7883,
+     "decoder_state": {
+      "shape": [
+       1,
+       640
+      ],
+      "sum": -2.3048553466796875,
+      "max_abs": 2.2421875
+     },
+     "logits": {
+      "argmax": 7863,
+      "logit_argmax": -14.0078125,
+      "logit_7863": -14.0078125,
+      "gap_to_native": 0.0,
+      "duration_argmax": 0
+     }
+    },
+    "100": {
+     "emission_index": 100,
+     "frame_index": 373,
+     "decoder_input_token": 7863,
+     "decoder_state": {
+      "shape": [
+       1,
+       640
+      ],
+      "sum": -89.37701416015625,
+      "max_abs": 5.5625
+     },
+     "logits": {
+      "argmax": 8135,
+      "logit_argmax": -16.921875,
+      "logit_8135": -16.921875,
+      "gap_to_native": 0.0,
+      "duration_argmax": 0
+     }
+    },
+    "101": {
+     "emission_index": 101,
+     "frame_index": 373,
+     "decoder_input_token": 8135,
+     "decoder_state": {
+      "shape": [
+       1,
+       640
+      ],
+      "sum": -59.599639892578125,
+      "max_abs": 4.67578125
+     },
+     "logits": {
+      "argmax": 8029,
+      "logit_argmax": -12.6015625,
+      "logit_7892": -12.8671875,
+      "gap_to_native": -0.265625,
+      "duration_argmax": 0
+     }
+    },
+    "102": {
+     "emission_index": 102,
+     "frame_index": 373,
+     "decoder_input_token": 8029,
+     "decoder_state": {
+      "shape": [
+       1,
+       640
+      ],
+      "sum": -132.3625946044922,
+      "max_abs": 10.6875
+     },
+     "logits": {
+      "argmax": 8062,
+      "logit_argmax": -8.078125,
+      "logit_7863": -12.46875,
+      "gap_to_native": -4.390625,
+      "duration_argmax": 0
+     }
+    },
+    "103": {
+     "emission_index": 103,
+     "frame_index": 373,
+     "decoder_input_token": 8062,
+     "decoder_state": {
+      "shape": [
+       1,
+       640
+      ],
+      "sum": -79.43156242370605,
+      "max_abs": 6.96484375
+     },
+     "logits": {
+      "argmax": 8029,
+      "logit_argmax": -8.640625,
+      "logit_8135": -14.671875,
+      "gap_to_native": -6.03125,
+      "duration_argmax": 0
+     }
+    }
+   }
+  },
+  "pair-fit-15e4": {
+   "name": "pair-fit-15e4",
+   "elapsed_s": 3.40214941900922,
+   "decoder_calls": 145,
+   "joint_calls": 146,
+   "emissions": 104,
+   "first_divergence": {
+    "emission_index": 101,
+    "actual": {
+     "token_id": 8029,
+     "frame_index": 373,
+     "duration": 0
+    },
+    "native": {
+     "token_id": 7892,
+     "frame_index": 373,
+     "duration": 0
+    }
+   },
+   "matching_prefix": 101,
+   "flipped_e101": false,
+   "snapshots": {
+    "95": {
+     "emission_index": 95,
+     "frame_index": 373,
+     "decoder_input_token": 7883,
+     "decoder_state": {
+      "shape": [
+       1,
+       640
+      ],
+      "sum": -4.754222869873047,
+      "max_abs": 2.279296875
+     },
+     "logits": {
+      "argmax": 7883,
+      "logit_argmax": -11.6328125,
+      "logit_7883": -11.6328125,
+      "gap_to_native": 0.0,
+      "duration_argmax": 0
+     }
+    },
+    "96": {
+     "emission_index": 96,
+     "frame_index": 373,
+     "decoder_input_token": 7883,
+     "decoder_state": {
+      "shape": [
+       1,
+       640
+      ],
+      "sum": -11.927658081054688,
+      "max_abs": 2.330078125
+     },
+     "logits": {
+      "argmax": 7883,
+      "logit_argmax": -8.9140625,
+      "logit_7883": -8.9140625,
+      "gap_to_native": 0.0,
+      "duration_argmax": 0
+     }
+    },
+    "97": {
+     "emission_index": 97,
+     "frame_index": 373,
+     "decoder_input_token": 7883,
+     "decoder_state": {
+      "shape": [
+       1,
+       640
+      ],
+      "sum": -3.747730255126953,
+      "max_abs": 2.251953125
+     },
+     "logits": {
+      "argmax": 7883,
+      "logit_argmax": -12.765625,
+      "logit_7883": -12.765625,
+      "gap_to_native": 0.0,
+      "duration_argmax": 0
+     }
+    },
+    "98": {
+     "emission_index": 98,
+     "frame_index": 373,
+     "decoder_input_token": 7883,
+     "decoder_state": {
+      "shape": [
+       1,
+       640
+      ],
+      "sum": -11.795921325683594,
+      "max_abs": 2.400390625
+     },
+     "logits": {
+      "argmax": 7883,
+      "logit_argmax": -8.96875,
+      "logit_7883": -8.96875,
+      "gap_to_native": 0.0,
+      "duration_argmax": 0
+     }
+    },
+    "99": {
+     "emission_index": 99,
+     "frame_index": 373,
+     "decoder_input_token": 7883,
+     "decoder_state": {
+      "shape": [
+       1,
+       640
+      ],
+      "sum": -2.2535858154296875,
+      "max_abs": 2.248046875
+     },
+     "logits": {
+      "argmax": 7863,
+      "logit_argmax": -14.046875,
+      "logit_7863": -14.046875,
+      "gap_to_native": 0.0,
+      "duration_argmax": 0
+     }
+    },
+    "100": {
+     "emission_index": 100,
+     "frame_index": 373,
+     "decoder_input_token": 7863,
+     "decoder_state": {
+      "shape": [
+       1,
+       640
+      ],
+      "sum": -89.35167694091797,
+      "max_abs": 5.55078125
+     },
+     "logits": {
+      "argmax": 8135,
+      "logit_argmax": -16.953125,
+      "logit_8135": -16.953125,
+      "gap_to_native": 0.0,
+      "duration_argmax": 0
+     }
+    },
+    "101": {
+     "emission_index": 101,
+     "frame_index": 373,
+     "decoder_input_token": 8135,
+     "decoder_state": {
+      "shape": [
+       1,
+       640
+      ],
+      "sum": -59.581871032714844,
+      "max_abs": 4.68359375
+     },
+     "logits": {
+      "argmax": 8029,
+      "logit_argmax": -12.6484375,
+      "logit_7892": -12.90625,
+      "gap_to_native": -0.2578125,
+      "duration_argmax": 0
+     }
+    },
+    "102": {
+     "emission_index": 102,
+     "frame_index": 373,
+     "decoder_input_token": 8029,
+     "decoder_state": {
+      "shape": [
+       1,
+       640
+      ],
+      "sum": -132.60911560058594,
+      "max_abs": 10.6953125
+     },
+     "logits": {
+      "argmax": 8062,
+      "logit_argmax": -8.078125,
+      "logit_7863": -12.484375,
+      "gap_to_native": -4.40625,
+      "duration_argmax": 0
+     }
+    },
+    "103": {
+     "emission_index": 103,
+     "frame_index": 373,
+     "decoder_input_token": 8062,
+     "decoder_state": {
+      "shape": [
+       1,
+       640
+      ],
+      "sum": -79.43596076965332,
+      "max_abs": 6.96484375
+     },
+     "logits": {
+      "argmax": 8029,
+      "logit_argmax": -8.6484375,
+      "logit_8135": -14.6875,
+      "gap_to_native": -6.0390625,
+      "duration_argmax": 0
+     }
+    }
+   }
+  },
+  "cr+pins": {
+   "name": "cr+pins",
+   "elapsed_s": 3.5786291520053055,
+   "decoder_calls": 145,
+   "joint_calls": 146,
+   "emissions": 104,
+   "first_divergence": {
+    "emission_index": 101,
+    "actual": {
+     "token_id": 8029,
+     "frame_index": 373,
+     "duration": 0
+    },
+    "native": {
+     "token_id": 7892,
+     "frame_index": 373,
+     "duration": 0
+    }
+   },
+   "matching_prefix": 101,
+   "flipped_e101": false,
+   "snapshots": {
+    "95": {
+     "emission_index": 95,
+     "frame_index": 373,
+     "decoder_input_token": 7883,
+     "decoder_state": {
+      "shape": [
+       1,
+       640
+      ],
+      "sum": -4.633563995361328,
+      "max_abs": 2.275390625
+     },
+     "logits": {
+      "argmax": 7883,
+      "logit_argmax": -11.6796875,
+      "logit_7883": -11.6796875,
+      "gap_to_native": 0.0,
+      "duration_argmax": 0
+     }
+    },
+    "96": {
+     "emission_index": 96,
+     "frame_index": 373,
+     "decoder_input_token": 7883,
+     "decoder_state": {
+      "shape": [
+       1,
+       640
+      ],
+      "sum": -11.71343994140625,
+      "max_abs": 2.333984375
+     },
+     "logits": {
+      "argmax": 7883,
+      "logit_argmax": -8.9375,
+      "logit_7883": -8.9375,
+      "gap_to_native": 0.0,
+      "duration_argmax": 0
+     }
+    },
+    "97": {
+     "emission_index": 97,
+     "frame_index": 373,
+     "decoder_input_token": 7883,
+     "decoder_state": {
+      "shape": [
+       1,
+       640
+      ],
+      "sum": -3.5924034118652344,
+      "max_abs": 2.24609375
+     },
+     "logits": {
+      "argmax": 7883,
+      "logit_argmax": -12.859375,
+      "logit_7883": -12.859375,
+      "gap_to_native": 0.0,
+      "duration_argmax": 0
+     }
+    },
+    "98": {
+     "emission_index": 98,
+     "frame_index": 373,
+     "decoder_input_token": 7883,
+     "decoder_state": {
+      "shape": [
+       1,
+       640
+      ],
+      "sum": -11.674980163574219,
+      "max_abs": 2.404296875
+     },
+     "logits": {
+      "argmax": 7883,
+      "logit_argmax": -8.9765625,
+      "logit_7883": -8.9765625,
+      "gap_to_native": 0.0,
+      "duration_argmax": 0
+     }
+    },
+    "99": {
+     "emission_index": 99,
+     "frame_index": 373,
+     "decoder_input_token": 7883,
+     "decoder_state": {
+      "shape": [
+       1,
+       640
+      ],
+      "sum": -2.0163955688476562,
+      "max_abs": 2.23828125
+     },
+     "logits": {
+      "argmax": 7863,
+      "logit_argmax": -14.109375,
+      "logit_7863": -14.109375,
+      "gap_to_native": 0.0,
+      "duration_argmax": 0
+     }
+    },
+    "100": {
+     "emission_index": 100,
+     "frame_index": 373,
+     "decoder_input_token": 7863,
+     "decoder_state": {
+      "shape": [
+       1,
+       640
+      ],
+      "sum": -89.31086730957031,
+      "max_abs": 5.5703125
+     },
+     "logits": {
+      "argmax": 8135,
+      "logit_argmax": -16.90625,
+      "logit_8135": -16.90625,
+      "gap_to_native": 0.0,
+      "duration_argmax": 0
+     }
+    },
+    "101": {
+     "emission_index": 101,
+     "frame_index": 373,
+     "decoder_input_token": 8135,
+     "decoder_state": {
+      "shape": [
+       1,
+       640
+      ],
+      "sum": -59.40062713623047,
+      "max_abs": 4.6796875
+     },
+     "logits": {
+      "argmax": 8029,
+      "logit_argmax": -12.6484375,
+      "logit_7892": -12.859375,
+      "gap_to_native": -0.2109375,
+      "duration_argmax": 0
+     }
+    },
+    "102": {
+     "emission_index": 102,
+     "frame_index": 373,
+     "decoder_input_token": 8029,
+     "decoder_state": {
+      "shape": [
+       1,
+       640
+      ],
+      "sum": -132.59909057617188,
+      "max_abs": 10.71875
+     },
+     "logits": {
+      "argmax": 8062,
+      "logit_argmax": -8.09375,
+      "logit_7863": -12.4609375,
+      "gap_to_native": -4.3671875,
+      "duration_argmax": 0
+     }
+    },
+    "103": {
+     "emission_index": 103,
+     "frame_index": 373,
+     "decoder_input_token": 8062,
+     "decoder_state": {
+      "shape": [
+       1,
+       640
+      ],
+      "sum": -79.28110122680664,
+      "max_abs": 6.95703125
+     },
+     "logits": {
+      "argmax": 8029,
+      "logit_argmax": -8.6484375,
+      "logit_8135": -14.6640625,
+      "gap_to_native": -6.015625,
+      "duration_argmax": 0
+     }
+    }
+   }
+  }
+ }
+}
