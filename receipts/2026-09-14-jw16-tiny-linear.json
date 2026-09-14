@@ -1,0 +1,235 @@
+{
+  "schema": "mlx-omarchy.jw16-tiny-linear.v1",
+  "date": "2026-09-14",
+  "result": "PASS",
+  "exact_fp16": "yes",
+  "exact_vs_numpy": true,
+  "host": "jw16mbp1-linux",
+  "ssh_alias": "jw16mbp1-linux",
+  "kernel": "7.1.6-1-1-ARCH",
+  "resolved_model": {
+    "configured": "openai-codex/gpt-5.6-sol",
+    "actual": "openai-codex/gpt-5.6-sol",
+    "fallback": false
+  },
+  "operation": "linear",
+  "shape": [1, 1, 256],
+  "weight_shape": [128, 256],
+  "geometry": [1, 256, 128],
+  "transpose_x": false,
+  "transpose_y": true,
+  "runtime_weight": false,
+  "bias": false,
+  "dtype": "float16",
+  "source": {
+    "ane_ko_path": "/home/joshuawarren/ane-build-abi1/ane.ko",
+    "ane_ko_sha256": "1b801564a1a6c5801dc26cfd1e4a8d820761881f4a1e98543429bc43ccc9744f",
+    "worker_path": "/var/tmp/jw16-tiny-linear/mlx-omarchy-ane-worker",
+    "worker_sha256": "762dd1de868b52e4d6ffa30e18d842d9341db463b06aef2355f18fb1eb248929",
+    "libane_path": "/var/tmp/jw16-ane-first-exec/libane.so",
+    "libane_source_commit": "f261a6cb537aca62f267ad3d01beda0d6877544c",
+    "libane_sha256": "1ab9d95debcc8b5fee3b6653dfce0b50412bc7efef43c2d2167dc83ce270ca49",
+    "compiler_commit": "37fb29ed1688a22e2b2ff2dfbf032c10ba879c16",
+    "compiler_binary_sha256": "77521fb36681f8ace6e4aff97ef7ca856b57137e3808680f85dfd4742248de61",
+    "compiler_source_repo": "mil-hwxc",
+    "graph_hash": "c9cda5eb95180d33b5601112ea14f3984e5c63145ee1393a47cb6c4eeba25ec5",
+    "bundle": "/var/tmp/jw16-tiny-linear/bundle",
+    "bundle_name": "schema4-linear-1-256-128",
+    "bundle_manifest_version": 4,
+    "bundle_manifest_sha256": "b19c826be8ffd3e2f496f7116e891aa89f19b06cd1f8ff2243ff953fb7f54b08",
+    "program0_anec_sha256": "437fe9338433dd7525655aa6effd8090006d8114f7b36f7bcc6de0fe4aec4d76",
+    "programs": 1,
+    "task_descriptors": 1,
+    "constant_bytes": 524288,
+    "encoder": "h13-source-qualified",
+    "matmul_envelope": true,
+    "native_matvec_preferred": true,
+    "t8103_receipt": "receipts/2026-09-14-jwm1-tiny-linear.json"
+  },
+  "fixture": {
+    "generation": "identity-padded W[n,k]=1 iff n==k else 0; x[i]=fp16(i*0.25-8) for i in 0..255",
+    "x_sha256": "2d37f27a30cb49c59113639a61c28da7274e75d2bb5ef12729c1d0881a99428e",
+    "numpy_oracle": "y = fp16(fp32(x) @ fp32(W).T) with x shape [1,1,256] and W shape [128,256]; identity-padded so y[i]=x[i] for i in 0..127",
+    "y_expect_sha256": "5284fb7bc18c53aa94ab2f73db8bd05b5af10a88152c0730ecdeef2e05e05504",
+    "element_count": 128
+  },
+  "idle_pre": {
+    "runtime_status": "suspended",
+    "refcnt": "0",
+    "idle_wait_s": 8.4e-05,
+    "set0": {
+      "phys": "0x28e08c000",
+      "raw": "0x00000300",
+      "ACTUAL": "0x0",
+      "TARGET": "0x0"
+    }
+  },
+  "set_during_worker_open": [
+    {
+      "t_ms": 0.314,
+      "set0": {
+        "raw": "0x00000300",
+        "ACTUAL": "0x0",
+        "TARGET": "0x0",
+        "phys": "0x28e08c000"
+      }
+    },
+    {
+      "t_ms": 7.166,
+      "set0": {
+        "raw": "0x0000030f",
+        "ACTUAL": "0x0",
+        "TARGET": "0xf",
+        "phys": "0x28e08c000"
+      }
+    },
+    {
+      "t_ms": 7.184,
+      "set0": {
+        "raw": "0x000003ff",
+        "ACTUAL": "0xf",
+        "TARGET": "0xf",
+        "phys": "0x28e08c000"
+      }
+    }
+  ],
+  "set0_after": {
+    "phys": "0x28e08c000",
+    "raw": "0x000003ff",
+    "ACTUAL": "0xf",
+    "TARGET": "0xf"
+  },
+  "set_post": {
+    "set0": {
+      "phys": "0x28e08c000",
+      "raw": "0x000003ff",
+      "ACTUAL": "0xf",
+      "TARGET": "0xf"
+    },
+    "base": {
+      "raw": "0x000003ff",
+      "ACTUAL": "0xf",
+      "TARGET": "0xf"
+    },
+    "set1": {
+      "raw": "0x000003ff",
+      "ACTUAL": "0xf",
+      "TARGET": "0xf"
+    },
+    "set2": {
+      "raw": "0x000003ff",
+      "ACTUAL": "0xf",
+      "TARGET": "0xf"
+    },
+    "set3": {
+      "raw": "0x000003ff",
+      "ACTUAL": "0xf",
+      "TARGET": "0xf"
+    },
+    "set4": {
+      "raw": "0x000003ff",
+      "ACTUAL": "0xf",
+      "TARGET": "0xf"
+    },
+    "set5": {
+      "raw": "0x00000000",
+      "ACTUAL": "0x0",
+      "TARGET": "0x0"
+    }
+  },
+  "device": {
+    "path": "/dev/accel/accel0",
+    "stat": "crw-rw-rw- root:render 261,0",
+    "bound": "285c04000.ane",
+    "dt_compatible": "apple,t6000-ane",
+    "module": "Live",
+    "nproc": 10,
+    "cpu_online": "0-9",
+    "boot_id": "f6ad865b-b85e-499e-8308-28b57b24f0c8",
+    "drm_version_ioctl": {
+      "version": "1.0.0",
+      "name": "ane",
+      "desc": "Apple Neural Engine driver"
+    },
+    "still_live_after": true
+  },
+  "submit": {
+    "attempted": true,
+    "command": "/var/tmp/jw16-tiny-linear/mlx-omarchy-ane-worker --bundle /var/tmp/jw16-tiny-linear/bundle --libane /var/tmp/jw16-ane-first-exec/libane.so --deadline-ms 5000 --iterations 1 --input x=/var/tmp/jw16-tiny-linear/x.bin --expect y=/var/tmp/jw16-tiny-linear/y_expect.bin --save y=/var/tmp/jw16-tiny-linear/y.out.bin",
+    "deadline_ms": 5000,
+    "iterations_requested": 1,
+    "iterations_completed": 1,
+    "worker_exit": 0,
+    "worker_status": 0,
+    "released_programs": 1,
+    "elapsed_ms": 203,
+    "detail": "worker completed 1 iteration(s) and released its programs",
+    "stdout": [
+      "bundle name=schema4-linear-1-256-128 programs=1 driver_abi=1 graph=c9cda5eb95180d33b5601112ea14f3984e5c63145ee1393a47cb6c4eeba25ec5",
+      "worker status=0 iterations=1 released=1 elapsed_ms=203",
+      "worker detail=worker completed 1 iteration(s) and released its programs",
+      "saved output y (256 bytes)",
+      "verified output y exact"
+    ],
+    "stderr": [],
+    "program_submitted_to_ane": true,
+    "hang": false,
+    "errno_110": false,
+    "box_reset": false,
+    "td_size": "0x274",
+    "started_at": "2026-09-14T06:10:47-05:00",
+    "finished_at": "2026-09-14T06:10:47-05:00"
+  },
+  "genpd_resume": {
+    "wired": true,
+    "worker_open_resumed_set": true,
+    "dmesg": [
+      "[28256.966404] JW16_TINY_LINEAR_PRE 2026-09-14T06:10:47-0500 boot=f6ad865b-b85e-499e-8308-28b57b24f0c8",
+      "[28256.973397] ane 285c04000.ane: ane_drm_open called",
+      "[28256.973734] ane 285c04000.ane: resume: entry",
+      "[28257.023746] ane 285c04000.ane: power: genpd-owned on this SoC",
+      "[28257.023753] ane 285c04000.ane: resume: force_power done",
+      "[28257.073757] ane 285c04000.ane: resume: pre tm_enable",
+      "[28257.123769] ane 285c04000.ane: resume: tm_enable done",
+      "[28257.173780] ane 285c04000.ane: pm_runtime_resume_and_get returned 0",
+      "[28257.174177] ane 285c04000.ane: submit: ioctl entry",
+      "[28257.174179] ane 285c04000.ane: submit: enqueue qid=4 td_size=0x274 nid=0x40 iova=0x94000",
+      "[28257.174195] ane 285c04000.ane: submit: calling execute",
+      "[28257.174199] ane 285c04000.ane: submit: doorbell survived",
+      "[28257.174263] ane 285c04000.ane: submit: execute returned 0",
+      "[28257.176249] JW16_TINY_LINEAR_POST 2026-09-14T06:10:47-0500 rc=0"
+    ]
+  },
+  "numeric": {
+    "element_count": 128,
+    "worker_verified_exact": true,
+    "y_out": "/var/tmp/jw16-tiny-linear/y.out.bin",
+    "y_out_sha256": "5284fb7bc18c53aa94ab2f73db8bd05b5af10a88152c0730ecdeef2e05e05504",
+    "y_out_bytes": 256,
+    "exact_vs_numpy_lanes": "128/128 bit-identical",
+    "lanes_differing": 0,
+    "max_abs_diff": 0.0,
+    "note": "Device y sha256 equals numpy identity-padded expect 5284fb7b from receipts/2026-09-14-jwm1-tiny-linear.json."
+  },
+  "post": {
+    "boot_id": "f6ad865b-b85e-499e-8308-28b57b24f0c8",
+    "boot_id_unchanged": true,
+    "device": "crw-rw-rw- root:render 261,0 /dev/accel/accel0",
+    "bound": "285c04000.ane",
+    "module": "Live",
+    "runtime_status": "suspended",
+    "refcnt": "0",
+    "device_live": true
+  },
+  "prohibited_actions_observed": {
+    "ane_unloaded": false,
+    "rebooted": false,
+    "executed_1x896": false,
+    "took_gpu_lock": false,
+    "retried_after_110": false,
+    "wrote_0xf_userspace": false,
+    "wide_375": false,
+    "td_208": false
+  },
+  "prior_receipt": "receipts/2026-09-14-jw16-tiny-conv.json"
+}
