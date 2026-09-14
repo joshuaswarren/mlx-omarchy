@@ -1,0 +1,8 @@
+mx.metal.device_info is deprecated and will be removed in a future version. Use mx.device_info instead.
+provenance: mlx-omarchy 0.32.2.dev202609142107+fat.02b0a7f418f5e8239ade60960e394c50095d406c mx=0.32.2.dev202609142107+fat.02b0a7f418f5e8239ade60960e394c50095d406c verified=match harness=02b0a7f4 core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:a172fed8be7caf8d
+decode 127.60 tok/s over 31 tokens (32 requested, EOS suppressed)
+prefill 0.271s (reported separately, excluded from decode)
+prompt_tokens 1053
+decode mean per-token 7.8 ms
+generated_ids sha256:7da83f06ec9f001d n=32 first=13060,498,369 last=3897,553,279
+{"decode_tps": 127.5957, "device": "Apple M1 Max (G13C C0)", "engine": "bench_decode", "generated": 32, "ids_first": [13060, 498, 369], "ids_last": [3897, 553, 279], "ids_sha256_16": "7da83f06ec9f001d", "prefill_s": 0.270929, "prefill_tps": 3886.6202, "prompt_tokens": 1053}
