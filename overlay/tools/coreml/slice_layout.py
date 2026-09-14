@@ -4,20 +4,14 @@
 
 H13 rejects ``slice_by_index`` on fp16 ``[1, 8, 749, 375]`` as
 ``h13.noncontiguous-slice``: eight chunks of 280875 elements spaced
-281250 apart. The producer is ``[1, 8, 750, 375]`` sliced as
-``x[:, :, 1:, :]``. One binding cannot name those interleaved chunks.
+281250 apart (``x[:, :, 1:, :]`` on ``[1, 8, 750, 375]``). It then
+rejects ``matrix_bd_3`` fp16 ``[1, 8, 375, 375]``: 3000 chunks of 375
+spaced 749 (``x[:, :, :, :375]`` on ``[1, 8, 375, 749]``).
 
-A reshape of the same buffer does not help: ``[8, 750, 375][:, 1:, :]``
-is the same eight-chunk layout. Dropping the last row instead of the
-first (``[:, :, :749, :]``) has the same output shape and the wrong
-values — ``numpy_relpos_drop_last`` returns that counterexample.
-Cutting two dimensions in one op (``[:, h:h+1, 1:, :]``) is also
-rejected: H13 allows at most one sliced dimension per binding.
-
-The exact rewrite takes each head plane (``[:, h:h+1, :, :]``, one
-dim) then drops the first row on that plane (``[:, :, 1:, :]``, one
-dim). Concat on the heads axis is a permutation of the same bytes as
-the original slice — not an approximation.
+H13 allows at most one sliced dimension per binding. The rewrite peels
+every wrapping dim as a one-dim unit plane, applies the remaining
+one-dim inner slice, and concats back. Two-dim cuts and drop-last /
+suffix-prefix swaps are named counterexamples, not approximations.
 """
 
 from __future__ import annotations
@@ -103,6 +97,46 @@ def numpy_relpos_drop_last(source: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     """
     packed = _as_relpos(source)
     return packed[:, :, 1:, :], packed[:, :, :-1, :]
+
+def numpy_last_dim_prefix(source: np.ndarray, keep: int) -> tuple[np.ndarray, np.ndarray]:
+    """Original ``x[:, :, :, :keep]`` vs nested per-head per-row concat.
+
+    ``source`` is ``[B, H, T, D]``. Each ``[B, 1, 1, keep]`` piece is
+    one contiguous chunk of ``keep``; concat axis 2 then 1 restores
+    ``[B, H, T, keep]``.
+    """
+    packed = np.asarray(source)
+    if packed.ndim != 4:
+        raise SliceLayoutError(
+            f"last-dim prefix expects rank-4 [B, H, T, D], got {packed.shape}"
+        )
+    if keep <= 0 or keep > packed.shape[3]:
+        raise SliceLayoutError(
+            f"keep={keep} is outside last dim {packed.shape[3]}"
+        )
+    original = packed[:, :, :, :keep]
+    heads = []
+    for head in range(packed.shape[1]):
+        rows = [
+            packed[:, head : head + 1, time : time + 1, :keep]
+            for time in range(packed.shape[2])
+        ]
+        heads.append(np.concatenate(rows, axis=2))
+    rewritten = np.concatenate(heads, axis=1)
+    return original, rewritten
+
+
+def numpy_last_dim_suffix(source: np.ndarray, keep: int) -> tuple[np.ndarray, np.ndarray]:
+    """``x[:, :, :, :keep]`` vs ``x[:, :, :, -keep:]``.
+
+    Same output shape, different packing when ``keep < D``.
+    """
+    packed = np.asarray(source)
+    if packed.ndim != 4:
+        raise SliceLayoutError(
+            f"last-dim suffix expects rank-4 [B, H, T, D], got {packed.shape}"
+        )
+    return packed[:, :, :, :keep], packed[:, :, :, -keep:]
 
 
 def require_exact(original: np.ndarray, rewritten: np.ndarray, what: str) -> None:
@@ -328,15 +362,13 @@ def _is_contiguous(source_shape, ranges) -> bool:
     return spacing == chunk_elems
 
 
-def _chunk_axis(ranges) -> int | None:
-    """The unique wrapping dim of a one-gap inner slice, or None."""
+def _wrapping_axes(ranges) -> list[int]:
+    """Wrapping dims slower than the innermost partial run."""
     partial = _inner_partial(ranges)
     if partial is None:
-        return None
-    wrapping = [axis for axis in range(partial) if ranges[axis][2] > 1]
-    if len(wrapping) != 1:
-        return None
-    return wrapping[0]
+        return []
+    return [axis for axis in range(partial) if ranges[axis][2] > 1]
+
 
 
 def _classify(lines, table, index, name) -> LayoutEntry | None:
@@ -418,14 +450,16 @@ def _classify(lines, table, index, name) -> LayoutEntry | None:
         )
     if _is_contiguous(source_shape, ranges):
         return None
-    chunk_axis = _chunk_axis(ranges)
-    if chunk_axis is None:
+    wrapping = _wrapping_axes(ranges)
+    if not wrapping:
         return LayoutEntry(
             index, name, "REFUSED",
-            "noncontiguous slice is not one wrapping dim over a full "
-            "suffix; a single concat cannot name the chunks",
+            "noncontiguous slice has no wrapping dim to peel into "
+            "one-dim unit planes",
         )
-    n_chunks = ranges[chunk_axis][2]
+    n_chunks = 1
+    for axis in wrapping:
+        n_chunks *= ranges[axis][2]
     partial = _inner_partial(ranges)
     chunk_elems = 1
     spacing = 1
@@ -434,9 +468,11 @@ def _classify(lines, table, index, name) -> LayoutEntry | None:
         spacing *= source_shape[axis]
     return LayoutEntry(
         index, name, "REWRITTEN",
-        f"per-chunk slice + concat axis={chunk_axis} emits {list(shape)}; "
-        f"{n_chunks} chunks of {chunk_elems} spaced {spacing} apart",
+        f"per-chunk slice + nested concat axes={wrapping} emits "
+        f"{list(shape)}; {n_chunks} chunks of {chunk_elems} spaced "
+        f"{spacing} apart",
     )
+
 
 
 def plan_slice_layout(mil_text: str) -> list[LayoutEntry]:
@@ -456,6 +492,83 @@ def plan_slice_layout(mil_text: str) -> list[LayoutEntry]:
         if entry is not None:
             entries.append(entry)
     return entries
+
+
+def _int_vec(indent: str, name: str, values: list[int]) -> str:
+    return (
+        f"{indent}tensor<int32, [4]> {name} = const()"
+        f"[name = tensor<string, []>(\"{name}\"), "
+        f"val = tensor<int32, [4]>({_shape_text(tuple(values))})];"
+    )
+
+
+def _int_scalar(indent: str, name: str, value: int) -> str:
+    return (
+        f"{indent}tensor<int32, []> {name} = const()"
+        f"[name = tensor<string, []>(\"{name}\"), "
+        f"val = tensor<int32, []>({value})];"
+    )
+
+
+def _slice_line(indent, dtype, shape, name, begin, end, source) -> str:
+    return (
+        f"{indent}tensor<{dtype}, {_shape_text(tuple(shape))}> {name} = "
+        f"slice_by_index(begin = {begin}, end = {end}, x = {source})"
+        f"[name = tensor<string, []>(\"{name}\")];"
+    )
+
+
+def _concat_line(indent, dtype, shape, name, axis_name, pieces) -> str:
+    args = ", ".join(
+        [f"axis = {axis_name}"]
+        + [f"x{offset} = {piece}" for offset, piece in enumerate(pieces)]
+    )
+    return (
+        f"{indent}tensor<{dtype}, {_shape_text(tuple(shape))}> {name} = "
+        f"concat({args})"
+        f"[name = tensor<string, []>(\"{name}_slice_concat\")];"
+    )
+
+_MAX_CONCAT = 8  # 8-way heads concat already compiled; 375-way did not
+
+
+def _concat_tree(
+    indent, taken, prefix, dtype, axis, axis_name, pieces, piece_shape, out_name
+):
+    """Concat ``pieces`` along ``axis`` in groups of at most ``_MAX_CONCAT``."""
+    inserted = []
+    names = list(pieces)
+    sizes = [piece_shape[axis]] * len(pieces)
+    base_shape = list(piece_shape)
+    round_i = 0
+    while len(names) > 1:
+        new_names = []
+        new_sizes = []
+        last_round = len(names) <= _MAX_CONCAT
+        for i in range(0, len(names), _MAX_CONCAT):
+            group = names[i : i + _MAX_CONCAT]
+            group_sizes = sizes[i : i + _MAX_CONCAT]
+            if len(group) == 1:
+                new_names.append(group[0])
+                new_sizes.append(group_sizes[0])
+                continue
+            out_s = list(base_shape)
+            out_s[axis] = sum(group_sizes)
+            n_name = (
+                out_name
+                if last_round and i == 0
+                else _fresh(taken, f"{prefix}_c{round_i}_{i}")
+            )
+            inserted.append(
+                _concat_line(indent, dtype, out_s, n_name, axis_name, group)
+            )
+            new_names.append(n_name)
+            new_sizes.append(out_s[axis])
+        names = new_names
+        sizes = new_sizes
+        round_i += 1
+    return names[0], inserted
+
 
 
 def _emit_rewrite(lines, table, taken, name) -> tuple[list[str], str]:
@@ -483,89 +596,82 @@ def _emit_rewrite(lines, table, taken, name) -> tuple[list[str], str]:
     ranges = _resolved_ranges(
         source_shape, begin, end, begin_mask, end_mask, stride
     )
-    chunk_axis = _chunk_axis(ranges)
-    n_chunks = ranges[chunk_axis][2]
-    chunk_begin = ranges[chunk_axis][0]
-    axis_name = _fresh(taken, f"{name}_slice_axis")
-    inner_b = _fresh(taken, f"{name}_inner_begin")
-    inner_e = _fresh(taken, f"{name}_inner_end")
-    inner_begin = [
-        0 if axis == chunk_axis else item[0]
-        for axis, item in enumerate(ranges)
-    ]
-    inner_end = [
-        1 if axis == chunk_axis else item[1]
-        for axis, item in enumerate(ranges)
-    ]
-    inserted = [
-        (
-            f"{indent}tensor<int32, []> {axis_name} = const()"
-            f"[name = tensor<string, []>(\"{axis_name}\"), "
-            f"val = tensor<int32, []>({chunk_axis})];"
-        ),
-        (
-            f"{indent}tensor<int32, [4]> {inner_b} = const()"
-            f"[name = tensor<string, []>(\"{inner_b}\"), "
-            f"val = tensor<int32, [4]>({_shape_text(tuple(inner_begin))})];"
-        ),
-        (
-            f"{indent}tensor<int32, [4]> {inner_e} = const()"
-            f"[name = tensor<string, []>(\"{inner_e}\"), "
-            f"val = tensor<int32, [4]>({_shape_text(tuple(inner_end))})];"
-        ),
-    ]
-    pieces = []
-    plane_shape = list(source_shape)
-    plane_shape[chunk_axis] = 1
-    chunk_shape = list(item[2] for item in ranges)
-    chunk_shape[chunk_axis] = 1
-    for offset in range(n_chunks):
-        head = chunk_begin + offset
-        plane_begin = [
-            head if axis == chunk_axis else 0
-            for axis in range(4)
-        ]
-        plane_end = [
-            head + 1 if axis == chunk_axis else source_shape[axis]
-            for axis in range(4)
-        ]
-        b_name = _fresh(taken, f"{name}_h{offset}_begin")
-        e_name = _fresh(taken, f"{name}_h{offset}_end")
-        p_name = _fresh(taken, f"{name}_h{offset}_plane")
-        s_name = _fresh(taken, f"{name}_h{offset}")
-        inserted.append(
-            f"{indent}tensor<int32, [4]> {b_name} = const()"
-            f"[name = tensor<string, []>(\"{b_name}\"), "
-            f"val = tensor<int32, [4]>({_shape_text(tuple(plane_begin))})];"
+
+    def peel(prefix, tensor_name, tensor_shape, tensor_ranges, out_name):
+        wrapping = _wrapping_axes(tensor_ranges)
+        if not wrapping:
+            begin_vals = [item[0] for item in tensor_ranges]
+            end_vals = [item[1] for item in tensor_ranges]
+            out_shape = [item[2] for item in tensor_ranges]
+            result = out_name or _fresh(taken, f"{prefix}_inner")
+            b_name = _fresh(taken, f"{prefix}_inner_begin")
+            e_name = _fresh(taken, f"{prefix}_inner_end")
+            inserted = [
+                _int_vec(indent, b_name, begin_vals),
+                _int_vec(indent, e_name, end_vals),
+                _slice_line(
+                    indent, dtype, out_shape, result,
+                    b_name, e_name, tensor_name,
+                ),
+            ]
+            return result, inserted
+        axis = wrapping[0]
+        count = tensor_ranges[axis][2]
+        start = tensor_ranges[axis][0]
+        axis_name = _fresh(taken, f"{prefix}_axis")
+        inserted = [_int_scalar(indent, axis_name, axis)]
+        pieces = []
+        for offset in range(count):
+            head = start + offset
+            plane_begin = [
+                head if dim == axis else 0 for dim in range(4)
+            ]
+            plane_end = [
+                head + 1 if dim == axis else tensor_shape[dim]
+                for dim in range(4)
+            ]
+            plane_shape = list(tensor_shape)
+            plane_shape[axis] = 1
+            b_name = _fresh(taken, f"{prefix}_h{offset}_begin")
+            e_name = _fresh(taken, f"{prefix}_h{offset}_end")
+            p_name = _fresh(taken, f"{prefix}_h{offset}_plane")
+            inserted.append(_int_vec(indent, b_name, plane_begin))
+            inserted.append(_int_vec(indent, e_name, plane_end))
+            inserted.append(
+                _slice_line(
+                    indent, dtype, plane_shape, p_name,
+                    b_name, e_name, tensor_name,
+                )
+            )
+            child_ranges = [
+                (0, 1, 1, True) if dim == axis else item
+                for dim, item in enumerate(tensor_ranges)
+            ]
+            child_name, child_ins = peel(
+                f"{prefix}_h{offset}",
+                p_name,
+                tuple(plane_shape),
+                child_ranges,
+                None,
+            )
+            inserted.extend(child_ins)
+            pieces.append(child_name)
+        piece_shape = [item[2] for item in child_ranges]
+        result = out_name or _fresh(taken, f"{prefix}_concat")
+        tree_name, tree_ins = _concat_tree(
+            indent, taken, prefix, dtype, axis, axis_name,
+            pieces, piece_shape, result,
         )
-        inserted.append(
-            f"{indent}tensor<int32, [4]> {e_name} = const()"
-            f"[name = tensor<string, []>(\"{e_name}\"), "
-            f"val = tensor<int32, [4]>({_shape_text(tuple(plane_end))})];"
-        )
-        inserted.append(
-            f"{indent}tensor<{dtype}, {_shape_text(tuple(plane_shape))}> "
-            f"{p_name} = slice_by_index(begin = {b_name}, end = {e_name}, "
-            f"x = {source_name})"
-            f"[name = tensor<string, []>(\"{p_name}\")];"
-        )
-        inserted.append(
-            f"{indent}tensor<{dtype}, {_shape_text(tuple(chunk_shape))}> "
-            f"{s_name} = slice_by_index(begin = {inner_b}, end = {inner_e}, "
-            f"x = {p_name})"
-            f"[name = tensor<string, []>(\"{s_name}\")];"
-        )
-        pieces.append(s_name)
-    args_text = ", ".join(
-        [f"axis = {axis_name}"]
-        + [f"x{offset} = {piece}" for offset, piece in enumerate(pieces)]
+        _ = tree_name
+        inserted.extend(tree_ins)
+        return result, inserted
+
+    result, inserted = peel(
+        name, source_name, source_shape, ranges, name
     )
-    replacement = (
-        f"{indent}tensor<{dtype}, {shape_text}> {name} = "
-        f"concat({args_text})"
-        f"[name = tensor<string, []>(\"{name}_slice_concat\")];"
-    )
-    return inserted, replacement
+    _ = result
+    replacement = inserted[-1]
+    return inserted[:-1], replacement
 
 
 def rewrite_slice_layout(mil_text: str) -> tuple[str, LayoutReport]:

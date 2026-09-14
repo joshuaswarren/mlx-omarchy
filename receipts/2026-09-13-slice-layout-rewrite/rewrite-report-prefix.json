@@ -1,0 +1,30 @@
+{
+  "schema": "mlx-omarchy.slice-layout-rewrite.v1",
+  "rewritten": [
+    "matrix_bd_3_cast_fp16",
+    "matrix_bd_9_cast_fp16",
+    "matrix_bd_15_cast_fp16",
+    "matrix_bd_21_cast_fp16",
+    "matrix_bd_27_cast_fp16",
+    "matrix_bd_33_cast_fp16",
+    "matrix_bd_39_cast_fp16",
+    "matrix_bd_45_cast_fp16",
+    "matrix_bd_51_cast_fp16",
+    "matrix_bd_57_cast_fp16",
+    "matrix_bd_63_cast_fp16",
+    "matrix_bd_69_cast_fp16",
+    "matrix_bd_75_cast_fp16",
+    "matrix_bd_81_cast_fp16",
+    "matrix_bd_87_cast_fp16",
+    "matrix_bd_93_cast_fp16",
+    "matrix_bd_99_cast_fp16",
+    "matrix_bd_105_cast_fp16",
+    "matrix_bd_111_cast_fp16",
+    "matrix_bd_117_cast_fp16",
+    "matrix_bd_123_cast_fp16",
+    "matrix_bd_129_cast_fp16",
+    "matrix_bd_135_cast_fp16",
+    "matrix_bd_141_cast_fp16"
+  ],
+  "refused": []
+}
