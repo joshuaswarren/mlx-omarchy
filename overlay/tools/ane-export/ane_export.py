@@ -11,9 +11,9 @@ Runs on macOS (Apple silicon) with Xcode and ANECompiler installed. The tool:
    ``receipts/2026-08-31-mil-oneop-proof.md``).
 3. Compiles through the private ``ANECCompile`` entry point via the
    companion ``ane-compile-hwx`` tool, producing ``model.hwx``.
-4. Converts the HWX to the Linux ``.anec`` container with
-   ``hwxv2-to-anec-patched.py`` (accepts the TD flag word emitted by
-   ANECompiler 9.509.0).
+4. Converts the HWX to the Linux ``.anec`` container with the canonical
+   ``hwxv2-to-anec.py`` from ``joshuaswarren/ane-linux-experiments``, passing
+   ``--weights`` so the weight payload offset comes out of the blob record.
 5. Packages a ``bundle/`` directory (manifest.json + payloads) that passes
    ``mlx-omarchy-info --check-bundle`` on Linux.
 
@@ -30,7 +30,8 @@ Descriptor fields:
 
 The scratch layout this tool expects (see the mlx-omarchy exporter README):
     ane-compile-hwx              built from ane-compile-hwx.mm (Xcode clang++)
-    hwxv2-to-anec-patched.py     HWX -> ANEC converter, TD-magic widened
+    hwxv2-to-anec.py             HWX -> ANEC converter, copied unmodified from
+                                 ane-linux-experiments (52a3211 or later)
 """
 
 import argparse
@@ -51,6 +52,13 @@ WEIGHTS_ENTRY_COUNT = 2
 BLOB_MAGIC = 0xDEADBEEF
 BLOB_VERSION = 1
 BLOB_DATA_OFFSET = 128  # 0x40 header + 0x40 blob record
+CONVERTER = "hwxv2-to-anec.py"
+# ane-linux-experiments 52a3211 made the converter read the weight payload
+# offset out of the blob record and derive nchw geometry from the task's
+# tile-DMA counts. An earlier copy takes no --weights, emits a header-prefixed
+# weight stream and convention geometry, and the export is wrong but silent -
+# so refuse it by the two names that fix introduced.
+CONVERTER_MARKERS = ("--weights", "derive_strides")
 
 
 def die(message: str) -> "NoReturn":  # type: ignore[valid-type]
@@ -158,17 +166,30 @@ def probe(command: list, fallback: str = "") -> str:
     return fallback
 
 
+def check_converter(path: Path) -> None:
+    """Refuse a converter that predates the export fix."""
+    if not path.exists():
+        die(f"missing {path}; copy tools/{CONVERTER} from "
+            "ane-linux-experiments (52a3211 or later)")
+    source = path.read_text(errors="replace")
+    missing = [name for name in CONVERTER_MARKERS if name not in source]
+    if missing:
+        die(f"{path} predates the export fix (no {', '.join(missing)}); "
+            "copy it again from ane-linux-experiments 52a3211 or later")
+
+
 def compile_region(tools_dir: Path, capture: Path, hwx_output: Path,
-                   anec_path: Path, in_elems: int, out_elems: int) -> dict:
+                   anec_path: Path, weights_path: Path, in_elems: int,
+                   out_elems: int) -> dict:
     """Compile + convert. Returns converter facts (td-count, workspace)."""
     transcript = run_tool(
         ["./ane-compile-hwx", str(capture), str(hwx_output), "h13"],
         cwd=tools_dir, stage="ANECCompile",
     )
     convert = run_tool(
-        [sys.executable, "hwxv2-to-anec-patched.py",
+        [sys.executable, CONVERTER,
          str(hwx_output / "model.hwx"), str(anec_path),
-         str(in_elems), str(out_elems)],
+         str(in_elems), str(out_elems), "--weights", str(weights_path)],
         cwd=tools_dir, stage="hwxv2-to-anec",
     )
     (Path.cwd() / "export.log").open("a").write(transcript + convert)
@@ -234,6 +255,7 @@ def main() -> int:
     tools_dir = (args.tools_dir or Path(__file__).resolve().parent).resolve()
     if not (tools_dir / "ane-compile-hwx").exists():
         die(f"missing {tools_dir}/ane-compile-hwx (build ane-compile-hwx.mm)")
+    check_converter(tools_dir / CONVERTER)
 
     out_dir = args.out_dir.resolve()
     bundle_dir = out_dir / "bundle"
@@ -261,7 +283,7 @@ def main() -> int:
     # 3-4: compile + convert.
     anec_path = bundle_dir / "model.anec"
     facts = compile_region(tools_dir, capture_dir, hwx_dir, anec_path,
-                           in_elems, out_elems)
+                           capture_weights, in_elems, out_elems)
     bundle_weights = bundle_dir / "weights.bin"
     bundle_weights.write_bytes(weights_bin)
 
