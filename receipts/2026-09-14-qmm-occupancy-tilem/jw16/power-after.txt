@@ -1,0 +1,6 @@
+/sys/class/power_supply/macsmc-ac/online=1
+/sys/class/power_supply/tps6598x-source-psy-0-0038/online=0
+/sys/class/power_supply/tps6598x-source-psy-0-003a/online=1
+/sys/class/power_supply/tps6598x-source-psy-0-003b/online=0
+/sys/class/power_supply/tps6598x-source-psy-0-003f/online=0
+/sys/class/power_supply/macsmc-battery/status=Full

@@ -1,0 +1,5 @@
+lock=/tmp/m1-gpu.lock inode=12
+nested_flock_n_while_held=1
+nested_flock_n_after_release=0
+lock_inode_after=12
+llm_inference_service_after=inactive

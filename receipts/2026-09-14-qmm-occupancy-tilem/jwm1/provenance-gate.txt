@@ -1,0 +1,28 @@
+{
+  "dist": "mlx-omarchy",
+  "verified": "match",
+  "mismatch": null,
+  "files": [
+    {
+      "path": "mlx/core.cpython-314-aarch64-linux-gnu.so",
+      "label": "mlx.core extension",
+      "sha256": "4ad850da16c300ea9f60aa7247f034f358aa16d7ba2fd146979a01c867e3cfa5",
+      "record_sha256": "4ad850da16c300ea9f60aa7247f034f358aa16d7ba2fd146979a01c867e3cfa5",
+      "match": true
+    },
+    {
+      "path": "mlx/lib/libmlx.so",
+      "label": "mlx/lib/libmlx.so",
+      "sha256": "b59c8b757da69da61d4c8b6648d37f894edcc1154814c826f098cbab569780d5",
+      "record_sha256": "b59c8b757da69da61d4c8b6648d37f894edcc1154814c826f098cbab569780d5",
+      "match": true
+    }
+  ],
+  "dist_version": "0.32.2.dev202609141611+23102851",
+  "mx_version": "0.32.2.dev202609141611+23102851",
+  "version_match": true,
+  "expected_wheel": "/var/tmp/qmm-tilem-jwm1/mlx_omarchy-0.32.2.dev202609141611+23102851-cp314-cp314-linux_aarch64.whl"
+}
+provenance: mlx-omarchy 0.32.2.dev202609141611+23102851 mx=0.32.2.dev202609141611+23102851 verified=match harness=unknown core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:b59c8b757da69da6
+verified=match
+{"dist": "mlx-omarchy", "dist_version": "0.32.2.dev202609141611+23102851", "expected_wheel": "/var/tmp/qmm-tilem-jwm1/mlx_omarchy-0.32.2.dev202609141611+23102851-cp314-cp314-linux_aarch64.whl", "files": "[{'path': 'mlx/core.cpython-314-aarch64-linux-gnu.so', 'label': 'mlx.core extension', 'sha256': '4ad850da16c300ea9f60aa7247f034f358aa16d7ba2fd146979a01c867e3cfa5', 'record_sha256': '4ad850da16c300ea9f60aa7247f034f358aa16d7ba2fd146979a01c867e3cfa5', 'match': True}, {'path': 'mlx/lib/libmlx.so', 'label': 'mlx/lib/libmlx.so', 'sha256': 'b59c8b757da69da61d4c8b6648d37f894edcc1154814c826f098cbab569780d5', 'record_sha256': 'b59c8b757da69da61d4c8b6648d37f894edcc1154814c826f098cbab569780d5', 'match': True}]", "mismatch": "None", "mx_version": "0.32.2.dev202609141611+23102851", "verified": "match", "version_match": "True"}

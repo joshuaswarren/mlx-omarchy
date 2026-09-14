@@ -1,0 +1,13 @@
+date_utc=2026-09-14T16:21:09Z
+host=jwm1-linux arch=aarch64 kernel=7.1.6-1-1-ARCH
+boot_id=95872130-fd28-4d67-8247-03a0e8b61202
+nproc=8
+glibc=glibc 2.43+r22+g8362e8ce10b2-2
+mesa=mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1
+wheel=/var/tmp/qmm-tilem-jwm1/mlx_omarchy-0.32.2.dev202609141611+23102851-cp314-cp314-linux_aarch64.whl
+wheel_sha256=9ed0cbb5fecde8899dfb47ee53bde28df03d04fb05fc8ef84b8a522a7751e40a
+wheel_built_on=jw16mbp1-linux
+llm_inference_service=inactive
+cpu_features=fp asimd evtstrm aes pmull sha1 sha2 crc32 atomics fphp asimdhp cpuid asimdrdm jscvt fcma lrcpc dcpop sha3 asimddp sha512 asimdfhm dit uscat ilrcpc flagm ssbs sb paca pacg dcpodp flagm2 frint
+python=Python 3.14.7
+prompt_short_bytes=2 prompt_ctx_bytes=4759

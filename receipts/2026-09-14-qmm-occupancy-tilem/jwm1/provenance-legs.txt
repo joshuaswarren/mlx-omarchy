@@ -1,0 +1,7 @@
+legs_venv=/var/tmp/qmm-tilem-jwm1/venv-lm cloned_from=/home/joshuawarren/venv-sdpa-after
+legs_python=Python 3.14.7
+mlx_lm=0.31.3
+boot_id=95872130-fd28-4d67-8247-03a0e8b61202
+date_utc=2026-09-14T17:02:06Z
+provenance: mlx-omarchy 0.32.2.dev202609141611+23102851 mx=0.32.2.dev202609141611+23102851 verified=match harness=unknown core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:b59c8b757da69da6
+verified=match
