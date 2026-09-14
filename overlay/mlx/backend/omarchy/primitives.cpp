@@ -5718,6 +5718,89 @@ array zero_gather_index(omarchy::CommandEncoder& encoder) {
   return zero_index;
 }
 
+// GPU core count for the parts this backend has measured. Vulkan
+// reports no core count, Device::capabilities() carries none and
+// mx.device_info() exposes none, so the width has to come from the
+// device name the driver reports. Only names this project has run a
+// per-shape occupancy census on are listed; anything else returns 0,
+// which keeps every dispatch on the shape it has today. Match is
+// exact, because the name does not distinguish a 24-core M1 Max from a
+// 32-core one and guessing high would step tiles down on a part that
+// never showed it needs them.
+uint32_t apple_gpu_cores(const std::string& device_name) {
+  if (device_name == "Apple M1 (G13G B1)") {
+    return 8u;
+  }
+  if (device_name == "Apple M1 Max (G13C C0)") {
+    return 32u;
+  }
+  return 0u;
+}
+
+// Occupancy floor for the coopmat prefill tile, in workgroups per GPU
+// core: below it the 16-row twin is dispatched instead of the shipped
+// 32-row one. Both sides of this number are measured on the M1 Max at
+// m=1053, k=896, 32-rows against 16-rows per shape
+// (receipts/2026-09-14-qmm-occupancy-tilem/):
+//
+//   n    workgroups  wg/core   32 rows   16 rows
+//   128         132      4.1   213.6us   165.7us   -22.4%
+//   256         264      8.2   225.7us   300.7us   +33.3%
+//   384         396     12.4   249.7us   434.8us   +74.1%
+//   896         924     28.9   509.2us   759.5us   +49.2%
+//
+// So the trade turns over between 4.1 and 8.2, and 6 is the midpoint
+// that separates the two measured grids (6 x 32 = 192, strictly between
+// 132 and 264). It is deliberately not larger: halving the rows halves
+// how many outputs share one staged 16x32 weight tile, and past the
+// crossover that reuse loss dominates by tens of percent. On the base
+// M1 the same floor is 48 workgroups, which every real prefill grid
+// clears, so the base M1 keeps the shipped tile untouched.
+// MLX_OMARCHY_QMM_COOPMAT_WG_PER_CORE overrides it for A/B; 0 disables
+// the step-down and restores the shipped pick exactly.
+constexpr uint32_t kCoopmatWorkgroupsPerCore = 6u;
+
+uint32_t coopmat_workgroups_per_core() {
+  static const uint32_t value = [] {
+    const char* env = std::getenv("MLX_OMARCHY_QMM_COOPMAT_WG_PER_CORE");
+    if (env == nullptr) {
+      return kCoopmatWorkgroupsPerCore;
+    }
+    char* end = nullptr;
+    unsigned long parsed = std::strtoul(env, &end, 10);
+    // A malformed value keeps the compiled-in floor; a huge one is
+    // clamped rather than quietly reinterpreted as the default, because
+    // "as small a tile as possible" is a thing an A/B run asks for.
+    if (end == env || *end != '\0') {
+      return kCoopmatWorkgroupsPerCore;
+    }
+    return static_cast<uint32_t>(
+        std::min<unsigned long>(parsed, 0xfffffffful));
+  }();
+  return value;
+}
+
+// Output rows per coopmat workgroup: the shipped 32, or the 16-row twin
+// when the shape-derived grid cannot fill the part. Halving the rows
+// doubles the grid and halves weight-tile reuse; 16 is the floor
+// because an 8-row, 32-lane variant was built and measured and lost
+// even at 4.1 workgroups per core (58% slower than 32 rows), so there
+// is nothing below 16 worth dispatching. Both row counts keep one
+// output's k chain identical, so the pick does not move generated ids.
+uint32_t coopmat_tile_rows(
+    uint32_t matrix_m,
+    uint32_t n_groups,
+    const std::string& device_name) {
+  uint32_t cores = apple_gpu_cores(device_name);
+  uint32_t per_core = coopmat_workgroups_per_core();
+  if (cores == 0u || per_core == 0u) {
+    return 32u;
+  }
+  uint64_t target = static_cast<uint64_t>(cores) * per_core;
+  uint32_t m_groups_32 = (matrix_m + 31u) / 32u;
+  return static_cast<uint64_t>(m_groups_32) * n_groups < target ? 16u : 32u;
+}
+
 } // namespace
 
 void GatherQQMM::eval_gpu(const std::vector<array>& inputs, array& out) {
@@ -6935,8 +7018,8 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
       }
       // The 8x8x8 fp32 cooperative matrix (shaders/qmm_coopmat.comp)
       // remains the route when the scalar-FMA kernel declines (odd n or
-      // unaligned operands): a 32x32 output
-      // tile per two-subgroup workgroup, 4 KiB shared staging; x is
+      // unaligned operands): a 32-column output tile per workgroup,
+      // 4 KiB shared staging at the shipped 32 rows; x is
       // read as 32-bit word pairs). The materialization above stages any
       // odd-offset x view and out is a fresh offset-0 allocation, so
       // operand alignment holds by construction and coopmat_reachable
@@ -6957,14 +7040,29 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
           "cooperative_matrix_fp32_8x8x8",
           encoder.device().hardware_capabilities()
               .cooperative_matrix_f32_8);
-      uint32_t m_groups = (params.matrix_m + 31u) / 32u;
+      // Coopmat row tile: the shipped 32 unless the shape-derived grid
+      // cannot fill this part, in which case the 16-row twin trades
+      // weight-tile reuse for workgroups. The device width comes from
+      // hardware truth, not a simulated capability profile: the pick is
+      // a property of the silicon, not of a capability bit. The
+      // register-blocked fallback keeps its own 32-row tile.
       uint32_t n_groups = coopmat ? (params.matrix_n + 31u) / 32u
                                   : (params.matrix_n + 15u) / 16u;
-      omarchy::ComputeKernel qmm_kernel = coopmat
-          ? omarchy::ComputeKernel::QmmPrefillCoopmatF16
-          : params.matrix_m >= 1024u
-          ? omarchy::ComputeKernel::QmmTileRbPreciseF16
-          : omarchy::ComputeKernel::QmmTileRbF16;
+      uint32_t coopmat_rows = coopmat
+          ? coopmat_tile_rows(
+                params.matrix_m,
+                n_groups,
+                encoder.device().hardware_capabilities().device_name)
+          : 32u;
+      uint32_t m_groups =
+          (params.matrix_m + coopmat_rows - 1u) / coopmat_rows;
+      omarchy::ComputeKernel qmm_kernel = !coopmat
+          ? (params.matrix_m >= 1024u
+                 ? omarchy::ComputeKernel::QmmTileRbPreciseF16
+                 : omarchy::ComputeKernel::QmmTileRbF16)
+          : coopmat_rows == 16u
+          ? omarchy::ComputeKernel::QmmPrefillCoopmatM16F16
+          : omarchy::ComputeKernel::QmmPrefillCoopmatF16;
       encoder.dispatch_compute(
           qmm_kernel,
           bindings,
