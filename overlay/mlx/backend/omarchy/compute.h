@@ -621,6 +621,10 @@ enum class ComputeKernel : uint16_t {
   MatmulBf16FmaL16C4,
   Custom,
   MatmulVecMultiBF16,
+  // Finer-M twin of QmmPrefillCoopmatF16 (shaders/qmm_coopmat.comp with
+  // -DTILE_ROWS=16) for a grid too small to fill a wide part.
+  // Appended to keep profile kernel ids stable.
+  QmmPrefillCoopmatM16F16,
   Count,
 };
 
