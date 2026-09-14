@@ -1,0 +1,122 @@
+{
+  "schema": "mlx-omarchy.encoder-100-run.v1",
+  "date": "2026-09-14",
+  "host": "jw16mbp1-linux",
+  "ssh_alias": "jw16mbp1-linux",
+  "result": "PASS",
+  "headline": "100 consecutive three-island ANE encoder passes on jw16mbp1-linux: 100/100, 7200 submits, zero timeouts, no errno 110, encoder_hidden and encoder_mask byte-identical to run 0 on every pass. encoder_hidden sha256 matches the 2026-09-14 three-island parity arm. Submit stability only; token-exact E2E is not claimed.",
+  "what_was_run": {
+    "claim": "The pinned Parakeet encoder for the golden LibriSpeech clip, 100 times in one flock hold, with ANE islands A, B and C on every one of the 24 transformer layers and Vulkan leftover ops on the Apple GPU.",
+    "ane_carries": [
+      "island A program 0: attention_scores_N = matmul(q_v, pos_kT)",
+      "island A program 1: matmul_N = matmul(q_scaled, k_headsT)",
+      "island B: attention_mask_N = select(a = -inf, b = matrix_bd_N, cond = mask)",
+      "island C: attn_output_N = matmul(probs, v_heads)"
+    ],
+    "gpu_carries": "everything else in vulkan_encoder.py",
+    "passes": 100,
+    "submissions_per_pass": 72,
+    "submissions_total": 7200,
+    "islands": "ABC"
+  },
+  "resolved_model": {
+    "assigned_route": "openai (mlx-openai-deep agent type)",
+    "actual": "xai-oauth/grok-4.6",
+    "fallback": true,
+    "note": "The assignment named an OpenAI route. This session reports xai-oauth/grok-4.6. Numbers below are host-measured on jw16mbp1-linux."
+  },
+  "not_claimed": [
+    "token-exact end-to-end transcription",
+    "island B cond-true / -inf fill coverage (clip cond is all false)",
+    "performance / thermal soak"
+  ],
+  "did_not_merge": "63c1d3cf",
+  "prior": {
+    "add_mul_100_run": "receipts/2026-09-13-jw16-ane-soak/",
+    "encoder_parity_3islands": "receipts/2026-09-14-encoder-parity-ane-3islands.json",
+    "encoder_hidden_sha256_3islands_jwm1": "b3d60c81bcd9c63fcdcb5c5578d765cc221b0126af3482fb165d769a65c23e6e"
+  },
+  "hundred_run": {
+    "successful_runs": 100,
+    "iterations_requested": 100,
+    "all_matched_baseline": true,
+    "timeouts": 0,
+    "errno_110": 0,
+    "dmesg_tm_execution_failed_w_110_pre": [],
+    "dmesg_tm_execution_failed_w_110_post": [],
+    "submissions": 7200,
+    "expected_submissions": 7200,
+    "abort_reason": null,
+    "started_at": "2026-09-14T14:12:24-05:00",
+    "finished_at": "2026-09-14T14:32:23-05:00",
+    "wall_s": 1199.447,
+    "per_pass_wall_s": {
+      "min": 11.585,
+      "median": 11.992,
+      "max": 12.427
+    },
+    "encoder_hidden_sha256": "b3d60c81bcd9c63fcdcb5c5578d765cc221b0126af3482fb165d769a65c23e6e",
+    "encoder_mask_sha256": "d8bf6ec9a4065ce6dff4d9252edc07e2910eeeac87f8fc3c05bd949e1e7861a7",
+    "encoder_hidden_matches_3islands_parity": true,
+    "unique_hidden_digests_across_100": 1,
+    "driver": "receipts/2026-09-14-encoder-100-run/run_encoder_100.py",
+    "driver_sha256": "943d3e8602e129cbae4770e4fac93ee46e9e98c99e806c663653968e9229f48b",
+    "report": "receipts/2026-09-14-encoder-100-run/100-run-report.json",
+    "report_sha256": "bd21d9cde568c37a826d335a565e94114d50b76d1fbe28bb427f09ce08447661",
+    "remote_dir": "/var/tmp/Encoder100Run",
+    "sample_hidden": "/var/tmp/Encoder100Run/runs/000/encoder_hidden.npy"
+  },
+  "device": {
+    "path": "/dev/accel/accel0",
+    "pre": "character special file 666",
+    "post": "character special file 666",
+    "module_version": "6fa243a",
+    "module_version_post": "6fa243a",
+    "kernel": "7.1.6-1-1-ARCH",
+    "boot_id": "f6ad865b-b85e-499e-8308-28b57b24f0c8",
+    "boot_id_unchanged": true,
+    "nproc": "10",
+    "workers_pre": "none",
+    "workers_post": "none"
+  },
+  "gpu_lock": {
+    "path": "/tmp/m1-gpu.lock",
+    "method": "flock -w 1800 around the entire 100-run process tree",
+    "stolen": false,
+    "unlinked": false,
+    "reason": "Vulkan leftover ops in the encoder path"
+  },
+  "runtime": {
+    "mlx_omarchy": "0.32.2.dev202609141624+38d5ebfb",
+    "venv": "/var/tmp/tdt-stack/venv-gate",
+    "libmlx_sha256": "141090a7b2e0c92b00bd09bea87eb1f0e66815ad89e9e71c05a9c9fb3fc80053",
+    "python": "3.14.7",
+    "worker": "/var/tmp/Encoder100Run/mlx-omarchy-ane-worker",
+    "worker_sha256": "762dd1de868b52e4d6ffa30e18d842d9341db463b06aef2355f18fb1eb248929",
+    "libane": "/var/tmp/jw16-ane-first-exec/libane.so",
+    "libane_sha256": "1ab9d95debcc8b5fee3b6653dfce0b50412bc7efef43c2d2167dc83ce270ca49",
+    "encoder": "/var/tmp/Encoder100Run/derivation/vulkan_encoder.py",
+    "vulkan_encoder_sha256": "cd858ed352f6b0d25e035643cef3e5bd43ad689614fe7e396a3f7af1d4edec6d"
+  },
+  "pins": {
+    "island_a_program_0": "d05e193a620d7edc25ee61f865c164182155f84e7fb925a38c303a9c0db1d8df",
+    "island_a_program_1": "a3aa2fe1333a48eba3e7fcae5b848563e2bfa747a232dadf9ed2d568821c5627",
+    "island_b_program_0": "0879c6277cf3d89888735ea69ef96d29fb492d43eacfe42a0f154f8f0f91c8eb",
+    "island_c_program_0": "76496b74eff176f8e0358dbb5e285f7fe60c8a7c270c2b5f400b5407195c3fca",
+    "island_b_scratch_bytes": 6832128,
+    "encoder_input_features": "638f1f22b36f33cdcf8cf5f63581497917fe2d8a9108da2f39dd1e99e9130731",
+    "encoder_input_mask": "69afe545178dd33ed9f521b3934c77c687d64af3692a9f075b9e02c74516d804",
+    "model_mil": "ac8e9526154ac8b8d4c08b83e44dbc1a2208d7ec33e42a7838d57b698b14f133",
+    "parakeet_reference_lock": "63415836246175d34748c1c44f2c8d00c79affc5be0f4d7da058eb7d5328f8d1",
+    "omarchy_ane_module": "6fa243a"
+  },
+  "command": {
+    "exact": "flock -w 1800 /tmp/m1-gpu.lock /var/tmp/tdt-stack/venv-gate/bin/python /var/tmp/Encoder100Run/run_encoder_100.py",
+    "rc": 0
+  },
+  "limitations": [
+    "First-exec worker 575e2acd rejects bool dtype in the schema-4 top-level inputs array; the 100-run used the bool-capable worker 762dd1de already on this host at /var/tmp/jw16-tiny-select/mlx-omarchy-ane-worker.",
+    "Island B bundle is the 7ab3eb5 anec (tiles[0]=417, sha 0879c627) with programs[].scratch_bytes restamped to 6832128 and release_asset.model_sha256 restamped to the payload-collection digest. The directory name is island-select-8head-scratch417 as vulkan_encoder.py requires.",
+    "This is encoder submit stability on T6001, not a decoder/TDT token match."
+  ]
+}
