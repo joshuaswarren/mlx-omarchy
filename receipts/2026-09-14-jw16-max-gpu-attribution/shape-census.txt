@@ -1,0 +1,37 @@
+QmmPrefillCoopmatF16: 163 timed dispatches, 32 GPU cores, m=1053
+      n       k  wgroups  wg/core  cnt    tot ms   mean us    GFLOP  TFLOP/s    rel
+   4864     896     5016    156.8   46   106.349    2311.9    9.178     3.97   1.00
+    896    4864      924     28.9   23    56.023    2435.8    9.178     3.77   0.95
+    896     896      924     28.9   46    22.394     486.8    1.691     3.47   0.87
+    128     896      132      4.1   48    10.605     220.9    0.242     1.09   0.28
+total 722.67 GFLOP in 195.371 ms = 3.699 TFLOP/s
+ideal-occupancy floor (every shape at the best observed rate): 182.034 ms
+
+# same grids scored against the base-M1 8-core part (jwm1) for reference;
+# the per-dispatch times are jw16 times, only wg/core changes
+QmmPrefillCoopmatF16: 163 timed dispatches, 8 GPU cores, m=1053
+      n       k  wgroups  wg/core  cnt    tot ms   mean us    GFLOP  TFLOP/s    rel
+   4864     896     5016    627.0   46   106.349    2311.9    9.178     3.97   1.00
+    896    4864      924    115.5   23    56.023    2435.8    9.178     3.77   0.95
+    896     896      924    115.5   46    22.394     486.8    1.691     3.47   0.87
+    128     896      132     16.5   48    10.605     220.9    0.242     1.09   0.28
+total 722.67 GFLOP in 195.371 ms = 3.699 TFLOP/s
+ideal-occupancy floor (every shape at the best observed rate): 182.034 ms
+
+# decode gemv, t32 run (32 generated tokens)
+QmmVecQ4MultiSubgroupF16: 3168 timed dispatches, 32 GPU cores, m=1
+      n       k  wgroups  wg/core  cnt    tot ms   mean us    GFLOP  TFLOP/s    rel
+   9728     448     1216     38.0  792    50.813      64.2    0.009     0.14   0.78
+    896    4864      112      3.5  792    39.731      50.2    0.009     0.17   1.00
+   1152     696      144      4.5  792    26.653      33.7    0.002     0.05   0.27
+    896     896      112      3.5  792    22.826      28.8    0.002     0.06   0.32
+total 16.35 GFLOP in 140.023 ms = 0.117 TFLOP/s
+ideal-occupancy floor (every shape at the best observed rate): 94.090 ms
+
+# CAVEAT on the decode (QmmVecQ4MultiSubgroupF16) block above: the n/k recovery
+# assumes the coopmat prefill contract (gx = ceil(n/TILE_N), InputW range =
+# n*k/2). The decode gemv path uses a different group width
+# (kGemvColumnsPerGroup = 8) and a fused-group route, so its n/k/GFLOP/TFLOP-s
+# columns are NOT valid shapes -- "n=9728 k=448" is the 4864x896 gate/up weight
+# buffer misread by that assumption. Only the workgroup, wg/core, cnt, tot ms
+# and mean us columns are meaningful for the decode block.

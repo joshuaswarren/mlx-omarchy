@@ -1,0 +1,4 @@
+mlx_lm 0.31.3
+mlx pkg /var/tmp/mlx-omarchy-prof-b41e2b74/venv-diag/lib/python3.14/site-packages/mlx
+lib/libmlx.so d92f6e7cb408fbbb6f024be25ce4eb9e19471e29c57ea2b90337bee0e3f30887
+core.cpython-314-aarch64-linux-gnu.so 4ad850da16c300ea9f60aa7247f034f358aa16d7ba2fd146979a01c867e3cfa5

@@ -1,0 +1,2 @@
+lib/libmlx.so MLX_OMARCHY_GPU_PROFILE literal count 3
+core.cpython-314-aarch64-linux-gnu.so MLX_OMARCHY_GPU_PROFILE literal count 0

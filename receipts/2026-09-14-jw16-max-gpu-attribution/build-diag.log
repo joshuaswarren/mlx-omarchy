@@ -1,0 +1,32 @@
+== prepare ==
+patching file CMakeLists.txt
+patching file mlx/CMakeLists.txt
+patching file tests/CMakeLists.txt
+patching file mlx/transforms.cpp
+patching file setup.py
+patching file mlx/io/safetensors.cpp
+patching file mlx/io/load.cpp
+patching file mlx/export.cpp
+patching file mlx/linalg.cpp
+patching file python/src/buffer.h
+patching file mlx/ops.cpp
+Hunk #2 succeeded at 5051 (offset 1 line).
+patching file mlx/backend/cpu/distributed.cpp
+patching file mlx/fast.cpp
+patching file mlx/backend/common/metal_kernel.cpp
+patching file setup.py
+/var/tmp/mlx-omarchy-prof-b41e2b74/.work/mlx
+build deps ok 84.0.0
+== wheel ==
+Processing ./.work/mlx
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Building wheels for collected packages: mlx-omarchy
+  Building wheel for mlx-omarchy (pyproject.toml): started
+  Building wheel for mlx-omarchy (pyproject.toml): still running...
+  Building wheel for mlx-omarchy (pyproject.toml): finished with status 'done'
+  Created wheel for mlx-omarchy: filename=mlx_omarchy-0.32.2.dev202609141516+b41e2b74-cp314-cp314-linux_aarch64.whl size=7618899 sha256=6c05aebc29bdfc6a45a29dc3268deab0b8b89356e7a8aece453c1caedec17782
+  Stored in directory: /tmp/pip-ephem-wheel-cache-99qd3stu/wheels/3b/29/fc/5585448252c5202d8c293d892ab43ea4c07305960bd36ea1b2
+Successfully built mlx-omarchy
+[receipt] wheel: /var/tmp/mlx-omarchy-prof-b41e2b74/dist-diag/mlx_omarchy-0.32.2.dev202609141516+b41e2b74-cp314-cp314-linux_aarch64.whl
+6c05aebc29bdfc6a45a29dc3268deab0b8b89356e7a8aece453c1caedec17782  /var/tmp/mlx-omarchy-prof-b41e2b74/dist-diag/mlx_omarchy-0.32.2.dev202609141516+b41e2b74-cp314-cp314-linux_aarch64.whl
