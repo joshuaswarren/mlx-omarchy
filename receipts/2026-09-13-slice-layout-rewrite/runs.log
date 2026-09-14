@@ -1,0 +1,15 @@
+/home/joshuawarren/src/mil-hwx-compiler/build/mil-hwxc \
+  --mil /home/joshuawarren/src/ane-linux-experiments/parakeet-mel-exact/receipts/2026-09-13-slice-layout-rewrite/model-fp16-noslice.mil \
+  --model-root /tmp/heads-layout-rewrite-20260913/model-root \
+  --output /tmp/slice-layout-rewrite-20260913/anec-out \
+  --target H13 --format anec
+296:5: error [h13.noncontiguous-slice]: H13 slice_by_index over non-unit head dimensions reads 3000 chunks of 375 elements spaced 749 apart, and one binding slice cannot represent interleaved chunks: a chunked consumer decomposition has no MIL-expressible direct reference to byte-prove against, because no view op exposes mid-range head slices
+exit=65
+stdout: empty
+program emitted: no
+
+Line 296:
+    tensor<fp16, [1, 8, 375, 375]> matrix_bd_3_cast_fp16 = slice_by_index(begin = matrix_bd_3_begin_0, end = matrix_bd_3_end_0, end_mask = matrix_bd_3_end_mask_0, x = matrix_bd_1_cast_fp16)[name = tensor<string, []>("matrix_bd_3_cast_fp16")];
+
+The heads-layout reject (fp16 [1,8,749,375] slice_by_index x=attention_scores_5_cast_fp16, 8 chunks of 280875 spaced 281250) did not fire.
+var_367_cast_fp16 is concat(axis=1) of eight [1,1,749,375] one-dim slices of one-dim head planes.
