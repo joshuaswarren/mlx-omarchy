@@ -466,6 +466,7 @@ def assemble_files(ws, repo, thermal):
             "available": False, "zones": [],
             "error": "macOS temperature sensors are not collected",
         })
+        unavailable.append("thermal")
     return files, unavailable, redaction
 
 
@@ -479,9 +480,29 @@ def _member(files, name):
         return {}
 
 
-def build_submission(manifest, files, archive_name):
-    """Paste-ready cover text, derived from the manifest only."""
+def _quick_with_probe_metadata(files, manifest):
     quick = _member(files, "quick.json")
+    if not is_native_macos(quick.get("host") or {}, manifest):
+        return quick
+    mlx = dict(quick.get("mlx") or {})
+    probes = (_member(files, "correctness.json"),
+              _member(files, "benchmark.json").get("python") or {})
+    for probe in probes:
+        if not probe.get("available"):
+            continue
+        provenance = probe.get("provenance") or {}
+        mlx["mlx_version"] = (mlx.get("mlx_version") or probe.get("mlx_version")
+                              or provenance.get("mx_version") or provenance.get("dist_version"))
+        mlx["default_device"] = mlx.get("default_device") or probe.get("device")
+        if mlx.get("metal_available") is None:
+            # Native probes require Metal before reporting availability.
+            mlx["metal_available"] = True
+    return {**quick, "mlx": mlx}
+
+
+def build_submission(manifest, files, archive_name):
+    """Paste-ready cover text from the manifest and collected sections."""
+    quick = _quick_with_probe_metadata(files, manifest)
     host = quick.get("host", {})
     mesa = quick.get("mesa", {}).get("gpu", {})
     mlx = quick.get("mlx", {})
@@ -489,11 +510,12 @@ def build_submission(manifest, files, archive_name):
     ops = correctness.get("ops", [])
     lines = ["## mlx-omarchy hardware report", ""]
     if is_native_macos(host, manifest):
+        metal = mlx.get("metal_available")
         lines += [
             f"Machine: {host.get('model') or 'unknown'} / {host.get('chip') or 'unknown'}"
-            f" ({host.get('os') or 'macOS'}, Darwin {host.get('kernel_release')})",
-            f"Native MLX: {mlx.get('mlx_version') or correctness.get('mlx_version') or 'unknown'}, "
-            f"Metal available: {mlx.get('metal_available')}",
+            f" ({host.get('os') or 'macOS'}, Darwin {host.get('kernel_release') or 'unknown'})",
+            f"Native MLX: {mlx.get('mlx_version') or 'unknown'}, "
+            f"Metal available: {metal if metal is not None else 'unknown'}",
             "Native macOS reference only. This does not prove Linux support, "
             "ANE execution, or performance parity.",
         ]
@@ -556,8 +578,7 @@ def finalize(files, unavailable, redaction, archive_name, repo):
                        "exit code, capped redacted output; the schema does "
                        "not change with the sharing path",
     })
-    quick = json.loads(files.get("quick.json", b"{}").decode("utf-8")
-                       or "{}")
+    quick = _quick_with_probe_metadata(files, manifest)
     bench = json.loads(files.get("benchmark.json", b"{}").decode("utf-8")
                        or "{}")
     matmul = ((bench.get("python") or {}).get("matmul") or []) \

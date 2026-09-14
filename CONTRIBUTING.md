@@ -138,8 +138,11 @@ Homebrew or source installations without RECORD hashes produce
 
 Mac reports are labeled as native macOS references in the public summary
 and cover text, including when the quick section is skipped or unavailable.
+Missing MLX version, device, and Metal status come from an available correctness
+or benchmark probe. Host facts stay unknown when the quick section is absent.
 Mesa, Linux ANE visibility, the kernel spike binary, and
-Omarchy dispatch profiling are not applicable. Temperature is not collected.
+Omarchy dispatch profiling are not applicable. Temperature is not collected
+and appears as `thermal` in the unavailable sections.
 The benchmark records power state and counts of known model processes
 before and after execution. It excludes process names, IDs, and raw power
 output. These observations do not establish Linux support, ANE execution,

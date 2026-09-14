@@ -152,18 +152,74 @@ class ReviewRegressionTests(unittest.TestCase):
 
     def test_skipped_quick_section_keeps_native_labels(self):
         files = {"quick.json": cc.json_bytes({"available": False}),
-                 "correctness.json": cc.json_bytes({"available": True, "mlx_version": "0.32.1"}),
+                 "correctness.json": cc.json_bytes({"available": True, "mlx_version": "0.32.1",
+                                                    "device": "Device(gpu, 0)"}),
                  "benchmark.json": cc.json_bytes({"python": {"matmul": [{"n": 256, "median_ms": 1.0}]}})}
         with patch("platform.system", return_value="Darwin"):
             manifest, archive, payload = cd.finalize(files, ["quick"], {}, "mac.tar.gz", cd.REPO)
         self.assertEqual(manifest["system"], "Darwin")
         self.assertIn("macOS", payload["kernel"])
         self.assertEqual(payload["benchmark"][0]["median_ms"], 1.0)
+        self.assertEqual(payload["mlx_version"], "0.32.1")
+        self.assertEqual(payload["mlx_device"], "Metal GPU (native macOS MLX, Device(gpu, 0))")
         cover = files["submission.md"].decode()
         self.assertIn("Native macOS reference", cover)
         self.assertIn("Native MLX: 0.32.1", cover)
+        self.assertIn("Metal available: True", cover)
         self.assertNotIn("Vulkan:", cover)
         self.assertTrue(archive)
+
+    def test_benchmark_recovers_native_metadata_without_quick_or_correctness(self):
+        for quick in (None, {"available": False}, {"mlx": {"mlx_version": None,
+                                                         "default_device": None,
+                                                         "metal_available": None}}):
+            with self.subTest(quick=quick), patch("platform.system", return_value="Darwin"):
+                files = {"benchmark.json": cc.json_bytes({"python": {
+                    "available": True, "device": "Device(gpu, 0)",
+                    "provenance": {"mx_version": "0.32.1", "verified": "unverified"},
+                    "matmul": [{"n": 256, "median_ms": 1.0}],
+                }})}
+                if quick is not None:
+                    files["quick.json"] = cc.json_bytes(quick)
+                original = dict(files)
+                _, _, payload = cd.finalize(files, ["quick", "correctness"], {}, "mac.tar.gz", cd.REPO)
+                self.assertEqual(payload["mlx_version"], "0.32.1")
+                self.assertIn("Metal GPU", payload["mlx_device"])
+                self.assertIn("Native MLX: 0.32.1, Metal available: True", files["submission.md"].decode())
+                for name, data in original.items():
+                    self.assertEqual(files[name], data)
+
+    def test_failed_native_probes_do_not_claim_metal_available(self):
+        files = {name: cc.json_bytes(data) for name, data in {
+            "correctness.json": {"available": False, "mlx_version": "0.32.1", "device": "Device(cpu, 0)"},
+            "benchmark.json": {"python": {"available": False, "device": "Device(cpu, 0)",
+                                          "provenance": {"mx_version": "0.32.1", "verified": "mismatch"}}},
+        }.items()}
+        with patch("platform.system", return_value="Darwin"):
+            _, _, payload = cd.finalize(files, ["quick", "correctness", "benchmark"], {}, "mac.tar.gz", cd.REPO)
+        self.assertIsNone(payload["mlx_version"])
+        self.assertIsNone(payload["mlx_device"])
+        self.assertIn("Metal available: unknown", files["submission.md"].decode())
+
+    def test_quick_metadata_takes_priority_over_probe_metadata(self):
+        quick = {"host": {"system": "Darwin"}, "mlx": {
+            "mlx_version": "0.32.2", "metal_available": False, "default_device": "Device(cpu, 0)"}}
+        files = {"quick.json": cc.json_bytes(quick), "correctness.json": cc.json_bytes({
+            "available": True, "mlx_version": "0.32.1", "device": "Device(gpu, 0)"})}
+        with patch("platform.system", return_value="Darwin"):
+            _, _, payload = cd.finalize(files, [], {}, "mac.tar.gz", cd.REPO)
+        self.assertEqual(payload["mlx_version"], "0.32.2")
+        self.assertEqual(payload["mlx_device"], "Device(cpu, 0)")
+        self.assertIn("Native MLX: 0.32.2, Metal available: False", files["submission.md"].decode())
+
+    def test_macos_thermal_unavailability_reaches_manifest_and_cover(self):
+        with tempfile.TemporaryDirectory() as ws, patch("platform.system", return_value="Darwin"):
+            files, unavailable, redaction = cd.assemble_files(ws, cd.REPO, [])
+            manifest, _, _ = cd.finalize(files, unavailable, redaction, "mac.tar.gz", cd.REPO)
+        self.assertFalse(json.loads(files["thermal.json"])["available"])
+        self.assertEqual(manifest["sections_unavailable"].count("thermal"), 1)
+        cover = files["submission.md"].decode()
+        self.assertIn("Not available on this machine: quick, environment, correctness, benchmark, profile, thermal", cover)
 
 
 class NativeProvenanceTests(unittest.TestCase):
