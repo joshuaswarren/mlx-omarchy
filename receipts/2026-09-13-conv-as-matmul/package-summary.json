@@ -1,0 +1,49 @@
+{
+  "schema": "mlx-omarchy.conv-as-matmul-compile.v1",
+  "rc": 0,
+  "artifacts": 15000,
+  "package_schema": "mil-hwxc.h13-anec-package.v2",
+  "target": "H13",
+  "artifactFormat": "anec",
+  "programs": 15000,
+  "operations": {
+    "matmul": 3000,
+    "add": 12000
+  },
+  "encoder": "h13-source-qualified",
+  "taskDescriptors_per_program": 1,
+  "package_bytes": 1671797682,
+  "gemm": {
+    "M": 375,
+    "K": 1024,
+    "N": 2048,
+    "transpose_x": false,
+    "transpose_y": true,
+    "weight": "const"
+  },
+  "tiling": {
+    "rows": 375,
+    "matmul_per_row": 8,
+    "add_per_row": 32,
+    "k_chunk": 512,
+    "n_tile": 512,
+    "note": "M=1 native matvec fallback; no one-program form. Same linear hole as (375,1024,128), more N-tiles because N=2048."
+  },
+  "first_program": {
+    "file": "program-0.anec",
+    "operation": "matmul",
+    "encoder": "h13-source-qualified",
+    "bytes": 529024,
+    "input_slice": {
+      "elementCount": 512,
+      "elementOffset": 0,
+      "physicalElements": 512,
+      "tensor": "x"
+    },
+    "output_shape": [
+      512
+    ]
+  },
+  "verdict": "same-linear-hole",
+  "named_envelope_miss": "one-program apple-parity matmul for (375,1024,2048) const-W ty=1"
+}

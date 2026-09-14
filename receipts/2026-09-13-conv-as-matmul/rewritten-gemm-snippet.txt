@@ -1,0 +1,14 @@
+program(1)
+{
+  func main<CoreML8>(tensor<fp16, [1, 1024, 375]> input_37_cast_fp16) {
+    tensor<string, []> input_39_pad_type_0 = const()[name = tensor<string, []>("input_39_pad_type_0"), val = tensor<string, []>("valid")];
+    tensor<int32, [1]> input_39_strides_0 = const()[name = tensor<string, []>("input_39_strides_0"), val = tensor<int32, [1]>(1)];
+    tensor<int32, [2]> input_39_pad_0 = const()[name = tensor<string, []>("input_39_pad_0"), val = tensor<int32, [2]>([0, 0])];
+    tensor<int32, [1]> input_39_dilations_0 = const()[name = tensor<string, []>("input_39_dilations_0"), val = tensor<int32, [1]>(1)];
+    tensor<int32, []> input_39_groups_0 = const()[name = tensor<string, []>("input_39_groups_0"), val = tensor<int32, []>(1)];
+    tensor<fp16, [2048, 1024]> encoder_layers_0_conv_pointwise_conv1_weight_to_fp16 = const()[name = tensor<string, []>("encoder_layers_0_conv_pointwise_conv1_weight_to_fp16"), val = tensor<fp16, [2048, 1024]>(BLOBFILE(path = string("@model_path/weights.bin"), offset = uint64(64)))];
+    bool input_39_cast_fp16_tx = const()[name = string("input_39_cast_fp16_tx"), val = bool(true)];
+    bool input_39_cast_fp16_ty = const()[name = string("input_39_cast_fp16_ty"), val = bool(true)];
+    tensor<fp16, [1, 375, 2048]> input_39_cast_fp16 = matmul(transpose_x = input_39_cast_fp16_tx, transpose_y = input_39_cast_fp16_ty, x = input_37_cast_fp16, y = encoder_layers_0_conv_pointwise_conv1_weight_to_fp16)[name = string("input_39_cast_fp16")];
+  } -> (input_39_cast_fp16);
+}

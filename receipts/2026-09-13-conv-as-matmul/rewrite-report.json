@@ -1,0 +1,421 @@
+{
+  "schema": "mlx-omarchy.conv-as-matmul.v1",
+  "gemm": {
+    "M": 375,
+    "K": 1024,
+    "N": 2048
+  },
+  "rewritten": [
+    "input_39_cast_fp16",
+    "input_79_cast_fp16",
+    "input_119_cast_fp16",
+    "input_159_cast_fp16",
+    "input_199_cast_fp16",
+    "input_239_cast_fp16",
+    "input_279_cast_fp16",
+    "input_319_cast_fp16",
+    "input_359_cast_fp16",
+    "input_399_cast_fp16",
+    "input_439_cast_fp16",
+    "input_479_cast_fp16",
+    "input_519_cast_fp16",
+    "input_559_cast_fp16",
+    "input_599_cast_fp16",
+    "input_639_cast_fp16",
+    "input_679_cast_fp16",
+    "input_719_cast_fp16",
+    "input_759_cast_fp16",
+    "input_799_cast_fp16",
+    "input_839_cast_fp16",
+    "input_879_cast_fp16",
+    "input_919_cast_fp16",
+    "input_959_cast_fp16"
+  ],
+  "refused": [
+    {
+      "index": 18,
+      "output": "hidden_states_1_cast_fp16",
+      "reason": "output shape (1, 256, 1500, 64) is not [1, Cout, L]"
+    },
+    {
+      "index": 49,
+      "output": "hidden_states_3_cast_fp16",
+      "reason": "output shape (1, 256, 750, 32) is not [1, Cout, L]"
+    },
+    {
+      "index": 78,
+      "output": "hidden_states_5_cast_fp16",
+      "reason": "output shape (1, 256, 750, 32) is not [1, Cout, L]"
+    },
+    {
+      "index": 88,
+      "output": "hidden_states_7_cast_fp16",
+      "reason": "output shape (1, 256, 375, 16) is not [1, Cout, L]"
+    },
+    {
+      "index": 117,
+      "output": "hidden_states_9_cast_fp16",
+      "reason": "output shape (1, 256, 375, 16) is not [1, Cout, L]"
+    },
+    {
+      "index": 248,
+      "output": "attention_scores_3_cast_fp16",
+      "reason": "output shape (1, 8, 375, 750) is not [1, Cout, L]"
+    },
+    {
+      "index": 438,
+      "output": "input_45_cast_fp16",
+      "reason": "bias is not this leftover class"
+    },
+    {
+      "index": 446,
+      "output": "hidden_states_31_cast_fp16",
+      "reason": "GEMM is (375, 1024, 1024), not (375, 1024, 2048)"
+    },
+    {
+      "index": 543,
+      "output": "attention_scores_9_cast_fp16",
+      "reason": "output shape (1, 8, 375, 750) is not [1, Cout, L]"
+    },
+    {
+      "index": 711,
+      "output": "input_85_cast_fp16",
+      "reason": "bias is not this leftover class"
+    },
+    {
+      "index": 719,
+      "output": "hidden_states_45_cast_fp16",
+      "reason": "GEMM is (375, 1024, 1024), not (375, 1024, 2048)"
+    },
+    {
+      "index": 816,
+      "output": "attention_scores_15_cast_fp16",
+      "reason": "output shape (1, 8, 375, 750) is not [1, Cout, L]"
+    },
+    {
+      "index": 984,
+      "output": "input_125_cast_fp16",
+      "reason": "bias is not this leftover class"
+    },
+    {
+      "index": 992,
+      "output": "hidden_states_59_cast_fp16",
+      "reason": "GEMM is (375, 1024, 1024), not (375, 1024, 2048)"
+    },
+    {
+      "index": 1089,
+      "output": "attention_scores_21_cast_fp16",
+      "reason": "output shape (1, 8, 375, 750) is not [1, Cout, L]"
+    },
+    {
+      "index": 1257,
+      "output": "input_165_cast_fp16",
+      "reason": "bias is not this leftover class"
+    },
+    {
+      "index": 1265,
+      "output": "hidden_states_73_cast_fp16",
+      "reason": "GEMM is (375, 1024, 1024), not (375, 1024, 2048)"
+    },
+    {
+      "index": 1362,
+      "output": "attention_scores_27_cast_fp16",
+      "reason": "output shape (1, 8, 375, 750) is not [1, Cout, L]"
+    },
+    {
+      "index": 1530,
+      "output": "input_205_cast_fp16",
+      "reason": "bias is not this leftover class"
+    },
+    {
+      "index": 1538,
+      "output": "hidden_states_87_cast_fp16",
+      "reason": "GEMM is (375, 1024, 1024), not (375, 1024, 2048)"
+    },
+    {
+      "index": 1635,
+      "output": "attention_scores_33_cast_fp16",
+      "reason": "output shape (1, 8, 375, 750) is not [1, Cout, L]"
+    },
+    {
+      "index": 1803,
+      "output": "input_245_cast_fp16",
+      "reason": "bias is not this leftover class"
+    },
+    {
+      "index": 1811,
+      "output": "hidden_states_101_cast_fp16",
+      "reason": "GEMM is (375, 1024, 1024), not (375, 1024, 2048)"
+    },
+    {
+      "index": 1908,
+      "output": "attention_scores_39_cast_fp16",
+      "reason": "output shape (1, 8, 375, 750) is not [1, Cout, L]"
+    },
+    {
+      "index": 2076,
+      "output": "input_285_cast_fp16",
+      "reason": "bias is not this leftover class"
+    },
+    {
+      "index": 2084,
+      "output": "hidden_states_115_cast_fp16",
+      "reason": "GEMM is (375, 1024, 1024), not (375, 1024, 2048)"
+    },
+    {
+      "index": 2181,
+      "output": "attention_scores_45_cast_fp16",
+      "reason": "output shape (1, 8, 375, 750) is not [1, Cout, L]"
+    },
+    {
+      "index": 2349,
+      "output": "input_325_cast_fp16",
+      "reason": "bias is not this leftover class"
+    },
+    {
+      "index": 2357,
+      "output": "hidden_states_129_cast_fp16",
+      "reason": "GEMM is (375, 1024, 1024), not (375, 1024, 2048)"
+    },
+    {
+      "index": 2454,
+      "output": "attention_scores_51_cast_fp16",
+      "reason": "output shape (1, 8, 375, 750) is not [1, Cout, L]"
+    },
+    {
+      "index": 2622,
+      "output": "input_365_cast_fp16",
+      "reason": "bias is not this leftover class"
+    },
+    {
+      "index": 2630,
+      "output": "hidden_states_143_cast_fp16",
+      "reason": "GEMM is (375, 1024, 1024), not (375, 1024, 2048)"
+    },
+    {
+      "index": 2727,
+      "output": "attention_scores_57_cast_fp16",
+      "reason": "output shape (1, 8, 375, 750) is not [1, Cout, L]"
+    },
+    {
+      "index": 2895,
+      "output": "input_405_cast_fp16",
+      "reason": "bias is not this leftover class"
+    },
+    {
+      "index": 2903,
+      "output": "hidden_states_157_cast_fp16",
+      "reason": "GEMM is (375, 1024, 1024), not (375, 1024, 2048)"
+    },
+    {
+      "index": 3000,
+      "output": "attention_scores_63_cast_fp16",
+      "reason": "output shape (1, 8, 375, 750) is not [1, Cout, L]"
+    },
+    {
+      "index": 3168,
+      "output": "input_445_cast_fp16",
+      "reason": "bias is not this leftover class"
+    },
+    {
+      "index": 3176,
+      "output": "hidden_states_171_cast_fp16",
+      "reason": "GEMM is (375, 1024, 1024), not (375, 1024, 2048)"
+    },
+    {
+      "index": 3273,
+      "output": "attention_scores_69_cast_fp16",
+      "reason": "output shape (1, 8, 375, 750) is not [1, Cout, L]"
+    },
+    {
+      "index": 3441,
+      "output": "input_485_cast_fp16",
+      "reason": "bias is not this leftover class"
+    },
+    {
+      "index": 3449,
+      "output": "hidden_states_185_cast_fp16",
+      "reason": "GEMM is (375, 1024, 1024), not (375, 1024, 2048)"
+    },
+    {
+      "index": 3546,
+      "output": "attention_scores_75_cast_fp16",
+      "reason": "output shape (1, 8, 375, 750) is not [1, Cout, L]"
+    },
+    {
+      "index": 3714,
+      "output": "input_525_cast_fp16",
+      "reason": "bias is not this leftover class"
+    },
+    {
+      "index": 3722,
+      "output": "hidden_states_199_cast_fp16",
+      "reason": "GEMM is (375, 1024, 1024), not (375, 1024, 2048)"
+    },
+    {
+      "index": 3819,
+      "output": "attention_scores_81_cast_fp16",
+      "reason": "output shape (1, 8, 375, 750) is not [1, Cout, L]"
+    },
+    {
+      "index": 3987,
+      "output": "input_565_cast_fp16",
+      "reason": "bias is not this leftover class"
+    },
+    {
+      "index": 3995,
+      "output": "hidden_states_213_cast_fp16",
+      "reason": "GEMM is (375, 1024, 1024), not (375, 1024, 2048)"
+    },
+    {
+      "index": 4092,
+      "output": "attention_scores_87_cast_fp16",
+      "reason": "output shape (1, 8, 375, 750) is not [1, Cout, L]"
+    },
+    {
+      "index": 4260,
+      "output": "input_605_cast_fp16",
+      "reason": "bias is not this leftover class"
+    },
+    {
+      "index": 4268,
+      "output": "hidden_states_227_cast_fp16",
+      "reason": "GEMM is (375, 1024, 1024), not (375, 1024, 2048)"
+    },
+    {
+      "index": 4365,
+      "output": "attention_scores_93_cast_fp16",
+      "reason": "output shape (1, 8, 375, 750) is not [1, Cout, L]"
+    },
+    {
+      "index": 4533,
+      "output": "input_645_cast_fp16",
+      "reason": "bias is not this leftover class"
+    },
+    {
+      "index": 4541,
+      "output": "hidden_states_241_cast_fp16",
+      "reason": "GEMM is (375, 1024, 1024), not (375, 1024, 2048)"
+    },
+    {
+      "index": 4638,
+      "output": "attention_scores_99_cast_fp16",
+      "reason": "output shape (1, 8, 375, 750) is not [1, Cout, L]"
+    },
+    {
+      "index": 4806,
+      "output": "input_685_cast_fp16",
+      "reason": "bias is not this leftover class"
+    },
+    {
+      "index": 4814,
+      "output": "hidden_states_255_cast_fp16",
+      "reason": "GEMM is (375, 1024, 1024), not (375, 1024, 2048)"
+    },
+    {
+      "index": 4911,
+      "output": "attention_scores_105_cast_fp16",
+      "reason": "output shape (1, 8, 375, 750) is not [1, Cout, L]"
+    },
+    {
+      "index": 5079,
+      "output": "input_725_cast_fp16",
+      "reason": "bias is not this leftover class"
+    },
+    {
+      "index": 5087,
+      "output": "hidden_states_269_cast_fp16",
+      "reason": "GEMM is (375, 1024, 1024), not (375, 1024, 2048)"
+    },
+    {
+      "index": 5184,
+      "output": "attention_scores_111_cast_fp16",
+      "reason": "output shape (1, 8, 375, 750) is not [1, Cout, L]"
+    },
+    {
+      "index": 5352,
+      "output": "input_765_cast_fp16",
+      "reason": "bias is not this leftover class"
+    },
+    {
+      "index": 5360,
+      "output": "hidden_states_283_cast_fp16",
+      "reason": "GEMM is (375, 1024, 1024), not (375, 1024, 2048)"
+    },
+    {
+      "index": 5457,
+      "output": "attention_scores_117_cast_fp16",
+      "reason": "output shape (1, 8, 375, 750) is not [1, Cout, L]"
+    },
+    {
+      "index": 5625,
+      "output": "input_805_cast_fp16",
+      "reason": "bias is not this leftover class"
+    },
+    {
+      "index": 5633,
+      "output": "hidden_states_297_cast_fp16",
+      "reason": "GEMM is (375, 1024, 1024), not (375, 1024, 2048)"
+    },
+    {
+      "index": 5730,
+      "output": "attention_scores_123_cast_fp16",
+      "reason": "output shape (1, 8, 375, 750) is not [1, Cout, L]"
+    },
+    {
+      "index": 5898,
+      "output": "input_845_cast_fp16",
+      "reason": "bias is not this leftover class"
+    },
+    {
+      "index": 5906,
+      "output": "hidden_states_311_cast_fp16",
+      "reason": "GEMM is (375, 1024, 1024), not (375, 1024, 2048)"
+    },
+    {
+      "index": 6003,
+      "output": "attention_scores_129_cast_fp16",
+      "reason": "output shape (1, 8, 375, 750) is not [1, Cout, L]"
+    },
+    {
+      "index": 6171,
+      "output": "input_885_cast_fp16",
+      "reason": "bias is not this leftover class"
+    },
+    {
+      "index": 6179,
+      "output": "hidden_states_325_cast_fp16",
+      "reason": "GEMM is (375, 1024, 1024), not (375, 1024, 2048)"
+    },
+    {
+      "index": 6276,
+      "output": "attention_scores_135_cast_fp16",
+      "reason": "output shape (1, 8, 375, 750) is not [1, Cout, L]"
+    },
+    {
+      "index": 6444,
+      "output": "input_925_cast_fp16",
+      "reason": "bias is not this leftover class"
+    },
+    {
+      "index": 6452,
+      "output": "hidden_states_339_cast_fp16",
+      "reason": "GEMM is (375, 1024, 1024), not (375, 1024, 2048)"
+    },
+    {
+      "index": 6549,
+      "output": "attention_scores_141_cast_fp16",
+      "reason": "output shape (1, 8, 375, 750) is not [1, Cout, L]"
+    },
+    {
+      "index": 6717,
+      "output": "input_965_cast_fp16",
+      "reason": "bias is not this leftover class"
+    },
+    {
+      "index": 6725,
+      "output": "hidden_states_cast_fp16",
+      "reason": "GEMM is (375, 1024, 1024), not (375, 1024, 2048)"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+compiler=/home/joshuawarren/src/mil-hwx-compiler/build/mil-hwxc
+sha256=82f1d4ce44dc8f2cb5eefd843eea41c47527af3fbff2def0ed1fc154ccd3ce71
+commit=c2cf32e4aa0200d72cecbce203bf6b47f50f729e
+argv=/home/joshuawarren/src/mil-hwx-compiler/build/mil-hwxc --mil receipts/2026-09-13-conv-as-matmul/gemm-r2.mil --model-root receipts/2026-09-13-conv-as-matmul --target H13 --output receipts/2026-09-13-conv-as-matmul/gemm-r2
+returncode=0
+stdout:
+compiled target=H13 artifacts=15000 format=anec output=receipts/2026-09-13-conv-as-matmul/gemm-r2
+stderr:
+
+package_bytes=1671797682
+programs=15000
+operations=matmul:3000 add:12000
+encoder=h13-source-qualified
+verdict=same-linear-hole
+note=deleted gemm-r2/ after summary; 15000 ANEC files are the M=1 tiling, not a one-program envelope
