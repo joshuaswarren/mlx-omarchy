@@ -3,35 +3,31 @@
 
 #pragma once
 
-// Env-gated GPU profiling harness. COMPILE-TIME gated: without
-// MLX_OMARCHY_GPU_PROFILING defined at library build time this header
-// compiles to no-op inline stubs and release builds carry zero profiling
-// code (no branches in the dispatch path, no getenv). With it defined,
-// set MLX_OMARCHY_GPU_PROFILE=<path> (and optionally
-// MLX_OMARCHY_GPU_PROFILE_LABEL=<name>) to append one NDJSON event stream
-// to <path> for the life of the process:
+// Env-gated GPU profiling harness (measurement only; zero behavior change).
+//
+// Set MLX_OMARCHY_GPU_PROFILE=<path> (and optionally
+// MLX_OMARCHY_GPU_PROFILE_LABEL=<name>) to append one NDJSON event stream to
+// <path> for the life of the process:
 //
 //   {"k":"meta",...}  once: device name, timestamp period and valid bits,
 //                     pool capacity, label, host clock start
-//   {"k":"b",...}     per command buffer begin: host cost of the ring
-//                     slot wait (when all slots are executing) plus
-//                     BeginCommandBuffer, and the host clock at begin
+//   {"k":"b",...}     per command buffer begin: host cost of
+//                     BeginCommandBuffer
 //   {"k":"d",...}     per compute dispatch: kernel enum, groups,
 //                     params.count, host record cost, raw GPU ticks (t0
 //                     written after the pre-dispatch barrier, t1 after the
 //                     dispatch, both at BOTTOM_OF_PIPE), and the binding
 //                     list (buffer, offset, range) used as the dependency
 //                     proxy between consecutive dispatches
-//   {"k":"s",...}     per submission: host cost of submit() and the host
-//                     clock at submit end
+//   {"k":"s",...}     per submission: host cost of submit()
 //   {"k":"j",...}     per join: host cost of the completion-timeline wait
 //                     and of the noncoherent invalidate
 //   {"k":"end",...}   at exit: totals
 //
 // GPU ticks convert to nanoseconds with meta.period_ns; tick wraparound
 // wraps at 2^valid_bits. Kernel enum values map to names by their
-// declaration order in overlay/mlx/backend/omarchy/compute.h (the
-// analysis script parses that header; no name table lives in C++).
+// declaration order in overlay/mlx/backend/omarchy/compute.h (the analysis
+// script parses that header; no name table lives in C++).
 //
 // The harness only records extra commands: two vkCmdWriteTimestamp per
 // dispatch and one vkCmdResetQueryPool per command buffer. It adds no
@@ -40,10 +36,11 @@
 // of the encoder at once) or when the encoder reuses a completed ring
 // slot, and only then. Every hook is main-thread only (recording and
 // joining both happen on the encoder's thread; the completion thread
-// never calls in), so there is no lock. All Vulkan entry points go
-// through the dlopened device table; nothing links libvulkan directly.
-
-#ifdef MLX_OMARCHY_GPU_PROFILING
+// never calls in), so there is no lock. With the env var unset, every hook
+// is one predictable branch. When the queue reports no timestamp support
+// (valid_bits == 0), the harness still records all host-side costs. All
+// Vulkan entry points go through the dlopened device table; nothing links
+// libvulkan directly.
 
 #include <vulkan/vulkan.h>
 
@@ -127,11 +124,9 @@ class GpuProfiler {
     if (out_ == nullptr) {
       return;
     }
-    emitf("{\"k\":\"b\",\"o\":%" PRIu64 ",\"dur\":%" PRIu64
-          ",\"t\":%" PRIu64 "}\n",
+    emitf("{\"k\":\"b\",\"o\":%" PRIu64 ",\"dur\":%" PRIu64 "}\n",
           owner_id(owner),
-          begin_cost,
-          host_ns());
+          begin_cost);
     Ctx* ctx = find(owner);
     if (ctx == nullptr) {
       return;
@@ -159,7 +154,6 @@ class GpuProfiler {
     if (p.skipped) {
       dropped_++;
     } else {
-      p.tick_index = s.cursor;
       vk::device_table().CmdWriteTimestamp(
           cmd, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, s.pool, s.cursor);
     }
@@ -203,8 +197,8 @@ class GpuProfiler {
     }
     if (!p.skipped) {
       vk::device_table().CmdWriteTimestamp(
-          cmd, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, s.pool, p.tick_index + 1);
-      s.cursor = p.tick_index + 2;
+          cmd, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, s.pool, s.cursor + 1);
+      s.cursor += 2;
     }
     dispatches_++;
   }
@@ -224,11 +218,9 @@ class GpuProfiler {
     if (ctx != nullptr) {
       ctx->slots[slot].last_sub = sub;
     }
-    emitf("{\"k\":\"s\",\"s\":%" PRIu64 ",\"dur\":%" PRIu64
-          ",\"t\":%" PRIu64 "}\n",
+    emitf("{\"k\":\"s\",\"s\":%" PRIu64 ",\"dur\":%" PRIu64 "}\n",
           sub,
-          submit_cost,
-          host_ns());
+          submit_cost);
   }
 
   // Called from join_last_completion after the wait and the noncoherent
@@ -272,7 +264,6 @@ class GpuProfiler {
     uint32_t gy{0};
     uint32_t gz{0};
     uint64_t host_cost{0};
-    uint32_t tick_index{0};
     // buffer, offset, range triples for the dependency proxy between
     // consecutive dispatches: overlapping buffers suggest the pair may be
     // data dependent; disjoint buffers prove the barrier between them
@@ -363,11 +354,10 @@ class GpuProfiler {
             p.gy,
             p.gz,
             p.host_cost);
-      if (p.tick_index + 1 < queries &&
-          ticks[p.tick_index + 1] >= ticks[p.tick_index]) {
+      if (ticks[2 * i + 1] >= ticks[2 * i]) {
         emitf(",\"t0\":%" PRIu64 ",\"t1\":%" PRIu64,
-              ticks[p.tick_index],
-              ticks[p.tick_index + 1]);
+              ticks[2 * i],
+              ticks[2 * i + 1]);
       }
       emitf(",\"b\":[");
       for (size_t j = 0; j < p.nb; ++j) {
@@ -442,61 +432,9 @@ class GpuProfiler {
   uint64_t joins_{0};
   uint32_t dropped_{0};
 };
-
 // Namespace-level accessor used by encoder.cpp call sites.
 inline GpuProfiler& get() {
   return GpuProfiler::get();
 }
 
 } // namespace mlx::core::omarchy::prof
-
-#else
-
-// Compiled-out mirror: identical call signatures, zero cost. mlx builds
-// without MLX_OMARCHY_GPU_PROFILING never touch Vulkan profiling state.
-
-#include <cstdint>
-
-namespace mlx::core::omarchy::prof {
-
-class GpuProfiler {
- public:
-  static GpuProfiler& get() {
-    static GpuProfiler instance;
-    return instance;
-  }
-
-  bool profiling() const {
-    return false;
-  }
-
-  void attach(const void*, const Device&) {}
-  void on_begin(const void*, int, VkCommandBuffer, uint64_t) {}
-  void before_dispatch(const void*, int, VkCommandBuffer) {}
-  void after_dispatch(
-      const void*,
-      int,
-      VkCommandBuffer,
-      ComputeKernel,
-      const ComputeParams&,
-      std::span<const ComputeBinding>,
-      uint32_t,
-      uint32_t,
-      uint32_t,
-      uint64_t) {}
-  void on_submit_end(const void*, uint64_t, uint64_t, int) {}
-  void on_join(const void*, uint64_t, uint64_t, uint64_t, uint64_t) {}
-};
-
-// Namespace-level accessor used by encoder.cpp call sites.
-inline GpuProfiler& get() {
-  return GpuProfiler::get();
-}
-
-inline uint64_t host_ns() {
-  return 0;
-}
-
-} // namespace mlx::core::omarchy::prof
-
-#endif

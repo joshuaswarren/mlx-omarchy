@@ -631,7 +631,7 @@ TEST_CASE(
   // This test targets the CompletionDispatcher's drain serialization, so
   // the submission must be on the queue immediately: commit_now() (plain
   // commit() defers into the open batch by design).
-  enc.commit();
+  enc.commit_now();
 
   auto v1_status = v1_started.wait_for(std::chrono::seconds(10));
   CHECK(v1_status == std::future_status::ready);
@@ -646,7 +646,7 @@ TEST_CASE(
   // second thread. The waiter enters drain_through(V2) and must block
   // until V1's drain releases drain_mutex_.
   enc.add_completed_handler([]() {});
-  enc.commit();
+  enc.commit_now();
 
   std::thread waiter([&]() {
     try {
@@ -675,7 +675,7 @@ TEST_CASE(
   omarchy::allocator().free(buf);
 }
 
-TEST_CASE("temporaries release one completion after their submission") {
+TEST_CASE("temporaries release exactly at GPU completion") {
   if (!gpu::is_available()) {
     skip("no qualifying Vulkan device.");
     return;
@@ -706,23 +706,12 @@ TEST_CASE("temporaries release one completion after their submission") {
   CHECK_FALSE(observed.expired()); // retention outlived destruction
 
   enc.synchronize(); // bounded completion wait; joins handler execution
-  // Mesa's queue thread signals a submission's semaphores (including the
-  // completion timeline) before its submit-final cleanup retires the
-  // submission's timeline points, so a payload of this submission must
-  // still be alive here: destroying it now races the driver.
-  CHECK_FALSE(observed.expired());
-
-  // The next completion proves the driver finished this submission's
-  // cleanup; the retired payload releases then, and never leaks.
-  enc.fill_buffer(scratch_buf->buffer, 0x44, 4096);
-  enc.commit();
-  enc.synchronize();
-  CHECK(observed.expired());
+  CHECK(observed.expired()); // released exactly at completion
   omarchy::allocator().free(scratch);
 }
 
 TEST_CASE(
-    "eager per-node commits reuse ring slots without host joins") {
+    "commits batch without synchronize into one submission until it is forced") {
   if (!gpu::is_available()) {
     skip("no qualifying Vulkan device.");
     return;
@@ -733,24 +722,29 @@ TEST_CASE(
   auto buf = omarchy::allocator().malloc(kBytes);
   auto* p = static_cast<omarchy::VulkanBuffer*>(buf.ptr());
 
-  // Eager-flush contract (kBatchNodeBudget = 1, measured: deeper batching
-  // defeats the evaluator's task pipeline and regresses tok/s heavily).
-  // Every commit submits, but the in-flight ring means a commit never
-  // host-joins the previous submission the way the pre-ring encoder did
-  // (that join was the dominant decode cost in the 2026-09-02 profile).
-  // Ordering still holds end to end (each node carries its full barrier
-  // pair), so the final bytes carry the last iteration's value.
-  constexpr int kIters = 8;
+  // Batching contract: commits under the node/work budget keep the batch
+  // open on the same command buffer; nothing reaches the queue until a
+  // budget fires, a semaphore op is pending, or synchronize() forces the
+  // flush. The batch is still ordered end to end (each dispatch carries
+  // its full barrier pair), so the final bytes carry the last iteration's
+  // value everywhere. Ring-slot acquisition only ever reuses a command
+  // buffer whose submission completed, so the VUID-vkBeginCommandBuffer-
+  // commandBuffer-00048 hazard stays structurally impossible.
+  constexpr int kIters = 32; // well under kBatchNodeBudget (100)
   uint64_t submissions_before =
       omarchy::trace::counters().vk_submissions.load();
   for (int i = 0; i < kIters; ++i) {
     enc.fill_buffer(p->buffer, (i % 2) ? 0x5a5a5a5au : 0xa5a5a5a5u, kBytes);
+    CHECK_FALSE(enc.synchronized()); // open batch: work recorded, not queued
     enc.commit();
   }
   CHECK(
+      omarchy::trace::counters().vk_submissions.load() == submissions_before);
+
+  enc.synchronize(); // forces the flush, then joins
+  CHECK(
       omarchy::trace::counters().vk_submissions.load() ==
-      submissions_before + kIters);
-  enc.synchronize();
+      submissions_before + 1);
   CHECK(enc.synchronized());
   const uint32_t expected = ((kIters - 1) % 2) ? 0x5a5a5a5au : 0xa5a5a5a5u;
   const auto* words = static_cast<const uint32_t*>(p->data);
@@ -985,15 +979,7 @@ TEST_CASE("independent streams measure against the serialized sum") {
             << " serialized_median=" << serialized_median
             << "s concurrent_median=" << concurrent_median
             << "s ratio=" << ratio << "\n";
-  // Batched-submission contract: each stream records into its own open
-  // batch and the single queue executes the batches back to back, so the
-  // serialized pattern is already GPU-bound and the old per-op overlap
-  // win (ratio > 1.05) is structurally subsumed. What must still hold is
-  // stream independence: interleaving two streams' batches costs nothing
-  // versus running them alone (a global serialization lock would push
-  // the ratio well below 1).
-  CHECK(ratio > 0.95);
-  CHECK(ratio < 1.10);
+  CHECK(ratio > 1.05);
 
   omarchy::allocator().free(a1);
   omarchy::allocator().free(b1);

@@ -161,7 +161,8 @@ CapabilityReport collect_capabilities(
     const VkPhysicalDeviceShaderAtomicFloatFeaturesEXT& fa,
     const VkPhysicalDevice16BitStorageFeatures& f16,
     const VkPhysicalDeviceMaintenance3Properties& m3,
-    const VkPhysicalDeviceMaintenance4Properties& m4) {
+    const VkPhysicalDeviceMaintenance4Properties& m4,
+    const VkPhysicalDeviceSubgroupProperties& subgroup) {
   CapabilityReport caps;
   const auto& props = props2.properties;
   const auto& limits = props.limits;
@@ -206,6 +207,9 @@ CapabilityReport collect_capabilities(
   caps.timeline_semaphore = f12.timelineSemaphore == VK_TRUE;
   caps.shader_float16 = f12.shaderFloat16 == VK_TRUE;
   caps.shader_int16 = feats2.features.shaderInt16 == VK_TRUE;
+  caps.subgroup_size = subgroup.subgroupSize;
+  caps.subgroup_operations = subgroup.supportedOperations;
+  caps.subgroup_stages = subgroup.supportedStages;
   caps.storage_buffer_16bit_access = f16.storageBuffer16BitAccess == VK_TRUE;
 
   caps.max_allocation_size = m3.maxMemoryAllocationSize;
@@ -231,7 +235,6 @@ CapabilityReport collect_capabilities(
     if (families[f].queueFlags & VK_QUEUE_COMPUTE_BIT) {
       caps.queue_family_index = f;
       caps.queue_count = families[f].queueCount;
-      caps.queue_timestamp_valid_bits = families[f].timestampValidBits;
       caps.queue_timestamp_valid_bits = families[f].timestampValidBits;
       break;
     }
@@ -344,17 +347,20 @@ bool Runtime::init_impl() {
   std::string first_refusal;
 
   for (VkPhysicalDevice pd : pds) {
+    VkPhysicalDeviceSubgroupProperties subgroup{
+        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES};
     VkPhysicalDeviceDriverProperties driver{
         VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES};
     VkPhysicalDeviceMaintenance3Properties m3{
         VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_3_PROPERTIES};
     VkPhysicalDeviceMaintenance4Properties m4{
         VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_4_PROPERTIES};
+    subgroup.pNext = &driver;
     driver.pNext = &m3;
     m3.pNext = &m4;
     VkPhysicalDeviceProperties2 props2{
         VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2};
-    props2.pNext = &driver;
+    props2.pNext = &subgroup;
     it.GetPhysicalDeviceProperties2(pd, &props2);
 
     DeviceSupport support = classify_physical_device(
@@ -412,7 +418,8 @@ bool Runtime::init_impl() {
         fa,
         f16,
         m3,
-        m4);
+        m4,
+        subgroup);
     if (info.caps.queue_count == 0) {
       if (first_refusal.empty()) {
         first_refusal = "[omarchy] device '" + info.caps.device_name +
@@ -789,11 +796,6 @@ void CompletionDispatcher::shutdown() {
         std::make_move_iterator(completion.temporaries.begin()),
         std::make_move_iterator(completion.temporaries.end()));
   }
-  leaked_temporaries->insert(
-      leaked_temporaries->end(),
-      std::make_move_iterator(retired_temporaries_.begin()),
-      std::make_move_iterator(retired_temporaries_.end()));
-  retired_temporaries_.clear();
   if (semaphore_ != VK_NULL_HANDLE) {
     vk::device_table().DestroySemaphore(device_, semaphore_, nullptr);
     semaphore_ = VK_NULL_HANDLE;
@@ -875,27 +877,10 @@ void CompletionDispatcher::drain_through(uint64_t max_value) {
       handler();
     }
   }
-  // Mesa's queue thread signals a submission's semaphores (including the
-  // completion timeline read above) BEFORE the submit-final cleanup
-  // releases that submission's timeline points, so observing this
-  // timeline does not prove the driver finished the submission. Retire
-  // payloads one generation late: submits execute serially in value
-  // order, so once completion V+1 is observable, cleanup for V has run.
-  std::vector<std::shared_ptr<void>> retired;
-  for (auto& completion : ready) {
-    retired.insert(
-        retired.end(),
-        std::make_move_iterator(completion.temporaries.begin()),
-        std::make_move_iterator(completion.temporaries.end()));
-  }
   ready.clear();
-  std::vector<std::shared_ptr<void>> release = std::move(retired_temporaries_);
-  retired_temporaries_ = std::move(retired);
   std::lock_guard<std::mutex> lk(mutex_);
   drained_value_ = std::max(drained_value_, ready_value);
   cv_.notify_all();
-  // |release| frees when this function returns: by then drained_value_
-  // names a later generation, so the previous one is provably finished.
 }
 
 uint64_t CompletionDispatcher::drained_value() {

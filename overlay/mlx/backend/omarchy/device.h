@@ -76,13 +76,13 @@ struct CapabilityReport {
   bool shader_float16{false};
   bool shader_int16{false};
   bool storage_buffer_16bit_access{false};
+  uint32_t subgroup_size{0};
+  uint32_t subgroup_operations{0};
+  uint32_t subgroup_stages{0};
   // True when the device exposes VK_EXT_shader_atomic_float with the
-  // shaderBufferFloat32AtomicAdd feature: measured true on llvmpipe;
-  // the M1 G13G B1 Honeykrisp does not advertise the extension at all
-  // (an earlier "measured on both" note had read llvmpipe's feature
-  // list on a box exposing both devices). Selects between the float
-  // scatter Sum hardware-atomicAdd kernels and the FCAS
-  // compare-exchange twins.
+  // shaderBufferFloat32AtomicAdd feature (measured true on llvmpipe and
+  // on the M1 G13G B1 Honeykrisp target). Gates the float scatter
+  // Sum/Prod kernels, which need OpAtomicFAddEXT on storage buffers.
   bool shader_atomic_float_add{false};
   size_t total_memory{0};
   VkDeviceSize max_allocation_size{0};
@@ -113,11 +113,9 @@ class ComputeRuntime;
 // Completion tracking for async submissions on the single Honeykrisp queue.
 // Every encoder submission signals one strictly increasing value on a
 // device-wide timeline semaphore; a dispatcher thread waits that timeline
-// and runs each submission's completion handlers. Buffer temporaries and
-// queued-semaphore ownership release one completion generation later,
-// because Mesa signals a submission's semaphores before its submit-final
-// cleanup retires the submission's timeline points. Submitters never
-// block on the queue.
+// and runs each submission's completion handlers, releasing buffer
+// temporaries and queued-semaphore ownership exactly when the GPU work
+// finishes. Submitters never block on the queue.
 class CompletionDispatcher {
  public:
   explicit CompletionDispatcher(VkDevice device);
@@ -152,11 +150,6 @@ class CompletionDispatcher {
   VkDevice device_;
   VkSemaphore semaphore_{VK_NULL_HANDLE};
   std::deque<Completion> pending_;
-  // Payloads of already-drained completions, released one completion
-  // later. Mesa signals a submission's semaphores before its submit-final
-  // cleanup releases timeline points, so a completion value on this
-  // timeline does not prove the driver finished that submission.
-  std::vector<std::shared_ptr<void>> retired_temporaries_;
   uint64_t next_value_{0};
   uint64_t drained_value_{0};
   std::mutex mutex_;

@@ -101,6 +101,40 @@ void expect_close_tol(
   }
 }
 
+// Tolerances for the GEMV value tests: a 16-bit output rounds the final
+// sum to one output ulp (bf16 mantissa 8 bits is 0.4% of the value),
+// and the fp32 accumulation order differs from the double host
+// reference. A wrong lane, index, or unpack still misses by O(1).
+void expect_gemv_close(
+    Dtype dtype,
+    const std::vector<float>& device,
+    const std::vector<float>& expected) {
+  double atol = 1e-4;
+  double rtol = 1e-3;
+  if (dtype == bfloat16) {
+    atol = 1e-2;
+    rtol = 1e-2;
+  } else if (dtype == float16) {
+    atol = 1e-3;
+    rtol = 4e-3;
+  }
+  expect_close_tol(device, expected, atol, rtol);
+}
+
+// Epsilon for comparing the vector path against the general path on the
+// same dtype: both outputs round to the same storage, but their
+// pre-rounding sums differ by reduction order, so 16-bit dtypes may
+// differ by one output ulp.
+double gemv_path_epsilon(Dtype dtype) {
+  if (dtype == bfloat16) {
+    return 1e-2;
+  }
+  if (dtype == float16) {
+    return 2e-3;
+  }
+  return 1e-4;
+}
+
 double host_at(const std::vector<float>& values, size_t index) {
   return static_cast<double>(values[index]);
 }
@@ -290,6 +324,23 @@ std::vector<float> host_matmul(
         out[(static_cast<size_t>(bt) * m + r) * n + c] =
             static_cast<float>(acc);
       }
+    }
+  }
+  return out;
+}
+
+// Transposed view values: in is an (n, k) row-major stack, out the same
+// matrix read as (k, n) row-major, so host_matmul can contract against
+// the decode x @ w.T layout without a device round trip.
+std::vector<float> transpose_values(
+    const std::vector<float>& in,
+    int n,
+    int k) {
+  std::vector<float> out(static_cast<size_t>(k) * n);
+  for (int c = 0; c < n; ++c) {
+    for (int i = 0; i < k; ++i) {
+      out[static_cast<size_t>(i) * n + c] =
+          in[static_cast<size_t>(c) * k + i];
     }
   }
   return out;
@@ -1285,5 +1336,223 @@ TEST_CASE("qq matmul matches scale-only quantized and float paths") {
         qqmm(x, w, std::nullopt, 64, 4, "mxfp4", std::nullopt, std::nullopt,
              stream));
     CHECK(mode_error.find("QQMatmul mode") != std::string::npos);
+  }
+}
+
+// DecodeGemv: the single-row (matrix_m == 1) matrix-vector path must
+// match the general tiled path and a host double reference across the
+// shapes and dtypes decode actually feeds it: the single-element
+// contraction, k and n that miss both the 8-column workgroup slot and
+// the 32-lane k step, exact slot boundaries, batched stacks, both b
+// orientations, and the AddMM alpha/beta/c transport.
+TEST_CASE("matmul vector path matches general path across shapes and dtypes") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  std::mt19937 gen(71);
+  std::uniform_real_distribution<float> dist(-2.0f, 2.0f);
+  std::vector<Dtype> dtypes{float32, bfloat16};
+  if (float16_available()) {
+    dtypes.push_back(float16);
+  }
+  std::vector<std::tuple<int, int, int>> shapes{
+      {1, 1, 1}, {1, 33, 17}, {1, 64, 8}, {1, 130, 7}, {1, 256, 72}};
+  for (auto [m, k, n] : shapes) {
+    for (auto dtype : dtypes) {
+      std::vector<float> x_values(static_cast<size_t>(m) * k);
+      std::vector<float> w_values(static_cast<size_t>(n) * k);
+      for (auto& value : x_values) {
+        value = dist(gen);
+      }
+      for (auto& value : w_values) {
+        value = dist(gen);
+      }
+      // Round both operands through the dtype so every reference below
+      // sees exactly what the kernels load.
+      std::vector<float> x_rt = round_trip(stream, x_values, dtype);
+      std::vector<float> w_rt = round_trip(stream, w_values, dtype);
+      array w(w_rt.begin(), Shape{n, k}, dtype);
+      array x(x_rt.begin(), Shape{m, k}, dtype);
+      std::vector<float> expected =
+          host_matmul(x_rt, transpose_values(w_rt, n, k), 1, m, k, n);
+
+      // Vector path through the decode layout: b = w.T view.
+      array out_vec = matmul(x, transpose(w), stream);
+      REQUIRE(evaluation_error(out_vec).empty());
+      expect_gemv_close(dtype, readback_f32(stream, out_vec), expected);
+
+      // Same contraction on the general tiled path: duplicate the row,
+      // take row 0. Only the reduction order may differ.
+      array x2 = concatenate({x, x}, 0, stream);
+      array out_gen = matmul(x2, transpose(w), stream);
+      REQUIRE(evaluation_error(out_gen).empty());
+      std::vector<float> gen_row = readback_f32(stream, out_gen);
+      gen_row.resize(n);
+      expect_close(
+          readback_f32(stream, out_vec), gen_row, gemv_path_epsilon(dtype));
+
+      // Row-major b (the attention p @ v orientation).
+      // b element (inner, c) = w.T[inner][c] = w[c][inner]
+      std::vector<float> b_values(static_cast<size_t>(k) * n);
+      for (int inner = 0; inner < k; ++inner) {
+        for (int c = 0; c < n; ++c) {
+          b_values[static_cast<size_t>(inner) * n + c] =
+              w_rt[static_cast<size_t>(c) * k + inner];
+        }
+      }
+      array b_direct_rt(b_values.begin(), Shape{k, n}, dtype);
+      array out_rows = matmul(x, b_direct_rt, stream);
+      REQUIRE(evaluation_error(out_rows).empty());
+      expect_gemv_close(dtype, readback_f32(stream, out_rows), expected);
+    }
+  }
+
+  // Batched single-row stacks: two real matrices through the z unravel.
+  {
+    int batch = 2, k = 96, n = 19;
+    for (auto dtype : {float32, bfloat16}) {
+      std::vector<float> a_values(
+          static_cast<size_t>(batch) * k);
+      std::vector<float> w_values(
+          static_cast<size_t>(batch) * n * k);
+      for (auto& value : a_values) {
+        value = dist(gen);
+      }
+      for (auto& value : w_values) {
+        value = dist(gen);
+      }
+      std::vector<float> a_rt = round_trip(stream, a_values, dtype);
+      std::vector<float> w_rt = round_trip(stream, w_values, dtype);
+      array w(w_rt.begin(), Shape{batch, n, k}, dtype);
+      array a(a_rt.begin(), Shape{batch, 1, k}, dtype);
+      array out = matmul(a, swapaxes(w, -1, -2), stream);
+      REQUIRE(evaluation_error(out).empty());
+      REQUIRE_EQ(out.shape(), Shape{batch, 1, n});
+      // Reference per batch: b element (inner, c) = w[bt][c][inner].
+      std::vector<float> b_values(
+          static_cast<size_t>(batch) * k * n);
+      for (int bt = 0; bt < batch; ++bt) {
+        for (int inner = 0; inner < k; ++inner) {
+          for (int c = 0; c < n; ++c) {
+            b_values[(static_cast<size_t>(bt) * k + inner) * n + c] =
+                w_rt[(static_cast<size_t>(bt) * n + c) * k + inner];
+          }
+        }
+      }
+      std::vector<float> expected =
+          host_matmul(a_rt, b_values, batch, 1, k, n);
+      expect_gemv_close(dtype, readback_f32(stream, out), expected);
+    }
+  }
+
+  // AddMM at matrix_m == 1: alpha/beta/c ride the same vector kernel.
+  {
+    int k = 65, n = 13;
+    for (auto dtype : {float32, bfloat16}) {
+      std::vector<float> x_values(k);
+      std::vector<float> w_values(static_cast<size_t>(n) * k);
+      std::vector<float> c_values(n);
+      for (auto& value : x_values) {
+        value = dist(gen);
+      }
+      for (auto& value : w_values) {
+        value = dist(gen);
+      }
+      for (auto& value : c_values) {
+        value = dist(gen);
+      }
+      std::vector<float> x_rt = round_trip(stream, x_values, dtype);
+      std::vector<float> w_rt = round_trip(stream, w_values, dtype);
+      std::vector<float> c_rt = round_trip(stream, c_values, dtype);
+      array w(w_rt.begin(), Shape{n, k}, dtype);
+      array x(x_rt.begin(), Shape{1, k}, dtype);
+      array c(c_rt.begin(), Shape{1, n}, dtype);
+      float alpha = 0.5f;
+      float beta = 2.0f;
+      array out = addmm(c, x, transpose(w), alpha, beta, stream);
+      REQUIRE(evaluation_error(out).empty());
+      std::vector<float> dot =
+          host_matmul(x_rt, transpose_values(w_rt, n, k), 1, 1, k, n);
+      std::vector<float> expected(n);
+      for (int col = 0; col < n; ++col) {
+        expected[col] =
+            alpha * dot[col] + beta * c_rt[static_cast<size_t>(col)];
+      }
+      expect_gemv_close(dtype, readback_f32(stream, out), expected);
+    }
+  }
+}
+
+// DecodeGemv: the fused quantized matrix-vector kernel must match the
+// general thread-per-column kernel and the host double dequant
+// reference for 4- and 8-bit codes, both group sizes, every real dtype,
+// and the n edges of the 8-column workgroup slot. Group boundary
+// crossings land mid-slot on purpose: k spans three groups, so lanes
+// cross scale boundaries inside one 32-lane k step.
+TEST_CASE("quantized matmul vector path matches general and host references") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  std::mt19937 gen(73);
+  std::uniform_real_distribution<float> dist(-2.0f, 2.0f);
+  std::vector<Dtype> dtypes{float32, bfloat16};
+  if (float16_available()) {
+    dtypes.push_back(float16);
+  }
+  for (auto [group_size, bits] :
+       std::vector<std::pair<int, int>>{{64, 4}, {32, 4}, {64, 8}, {32, 8}}) {
+    int k = group_size * 3;
+    for (int n : {1, 7, 8, 9, 37}) {
+      for (auto dtype : dtypes) {
+        std::vector<float> matrix(static_cast<size_t>(n) * k);
+        std::vector<float> x_values(k);
+        for (auto& value : matrix) {
+          value = dist(gen);
+        }
+        for (auto& value : x_values) {
+          value = dist(gen);
+        }
+        HostQuantizedWeights host =
+            host_affine_quantize(matrix, n, k, group_size, bits);
+        std::vector<float> x_rt = round_trip(stream, x_values, dtype);
+        std::vector<float> scales_rt =
+            round_trip(stream, host.scales, dtype);
+        std::vector<float> biases_rt =
+            round_trip(stream, host.biases, dtype);
+        HostQuantizedWeights rounded = host;
+        rounded.scales = scales_rt;
+        rounded.biases = biases_rt;
+        std::vector<float> expected =
+            host_quantized_matmul(rounded, x_rt, 1, n, k, group_size, bits);
+
+        array w_words(
+            host.words.begin(), Shape{n, k / (32 / bits)}, uint32);
+        array scales(scales_rt.begin(), Shape{n, k / group_size}, dtype);
+        array biases(biases_rt.begin(), Shape{n, k / group_size}, dtype);
+        array x(x_rt.begin(), Shape{1, k}, dtype);
+        array out_vec = quantized_matmul(
+            x, w_words, scales, biases, true, group_size, bits, "affine",
+            stream);
+        REQUIRE(evaluation_error(out_vec).empty());
+        REQUIRE_EQ(out_vec.shape(), Shape{1, n});
+        expect_gemv_close(dtype, readback_f32(stream, out_vec), expected);
+
+        // General path on the same packed weights: two rows, compare
+        // row 0. Only the accumulation order may differ.
+        std::vector<float> x2_rt(x_rt.begin(), x_rt.end());
+        x2_rt.insert(x2_rt.end(), x_rt.begin(), x_rt.end());
+        array x2(x2_rt.begin(), Shape{2, k}, dtype);
+        array out_gen = quantized_matmul(
+            x2, w_words, scales, biases, true, group_size, bits, "affine",
+            stream);
+        REQUIRE(evaluation_error(out_gen).empty());
+        std::vector<float> gen_row = readback_f32(stream, out_gen);
+        gen_row.resize(n);
+        expect_close(
+            readback_f32(stream, out_vec), gen_row, gemv_path_epsilon(dtype));
+      }
+    }
   }
 }

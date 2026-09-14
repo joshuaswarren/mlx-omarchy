@@ -133,7 +133,7 @@ void finalize(Stream s) {
   // open batch must reach the queue here or those waits never complete.
   // Batching still happens: every dispatch recorded between finalizes
   // (one whole graph evaluation) shares one open command buffer.
-  omarchy::get_command_encoder(s).commit();
+  omarchy::get_command_encoder(s).commit_now();
 }
 
 

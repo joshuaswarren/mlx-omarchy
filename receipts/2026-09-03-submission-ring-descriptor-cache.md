@@ -128,6 +128,93 @@ expected where the driver's own software cost dominates).
 - Final tree (batching deleted, host timestamps added): llvmpipe battery
   25/25 re-verified after the deletion.
 
+## Methodology note: MLX_DISABLE_COMPILE (Main's README blocker)
+
+Every model leg in this receipt ran with `MLX_DISABLE_COMPILE=1` because
+bf16 through `mx.compile` carries a NAMED, receipted defect:
+`2026-09-02-m1-bf16-compiled-tape.md` — compiled bf16 tapes corrupt
+nondeterministically on Honeykrisp (multi-byte garbage tokens, 9/9 unique
+garbage outputs at seed 0), the gate is deliberately kept at
+`compiled.cpp` (refusal by name), and Joshua was escalated for the m1n1
+side of that investigation. With compile at its default (ON), bf16
+mlx-lm generation on this backend does not produce numbers — it refuses
+or corrupts. A like-for-like bf16 Vulkan leg with compile ON therefore
+cannot exist on any wheel, before or after this slice; the README's
+Vulkan rows need that caveat next to a macOS column that ran with
+compile ON (macOS compile works; that is a documented product
+difference, not a new defect). 4-bit compile-ON legs were untested in
+this session and are queued behind FuseDecodeChains' hardware equivalence
+suite.
+
+Correspondence check that the before-legs are the published
+configuration: the before wheels reproduce the prior receipts'
+DISABLE_COMPILE numbers exactly (bf16 prompt 21.643 vs receipt
+21.452/20.848/21.628; q4 prompt 21.056 vs receipt 21.192/21.034). The
+README's 18.3/19.2 prefill figures predate 959c7a0's shader changes and
+were measured on a different tree; the RATIOS in this receipt are the
+comparable quantity (both legs matched, same session), and the absolute
+per-wheel values above are tied to named wheels.
+
+## Handoff: re-ranked levers (Main, post-decomposition)
+
+1. KERNEL TIME — fusion first (attacks the 45.4% slot-wait window, where
+   the GPU is backlogged), then the elementwise+copy floor (64% of GPU
+   busy; casts/copies/arange = 35.8% of dispatches). FuseDecodeChains'
+   fused-chain work is correctly aimed.
+2. UPSTREAM — MLX's evaluation model for the 39.6% remainder: flush when
+   the scheduler would block instead of MAX_ACTIVE_TASKS
+   finalize+wait_for_one; op-granular QueueSubmit (14.3%) becomes
+   batchable only there.
+3. NOT WORTH IT: further encoder host-side work — record, submit, join
+   and begin are now 15.1% combined and the first three are at driver
+   floors.
+
+## Defect fix: trig_argument_gate unordered host read (observed on hardware)
+
+FuseDecodeChains' compiled 4-bit hardware run on clean v0.3.2 (b17cc86,
+PRE-ring) aborted at the Cos argument-magnitude gate reporting ~9.65e8
+against the 1e5 limit. INTERLEAVING (named): `array::item()` is `eval()`
+plus an immediate mapped read with no completion wait
+(array.h:577-581). The gate's magnitude (ReduceMax+Cast) is submitted
+asynchronously, then `item<float>()` dereferences the host-mapped output
+buffer before that submission executes. The buffer is a recycled
+allocator page holding stale bytes — the reported ~9.7e8 is stale page
+content, not a wrong angle. llvmpipe never reproduced it because it
+executes submissions synchronously inside QueueSubmit, closing the race
+window. The ring is UNINVOLVED: the read races its own submission's
+execution identically with or without it — the compiled 4-bit path was
+simply never exercised on hardware until now (every published leg runs
+MLX_DISABLE_COMPILE=1), and eager in-range runs passed because stale
+page contents are usually small or zero, which passes the gate
+silently and yields correct sin/cos anyway.
+
+FIX (root, at primitives.cpp trig_argument_gate): the stream is ordered
+before the read — `get_command_encoder(stream).synchronize()` between
+`magnitude.eval()` and `item<float>()` — the same host-checks-behind-a-
+synchronize pattern the reduce host checks already use. The alternative
+(pre-zeroing the magnitude buffer) was rejected per Main: it would turn
+a stale-garbage false refusal into a silent wrong PASS on genuinely
+huge arguments, defeating the gate. COST, stated honestly: every Sin/Cos
+gate now serializes its stream (flush + join), so compiled generation
+pays a flush+join per gated trig op (RoPE: ~2/layer) — correct and
+slower; removing the blocking read from the compiled path (an in-tape
+range assertion, or trace-time gating on provably bounded inputs) is
+future work.
+
+SWEEP for sibling unordered host reads: `array::item<>()` appears exactly
+once in backend host code (the gate). The other host reads of GPU data
+(copy.cpp memset checks, the quantized-reduce host checks at
+primitives.cpp:2405/2432) already sit behind `encoder.synchronize()`.
+No other unordered site exists in overlay backend code.
+
+VALIDATION (llvmpipe): battery green (eq_math + primitive + runtime);
+end-to-end with the rebuilt wheel: input |2e5| refuses by name with the
+TRUE magnitude (200000.000000 — ordered read confirmed at the logic
+level), in-range small args pass the gate. HARDWARE CONFIRMATION of the
+ordering (the abort must disappear at ceae628+fix on jwm1) is queued
+after Bf16TapeReuse's autonomous battery completes (box busy until
+~14:00-17:00 CDT).
+
 ## Gate status
 
 **M1 before/after tok/s for the shipped design: UNOBSERVED.** The first M1

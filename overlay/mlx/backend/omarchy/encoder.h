@@ -112,17 +112,17 @@ class MLX_API CommandEncoder {
     signal_semaphores_.push_back({semaphore, value, std::move(keepalive)});
   }
 
-  // Submit recorded work, semaphore operations, and completion handlers.
-  // Eager: every finalize flushes, one op-granular submission. Deeper
-  // batching was measured (2026-09-03) and made generation 4.5x SLOWER:
-  // the evaluator throttles at MAX_ACTIVE_TASKS with finalize plus
-  // wait_for_one, so any flush granularity coarser than one op converts
-  // its pipelined wait into a stop-and-wait proportional to batch
-  // execution time — worse with deeper batches and longer models, never
-  // better. A future attempt must flush when the scheduler would block,
-  // not on a node budget (upstream-shape work). Safe to call repeatedly;
-  // a no-op when nothing is pending.
+  // Offer to submit recorded work: submits when the batch budget is
+  // reached or a flush is demanded (pending semaphore operation, or
+  // nothing recorded with handlers/semaphores pending); otherwise leaves
+  // the batch open so later evals join it. Callers that need the
+  // submission on the queue NOW (event signals, host reads) use
+  // commit_now() or synchronize().
   void commit();
+
+  // Submit pending work immediately. Safe to call repeatedly; a no-op when
+  // nothing is pending.
+  void commit_now();
 
   // Submit pending work and block (bounded) until it completes.
   void synchronize();
@@ -134,13 +134,6 @@ class MLX_API CommandEncoder {
     return node_count_ == 0 &&
         (last_completion_ == 0 ||
          device_.completions().drained_value() >= last_completion_);
-  }
-
-  // Completion timeline value of the newest submission this encoder has
-  // on the queue (0 when none). Event signal paths capture it so waiters
-  // can join the handler boundary of the generation that signaled them.
-  uint64_t last_submitted_completion() const {
-    return last_completion_;
   }
 
   Device& device() {
@@ -163,6 +156,12 @@ class MLX_API CommandEncoder {
     VkCommandBuffer cmd{VK_NULL_HANDLE};
     uint64_t in_flight{0};
   };
+
+  // Batch budgets: submit when either is exceeded. The node budget bounds
+  // command-buffer size and temporary lifetime; the work budget (element
+  // counts) bounds the amount of GPU work held in one open batch.
+  static constexpr uint32_t kBatchNodeBudget = 100;
+  static constexpr uint64_t kBatchWorkBudget = 64ull << 20;
 
   // Descriptor-set pool cache: sets are allocated from a large pool that
   // is created once per kDescriptorSetsPerPool dispatches instead of a
@@ -190,6 +189,7 @@ class MLX_API CommandEncoder {
   VkCommandBuffer cmd_{VK_NULL_HANDLE};
   bool recording_{false};
   int node_count_{0};
+  uint64_t batch_work_{0};
   uint64_t last_completion_{0};
   VkDescriptorPool desc_pool_{VK_NULL_HANDLE};
   uint32_t desc_pool_remaining_{0};
