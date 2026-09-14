@@ -1,14 +1,17 @@
 # Copyright © 2026 Joshua Warren / mlx-omarchy contributors.
 # SPDX-License-Identifier: MIT
-"""Materialize encoder select fill ``a`` as a runtime input.
+"""Materialize encoder select fill ``a`` and fp16 cond as runtime inputs.
 
 H13 refuses select with a MIL-const ``a``
-(``h13.select-needs-decoded-encoder``). Runtime-a plus a bool cond at
+(``h13.select-needs-decoded-encoder``) and with an fp16 cond
+(``h13.boolean-outside-envelope``). Runtime-a plus a bool cond at
 CHW ``{8,375,375}`` compiles to one ``apple-parity-boolean`` program.
-The leftover 24 encoder selects bind a scalar fp16 ``-inf`` const.
-This rewrite promotes that const to a function input of the select
-output shape; the host fills it. Do not emit the ninf packing. Do not
-rewrite the ``+0.0``-fill family (``mask_lowering`` owns that mul).
+The leftover 24 encoder selects bind a scalar fp16 ``-inf`` const and
+an fp16 0/1 cond. This rewrite promotes the const to a function input
+of the select output shape and materializes the cond as bool (bit-exact
+``+0.0``/``1.0`` → false/true); the host fills both. Do not emit the
+ninf packing. Do not insert a device cast. Do not rewrite the
+``+0.0``-fill family (``mask_lowering`` owns that mul).
 """
 
 from __future__ import annotations
@@ -70,6 +73,7 @@ class LayoutReport:
     rewritten: list[str] = field(default_factory=list)
     refused: list[LayoutEntry] = field(default_factory=list)
     fills: list[dict] = field(default_factory=list)
+    bool_conds: list[dict] = field(default_factory=list)
 
     def to_dict(self) -> dict:
         return {
@@ -84,6 +88,7 @@ class LayoutReport:
                 for entry in self.refused
             ],
             "fills": list(self.fills),
+            "bool_conds": list(self.bool_conds),
         }
 
 
@@ -91,6 +96,20 @@ def materialize_fill(shape, value=NINF_F16) -> np.ndarray:
     """Host fill for a promoted select ``a``. Same bits in every lane."""
     return np.full(tuple(shape), np.float16(value), dtype=np.float16)
 
+def materialize_bool_cond(mask) -> np.ndarray:
+    """Host bool cond from an fp16 0/1 mask. Only ``+0.0`` and ``1.0``."""
+    packed = np.asarray(mask, dtype=np.float16)
+    bits = packed.view("<u2")
+    zero = bits == 0x0000
+    one = bits == 0x3C00
+    if np.all(zero | one):
+        return np.asarray(one, dtype=bool)
+    mismatch = np.argwhere(~(zero | one))
+    index = tuple(int(v) for v in mismatch[0])
+    raise SelectRuntimeError(
+        f"cond is not bit-exact 0/1 at {list(index)}: "
+        f"{packed[index]!r} bits=0x{int(bits[index]):04X}"
+    )
 
 def numpy_select(cond, a, b) -> np.ndarray:
     """MIL ``select(a, b, cond)``: ``where(cond, a, b)`` in fp16."""
@@ -268,6 +287,18 @@ def _add_params(line: str, extras: list[str]) -> str:
     return f"{line[: open_at + 1]}{inner}{line[cut:]}"
 
 
+def _set_param_dtype(line: str, name: str, dtype: str) -> str:
+    pattern = re.compile(
+        r"tensor<(?P<dtype>[a-z0-9]+),\s*(?P<shape>\[[^\]]*\])>\s+"
+        + re.escape(name)
+        + r"(?![\w])"
+    )
+    match = pattern.search(line)
+    if match is None:
+        raise SelectRuntimeError(f"function header has no param '{name}'")
+    return line[: match.start("dtype")] + dtype + line[match.end("dtype") :]
+
+
 def _classify(table, index, name) -> LayoutEntry | None:
     _index, op, dtype, shape_text, args, _indent = table[name]
     if op != "select" or dtype != "fp16":
@@ -275,7 +306,9 @@ def _classify(table, index, name) -> LayoutEntry | None:
     a_name = args.get("a")
     cond_name = args.get("cond")
     a = table.get(a_name) if a_name else None
-    if a is None or a[1] != "const":
+    cond = table.get(cond_name) if cond_name else None
+    const_a = a is not None and a[1] == "const"
+    if not const_a and (cond is None or cond[2] != "fp16"):
         return None
     out_shape = _parse_shape(shape_text)
     chw = (
@@ -290,32 +323,34 @@ def _classify(table, index, name) -> LayoutEntry | None:
             "REFUSED",
             f"shape {shape_text} is outside the runtime-a envelope",
         )
-    if a[2] != "fp16":
-        return LayoutEntry(
-            index, name, "REFUSED", f"const a '{a_name}' is {a[2]}, not fp16"
-        )
-    a_shape = _parse_shape(a[3])
-    if a_shape not in ((), out_shape):
+    if cond is None or cond[2] not in ("bool", "fp16"):
         return LayoutEntry(
             index,
             name,
             "REFUSED",
-            f"const a shape {a[3]} is neither scalar nor the select output",
+            "cond is not bool or fp16 0/1; Apple rejected other cond dtypes",
         )
-    cond = table.get(cond_name) if cond_name else None
-    if cond is None or cond[2] != "bool":
-        return LayoutEntry(
-            index,
-            name,
-            "REFUSED",
-            "cond is not bool; Apple rejected fp16-cond forms",
+    if const_a:
+        if a[2] != "fp16":
+            return LayoutEntry(
+                index, name, "REFUSED", f"const a '{a_name}' is {a[2]}, not fp16"
+            )
+        a_shape = _parse_shape(a[3])
+        if a_shape not in ((), out_shape):
+            return LayoutEntry(
+                index,
+                name,
+                "REFUSED",
+                f"const a shape {a[3]} is neither scalar nor the select output",
+            )
+    reason = "promote const a to a runtime fill of the select output shape"
+    if cond[2] == "fp16":
+        reason = (
+            "materialize fp16 cond as bool"
+            if not const_a
+            else reason + "; materialize fp16 cond as bool"
         )
-    return LayoutEntry(
-        index,
-        name,
-        "REWRITTEN",
-        "promote const a to a runtime fill of the select output shape",
-    )
+    return LayoutEntry(index, name, "REWRITTEN", reason)
 
 
 def plan_select_runtime(mil_text: str) -> list[LayoutEntry]:
@@ -335,7 +370,7 @@ def plan_select_runtime(mil_text: str) -> list[LayoutEntry]:
 
 
 def rewrite_select_runtime(mil_text: str) -> tuple[str, LayoutReport]:
-    """Rewire each in-envelope const-a select to a runtime fill input.
+    """Rewire in-envelope const-a select to runtime fill and bool cond.
 
     Leftover selects stay in the graph so the compiler names them.
     """
@@ -348,6 +383,7 @@ def rewrite_select_runtime(mil_text: str) -> tuple[str, LayoutReport]:
     taken = set(table)
     fill_for: dict[tuple[str, tuple[int, ...]], str] = {}
     rewritten_at: dict[str, list[int]] = {}
+    fp16_conds: dict[str, list[int]] = {}
     for entry in plan:
         if entry.disposition != "REWRITTEN":
             report.refused.append(entry)
@@ -355,24 +391,71 @@ def rewrite_select_runtime(mil_text: str) -> tuple[str, LayoutReport]:
         name = entry.output_name
         index, _op, _dtype, shape_text, args, _indent = table[name]
         a_name = args["a"]
+        cond_name = args["cond"]
         out_shape = _parse_shape(shape_text)
-        key = (a_name, out_shape)
-        if key not in fill_for:
-            fill_for[key] = _fresh(taken, f"{a_name}_rt")
-        fill_name = fill_for[key]
-        rewritten = re.sub(
-            r"a\s*=\s*" + re.escape(a_name) + r"(?![\w])",
-            f"a = {fill_name}",
-            lines[index],
-            count=1,
-        )
-        if rewritten == lines[index]:
-            raise SelectRuntimeError(
-                f"select '{name}' did not rewire a = {a_name}"
+        a = table.get(a_name)
+        line = replacements.get(index, lines[index])
+        if a is not None and a[1] == "const":
+            key = (a_name, out_shape)
+            if key not in fill_for:
+                fill_for[key] = _fresh(taken, f"{a_name}_rt")
+            fill_name = fill_for[key]
+            rewritten = re.sub(
+                r"a\s*=\s*" + re.escape(a_name) + r"(?![\w])",
+                f"a = {fill_name}",
+                line,
+                count=1,
             )
-        replacements[index] = rewritten
-        rewritten_at.setdefault(a_name, []).append(index)
+            if rewritten == line:
+                raise SelectRuntimeError(
+                    f"select '{name}' did not rewire a = {a_name}"
+                )
+            line = rewritten
+            rewritten_at.setdefault(a_name, []).append(index)
+        if table[cond_name][2] == "fp16":
+            fp16_conds.setdefault(cond_name, []).append(index)
+        replacements[index] = line
         report.rewritten.append(name)
+    bool_for: dict[str, str] = {}
+    inplace_bool: set[str] = set()
+    for cond_name, select_indices in fp16_conds.items():
+        consumers = _consumers_of(lines, cond_name)
+        others = [c for c in consumers if c not in select_indices]
+        is_param = table[cond_name][1] == "param"
+        if is_param and not others and cond_name not in returns:
+            bool_for[cond_name] = cond_name
+            inplace_bool.add(cond_name)
+        else:
+            bool_for[cond_name] = _fresh(taken, f"{cond_name}_bool")
+        bool_name = bool_for[cond_name]
+        cond_shape = _parse_shape(table[cond_name][3])
+        if cond_shape is None:
+            raise SelectRuntimeError(
+                f"cond '{cond_name}' has no static shape"
+            )
+        report.bool_conds.append(
+            {
+                "input": bool_name,
+                "shape": list(cond_shape),
+                "source": cond_name,
+                "storage": "param" if bool_name == cond_name else "promoted",
+            }
+        )
+        if bool_name == cond_name:
+            continue
+        for index in select_indices:
+            line = replacements.get(index, lines[index])
+            rewritten = re.sub(
+                r"cond\s*=\s*" + re.escape(cond_name) + r"(?![\w])",
+                f"cond = {bool_name}",
+                line,
+                count=1,
+            )
+            if rewritten == line:
+                raise SelectRuntimeError(
+                    f"select did not rewire cond = {cond_name}"
+                )
+            replacements[index] = rewritten
     if not replacements:
         eol = "\n" if mil_text.endswith("\n") else ""
         return "\n".join(lines) + eol, report
@@ -397,10 +480,20 @@ def rewrite_select_runtime(mil_text: str) -> tuple[str, LayoutReport]:
         ]
         if not others and a_name not in returns:
             replacements[table[a_name][0]] = None
+    for cond_name, bool_name in bool_for.items():
+        if bool_name == cond_name:
+            continue
+        cond_shape = _parse_shape(table[cond_name][3])
+        extras.append(
+            f"tensor<bool, {_shape_text(cond_shape)}> {bool_name}"
+        )
     func_index = _func_index(lines)
     if func_index is None:
         raise SelectRuntimeError("no function header found")
-    replacements[func_index] = _add_params(lines[func_index], extras)
+    header = lines[func_index]
+    for cond_name in inplace_bool:
+        header = _set_param_dtype(header, cond_name, "bool")
+    replacements[func_index] = _add_params(header, extras)
     out: list[str] = []
     for index, line in enumerate(lines):
         if index in replacements and replacements[index] is None:
