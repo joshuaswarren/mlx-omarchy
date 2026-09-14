@@ -1,0 +1,144 @@
+--- a/vulkan_encoder.py
++++ b/vulkan_encoder_resident.py
+@@ -285,6 +285,93 @@
+         for path in run_dir.glob("in_*.bin"):
+             path.unlink()
+         return results
++
++
++class ResidentIsland:
++    """Same submit contract as AneIsland, one resident worker for the pass.
++
++    Plan section 24 lists "reuse model resources" as a worker duty; this is
++    that duty applied to the encoder: each island bundle is parsed once, its
++    programs are loaded on the device once, and all 24 layers submit against
++    the resident programs. Every submit is still bounded by the same
++    wall-clock deadline, and a failure ends the run without a retry.
++    """
++
++    def __init__(self, worker: Path, libane: Path, bundles: Path, scratch: Path,
++                 names, deadline_ms: int = 20000):
++        from coreml.ane_resident import ResidentAneWorker
++
++        self.session = ResidentAneWorker(
++            worker=worker,
++            libane=libane,
++            bundles={name: bundles / name for name in names},
++            scratch=scratch,
++            deadline_ms=deadline_ms,
++        )
++        self.session.start()
++        self.submissions = 0
++        self.worker_starts = self.session.worker_starts
++        self.input_bytes = 0
++        self.output_bytes = 0
++        self.exec_ns = 0
++        self.timeouts = 0
++        self.log: list[dict] = []
++
++    def submit(self, bundle: str, tag: str, inputs: dict, outputs: dict) -> dict:
++        """inputs: name -> mx array. outputs: name -> (shape, dtype name)."""
++        payloads = {}
++        in_bytes = 0
++        for name, value in inputs.items():
++            mx.eval(value)
++            raw = np.ascontiguousarray(np.asarray(value))
++            payloads[name] = raw.tobytes()
++            in_bytes += raw.nbytes
++
++        started = time.monotonic_ns()
++        produced = self.session.submit(
++            bundle=bundle, tag=tag, inputs=payloads, outputs=tuple(outputs)
++        )
++        elapsed = time.monotonic_ns() - started
++
++        self.submissions += 1
++        self.exec_ns += elapsed
++        self.input_bytes += in_bytes
++        record = {
++            "tag": tag,
++            "bundle": bundle,
++            "exit": 0,
++            "elapsed_ns": elapsed,
++            "stdout": [self.session.log[-1]["report"]],
++            "stderr": [],
++            "input_bytes": in_bytes,
++        }
++        self.log.append(record)
++
++        results = {}
++        out_bytes = 0
++        for name, (shape, dtype_name) in outputs.items():
++            raw = produced[name]
++            count = 1
++            for dim in shape:
++                count *= dim
++            expect = count * np.dtype(NP_DTYPES[dtype_name]).itemsize
++            if len(raw) != expect:
++                raise EncoderRunError(
++                    f"ANE output {name} for {tag} is {len(raw)} bytes, want {expect}"
++                )
++            out_bytes += len(raw)
++            host = np.frombuffer(raw, dtype=NP_DTYPES[dtype_name], count=count)
++            results[name] = mx.array(host).reshape(shape)
++        self.output_bytes += out_bytes
++        record["output_bytes"] = out_bytes
++        return results
++
++    def counters(self) -> dict:
++        return self.session.counters()
++
++    def close(self) -> None:
++        self.timeouts = self.session.timeouts
++        self.session.close()
+ 
+ 
+ class EncoderRunner:
+@@ -805,6 +892,15 @@
+         "--no-ane", action="store_true",
+         help="Vulkan-only control run: the attention matmuls stay on the GPU.",
+     )
++    parser.add_argument(
++        "--resident", action="store_true",
++        help="One resident worker for the pass instead of one process per submit.",
++    )
++    parser.add_argument(
++        "--resident-bundle", action="append", default=[],
++        help="Bundle directory name to keep resident; repeatable. "
++             "Defaults to island-attn-a-kt and island-pv.",
++    )
+     args = parser.parse_args()
+ 
+     mx.set_default_device(mx.gpu)
+@@ -813,9 +909,17 @@
+ 
+     island = None
+     if not args.no_ane:
+-        island = AneIsland(
+-            args.worker, args.libane, args.bundles, args.scratch, args.deadline_ms
+-        )
++        if args.resident:
++            island = ResidentIsland(
++                args.worker, args.libane, args.bundles, args.scratch,
++                args.resident_bundle or ["island-attn-a-kt", "island-pv"],
++                args.deadline_ms,
++            )
++        else:
++            island = AneIsland(
++                args.worker, args.libane, args.bundles, args.scratch,
++                args.deadline_ms,
++            )
+ 
+     runner = EncoderRunner(args.source / "model.mil", args.source / "model-root", island)
+     before = trace_snapshot()
+@@ -860,6 +964,10 @@
+             "exec_ns": island.exec_ns,
+             "log": island.log,
+         }
++        if isinstance(island, ResidentIsland):
++            island.close()
++            report["ane"]["resident"] = island.counters()
++            report["ane"]["timeouts"] = island.timeouts
+     (args.out / "run-report.json").write_text(json.dumps(report, indent=2))
+     print(json.dumps({k: v for k, v in report.items() if k != "ane"}, indent=2))
+     if island is not None:

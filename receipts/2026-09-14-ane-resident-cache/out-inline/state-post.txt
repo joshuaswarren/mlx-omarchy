@@ -1,0 +1,9 @@
+tag=post
+at=2026-09-14T14:07:36-05:00
+boot_id=95872130-fd28-4d67-8247-03a0e8b61202
+uptime_start=2026-09-13 09:43:25
+device=character special file 666
+module=ane refs=0
+worker=/var/tmp/AneResidentCache/mlx-omarchy-ane-worker-inline
+worker_sha256=6dcf9a451e103039cc4dfbd5871cf322360b1e3fdbf458b2f17dd7260fc77cf6
+liveness={"worker_name": "mlx-omarchy-ane-worker", "workers": [], "worker_count": 0, "device": "/dev/accel/accel0", "device_holders": [], "method": "ps -ww -eo pid=,args= matched on basename(argv[0]); /proc/<pid>/fd compared by device identity. pgrep -x cannot match a 22-character name and pgrep -f matches the caller's own shell."}

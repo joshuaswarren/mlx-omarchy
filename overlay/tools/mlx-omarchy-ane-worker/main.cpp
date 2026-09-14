@@ -14,7 +14,10 @@
 #include <cstdio>
 #include <cstring>
 #include <fstream>
+#include <iostream>
 #include <map>
+#include <sstream>
+#include <utility>
 #include <string>
 #include <vector>
 
@@ -33,7 +36,21 @@ int usage() {
       stderr,
       "usage: mlx-omarchy-ane-worker --bundle DIR --libane PATH\n"
       "       [--deadline-ms N] [--iterations N]\n"
-      "       [--input NAME=FILE]... [--expect NAME=FILE]...\n");
+      "       [--input NAME=FILE]... [--expect NAME=FILE]...\n"
+      "       [--save NAME=FILE]...\n"
+      "\n"
+      "resident form (one process, one bundle load, many bounded\n"
+      "submits; jobs are read from stdin, one per line):\n"
+      "  mlx-omarchy-ane-worker --serve --libane PATH\n"
+      "       --bundle NAME=DIR [--bundle NAME=DIR]...\n"
+      "       [--deadline-ms N] [--iterations N]\n"
+      "  stdin: submit NAME [--input NAME=FILE]... [--save NAME=FILE]...\n"
+      "         [--expect NAME=FILE]...\n"
+      "         submit NAME [--inline NAME=BYTES]... [--emit NAME]...\n"
+      "           followed by each inline payload's raw bytes, in order;\n"
+      "           each emitted output comes back as 'out NAME BYTES'\n"
+      "           plus its raw bytes, before the job status line\n"
+      "         quit\n");
   return 64;
 }
 
@@ -64,6 +81,321 @@ std::vector<uint8_t> read_file(const std::string& path) {
       std::istreambuf_iterator<char>());
 }
 
+void write_file(const std::string& path, const std::vector<uint8_t>& bytes) {
+  std::ofstream stream(path, std::ios::binary);
+  stream.write(
+      reinterpret_cast<const char*>(bytes.data()),
+      static_cast<std::streamsize>(bytes.size()));
+  if (!stream) {
+    throw std::runtime_error("cannot write " + path);
+  }
+}
+
+// NAME=FILE, the same assignment form the one-shot flags take.
+bool split_assignment(
+    const std::string& text,
+    std::string& name,
+    std::string& value) {
+  auto separator = text.find('=');
+  if (separator == std::string::npos || separator == 0) return false;
+  name = text.substr(0, separator);
+  value = text.substr(separator + 1);
+  return !value.empty();
+}
+
+struct ResidentJob {
+  std::string bundle;
+  std::map<std::string, std::string> inputs;
+  std::map<std::string, std::string> saves;
+  std::map<std::string, std::string> expects;
+  // Payloads carried on stdin/stdout instead of through files, in the
+  // order the job named them. Staging a megabyte island input through
+  // a file costs a write in the caller and a read here; measured on
+  // jwm1 that read alone was 14-19 ms per submit, more than the
+  // process launch a resident worker saves.
+  std::vector<std::pair<std::string, size_t>> inline_inputs;
+  std::vector<std::string> emits;
+};
+
+// "submit NAME [--input n=FILE]... [--inline n=BYTES]... [--save n=FILE]...
+//  [--emit n]... [--expect n=FILE]..." or "quit". A malformed line is a
+// named refusal, never a guess.
+bool parse_job(const std::string& line, ResidentJob& job, std::string& error) {
+  std::istringstream stream(line);
+  std::string token;
+  if (!(stream >> token) || token != "submit") {
+    error = "expected 'submit BUNDLE' or 'quit'";
+    return false;
+  }
+  if (!(stream >> job.bundle)) {
+    error = "submit is missing its bundle name";
+    return false;
+  }
+  while (stream >> token) {
+    std::string argument;
+    if (!(stream >> argument)) {
+      error = token + " is missing its value";
+      return false;
+    }
+    if (token == "--emit") {
+      job.emits.push_back(argument);
+      continue;
+    }
+    std::string name;
+    std::string value;
+    if (!split_assignment(argument, name, value)) {
+      error = token + " expects NAME=VALUE, got '" + argument + "'";
+      return false;
+    }
+    if (token == "--input") {
+      job.inputs[name] = value;
+    } else if (token == "--save") {
+      job.saves[name] = value;
+    } else if (token == "--expect") {
+      job.expects[name] = value;
+    } else if (token == "--inline") {
+      size_t consumed = 0;
+      size_t length = 0;
+      try {
+        length = static_cast<size_t>(std::stoull(value, &consumed));
+      } catch (...) {
+        consumed = 0;
+      }
+      if (consumed == 0 || consumed != value.size()) {
+        error = "--inline expects NAME=BYTES, got '" + argument + "'";
+        return false;
+      }
+      job.inline_inputs.emplace_back(name, length);
+    } else {
+      error = "unknown job flag '" + token + "'";
+      return false;
+    }
+  }
+  return true;
+}
+
+// Resident service: load every named bundle once, keep the programs on
+// the device, and serve bounded submits from stdin until the caller
+// quits or one submit fails. Not an inference server (plan section 25):
+// no socket, no listener, and the process is a private child of the
+// caller that owns it.
+int serve_resident(
+    const std::vector<std::pair<std::string, std::string>>& bundle_args,
+    const std::string& libane_path,
+    long deadline_ms,
+    long iterations) {
+#ifndef MLX_OMARCHY_ANE_DEVICE
+  (void)bundle_args;
+  (void)libane_path;
+  (void)deadline_ms;
+  (void)iterations;
+  std::fprintf(
+      stderr,
+      "this binary was built without MLX_OMARCHY_ANE_DEVICE; no device "
+      "backend is linked\n");
+  return 70;
+#else
+  std::vector<AneBundle> bundles;
+  std::map<std::string, size_t> index_of;
+  bundles.reserve(bundle_args.size());
+  for (const auto& entry : bundle_args) {
+    if (index_of.count(entry.first)) {
+      std::fprintf(
+          stderr, "duplicate resident bundle name '%s'\n",
+          entry.first.c_str());
+      return 64;
+    }
+    AneBundle bundle = load_bundle(entry.second);
+    std::printf(
+        "resident bundle=%s index=%zu name=%s programs=%zu driver_abi=%llu "
+        "graph=%s\n",
+        entry.first.c_str(), bundles.size(), bundle.manifest.name.c_str(),
+        bundle.programs.size(),
+        static_cast<unsigned long long>(bundle.manifest.driver_abi_major),
+        bundle.manifest.graph_hash.c_str());
+    index_of[entry.first] = bundles.size();
+    bundles.push_back(std::move(bundle));
+  }
+
+  AneWorkerOptions options;
+  options.deadline = std::chrono::milliseconds(deadline_ms);
+  options.iterations = static_cast<int>(iterations);
+  AneWorker worker(
+      [libane_path] { return make_libane_device(libane_path); }, options);
+
+  AneWorkerReport opened = worker.open(bundles);
+  if (opened.status != AneWorkerStatus::Completed) {
+    std::fprintf(
+        stderr, "resident open failed: %s\n", opened.detail.c_str());
+    return 1;
+  }
+  std::printf(
+      "resident loaded pid=%lld deadline_ms=%ld iterations=%ld detail=%s\n",
+      static_cast<long long>(worker.resident_pid()), deadline_ms, iterations,
+      opened.detail.c_str());
+  std::fflush(stdout);
+
+  std::string line;
+  while (std::getline(std::cin, line)) {
+    if (line.empty()) continue;
+    if (line == "quit") {
+      AneWorkerReport closed = worker.close();
+      if (closed.status != AneWorkerStatus::Completed) {
+        std::fprintf(
+            stderr, "resident close failed: %s\n", closed.detail.c_str());
+        return 1;
+      }
+      std::printf(
+          "resident released programs=%d\n", closed.released_programs);
+      std::fflush(stdout);
+      return 0;
+    }
+
+    ResidentJob job;
+    std::string error;
+    if (!parse_job(line, job, error)) {
+      std::fprintf(stderr, "malformed job: %s\n", error.c_str());
+      return 64;
+    }
+    auto found = index_of.find(job.bundle);
+    if (found == index_of.end()) {
+      std::fprintf(
+          stderr, "job names unknown resident bundle '%s'\n",
+          job.bundle.c_str());
+      return 64;
+    }
+    const AneBundle& bundle = bundles[found->second];
+
+    // Three phases, reported per job: an operator who sees a slow
+    // submit needs to know whether the time went to host staging or to
+    // the device.
+    const auto stage_started = std::chrono::steady_clock::now();
+    std::map<std::string, AneWorker::Buffer> inputs;
+    size_t input_bytes = 0;
+    for (const auto& entry : job.inputs) {
+      inputs[entry.first] = read_file(entry.second);
+      input_bytes += inputs[entry.first].size();
+    }
+    for (const auto& entry : job.inline_inputs) {
+      AneWorker::Buffer payload(entry.second);
+      if (entry.second > 0 &&
+          !std::cin.read(
+              reinterpret_cast<char*>(payload.data()),
+              static_cast<std::streamsize>(entry.second))) {
+        std::fprintf(
+            stderr, "stdin ended inside the inline payload for '%s'\n",
+            entry.first.c_str());
+        return 65;
+      }
+      input_bytes += payload.size();
+      inputs[entry.first] = std::move(payload);
+    }
+    const auto stage_ended = std::chrono::steady_clock::now();
+    for (const auto& tensor : bundle.manifest.inputs) {
+      if (!inputs.count(tensor.name)) {
+        std::fprintf(
+            stderr, "missing --input for manifest input '%s'\n",
+            tensor.name.c_str());
+        return 65;
+      }
+    }
+
+    std::map<std::string, AneWorker::Buffer> outputs;
+    AneWorkerReport report = worker.submit(found->second, inputs, &outputs);
+    if (report.status != AneWorkerStatus::Completed) {
+      std::printf(
+          "job status=1 bundle=%s elapsed_ms=%lld detail=%s\n",
+          job.bundle.c_str(),
+          static_cast<long long>(report.elapsed.count()),
+          report.detail.c_str());
+      std::fflush(stdout);
+      if (worker.quarantined()) {
+        std::fprintf(
+            stderr, "worker quarantined: %s\n",
+            worker.quarantine_reason().c_str());
+      }
+      return 1;
+    }
+
+    size_t output_bytes = 0;
+    for (const auto& entry : job.saves) {
+      auto produced = outputs.find(entry.first);
+      if (produced == outputs.end()) {
+        std::fprintf(
+            stderr, "cannot save missing output '%s'\n",
+            entry.first.c_str());
+        return 1;
+      }
+      write_file(entry.second, produced->second);
+      output_bytes += produced->second.size();
+    }
+    for (const auto& entry : job.expects) {
+      auto produced = outputs.find(entry.first);
+      if (produced == outputs.end()) {
+        std::fprintf(
+            stderr, "expected output '%s' was not produced\n",
+            entry.first.c_str());
+        return 1;
+      }
+      auto expected = read_file(entry.second);
+      if (produced->second.size() != expected.size() ||
+          !fp16_values_equal(
+              produced->second.data(), expected.data(), expected.size())) {
+        std::fprintf(
+            stderr, "output '%s' does not match the expected fp16 values\n",
+            entry.first.c_str());
+        return 1;
+      }
+    }
+    for (const auto& name : job.emits) {
+      auto produced = outputs.find(name);
+      if (produced == outputs.end()) {
+        std::fprintf(
+            stderr, "cannot emit missing output '%s'\n", name.c_str());
+        return 1;
+      }
+      std::printf("out %s %zu\n", name.c_str(), produced->second.size());
+      std::fflush(stdout);
+      if (std::fwrite(
+              produced->second.data(), 1, produced->second.size(), stdout) !=
+          produced->second.size()) {
+        std::fprintf(stderr, "cannot emit output '%s'\n", name.c_str());
+        return 1;
+      }
+      std::fflush(stdout);
+      output_bytes += produced->second.size();
+    }
+    const auto save_ended = std::chrono::steady_clock::now();
+    const auto milliseconds = [](auto from, auto to) {
+      return static_cast<long long>(
+          std::chrono::duration_cast<std::chrono::milliseconds>(to - from)
+              .count());
+    };
+    std::printf(
+        "job status=0 bundle=%s elapsed_ms=%lld iterations=%d "
+        "input_bytes=%zu output_bytes=%zu stage_ms=%lld save_ms=%lld\n",
+        job.bundle.c_str(),
+        static_cast<long long>(report.elapsed.count()), report.iterations,
+        input_bytes, output_bytes,
+        milliseconds(stage_started, stage_ended),
+        milliseconds(stage_ended, save_ended) - report.elapsed.count());
+    std::fflush(stdout);
+  }
+
+  // stdin closed without a quit: release rather than leave the child
+  // holding the device.
+  AneWorkerReport closed = worker.close();
+  if (closed.status != AneWorkerStatus::Completed) {
+    std::fprintf(
+        stderr, "resident close failed: %s\n", closed.detail.c_str());
+    return 1;
+  }
+  std::printf("resident released programs=%d\n", closed.released_programs);
+  std::fflush(stdout);
+  return 0;
+#endif
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
@@ -71,6 +403,8 @@ int main(int argc, char** argv) {
   std::string libane_path;
   long deadline_ms = 2000;
   long iterations = 1;
+  bool serve = false;
+  std::vector<std::pair<std::string, std::string>> resident_bundles;
   std::map<std::string, std::string> input_files;
   std::map<std::string, std::string> expect_files;
   std::map<std::string, std::string> save_files;
@@ -84,8 +418,17 @@ int main(int argc, char** argv) {
       }
       return argv[++i];
     };
-    if (flag == "--bundle") {
-      bundle_dir = value();
+    if (flag == "--serve") {
+      serve = true;
+    } else if (flag == "--bundle") {
+      auto assignment = value();
+      std::string name;
+      std::string dir;
+      if (split_assignment(assignment, name, dir)) {
+        resident_bundles.emplace_back(name, dir);
+      } else {
+        bundle_dir = assignment;
+      }
     } else if (flag == "--libane") {
       libane_path = value();
     } else if (flag == "--deadline-ms") {
@@ -120,7 +463,30 @@ int main(int argc, char** argv) {
       return usage();
     }
   }
-  if (bundle_dir.empty() || libane_path.empty()) {
+  if (libane_path.empty()) {
+    return usage();
+  }
+  if (serve) {
+    if (resident_bundles.empty()) {
+      std::fprintf(
+          stderr, "--serve requires at least one --bundle NAME=DIR\n");
+      return usage();
+    }
+    try {
+      return serve_resident(
+          resident_bundles, libane_path, deadline_ms, iterations);
+    } catch (const std::exception& error) {
+      std::fprintf(stderr, "error: %s\n", error.what());
+      return 1;
+    }
+  }
+  if (!resident_bundles.empty()) {
+    std::fprintf(
+        stderr,
+        "--bundle NAME=DIR names a resident bundle and requires --serve\n");
+    return usage();
+  }
+  if (bundle_dir.empty()) {
     return usage();
   }
 

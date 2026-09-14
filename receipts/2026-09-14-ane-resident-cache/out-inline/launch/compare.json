@@ -1,0 +1,56 @@
+{
+  "all_bounds_pass": true,
+  "bounds": {
+    "encoder_max_abs_err": 0.3,
+    "encoder_mean_abs_err": 0.02,
+    "encoder_rel_l2_err": 0.1,
+    "inf_count_allowed": 0,
+    "nan_count_allowed": 0
+  },
+  "encoder_hidden_sha256": "b3d60c81bcd9c63fcdcb5c5578d765cc221b0126af3482fb165d769a65c23e6e",
+  "encoder_hidden_shape": [
+    1,
+    375,
+    640
+  ],
+  "encoder_mask_exact": true,
+  "encoder_mask_sha256": "d8bf6ec9a4065ce6dff4d9252edc07e2910eeeac87f8fc3c05bd949e1e7861a7",
+  "encoder_mask_sum": 375,
+  "golden_encoder_mask_sum": 375,
+  "measured": {
+    "bit_exact_vs_golden": false,
+    "inf": 0,
+    "max_abs_err": 0.14715576171875,
+    "mean_abs_err": 0.00418238015845418,
+    "nan": 0,
+    "rel_l2_err": 0.02491663210093975
+  },
+  "per_bound": {
+    "encoder_max_abs_err": {
+      "bound": 0.3,
+      "measured": 0.14715576171875,
+      "pass": true
+    },
+    "encoder_mean_abs_err": {
+      "bound": 0.02,
+      "measured": 0.00418238015845418,
+      "pass": true
+    },
+    "encoder_rel_l2_err": {
+      "bound": 0.1,
+      "measured": 0.02491663210093975,
+      "pass": true
+    },
+    "inf_count": {
+      "bound": 0,
+      "measured": 0,
+      "pass": true
+    },
+    "nan_count": {
+      "bound": 0,
+      "measured": 0,
+      "pass": true
+    }
+  },
+  "run": "/var/tmp/AneResidentCache/out-inline/launch"
+}
