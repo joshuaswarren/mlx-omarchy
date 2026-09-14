@@ -1,0 +1,74 @@
+{
+  "schema": "mlx-omarchy.jwm1-addmul-after-select.v1",
+  "date": "2026-09-14",
+  "host": "jwm1-linux",
+  "result": "PASS",
+  "exact_fp16": "yes",
+  "device_live": true,
+  "repeat_of": "receipts/2026-09-13-jwm1-ane-soak",
+  "after": "select-island submits; worker bytes at 100-run path now match /var/tmp/jwm1-select-island-exec2/mlx-omarchy-ane-worker",
+  "started_at": "2026-09-14T03:51:01-05:00",
+  "finished_at": "2026-09-14T03:51:01-05:00",
+  "command": "ssh -o BatchMode=yes jwm1 -- mlx-omarchy-ane-worker --bundle schema4-add-mul-worker --libane libane.so --deadline-ms 5000 --iterations 1 --input a.bin --input b.bin --expect y.bin --save y.bin",
+  "source": {
+    "worker_path": "/var/tmp/AneWorkerValidation-c05ba1df/.work/mlx/build-ane-device/tools/mlx-omarchy-ane-worker/mlx-omarchy-ane-worker",
+    "worker_sha256": "762dd1de868b52e4d6ffa30e18d842d9341db463b06aef2355f18fb1eb248929",
+    "hundred_run_worker_sha256": "575e2acd0152cec13f06dd9b09e4af0d7e4a91bfe4d8fa086b633b8b82a83e59",
+    "hundred_run_worker_found": false,
+    "libane_path": "/var/tmp/AneWorkerValidation-c05ba1df/receipts/2026-09-13-ane-worker-validation/libane.so",
+    "libane_sha256": "1ab9d95debcc8b5fee3b6653dfce0b50412bc7efef43c2d2167dc83ce270ca49",
+    "libane_commit": "f261a6cb537aca62f267ad3d01beda0d6877544c",
+    "graph_hash": "5584d0fd8d40027229890408e924e6f7930cd5f02516466a442193408482ce76",
+    "bundle": "/var/tmp/AneWorkerValidation-c05ba1df/receipts/2026-09-13-ane-worker-validation/bundle",
+    "bundle_name": "schema4-add-mul-worker",
+    "payload_sha256": {
+      "program-0.anec": "9a6a6a9a701ce207d4a8ea80ee1ca6d5ade076be2115b73a9aed6f4236aa56ab",
+      "program-1.anec": "62595e4a61db24066b83a4f7c077d459c69a6a740109098ee0122b4b46dcd3cc"
+    },
+    "expect_y_sha256": "abd3b8c9f1439c1fa508b42aa229c4b1688e06271d2bf7b823d71cd730200054",
+    "element_count": 64
+  },
+  "device": {
+    "path": "/dev/accel/accel0",
+    "kind": "character special file",
+    "module_version": "f2a3e5e+lifecycle6",
+    "srcversion": "DD43701FCB506056A340587",
+    "dt_node": "26bc04000.ane",
+    "dt_compatible": "apple,t8103-ane",
+    "driver": "ane",
+    "kernel": "7.1.6-1-1-ARCH",
+    "machine": "aarch64",
+    "nproc": 8,
+    "cpu_online": "0-7",
+    "uptime_s": "2026-09-13 09:43:25",
+    "healthy_at_end": true
+  },
+  "probe": {
+    "result": "PASS",
+    "deadline_ms": 5000,
+    "iterations": 1,
+    "status": 0,
+    "released": 2,
+    "elapsed_ms": 2,
+    "stdout": [
+      "bundle name=schema4-add-mul-worker programs=2 driver_abi=1 graph=5584d0fd8d40027229890408e924e6f7930cd5f02516466a442193408482ce76",
+      "worker status=0 iterations=1 released=2 elapsed_ms=2",
+      "worker detail=worker completed 1 iteration(s) and released its programs",
+      "saved output y (128 bytes)",
+      "verified output y exact"
+    ],
+    "y_path": "/var/tmp/jwm1-addmul-after-select-20260914/y.bin",
+    "y_bytes": 128,
+    "y_sha256": "bade941d7d8f1e1097b9ce0298ff05617d85a9928de0e8c7eead5743f3f24352",
+    "matches_hundred_run_y": true
+  },
+  "prohibited_actions_observed": {
+    "ane_unloaded": false,
+    "rebooted": false,
+    "executed_1x896": false,
+    "took_gpu_lock": false,
+    "select_retry": false,
+    "t6001": false
+  },
+  "model": "openai-codex/gpt-5.6-sol"
+}
