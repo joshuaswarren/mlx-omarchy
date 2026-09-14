@@ -1,0 +1,170 @@
+{
+  "island": "A",
+  "bundle": "island-attn-a-kt",
+  "task_descriptors": 416,
+  "command": [
+    "/var/tmp/jw16-tiny-select/mlx-omarchy-ane-worker",
+    "--bundle",
+    "/var/tmp/jw16-encoder-islands/bundles/island-attn-a-kt",
+    "--libane",
+    "/var/tmp/jw16-ane-first-exec/libane.so",
+    "--deadline-ms",
+    "10000",
+    "--iterations",
+    "1",
+    "--input",
+    "k_headsT=/var/tmp/jw16-encoder-islands/tensors/k_headsT.bin",
+    "--input",
+    "pos_kT=/var/tmp/jw16-encoder-islands/tensors/pos_kT.bin",
+    "--input",
+    "q_scaled=/var/tmp/jw16-encoder-islands/tensors/q_scaled.bin",
+    "--input",
+    "q_v=/var/tmp/jw16-encoder-islands/tensors/q_v.bin",
+    "--expect",
+    "attention_scores_1=/var/tmp/jw16-encoder-islands/tensors/attention_scores_1.bin",
+    "--save",
+    "attention_scores_1=/var/tmp/jw16-encoder-islands/island-A/attention_scores_1.out.bin",
+    "--expect",
+    "matmul_0=/var/tmp/jw16-encoder-islands/tensors/matmul_0.bin",
+    "--save",
+    "matmul_0=/var/tmp/jw16-encoder-islands/island-A/matmul_0.out.bin"
+  ],
+  "deadline_ms": 10000,
+  "iterations_requested": 1,
+  "started_at": "2026-09-14T10:13:38-0500",
+  "finished_at": "2026-09-14T10:13:38-0500",
+  "wall_s": 0.33,
+  "exit": 1,
+  "stdout": [
+    "bundle name=parakeet-encoder-island-attn-a-kt programs=2 driver_abi=1 graph=85325f3059a345dee7c62c53a0072b2e869c0c8116385c992e8963587714ff88",
+    "worker status=0 iterations=1 released=2 elapsed_ms=267",
+    "worker detail=worker completed 1 iteration(s) and released its programs",
+    "saved output attention_scores_1 (4494000 bytes)",
+    "saved output matmul_0 (2250000 bytes)"
+  ],
+  "stderr": [
+    "output 'attention_scores_1' does not match the expected fp16 values"
+  ],
+  "errno_110": false,
+  "local_timeout": false,
+  "worker_sha256": "762dd1de868b52e4d6ffa30e18d842d9341db463b06aef2355f18fb1eb248929",
+  "libane_sha256": "1ab9d95debcc8b5fee3b6653dfce0b50412bc7efef43c2d2167dc83ce270ca49",
+  "bundle_payload_sha256": {
+    "program-0.anec": "d05e193a620d7edc25ee61f865c164182155f84e7fb925a38c303a9c0db1d8df",
+    "program-1.anec": "a3aa2fe1333a48eba3e7fcae5b848563e2bfa747a232dadf9ed2d568821c5627"
+  },
+  "saved": {
+    "attention_scores_1": {
+      "path": "/var/tmp/jw16-encoder-islands/island-A/attention_scores_1.out.bin",
+      "bytes": 4494000,
+      "sha256": "363c5f8965911511fed87f75d942dab4928fcd527627cf468c9b07cd0b431eb8"
+    },
+    "matmul_0": {
+      "path": "/var/tmp/jw16-encoder-islands/island-A/matmul_0.out.bin",
+      "bytes": 2250000,
+      "sha256": "0b1e3317e7cc4caa6e81926b9c1688d99fd99a5b21ac304786e91a5df960df05"
+    }
+  },
+  "set_pre": {
+    "set0": {
+      "raw": "0x00000300",
+      "ACTUAL": "0x0",
+      "TARGET": "0x0",
+      "phys": "0x28e08c000"
+    },
+    "base": {
+      "raw": "0x00000300",
+      "ACTUAL": "0x0",
+      "TARGET": "0x0"
+    },
+    "set1": {
+      "raw": "0x00000300",
+      "ACTUAL": "0x0",
+      "TARGET": "0x0"
+    },
+    "set2": {
+      "raw": "0x00000300",
+      "ACTUAL": "0x0",
+      "TARGET": "0x0"
+    },
+    "set3": {
+      "raw": "0x00000300",
+      "ACTUAL": "0x0",
+      "TARGET": "0x0"
+    },
+    "set4": {
+      "raw": "0x00000300",
+      "ACTUAL": "0x0",
+      "TARGET": "0x0"
+    },
+    "set5": {
+      "raw": "0x00000000",
+      "ACTUAL": "0x0",
+      "TARGET": "0x0"
+    }
+  },
+  "set_post": {
+    "set0": {
+      "raw": "0x000003ff",
+      "ACTUAL": "0xf",
+      "TARGET": "0xf",
+      "phys": "0x28e08c000"
+    },
+    "base": {
+      "raw": "0x000003ff",
+      "ACTUAL": "0xf",
+      "TARGET": "0xf"
+    },
+    "set1": {
+      "raw": "0x000003ff",
+      "ACTUAL": "0xf",
+      "TARGET": "0xf"
+    },
+    "set2": {
+      "raw": "0x000003ff",
+      "ACTUAL": "0xf",
+      "TARGET": "0xf"
+    },
+    "set3": {
+      "raw": "0x000003ff",
+      "ACTUAL": "0xf",
+      "TARGET": "0xf"
+    },
+    "set4": {
+      "raw": "0x000003ff",
+      "ACTUAL": "0xf",
+      "TARGET": "0xf"
+    },
+    "set5": {
+      "raw": "0x00000000",
+      "ACTUAL": "0x0",
+      "TARGET": "0x0"
+    }
+  },
+  "health_pre": {
+    "hostname": "jw16mbp1-linux",
+    "boot_id": "f6ad865b-b85e-499e-8308-28b57b24f0c8",
+    "accel": "crw-rw-rw- root:render 105,0 /dev/accel/accel0",
+    "module_initstate": "live",
+    "refcnt": "0",
+    "runtime_status": "suspended",
+    "workers": "none",
+    "nproc": "10",
+    "loadavg": "0.00 0.09 0.29 1/277 31365"
+  },
+  "health_post": {
+    "hostname": "jw16mbp1-linux",
+    "boot_id": "f6ad865b-b85e-499e-8308-28b57b24f0c8",
+    "accel": "crw-rw-rw- root:render 105,0 /dev/accel/accel0",
+    "module_initstate": "live",
+    "refcnt": "0",
+    "runtime_status": "active",
+    "workers": "none",
+    "nproc": "10",
+    "loadavg": "0.00 0.09 0.29 1/277 31383"
+  },
+  "worker_status": 0,
+  "worker_iterations": 1,
+  "worker_released": 2,
+  "worker_elapsed_ms": 267
+}
