@@ -1,0 +1,798 @@
+{
+  "all_digests_ok": true,
+  "finished_unix": 1789414979,
+  "gated_wins_both_decode": false,
+  "hostname": "jwm1-linux",
+  "legs": [
+    {
+      "digest_ok": true,
+      "gate": "0",
+      "leg": "short",
+      "pin": "7fd25a869ff21678",
+      "rc": 0,
+      "rep": 1,
+      "result": {
+        "decode_tps": 107.0367,
+        "device": "Apple M1 (G13G B1)",
+        "engine": "bench_decode",
+        "generated": 32,
+        "ids_first": [
+          9707,
+          0,
+          2585
+        ],
+        "ids_last": [
+          646,
+          387,
+          7881
+        ],
+        "ids_sha256_16": "7fd25a869ff21678",
+        "prefill_s": 0.091287,
+        "prefill_tps": 328.6331,
+        "prompt_tokens": 30
+      },
+      "stderr": "mx.metal.device_info is deprecated and will be removed in a future version. Use mx.device_info instead.\n",
+      "stdout": "provenance: mlx-omarchy 0.32.2.dev202609122355+b41e2b74 mx=0.32.2.dev202609122355+b41e2b74 verified=match harness=unknown core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:03b3f4b9024927f9\ndecode 107.04 tok/s over 31 tokens (32 requested, EOS suppressed)\nprefill 0.091s (reported separately, excluded from decode)\nprompt_tokens 30\ndecode mean per-token 9.3 ms\ngenerated_ids sha256:7fd25a869ff21678 n=32 first=9707,0,2585 last=646,387,7881\n{\"decode_tps\": 107.0367, \"device\": \"Apple M1 (G13G B1)\", \"engine\": \"bench_decode\", \"generated\": 32, \"ids_first\": [9707, 0, 2585], \"ids_last\": [646, 387, 7881], \"ids_sha256_16\": \"7fd25a869ff21678\", \"prefill_s\": 0.091287, \"prefill_tps\": 328.6331, \"prompt_tokens\": 30}\n",
+      "wall_s": 2.168
+    },
+    {
+      "digest_ok": true,
+      "gate": "1",
+      "leg": "short",
+      "pin": "7fd25a869ff21678",
+      "rc": 0,
+      "rep": 1,
+      "result": {
+        "decode_tps": 106.3875,
+        "device": "Apple M1 (G13G B1)",
+        "engine": "bench_decode",
+        "generated": 32,
+        "ids_first": [
+          9707,
+          0,
+          2585
+        ],
+        "ids_last": [
+          646,
+          387,
+          7881
+        ],
+        "ids_sha256_16": "7fd25a869ff21678",
+        "prefill_s": 0.091191,
+        "prefill_tps": 328.9807,
+        "prompt_tokens": 30
+      },
+      "stderr": "mx.metal.device_info is deprecated and will be removed in a future version. Use mx.device_info instead.\n",
+      "stdout": "provenance: mlx-omarchy 0.32.2.dev202609122355+b41e2b74 mx=0.32.2.dev202609122355+b41e2b74 verified=match harness=unknown core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:03b3f4b9024927f9\ndecode 106.39 tok/s over 31 tokens (32 requested, EOS suppressed)\nprefill 0.091s (reported separately, excluded from decode)\nprompt_tokens 30\ndecode mean per-token 9.4 ms\ngenerated_ids sha256:7fd25a869ff21678 n=32 first=9707,0,2585 last=646,387,7881\n{\"decode_tps\": 106.3875, \"device\": \"Apple M1 (G13G B1)\", \"engine\": \"bench_decode\", \"generated\": 32, \"ids_first\": [9707, 0, 2585], \"ids_last\": [646, 387, 7881], \"ids_sha256_16\": \"7fd25a869ff21678\", \"prefill_s\": 0.091191, \"prefill_tps\": 328.9807, \"prompt_tokens\": 30}\n",
+      "wall_s": 1.963
+    },
+    {
+      "digest_ok": true,
+      "gate": "0",
+      "leg": "ctx1053",
+      "pin": "7da83f06ec9f001d",
+      "rc": 0,
+      "rep": 1,
+      "result": {
+        "decode_tps": 95.7481,
+        "device": "Apple M1 (G13G B1)",
+        "engine": "bench_decode",
+        "generated": 32,
+        "ids_first": [
+          13060,
+          498,
+          369
+        ],
+        "ids_last": [
+          3897,
+          553,
+          279
+        ],
+        "ids_sha256_16": "7da83f06ec9f001d",
+        "prefill_s": 0.94703,
+        "prefill_tps": 1111.8976,
+        "prompt_tokens": 1053
+      },
+      "stderr": "mx.metal.device_info is deprecated and will be removed in a future version. Use mx.device_info instead.\n",
+      "stdout": "provenance: mlx-omarchy 0.32.2.dev202609122355+b41e2b74 mx=0.32.2.dev202609122355+b41e2b74 verified=match harness=unknown core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:03b3f4b9024927f9\ndecode 95.75 tok/s over 31 tokens (32 requested, EOS suppressed)\nprefill 0.947s (reported separately, excluded from decode)\nprompt_tokens 1053\ndecode mean per-token 10.4 ms\ngenerated_ids sha256:7da83f06ec9f001d n=32 first=13060,498,369 last=3897,553,279\n{\"decode_tps\": 95.7481, \"device\": \"Apple M1 (G13G B1)\", \"engine\": \"bench_decode\", \"generated\": 32, \"ids_first\": [13060, 498, 369], \"ids_last\": [3897, 553, 279], \"ids_sha256_16\": \"7da83f06ec9f001d\", \"prefill_s\": 0.94703, \"prefill_tps\": 1111.8976, \"prompt_tokens\": 1053}\n",
+      "wall_s": 3.816
+    },
+    {
+      "digest_ok": true,
+      "gate": "1",
+      "leg": "ctx1053",
+      "pin": "7da83f06ec9f001d",
+      "rc": 0,
+      "rep": 1,
+      "result": {
+        "decode_tps": 96.9599,
+        "device": "Apple M1 (G13G B1)",
+        "engine": "bench_decode",
+        "generated": 32,
+        "ids_first": [
+          13060,
+          498,
+          369
+        ],
+        "ids_last": [
+          3897,
+          553,
+          279
+        ],
+        "ids_sha256_16": "7da83f06ec9f001d",
+        "prefill_s": 0.946291,
+        "prefill_tps": 1112.7651,
+        "prompt_tokens": 1053
+      },
+      "stderr": "mx.metal.device_info is deprecated and will be removed in a future version. Use mx.device_info instead.\n",
+      "stdout": "provenance: mlx-omarchy 0.32.2.dev202609122355+b41e2b74 mx=0.32.2.dev202609122355+b41e2b74 verified=match harness=unknown core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:03b3f4b9024927f9\ndecode 96.96 tok/s over 31 tokens (32 requested, EOS suppressed)\nprefill 0.946s (reported separately, excluded from decode)\nprompt_tokens 1053\ndecode mean per-token 10.3 ms\ngenerated_ids sha256:7da83f06ec9f001d n=32 first=13060,498,369 last=3897,553,279\n{\"decode_tps\": 96.9599, \"device\": \"Apple M1 (G13G B1)\", \"engine\": \"bench_decode\", \"generated\": 32, \"ids_first\": [13060, 498, 369], \"ids_last\": [3897, 553, 279], \"ids_sha256_16\": \"7da83f06ec9f001d\", \"prefill_s\": 0.946291, \"prefill_tps\": 1112.7651, \"prompt_tokens\": 1053}\n",
+      "wall_s": 3.793
+    },
+    {
+      "digest_ok": true,
+      "gate": "0",
+      "leg": "short",
+      "pin": "7fd25a869ff21678",
+      "rc": 0,
+      "rep": 2,
+      "result": {
+        "decode_tps": 111.4249,
+        "device": "Apple M1 (G13G B1)",
+        "engine": "bench_decode",
+        "generated": 32,
+        "ids_first": [
+          9707,
+          0,
+          2585
+        ],
+        "ids_last": [
+          646,
+          387,
+          7881
+        ],
+        "ids_sha256_16": "7fd25a869ff21678",
+        "prefill_s": 0.090012,
+        "prefill_tps": 333.2888,
+        "prompt_tokens": 30
+      },
+      "stderr": "mx.metal.device_info is deprecated and will be removed in a future version. Use mx.device_info instead.\n",
+      "stdout": "provenance: mlx-omarchy 0.32.2.dev202609122355+b41e2b74 mx=0.32.2.dev202609122355+b41e2b74 verified=match harness=unknown core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:03b3f4b9024927f9\ndecode 111.42 tok/s over 31 tokens (32 requested, EOS suppressed)\nprefill 0.090s (reported separately, excluded from decode)\nprompt_tokens 30\ndecode mean per-token 9.0 ms\ngenerated_ids sha256:7fd25a869ff21678 n=32 first=9707,0,2585 last=646,387,7881\n{\"decode_tps\": 111.4249, \"device\": \"Apple M1 (G13G B1)\", \"engine\": \"bench_decode\", \"generated\": 32, \"ids_first\": [9707, 0, 2585], \"ids_last\": [646, 387, 7881], \"ids_sha256_16\": \"7fd25a869ff21678\", \"prefill_s\": 0.090012, \"prefill_tps\": 333.2888, \"prompt_tokens\": 30}\n",
+      "wall_s": 1.923
+    },
+    {
+      "digest_ok": true,
+      "gate": "1",
+      "leg": "short",
+      "pin": "7fd25a869ff21678",
+      "rc": 0,
+      "rep": 2,
+      "result": {
+        "decode_tps": 111.8994,
+        "device": "Apple M1 (G13G B1)",
+        "engine": "bench_decode",
+        "generated": 32,
+        "ids_first": [
+          9707,
+          0,
+          2585
+        ],
+        "ids_last": [
+          646,
+          387,
+          7881
+        ],
+        "ids_sha256_16": "7fd25a869ff21678",
+        "prefill_s": 0.090385,
+        "prefill_tps": 331.9145,
+        "prompt_tokens": 30
+      },
+      "stderr": "mx.metal.device_info is deprecated and will be removed in a future version. Use mx.device_info instead.\n",
+      "stdout": "provenance: mlx-omarchy 0.32.2.dev202609122355+b41e2b74 mx=0.32.2.dev202609122355+b41e2b74 verified=match harness=unknown core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:03b3f4b9024927f9\ndecode 111.90 tok/s over 31 tokens (32 requested, EOS suppressed)\nprefill 0.090s (reported separately, excluded from decode)\nprompt_tokens 30\ndecode mean per-token 8.9 ms\ngenerated_ids sha256:7fd25a869ff21678 n=32 first=9707,0,2585 last=646,387,7881\n{\"decode_tps\": 111.8994, \"device\": \"Apple M1 (G13G B1)\", \"engine\": \"bench_decode\", \"generated\": 32, \"ids_first\": [9707, 0, 2585], \"ids_last\": [646, 387, 7881], \"ids_sha256_16\": \"7fd25a869ff21678\", \"prefill_s\": 0.090385, \"prefill_tps\": 331.9145, \"prompt_tokens\": 30}\n",
+      "wall_s": 1.95
+    },
+    {
+      "digest_ok": true,
+      "gate": "0",
+      "leg": "ctx1053",
+      "pin": "7da83f06ec9f001d",
+      "rc": 0,
+      "rep": 2,
+      "result": {
+        "decode_tps": 98.0143,
+        "device": "Apple M1 (G13G B1)",
+        "engine": "bench_decode",
+        "generated": 32,
+        "ids_first": [
+          13060,
+          498,
+          369
+        ],
+        "ids_last": [
+          3897,
+          553,
+          279
+        ],
+        "ids_sha256_16": "7da83f06ec9f001d",
+        "prefill_s": 0.932755,
+        "prefill_tps": 1128.9142,
+        "prompt_tokens": 1053
+      },
+      "stderr": "mx.metal.device_info is deprecated and will be removed in a future version. Use mx.device_info instead.\n",
+      "stdout": "provenance: mlx-omarchy 0.32.2.dev202609122355+b41e2b74 mx=0.32.2.dev202609122355+b41e2b74 verified=match harness=unknown core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:03b3f4b9024927f9\ndecode 98.01 tok/s over 31 tokens (32 requested, EOS suppressed)\nprefill 0.933s (reported separately, excluded from decode)\nprompt_tokens 1053\ndecode mean per-token 10.2 ms\ngenerated_ids sha256:7da83f06ec9f001d n=32 first=13060,498,369 last=3897,553,279\n{\"decode_tps\": 98.0143, \"device\": \"Apple M1 (G13G B1)\", \"engine\": \"bench_decode\", \"generated\": 32, \"ids_first\": [13060, 498, 369], \"ids_last\": [3897, 553, 279], \"ids_sha256_16\": \"7da83f06ec9f001d\", \"prefill_s\": 0.932755, \"prefill_tps\": 1128.9142, \"prompt_tokens\": 1053}\n",
+      "wall_s": 3.758
+    },
+    {
+      "digest_ok": true,
+      "gate": "1",
+      "leg": "ctx1053",
+      "pin": "7da83f06ec9f001d",
+      "rc": 0,
+      "rep": 2,
+      "result": {
+        "decode_tps": 96.1491,
+        "device": "Apple M1 (G13G B1)",
+        "engine": "bench_decode",
+        "generated": 32,
+        "ids_first": [
+          13060,
+          498,
+          369
+        ],
+        "ids_last": [
+          3897,
+          553,
+          279
+        ],
+        "ids_sha256_16": "7da83f06ec9f001d",
+        "prefill_s": 0.944883,
+        "prefill_tps": 1114.4234,
+        "prompt_tokens": 1053
+      },
+      "stderr": "mx.metal.device_info is deprecated and will be removed in a future version. Use mx.device_info instead.\n",
+      "stdout": "provenance: mlx-omarchy 0.32.2.dev202609122355+b41e2b74 mx=0.32.2.dev202609122355+b41e2b74 verified=match harness=unknown core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:03b3f4b9024927f9\ndecode 96.15 tok/s over 31 tokens (32 requested, EOS suppressed)\nprefill 0.945s (reported separately, excluded from decode)\nprompt_tokens 1053\ndecode mean per-token 10.4 ms\ngenerated_ids sha256:7da83f06ec9f001d n=32 first=13060,498,369 last=3897,553,279\n{\"decode_tps\": 96.1491, \"device\": \"Apple M1 (G13G B1)\", \"engine\": \"bench_decode\", \"generated\": 32, \"ids_first\": [13060, 498, 369], \"ids_last\": [3897, 553, 279], \"ids_sha256_16\": \"7da83f06ec9f001d\", \"prefill_s\": 0.944883, \"prefill_tps\": 1114.4234, \"prompt_tokens\": 1053}\n",
+      "wall_s": 3.775
+    },
+    {
+      "digest_ok": true,
+      "gate": "0",
+      "leg": "short",
+      "pin": "7fd25a869ff21678",
+      "rc": 0,
+      "rep": 3,
+      "result": {
+        "decode_tps": 111.4096,
+        "device": "Apple M1 (G13G B1)",
+        "engine": "bench_decode",
+        "generated": 32,
+        "ids_first": [
+          9707,
+          0,
+          2585
+        ],
+        "ids_last": [
+          646,
+          387,
+          7881
+        ],
+        "ids_sha256_16": "7fd25a869ff21678",
+        "prefill_s": 0.09138,
+        "prefill_tps": 328.2997,
+        "prompt_tokens": 30
+      },
+      "stderr": "mx.metal.device_info is deprecated and will be removed in a future version. Use mx.device_info instead.\n",
+      "stdout": "provenance: mlx-omarchy 0.32.2.dev202609122355+b41e2b74 mx=0.32.2.dev202609122355+b41e2b74 verified=match harness=unknown core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:03b3f4b9024927f9\ndecode 111.41 tok/s over 31 tokens (32 requested, EOS suppressed)\nprefill 0.091s (reported separately, excluded from decode)\nprompt_tokens 30\ndecode mean per-token 9.0 ms\ngenerated_ids sha256:7fd25a869ff21678 n=32 first=9707,0,2585 last=646,387,7881\n{\"decode_tps\": 111.4096, \"device\": \"Apple M1 (G13G B1)\", \"engine\": \"bench_decode\", \"generated\": 32, \"ids_first\": [9707, 0, 2585], \"ids_last\": [646, 387, 7881], \"ids_sha256_16\": \"7fd25a869ff21678\", \"prefill_s\": 0.09138, \"prefill_tps\": 328.2997, \"prompt_tokens\": 30}\n",
+      "wall_s": 1.947
+    },
+    {
+      "digest_ok": true,
+      "gate": "1",
+      "leg": "short",
+      "pin": "7fd25a869ff21678",
+      "rc": 0,
+      "rep": 3,
+      "result": {
+        "decode_tps": 111.584,
+        "device": "Apple M1 (G13G B1)",
+        "engine": "bench_decode",
+        "generated": 32,
+        "ids_first": [
+          9707,
+          0,
+          2585
+        ],
+        "ids_last": [
+          646,
+          387,
+          7881
+        ],
+        "ids_sha256_16": "7fd25a869ff21678",
+        "prefill_s": 0.090395,
+        "prefill_tps": 331.8776,
+        "prompt_tokens": 30
+      },
+      "stderr": "mx.metal.device_info is deprecated and will be removed in a future version. Use mx.device_info instead.\n",
+      "stdout": "provenance: mlx-omarchy 0.32.2.dev202609122355+b41e2b74 mx=0.32.2.dev202609122355+b41e2b74 verified=match harness=unknown core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:03b3f4b9024927f9\ndecode 111.58 tok/s over 31 tokens (32 requested, EOS suppressed)\nprefill 0.090s (reported separately, excluded from decode)\nprompt_tokens 30\ndecode mean per-token 9.0 ms\ngenerated_ids sha256:7fd25a869ff21678 n=32 first=9707,0,2585 last=646,387,7881\n{\"decode_tps\": 111.584, \"device\": \"Apple M1 (G13G B1)\", \"engine\": \"bench_decode\", \"generated\": 32, \"ids_first\": [9707, 0, 2585], \"ids_last\": [646, 387, 7881], \"ids_sha256_16\": \"7fd25a869ff21678\", \"prefill_s\": 0.090395, \"prefill_tps\": 331.8776, \"prompt_tokens\": 30}\n",
+      "wall_s": 1.976
+    },
+    {
+      "digest_ok": true,
+      "gate": "0",
+      "leg": "ctx1053",
+      "pin": "7da83f06ec9f001d",
+      "rc": 0,
+      "rep": 3,
+      "result": {
+        "decode_tps": 96.4359,
+        "device": "Apple M1 (G13G B1)",
+        "engine": "bench_decode",
+        "generated": 32,
+        "ids_first": [
+          13060,
+          498,
+          369
+        ],
+        "ids_last": [
+          3897,
+          553,
+          279
+        ],
+        "ids_sha256_16": "7da83f06ec9f001d",
+        "prefill_s": 0.945307,
+        "prefill_tps": 1113.9239,
+        "prompt_tokens": 1053
+      },
+      "stderr": "mx.metal.device_info is deprecated and will be removed in a future version. Use mx.device_info instead.\n",
+      "stdout": "provenance: mlx-omarchy 0.32.2.dev202609122355+b41e2b74 mx=0.32.2.dev202609122355+b41e2b74 verified=match harness=unknown core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:03b3f4b9024927f9\ndecode 96.44 tok/s over 31 tokens (32 requested, EOS suppressed)\nprefill 0.945s (reported separately, excluded from decode)\nprompt_tokens 1053\ndecode mean per-token 10.4 ms\ngenerated_ids sha256:7da83f06ec9f001d n=32 first=13060,498,369 last=3897,553,279\n{\"decode_tps\": 96.4359, \"device\": \"Apple M1 (G13G B1)\", \"engine\": \"bench_decode\", \"generated\": 32, \"ids_first\": [13060, 498, 369], \"ids_last\": [3897, 553, 279], \"ids_sha256_16\": \"7da83f06ec9f001d\", \"prefill_s\": 0.945307, \"prefill_tps\": 1113.9239, \"prompt_tokens\": 1053}\n",
+      "wall_s": 3.816
+    },
+    {
+      "digest_ok": true,
+      "gate": "1",
+      "leg": "ctx1053",
+      "pin": "7da83f06ec9f001d",
+      "rc": 0,
+      "rep": 3,
+      "result": {
+        "decode_tps": 96.6764,
+        "device": "Apple M1 (G13G B1)",
+        "engine": "bench_decode",
+        "generated": 32,
+        "ids_first": [
+          13060,
+          498,
+          369
+        ],
+        "ids_last": [
+          3897,
+          553,
+          279
+        ],
+        "ids_sha256_16": "7da83f06ec9f001d",
+        "prefill_s": 0.94135,
+        "prefill_tps": 1118.6058,
+        "prompt_tokens": 1053
+      },
+      "stderr": "mx.metal.device_info is deprecated and will be removed in a future version. Use mx.device_info instead.\n",
+      "stdout": "provenance: mlx-omarchy 0.32.2.dev202609122355+b41e2b74 mx=0.32.2.dev202609122355+b41e2b74 verified=match harness=unknown core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:03b3f4b9024927f9\ndecode 96.68 tok/s over 31 tokens (32 requested, EOS suppressed)\nprefill 0.941s (reported separately, excluded from decode)\nprompt_tokens 1053\ndecode mean per-token 10.3 ms\ngenerated_ids sha256:7da83f06ec9f001d n=32 first=13060,498,369 last=3897,553,279\n{\"decode_tps\": 96.6764, \"device\": \"Apple M1 (G13G B1)\", \"engine\": \"bench_decode\", \"generated\": 32, \"ids_first\": [13060, 498, 369], \"ids_last\": [3897, 553, 279], \"ids_sha256_16\": \"7da83f06ec9f001d\", \"prefill_s\": 0.94135, \"prefill_tps\": 1118.6058, \"prompt_tokens\": 1053}\n",
+      "wall_s": 3.775
+    },
+    {
+      "digest_ok": true,
+      "gate": "0",
+      "leg": "short",
+      "pin": "7fd25a869ff21678",
+      "rc": 0,
+      "rep": 4,
+      "result": {
+        "decode_tps": 110.8855,
+        "device": "Apple M1 (G13G B1)",
+        "engine": "bench_decode",
+        "generated": 32,
+        "ids_first": [
+          9707,
+          0,
+          2585
+        ],
+        "ids_last": [
+          646,
+          387,
+          7881
+        ],
+        "ids_sha256_16": "7fd25a869ff21678",
+        "prefill_s": 0.090324,
+        "prefill_tps": 332.1385,
+        "prompt_tokens": 30
+      },
+      "stderr": "mx.metal.device_info is deprecated and will be removed in a future version. Use mx.device_info instead.\n",
+      "stdout": "provenance: mlx-omarchy 0.32.2.dev202609122355+b41e2b74 mx=0.32.2.dev202609122355+b41e2b74 verified=match harness=unknown core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:03b3f4b9024927f9\ndecode 110.89 tok/s over 31 tokens (32 requested, EOS suppressed)\nprefill 0.090s (reported separately, excluded from decode)\nprompt_tokens 30\ndecode mean per-token 9.0 ms\ngenerated_ids sha256:7fd25a869ff21678 n=32 first=9707,0,2585 last=646,387,7881\n{\"decode_tps\": 110.8855, \"device\": \"Apple M1 (G13G B1)\", \"engine\": \"bench_decode\", \"generated\": 32, \"ids_first\": [9707, 0, 2585], \"ids_last\": [646, 387, 7881], \"ids_sha256_16\": \"7fd25a869ff21678\", \"prefill_s\": 0.090324, \"prefill_tps\": 332.1385, \"prompt_tokens\": 30}\n",
+      "wall_s": 1.961
+    },
+    {
+      "digest_ok": true,
+      "gate": "1",
+      "leg": "short",
+      "pin": "7fd25a869ff21678",
+      "rc": 0,
+      "rep": 4,
+      "result": {
+        "decode_tps": 111.3977,
+        "device": "Apple M1 (G13G B1)",
+        "engine": "bench_decode",
+        "generated": 32,
+        "ids_first": [
+          9707,
+          0,
+          2585
+        ],
+        "ids_last": [
+          646,
+          387,
+          7881
+        ],
+        "ids_sha256_16": "7fd25a869ff21678",
+        "prefill_s": 0.093138,
+        "prefill_tps": 322.1016,
+        "prompt_tokens": 30
+      },
+      "stderr": "mx.metal.device_info is deprecated and will be removed in a future version. Use mx.device_info instead.\n",
+      "stdout": "provenance: mlx-omarchy 0.32.2.dev202609122355+b41e2b74 mx=0.32.2.dev202609122355+b41e2b74 verified=match harness=unknown core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:03b3f4b9024927f9\ndecode 111.40 tok/s over 31 tokens (32 requested, EOS suppressed)\nprefill 0.093s (reported separately, excluded from decode)\nprompt_tokens 30\ndecode mean per-token 9.0 ms\ngenerated_ids sha256:7fd25a869ff21678 n=32 first=9707,0,2585 last=646,387,7881\n{\"decode_tps\": 111.3977, \"device\": \"Apple M1 (G13G B1)\", \"engine\": \"bench_decode\", \"generated\": 32, \"ids_first\": [9707, 0, 2585], \"ids_last\": [646, 387, 7881], \"ids_sha256_16\": \"7fd25a869ff21678\", \"prefill_s\": 0.093138, \"prefill_tps\": 322.1016, \"prompt_tokens\": 30}\n",
+      "wall_s": 1.953
+    },
+    {
+      "digest_ok": true,
+      "gate": "0",
+      "leg": "ctx1053",
+      "pin": "7da83f06ec9f001d",
+      "rc": 0,
+      "rep": 4,
+      "result": {
+        "decode_tps": 93.9773,
+        "device": "Apple M1 (G13G B1)",
+        "engine": "bench_decode",
+        "generated": 32,
+        "ids_first": [
+          13060,
+          498,
+          369
+        ],
+        "ids_last": [
+          3897,
+          553,
+          279
+        ],
+        "ids_sha256_16": "7da83f06ec9f001d",
+        "prefill_s": 0.945724,
+        "prefill_tps": 1113.4323,
+        "prompt_tokens": 1053
+      },
+      "stderr": "mx.metal.device_info is deprecated and will be removed in a future version. Use mx.device_info instead.\n",
+      "stdout": "provenance: mlx-omarchy 0.32.2.dev202609122355+b41e2b74 mx=0.32.2.dev202609122355+b41e2b74 verified=match harness=unknown core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:03b3f4b9024927f9\ndecode 93.98 tok/s over 31 tokens (32 requested, EOS suppressed)\nprefill 0.946s (reported separately, excluded from decode)\nprompt_tokens 1053\ndecode mean per-token 10.6 ms\ngenerated_ids sha256:7da83f06ec9f001d n=32 first=13060,498,369 last=3897,553,279\n{\"decode_tps\": 93.9773, \"device\": \"Apple M1 (G13G B1)\", \"engine\": \"bench_decode\", \"generated\": 32, \"ids_first\": [13060, 498, 369], \"ids_last\": [3897, 553, 279], \"ids_sha256_16\": \"7da83f06ec9f001d\", \"prefill_s\": 0.945724, \"prefill_tps\": 1113.4323, \"prompt_tokens\": 1053}\n",
+      "wall_s": 3.782
+    },
+    {
+      "digest_ok": true,
+      "gate": "1",
+      "leg": "ctx1053",
+      "pin": "7da83f06ec9f001d",
+      "rc": 0,
+      "rep": 4,
+      "result": {
+        "decode_tps": 96.0647,
+        "device": "Apple M1 (G13G B1)",
+        "engine": "bench_decode",
+        "generated": 32,
+        "ids_first": [
+          13060,
+          498,
+          369
+        ],
+        "ids_last": [
+          3897,
+          553,
+          279
+        ],
+        "ids_sha256_16": "7da83f06ec9f001d",
+        "prefill_s": 0.946953,
+        "prefill_tps": 1111.9881,
+        "prompt_tokens": 1053
+      },
+      "stderr": "mx.metal.device_info is deprecated and will be removed in a future version. Use mx.device_info instead.\n",
+      "stdout": "provenance: mlx-omarchy 0.32.2.dev202609122355+b41e2b74 mx=0.32.2.dev202609122355+b41e2b74 verified=match harness=unknown core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:03b3f4b9024927f9\ndecode 96.06 tok/s over 31 tokens (32 requested, EOS suppressed)\nprefill 0.947s (reported separately, excluded from decode)\nprompt_tokens 1053\ndecode mean per-token 10.4 ms\ngenerated_ids sha256:7da83f06ec9f001d n=32 first=13060,498,369 last=3897,553,279\n{\"decode_tps\": 96.0647, \"device\": \"Apple M1 (G13G B1)\", \"engine\": \"bench_decode\", \"generated\": 32, \"ids_first\": [13060, 498, 369], \"ids_last\": [3897, 553, 279], \"ids_sha256_16\": \"7da83f06ec9f001d\", \"prefill_s\": 0.946953, \"prefill_tps\": 1111.9881, \"prompt_tokens\": 1053}\n",
+      "wall_s": 3.816
+    },
+    {
+      "digest_ok": true,
+      "gate": "0",
+      "leg": "short",
+      "pin": "7fd25a869ff21678",
+      "rc": 0,
+      "rep": 5,
+      "result": {
+        "decode_tps": 111.451,
+        "device": "Apple M1 (G13G B1)",
+        "engine": "bench_decode",
+        "generated": 32,
+        "ids_first": [
+          9707,
+          0,
+          2585
+        ],
+        "ids_last": [
+          646,
+          387,
+          7881
+        ],
+        "ids_sha256_16": "7fd25a869ff21678",
+        "prefill_s": 0.090666,
+        "prefill_tps": 330.8835,
+        "prompt_tokens": 30
+      },
+      "stderr": "mx.metal.device_info is deprecated and will be removed in a future version. Use mx.device_info instead.\n",
+      "stdout": "provenance: mlx-omarchy 0.32.2.dev202609122355+b41e2b74 mx=0.32.2.dev202609122355+b41e2b74 verified=match harness=unknown core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:03b3f4b9024927f9\ndecode 111.45 tok/s over 31 tokens (32 requested, EOS suppressed)\nprefill 0.091s (reported separately, excluded from decode)\nprompt_tokens 30\ndecode mean per-token 9.0 ms\ngenerated_ids sha256:7fd25a869ff21678 n=32 first=9707,0,2585 last=646,387,7881\n{\"decode_tps\": 111.451, \"device\": \"Apple M1 (G13G B1)\", \"engine\": \"bench_decode\", \"generated\": 32, \"ids_first\": [9707, 0, 2585], \"ids_last\": [646, 387, 7881], \"ids_sha256_16\": \"7fd25a869ff21678\", \"prefill_s\": 0.090666, \"prefill_tps\": 330.8835, \"prompt_tokens\": 30}\n",
+      "wall_s": 1.914
+    },
+    {
+      "digest_ok": true,
+      "gate": "1",
+      "leg": "short",
+      "pin": "7fd25a869ff21678",
+      "rc": 0,
+      "rep": 5,
+      "result": {
+        "decode_tps": 110.066,
+        "device": "Apple M1 (G13G B1)",
+        "engine": "bench_decode",
+        "generated": 32,
+        "ids_first": [
+          9707,
+          0,
+          2585
+        ],
+        "ids_last": [
+          646,
+          387,
+          7881
+        ],
+        "ids_sha256_16": "7fd25a869ff21678",
+        "prefill_s": 0.090973,
+        "prefill_tps": 329.767,
+        "prompt_tokens": 30
+      },
+      "stderr": "mx.metal.device_info is deprecated and will be removed in a future version. Use mx.device_info instead.\n",
+      "stdout": "provenance: mlx-omarchy 0.32.2.dev202609122355+b41e2b74 mx=0.32.2.dev202609122355+b41e2b74 verified=match harness=unknown core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:03b3f4b9024927f9\ndecode 110.07 tok/s over 31 tokens (32 requested, EOS suppressed)\nprefill 0.091s (reported separately, excluded from decode)\nprompt_tokens 30\ndecode mean per-token 9.1 ms\ngenerated_ids sha256:7fd25a869ff21678 n=32 first=9707,0,2585 last=646,387,7881\n{\"decode_tps\": 110.066, \"device\": \"Apple M1 (G13G B1)\", \"engine\": \"bench_decode\", \"generated\": 32, \"ids_first\": [9707, 0, 2585], \"ids_last\": [646, 387, 7881], \"ids_sha256_16\": \"7fd25a869ff21678\", \"prefill_s\": 0.090973, \"prefill_tps\": 329.767, \"prompt_tokens\": 30}\n",
+      "wall_s": 1.902
+    },
+    {
+      "digest_ok": true,
+      "gate": "0",
+      "leg": "ctx1053",
+      "pin": "7da83f06ec9f001d",
+      "rc": 0,
+      "rep": 5,
+      "result": {
+        "decode_tps": 96.2628,
+        "device": "Apple M1 (G13G B1)",
+        "engine": "bench_decode",
+        "generated": 32,
+        "ids_first": [
+          13060,
+          498,
+          369
+        ],
+        "ids_last": [
+          3897,
+          553,
+          279
+        ],
+        "ids_sha256_16": "7da83f06ec9f001d",
+        "prefill_s": 0.946574,
+        "prefill_tps": 1112.4325,
+        "prompt_tokens": 1053
+      },
+      "stderr": "mx.metal.device_info is deprecated and will be removed in a future version. Use mx.device_info instead.\n",
+      "stdout": "provenance: mlx-omarchy 0.32.2.dev202609122355+b41e2b74 mx=0.32.2.dev202609122355+b41e2b74 verified=match harness=unknown core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:03b3f4b9024927f9\ndecode 96.26 tok/s over 31 tokens (32 requested, EOS suppressed)\nprefill 0.947s (reported separately, excluded from decode)\nprompt_tokens 1053\ndecode mean per-token 10.4 ms\ngenerated_ids sha256:7da83f06ec9f001d n=32 first=13060,498,369 last=3897,553,279\n{\"decode_tps\": 96.2628, \"device\": \"Apple M1 (G13G B1)\", \"engine\": \"bench_decode\", \"generated\": 32, \"ids_first\": [13060, 498, 369], \"ids_last\": [3897, 553, 279], \"ids_sha256_16\": \"7da83f06ec9f001d\", \"prefill_s\": 0.946574, \"prefill_tps\": 1112.4325, \"prompt_tokens\": 1053}\n",
+      "wall_s": 3.759
+    },
+    {
+      "digest_ok": true,
+      "gate": "1",
+      "leg": "ctx1053",
+      "pin": "7da83f06ec9f001d",
+      "rc": 0,
+      "rep": 5,
+      "result": {
+        "decode_tps": 95.634,
+        "device": "Apple M1 (G13G B1)",
+        "engine": "bench_decode",
+        "generated": 32,
+        "ids_first": [
+          13060,
+          498,
+          369
+        ],
+        "ids_last": [
+          3897,
+          553,
+          279
+        ],
+        "ids_sha256_16": "7da83f06ec9f001d",
+        "prefill_s": 0.94605,
+        "prefill_tps": 1113.0488,
+        "prompt_tokens": 1053
+      },
+      "stderr": "mx.metal.device_info is deprecated and will be removed in a future version. Use mx.device_info instead.\n",
+      "stdout": "provenance: mlx-omarchy 0.32.2.dev202609122355+b41e2b74 mx=0.32.2.dev202609122355+b41e2b74 verified=match harness=unknown core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:03b3f4b9024927f9\ndecode 95.63 tok/s over 31 tokens (32 requested, EOS suppressed)\nprefill 0.946s (reported separately, excluded from decode)\nprompt_tokens 1053\ndecode mean per-token 10.5 ms\ngenerated_ids sha256:7da83f06ec9f001d n=32 first=13060,498,369 last=3897,553,279\n{\"decode_tps\": 95.634, \"device\": \"Apple M1 (G13G B1)\", \"engine\": \"bench_decode\", \"generated\": 32, \"ids_first\": [13060, 498, 369], \"ids_last\": [3897, 553, 279], \"ids_sha256_16\": \"7da83f06ec9f001d\", \"prefill_s\": 0.94605, \"prefill_tps\": 1113.0488, \"prompt_tokens\": 1053}\n",
+      "wall_s": 3.772
+    }
+  ],
+  "lock_inode": 29,
+  "model": "/home/joshuawarren/models/Qwen2.5-0.5B-Instruct-4bit-mlx",
+  "nested_flock_n_rc_end_still_held": 1,
+  "nested_flock_n_rc_while_held": 1,
+  "power_after": {
+    "macsmc-ac/online": "1",
+    "macsmc-battery/status": "Full",
+    "tps6598x-source-psy-0-0038/online": "1",
+    "tps6598x-source-psy-0-003f/online": "0"
+  },
+  "power_before": {
+    "macsmc-ac/online": "1",
+    "macsmc-battery/status": "Full",
+    "tps6598x-source-psy-0-0038/online": "1",
+    "tps6598x-source-psy-0-003f/online": "0"
+  },
+  "prompt_bytes": {
+    "ctx1024": 4759,
+    "short": 2
+  },
+  "python": "/home/joshuawarren/src/mlx-bf16-grouped-base-b41e2b74/.work/venv-run/bin/python",
+  "reps": 5,
+  "started_unix": 1789414922,
+  "summary": {
+    "ctx1053": {
+      "0": {
+        "all_digest_pin": true,
+        "decode_median": 96.2628,
+        "decode_tps": [
+          95.7481,
+          98.0143,
+          96.4359,
+          93.9773,
+          96.2628
+        ],
+        "digests": [
+          "7da83f06ec9f001d",
+          "7da83f06ec9f001d",
+          "7da83f06ec9f001d",
+          "7da83f06ec9f001d",
+          "7da83f06ec9f001d"
+        ],
+        "n": 5,
+        "prefill_median": 1113.4323,
+        "prefill_tps": [
+          1111.8976,
+          1128.9142,
+          1113.9239,
+          1113.4323,
+          1112.4325
+        ],
+        "prompt_tokens": [
+          1053,
+          1053,
+          1053,
+          1053,
+          1053
+        ]
+      },
+      "1": {
+        "all_digest_pin": true,
+        "decode_median": 96.1491,
+        "decode_tps": [
+          96.9599,
+          96.1491,
+          96.6764,
+          96.0647,
+          95.634
+        ],
+        "digests": [
+          "7da83f06ec9f001d",
+          "7da83f06ec9f001d",
+          "7da83f06ec9f001d",
+          "7da83f06ec9f001d",
+          "7da83f06ec9f001d"
+        ],
+        "n": 5,
+        "prefill_median": 1113.0488,
+        "prefill_tps": [
+          1112.7651,
+          1114.4234,
+          1118.6058,
+          1111.9881,
+          1113.0488
+        ],
+        "prompt_tokens": [
+          1053,
+          1053,
+          1053,
+          1053,
+          1053
+        ]
+      },
+      "decode_delta_tok_s": -0.1137,
+      "decode_on_wins": false
+    },
+    "short": {
+      "0": {
+        "all_digest_pin": true,
+        "decode_median": 111.4096,
+        "decode_tps": [
+          107.0367,
+          111.4249,
+          111.4096,
+          110.8855,
+          111.451
+        ],
+        "digests": [
+          "7fd25a869ff21678",
+          "7fd25a869ff21678",
+          "7fd25a869ff21678",
+          "7fd25a869ff21678",
+          "7fd25a869ff21678"
+        ],
+        "n": 5,
+        "prefill_median": 330.8835,
+        "prefill_tps": [
+          328.6331,
+          333.2888,
+          328.2997,
+          332.1385,
+          330.8835
+        ],
+        "prompt_tokens": [
+          30,
+          30,
+          30,
+          30,
+          30
+        ]
+      },
+      "1": {
+        "all_digest_pin": true,
+        "decode_median": 111.3977,
+        "decode_tps": [
+          106.3875,
+          111.8994,
+          111.584,
+          111.3977,
+          110.066
+        ],
+        "digests": [
+          "7fd25a869ff21678",
+          "7fd25a869ff21678",
+          "7fd25a869ff21678",
+          "7fd25a869ff21678",
+          "7fd25a869ff21678"
+        ],
+        "n": 5,
+        "prefill_median": 329.767,
+        "prefill_tps": [
+          328.9807,
+          331.9145,
+          331.8776,
+          322.1016,
+          329.767
+        ],
+        "prompt_tokens": [
+          30,
+          30,
+          30,
+          30,
+          30
+        ]
+      },
+      "decode_delta_tok_s": -0.0119,
+      "decode_on_wins": false
+    }
+  },
+  "wheel": "/home/joshuawarren/src/mlx-bf16-grouped-base-b41e2b74/dist/mlx_omarchy-0.32.2.dev202609122355+b41e2b74-cp314-cp314-linux_aarch64.whl"
+}
