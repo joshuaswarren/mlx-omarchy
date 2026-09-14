@@ -1,0 +1,65 @@
+{
+  "schema": "mlx-omarchy.attention-layout-rewrite.v1",
+  "encoder_plan": {
+    "schema": "mlx-omarchy.attention-layout-rewrite.v1",
+    "rewritten": [
+      "matmul_0_cast_fp16",
+      "matmul_1_cast_fp16",
+      "matmul_2_cast_fp16",
+      "matmul_3_cast_fp16",
+      "matmul_4_cast_fp16",
+      "matmul_5_cast_fp16",
+      "matmul_6_cast_fp16",
+      "matmul_7_cast_fp16",
+      "matmul_8_cast_fp16",
+      "matmul_9_cast_fp16",
+      "matmul_10_cast_fp16",
+      "matmul_11_cast_fp16",
+      "matmul_12_cast_fp16",
+      "matmul_13_cast_fp16",
+      "matmul_14_cast_fp16",
+      "matmul_15_cast_fp16",
+      "matmul_16_cast_fp16",
+      "matmul_17_cast_fp16",
+      "matmul_18_cast_fp16",
+      "matmul_19_cast_fp16",
+      "matmul_20_cast_fp16",
+      "matmul_21_cast_fp16",
+      "matmul_22_cast_fp16",
+      "matmul_23_cast_fp16"
+    ],
+    "refused": []
+  },
+  "born_fixture": {
+    "schema": "mlx-omarchy.attention-layout-rewrite.v1",
+    "rewritten": [
+      "scores"
+    ],
+    "refused": []
+  },
+  "standalone": {
+    "mil": "attn-r4.mil",
+    "programs": 1,
+    "encoder": "apple-parity-batched-matmul",
+    "taskDescriptors": 208,
+    "operation": "matmul",
+    "x": [
+      1,
+      8,
+      375,
+      128
+    ],
+    "k": [
+      1,
+      8,
+      128,
+      375
+    ],
+    "out": [
+      1,
+      8,
+      375,
+      375
+    ]
+  }
+}

@@ -1,0 +1,8 @@
+compiler=/home/joshuawarren/src/mil-hwx-compiler/build/mil-hwxc
+sha256=8406755b5033e06cc542b1a41af028d4f6ad835f707b3880dc10e0a2818cfeb0
+commit=c2cf32e4aa0200d72cecbce203bf6b47f50f729e
+argv=/home/joshuawarren/src/mil-hwx-compiler/build/mil-hwxc --mil receipts/2026-09-13-attention-layout-rewrite/attn-r4.mil --model-root receipts/2026-09-13-attention-layout-rewrite --target H13 --output receipts/2026-09-13-attention-layout-rewrite/attn-r4
+returncode=0
+stdout:
+compiled target=H13 artifacts=1 format=anec output=receipts/2026-09-13-attention-layout-rewrite/attn-r4
+stderr:
