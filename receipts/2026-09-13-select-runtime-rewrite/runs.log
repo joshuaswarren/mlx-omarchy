@@ -1,0 +1,33 @@
+# mil-hwxc c2cf32e4aa0200d72cecbce203bf6b47f50f729e
+# sha256 82f1d4ce44dc8f2cb5eefd843eea41c47527af3fbff2def0ed1fc154ccd3ce71
+
+=== enc-rrb (runtime-a bool cond [1,8,375,375]) ===
+/home/joshuawarren/src/mil-hwx-compiler/build/mil-hwxc \
+  --mil receipts/2026-09-13-select-runtime-rewrite/select-rrb.mil \
+  --model-root receipts/2026-09-13-select-runtime-rewrite \
+  --target H13 --output receipts/2026-09-13-select-runtime-rewrite/select-rrb
+compiled target=H13 artifacts=1 format=anec output=receipts/2026-09-13-select-runtime-rewrite/select-rrb
+rc=0
+programs 1 op select encoder apple-parity-boolean tasks 5
+
+=== const-a scalar -inf (expect 65) ===
+/home/joshuawarren/src/mil-hwx-compiler/build/mil-hwxc \
+  --mil receipts/2026-09-13-select-runtime-rewrite/select-const-a.mil \
+  --model-root receipts/2026-09-13-select-runtime-rewrite \
+  --target H13 --output receipts/2026-09-13-select-runtime-rewrite/select-const-a
+6:5: error [h13.select-needs-decoded-encoder]: H13 select with a constant a belongs to the frontend, which materializes the fill as a runtime constant input and routes the +0.0-fill family through its exact mul rewrite: the captured constant-a form carries uniform -inf values whose retained section cannot discriminate the packing for arbitrary constants, so this path lowers only runtime-a forms with a bool cond
+rc=65
+
+=== rewritten runtime-a ===
+/home/joshuawarren/src/mil-hwx-compiler/build/mil-hwxc \
+  --mil receipts/2026-09-13-select-runtime-rewrite/select-runtime-a.mil \
+  --model-root receipts/2026-09-13-select-runtime-rewrite \
+  --target H13 --output receipts/2026-09-13-select-runtime-rewrite/select-runtime-a
+compiled target=H13 artifacts=1 format=anec output=receipts/2026-09-13-select-runtime-rewrite/select-runtime-a
+rc=0
+rewritten programs 1 op select encoder apple-parity-boolean tasks 5
+
+=== host tests ===
+python3 overlay/tests/omarchy/coreml/test_select_runtime.py -v
+Ran 6 tests in 0.098s
+OK

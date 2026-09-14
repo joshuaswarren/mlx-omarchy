@@ -1,0 +1,166 @@
+{
+  "schema": "mlx-omarchy.select-runtime-rewrite.v1",
+  "rewritten": [
+    "attention_mask_9_cast_fp16",
+    "attention_mask_11_cast_fp16",
+    "attention_mask_13_cast_fp16",
+    "attention_mask_15_cast_fp16",
+    "attention_mask_17_cast_fp16",
+    "attention_mask_19_cast_fp16",
+    "attention_mask_21_cast_fp16",
+    "attention_mask_23_cast_fp16",
+    "attention_mask_25_cast_fp16",
+    "attention_mask_27_cast_fp16",
+    "attention_mask_29_cast_fp16",
+    "attention_mask_31_cast_fp16",
+    "attention_mask_33_cast_fp16",
+    "attention_mask_35_cast_fp16",
+    "attention_mask_37_cast_fp16",
+    "attention_mask_39_cast_fp16",
+    "attention_mask_41_cast_fp16",
+    "attention_mask_43_cast_fp16",
+    "attention_mask_45_cast_fp16",
+    "attention_mask_47_cast_fp16",
+    "attention_mask_49_cast_fp16",
+    "attention_mask_51_cast_fp16",
+    "attention_mask_53_cast_fp16",
+    "attention_mask_cast_fp16"
+  ],
+  "refused": [
+    {
+      "index": 275,
+      "output": "input_41_cast_fp16",
+      "reason": "shape [1, 1024, 375] is outside the runtime-a envelope"
+    },
+    {
+      "index": 407,
+      "output": "input_81_cast_fp16",
+      "reason": "shape [1, 1024, 375] is outside the runtime-a envelope"
+    },
+    {
+      "index": 539,
+      "output": "input_121_cast_fp16",
+      "reason": "shape [1, 1024, 375] is outside the runtime-a envelope"
+    },
+    {
+      "index": 671,
+      "output": "input_161_cast_fp16",
+      "reason": "shape [1, 1024, 375] is outside the runtime-a envelope"
+    },
+    {
+      "index": 803,
+      "output": "input_201_cast_fp16",
+      "reason": "shape [1, 1024, 375] is outside the runtime-a envelope"
+    },
+    {
+      "index": 935,
+      "output": "input_241_cast_fp16",
+      "reason": "shape [1, 1024, 375] is outside the runtime-a envelope"
+    },
+    {
+      "index": 1067,
+      "output": "input_281_cast_fp16",
+      "reason": "shape [1, 1024, 375] is outside the runtime-a envelope"
+    },
+    {
+      "index": 1199,
+      "output": "input_321_cast_fp16",
+      "reason": "shape [1, 1024, 375] is outside the runtime-a envelope"
+    },
+    {
+      "index": 1331,
+      "output": "input_361_cast_fp16",
+      "reason": "shape [1, 1024, 375] is outside the runtime-a envelope"
+    },
+    {
+      "index": 1463,
+      "output": "input_401_cast_fp16",
+      "reason": "shape [1, 1024, 375] is outside the runtime-a envelope"
+    },
+    {
+      "index": 1595,
+      "output": "input_441_cast_fp16",
+      "reason": "shape [1, 1024, 375] is outside the runtime-a envelope"
+    },
+    {
+      "index": 1727,
+      "output": "input_481_cast_fp16",
+      "reason": "shape [1, 1024, 375] is outside the runtime-a envelope"
+    },
+    {
+      "index": 1859,
+      "output": "input_521_cast_fp16",
+      "reason": "shape [1, 1024, 375] is outside the runtime-a envelope"
+    },
+    {
+      "index": 1991,
+      "output": "input_561_cast_fp16",
+      "reason": "shape [1, 1024, 375] is outside the runtime-a envelope"
+    },
+    {
+      "index": 2123,
+      "output": "input_601_cast_fp16",
+      "reason": "shape [1, 1024, 375] is outside the runtime-a envelope"
+    },
+    {
+      "index": 2255,
+      "output": "input_641_cast_fp16",
+      "reason": "shape [1, 1024, 375] is outside the runtime-a envelope"
+    },
+    {
+      "index": 2387,
+      "output": "input_681_cast_fp16",
+      "reason": "shape [1, 1024, 375] is outside the runtime-a envelope"
+    },
+    {
+      "index": 2519,
+      "output": "input_721_cast_fp16",
+      "reason": "shape [1, 1024, 375] is outside the runtime-a envelope"
+    },
+    {
+      "index": 2651,
+      "output": "input_761_cast_fp16",
+      "reason": "shape [1, 1024, 375] is outside the runtime-a envelope"
+    },
+    {
+      "index": 2783,
+      "output": "input_801_cast_fp16",
+      "reason": "shape [1, 1024, 375] is outside the runtime-a envelope"
+    },
+    {
+      "index": 2915,
+      "output": "input_841_cast_fp16",
+      "reason": "shape [1, 1024, 375] is outside the runtime-a envelope"
+    },
+    {
+      "index": 3047,
+      "output": "input_881_cast_fp16",
+      "reason": "shape [1, 1024, 375] is outside the runtime-a envelope"
+    },
+    {
+      "index": 3179,
+      "output": "input_921_cast_fp16",
+      "reason": "shape [1, 1024, 375] is outside the runtime-a envelope"
+    },
+    {
+      "index": 3311,
+      "output": "input_961_cast_fp16",
+      "reason": "shape [1, 1024, 375] is outside the runtime-a envelope"
+    }
+  ],
+  "fills": [
+    {
+      "input": "var_8_to_fp16_rt",
+      "shape": [
+        1,
+        8,
+        375,
+        375
+      ],
+      "const": "var_8_to_fp16",
+      "storage": "blob",
+      "path": "@model_path/weights/normalized.bin",
+      "offset": 31460800
+    }
+  ]
+}
