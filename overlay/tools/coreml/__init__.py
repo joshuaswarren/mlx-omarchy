@@ -50,6 +50,11 @@ The package currently provides:
   trailing exact-widening boundary casts (fp16->fp32, bool->int32) from
   MIL text and recording the GPU-side epilogue that re-applies them;
   any non-widening trailing conversion is refused with a named error.
+* :mod:`coreml.fold_unit_views` — eliminates non-fp16/non-bool shape
+  aliases (expand_dims/reshape/squeeze) the H13 free-view path cannot
+  take: const-fed relabels and unit-expand absorption into
+  elementwise consumers, verified per consumer by broadcast
+  recomputation; leftovers are reported for the compiler to reject.
 
 
 Inspection never opens the ANE device, never imports coremltools or
