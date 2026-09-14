@@ -7049,6 +7049,77 @@ bool input_ready(const array& value, const Stream& stream) {
 
 } // namespace
 
+bool dispatch_rmsnorm_add_pair(
+    const array& lhs,
+    const array& rhs,
+    const array& weight,
+    array& sum,
+    array& normalized,
+    float eps,
+    const Stream& stream) {
+  const std::string tag = "RmsNormAdd";
+  auto& encoder = get_command_encoder(stream);
+  if (encoder.device().compute().binding_limit() < 5) {
+    return false;
+  }
+  if (lhs.dtype() != float16 || rhs.dtype() != float16 ||
+      weight.dtype() != float16 || sum.dtype() != float16 ||
+      normalized.dtype() != float16) {
+    return false;
+  }
+  if (sum.size() == 0 || lhs.size() != sum.size() ||
+      rhs.size() != sum.size() || normalized.shape() != sum.shape() ||
+      sum.shape(-1) != sum.size()) {
+    return false;
+  }
+  const uint32_t row_length = static_cast<uint32_t>(sum.size());
+  if (weight.size() != 1 && weight.size() != row_length) {
+    return false;
+  }
+  auto flat = [](const array& value) {
+    return value.flags().contiguous && value.flags().row_contiguous &&
+        value.data_shared_ptr() != nullptr &&
+        value.offset() % value.itemsize() == 0;
+  };
+  if (!flat(lhs) || !flat(rhs) || !flat(weight) ||
+      !input_ready(lhs, stream) || !input_ready(rhs, stream) ||
+      !input_ready(weight, stream)) {
+    return false;
+  }
+  auto fits = [](const array& value) {
+    uint64_t offset = value.offset() / value.itemsize();
+    return omarchy::compute_index_span_fits(offset, value.size());
+  };
+  if (!fits(lhs) || !fits(rhs) || !fits(weight)) {
+    return false;
+  }
+
+  sum.set_data(allocator().malloc(sum.nbytes()));
+  normalized.set_data(allocator().malloc(normalized.nbytes()));
+  omarchy::ComputeParams params;
+  params.count = row_length;
+  params.reduce_size = row_length;
+  params.output_size = 1;
+  params.lhs_offset = static_cast<uint32_t>(lhs.offset() / lhs.itemsize());
+  params.aux_offset = static_cast<uint32_t>(rhs.offset() / rhs.itemsize());
+  params.rhs_offset =
+      static_cast<uint32_t>(weight.offset() / weight.itemsize());
+  params.output_offset = checked_item_offset(sum, sum.size(), tag, sum);
+  params.matrix_m =
+      checked_item_offset(normalized, normalized.size(), tag, sum);
+  params.aux_size = static_cast<uint32_t>(weight.size());
+  params.alpha = eps;
+  std::array<omarchy::ComputeBinding, 5> bindings{
+      binding(lhs),
+      binding(weight),
+      binding(rhs),
+      binding(sum),
+      binding(normalized)};
+  encoder.dispatch_compute(
+      omarchy::ComputeKernel::FastRmsNormAddF16, bindings, params, 1);
+  return true;
+}
+
 bool dispatch_quantized_gemv_group(
     std::vector<GemvFusionMember>& members,
     const Stream& stream) {

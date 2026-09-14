@@ -304,6 +304,7 @@ enum class ComputeKernel : uint16_t {
   FastRmsNormF32,
   FastRmsNormF16,
   FastRmsNormBF16,
+  FastRmsNormAddF16,
   FastLayerNormF32,
   FastLayerNormF16,
   FastLayerNormBF16,
