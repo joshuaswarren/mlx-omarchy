@@ -1,6 +1,6 @@
 # Community hardware data snapshot
 
-Records: 12 | dataset generated_at: 2026-09-13T03:17:05.000Z | source: https://mlx-omarchy-community-data.joshua-s-warren.workers.dev
+Records: 13 | dataset generated_at: 2026-09-14T03:17:08.000Z | source: https://mlx-omarchy-community-data.joshua-s-warren.workers.dev
 
 Mirrored by `.github/workflows/community-data.yml` from the public
 read API. Summaries only; archive blobs stay on the endpoint.
@@ -19,6 +19,7 @@ read API. Summaries only; archive blobs stay on the endpoint.
 | [1319df259aa4](https://mlx-omarchy-community-data.joshua-s-warren.workers.dev/v1/results/1319df259aa4cc7633c9270e82bf8594948048b0a29fa1fcaeb43f62004ed93b) | deep | apple,t6020 | 7.1.6-1-1-ARCH | - | 0.32.2.dev202609040917+0535e62 | [6](https://mlx-omarchy-community-data.joshua-s-warren.workers.dev/v1/results/1319df259aa4cc7633c9270e82bf8594948048b0a29fa1fcaeb43f62004ed93b/archive) |
 | [937408d666f0](https://mlx-omarchy-community-data.joshua-s-warren.workers.dev/v1/results/937408d666f05a533a370a1846c7245dba8fef6485f24612de29902d9e3d9d4e) | deep | apple,t6020 | 7.1.6-1-1-ARCH | - | - | [0](https://mlx-omarchy-community-data.joshua-s-warren.workers.dev/v1/results/937408d666f05a533a370a1846c7245dba8fef6485f24612de29902d9e3d9d4e/archive) |
 | [d8ecfb5c539a](https://mlx-omarchy-community-data.joshua-s-warren.workers.dev/v1/results/d8ecfb5c539aba7c2a1f37f3722151b46e62b8ad300dc8f3b5477e615609e786) | deep | apple,t6020 | 7.1.13-1-1-ARCH | - | 0.32.2.dev202609100353+b3e977b | [6](https://mlx-omarchy-community-data.joshua-s-warren.workers.dev/v1/results/d8ecfb5c539aba7c2a1f37f3722151b46e62b8ad300dc8f3b5477e615609e786/archive) |
+| [cf234e0237d2](https://mlx-omarchy-community-data.joshua-s-warren.workers.dev/v1/results/cf234e0237d218ce41b6b014f86310d99a59dba7f66a20be97e974892a095ec7) | deep | Apple M2 | Darwin 25.6.0 (macOS 26.6.2 (25G83)) | - | 0.32.1 | [6](https://mlx-omarchy-community-data.joshua-s-warren.workers.dev/v1/results/cf234e0237d218ce41b6b014f86310d99a59dba7f66a20be97e974892a095ec7/archive) |
 
 Query this snapshot:
 
