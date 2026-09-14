@@ -1,0 +1,332 @@
+{
+  "compiler": {
+    "host_build": "Linux 6.17.2-1-pve x86_64",
+    "target": "h13",
+    "toolchain": "mil-hwxc c2cf32e4aa0200d72cecbce203bf6b47f50f729e sha256:82f1d4ce44dc8f2cb5eefd843eea41c47527af3fbff2def0ed1fc154ccd3ce71"
+  },
+  "dispatch_plan": [
+    0,
+    1
+  ],
+  "driver_abi_major": 1,
+  "graph_hash": "e0daeb7fd056f79f97a1552a1e11b0a92146dd480dcec216fac750613ea1b745",
+  "inputs": [
+    {
+      "byte_size": 1125000,
+      "dtype": "bool",
+      "index": 0,
+      "name": "cond",
+      "shape": [
+        1,
+        8,
+        375,
+        375
+      ],
+      "stride": 1163264
+    },
+    {
+      "byte_size": 2250000,
+      "dtype": "float16",
+      "index": 1,
+      "name": "ninf_rt",
+      "shape": [
+        1,
+        8,
+        375,
+        375
+      ],
+      "stride": 2310144
+    },
+    {
+      "byte_size": 768000,
+      "dtype": "float16",
+      "index": 2,
+      "name": "w",
+      "shape": [
+        1,
+        8,
+        128,
+        375
+      ],
+      "stride": 786432
+    },
+    {
+      "byte_size": 768000,
+      "dtype": "float16",
+      "index": 3,
+      "name": "x",
+      "shape": [
+        1,
+        8,
+        375,
+        128
+      ],
+      "stride": 770048
+    }
+  ],
+  "intermediates": [
+    {
+      "byte_size": 2250000,
+      "dtype": "float16",
+      "index": 0,
+      "name": "product",
+      "shape": [
+        1,
+        8,
+        375,
+        375
+      ],
+      "stride": 2310144
+    }
+  ],
+  "logical_results": [
+    {
+      "conversion": "identity",
+      "dtype": "float16",
+      "element_count": 1125000,
+      "element_offset": 0,
+      "name": "y",
+      "shape": [
+        1,
+        8,
+        375,
+        375
+      ],
+      "tensor": "y"
+    }
+  ],
+  "manifest_version": 4,
+  "name": "schema4-attn-select-island",
+  "outputs": [
+    {
+      "byte_size": 2250000,
+      "dtype": "float16",
+      "index": 0,
+      "name": "y",
+      "shape": [
+        1,
+        8,
+        375,
+        375
+      ],
+      "stride": 2310144
+    }
+  ],
+  "payloads": [
+    {
+      "byte_size": 182400,
+      "path": "program-0.anec",
+      "role": "anec",
+      "sha256": "a3aa2fe1333a48eba3e7fcae5b848563e2bfa747a232dadf9ed2d568821c5627"
+    },
+    {
+      "byte_size": 9216,
+      "path": "program-1.anec",
+      "role": "anec",
+      "sha256": "860de06c53e3fdfed9452859042df59902fb733bef0a364b134dd9d9d6374cdd"
+    }
+  ],
+  "programs": [
+    {
+      "encoder": "apple-parity-batched-matmul",
+      "inputs": [
+        {
+          "allocation_bytes": 786432,
+          "channel": 5,
+          "dtype": "float16",
+          "element_count": 384000,
+          "element_offset": 0,
+          "logical_bytes": 768000,
+          "nchw": [
+            1,
+            8,
+            128,
+            375,
+            98304,
+            768
+          ],
+          "physical_elements": 384000,
+          "shape": [
+            1,
+            8,
+            128,
+            375
+          ],
+          "tensor": "w"
+        },
+        {
+          "allocation_bytes": 770048,
+          "channel": 6,
+          "dtype": "float16",
+          "element_count": 384000,
+          "element_offset": 0,
+          "logical_bytes": 768000,
+          "nchw": [
+            1,
+            8,
+            375,
+            128,
+            96000,
+            256
+          ],
+          "physical_elements": 384000,
+          "shape": [
+            1,
+            8,
+            375,
+            128
+          ],
+          "tensor": "x"
+        }
+      ],
+      "operation": "matmul",
+      "outputs": [
+        {
+          "allocation_bytes": 2310144,
+          "channel": 4,
+          "dtype": "float16",
+          "element_count": 1125000,
+          "element_offset": 0,
+          "logical_bytes": 2250000,
+          "nchw": [
+            1,
+            8,
+            375,
+            375,
+            288000,
+            768
+          ],
+          "physical_elements": 1125000,
+          "shape": [
+            1,
+            8,
+            375,
+            375
+          ],
+          "tensor": "product"
+        }
+      ],
+      "payload": "program-0.anec",
+      "scratch_bytes": 0,
+      "task_descriptors": 208
+    },
+    {
+      "encoder": "apple-parity-boolean",
+      "inputs": [
+        {
+          "allocation_bytes": 2310144,
+          "channel": 5,
+          "dtype": "float16",
+          "element_count": 1125000,
+          "element_offset": 0,
+          "logical_bytes": 2250000,
+          "nchw": [
+            1,
+            8,
+            375,
+            375,
+            288000,
+            768
+          ],
+          "physical_elements": 1125000,
+          "shape": [
+            1,
+            8,
+            375,
+            375
+          ],
+          "tensor": "ninf_rt"
+        },
+        {
+          "allocation_bytes": 2310144,
+          "channel": 6,
+          "dtype": "float16",
+          "element_count": 1125000,
+          "element_offset": 0,
+          "logical_bytes": 2250000,
+          "nchw": [
+            1,
+            8,
+            375,
+            375,
+            288000,
+            768
+          ],
+          "physical_elements": 1125000,
+          "shape": [
+            1,
+            8,
+            375,
+            375
+          ],
+          "tensor": "product"
+        },
+        {
+          "allocation_bytes": 1163264,
+          "channel": 7,
+          "dtype": "bool",
+          "element_count": 1125000,
+          "element_offset": 0,
+          "logical_bytes": 1125000,
+          "nchw": [
+            1,
+            8,
+            375,
+            375,
+            144000,
+            384
+          ],
+          "physical_elements": 1125000,
+          "shape": [
+            1,
+            8,
+            375,
+            375
+          ],
+          "tensor": "cond"
+        }
+      ],
+      "operation": "select",
+      "outputs": [
+        {
+          "allocation_bytes": 2310144,
+          "channel": 4,
+          "dtype": "float16",
+          "element_count": 1125000,
+          "element_offset": 0,
+          "logical_bytes": 2250000,
+          "nchw": [
+            1,
+            8,
+            375,
+            375,
+            288000,
+            768
+          ],
+          "physical_elements": 1125000,
+          "shape": [
+            1,
+            8,
+            375,
+            375
+          ],
+          "tensor": "y"
+        }
+      ],
+      "payload": "program-1.anec",
+      "scratch_bytes": 2310144,
+      "task_descriptors": 5
+    }
+  ],
+  "provenance": {
+    "exported_at": "2026-09-13",
+    "source_commit": "947ece40ec49671f9cb423aff7401b0e88f94680",
+    "source_repo": "joshuaswarren/mlx-omarchy"
+  },
+  "release_asset": {
+    "model": "attn-select-island",
+    "model_sha256": "e99b155132f07067726f2c77bcde9725cf171de62751ed6da240c92ce8d79e29"
+  },
+  "state": [],
+  "task_descriptors": 213
+}
