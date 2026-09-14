@@ -22,7 +22,7 @@ linked or vendored.
 
 | Repository | License | Pin | Consumption |
 |---|---|---|---|
-| `joshuaswarren/mil-hwx-compiler` | MIT (© 2026 maderix) | `ane-compiler.lock` — commit `83a4434…`, release `ane-parity-83a4434` | compiled to a standalone binary under `.work/`; no compiler internals are copied into mlx-omarchy; `DISCLAIMER.md` travels with the compiler, not with us |
+| `joshuaswarren/mil-hwx-compiler` | MIT (© 2026 maderix) | `ane-compiler.lock` — commit `417554c…`, release `ane-parity-417554c` | compiled to a standalone binary under `.work/`; no compiler internals are copied into mlx-omarchy; `DISCLAIMER.md` travels with the compiler, not with us |
 | `joshuaswarren/omarchy-ane` | MIT (© 2022 Eileen Yoon) | out-of-tree kernel module on the target host; `libane` dlopened by the worker CLI | the kernel driver and `libane` stay in their repository; mlx-omarchy links nothing from it at build time |
 
 ## Reference and test assets

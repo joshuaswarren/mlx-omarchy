@@ -162,10 +162,9 @@ refuses HWX packages, non-H13 packages, unknown schema fields, invalid mappings,
  terminal returns remain a compiler prerequisite; a separate adapter test
  verifies order preservation from a valid v2 manifest.
  
- The release pin in `ane-compiler.lock` still names the old v1 compiler
- archive, which this adapter rejects. Replacing it requires a qualified v2
- source and matching immutable archive digest, not just a schema-field edit.
- The compiler HWX-extraction regression remains a release gate.
+ The release pin in `ane-compiler.lock` names a v2 compiler archive
+ (`ane-parity-417554c`); the v1 archive is superseded and this adapter
+ rejects it. The compiler HWX-extraction regression remains a release gate.
 
 ## Runtime-generated cache policy
 
