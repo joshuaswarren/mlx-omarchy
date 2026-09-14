@@ -5850,6 +5850,59 @@ uint32_t coopmat_tile_rows(
   return static_cast<uint64_t>(m_groups_32) * n_groups < target ? 16u : 32u;
 }
 
+// Occupancy ceiling for the 16-column twin, in workgroups per GPU
+// core: above it the shipped 32-column tile stays. Fat prefill shapes
+// (n=896, k=896/4864 on Qwen2.5-0.5B at m=1053) land at 28.9
+// workgroups per core on the M1 Max - past the 16-row crossover where
+// halved reuse loses, but still under the ~157 per core where the
+// measured rate stops climbing
+// (receipts/2026-09-14-t6001-test-host-max-gpu-attribution/), so halving the
+// columns instead doubles the grid without touching per-output weight
+// reuse. The gate is set past the fat grids (32 per core on 32 cores =
+// 1024 workgroups) and far below the n=4864 gate/up grid (5016
+// workgroups, 156.8 per core), and on an 8-core M1 the same grids sit
+// at 115 per core, so the base part never picks the twin.
+// MLX_OMARCHY_QMM_COOPMAT_N16_WG_PER_CORE overrides it for A/B; 0
+// disables the step-down and restores the shipped pick exactly.
+constexpr uint32_t kCoopmatN16WorkgroupsPerCore = 32u;
+
+uint32_t coopmat_n16_workgroups_per_core() {
+  static const uint32_t value = [] {
+    const char* env =
+        std::getenv("MLX_OMARCHY_QMM_COOPMAT_N16_WG_PER_CORE");
+    if (env == nullptr) {
+      return kCoopmatN16WorkgroupsPerCore;
+    }
+    char* end = nullptr;
+    unsigned long parsed = std::strtoul(env, &end, 10);
+    if (end == env || *end != '\0') {
+      return kCoopmatN16WorkgroupsPerCore;
+    }
+    return static_cast<uint32_t>(
+        std::min<unsigned long>(parsed, 0xfffffffful));
+  }();
+  return value;
+}
+
+// Output columns per coopmat workgroup: the shipped 32, or the
+// 16-column twin when the 32-column grid is under the occupancy
+// ceiling. Column splits leave each output's ascending-k f32 chain and
+// its 8-wide coopMatMulAdd updates untouched, so the pick does not
+// move generated ids.
+uint32_t coopmat_tile_cols(
+    uint32_t matrix_m,
+    uint32_t n_groups,
+    const std::string& device_name) {
+  uint32_t cores = apple_gpu_cores(device_name);
+  uint32_t per_core = coopmat_n16_workgroups_per_core();
+  if (cores == 0u || per_core == 0u) {
+    return 32u;
+  }
+  uint64_t target = static_cast<uint64_t>(cores) * per_core;
+  uint32_t m_groups_32 = (matrix_m + 31u) / 32u;
+  return static_cast<uint64_t>(m_groups_32) * n_groups < target ? 16u : 32u;
+}
+
 } // namespace
 
 void GatherQQMM::eval_gpu(const std::vector<array>& inputs, array& out) {
@@ -7095,14 +7148,28 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
       // hardware truth, not a simulated capability profile: the pick is
       // a property of the silicon, not of a capability bit. The
       // register-blocked fallback keeps its own 32-row tile.
-      uint32_t n_groups = coopmat ? (params.matrix_n + 31u) / 32u
-                                  : (params.matrix_n + 15u) / 16u;
+      // The 32-column grid, used for both tile gates.
+      uint32_t n_groups_32 =
+          coopmat ? (params.matrix_n + 31u) / 32u : (params.matrix_n + 15u) / 16u;
+      // Coopmat tile: the shipped 32x32 unless the shape-derived grid
+      // cannot fill this part. The 16-row twin trades weight-tile reuse
+      // for workgroups on starved grids; the 16-column twin doubles the
+      // grid on fat shapes that sit under the occupancy knee without
+      // halving per-output weight reuse. The device width comes from
+      // hardware truth, not a simulated capability profile: the pick is
+      // a property of the silicon, not of a capability bit. The
+      // register-blocked fallback keeps its own 32-row tile.
+      const std::string& device_name =
+          encoder.device().hardware_capabilities().device_name;
       uint32_t coopmat_rows = coopmat
-          ? coopmat_tile_rows(
-                params.matrix_m,
-                n_groups,
-                encoder.device().hardware_capabilities().device_name)
+          ? coopmat_tile_rows(params.matrix_m, n_groups_32, device_name)
           : 32u;
+      uint32_t coopmat_cols =
+          coopmat && coopmat_rows == 32u
+          ? coopmat_tile_cols(params.matrix_m, n_groups_32, device_name)
+          : 32u;
+      uint32_t n_groups =
+          (params.matrix_n + coopmat_cols - 1u) / coopmat_cols;
       uint32_t m_groups =
           (params.matrix_m + coopmat_rows - 1u) / coopmat_rows;
       omarchy::ComputeKernel qmm_kernel = !coopmat
@@ -7111,6 +7178,8 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
                  : omarchy::ComputeKernel::QmmTileRbF16)
           : coopmat_rows == 16u
           ? omarchy::ComputeKernel::QmmPrefillCoopmatM16F16
+          : coopmat_cols == 16u
+          ? omarchy::ComputeKernel::QmmPrefillCoopmatN16F16
           : omarchy::ComputeKernel::QmmPrefillCoopmatF16;
       encoder.dispatch_compute(
           qmm_kernel,

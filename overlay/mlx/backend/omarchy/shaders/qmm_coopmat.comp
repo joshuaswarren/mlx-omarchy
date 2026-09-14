@@ -48,13 +48,25 @@
 #error "TILE_ROWS must be 32 or 16"
 #endif
 
+#ifndef TILE_COLS
+#define TILE_COLS 32
+#endif
+
+#if TILE_COLS == 32
+#define COLUMN_BLOCKS 4u
+#elif TILE_COLS == 16
+#define COLUMN_BLOCKS 2u
+#else
+#error "TILE_COLS must be 32 or 16"
+#endif
+
 // 8-row coopmat blocks in the tile, and packed x words per lane: the
 // 64-lane workgroup covers TILE_ROWS x 16 halves.
 #define ROW_BLOCKS (TILE_ROWS / 8u)
 #define X_LOADS (TILE_ROWS / 8u)
 
 const uint TILE_M = TILE_ROWS;
-const uint TILE_N = 32u;
+const uint TILE_N = TILE_COLS;
 const uint CHUNK_K = 64u;
 const uint STEP_K = 16u;
 const uint MAT = 8u;
@@ -122,8 +134,17 @@ void main() {
   uint words_per_row = params.matrix_k / 8u;
   uint groups_per_row = params.matrix_k / 64u;
   uint x_words_per_row = params.matrix_k / 2u;
-  uint w_column_local = lid % 32u;
+  uint w_column_local = lid % TILE_N;
   uint w_part = lid / 32u;
+  // Packed word this lane dequantizes within the 16-k step. At 32
+  // columns the two subgroups split the two words (one lane per
+  // column-word pair); at 16 columns the subgroup halves split them and
+  // the same column-word pair is written twice with identical values.
+#if TILE_COLS == 32
+  uint w_word = w_part;
+#else
+  uint w_word = (lid / TILE_N) & 1u;
+#endif
 
   for (uint b = 0u; b < batch; ++b) {
   uint w_slice = params.rhs_offset + b * w_batch_words;
@@ -144,9 +165,9 @@ void main() {
       uint bias_row = bias_slice + column * groups_per_row;
 
       coopmat<float, gl_ScopeSubgroup, MAT, MAT, gl_MatrixUseAccumulator>
-          acc[SUBGROUP_ROW_BLOCKS][4];
+          acc[SUBGROUP_ROW_BLOCKS][COLUMN_BLOCKS];
       for (uint rb = 0u; rb < SUBGROUP_ROW_BLOCKS; ++rb) {
-        for (uint cb = 0u; cb < 4u; ++cb) {
+        for (uint cb = 0u; cb < COLUMN_BLOCKS; ++cb) {
           acc[rb][cb] = coopmat<float, gl_ScopeSubgroup, MAT, MAT,
               gl_MatrixUseAccumulator>(0.0);
         }
@@ -180,10 +201,10 @@ void main() {
             x_s[local_row * STEP_K + 2u * (i % 8u)] = pair.x;
             x_s[local_row * STEP_K + 2u * (i % 8u) + 1u] = pair.y;
           }
-          // One packed word per lane covers the 16x32 weight tile.
+          // One packed word per lane covers the 16xTILE_N weight tile.
           uint packed = column_ok
-              ? input_w.values[w_row + k_base / 8u + w_part] : 0u;
-          uint w_base = 8u * w_part * TILE_N + w_column_local;
+              ? input_w.values[w_row + k_base / 8u + w_word] : 0u;
+          uint w_base = 8u * w_word * TILE_N + w_column_local;
           w_s[w_base + 0u * TILE_N] = scale * float(packed & 0xFu) + bias;
           w_s[w_base + 1u * TILE_N] =
               scale * float((packed >> 4u) & 0xFu) + bias;
@@ -203,20 +224,21 @@ void main() {
           for (uint ks = 0u; ks < STEP_K / MAT; ++ks) {
             coopmat<float, gl_ScopeSubgroup, MAT, MAT, gl_MatrixUseA>
                 mat_a[SUBGROUP_ROW_BLOCKS];
-            coopmat<float, gl_ScopeSubgroup, MAT, MAT, gl_MatrixUseB> mat_b[4];
+            coopmat<float, gl_ScopeSubgroup, MAT, MAT, gl_MatrixUseB>
+                mat_b[COLUMN_BLOCKS];
             for (uint rb = 0u; rb < SUBGROUP_ROW_BLOCKS; ++rb) {
               coopMatLoad(
                   mat_a[rb], x_s,
                   (sub_rb + rb) * MAT * STEP_K + ks * MAT, STEP_K,
                   gl_CooperativeMatrixLayoutRowMajor);
             }
-            for (uint cb = 0u; cb < 4u; ++cb) {
+            for (uint cb = 0u; cb < COLUMN_BLOCKS; ++cb) {
               coopMatLoad(
                   mat_b[cb], w_s, ks * MAT * TILE_N + cb * MAT, TILE_N,
                   gl_CooperativeMatrixLayoutRowMajor);
             }
             for (uint rb = 0u; rb < SUBGROUP_ROW_BLOCKS; ++rb) {
-              for (uint cb = 0u; cb < 4u; ++cb) {
+              for (uint cb = 0u; cb < COLUMN_BLOCKS; ++cb) {
                 acc[rb][cb] =
                     coopMatMulAdd(mat_a[rb], mat_b[cb], acc[rb][cb]);
               }
@@ -230,7 +252,7 @@ void main() {
       // lanes each drain their four distinct rows of that block.
       for (uint rb = 0u; rb < ROW_BLOCKS; ++rb) {
         if (sub_rb == (rb & ~(SUBGROUP_ROW_BLOCKS - 1u))) {
-          for (uint cb = 0u; cb < 4u; ++cb) {
+          for (uint cb = 0u; cb < COLUMN_BLOCKS; ++cb) {
             coopMatStore(
                 acc[rb & (SUBGROUP_ROW_BLOCKS - 1u)][cb], x_s,
                 cb * MAT * MAT, MAT,

@@ -317,6 +317,10 @@ omarchy_shader(qmm_coopmat_f16 shaders/qmm_coopmat.comp)
 # receipts/2026-09-14-qmm-occupancy-tilem/). Same per-output k chain,
 # so same output ids.
 omarchy_shader(qmm_coopmat_m16_f16 shaders/qmm_coopmat.comp -DTILE_ROWS=16)
+# Finer-N twin of the same shader for a fat shape under the occupancy
+# knee (primitives.cpp picks by workgroups per GPU core). Same
+# per-output k chain, so same output ids.
+omarchy_shader(qmm_coopmat_n16_f16 shaders/qmm_coopmat.comp -DTILE_COLS=16)
 omarchy_shader(qmm_fma_f16 shaders/qmm_fma.comp)
 omarchy_shader(qmm_fma_precise_f16 shaders/qmm_fma.comp -DPRECISE_ACCUM=1)
 omarchy_shader(matmul_fma_bf16 shaders/matmul_fma_bf16.comp)
