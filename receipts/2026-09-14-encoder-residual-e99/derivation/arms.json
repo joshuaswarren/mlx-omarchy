@@ -1,0 +1,38 @@
+{
+  "schema": "mlx-omarchy.encoder-residual-e99.arms/1",
+  "date": "2026-09-14",
+  "host": "jwm1-linux",
+  "baseline": {
+    "tag": "cr",
+    "precision": {},
+    "encoder_hidden_sha256_16": "02092bac3054e1dd",
+    "note": "byte-identical to EncoderParityAne/out-vulkan/encoder_hidden.npy (the 2026-09-14 all-GPU arm); executor faithfulness gate",
+    "rel_l2_vs_native": 0.024596
+  },
+  "arms": [
+    {"tag": "fp32chain", "precision": {"__all__": "fp32 chain, no per-op fp16 storage"}, "rel_l2_vs_native": 0.023987253214390734, "max_abs": 0.15136119723320007, "encoder_hidden_sha256_16": "f05a7a6134013af2"},
+    {"tag": "softmax16", "precision": {"softmax": "fp16"}, "rel_l2_vs_native": 0.02434089924223205, "max_abs": 0.13629150390625, "encoder_hidden_sha256_16": "95729d8857e29f97"},
+    {"tag": "softmax16v2", "precision": {"softmax": "fp16"}, "rel_l2_vs_native": 0.02434089924223205, "max_abs": 0.13629150390625, "encoder_hidden_sha256_16": "95729d8857e29f97", "note": "byte-identical rerun after LN rewrite; softmax path unchanged"},
+    {"tag": "ln16seq", "precision": {"layer_norm": "fp16seq (sequential fp16 reductions)"}, "rel_l2_vs_native": 1.0034792633060348, "max_abs": 1.93359375, "encoder_hidden_sha256_16": "8a378d28a40e4b3b"},
+    {"tag": "ln16v2", "precision": {"layer_norm": "fp16 (exact fp32 reductions, fp16 staging of mean/centered/var/normalized/affine)"}, "rel_l2_vs_native": 0.9857027076088501, "max_abs": 1.77880859375, "encoder_hidden_sha256_16": "d9bf992d2d0954fd"},
+    {"tag": "lnrqrt16", "precision": {"layer_norm": "rsqrt16 (only rsqrt result rounds to fp16)"}, "rel_l2_vs_native": 0.02535642512416995, "max_abs": 0.13714599609375, "encoder_hidden_sha256_16": "422a8b876249d289"},
+    {"tag": "lngamma16", "precision": {"layer_norm": "gamma16 (only affine products round to fp16)"}, "rel_l2_vs_native": 0.024945275236786198, "max_abs": 0.156494140625, "encoder_hidden_sha256_16": "46298c51dc3274cb"},
+    {"tag": "silu16", "precision": {"silu": "fp16", "sigmoid": "fp16"}, "rel_l2_vs_native": 0.024676374101235084, "max_abs": 0.13531494140625, "encoder_hidden_sha256_16": "ce2c564e2e976ddd"},
+    {"tag": "linear16", "precision": {"linear": "fp16 (K-chunked 16 partials, fp16 accumulate)"}, "rel_l2_vs_native": 0.023467604127869992, "max_abs": 0.196533203125, "encoder_hidden_sha256_16": "e832110db1f388fa"},
+    {"tag": "matmul16", "precision": {"matmul": "fp16 (K-chunked 16 partials, fp16 accumulate)"}, "rel_l2_vs_native": 0.026516362626250626, "max_abs": 0.30084228515625, "encoder_hidden_sha256_16": "3e9bd8022c85f98c"},
+    {"tag": "ln16v2_softmax16", "precision": {"layer_norm": "fp16", "softmax": "fp16"}, "rel_l2_vs_native": 0.985863994568284, "max_abs": 1.77880859375, "encoder_hidden_sha256_16": "d54023e599755049"},
+    {"tag": "ln16v2_linear16", "precision": {"layer_norm": "fp16", "linear": "fp16"}, "rel_l2_vs_native": 0.9830311754607469, "max_abs": 1.78076171875, "encoder_hidden_sha256_16": "4cadb3649e26df2c"},
+    {"tag": "full16v2", "precision": {"layer_norm": "fp16", "softmax": "fp16", "silu": "fp16", "sigmoid": "fp16"}, "rel_l2_vs_native": 0.9861751323497955, "max_abs": 1.77880859375, "encoder_hidden_sha256_16": "6e07a5d5c8455605"}
+  ],
+  "not_taken": [
+    {"tag": "conv16", "reason": "group-aware K-chunk slicing not implemented; conv excluded via the island measurement instead (ANE attention matmuls sit +0.000320 from the correctly-rounded arm)"},
+    {"tag": "full16 round 1", "reason": "same conv16 failure inside the combo; superseded by full16v2 without conv"}
+  ],
+  "references": {
+    "native_macos_ane_golden_7e442034": {"rel_l2_vs_native": 0.0},
+    "linux_ane_islands_b3d60c81": {"rel_l2_vs_native": 0.024917},
+    "linux_all_gpu_02092bac": {"rel_l2_vs_native": 0.024596},
+    "macos_gpu_control": {"rel_l2_vs_native": 0.023345, "source": "receipts/2026-09-14-encoder-parity-ane.json"},
+    "islands_ac_delta": {"rel_l2_delta": 0.000320, "source": "receipts/2026-09-14-encoder-parity-ane.json"}
+  }
+}
