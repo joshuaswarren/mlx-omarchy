@@ -1,0 +1,196 @@
+{
+  "artifactFormat": "anec",
+  "bytes": 136832,
+  "constantBytes": 132096,
+  "constantInputs": {
+  },
+  "constantOffset": 640,
+  "dispatchPlan": [
+    0
+  ],
+  "encoder": "apple-parity-conv",
+  "file": "program-0.anec",
+  "inputs": [
+    {
+      "allocationBytes": 524288,
+      "dtype": "float16",
+      "index": 5,
+      "logicalBytes": 524288,
+      "name": "x",
+      "nchw": [
+        1,
+        256,
+        32,
+        32,
+        2048,
+        64
+      ],
+      "shape": [
+        1,
+        256,
+        32,
+        32
+      ]
+    }
+  ],
+  "intermediates": [
+  ],
+  "logicalResults": [
+    {
+      "conversion": "identity",
+      "dtype": "float16",
+      "name": "y",
+      "physical": {
+        "elementCount": 262144,
+        "elementOffset": 0,
+        "tensor": "y"
+      },
+      "shape": [
+        1,
+        256,
+        32,
+        32
+      ]
+    }
+  ],
+  "operation": "conv",
+  "outputs": [
+    {
+      "allocationBytes": 524288,
+      "dtype": "float16",
+      "index": 4,
+      "logicalBytes": 524288,
+      "name": "y",
+      "nchw": [
+        1,
+        256,
+        32,
+        32,
+        2048,
+        64
+      ],
+      "shape": [
+        1,
+        256,
+        32,
+        32
+      ]
+    }
+  ],
+  "physicalOutputs": [
+    {
+      "dtype": "float16",
+      "logicalBytes": 524288,
+      "shape": [
+        1,
+        256,
+        32,
+        32
+      ],
+      "tensor": "y"
+    }
+  ],
+  "programs": [
+    {
+      "bytes": 136832,
+      "constantBytes": 132096,
+      "constantInputs": {
+      },
+      "constantOffset": 640,
+      "encoder": "apple-parity-conv",
+      "file": "program-0.anec",
+      "inputs": [
+        {
+          "allocationBytes": 524288,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 524288,
+          "name": "x",
+          "nchw": [
+            1,
+            256,
+            32,
+            32,
+            2048,
+            64
+          ],
+          "shape": [
+            1,
+            256,
+            32,
+            32
+          ]
+        }
+      ],
+      "operation": "conv",
+      "outputs": [
+        {
+          "allocationBytes": 524288,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 524288,
+          "name": "y",
+          "nchw": [
+            1,
+            256,
+            32,
+            32,
+            2048,
+            64
+          ],
+          "shape": [
+            1,
+            256,
+            32,
+            32
+          ]
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 1
+    }
+  ],
+  "schema": "mil-hwxc.h13-anec-package.v2",
+  "scratchBytes": 0,
+  "target": "H13",
+  "taskDescriptors": 1,
+  "tensors": {
+    "b": {
+      "logicalBytes": 512,
+      "role": "constant",
+      "shape": [
+        256
+      ]
+    },
+    "w": {
+      "logicalBytes": 131072,
+      "role": "constant",
+      "shape": [
+        256,
+        256,
+        1,
+        1
+      ]
+    },
+    "x": {
+      "logicalBytes": 524288,
+      "role": "input",
+      "shape": [
+        1,
+        256,
+        32,
+        32
+      ]
+    },
+    "y": {
+      "logicalBytes": 524288,
+      "role": "output",
+      "shape": [
+        1,
+        256,
+        32,
+        32
+      ]
+    }
+  }
+}

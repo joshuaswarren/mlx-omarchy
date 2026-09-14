@@ -1,0 +1,6 @@
+string hidden_states_5_pad_type_0 = const()[name = string("hidden_states_5_pad_type_0"), val = string("valid")];
+int32 hidden_states_5_groups_0 = const()[name = string("hidden_states_5_groups_0"), val = int32(1)];
+tensor<fp16, [1, 256, 750, 32]> hidden_states_5_cast_fp16 = conv(bias = encoder_subsampling_layers_3_bias_to_fp16, dilations = hidden_states_5_dilations_0, groups = hidden_states_5_groups_0, pad = hidden_states_5_pad_0, pad_type = hidden_states_5_pad_type_0, strides = hidden_states_5_strides_0, weight = encoder_subsampling_layers_3_weight_to_fp16, x = input_7_cast_fp16)[name = tensor<string, []>("hidden_states_5_cast_fp16")];
+string hidden_states_9_pad_type_0 = const()[name = string("hidden_states_9_pad_type_0"), val = string("valid")];
+int32 hidden_states_9_groups_0 = const()[name = string("hidden_states_9_groups_0"), val = int32(1)];
+tensor<fp16, [1, 256, 375, 16]> hidden_states_9_cast_fp16 = conv(bias = encoder_subsampling_layers_6_bias_to_fp16, dilations = hidden_states_9_dilations_0, groups = hidden_states_9_groups_0, pad = hidden_states_9_pad_0, pad_type = hidden_states_9_pad_type_0, strides = hidden_states_9_strides_0, weight = encoder_subsampling_layers_6_weight_to_fp16, x = input_13_cast_fp16)[name = tensor<string, []>("hidden_states_9_cast_fp16")];

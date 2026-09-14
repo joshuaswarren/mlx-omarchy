@@ -1,0 +1,8 @@
+{
+  "schema": "mlx-omarchy.conv-layout-rewrite.v1",
+  "rewritten": [
+    "hidden_states_5_cast_fp16",
+    "hidden_states_9_cast_fp16"
+  ],
+  "refused": []
+}
