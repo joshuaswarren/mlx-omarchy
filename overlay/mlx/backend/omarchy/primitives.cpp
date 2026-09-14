@@ -4094,8 +4094,6 @@ void Convolution::eval_gpu(const std::vector<array>& inputs, array& out) {
     }
   }
   if (unit_window) {
-    // 1x1 as GEMM. Tiled MatmulF32 accumulates K in order (16-wide
-    // tiles, zero pad); skip coopmat so rounding matches ConvF32.
     const uint32_t matrix_n =
         checked_u32(out_channels, "Convolution", out);
     const uint32_t matrix_k =
