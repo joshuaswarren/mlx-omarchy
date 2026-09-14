@@ -5,10 +5,12 @@
 
 #include <fcntl.h>
 #include <signal.h>
+#include <sys/stat.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
 #include <algorithm>
+#include <cerrno>
 #include <chrono>
 #include <cstdint>
 #include <cstdio>
@@ -27,6 +29,7 @@
 
 #include "mlx/backend/gpu/copy.h"
 #include "mlx/backend/omarchy/allocator.h"
+#include "mlx/backend/omarchy/ane/bundle.h"
 #include "mlx/backend/omarchy/compute.h"
 #include "mlx/backend/omarchy/encoder.h"
 #include "mlx/backend/omarchy/unsupported.h"
@@ -714,7 +717,47 @@ int run_compiler(
   return WEXITSTATUS(status);
 }
 
+// The shader compiler is resolved once.  A cache entry has to be named by the
+// exact binary and flags that produced it, never by the source alone.
+struct ShaderCompiler {
+  std::string executable;
+  std::vector<std::string> flags;
+  std::string version;
+};
+
+std::string compiler_version(const std::string& executable) {
+  TemporaryFile log(".log");
+  if (run_compiler(executable, {"--version"}, log.fd) != 0) {
+    return {};
+  }
+  return trim(read_file(log.path, 4096));
+}
+
+const ShaderCompiler& shader_compiler() {
+  static const ShaderCompiler resolved = [] {
+    ShaderCompiler value;
+    value.executable = find_executable("glslc");
+    if (!value.executable.empty()) {
+      value.flags = {"-O", "--target-env=vulkan1.3"};
+    } else {
+      value.executable = find_executable("glslangValidator");
+      if (value.executable.empty()) {
+        return value;
+      }
+      value.flags = {"-V", "-Os", "--target-env", "vulkan1.3", "-S", "comp"};
+    }
+    value.version = compiler_version(value.executable);
+    return value;
+  }();
+  return resolved;
+}
+
 std::vector<uint32_t> compile_glsl(const std::string& source) {
+  const ShaderCompiler& compiler = shader_compiler();
+  if (compiler.executable.empty()) {
+    throw std::runtime_error(
+        "neither glslc nor glslangValidator is available on PATH");
+  }
   TemporaryFile input(".comp");
   TemporaryFile output(".spv");
   TemporaryFile log(".log");
@@ -726,22 +769,11 @@ std::vector<uint32_t> compile_glsl(const std::string& source) {
   close(input.fd);
   input.fd = -1;
 
-  std::string compiler = find_executable("glslc");
-  std::vector<std::string> arguments;
-  if (!compiler.empty()) {
-    arguments = {
-        "-O", "--target-env=vulkan1.3", input.path, "-o", output.path};
-  } else {
-    compiler = find_executable("glslangValidator");
-    if (compiler.empty()) {
-      throw std::runtime_error(
-          "neither glslc nor glslangValidator is available on PATH");
-    }
-    arguments = {
-        "-V", "-Os", "--target-env", "vulkan1.3", "-S", "comp",
-        input.path, "-o", output.path};
-  }
-  const int status = run_compiler(compiler, arguments, log.fd);
+  std::vector<std::string> arguments = compiler.flags;
+  arguments.push_back(input.path);
+  arguments.emplace_back("-o");
+  arguments.push_back(output.path);
+  const int status = run_compiler(compiler.executable, arguments, log.fd);
   if (status != 0) {
     const auto diagnostics = trim(read_file(log.path, 8192));
     throw std::runtime_error(
@@ -762,6 +794,116 @@ std::vector<uint32_t> compile_glsl(const std::string& source) {
   return words;
 }
 
+// `glslc -O` runs the SPIR-V optimizer, and on a kernel assembled out of
+// software binary32 helpers that costs seconds: the Parakeet mel frontend's
+// eight custom kernels spend 9.8 s there against 0.17 s of actual compute,
+// once per process, because the memo below dies with the process.  The
+// optimizer's output is a pure function of the source and the invocation, so
+// it belongs on disk.
+constexpr char kSpirvCacheMagic[] = "MLXOSPV1";
+constexpr size_t kSpirvCacheMagicSize = 8;
+
+std::string spirv_cache_root() {
+  if (const char* configured = std::getenv("MLX_OMARCHY_SPIRV_CACHE")) {
+    // Empty or "0" turns the disk layer off; any other value relocates it.
+    const std::string value = configured;
+    return (value.empty() || value == "0") ? std::string{} : value;
+  }
+  if (const char* xdg = std::getenv("XDG_CACHE_HOME"); xdg != nullptr && *xdg) {
+    return std::string(xdg) + "/mlx-omarchy/spirv";
+  }
+  if (const char* home = std::getenv("HOME"); home != nullptr && *home) {
+    return std::string(home) + "/.cache/mlx-omarchy/spirv";
+  }
+  return {};
+}
+
+bool make_directories(const std::string& path) {
+  for (size_t index = 1; index <= path.size(); ++index) {
+    if (index != path.size() && path[index] != '/') {
+      continue;
+    }
+    const std::string prefix = path.substr(0, index);
+    if (::mkdir(prefix.c_str(), 0700) != 0 && errno != EEXIST) {
+      return false;
+    }
+  }
+  return true;
+}
+
+std::string spirv_cache_path(const std::string& glsl) {
+  const std::string root = spirv_cache_root();
+  if (root.empty()) {
+    return {};
+  }
+  const ShaderCompiler& compiler = shader_compiler();
+  if (compiler.version.empty()) {
+    // Without a compiler identity an entry cannot be invalidated on upgrade,
+    // and a stale entry is a wrong binary rather than a slow one.
+    return {};
+  }
+  std::string material = "mlx-omarchy custom kernel spirv 1\n";
+  material += compiler.executable + "\n" + compiler.version + "\n";
+  for (const auto& flag : compiler.flags) {
+    material += flag;
+    material += ' ';
+  }
+  material += "\n";
+  material += glsl;
+  return root + "/" +
+      omarchy::ane::sha256_hex(
+             reinterpret_cast<const uint8_t*>(material.data()),
+             material.size()) +
+      ".spv";
+}
+
+bool load_cached_spirv(const std::string& path, std::vector<uint32_t>& words) {
+  const std::string blob = read_file(path);
+  if (blob.size() <= kSpirvCacheMagicSize ||
+      blob.compare(0, kSpirvCacheMagicSize, kSpirvCacheMagic, kSpirvCacheMagicSize) != 0) {
+    return false;
+  }
+  const size_t payload = blob.size() - kSpirvCacheMagicSize;
+  if (payload % sizeof(uint32_t) != 0) {
+    return false;
+  }
+  words.resize(payload / sizeof(uint32_t));
+  std::memcpy(words.data(), blob.data() + kSpirvCacheMagicSize, payload);
+  if (words.front() != 0x07230203u) {
+    words.clear();
+    return false;
+  }
+  return true;
+}
+
+void store_cached_spirv(
+    const std::string& path,
+    const std::vector<uint32_t>& words) {
+  const size_t slash = path.rfind('/');
+  if (slash == std::string::npos || !make_directories(path.substr(0, slash))) {
+    return;
+  }
+  const std::string temporary = path + ".tmp-" + std::to_string(::getpid());
+  {
+    std::ofstream out(temporary, std::ios::binary | std::ios::trunc);
+    if (!out) {
+      return;
+    }
+    out.write(kSpirvCacheMagic, kSpirvCacheMagicSize);
+    out.write(
+        reinterpret_cast<const char*>(words.data()),
+        static_cast<std::streamsize>(words.size() * sizeof(uint32_t)));
+    out.flush();
+    if (!out) {
+      ::unlink(temporary.c_str());
+      return;
+    }
+  }
+  if (::rename(temporary.c_str(), path.c_str()) != 0) {
+    ::unlink(temporary.c_str());
+  }
+}
+
 const std::vector<uint32_t>& cached_compile(const std::string& glsl) {
   static std::mutex mutex;
   static std::unordered_map<std::string, std::vector<uint32_t>> cache;
@@ -770,7 +912,16 @@ const std::vector<uint32_t>& cached_compile(const std::string& glsl) {
   if (found != cache.end()) {
     return found->second;
   }
-  return cache.emplace(glsl, compile_glsl(glsl)).first->second;
+  const std::string entry = spirv_cache_path(glsl);
+  if (entry.empty()) {
+    return cache.emplace(glsl, compile_glsl(glsl)).first->second;
+  }
+  std::vector<uint32_t> words;
+  if (!load_cached_spirv(entry, words)) {
+    words = compile_glsl(glsl);
+    store_cached_spirv(entry, words);
+  }
+  return cache.emplace(glsl, std::move(words)).first->second;
 }
 
 omarchy::ComputeBinding binding(const array& value) {
