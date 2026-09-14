@@ -12,7 +12,7 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "doctest/doctest.h"
 #include <array>
-#include <cmath>
+#include <cstdio>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
@@ -1328,6 +1328,50 @@ TEST_CASE("eager q4 decode gemv group folds RoPE into the q/k store") {
     for (size_t i = 0; i < baseline.size(); ++i) {
       INFO("output ", i);
       expect_bit_exact(baseline[i], candidate[i], stream);
+    }
+    // Where the rotation still disagrees, dump the exact inputs and
+    // both outputs so the deviating stage can be recomputed on the
+    // host: sums bit-exact plus x1/x2/i plus both rotated words.
+    for (size_t row = 3; row <= 4; ++row) {
+      const auto& sum = baseline[row - 3];
+      array b32 = astype(baseline[row], float32, stream);
+      array c32 = astype(candidate[row], float32, stream);
+      array s32 = astype(sum, float32, stream);
+      b32.eval();
+      c32.eval();
+      s32.eval();
+      sync_stream(stream);
+      const float* bp = b32.data<float>();
+      const float* cp = c32.data<float>();
+      const float* sp = s32.data<float>();
+      size_t n = b32.size();
+      int half = head_dim / 2;
+      for (size_t e = 0; e < n; ++e) {
+        if (bp[e] != cp[e]) {
+          size_t head = e / head_dim;
+          uint32_t i = static_cast<uint32_t>(e % head_dim);
+          if (i >= static_cast<uint32_t>(half)) {
+            continue; // partner reports with its low-half pair
+          }
+          float x1 = sp[head * head_dim + i];
+          float x2 = sp[head * head_dim + i + half];
+          float xr = sp[head * head_dim + e % head_dim];
+          std::printf(
+              "MISMATCH draw=%d offset=%d row=%zu head=%zu dim=%zu "
+              "i=%u x1=%.9g x2=%.9g xin=%.9g base=%.9g cand=%.9g\n",
+              draw,
+              offset,
+              row,
+              head,
+              e % head_dim,
+              i,
+              (double)x1,
+              (double)x2,
+              (double)xr,
+              (double)bp[e],
+              (double)cp[e]);
+        }
+      }
     }
     }
   }
