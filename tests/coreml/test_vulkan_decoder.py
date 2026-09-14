@@ -55,6 +55,24 @@ def _mil_lstm(x, hidden, cell, weight_ih, weight_hh, bias):
     return np.expand_dims(next_hidden, axis=0), next_hidden, next_cell.astype(np.float16)
 
 
+def _projector_contract(hidden, weight, bias):
+    """Native projector arithmetic, established bit-exactly against the capture.
+
+    An fp16 accumulator over unrounded products, reduced in strictly ascending
+    index order, with the fp16 bias added after the reduction. It is not an fp32
+    dot product rounded once: over 640 terms the two disagree by far more than
+    this file's tolerance, which is why the reference carries the contract.
+    """
+    vector = np.asarray(hidden, dtype=np.float64).reshape(-1)
+    products = vector[None, :] * weight.astype(np.float64)
+    accumulator = np.zeros(weight.shape[0], dtype=np.float64)
+    for index in range(products.shape[1]):
+        accumulator = (
+            (accumulator + products[:, index]).astype(np.float16).astype(np.float64)
+        )
+    return (accumulator + bias.astype(np.float64)).astype(np.float16)
+
+
 def _mil_reference(constants, input_ids, hidden, cell):
     indices = input_ids.astype(np.int16).astype(np.int32)
     indices = np.where(indices >= 0, indices, indices + 8193).astype(np.int16)
@@ -78,12 +96,15 @@ def _mil_reference(constants, input_ids, hidden, cell):
         constants["concat_5_to_fp16"],
         constants["concat_3_to_fp16"],
     )
-    sequence = sequence.transpose(1, 0, 2)
     decoder_hidden = (
-        sequence.astype(np.float32)
-        @ constants["projector_weight_to_fp16"].astype(np.float32).T
-        + constants["projector_bias_to_fp16"].astype(np.float32)
-    ).astype(np.float16).astype(np.float32)
+        _projector_contract(
+            hidden_1,
+            constants["projector_weight_to_fp16"],
+            constants["projector_bias_to_fp16"],
+        )
+        .astype(np.float32)
+        .reshape(1, 1, -1)
+    )
     return (
         decoder_hidden,
         np.stack((hidden_0, hidden_1), axis=0).astype(np.float32),
