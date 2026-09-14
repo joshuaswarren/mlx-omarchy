@@ -1,0 +1,1 @@
+{"successful_runs": 100, "all_matched_baseline": true, "median_ms": 5, "p95_ms": 7, "timeouts": 0, "workers_released_each_run": true, "post_workers": "none", "post_nproc": "10", "post_module": "", "abort_reason": null}

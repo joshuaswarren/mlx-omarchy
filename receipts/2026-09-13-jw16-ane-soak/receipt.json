@@ -1,0 +1,110 @@
+{
+  "schema": "mlx-omarchy.jw16-ane-soak.v1",
+  "date": "2026-09-13",
+  "host": "jw16mbp1-linux",
+  "ssh_alias": "jw16mbp1-linux",
+  "result": "PASS",
+  "repeat_of": "receipts/2026-09-13-jwm1-ane-soak",
+  "prior_exact": "receipts/2026-09-13-jw16-ane-set-exec.json",
+  "resolved_model": {
+    "configured": "openai-codex/gpt-5.6-sol",
+    "actual": "openai-codex/gpt-5.6-sol",
+    "fallback": false
+  },
+  "source": {
+    "runner": "receipts/2026-09-13-jw16-ane-soak/run_100.py",
+    "runner_sha256": "5932632d64457a69d61bd9f9125770608b4aff989bb2960ddd8ad6a572626664",
+    "protocol": "receipts/2026-09-13-jwm1-ane-utilization/run_100.py",
+    "protocol_sha256": "dd426a31a6bfdb1d19cc512b59668a6a68cb2ce290049d80dec905ae9ffd74b4",
+    "worker_tree_commit": "c05ba1df2aa0427a36685a4e4661e6a1f47ff33d",
+    "worker_sha256": "575e2acd0152cec13f06dd9b09e4af0d7e4a91bfe4d8fa086b633b8b82a83e59",
+    "libane_sha256": "1ab9d95debcc8b5fee3b6653dfce0b50412bc7efef43c2d2167dc83ce270ca49",
+    "graph_hash": "5584d0fd8d40027229890408e924e6f7930cd5f02516466a442193408482ce76",
+    "expect_y_sha256": "abd3b8c9f1439c1fa508b42aa229c4b1688e06271d2bf7b823d71cd730200054",
+    "bundle": "/var/tmp/jw16-ane-first-exec/bundle",
+    "bundle_name": "schema4-add-mul-worker",
+    "element_count": 64,
+    "remote_dir": "/var/tmp/jw16-ane-soak-20260913"
+  },
+  "device": {
+    "path": "/dev/accel/accel0",
+    "stat": "crw-rw-rw- root:render 105,0 /dev/accel/accel0",
+    "bound": "285c04000.ane",
+    "module_initstate": "live",
+    "refcnt": "0",
+    "nproc": 10,
+    "cpu_online": "0-9",
+    "boot_id": "f6ad865b-b85e-499e-8308-28b57b24f0c8",
+    "drm": {
+      "version": "1.0.0",
+      "name": "ane",
+      "desc": "Apple Neural Engine driver"
+    },
+    "healthy_at_end": true
+  },
+  "set": {
+    "pre": {
+      "set0": {
+        "phys": "0x28e08c000",
+        "raw": "0x000003ff",
+        "ACTUAL": "0xf",
+        "TARGET": "0xf"
+      },
+      "base": {"raw": "0x000003ff", "ACTUAL": "0xf", "TARGET": "0xf"},
+      "set1": {"raw": "0x000003ff", "ACTUAL": "0xf", "TARGET": "0xf"},
+      "set2": {"raw": "0x000003ff", "ACTUAL": "0xf", "TARGET": "0xf"},
+      "set3": {"raw": "0x000003ff", "ACTUAL": "0xf", "TARGET": "0xf"},
+      "set4": {"raw": "0x000003ff", "ACTUAL": "0xf", "TARGET": "0xf"},
+      "set5": {"raw": "0x00000000", "ACTUAL": "0x0", "TARGET": "0x0"}
+    },
+    "post": {
+      "set0": {
+        "phys": "0x28e08c000",
+        "raw": "0x000003ff",
+        "ACTUAL": "0xf",
+        "TARGET": "0xf"
+      },
+      "base": {"raw": "0x000003ff", "ACTUAL": "0xf", "TARGET": "0xf"},
+      "set1": {"raw": "0x000003ff", "ACTUAL": "0xf", "TARGET": "0xf"},
+      "set2": {"raw": "0x000003ff", "ACTUAL": "0xf", "TARGET": "0xf"},
+      "set3": {"raw": "0x000003ff", "ACTUAL": "0xf", "TARGET": "0xf"},
+      "set4": {"raw": "0x000003ff", "ACTUAL": "0xf", "TARGET": "0xf"},
+      "set5": {"raw": "0x00000000", "ACTUAL": "0x0", "TARGET": "0x0"},
+      "set0_still_0xf": true
+    },
+    "read": "sudo PROT_READ mmap /dev/mem; writes=0"
+  },
+  "hundred_run": {
+    "driver": "receipts/2026-09-13-jw16-ane-soak/run_100.py copied to /var/tmp/jw16-ane-soak-20260913",
+    "worker": "mlx-omarchy-ane-worker --iterations 1 --expect y (one process per run)",
+    "started_at": "2026-09-13T22:38:05-05:00",
+    "finished_at": "2026-09-13T22:38:06-05:00",
+    "successful_runs": 100,
+    "timeouts": 0,
+    "device_loss": false,
+    "all_matched_baseline": true,
+    "workers_released_each_run": true,
+    "abort_reason": null,
+    "y_files": 100,
+    "y_sha256": "bade941d7d8f1e1097b9ce0298ff05617d85a9928de0e8c7eead5743f3f24352",
+    "y_bytes": 128,
+    "median_ms": 5,
+    "p95_ms": 7,
+    "ane_exec_ns_sum": 215000000,
+    "ane_worker_starts": 100,
+    "ane_submissions": 200,
+    "memory_available_kb_before": 63831744,
+    "memory_available_kb_after": 63833760,
+    "post_workers": "none",
+    "report": "100-run-report.json",
+    "sample_y": "y_000.bin"
+  },
+  "prohibited_actions_observed": {
+    "ane_unloaded": false,
+    "rebooted": false,
+    "executed_1x896": false,
+    "took_gpu_lock": false,
+    "wrote_0xf_userspace": false,
+    "ran_on_jwm1": false
+  }
+}
