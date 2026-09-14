@@ -1283,7 +1283,7 @@ TEST_CASE("eager q4 decode gemv group RoPE trig bits per dispatch shape") {
     for (int j = 0; j < n; ++j) {
       hb[j] = (j % head_dim) < half ? 1.0f : 0.0f;
     }
-    l.bias = astype(array(hb, Shape{n}, float32), float16, stream);
+    l.bias = astype(array(hb), float16, stream);
     for (array* a : {&l.w, &l.scales, &l.biases, &l.bias}) {
       a->eval();
     }
