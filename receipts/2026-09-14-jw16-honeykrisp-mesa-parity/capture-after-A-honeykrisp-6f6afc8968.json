@@ -1,0 +1,363 @@
+{
+ "arch": "aarch64",
+ "driver": {
+  "cmd": "vulkaninfo --summary 2>/dev/null | grep -E 'driverName|driverInfo|deviceName|apiVersion'",
+  "err": "",
+  "out": "apiVersion         = 1.4.359\n\tdeviceName         = Apple M1 Max (G13C C0)\n\tdriverName         = Honeykrisp\n\tdriverInfo         = Mesa 26.3.0-devel (git-6f6afc8968)\n\tapiVersion         = 1.4.359\n\tdeviceName         = llvmpipe (LLVM 22.1.8, 128 bits)\n\tdriverName         = llvmpipe\n\tdriverInfo         = Mesa 26.3.0-devel (git-6f6afc8968) (LLVM 22.1.8)",
+  "rc": 0
+ },
+ "finished_unix": 1789397212,
+ "harness_sha256": "f5062d88f34b0845c1e59b0b35d2e33ae02180f636a0f65c543a4366ec2bef7f  /home/joshuawarren/src/mlx-omarchy/scripts/bench_decode.py\ndf8eb9f3ed84182604379b7cde070ade706bfe590fbf83a35b1877cfaf43f258  /home/joshuawarren/src/mlx-omarchy/scripts/bench_matrix.json",
+ "host": "jw16mbp1-linux",
+ "icd_dir": {
+  "cmd": "ls -la /usr/share/vulkan/icd.d/",
+  "err": "",
+  "out": "total 12\ndrwxr-xr-x 1 root root 130 Sep 14 09:46 .\ndrwxr-xr-x 1 root root  58 Sep 14 09:46 ..\n-rw-r--r-- 1 root root 176 Sep 14 09:40 asahi_icd.aarch64.json\n-rw-r--r-- 1 root root 174 Sep 14 09:40 lvp_icd.aarch64.json\n-rw-r--r-- 1 root root 177 Sep 14 09:40 virtio_icd.aarch64.json",
+  "rc": 0
+ },
+ "kernel": "7.1.6-1-1-ARCH",
+ "legs": [
+  {
+   "json": {
+    "decode_tps": 169.4364,
+    "device": "Apple M1 Max (G13C C0)",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     9707,
+     0,
+     2585
+    ],
+    "ids_last": [
+     646,
+     387,
+     7881
+    ],
+    "ids_sha256_16": "7fd25a869ff21678",
+    "prefill_s": 0.082386,
+    "prefill_tps": 364.1385,
+    "prompt_tokens": 30
+   },
+   "prompt_id": "short",
+   "rc": 0,
+   "rep": 1,
+   "stderr": "mx.metal.device_info is deprecated and will be removed in a future version. Use mx.device_info instead.\n",
+   "stdout": "provenance: mlx-omarchy 0.32.2.dev202609122106+b41e2b74 mx=0.32.2.dev202609122106+b41e2b74 verified=match harness=3db3cb9a-dirty core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:f2d45e601f05dd22\ndecode 169.44 tok/s over 31 tokens (32 requested, EOS suppressed)\nprefill 0.082s (reported separately, excluded from decode)\nprompt_tokens 30\ndecode mean per-token 5.9 ms\ngenerated_ids sha256:7fd25a869ff21678 n=32 first=9707,0,2585 last=646,387,7881\n{\"decode_tps\": 169.4364, \"device\": \"Apple M1 Max (G13C C0)\", \"engine\": \"bench_decode\", \"generated\": 32, \"ids_first\": [9707, 0, 2585], \"ids_last\": [646, 387, 7881], \"ids_sha256_16\": \"7fd25a869ff21678\", \"prefill_s\": 0.082386, \"prefill_tps\": 364.1385, \"prompt_tokens\": 30}\n",
+   "wall_s": 1.821
+  },
+  {
+   "json": {
+    "decode_tps": 143.6736,
+    "device": "Apple M1 Max (G13C C0)",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     13060,
+     498,
+     369
+    ],
+    "ids_last": [
+     3897,
+     553,
+     279
+    ],
+    "ids_sha256_16": "7da83f06ec9f001d",
+    "prefill_s": 0.29243,
+    "prefill_tps": 3600.8673,
+    "prompt_tokens": 1053
+   },
+   "prompt_id": "ctx1024",
+   "rc": 0,
+   "rep": 1,
+   "stderr": "mx.metal.device_info is deprecated and will be removed in a future version. Use mx.device_info instead.\n",
+   "stdout": "provenance: mlx-omarchy 0.32.2.dev202609122106+b41e2b74 mx=0.32.2.dev202609122106+b41e2b74 verified=match harness=3db3cb9a-dirty core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:f2d45e601f05dd22\ndecode 143.67 tok/s over 31 tokens (32 requested, EOS suppressed)\nprefill 0.292s (reported separately, excluded from decode)\nprompt_tokens 1053\ndecode mean per-token 7.0 ms\ngenerated_ids sha256:7da83f06ec9f001d n=32 first=13060,498,369 last=3897,553,279\n{\"decode_tps\": 143.6736, \"device\": \"Apple M1 Max (G13C C0)\", \"engine\": \"bench_decode\", \"generated\": 32, \"ids_first\": [13060, 498, 369], \"ids_last\": [3897, 553, 279], \"ids_sha256_16\": \"7da83f06ec9f001d\", \"prefill_s\": 0.29243, \"prefill_tps\": 3600.8673, \"prompt_tokens\": 1053}\n",
+   "wall_s": 2.307
+  },
+  {
+   "json": {
+    "decode_tps": 170.2156,
+    "device": "Apple M1 Max (G13C C0)",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     9707,
+     0,
+     2585
+    ],
+    "ids_last": [
+     646,
+     387,
+     7881
+    ],
+    "ids_sha256_16": "7fd25a869ff21678",
+    "prefill_s": 0.083291,
+    "prefill_tps": 360.1814,
+    "prompt_tokens": 30
+   },
+   "prompt_id": "short",
+   "rc": 0,
+   "rep": 2,
+   "stderr": "mx.metal.device_info is deprecated and will be removed in a future version. Use mx.device_info instead.\n",
+   "stdout": "provenance: mlx-omarchy 0.32.2.dev202609122106+b41e2b74 mx=0.32.2.dev202609122106+b41e2b74 verified=match harness=3db3cb9a-dirty core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:f2d45e601f05dd22\ndecode 170.22 tok/s over 31 tokens (32 requested, EOS suppressed)\nprefill 0.083s (reported separately, excluded from decode)\nprompt_tokens 30\ndecode mean per-token 5.9 ms\ngenerated_ids sha256:7fd25a869ff21678 n=32 first=9707,0,2585 last=646,387,7881\n{\"decode_tps\": 170.2156, \"device\": \"Apple M1 Max (G13C C0)\", \"engine\": \"bench_decode\", \"generated\": 32, \"ids_first\": [9707, 0, 2585], \"ids_last\": [646, 387, 7881], \"ids_sha256_16\": \"7fd25a869ff21678\", \"prefill_s\": 0.083291, \"prefill_tps\": 360.1814, \"prompt_tokens\": 30}\n",
+   "wall_s": 1.738
+  },
+  {
+   "json": {
+    "decode_tps": 144.2785,
+    "device": "Apple M1 Max (G13C C0)",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     13060,
+     498,
+     369
+    ],
+    "ids_last": [
+     3897,
+     553,
+     279
+    ],
+    "ids_sha256_16": "7da83f06ec9f001d",
+    "prefill_s": 0.29329,
+    "prefill_tps": 3590.3021,
+    "prompt_tokens": 1053
+   },
+   "prompt_id": "ctx1024",
+   "rc": 0,
+   "rep": 2,
+   "stderr": "mx.metal.device_info is deprecated and will be removed in a future version. Use mx.device_info instead.\n",
+   "stdout": "provenance: mlx-omarchy 0.32.2.dev202609122106+b41e2b74 mx=0.32.2.dev202609122106+b41e2b74 verified=match harness=3db3cb9a-dirty core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:f2d45e601f05dd22\ndecode 144.28 tok/s over 31 tokens (32 requested, EOS suppressed)\nprefill 0.293s (reported separately, excluded from decode)\nprompt_tokens 1053\ndecode mean per-token 6.9 ms\ngenerated_ids sha256:7da83f06ec9f001d n=32 first=13060,498,369 last=3897,553,279\n{\"decode_tps\": 144.2785, \"device\": \"Apple M1 Max (G13C C0)\", \"engine\": \"bench_decode\", \"generated\": 32, \"ids_first\": [13060, 498, 369], \"ids_last\": [3897, 553, 279], \"ids_sha256_16\": \"7da83f06ec9f001d\", \"prefill_s\": 0.29329, \"prefill_tps\": 3590.3021, \"prompt_tokens\": 1053}\n",
+   "wall_s": 2.266
+  },
+  {
+   "json": {
+    "decode_tps": 169.8483,
+    "device": "Apple M1 Max (G13C C0)",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     9707,
+     0,
+     2585
+    ],
+    "ids_last": [
+     646,
+     387,
+     7881
+    ],
+    "ids_sha256_16": "7fd25a869ff21678",
+    "prefill_s": 0.081597,
+    "prefill_tps": 367.6599,
+    "prompt_tokens": 30
+   },
+   "prompt_id": "short",
+   "rc": 0,
+   "rep": 3,
+   "stderr": "mx.metal.device_info is deprecated and will be removed in a future version. Use mx.device_info instead.\n",
+   "stdout": "provenance: mlx-omarchy 0.32.2.dev202609122106+b41e2b74 mx=0.32.2.dev202609122106+b41e2b74 verified=match harness=3db3cb9a-dirty core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:f2d45e601f05dd22\ndecode 169.85 tok/s over 31 tokens (32 requested, EOS suppressed)\nprefill 0.082s (reported separately, excluded from decode)\nprompt_tokens 30\ndecode mean per-token 5.9 ms\ngenerated_ids sha256:7fd25a869ff21678 n=32 first=9707,0,2585 last=646,387,7881\n{\"decode_tps\": 169.8483, \"device\": \"Apple M1 Max (G13C C0)\", \"engine\": \"bench_decode\", \"generated\": 32, \"ids_first\": [9707, 0, 2585], \"ids_last\": [646, 387, 7881], \"ids_sha256_16\": \"7fd25a869ff21678\", \"prefill_s\": 0.081597, \"prefill_tps\": 367.6599, \"prompt_tokens\": 30}\n",
+   "wall_s": 1.734
+  },
+  {
+   "json": {
+    "decode_tps": 138.9351,
+    "device": "Apple M1 Max (G13C C0)",
+    "engine": "bench_decode",
+    "generated": 32,
+    "ids_first": [
+     13060,
+     498,
+     369
+    ],
+    "ids_last": [
+     3897,
+     553,
+     279
+    ],
+    "ids_sha256_16": "7da83f06ec9f001d",
+    "prefill_s": 0.295608,
+    "prefill_tps": 3562.1482,
+    "prompt_tokens": 1053
+   },
+   "prompt_id": "ctx1024",
+   "rc": 0,
+   "rep": 3,
+   "stderr": "mx.metal.device_info is deprecated and will be removed in a future version. Use mx.device_info instead.\n",
+   "stdout": "provenance: mlx-omarchy 0.32.2.dev202609122106+b41e2b74 mx=0.32.2.dev202609122106+b41e2b74 verified=match harness=3db3cb9a-dirty core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:f2d45e601f05dd22\ndecode 138.94 tok/s over 31 tokens (32 requested, EOS suppressed)\nprefill 0.296s (reported separately, excluded from decode)\nprompt_tokens 1053\ndecode mean per-token 7.2 ms\ngenerated_ids sha256:7da83f06ec9f001d n=32 first=13060,498,369 last=3897,553,279\n{\"decode_tps\": 138.9351, \"device\": \"Apple M1 Max (G13C C0)\", \"engine\": \"bench_decode\", \"generated\": 32, \"ids_first\": [13060, 498, 369], \"ids_last\": [3897, 553, 279], \"ids_sha256_16\": \"7da83f06ec9f001d\", \"prefill_s\": 0.295608, \"prefill_tps\": 3562.1482, \"prompt_tokens\": 1053}\n",
+   "wall_s": 2.305
+  }
+ ],
+ "llm_service": "inactive",
+ "lock_inode": 12,
+ "lock_path": "/tmp/m1-gpu.lock",
+ "matmul": {
+  "device": "Device(gpu, 0)",
+  "exact_2x2": [
+   [
+    20.0,
+    23.0
+   ],
+   [
+    44.0,
+    51.0
+   ]
+  ],
+  "measured_ms": [
+   8.865227,
+   9.599774,
+   8.631059,
+   8.578559,
+   8.588309,
+   8.740643,
+   8.699143,
+   8.585517,
+   8.711601,
+   8.554724,
+   8.721101,
+   8.646976,
+   8.649851,
+   8.681184,
+   8.755726,
+   8.716726,
+   8.735851,
+   8.813394,
+   8.699643,
+   8.795851
+  ],
+  "median_ms": 8.705622,
+  "rc": 0,
+  "stderr": "",
+  "tflops": 1.973904160782538,
+  "warmups_ms": [
+   65.804239,
+   9.210813,
+   8.665642
+  ]
+ },
+ "mesa_pkg": {
+  "cmd": "pacman -Q mesa mesa-honeykrisp-omarchy 2>&1",
+  "err": "",
+  "out": "mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1\nmesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1",
+  "rc": 0
+ },
+ "nested_flock_rc": 1,
+ "phase": "after-honeykrisp-26.3.0-devel-6f6afc8968",
+ "power_after": {
+  "/sys/class/power_supply/macsmc-ac/online": "1",
+  "/sys/class/power_supply/macsmc-battery/status": "Full",
+  "/sys/class/power_supply/tps6598x-source-psy-0-0038/online": "0",
+  "/sys/class/power_supply/tps6598x-source-psy-0-003a/online": "1",
+  "/sys/class/power_supply/tps6598x-source-psy-0-003b/online": "0",
+  "/sys/class/power_supply/tps6598x-source-psy-0-003f/online": "0"
+ },
+ "power_after_ctx1024_1": {
+  "/sys/class/power_supply/macsmc-ac/online": "1",
+  "/sys/class/power_supply/macsmc-battery/status": "Full",
+  "/sys/class/power_supply/tps6598x-source-psy-0-0038/online": "0",
+  "/sys/class/power_supply/tps6598x-source-psy-0-003a/online": "1",
+  "/sys/class/power_supply/tps6598x-source-psy-0-003b/online": "0",
+  "/sys/class/power_supply/tps6598x-source-psy-0-003f/online": "0"
+ },
+ "power_after_ctx1024_2": {
+  "/sys/class/power_supply/macsmc-ac/online": "1",
+  "/sys/class/power_supply/macsmc-battery/status": "Full",
+  "/sys/class/power_supply/tps6598x-source-psy-0-0038/online": "0",
+  "/sys/class/power_supply/tps6598x-source-psy-0-003a/online": "1",
+  "/sys/class/power_supply/tps6598x-source-psy-0-003b/online": "0",
+  "/sys/class/power_supply/tps6598x-source-psy-0-003f/online": "0"
+ },
+ "power_after_ctx1024_3": {
+  "/sys/class/power_supply/macsmc-ac/online": "1",
+  "/sys/class/power_supply/macsmc-battery/status": "Full",
+  "/sys/class/power_supply/tps6598x-source-psy-0-0038/online": "0",
+  "/sys/class/power_supply/tps6598x-source-psy-0-003a/online": "1",
+  "/sys/class/power_supply/tps6598x-source-psy-0-003b/online": "0",
+  "/sys/class/power_supply/tps6598x-source-psy-0-003f/online": "0"
+ },
+ "power_after_short_1": {
+  "/sys/class/power_supply/macsmc-ac/online": "1",
+  "/sys/class/power_supply/macsmc-battery/status": "Full",
+  "/sys/class/power_supply/tps6598x-source-psy-0-0038/online": "0",
+  "/sys/class/power_supply/tps6598x-source-psy-0-003a/online": "1",
+  "/sys/class/power_supply/tps6598x-source-psy-0-003b/online": "0",
+  "/sys/class/power_supply/tps6598x-source-psy-0-003f/online": "0"
+ },
+ "power_after_short_2": {
+  "/sys/class/power_supply/macsmc-ac/online": "1",
+  "/sys/class/power_supply/macsmc-battery/status": "Full",
+  "/sys/class/power_supply/tps6598x-source-psy-0-0038/online": "0",
+  "/sys/class/power_supply/tps6598x-source-psy-0-003a/online": "1",
+  "/sys/class/power_supply/tps6598x-source-psy-0-003b/online": "0",
+  "/sys/class/power_supply/tps6598x-source-psy-0-003f/online": "0"
+ },
+ "power_after_short_3": {
+  "/sys/class/power_supply/macsmc-ac/online": "1",
+  "/sys/class/power_supply/macsmc-battery/status": "Full",
+  "/sys/class/power_supply/tps6598x-source-psy-0-0038/online": "0",
+  "/sys/class/power_supply/tps6598x-source-psy-0-003a/online": "1",
+  "/sys/class/power_supply/tps6598x-source-psy-0-003b/online": "0",
+  "/sys/class/power_supply/tps6598x-source-psy-0-003f/online": "0"
+ },
+ "power_before": {
+  "/sys/class/power_supply/macsmc-ac/online": "1",
+  "/sys/class/power_supply/macsmc-battery/status": "Full",
+  "/sys/class/power_supply/tps6598x-source-psy-0-0038/online": "0",
+  "/sys/class/power_supply/tps6598x-source-psy-0-003a/online": "1",
+  "/sys/class/power_supply/tps6598x-source-psy-0-003b/online": "0",
+  "/sys/class/power_supply/tps6598x-source-psy-0-003f/online": "0"
+ },
+ "reps": 3,
+ "started_iso": "2026-09-14T09:46:40-0500",
+ "started_unix": 1789397200,
+ "summary": {
+  "ctx1024": {
+   "decode_tps": [
+    143.6736,
+    144.2785,
+    138.9351
+   ],
+   "decode_tps_median": 143.6736,
+   "device": [
+    "Apple M1 Max (G13C C0)"
+   ],
+   "ids_sha256_16": [
+    "7da83f06ec9f001d"
+   ],
+   "n": 3,
+   "prefill_tps": [
+    3600.8673,
+    3590.3021,
+    3562.1482
+   ],
+   "prefill_tps_median": 3590.3021,
+   "prompt_tokens": [
+    1053
+   ]
+  },
+  "short": {
+   "decode_tps": [
+    169.4364,
+    170.2156,
+    169.8483
+   ],
+   "decode_tps_median": 169.8483,
+   "device": [
+    "Apple M1 Max (G13C C0)"
+   ],
+   "ids_sha256_16": [
+    "7fd25a869ff21678"
+   ],
+   "n": 3,
+   "prefill_tps": [
+    364.1385,
+    360.1814,
+    367.6599
+   ],
+   "prefill_tps_median": 364.1385,
+   "prompt_tokens": [
+    30
+   ]
+  }
+ },
+ "vk_env": {},
+ "wheel_sha256": "cb13927379ed9b9bce7be90475347b3d3291906be5411e14d784ccce03357bae  /home/joshuawarren/src/mlx-omarchy/dist/mlx_omarchy-0.32.2.dev202609122106+b41e2b74-cp314-cp314-linux_aarch64.whl"
+}
