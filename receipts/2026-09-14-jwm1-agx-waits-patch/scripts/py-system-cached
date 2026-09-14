@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+exec env AGX_SIMDMAT=1   /var/tmp/mlx-omarchy-profile-enabled-b41e2b74/venv/bin/python "$@"

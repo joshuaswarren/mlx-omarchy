@@ -259,49 +259,68 @@ box, not the driver. Kernel ms and prefill-window GPU busy are the metrics
 that survive here — and the next section shows the tok/s column is also
 depressed wholesale by a flag, in both arms equally.
 
-### The tok/s gap is entirely `MESA_SHADER_CACHE_DISABLE`, measured
+### The tok/s gap is a cold cache times a `debugoptimized` build, measured 2x2
 
 These arms run about 700 tok/s against the 948.80 tok/s anchor in the
 coopmat-arms receipt, while `QmmPrefillCoopmatF16` lands at 708 ms against
 that receipt's 704.425 ms. The GPU kernel time is the same, so the gap is
-outside the kernel. **The first draft of this receipt attributed it to
-`debugoptimized` mesa with assertions enabled. That was wrong.**
+outside the kernel.
 
-`MESA_SHADER_CACHE_DISABLE=true` was set on the timing runs, not only the
-dumps: across two driver builds a stale cached binary is a live correctness
-risk. The anchor did not set it, because that work was only swapping mlx
-wheels — so pipeline compilation sits inside this receipt's prefill window
-and outside the anchor's. `Jw16MaxAttribution` flagged the same contamination
-on jw16, which prompted measuring it here directly.
+This section was wrong twice before it was right, and both wrong versions
+are worth recording because each was a plausible single-cause story:
 
-Three extra base-arm runs, identical in every respect except the cache flag
-(`profiles/cached/`):
+1. Draft 1: "the entire gap is `debugoptimized` mesa with assertions."
+2. Draft 2, after `Jw16MaxAttribution` flagged shader-cache contamination and
+   a flag-only A/B on this build measured 385 ms: "the entire gap is
+   `MESA_SHADER_CACHE_DISABLE`; the build type contributes essentially
+   nothing."
 
-| base arm | `QmmPrefillCoopmatF16` | prefill-window GPU busy | host prefill | tok/s |
-|---|---:|---:|---:|---:|
-| cache enabled (n=3) | 701.740 ms | 919.178 ms | 1111.9 ms | **947.0** |
-| cache disabled (n=4) | 708.191 ms | 942.533 ms | 1496.9 ms | 703.8 |
-| difference | +6.451 ms | +23.4 ms | **+385.0 ms** | -243 |
+Draft 2 was also wrong, and `Jw16MaxAttribution` caught why: **both arms of
+that A/B carried the `debugoptimized` ICD, so it measures the flag's cost
+*on that build* and structurally cannot separate the two factors.** The fix
+is the full 2x2 — packaged versus `debugoptimized` ICD crossed with the cache
+flag, same harness, same profiler state, same wheel, same host, three runs
+per cell, nothing crossing receipts (`profiles/factorial/`, `profiles/cached/`).
 
-The anchor's 948.80 tok/s implies 1109.8 ms of host prefill. This receipt's
-cache-enabled base ICD arm lands at 1111.9 ms — a **residual gap of 2.1 ms,
-0.19 percent**.
+| ICD build | cache | `QmmPrefillCoopmatF16` | prefill-window busy | host prefill | tok/s |
+|---|---|---:|---:|---:|---:|
+| packaged | on | 701.500 ms | 919.403 ms | 1106.3 ms | 951.8 |
+| packaged | off | 701.816 ms | 920.748 ms | 1216.7 ms | 865.5 |
+| `debugoptimized` | on | 701.740 ms | 919.178 ms | 1111.9 ms | 947.0 |
+| `debugoptimized` | off | 708.198 ms | 943.208 ms | 1530.8 ms | 687.9 |
 
-So the whole ~385 ms was the cache flag, and the `debugoptimized` ICD build
-contributes essentially nothing. That is a reusable fact and the opposite of
-what this receipt first asserted: **an ICD-override `debugoptimized` mesa is
-directly comparable to the packaged build on end-to-end prefill tok/s,
-provided the shader-cache flag matches.** The caution that belongs on the
-record is about the flag, not the build type.
+| effect | magnitude |
+|---|---:|
+| cache flag, on the packaged build | 110.4 ms |
+| cache flag, on the `debugoptimized` build | 418.9 ms |
+| build type, with the cache **warm** | **5.6 ms (0.5 %)** |
+| build type, with the cache **cold** | 314.1 ms |
 
-GPU busy fraction moves the same way and corroborates it: 88.6 to 91.0
-percent with the cache enabled, against 73 to 87 percent disabled. The cache
-flag also costs the kernel itself 6.45 ms of GPU time (0.9 percent), which is
-small but not zero.
+**It is an interaction, not a main effect of either factor.** The assertions
+live in the compiler path, so they cost nothing until shaders actually have
+to be compiled — and then they roughly quadruple the compile penalty.
 
-None of this touches the verdict. The flag is set identically on both arms
-throughout the A/B, so it is symmetric and cancels in the pairing. It only
-ever affected comparison against the external anchor — and now it does not.
+The reusable fact, stated correctly this time: **a `debugoptimized`
+ICD-override build is comparable to the packaged build only once the shader
+cache is warm** — 5.6 ms and 0.5 percent on host prefill, +0.240 ms and
+0.03 percent on kernel GPU time. With a cold cache it is not comparable at
+all. The caution belongs on the *combination*, not on the flag alone and not
+on the build type alone.
+
+Two consequences worth carrying:
+
+- The anchor's 948.80 tok/s implies 1109.8 ms of host prefill; the warm-cache
+  packaged cell here is 1106.3 ms and the warm-cache `debugoptimized` cell is
+  1111.9 ms. Both land within 0.3 percent of the anchor, which is what
+  licenses comparing this receipt's kernel numbers to it at all.
+- The flag's apparent cost to kernel GPU time is itself build-dependent:
+  +6.45 ms on `debugoptimized` but only **+0.316 ms** on the packaged build.
+  Anyone correcting a packaged-build capture for cache contamination should
+  use ~0.3 ms, not the 6.45 ms this receipt reported before the 2x2 existed.
+
+None of this touches the verdict. The flag and the build are held identical
+across both arms of the A/B throughout, so they are symmetric and cancel in
+the pairing. They only ever affected comparison against the external anchor.
 
 ## Rollback and safety
 
@@ -383,8 +402,10 @@ Ranked handoff, both from `QmmPrefillOpt` and endorsed here:
 - `ab/ab.jsonl`, `ab/ab-summary.md` — 5-round interleaved 8-cell screen.
 - `profiles/prof/`, `profiles/prof2/` — the 8 A/B prefill runs, per-run
   `analysis.txt`, `markers.jsonl`, `lock.json`, plus `prefill-summary.md`.
-- `profiles/cached/` — the 3 cache-enabled base-arm runs that priced
-  `MESA_SHADER_CACHE_DISABLE` at 385.0 ms.
+- `profiles/cached/`, `profiles/factorial/` — the 12 runs of the 2x2 that
+  separated the shader-cache flag from the `debugoptimized` build type
+  (3 per cell: packaged and `debugoptimized` ICD, cache on and off).
 - `scripts/` — everything used, including `wp-isadiff.py` (the loop/epilogue
-  split), `whichdriver.py` (the binding proof), and `py-base-cached` (the
-  cache-enabled arm wrapper).
+  split), `whichdriver.py` (the binding proof), and the four arm wrappers
+  `py-base-cached`, `py-system-cached`, `py-system-nocache` plus the two
+  generated by `wp-setup.sh`.
