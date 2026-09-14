@@ -32,6 +32,49 @@ A digest change is a failed fold, not a new baseline. Default remains
 the unfolded graph. Branch `wave/DecodeEpilogueFold` keeps the code and
 the `MLX_OMARCHY_FOLD_EPILOGUE=0` bisection knob.
 
+## Root cause (2026-09-14 later run, DecodeEpilogueFix2)
+
+The 1053 divergence is deterministic (5/5 runs produce
+`31267e7ed4c6d0dc`) — not a race. Full-model cache bisection: decode
+step 0 is bit-exact in every layer's K/V; layer 1's K/V stay exact at
+step 1 while layers 2..23 diverge there, so the flip enters inside one
+block's non-cached path (q rotation or MLP) and grows until an argmax
+flips at generated token 27. The K window store and the SwiGLU store
+are bit-exact wherever their inputs match.
+
+Two defects were separated:
+
+1. **Exchange rounding (fixed, `eab327a8`).** The fold handed its
+   rotation ROUND_STORAGE (packHalf) values while the unfolded graph
+   rotates the memory bits, which the stores round with the typed
+   conversion; Honeykrisp's packHalf deviates from the typed
+   conversion (the same driver fact `50870b69` fixed for the rotation
+   intermediates). The exchange now carries STORE_VALUE bits through
+   shared memory, which no driver can elide. Dispatches stay 177 and
+   the short digest stays on the pin with this fix, but the 1053
+   digest is unchanged (`31267e7ed4c6d0dc`), so this was not the
+   model's first flip.
+2. **Trig chain lowering (named hole, unfixable from source).** A
+   hardened RoPE sweep (offsets 0..63 and 1000..1120, three draws,
+   `d2866b97`) fails 23..32 elements per run on jw16, all in q_rot /
+   k_rot, all 1-2 f16 ulps, with GEMV outputs and sums bit-exact. A
+   host oracle (exact fp32/fp64 chain, f16 RTNE at each step)
+   reproduces NEITHER arm: fast_rope.comp and the fold's rotation each
+   deviate from IEEE at boundary thetas in different directions.
+   Honeykrisp (Asahi) lowers the exp/cos/sin and product-subtract
+   chain differently in qmm_vec.comp than in fast_rope.comp, and that
+   lowering is outside GLSL source control. Flip rate on real-value
+   distributions is ~1/25k rotations, which a full 1053 decode always
+   hits.
+
+On llvmpipe the full suite including the hardened sweep passes
+(fused_chain 33/33 with 1,252,861 assertions, kv_ops 16/16), so the
+fold is bit-exact on an IEEE driver. Both fleet laptops are M1 Max
+Asahi (Honeykrisp), so the gate cannot pass on either host. jwm1 was
+not measured: jw16 never went green, and the failure is in the shared
+driver, not the host. **Verdict stands: does not land.** The knob
+stays `MLX_OMARCHY_FOLD_EPILOGUE`, default on only in this branch.
+
 ## Identity
 
 - Branch: `wave/DecodeEpilogueFold` at `50870b69` (fold) on parent
