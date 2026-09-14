@@ -15,8 +15,9 @@ boundary).
 
 ```
 ane_export.py               this tool (stdlib-only Python 3.10+)
+test_ane_export.py          converter-contract tests (run on Linux)
 ane-compile-hwx             built on the mac from tools/ane-compile-hwx.mm
-hwxv2-to-anec-patched.py    HWX -> ANEC converter, TD flag word widened
+hwxv2-to-anec.py            HWX -> ANEC converter, copied unmodified
 ```
 
 `ane-compile-hwx` builds with:
@@ -27,10 +28,16 @@ xcrun clang++ -std=c++17 -fblocks -framework Foundation \
   ane-compile-hwx.mm -o ane-compile-hwx
 ```
 
-`hwxv2-to-anec.py` comes from `joshuaswarren/ane-linux-experiments`; the
-`-patched` copy accepts the `0x4401F800` TD flag word this compiler emits next
-to the documented `0xF401F800`. Use a Python 3.10+ interpreter for it
-(Xcode's bundled Python 3.9 is too old; the proof used a 3.12 venv).
+`hwxv2-to-anec.py` is the canonical converter from
+`joshuaswarren/ane-linux-experiments` (`tools/hwxv2-to-anec.py`), copied in
+unmodified - do not fork it. It must be 52a3211 or later: that commit reads
+the weight payload offset out of the blob record and derives the nchw plane
+and row bytes from the task's tile-DMA counts, and it subsumes the old
+`-patched` fork's widened TD flag word (`0x4401F800`). The exporter refuses
+an older copy, and passes `--weights` so a blob-backed object without its
+`weights.bin` is refused rather than silently truncated. Use a Python 3.10+
+interpreter for it (Xcode's bundled Python 3.9 is too old; the proof used a
+3.12 venv).
 
 ## Workflow
 
