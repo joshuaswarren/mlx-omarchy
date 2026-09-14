@@ -1,0 +1,823 @@
+{
+ "capture_sha256": {
+  "manifest.sha256": "ab37e0317ced1587cbe35aca39a08265b9af01120ffd668ee4cbf706e1ecbe19",
+  "tdt_tensors.json": "6eaf2bfe801584af570cd66f42e8dc17efd67776fb181f691585d2bcab590e0a"
+ },
+ "cpu_contract_search": {
+  "sigmoid_exact_matches": [
+   "sig:exact:161616",
+   "sig:exact:163216",
+   "sig:exact:321616",
+   "sig:exact:323216",
+   "sig:recip:323216",
+   "sig:posexp:323216",
+   "sig:exp2.e64:323216",
+   "sig:exp2.e32:323216",
+   "sig:exp2wide.e64:323216",
+   "sig:exp2wide.e32:323216",
+   "sig:f32exact->f16",
+   "sig:f32recip->f16",
+   "sig:f64exact->f16"
+  ],
+  "sigmoid_lanes": 1536,
+  "sigmoid_top": [
+   [
+    "sig:exact:161616",
+    1536
+   ],
+   [
+    "sig:exact:163216",
+    1536
+   ],
+   [
+    "sig:exact:321616",
+    1536
+   ],
+   [
+    "sig:exact:323216",
+    1536
+   ],
+   [
+    "sig:recip:323216",
+    1536
+   ],
+   [
+    "sig:posexp:323216",
+    1536
+   ],
+   [
+    "sig:exp2.e64:323216",
+    1536
+   ],
+   [
+    "sig:exp2.e32:323216",
+    1536
+   ],
+   [
+    "sig:exp2wide.e64:323216",
+    1536
+   ],
+   [
+    "sig:exp2wide.e32:323216",
+    1536
+   ],
+   [
+    "sig:f32exact->f16",
+    1536
+   ],
+   [
+    "sig:f32recip->f16",
+    1536
+   ]
+  ],
+  "tanh_exact_matches": [
+   "tanh:exact:161616",
+   "tanh:exact:163216",
+   "tanh:exact:321616",
+   "tanh:exact:323216",
+   "tanh:negexp:323216",
+   "tanh:posexp:323216",
+   "tanh:via_sig[sig:exact:161632]:161616",
+   "tanh:via_sig[sig:exact:161632]:163216",
+   "tanh:via_sig[sig:exact:161632]:321616",
+   "tanh:via_sig[sig:exact:161632]:323216",
+   "tanh:via_sig_r[sig:exact:161632]:163216",
+   "tanh:via_sig_r[sig:exact:161632]:323216",
+   "tanh:sigshift[sig:exact:161632]:163216",
+   "tanh:sigshift[sig:exact:161632]:323216",
+   "tanh:via_sig[sig:exact:163232]:161616",
+   "tanh:via_sig[sig:exact:163232]:163216",
+   "tanh:via_sig[sig:exact:163232]:321616",
+   "tanh:via_sig[sig:exact:163232]:323216",
+   "tanh:via_sig_r[sig:exact:163232]:163216",
+   "tanh:via_sig_r[sig:exact:163232]:323216",
+   "tanh:sigshift[sig:exact:163232]:163216",
+   "tanh:sigshift[sig:exact:163232]:323216",
+   "tanh:via_sig[sig:exact:321632]:161616",
+   "tanh:via_sig[sig:exact:321632]:163216",
+   "tanh:via_sig[sig:exact:321632]:321616",
+   "tanh:via_sig[sig:exact:321632]:323216",
+   "tanh:via_sig_r[sig:exact:321632]:163216",
+   "tanh:via_sig_r[sig:exact:321632]:323216",
+   "tanh:sigshift[sig:exact:321632]:163216",
+   "tanh:sigshift[sig:exact:321632]:323216",
+   "tanh:via_sig[sig:exact:323232]:161616",
+   "tanh:via_sig[sig:exact:323232]:163216",
+   "tanh:via_sig[sig:exact:323232]:321616",
+   "tanh:via_sig[sig:exact:323232]:323216",
+   "tanh:via_sig_r[sig:exact:323232]:163216",
+   "tanh:via_sig_r[sig:exact:323232]:323216",
+   "tanh:sigshift[sig:exact:323232]:163216",
+   "tanh:sigshift[sig:exact:323232]:323216",
+   "tanh:via_sig[sig:fromtanh:163232]:161616",
+   "tanh:via_sig[sig:fromtanh:163232]:161632",
+   "tanh:via_sig[sig:fromtanh:163232]:163216",
+   "tanh:via_sig[sig:fromtanh:163232]:163232",
+   "tanh:via_sig[sig:fromtanh:163232]:321616",
+   "tanh:via_sig[sig:fromtanh:163232]:321632",
+   "tanh:via_sig[sig:fromtanh:163232]:323216",
+   "tanh:via_sig[sig:fromtanh:163232]:323232",
+   "tanh:via_sig_r[sig:fromtanh:163232]:163216",
+   "tanh:via_sig_r[sig:fromtanh:163232]:163232",
+   "tanh:via_sig_r[sig:fromtanh:163232]:323216",
+   "tanh:via_sig_r[sig:fromtanh:163232]:323232",
+   "tanh:sigshift[sig:fromtanh:163232]:163216",
+   "tanh:sigshift[sig:fromtanh:163232]:163232",
+   "tanh:sigshift[sig:fromtanh:163232]:323216",
+   "tanh:sigshift[sig:fromtanh:163232]:323232",
+   "tanh:via_sig[sig:fromtanh:323232]:161616",
+   "tanh:via_sig[sig:fromtanh:323232]:163216",
+   "tanh:via_sig[sig:fromtanh:323232]:321616",
+   "tanh:via_sig[sig:fromtanh:323232]:323216",
+   "tanh:via_sig_r[sig:fromtanh:323232]:163216",
+   "tanh:via_sig_r[sig:fromtanh:323232]:323216",
+   "tanh:sigshift[sig:fromtanh:323232]:163216",
+   "tanh:sigshift[sig:fromtanh:323232]:323216",
+   "tanh:f32exact->f16",
+   "tanh:f64exact->f16"
+  ],
+  "tanh_lanes": 1536,
+  "tanh_top": [
+   [
+    "tanh:exact:161616",
+    1536
+   ],
+   [
+    "tanh:exact:163216",
+    1536
+   ],
+   [
+    "tanh:exact:321616",
+    1536
+   ],
+   [
+    "tanh:exact:323216",
+    1536
+   ],
+   [
+    "tanh:negexp:323216",
+    1536
+   ],
+   [
+    "tanh:posexp:323216",
+    1536
+   ],
+   [
+    "tanh:via_sig[sig:exact:161632]:161616",
+    1536
+   ],
+   [
+    "tanh:via_sig[sig:exact:161632]:163216",
+    1536
+   ],
+   [
+    "tanh:via_sig[sig:exact:161632]:321616",
+    1536
+   ],
+   [
+    "tanh:via_sig[sig:exact:161632]:323216",
+    1536
+   ],
+   [
+    "tanh:via_sig_r[sig:exact:161632]:163216",
+    1536
+   ],
+   [
+    "tanh:via_sig_r[sig:exact:161632]:323216",
+    1536
+   ]
+  ]
+ },
+ "decoder_compute_plan": {
+  "all": {
+   "linear": [
+    {
+     "output": "linear_0_cast_fp16",
+     "preferred": "MLCPUComputeDevice",
+     "supported": [
+      "MLCPUComputeDevice",
+      "MLGPUComputeDevice",
+      "MLNeuralEngineComputeDevice"
+     ]
+    }
+   ],
+   "lstm": [
+    {
+     "output": "input_lstm_layer_0_cast_fp16_0",
+     "preferred": "MLCPUComputeDevice",
+     "supported": [
+      "MLCPUComputeDevice",
+      "MLGPUComputeDevice"
+     ],
+     "weight": 0.49999608710729876
+    },
+    {
+     "output": "input_batch_first_cast_fp16_0",
+     "preferred": "MLCPUComputeDevice",
+     "supported": [
+      "MLCPUComputeDevice",
+      "MLGPUComputeDevice"
+     ],
+     "weight": 0.49999608710729876
+    }
+   ],
+   "ops": 69,
+   "ops_preferred_non_cpu": [],
+   "ops_with_ne_supported": [
+    "split_0_cast_fp16_0",
+    "split_1_cast_fp16_0",
+    "input_lstm_layer_0_lstm_h0_squeeze_cast_fp16",
+    "input_lstm_layer_0_lstm_c0_squeeze_cast_fp16",
+    "input_1_batch_first_transpose_cast_fp16",
+    "input_batch_first_lstm_h0_squeeze_cast_fp16",
+    "input_batch_first_lstm_c0_squeeze_cast_fp16",
+    "var_26_cast_fp16",
+    "var_27_cast_fp16",
+    "input_cast_fp16",
+    "linear_0_cast_fp16"
+   ],
+   "preferred_devices": [
+    "MLCPUComputeDevice"
+   ]
+  },
+  "cpu_and_gpu": {
+   "linear": [
+    {
+     "output": "linear_0_cast_fp16",
+     "preferred": "MLCPUComputeDevice",
+     "supported": [
+      "MLCPUComputeDevice",
+      "MLGPUComputeDevice"
+     ]
+    }
+   ],
+   "lstm": [
+    {
+     "output": "input_lstm_layer_0_cast_fp16_0",
+     "preferred": "MLCPUComputeDevice",
+     "supported": [
+      "MLCPUComputeDevice",
+      "MLGPUComputeDevice"
+     ],
+     "weight": 0.49999608710729876
+    },
+    {
+     "output": "input_batch_first_cast_fp16_0",
+     "preferred": "MLCPUComputeDevice",
+     "supported": [
+      "MLCPUComputeDevice",
+      "MLGPUComputeDevice"
+     ],
+     "weight": 0.49999608710729876
+    }
+   ],
+   "ops": 69,
+   "ops_preferred_non_cpu": [],
+   "ops_with_ne_supported": [],
+   "preferred_devices": [
+    "MLCPUComputeDevice"
+   ]
+  },
+  "cpu_and_ne": {
+   "linear": [
+    {
+     "output": "linear_0_cast_fp16",
+     "preferred": "MLCPUComputeDevice",
+     "supported": [
+      "MLCPUComputeDevice",
+      "MLNeuralEngineComputeDevice"
+     ]
+    }
+   ],
+   "lstm": [
+    {
+     "output": "input_lstm_layer_0_cast_fp16_0",
+     "preferred": "MLCPUComputeDevice",
+     "supported": [
+      "MLCPUComputeDevice"
+     ],
+     "weight": 0.49999608710729876
+    },
+    {
+     "output": "input_batch_first_cast_fp16_0",
+     "preferred": "MLCPUComputeDevice",
+     "supported": [
+      "MLCPUComputeDevice"
+     ],
+     "weight": 0.49999608710729876
+    }
+   ],
+   "ops": 69,
+   "ops_preferred_non_cpu": [],
+   "ops_with_ne_supported": [
+    "split_0_cast_fp16_0",
+    "split_1_cast_fp16_0",
+    "input_lstm_layer_0_lstm_h0_squeeze_cast_fp16",
+    "input_lstm_layer_0_lstm_c0_squeeze_cast_fp16",
+    "input_1_batch_first_transpose_cast_fp16",
+    "input_batch_first_lstm_h0_squeeze_cast_fp16",
+    "input_batch_first_lstm_c0_squeeze_cast_fp16",
+    "var_26_cast_fp16",
+    "var_27_cast_fp16",
+    "input_cast_fp16",
+    "linear_0_cast_fp16"
+   ],
+   "preferred_devices": [
+    "MLCPUComputeDevice"
+   ]
+  },
+  "cpu_only": {
+   "linear": [
+    {
+     "output": "linear_0_cast_fp16",
+     "preferred": "MLCPUComputeDevice",
+     "supported": [
+      "MLCPUComputeDevice"
+     ]
+    }
+   ],
+   "lstm": [
+    {
+     "output": "input_lstm_layer_0_cast_fp16_0",
+     "preferred": "MLCPUComputeDevice",
+     "supported": [
+      "MLCPUComputeDevice"
+     ],
+     "weight": 0.49999608710729876
+    },
+    {
+     "output": "input_batch_first_cast_fp16_0",
+     "preferred": "MLCPUComputeDevice",
+     "supported": [
+      "MLCPUComputeDevice"
+     ],
+     "weight": 0.49999608710729876
+    }
+   ],
+   "ops": 69,
+   "ops_preferred_non_cpu": [],
+   "ops_with_ne_supported": [],
+   "preferred_devices": [
+    "MLCPUComputeDevice"
+   ]
+  }
+ },
+ "decoder_rerun_equal_to_capture": {
+  "all": {
+   "decoder_hidden": [
+    640,
+    640
+   ],
+   "next_cell": [
+    1280,
+    1280
+   ],
+   "next_hidden": [
+    1280,
+    1280
+   ]
+  },
+  "cpu_and_gpu": {
+   "decoder_hidden": [
+    640,
+    640
+   ],
+   "next_cell": [
+    1280,
+    1280
+   ],
+   "next_hidden": [
+    1280,
+    1280
+   ]
+  },
+  "cpu_and_ne": {
+   "decoder_hidden": [
+    640,
+    640
+   ],
+   "next_cell": [
+    1280,
+    1280
+   ],
+   "next_hidden": [
+    1280,
+    1280
+   ]
+  },
+  "cpu_only": {
+   "decoder_hidden": [
+    640,
+    640
+   ],
+   "next_cell": [
+    1280,
+    1280
+   ],
+   "next_hidden": [
+    1280,
+    1280
+   ]
+  }
+ },
+ "fp16_chain_sigmoid_correctly_rounded_tanh_reference": {
+  "next_cell_lanes_of_640": 500,
+  "next_hidden_lanes_of_640": 486
+ },
+ "mac_cpu_sigmoid_minus_correctly_rounded_ulps_1536": {
+  "bit_exact": 1536,
+  "exceptions": [],
+  "histogram": {
+   "0": 1536
+  },
+  "max_abs": 0
+ },
+ "mac_cpu_tanh_minus_correctly_rounded_ulps_1536": {
+  "bit_exact": 1536,
+  "exceptions": [],
+  "histogram": {
+   "0": 1536
+  },
+  "max_abs": 0
+ },
+ "mac_cpu_vs_jwm1_lut_equal_1536": {
+  "sigmoid": 179,
+  "tanh": 152
+ },
+ "mac_decoder_sha256": {
+  "Data/com.apple.CoreML/model.mlmodel": "8d068618a9fd3a981d6cbc09ae9643a25b2e382f2c3e05d3b9412b9c25a4372e",
+  "Data/com.apple.CoreML/weights/weight.bin": "36cd656ebf1105ee5aa85d1e55c00f25669327aef8b39346333a19260ca78018",
+  "Manifest.json": "ef610fe0ccaff752f58f086772207ffb08970e67bf41fd07c923f9e006f8e4ec"
+ },
+ "mac_files_sha256": {
+  "dec_all_decoder_hidden.npy": "b4c4a15d16ff056012bae2ff5d1e35e8bba250ea7b1226886ac5068700deae86",
+  "dec_all_next_cell.npy": "db45ab2a39a96b5de59c9b32cdc483e591c6520131b3b3ea46ae33a7b8b53bd7",
+  "dec_all_next_hidden.npy": "d2bb964afa147ca44c16810174db1441c5ef5d23074343cac059fcdf3976efbd",
+  "dec_cpu_and_gpu_decoder_hidden.npy": "b4c4a15d16ff056012bae2ff5d1e35e8bba250ea7b1226886ac5068700deae86",
+  "dec_cpu_and_gpu_next_cell.npy": "db45ab2a39a96b5de59c9b32cdc483e591c6520131b3b3ea46ae33a7b8b53bd7",
+  "dec_cpu_and_gpu_next_hidden.npy": "d2bb964afa147ca44c16810174db1441c5ef5d23074343cac059fcdf3976efbd",
+  "dec_cpu_and_ne_decoder_hidden.npy": "b4c4a15d16ff056012bae2ff5d1e35e8bba250ea7b1226886ac5068700deae86",
+  "dec_cpu_and_ne_next_cell.npy": "db45ab2a39a96b5de59c9b32cdc483e591c6520131b3b3ea46ae33a7b8b53bd7",
+  "dec_cpu_and_ne_next_hidden.npy": "d2bb964afa147ca44c16810174db1441c5ef5d23074343cac059fcdf3976efbd",
+  "dec_cpu_only_decoder_hidden.npy": "b4c4a15d16ff056012bae2ff5d1e35e8bba250ea7b1226886ac5068700deae86",
+  "dec_cpu_only_next_cell.npy": "db45ab2a39a96b5de59c9b32cdc483e591c6520131b3b3ea46ae33a7b8b53bd7",
+  "dec_cpu_only_next_hidden.npy": "d2bb964afa147ca44c16810174db1441c5ef5d23074343cac059fcdf3976efbd",
+  "mac_result.json": "13edde84a363f756cf8393a4dde863e7e86b8130965d2aa5f9dec47a259c7eea",
+  "y_all_sigmoid.bin": "f9c34dafaaa89890fe7c0e9fc1e6e58f95ba05746794d6ef98364e3d8ff9e1a0",
+  "y_all_tanh.bin": "aa62e7af7d2411f40a2b266c5cb9a30b590c1d378697e3ba004315a6227f4115",
+  "y_cpu_and_gpu_sigmoid.bin": "f9c34dafaaa89890fe7c0e9fc1e6e58f95ba05746794d6ef98364e3d8ff9e1a0",
+  "y_cpu_and_gpu_tanh.bin": "aa62e7af7d2411f40a2b266c5cb9a30b590c1d378697e3ba004315a6227f4115",
+  "y_cpu_and_ne_sigmoid.bin": "f9c34dafaaa89890fe7c0e9fc1e6e58f95ba05746794d6ef98364e3d8ff9e1a0",
+  "y_cpu_and_ne_tanh.bin": "aa62e7af7d2411f40a2b266c5cb9a30b590c1d378697e3ba004315a6227f4115",
+  "y_cpu_only_sigmoid.bin": "f9c34dafaaa89890fe7c0e9fc1e6e58f95ba05746794d6ef98364e3d8ff9e1a0",
+  "y_cpu_only_tanh.bin": "aa62e7af7d2411f40a2b266c5cb9a30b590c1d378697e3ba004315a6227f4115"
+ },
+ "mac_fixture_sha256": {
+  "tdt_trace_0000_decoder_cell.npy": "19be62ce9079c75fbdbffc23d66c6e6dd58f879c3c8d6e5b716dbb1cd7b25ba1",
+  "tdt_trace_0000_decoder_hidden.npy": "19be62ce9079c75fbdbffc23d66c6e6dd58f879c3c8d6e5b716dbb1cd7b25ba1",
+  "tdt_trace_0000_decoder_input_ids.npy": "e1b141534837c9c293c0352f0d3a35424f802d670ff281df8a39b23d1c52c43e",
+  "tdt_trace_0000_decoder_next_cell.npy": "74abdb0dda687ef9942eb8672f800aa43b08d28912150128af3504223021dac8",
+  "tdt_trace_0000_decoder_next_hidden.npy": "62f936c75aa03b488628896fb519d47cb632807f0227d47d0261893e05534b80",
+  "tdt_trace_0000_decoder_output_hidden.npy": "b6b38b7287084b9aa426d63f7e62c8268d20ed22c7c6b170124c3e1d38d3ba88",
+  "x_sigmoid_0.bin": "f19358801b9fe10791f8e650b4eca86684f8f00477a65051c3d7557c6696c154",
+  "x_sigmoid_1.bin": "4779e2ac065f72a9530ebc19295e4fd80cf0f1ed927f194f9881fa23dd402174",
+  "x_sigmoid_2.bin": "5f45aa4ee80d32c3b22c8ec1dd455cce5bf218e4f0b9639a5b7d34995843e1b3",
+  "x_tanh_0.bin": "eacdf70c84036ae08435bba1afea6c25edab9af67cd196a7384168837927d226",
+  "x_tanh_1.bin": "ceb9b9df1445ad674e8e9e688efcdda185fb97f433a3ce7b7ec8ee0c6551c37c",
+  "x_tanh_2.bin": "da08bd08eeda3e868def710e4025b22d0ec2993c550efd3defd42d61da3ec998"
+ },
+ "mac_host": {
+  "build": "25G83",
+  "chip": "Apple M1 Ultra",
+  "coreml_framework": "3520.5.1",
+  "coremltools": "9.0",
+  "hostname": "MacStudio.local",
+  "hw_model": "Mac13,2",
+  "macos": "26.6.2",
+  "numpy": "1.26.4",
+  "python": "3.11.16"
+ },
+ "named_hole": "parakeet.tdt.decoder-lstm.fp16-elementwise-activation-vs-native-coreml",
+ "oneop_compute_plan": {
+  "all": [
+   [
+    "ios18.sigmoid",
+    "MLCPUComputeDevice",
+    [
+     "MLCPUComputeDevice",
+     "MLGPUComputeDevice",
+     "MLNeuralEngineComputeDevice"
+    ]
+   ],
+   [
+    "ios18.tanh",
+    "MLCPUComputeDevice",
+    [
+     "MLCPUComputeDevice",
+     "MLGPUComputeDevice",
+     "MLNeuralEngineComputeDevice"
+    ]
+   ]
+  ],
+  "cpu_and_gpu": [
+   [
+    "ios18.sigmoid",
+    "MLCPUComputeDevice",
+    [
+     "MLCPUComputeDevice",
+     "MLGPUComputeDevice"
+    ]
+   ],
+   [
+    "ios18.tanh",
+    "MLCPUComputeDevice",
+    [
+     "MLCPUComputeDevice",
+     "MLGPUComputeDevice"
+    ]
+   ]
+  ],
+  "cpu_and_ne": [
+   [
+    "ios18.sigmoid",
+    "MLCPUComputeDevice",
+    [
+     "MLCPUComputeDevice",
+     "MLNeuralEngineComputeDevice"
+    ]
+   ],
+   [
+    "ios18.tanh",
+    "MLCPUComputeDevice",
+    [
+     "MLCPUComputeDevice",
+     "MLNeuralEngineComputeDevice"
+    ]
+   ]
+  ],
+  "cpu_only": [
+   [
+    "ios18.sigmoid",
+    "MLCPUComputeDevice",
+    [
+     "MLCPUComputeDevice"
+    ]
+   ],
+   [
+    "ios18.tanh",
+    "MLCPUComputeDevice",
+    [
+     "MLCPUComputeDevice"
+    ]
+   ]
+  ]
+ },
+ "per_unit": {
+  "all": {
+   "next_cell_lanes_of_640": 413,
+   "next_hidden_lanes_of_640": 403,
+   "sigmoid_equal_correctly_rounded_on_1280_args": 1280,
+   "sigmoid_equal_fp16_chain_on_1280_args": 899,
+   "sigmoid_refuting_tanh_arguments": [
+    67,
+    1198
+   ],
+   "tanh_equal_correctly_rounded_on_1280_args": 1280,
+   "tanh_equal_to_949_conditional_native": [
+    703,
+    949
+   ],
+   "tanh_refuting_sigmoid_arguments": [
+    49,
+    1172
+   ]
+  },
+  "cpu_and_gpu": {
+   "next_cell_lanes_of_640": 413,
+   "next_hidden_lanes_of_640": 403,
+   "sigmoid_equal_correctly_rounded_on_1280_args": 1280,
+   "sigmoid_equal_fp16_chain_on_1280_args": 899,
+   "sigmoid_refuting_tanh_arguments": [
+    67,
+    1198
+   ],
+   "tanh_equal_correctly_rounded_on_1280_args": 1280,
+   "tanh_equal_to_949_conditional_native": [
+    703,
+    949
+   ],
+   "tanh_refuting_sigmoid_arguments": [
+    49,
+    1172
+   ]
+  },
+  "cpu_and_ne": {
+   "next_cell_lanes_of_640": 413,
+   "next_hidden_lanes_of_640": 403,
+   "sigmoid_equal_correctly_rounded_on_1280_args": 1280,
+   "sigmoid_equal_fp16_chain_on_1280_args": 899,
+   "sigmoid_refuting_tanh_arguments": [
+    67,
+    1198
+   ],
+   "tanh_equal_correctly_rounded_on_1280_args": 1280,
+   "tanh_equal_to_949_conditional_native": [
+    703,
+    949
+   ],
+   "tanh_refuting_sigmoid_arguments": [
+    49,
+    1172
+   ]
+  },
+  "cpu_only": {
+   "next_cell_lanes_of_640": 413,
+   "next_hidden_lanes_of_640": 403,
+   "sigmoid_equal_correctly_rounded_on_1280_args": 1280,
+   "sigmoid_equal_fp16_chain_on_1280_args": 899,
+   "sigmoid_refuting_tanh_arguments": [
+    67,
+    1198
+   ],
+   "tanh_equal_correctly_rounded_on_1280_args": 1280,
+   "tanh_equal_to_949_conditional_native": [
+    703,
+    949
+   ],
+   "tanh_refuting_sigmoid_arguments": [
+    49,
+    1172
+   ]
+  },
+  "jwm1_h13_lut": {
+   "next_cell_lanes_of_640": 19,
+   "next_hidden_lanes_of_640": 31,
+   "sigmoid_equal_correctly_rounded_on_1280_args": 116,
+   "sigmoid_equal_fp16_chain_on_1280_args": 122,
+   "sigmoid_refuting_tanh_arguments": [
+    171,
+    1198
+   ],
+   "tanh_equal_correctly_rounded_on_1280_args": 99,
+   "tanh_equal_to_949_conditional_native": [
+    59,
+    949
+   ],
+   "tanh_refuting_sigmoid_arguments": [
+    194,
+    1172
+   ]
+  }
+ },
+ "pins": {
+  "sigmoid": {
+   "all": [
+    9,
+    11
+   ],
+   "cpu_and_gpu": [
+    9,
+    11
+   ],
+   "cpu_and_ne": [
+    9,
+    11
+   ],
+   "cpu_only": [
+    9,
+    11
+   ],
+   "jwm1_h13_lut": [
+    0,
+    11
+   ],
+   "rows": [
+    {
+     "argument": -0.2880859375,
+     "mac_cpu": 0.428466796875,
+     "native": 0.428466796875
+    },
+    {
+     "argument": 0.09002685546875,
+     "mac_cpu": 0.5224609375,
+     "native": 0.5224609375
+    },
+    {
+     "argument": 0.1544189453125,
+     "mac_cpu": 0.53857421875,
+     "native": 0.53857421875
+    },
+    {
+     "argument": 0.1546630859375,
+     "mac_cpu": 0.53857421875,
+     "native": 0.53857421875
+    },
+    {
+     "argument": 0.26123046875,
+     "mac_cpu": 0.56494140625,
+     "native": 0.56494140625
+    },
+    {
+     "argument": 0.314453125,
+     "mac_cpu": 0.578125,
+     "native": 0.57763671875
+    },
+    {
+     "argument": 0.43896484375,
+     "mac_cpu": 0.60791015625,
+     "native": 0.60791015625
+    },
+    {
+     "argument": 0.52978515625,
+     "mac_cpu": 0.62939453125,
+     "native": 0.62939453125
+    },
+    {
+     "argument": 0.56640625,
+     "mac_cpu": 0.6376953125,
+     "native": 0.63818359375
+    },
+    {
+     "argument": 0.56689453125,
+     "mac_cpu": 0.63818359375,
+     "native": 0.63818359375
+    },
+    {
+     "argument": 0.56787109375,
+     "mac_cpu": 0.63818359375,
+     "native": 0.63818359375
+    }
+   ]
+  },
+  "tanh": {
+   "all": [
+    7,
+    8
+   ],
+   "cpu_and_gpu": [
+    7,
+    8
+   ],
+   "cpu_and_ne": [
+    7,
+    8
+   ],
+   "cpu_only": [
+    7,
+    8
+   ],
+   "jwm1_h13_lut": [
+    1,
+    8
+   ],
+   "rows": [
+    {
+     "argument": -1.099609375,
+     "mac_cpu": -0.80029296875,
+     "native": -0.80029296875
+    },
+    {
+     "argument": -0.681640625,
+     "mac_cpu": -0.5927734375,
+     "native": -0.5927734375
+    },
+    {
+     "argument": -0.560546875,
+     "mac_cpu": -0.50830078125,
+     "native": -0.50830078125
+    },
+    {
+     "argument": -0.11395263671875,
+     "mac_cpu": -0.11346435546875,
+     "native": -0.11346435546875
+    },
+    {
+     "argument": 0.28271484375,
+     "mac_cpu": 0.275390625,
+     "native": 0.275390625
+    },
+    {
+     "argument": 0.319091796875,
+     "mac_cpu": 0.30859375,
+     "native": 0.308837890625
+    },
+    {
+     "argument": 0.458984375,
+     "mac_cpu": 0.42919921875,
+     "native": 0.42919921875
+    },
+    {
+     "argument": 0.6220703125,
+     "mac_cpu": 0.552734375,
+     "native": 0.552734375
+    }
+   ]
+  }
+ },
+ "schema": "mlx-omarchy.parakeet-decoder-activation-capture-mac/1",
+ "transition": 0,
+ "units_identical_outputs": {
+  "sigmoid": true,
+  "tanh": true
+ }
+}

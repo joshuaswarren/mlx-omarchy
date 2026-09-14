@@ -1,0 +1,3477 @@
+{
+ "decoder_compute_plan": {
+  "all": [
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_1_batch_dims_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_1_validate_indices_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "embedding_weight_to_fp16"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_ids_to_int16_dtype_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "cast_1_dtype_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "greater_equal_0_y_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "ios18.cast",
+    "outputs": [
+     "input_ids_to_int16"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice",
+     "MLGPUComputeDevice"
+    ],
+    "weight": 1.9586864387902046e-12
+   },
+   {
+    "function": "main",
+    "op": "ios18.cast",
+    "outputs": [
+     "cast_1"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice",
+     "MLGPUComputeDevice"
+    ],
+    "weight": 1.9586864387902046e-12
+   },
+   {
+    "function": "main",
+    "op": "ios18.greater_equal",
+    "outputs": [
+     "greater_equal_0"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice",
+     "MLGPUComputeDevice"
+    ],
+    "weight": 2.9380296581853067e-12
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "slice_by_index_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "ios18.add",
+    "outputs": [
+     "add_2"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice",
+     "MLGPUComputeDevice"
+    ],
+    "weight": 3.860073253002245e-12
+   },
+   {
+    "function": "main",
+    "op": "select",
+    "outputs": [
+     "select_0"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice",
+     "MLGPUComputeDevice"
+    ],
+    "weight": 4.243820617378776e-12
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_1_cast_fp16_cast_uint16_axis_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "select_0_to_int16_dtype_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "ios18.cast",
+    "outputs": [
+     "select_0_to_int16"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice",
+     "MLGPUComputeDevice"
+    ],
+    "weight": 1.9586864387902046e-12
+   },
+   {
+    "function": "main",
+    "op": "ios18.gather",
+    "outputs": [
+     "input_1_cast_fp16_cast_uint16_cast_uint16"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice",
+     "MLGPUComputeDevice"
+    ],
+    "weight": 7.59014481918075e-06
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_1_batch_first_transpose_perm_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "split_0_num_splits_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "split_0_axis_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "hidden_to_fp16_dtype_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "ios18.cast",
+    "outputs": [
+     "hidden_to_fp16"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice",
+     "MLGPUComputeDevice"
+    ],
+    "weight": 2.5071186416514616e-09
+   },
+   {
+    "function": "main",
+    "op": "split",
+    "outputs": [
+     "split_0_cast_fp16_0",
+     "split_0_cast_fp16_1"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice",
+     "MLGPUComputeDevice",
+     "MLNeuralEngineComputeDevice"
+    ],
+    "weight": 1.2561709027441178e-09
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "split_1_num_splits_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "split_1_axis_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "cell_to_fp16_dtype_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "ios18.cast",
+    "outputs": [
+     "cell_to_fp16"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice",
+     "MLGPUComputeDevice"
+    ],
+    "weight": 2.5071186416514616e-09
+   },
+   {
+    "function": "main",
+    "op": "split",
+    "outputs": [
+     "split_1_cast_fp16_0",
+     "split_1_cast_fp16_1"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice",
+     "MLGPUComputeDevice",
+     "MLNeuralEngineComputeDevice"
+    ],
+    "weight": 1.2561709027441178e-09
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_lstm_layer_0_lstm_h0_squeeze_axes_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "ios18.squeeze",
+    "outputs": [
+     "input_lstm_layer_0_lstm_h0_squeeze_cast_fp16"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice",
+     "MLGPUComputeDevice",
+     "MLNeuralEngineComputeDevice"
+    ],
+    "weight": 8.37012004843014e-10
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_lstm_layer_0_lstm_c0_squeeze_axes_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "ios18.squeeze",
+    "outputs": [
+     "input_lstm_layer_0_lstm_c0_squeeze_cast_fp16"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice",
+     "MLGPUComputeDevice",
+     "MLNeuralEngineComputeDevice"
+    ],
+    "weight": 8.37012004843014e-10
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_lstm_layer_0_direction_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_lstm_layer_0_output_sequence_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_lstm_layer_0_recurrent_activation_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_lstm_layer_0_cell_activation_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_lstm_layer_0_activation_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "concat_1_to_fp16"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "concat_2_to_fp16"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "concat_0_to_fp16"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "ios18.transpose",
+    "outputs": [
+     "input_1_batch_first_transpose_cast_fp16"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice",
+     "MLGPUComputeDevice",
+     "MLNeuralEngineComputeDevice"
+    ],
+    "weight": 8.886019898796354e-09
+   },
+   {
+    "function": "main",
+    "op": "ios18.lstm",
+    "outputs": [
+     "input_lstm_layer_0_cast_fp16_0",
+     "input_lstm_layer_0_cast_fp16_1",
+     "input_lstm_layer_0_cast_fp16_2"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice",
+     "MLGPUComputeDevice"
+    ],
+    "weight": 0.49999608710729876
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_batch_first_lstm_h0_squeeze_axes_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "ios18.squeeze",
+    "outputs": [
+     "input_batch_first_lstm_h0_squeeze_cast_fp16"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice",
+     "MLGPUComputeDevice",
+     "MLNeuralEngineComputeDevice"
+    ],
+    "weight": 8.37012004843014e-10
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_batch_first_lstm_c0_squeeze_axes_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "ios18.squeeze",
+    "outputs": [
+     "input_batch_first_lstm_c0_squeeze_cast_fp16"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice",
+     "MLGPUComputeDevice",
+     "MLNeuralEngineComputeDevice"
+    ],
+    "weight": 8.37012004843014e-10
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_batch_first_direction_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_batch_first_output_sequence_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_batch_first_recurrent_activation_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_batch_first_cell_activation_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_batch_first_activation_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "concat_4_to_fp16"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "concat_5_to_fp16"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "concat_3_to_fp16"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "ios18.lstm",
+    "outputs": [
+     "input_batch_first_cast_fp16_0",
+     "input_batch_first_cast_fp16_1",
+     "input_batch_first_cast_fp16_2"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice",
+     "MLGPUComputeDevice"
+    ],
+    "weight": 0.49999608710729876
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_perm_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "var_26_axis_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "stack",
+    "outputs": [
+     "var_26_cast_fp16"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice",
+     "MLGPUComputeDevice",
+     "MLNeuralEngineComputeDevice"
+    ],
+    "weight": 1.2548651117849244e-09
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "var_26_cast_fp16_to_fp32_dtype_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "var_27_axis_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "stack",
+    "outputs": [
+     "var_27_cast_fp16"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice",
+     "MLGPUComputeDevice",
+     "MLNeuralEngineComputeDevice"
+    ],
+    "weight": 1.2548651117849244e-09
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "var_27_cast_fp16_to_fp32_dtype_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "projector_weight_to_fp16"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "projector_bias_to_fp16"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "ios18.transpose",
+    "outputs": [
+     "input_cast_fp16"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice",
+     "MLGPUComputeDevice",
+     "MLNeuralEngineComputeDevice"
+    ],
+    "weight": 8.886019898796354e-09
+   },
+   {
+    "function": "main",
+    "op": "ios18.linear",
+    "outputs": [
+     "linear_0_cast_fp16"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice",
+     "MLGPUComputeDevice",
+     "MLNeuralEngineComputeDevice"
+    ],
+    "weight": 1.9819947173027795e-07
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "linear_0_cast_fp16_to_fp32_dtype_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "ios18.cast",
+    "outputs": [
+     "decoder_hidden"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice",
+     "MLGPUComputeDevice"
+    ],
+    "weight": 1.2535593208257308e-09
+   },
+   {
+    "function": "main",
+    "op": "ios18.cast",
+    "outputs": [
+     "next_cell"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice",
+     "MLGPUComputeDevice"
+    ],
+    "weight": 2.5071186416514616e-09
+   },
+   {
+    "function": "main",
+    "op": "ios18.cast",
+    "outputs": [
+     "next_hidden"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice",
+     "MLGPUComputeDevice"
+    ],
+    "weight": 2.5071186416514616e-09
+   }
+  ],
+  "cpu_and_gpu": [
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_1_batch_dims_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_1_validate_indices_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "embedding_weight_to_fp16"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_ids_to_int16_dtype_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "cast_1_dtype_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "greater_equal_0_y_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "ios18.cast",
+    "outputs": [
+     "input_ids_to_int16"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice",
+     "MLGPUComputeDevice"
+    ],
+    "weight": 1.9586864387902046e-12
+   },
+   {
+    "function": "main",
+    "op": "ios18.cast",
+    "outputs": [
+     "cast_1"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice",
+     "MLGPUComputeDevice"
+    ],
+    "weight": 1.9586864387902046e-12
+   },
+   {
+    "function": "main",
+    "op": "ios18.greater_equal",
+    "outputs": [
+     "greater_equal_0"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice",
+     "MLGPUComputeDevice"
+    ],
+    "weight": 2.9380296581853067e-12
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "slice_by_index_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "ios18.add",
+    "outputs": [
+     "add_2"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice",
+     "MLGPUComputeDevice"
+    ],
+    "weight": 3.860073253002245e-12
+   },
+   {
+    "function": "main",
+    "op": "select",
+    "outputs": [
+     "select_0"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice",
+     "MLGPUComputeDevice"
+    ],
+    "weight": 4.243820617378776e-12
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_1_cast_fp16_cast_uint16_axis_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "select_0_to_int16_dtype_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "ios18.cast",
+    "outputs": [
+     "select_0_to_int16"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice",
+     "MLGPUComputeDevice"
+    ],
+    "weight": 1.9586864387902046e-12
+   },
+   {
+    "function": "main",
+    "op": "ios18.gather",
+    "outputs": [
+     "input_1_cast_fp16_cast_uint16_cast_uint16"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice",
+     "MLGPUComputeDevice"
+    ],
+    "weight": 7.59014481918075e-06
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_1_batch_first_transpose_perm_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "split_0_num_splits_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "split_0_axis_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "hidden_to_fp16_dtype_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "ios18.cast",
+    "outputs": [
+     "hidden_to_fp16"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice",
+     "MLGPUComputeDevice"
+    ],
+    "weight": 2.5071186416514616e-09
+   },
+   {
+    "function": "main",
+    "op": "split",
+    "outputs": [
+     "split_0_cast_fp16_0",
+     "split_0_cast_fp16_1"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice",
+     "MLGPUComputeDevice"
+    ],
+    "weight": 1.2561709027441178e-09
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "split_1_num_splits_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "split_1_axis_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "cell_to_fp16_dtype_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "ios18.cast",
+    "outputs": [
+     "cell_to_fp16"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice",
+     "MLGPUComputeDevice"
+    ],
+    "weight": 2.5071186416514616e-09
+   },
+   {
+    "function": "main",
+    "op": "split",
+    "outputs": [
+     "split_1_cast_fp16_0",
+     "split_1_cast_fp16_1"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice",
+     "MLGPUComputeDevice"
+    ],
+    "weight": 1.2561709027441178e-09
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_lstm_layer_0_lstm_h0_squeeze_axes_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "ios18.squeeze",
+    "outputs": [
+     "input_lstm_layer_0_lstm_h0_squeeze_cast_fp16"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice",
+     "MLGPUComputeDevice"
+    ],
+    "weight": 8.37012004843014e-10
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_lstm_layer_0_lstm_c0_squeeze_axes_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "ios18.squeeze",
+    "outputs": [
+     "input_lstm_layer_0_lstm_c0_squeeze_cast_fp16"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice",
+     "MLGPUComputeDevice"
+    ],
+    "weight": 8.37012004843014e-10
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_lstm_layer_0_direction_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_lstm_layer_0_output_sequence_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_lstm_layer_0_recurrent_activation_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_lstm_layer_0_cell_activation_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_lstm_layer_0_activation_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "concat_1_to_fp16"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "concat_2_to_fp16"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "concat_0_to_fp16"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "ios18.transpose",
+    "outputs": [
+     "input_1_batch_first_transpose_cast_fp16"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice",
+     "MLGPUComputeDevice"
+    ],
+    "weight": 8.886019898796354e-09
+   },
+   {
+    "function": "main",
+    "op": "ios18.lstm",
+    "outputs": [
+     "input_lstm_layer_0_cast_fp16_0",
+     "input_lstm_layer_0_cast_fp16_1",
+     "input_lstm_layer_0_cast_fp16_2"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice",
+     "MLGPUComputeDevice"
+    ],
+    "weight": 0.49999608710729876
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_batch_first_lstm_h0_squeeze_axes_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "ios18.squeeze",
+    "outputs": [
+     "input_batch_first_lstm_h0_squeeze_cast_fp16"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice",
+     "MLGPUComputeDevice"
+    ],
+    "weight": 8.37012004843014e-10
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_batch_first_lstm_c0_squeeze_axes_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "ios18.squeeze",
+    "outputs": [
+     "input_batch_first_lstm_c0_squeeze_cast_fp16"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice",
+     "MLGPUComputeDevice"
+    ],
+    "weight": 8.37012004843014e-10
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_batch_first_direction_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_batch_first_output_sequence_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_batch_first_recurrent_activation_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_batch_first_cell_activation_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_batch_first_activation_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "concat_4_to_fp16"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "concat_5_to_fp16"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "concat_3_to_fp16"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "ios18.lstm",
+    "outputs": [
+     "input_batch_first_cast_fp16_0",
+     "input_batch_first_cast_fp16_1",
+     "input_batch_first_cast_fp16_2"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice",
+     "MLGPUComputeDevice"
+    ],
+    "weight": 0.49999608710729876
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_perm_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "var_26_axis_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "stack",
+    "outputs": [
+     "var_26_cast_fp16"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice",
+     "MLGPUComputeDevice"
+    ],
+    "weight": 1.2548651117849244e-09
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "var_26_cast_fp16_to_fp32_dtype_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "var_27_axis_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "stack",
+    "outputs": [
+     "var_27_cast_fp16"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice",
+     "MLGPUComputeDevice"
+    ],
+    "weight": 1.2548651117849244e-09
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "var_27_cast_fp16_to_fp32_dtype_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "projector_weight_to_fp16"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "projector_bias_to_fp16"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "ios18.transpose",
+    "outputs": [
+     "input_cast_fp16"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice",
+     "MLGPUComputeDevice"
+    ],
+    "weight": 8.886019898796354e-09
+   },
+   {
+    "function": "main",
+    "op": "ios18.linear",
+    "outputs": [
+     "linear_0_cast_fp16"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice",
+     "MLGPUComputeDevice"
+    ],
+    "weight": 1.9819947173027795e-07
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "linear_0_cast_fp16_to_fp32_dtype_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "ios18.cast",
+    "outputs": [
+     "decoder_hidden"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice",
+     "MLGPUComputeDevice"
+    ],
+    "weight": 1.2535593208257308e-09
+   },
+   {
+    "function": "main",
+    "op": "ios18.cast",
+    "outputs": [
+     "next_cell"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice",
+     "MLGPUComputeDevice"
+    ],
+    "weight": 2.5071186416514616e-09
+   },
+   {
+    "function": "main",
+    "op": "ios18.cast",
+    "outputs": [
+     "next_hidden"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice",
+     "MLGPUComputeDevice"
+    ],
+    "weight": 2.5071186416514616e-09
+   }
+  ],
+  "cpu_and_ne": [
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_1_batch_dims_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_1_validate_indices_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "embedding_weight_to_fp16"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_ids_to_int16_dtype_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "cast_1_dtype_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "greater_equal_0_y_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "ios18.cast",
+    "outputs": [
+     "input_ids_to_int16"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice"
+    ],
+    "weight": 1.9586864387902046e-12
+   },
+   {
+    "function": "main",
+    "op": "ios18.cast",
+    "outputs": [
+     "cast_1"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice"
+    ],
+    "weight": 1.9586864387902046e-12
+   },
+   {
+    "function": "main",
+    "op": "ios18.greater_equal",
+    "outputs": [
+     "greater_equal_0"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice"
+    ],
+    "weight": 2.9380296581853067e-12
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "slice_by_index_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "ios18.add",
+    "outputs": [
+     "add_2"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice"
+    ],
+    "weight": 3.860073253002245e-12
+   },
+   {
+    "function": "main",
+    "op": "select",
+    "outputs": [
+     "select_0"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice"
+    ],
+    "weight": 4.243820617378776e-12
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_1_cast_fp16_cast_uint16_axis_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "select_0_to_int16_dtype_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "ios18.cast",
+    "outputs": [
+     "select_0_to_int16"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice"
+    ],
+    "weight": 1.9586864387902046e-12
+   },
+   {
+    "function": "main",
+    "op": "ios18.gather",
+    "outputs": [
+     "input_1_cast_fp16_cast_uint16_cast_uint16"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice"
+    ],
+    "weight": 7.59014481918075e-06
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_1_batch_first_transpose_perm_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "split_0_num_splits_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "split_0_axis_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "hidden_to_fp16_dtype_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "ios18.cast",
+    "outputs": [
+     "hidden_to_fp16"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice"
+    ],
+    "weight": 2.5071186416514616e-09
+   },
+   {
+    "function": "main",
+    "op": "split",
+    "outputs": [
+     "split_0_cast_fp16_0",
+     "split_0_cast_fp16_1"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice",
+     "MLNeuralEngineComputeDevice"
+    ],
+    "weight": 1.2561709027441178e-09
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "split_1_num_splits_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "split_1_axis_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "cell_to_fp16_dtype_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "ios18.cast",
+    "outputs": [
+     "cell_to_fp16"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice"
+    ],
+    "weight": 2.5071186416514616e-09
+   },
+   {
+    "function": "main",
+    "op": "split",
+    "outputs": [
+     "split_1_cast_fp16_0",
+     "split_1_cast_fp16_1"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice",
+     "MLNeuralEngineComputeDevice"
+    ],
+    "weight": 1.2561709027441178e-09
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_lstm_layer_0_lstm_h0_squeeze_axes_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "ios18.squeeze",
+    "outputs": [
+     "input_lstm_layer_0_lstm_h0_squeeze_cast_fp16"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice",
+     "MLNeuralEngineComputeDevice"
+    ],
+    "weight": 8.37012004843014e-10
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_lstm_layer_0_lstm_c0_squeeze_axes_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "ios18.squeeze",
+    "outputs": [
+     "input_lstm_layer_0_lstm_c0_squeeze_cast_fp16"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice",
+     "MLNeuralEngineComputeDevice"
+    ],
+    "weight": 8.37012004843014e-10
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_lstm_layer_0_direction_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_lstm_layer_0_output_sequence_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_lstm_layer_0_recurrent_activation_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_lstm_layer_0_cell_activation_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_lstm_layer_0_activation_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "concat_1_to_fp16"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "concat_2_to_fp16"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "concat_0_to_fp16"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "ios18.transpose",
+    "outputs": [
+     "input_1_batch_first_transpose_cast_fp16"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice",
+     "MLNeuralEngineComputeDevice"
+    ],
+    "weight": 8.886019898796354e-09
+   },
+   {
+    "function": "main",
+    "op": "ios18.lstm",
+    "outputs": [
+     "input_lstm_layer_0_cast_fp16_0",
+     "input_lstm_layer_0_cast_fp16_1",
+     "input_lstm_layer_0_cast_fp16_2"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice"
+    ],
+    "weight": 0.49999608710729876
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_batch_first_lstm_h0_squeeze_axes_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "ios18.squeeze",
+    "outputs": [
+     "input_batch_first_lstm_h0_squeeze_cast_fp16"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice",
+     "MLNeuralEngineComputeDevice"
+    ],
+    "weight": 8.37012004843014e-10
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_batch_first_lstm_c0_squeeze_axes_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "ios18.squeeze",
+    "outputs": [
+     "input_batch_first_lstm_c0_squeeze_cast_fp16"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice",
+     "MLNeuralEngineComputeDevice"
+    ],
+    "weight": 8.37012004843014e-10
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_batch_first_direction_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_batch_first_output_sequence_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_batch_first_recurrent_activation_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_batch_first_cell_activation_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_batch_first_activation_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "concat_4_to_fp16"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "concat_5_to_fp16"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "concat_3_to_fp16"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "ios18.lstm",
+    "outputs": [
+     "input_batch_first_cast_fp16_0",
+     "input_batch_first_cast_fp16_1",
+     "input_batch_first_cast_fp16_2"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice"
+    ],
+    "weight": 0.49999608710729876
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_perm_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "var_26_axis_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "stack",
+    "outputs": [
+     "var_26_cast_fp16"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice",
+     "MLNeuralEngineComputeDevice"
+    ],
+    "weight": 1.2548651117849244e-09
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "var_26_cast_fp16_to_fp32_dtype_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "var_27_axis_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "stack",
+    "outputs": [
+     "var_27_cast_fp16"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice",
+     "MLNeuralEngineComputeDevice"
+    ],
+    "weight": 1.2548651117849244e-09
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "var_27_cast_fp16_to_fp32_dtype_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "projector_weight_to_fp16"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "projector_bias_to_fp16"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "ios18.transpose",
+    "outputs": [
+     "input_cast_fp16"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice",
+     "MLNeuralEngineComputeDevice"
+    ],
+    "weight": 8.886019898796354e-09
+   },
+   {
+    "function": "main",
+    "op": "ios18.linear",
+    "outputs": [
+     "linear_0_cast_fp16"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice",
+     "MLNeuralEngineComputeDevice"
+    ],
+    "weight": 1.9819947173027795e-07
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "linear_0_cast_fp16_to_fp32_dtype_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "ios18.cast",
+    "outputs": [
+     "decoder_hidden"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice"
+    ],
+    "weight": 1.2535593208257308e-09
+   },
+   {
+    "function": "main",
+    "op": "ios18.cast",
+    "outputs": [
+     "next_cell"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice"
+    ],
+    "weight": 2.5071186416514616e-09
+   },
+   {
+    "function": "main",
+    "op": "ios18.cast",
+    "outputs": [
+     "next_hidden"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice"
+    ],
+    "weight": 2.5071186416514616e-09
+   }
+  ],
+  "cpu_only": [
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_1_batch_dims_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_1_validate_indices_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "embedding_weight_to_fp16"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_ids_to_int16_dtype_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "cast_1_dtype_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "greater_equal_0_y_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "ios18.cast",
+    "outputs": [
+     "input_ids_to_int16"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice"
+    ],
+    "weight": 1.9586864387902046e-12
+   },
+   {
+    "function": "main",
+    "op": "ios18.cast",
+    "outputs": [
+     "cast_1"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice"
+    ],
+    "weight": 1.9586864387902046e-12
+   },
+   {
+    "function": "main",
+    "op": "ios18.greater_equal",
+    "outputs": [
+     "greater_equal_0"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice"
+    ],
+    "weight": 2.9380296581853067e-12
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "slice_by_index_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "ios18.add",
+    "outputs": [
+     "add_2"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice"
+    ],
+    "weight": 3.860073253002245e-12
+   },
+   {
+    "function": "main",
+    "op": "select",
+    "outputs": [
+     "select_0"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice"
+    ],
+    "weight": 4.243820617378776e-12
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_1_cast_fp16_cast_uint16_axis_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "select_0_to_int16_dtype_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "ios18.cast",
+    "outputs": [
+     "select_0_to_int16"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice"
+    ],
+    "weight": 1.9586864387902046e-12
+   },
+   {
+    "function": "main",
+    "op": "ios18.gather",
+    "outputs": [
+     "input_1_cast_fp16_cast_uint16_cast_uint16"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice"
+    ],
+    "weight": 7.59014481918075e-06
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_1_batch_first_transpose_perm_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "split_0_num_splits_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "split_0_axis_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "hidden_to_fp16_dtype_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "ios18.cast",
+    "outputs": [
+     "hidden_to_fp16"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice"
+    ],
+    "weight": 2.5071186416514616e-09
+   },
+   {
+    "function": "main",
+    "op": "split",
+    "outputs": [
+     "split_0_cast_fp16_0",
+     "split_0_cast_fp16_1"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice"
+    ],
+    "weight": 1.2561709027441178e-09
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "split_1_num_splits_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "split_1_axis_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "cell_to_fp16_dtype_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "ios18.cast",
+    "outputs": [
+     "cell_to_fp16"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice"
+    ],
+    "weight": 2.5071186416514616e-09
+   },
+   {
+    "function": "main",
+    "op": "split",
+    "outputs": [
+     "split_1_cast_fp16_0",
+     "split_1_cast_fp16_1"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice"
+    ],
+    "weight": 1.2561709027441178e-09
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_lstm_layer_0_lstm_h0_squeeze_axes_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "ios18.squeeze",
+    "outputs": [
+     "input_lstm_layer_0_lstm_h0_squeeze_cast_fp16"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice"
+    ],
+    "weight": 8.37012004843014e-10
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_lstm_layer_0_lstm_c0_squeeze_axes_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "ios18.squeeze",
+    "outputs": [
+     "input_lstm_layer_0_lstm_c0_squeeze_cast_fp16"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice"
+    ],
+    "weight": 8.37012004843014e-10
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_lstm_layer_0_direction_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_lstm_layer_0_output_sequence_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_lstm_layer_0_recurrent_activation_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_lstm_layer_0_cell_activation_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_lstm_layer_0_activation_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "concat_1_to_fp16"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "concat_2_to_fp16"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "concat_0_to_fp16"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "ios18.transpose",
+    "outputs": [
+     "input_1_batch_first_transpose_cast_fp16"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice"
+    ],
+    "weight": 8.886019898796354e-09
+   },
+   {
+    "function": "main",
+    "op": "ios18.lstm",
+    "outputs": [
+     "input_lstm_layer_0_cast_fp16_0",
+     "input_lstm_layer_0_cast_fp16_1",
+     "input_lstm_layer_0_cast_fp16_2"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice"
+    ],
+    "weight": 0.49999608710729876
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_batch_first_lstm_h0_squeeze_axes_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "ios18.squeeze",
+    "outputs": [
+     "input_batch_first_lstm_h0_squeeze_cast_fp16"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice"
+    ],
+    "weight": 8.37012004843014e-10
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_batch_first_lstm_c0_squeeze_axes_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "ios18.squeeze",
+    "outputs": [
+     "input_batch_first_lstm_c0_squeeze_cast_fp16"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice"
+    ],
+    "weight": 8.37012004843014e-10
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_batch_first_direction_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_batch_first_output_sequence_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_batch_first_recurrent_activation_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_batch_first_cell_activation_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_batch_first_activation_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "concat_4_to_fp16"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "concat_5_to_fp16"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "concat_3_to_fp16"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "ios18.lstm",
+    "outputs": [
+     "input_batch_first_cast_fp16_0",
+     "input_batch_first_cast_fp16_1",
+     "input_batch_first_cast_fp16_2"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice"
+    ],
+    "weight": 0.49999608710729876
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "input_perm_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "var_26_axis_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "stack",
+    "outputs": [
+     "var_26_cast_fp16"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice"
+    ],
+    "weight": 1.2548651117849244e-09
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "var_26_cast_fp16_to_fp32_dtype_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "var_27_axis_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "stack",
+    "outputs": [
+     "var_27_cast_fp16"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice"
+    ],
+    "weight": 1.2548651117849244e-09
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "var_27_cast_fp16_to_fp32_dtype_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "projector_weight_to_fp16"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "projector_bias_to_fp16"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "ios18.transpose",
+    "outputs": [
+     "input_cast_fp16"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice"
+    ],
+    "weight": 8.886019898796354e-09
+   },
+   {
+    "function": "main",
+    "op": "ios18.linear",
+    "outputs": [
+     "linear_0_cast_fp16"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice"
+    ],
+    "weight": 1.9819947173027795e-07
+   },
+   {
+    "function": "main",
+    "op": "const",
+    "outputs": [
+     "linear_0_cast_fp16_to_fp32_dtype_0"
+    ],
+    "preferred": null,
+    "supported": null,
+    "weight": null
+   },
+   {
+    "function": "main",
+    "op": "ios18.cast",
+    "outputs": [
+     "decoder_hidden"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice"
+    ],
+    "weight": 1.2535593208257308e-09
+   },
+   {
+    "function": "main",
+    "op": "ios18.cast",
+    "outputs": [
+     "next_cell"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice"
+    ],
+    "weight": 2.5071186416514616e-09
+   },
+   {
+    "function": "main",
+    "op": "ios18.cast",
+    "outputs": [
+     "next_hidden"
+    ],
+    "preferred": "MLCPUComputeDevice",
+    "supported": [
+     "MLCPUComputeDevice"
+    ],
+    "weight": 2.5071186416514616e-09
+   }
+  ]
+ },
+ "decoder_io": {
+  "inputs": [
+   "input_ids",
+   "hidden",
+   "cell"
+  ],
+  "outputs": [
+   "decoder_hidden",
+   "next_hidden",
+   "next_cell"
+  ]
+ },
+ "decoder_package": "/Users/joshuawarren/.cache/mlx-omarchy/parakeet-reference/tdt-staging/b650695c-75aec2a-ane.dpiNlU/models/decoder.mlpackage",
+ "decoder_runs": {
+  "all": {
+   "decoder_hidden": {
+    "compared_against": "output_hidden",
+    "equal_to_capture": 640,
+    "fp16_exact": true,
+    "max_abs_diff": 0.0,
+    "of": 640,
+    "repeat_identical": true,
+    "shape": [
+     1,
+     1,
+     640
+    ]
+   },
+   "next_cell": {
+    "compared_against": "next_cell",
+    "equal_to_capture": 1280,
+    "fp16_exact": true,
+    "max_abs_diff": 0.0,
+    "of": 1280,
+    "repeat_identical": true,
+    "shape": [
+     2,
+     1,
+     640
+    ]
+   },
+   "next_hidden": {
+    "compared_against": "next_hidden",
+    "equal_to_capture": 1280,
+    "fp16_exact": true,
+    "max_abs_diff": 0.0,
+    "of": 1280,
+    "repeat_identical": true,
+    "shape": [
+     2,
+     1,
+     640
+    ]
+   }
+  },
+  "cpu_and_gpu": {
+   "decoder_hidden": {
+    "compared_against": "output_hidden",
+    "equal_to_capture": 640,
+    "fp16_exact": true,
+    "max_abs_diff": 0.0,
+    "of": 640,
+    "repeat_identical": true,
+    "shape": [
+     1,
+     1,
+     640
+    ]
+   },
+   "next_cell": {
+    "compared_against": "next_cell",
+    "equal_to_capture": 1280,
+    "fp16_exact": true,
+    "max_abs_diff": 0.0,
+    "of": 1280,
+    "repeat_identical": true,
+    "shape": [
+     2,
+     1,
+     640
+    ]
+   },
+   "next_hidden": {
+    "compared_against": "next_hidden",
+    "equal_to_capture": 1280,
+    "fp16_exact": true,
+    "max_abs_diff": 0.0,
+    "of": 1280,
+    "repeat_identical": true,
+    "shape": [
+     2,
+     1,
+     640
+    ]
+   }
+  },
+  "cpu_and_ne": {
+   "decoder_hidden": {
+    "compared_against": "output_hidden",
+    "equal_to_capture": 640,
+    "fp16_exact": true,
+    "max_abs_diff": 0.0,
+    "of": 640,
+    "repeat_identical": true,
+    "shape": [
+     1,
+     1,
+     640
+    ]
+   },
+   "next_cell": {
+    "compared_against": "next_cell",
+    "equal_to_capture": 1280,
+    "fp16_exact": true,
+    "max_abs_diff": 0.0,
+    "of": 1280,
+    "repeat_identical": true,
+    "shape": [
+     2,
+     1,
+     640
+    ]
+   },
+   "next_hidden": {
+    "compared_against": "next_hidden",
+    "equal_to_capture": 1280,
+    "fp16_exact": true,
+    "max_abs_diff": 0.0,
+    "of": 1280,
+    "repeat_identical": true,
+    "shape": [
+     2,
+     1,
+     640
+    ]
+   }
+  },
+  "cpu_only": {
+   "decoder_hidden": {
+    "compared_against": "output_hidden",
+    "equal_to_capture": 640,
+    "fp16_exact": true,
+    "max_abs_diff": 0.0,
+    "of": 640,
+    "repeat_identical": true,
+    "shape": [
+     1,
+     1,
+     640
+    ]
+   },
+   "next_cell": {
+    "compared_against": "next_cell",
+    "equal_to_capture": 1280,
+    "fp16_exact": true,
+    "max_abs_diff": 0.0,
+    "of": 1280,
+    "repeat_identical": true,
+    "shape": [
+     2,
+     1,
+     640
+    ]
+   },
+   "next_hidden": {
+    "compared_against": "next_hidden",
+    "equal_to_capture": 1280,
+    "fp16_exact": true,
+    "max_abs_diff": 0.0,
+    "of": 1280,
+    "repeat_identical": true,
+    "shape": [
+     2,
+     1,
+     640
+    ]
+   }
+  }
+ },
+ "decoder_sha256": {
+  "Data/com.apple.CoreML/model.mlmodel": "8d068618a9fd3a981d6cbc09ae9643a25b2e382f2c3e05d3b9412b9c25a4372e",
+  "Data/com.apple.CoreML/weights/weight.bin": "36cd656ebf1105ee5aa85d1e55c00f25669327aef8b39346333a19260ca78018",
+  "Manifest.json": "ef610fe0ccaff752f58f086772207ffb08970e67bf41fd07c923f9e006f8e4ec"
+ },
+ "fixture_sha256": {
+  "tdt_trace_0000_decoder_cell.npy": "19be62ce9079c75fbdbffc23d66c6e6dd58f879c3c8d6e5b716dbb1cd7b25ba1",
+  "tdt_trace_0000_decoder_hidden.npy": "19be62ce9079c75fbdbffc23d66c6e6dd58f879c3c8d6e5b716dbb1cd7b25ba1",
+  "tdt_trace_0000_decoder_input_ids.npy": "e1b141534837c9c293c0352f0d3a35424f802d670ff281df8a39b23d1c52c43e",
+  "tdt_trace_0000_decoder_next_cell.npy": "74abdb0dda687ef9942eb8672f800aa43b08d28912150128af3504223021dac8",
+  "tdt_trace_0000_decoder_next_hidden.npy": "62f936c75aa03b488628896fb519d47cb632807f0227d47d0261893e05534b80",
+  "tdt_trace_0000_decoder_output_hidden.npy": "b6b38b7287084b9aa426d63f7e62c8268d20ed22c7c6b170124c3e1d38d3ba88",
+  "x_sigmoid_0.bin": "f19358801b9fe10791f8e650b4eca86684f8f00477a65051c3d7557c6696c154",
+  "x_sigmoid_1.bin": "4779e2ac065f72a9530ebc19295e4fd80cf0f1ed927f194f9881fa23dd402174",
+  "x_sigmoid_2.bin": "5f45aa4ee80d32c3b22c8ec1dd455cce5bf218e4f0b9639a5b7d34995843e1b3",
+  "x_tanh_0.bin": "eacdf70c84036ae08435bba1afea6c25edab9af67cd196a7384168837927d226",
+  "x_tanh_1.bin": "ceb9b9df1445ad674e8e9e688efcdda185fb97f433a3ce7b7ec8ee0c6551c37c",
+  "x_tanh_2.bin": "da08bd08eeda3e868def710e4025b22d0ec2993c550efd3defd42d61da3ec998"
+ },
+ "host": {
+  "build": "25G83",
+  "chip": "Apple M1 Ultra",
+  "coreml_framework": "3520.5.1",
+  "coremltools": "9.0",
+  "hostname": "MacStudio.local",
+  "hw_model": "Mac13,2",
+  "macos": "26.6.2",
+  "numpy": "1.26.4",
+  "python": "3.11.16"
+ },
+ "oneop": {
+  "block_specializations": [
+   "CoreML8"
+  ],
+  "compute_plan": {
+   "all": [
+    {
+     "function": "main",
+     "op": "ios18.sigmoid",
+     "outputs": [
+      "sigmoid_out"
+     ],
+     "preferred": "MLCPUComputeDevice",
+     "supported": [
+      "MLCPUComputeDevice",
+      "MLGPUComputeDevice",
+      "MLNeuralEngineComputeDevice"
+     ],
+     "weight": 0.5
+    },
+    {
+     "function": "main",
+     "op": "ios18.tanh",
+     "outputs": [
+      "tanh_out"
+     ],
+     "preferred": "MLCPUComputeDevice",
+     "supported": [
+      "MLCPUComputeDevice",
+      "MLGPUComputeDevice",
+      "MLNeuralEngineComputeDevice"
+     ],
+     "weight": 0.5
+    }
+   ],
+   "cpu_and_gpu": [
+    {
+     "function": "main",
+     "op": "ios18.sigmoid",
+     "outputs": [
+      "sigmoid_out"
+     ],
+     "preferred": "MLCPUComputeDevice",
+     "supported": [
+      "MLCPUComputeDevice",
+      "MLGPUComputeDevice"
+     ],
+     "weight": 0.5
+    },
+    {
+     "function": "main",
+     "op": "ios18.tanh",
+     "outputs": [
+      "tanh_out"
+     ],
+     "preferred": "MLCPUComputeDevice",
+     "supported": [
+      "MLCPUComputeDevice",
+      "MLGPUComputeDevice"
+     ],
+     "weight": 0.5
+    }
+   ],
+   "cpu_and_ne": [
+    {
+     "function": "main",
+     "op": "ios18.sigmoid",
+     "outputs": [
+      "sigmoid_out"
+     ],
+     "preferred": "MLCPUComputeDevice",
+     "supported": [
+      "MLCPUComputeDevice",
+      "MLNeuralEngineComputeDevice"
+     ],
+     "weight": 0.5
+    },
+    {
+     "function": "main",
+     "op": "ios18.tanh",
+     "outputs": [
+      "tanh_out"
+     ],
+     "preferred": "MLCPUComputeDevice",
+     "supported": [
+      "MLCPUComputeDevice",
+      "MLNeuralEngineComputeDevice"
+     ],
+     "weight": 0.5
+    }
+   ],
+   "cpu_only": [
+    {
+     "function": "main",
+     "op": "ios18.sigmoid",
+     "outputs": [
+      "sigmoid_out"
+     ],
+     "preferred": "MLCPUComputeDevice",
+     "supported": [
+      "MLCPUComputeDevice"
+     ],
+     "weight": 0.5
+    },
+    {
+     "function": "main",
+     "op": "ios18.tanh",
+     "outputs": [
+      "tanh_out"
+     ],
+     "preferred": "MLCPUComputeDevice",
+     "supported": [
+      "MLCPUComputeDevice"
+     ],
+     "weight": 0.5
+    }
+   ]
+  },
+  "ops": [
+   "sigmoid",
+   "tanh"
+  ],
+  "package_sha256": "21e58957cdee8066d508bd30b426ac1df773b9cba6ab3b7552a6020f09fb2e03",
+  "runs": {
+   "all": {
+    "sigmoid": {
+     "finite": true,
+     "fp16_exact": true,
+     "output_dtype": "float32",
+     "repeat_identical": true,
+     "sha256": "f9c34dafaaa89890fe7c0e9fc1e6e58f95ba05746794d6ef98364e3d8ff9e1a0",
+     "wall_s": 0.0004
+    },
+    "tanh": {
+     "finite": true,
+     "fp16_exact": true,
+     "output_dtype": "float32",
+     "repeat_identical": true,
+     "sha256": "aa62e7af7d2411f40a2b266c5cb9a30b590c1d378697e3ba004315a6227f4115",
+     "wall_s": 0.0002
+    }
+   },
+   "cpu_and_gpu": {
+    "sigmoid": {
+     "finite": true,
+     "fp16_exact": true,
+     "output_dtype": "float32",
+     "repeat_identical": true,
+     "sha256": "f9c34dafaaa89890fe7c0e9fc1e6e58f95ba05746794d6ef98364e3d8ff9e1a0",
+     "wall_s": 0.0004
+    },
+    "tanh": {
+     "finite": true,
+     "fp16_exact": true,
+     "output_dtype": "float32",
+     "repeat_identical": true,
+     "sha256": "aa62e7af7d2411f40a2b266c5cb9a30b590c1d378697e3ba004315a6227f4115",
+     "wall_s": 0.0001
+    }
+   },
+   "cpu_and_ne": {
+    "sigmoid": {
+     "finite": true,
+     "fp16_exact": true,
+     "output_dtype": "float32",
+     "repeat_identical": true,
+     "sha256": "f9c34dafaaa89890fe7c0e9fc1e6e58f95ba05746794d6ef98364e3d8ff9e1a0",
+     "wall_s": 0.0004
+    },
+    "tanh": {
+     "finite": true,
+     "fp16_exact": true,
+     "output_dtype": "float32",
+     "repeat_identical": true,
+     "sha256": "aa62e7af7d2411f40a2b266c5cb9a30b590c1d378697e3ba004315a6227f4115",
+     "wall_s": 0.0001
+    }
+   },
+   "cpu_only": {
+    "sigmoid": {
+     "finite": true,
+     "fp16_exact": true,
+     "output_dtype": "float32",
+     "repeat_identical": true,
+     "sha256": "f9c34dafaaa89890fe7c0e9fc1e6e58f95ba05746794d6ef98364e3d8ff9e1a0",
+     "wall_s": 0.0058
+    },
+    "tanh": {
+     "finite": true,
+     "fp16_exact": true,
+     "output_dtype": "float32",
+     "repeat_identical": true,
+     "sha256": "aa62e7af7d2411f40a2b266c5cb9a30b590c1d378697e3ba004315a6227f4115",
+     "wall_s": 0.0002
+    }
+   }
+  },
+  "spec_version": 9
+ },
+ "schema": "mlx-omarchy.parakeet-decoder-activation-capture-mac/1"
+}
