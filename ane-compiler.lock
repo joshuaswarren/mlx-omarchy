@@ -3,12 +3,13 @@
 # mlx-omarchy builds from. Release tooling never builds from a moving branch.
 # The archive is the immutable release asset for the tagged commit: GitHub's
 # codeload archive generation for this fork was unavailable at pin time.
-# Commit 83a4434 (ordered MIL result support) emits
-# mil-hwxc.h13-anec-package.v2; the v1 archive is superseded and must not be
-# re-accepted by the package adapter.
+# Commit 417554c (main with feature/h13-concat merged: bool logical results
+# and transpose, concat named hole, select cond DMA remap, operand swap, and
+# scratch extent) emits mil-hwxc.h13-anec-package.v2; the v1 archive is
+# superseded and must not be re-accepted by the package adapter.
 ANE_COMPILER_REPOSITORY=https://github.com/joshuaswarren/mil-hwx-compiler
-ANE_COMPILER_COMMIT=83a4434810b0981d1764e6231f6a679df6f35241
-ANE_COMPILER_ARCHIVE_URL=https://github.com/joshuaswarren/mil-hwx-compiler/releases/download/ane-parity-83a4434/mil-hwx-compiler-83a4434.tar.gz
-ANE_COMPILER_ARCHIVE_SHA256=2fbb0e2bc21d729ab114cf9623d31cbccee73fdb84b0ef8d4c078c91d1a05b57
+ANE_COMPILER_COMMIT=417554c3e22de9124623765717acee25e9860f19
+ANE_COMPILER_ARCHIVE_URL=https://github.com/joshuaswarren/mil-hwx-compiler/releases/download/ane-parity-417554c/mil-hwx-compiler-417554c.tar.gz
+ANE_COMPILER_ARCHIVE_SHA256=16046efc43921cc3d55defc5f5fdc17aa7b6bcaba90b836cae9985d2154a720d
 ANE_COMPILER_PACKAGE_SCHEMA=mil-hwxc.h13-anec-package.v2
 ANE_COMPILER_QUALIFIED_TARGET=H13
