@@ -271,12 +271,161 @@ uint64_t channel_size_bytes(const AneAnecHeader& header, uint32_t bdx) {
   return checked_mul(header.tiles.at(bdx), kAneTileAlignment, "ANEC channel size");
 }
 
-uint32_t output_bdx(uint32_t ordinal) {
-  return 4 + ordinal;
+constexpr uint32_t kBindFirstSurface = 4;
+constexpr uint32_t kBindDmaDisabled = 0x00008880u;
+constexpr uint32_t kBindDstRegister = 0x17800u;
+constexpr uint32_t kBindSelectorMask = 0x1fu;
+constexpr uint64_t kBindMinTaskBytes = 40;
+constexpr uint32_t kBindSelectors[3][2] = {
+    {0x13800u, 0}, {0x13804u, 6}, {kBindDstRegister, 12}};
+
+uint32_t bind_word(const uint8_t* task, uint64_t index) {
+  return uint32_t(task[index * 4]) | (uint32_t(task[index * 4 + 1]) << 8) |
+      (uint32_t(task[index * 4 + 2]) << 16) |
+      (uint32_t(task[index * 4 + 3]) << 24);
 }
 
-uint32_t input_bdx(const AneAnecHeader& header, uint32_t ordinal) {
-  return 4 + header.destination_count + ordinal;
+int bind_task_dma(const uint8_t* task, uint64_t bytes, uint32_t dma[3]) {
+  const uint64_t words = bytes / 4;
+  for (int slot = 0; slot < 3; ++slot) {
+    dma[slot] = kBindDmaDisabled;
+  }
+  if (bytes < kBindMinTaskBytes || bytes % 4 != 0) {
+    return -1;
+  }
+  uint64_t index = 10 + (((bind_word(task, 9) & 3) == 3) ? 1 : 0);
+  while (index < words) {
+    const uint32_t header = bind_word(task, index);
+    const uint64_t count = (header >> 26) + 1;
+    const uint32_t base = header & 0x03ffffffu;
+    if (index + count >= words) {
+      return -1;
+    }
+    for (uint64_t offset = 0; offset < count; ++offset) {
+      for (int slot = 0; slot < 3; ++slot) {
+        if (base + offset * 4 == kBindSelectors[slot][0]) {
+          dma[slot] = bind_word(task, index + 1 + offset);
+        }
+      }
+    }
+    index += 1 + count;
+  }
+  return 0;
+}
+
+int bind_walk(
+    const AneAnecHeader& header,
+    const uint8_t* stream,
+    uint64_t stream_size,
+    uint8_t* is_src,
+    uint8_t* is_dst) {
+  uint64_t offset = 0;
+  uint64_t bytes = header.task_descriptor_size;
+  if (header.task_descriptor_count == 0) {
+    return -1;
+  }
+  for (uint32_t index = 0; index < header.task_descriptor_count; ++index) {
+    if (bytes < kBindMinTaskBytes || offset > stream_size ||
+        bytes > stream_size - offset) {
+      return -1;
+    }
+    uint32_t dma[3];
+    if (bind_task_dma(stream + offset, bytes, dma) < 0) {
+      return -1;
+    }
+    const uint32_t selectors = bind_word(stream + offset, 8);
+    for (int slot = 0; slot < 3; ++slot) {
+      const uint32_t channel =
+          (selectors >> kBindSelectors[slot][1]) & kBindSelectorMask;
+      if (dma[slot] == kBindDmaDisabled) {
+        continue;
+      }
+      if (channel < kBindFirstSurface || channel >= kAnecTileCount ||
+          header.tiles[channel] == 0) {
+        continue;
+      }
+      if (kBindSelectors[slot][0] == kBindDstRegister) {
+        is_dst[channel] = 1;
+      } else {
+        is_src[channel] = 1;
+      }
+    }
+    if (index + 1 == header.task_descriptor_count) {
+      break;
+    }
+    const uint64_t next = bind_word(stream + offset, 7);
+    bytes = (((bind_word(stream + offset, 1) >> 16) & 0x1ff) + 1) * 4;
+    if (next % 4 != 0 || next > stream_size) {
+      return -1;
+    }
+    offset = next;
+  }
+  return 0;
+}
+
+bool derive_role_channels(
+    const AneAnecHeader& header,
+    const uint8_t* stream,
+    uint64_t stream_size,
+    std::vector<uint32_t>& src,
+    std::vector<uint32_t>& dst) {
+  src.clear();
+  dst.clear();
+  for (uint32_t i = 0; i < header.destination_count; ++i) {
+    dst.push_back(kBindFirstSurface + i);
+  }
+  for (uint32_t i = 0; i < header.source_count; ++i) {
+    src.push_back(kBindFirstSurface + header.destination_count + i);
+  }
+  if (header.source_count > kAnecTileCount ||
+      header.destination_count > kAnecTileCount) {
+    return false;
+  }
+  uint8_t is_src[kAnecTileCount] = {};
+  uint8_t is_dst[kAnecTileCount] = {};
+  if (bind_walk(header, stream, stream_size, is_src, is_dst) < 0) {
+    return false;
+  }
+  std::vector<uint32_t> derived_src;
+  std::vector<uint32_t> derived_dst;
+  for (uint32_t channel = kBindFirstSurface; channel < kAnecTileCount;
+       ++channel) {
+    if (is_dst[channel]) {
+      if (derived_dst.size() == kAnecTileCount) {
+        return false;
+      }
+      derived_dst.push_back(channel);
+    } else if (is_src[channel]) {
+      if (derived_src.size() == kAnecTileCount) {
+        return false;
+      }
+      derived_src.push_back(channel);
+    }
+  }
+  if (derived_src.size() != header.source_count ||
+      derived_dst.size() != header.destination_count) {
+    return false;
+  }
+  src = std::move(derived_src);
+  dst = std::move(derived_dst);
+  return true;
+}
+
+std::vector<uint8_t> read_anec_payload(
+    const std::filesystem::path& path,
+    uint64_t payload_size) {
+  std::ifstream in(path, std::ios::binary);
+  if (!in) {
+    throw bundle_error("cannot read payload " + path.string());
+  }
+  in.seekg(static_cast<std::streamoff>(kAnecPayloadOffset));
+  std::vector<uint8_t> payload(payload_size);
+  in.read(reinterpret_cast<char*>(payload.data()),
+          static_cast<std::streamsize>(payload_size));
+  if (in.gcount() != static_cast<std::streamsize>(payload_size)) {
+    throw bundle_error("cannot read ANEC payload " + path.string());
+  }
+  return payload;
 }
 
 void validate_binding(
@@ -304,6 +453,7 @@ void validate_binding(
 void validate_program_contract(
     const AneProgram& program,
     const AneAnecHeader& header,
+    const std::filesystem::path& anec_path,
     size_t program_index) {
   const std::string prefix = "program " + std::to_string(program_index);
   if (program.task_descriptors != header.task_descriptor_count) {
@@ -318,19 +468,27 @@ void validate_program_contract(
   if (channel_size_bytes(header, 3) != program.scratch_bytes) {
     throw bundle_error(prefix + " scratch_bytes does not match ANEC channel 3 allocation");
   }
+  const auto payload = read_anec_payload(anec_path, header.payload_size);
+  std::vector<uint32_t> src;
+  std::vector<uint32_t> dst;
+  if (!derive_role_channels(header, payload.data(), payload.size(), src, dst)) {
+    throw bundle_error(
+        prefix +
+        " task stream does not name every surface; channel map is positional");
+  }
   for (uint32_t i = 0; i < program.outputs.size(); ++i) {
     validate_binding(
         prefix + " output " + program.outputs[i].tensor,
         program.outputs[i],
         header,
-        output_bdx(i));
+        dst[i]);
   }
   for (uint32_t i = 0; i < program.inputs.size(); ++i) {
     validate_binding(
         prefix + " input " + program.inputs[i].tensor,
         program.inputs[i],
         header,
-        input_bdx(header, i));
+        src[i]);
   }
 }
 
@@ -495,7 +653,7 @@ AneBundle load_bundle_snapshot(
       throw bundle_error("program payload mapping disappeared after manifest validation");
     }
     AneAnecHeader header = parse_anec_header(path);
-    validate_program_contract(program, header, p);
+    validate_program_contract(program, header, path, p);
     bundle.programs.push_back({p, std::move(header), std::move(path)});
   }
   return bundle;
