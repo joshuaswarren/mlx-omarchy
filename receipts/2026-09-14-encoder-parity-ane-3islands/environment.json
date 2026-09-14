@@ -1,0 +1,108 @@
+{
+  "host": "jwm1-linux",
+  "kernel": "7.1.6-1-1-ARCH",
+  "arch": "aarch64",
+  "boot_id": "95872130-fd28-4d67-8247-03a0e8b61202",
+  "gpu_stack": {
+    "mesa_package": "mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1",
+    "icd": "system ICD, unmodified; no VK_DRIVER_FILES override in this run"
+  },
+  "mlx": {
+    "mlx_omarchy": "0.32.2.dev202609121216+8f6de34c",
+    "python": "3.14.7",
+    "venv": "~/venv-agxgen",
+    "libmlx_sha256": "0947c063b4a370df90f1242b8657baf74daeac42208fe148a929f0b8c2374640"
+  },
+  "ane": {
+    "device": "character special file 666",
+    "worker": "/var/tmp/jwm1-select-island-exec2/mlx-omarchy-ane-worker",
+    "worker_sha256": "762dd1de868b52e4d6ffa30e18d842d9341db463b06aef2355f18fb1eb248929",
+    "worker_linked_ane_libs": [],
+    "libane": "/var/tmp/AneWorkerValidation-c05ba1df/receipts/2026-09-13-ane-worker-validation/libane.so",
+    "libane_sha256": "1ab9d95debcc8b5fee3b6653dfce0b50412bc7efef43c2d2167dc83ce270ca49",
+    "bundles": {
+      "island-attn-a-kt": {
+        "manifest_sha256": "516c16efdb4360623893b396d169c29f6c812eb38d2ee94411780edb682764c4",
+        "graph_hash": "85325f3059a345dee7c62c53a0072b2e869c0c8116385c992e8963587714ff88",
+        "dispatch_plan": [
+          0,
+          1
+        ],
+        "programs": 2,
+        "scratch_bytes": [
+          0,
+          0
+        ],
+        "compiler_toolchain": "mil-hwxc 83d486b178e83e602ab894f1154004bb7f2600b9 sha256:77521fb36681f8ace6e4aff97ef7ca856b57137e3808680f85dfd4742248de61",
+        "payloads": {
+          "program-0.anec": "d05e193a620d7edc25ee61f865c164182155f84e7fb925a38c303a9c0db1d8df",
+          "program-1.anec": "a3aa2fe1333a48eba3e7fcae5b848563e2bfa747a232dadf9ed2d568821c5627"
+        }
+      },
+      "island-pv": {
+        "manifest_sha256": "5f0190f730aacff7282128c8a3abab08a861ced52d8084f5c774eb73a3edbffc",
+        "graph_hash": "ed03818974f7e2728daff0c839fcd4486a87282515347e68db7d2219605905c3",
+        "dispatch_plan": [
+          0
+        ],
+        "programs": 1,
+        "scratch_bytes": [
+          0
+        ],
+        "compiler_toolchain": "mil-hwxc 83d486b178e83e602ab894f1154004bb7f2600b9 sha256:77521fb36681f8ace6e4aff97ef7ca856b57137e3808680f85dfd4742248de61",
+        "payloads": {
+          "program-0.anec": "76496b74eff176f8e0358dbb5e285f7fe60c8a7c270c2b5f400b5407195c3fca"
+        }
+      },
+      "island-select-8head-scratch417": {
+        "manifest_sha256": "3495438746772eedd790d70139a09425ac45ec6e59dc02c64bc3081e455ea2e4",
+        "graph_hash": "fd9e6c5b64f8b2c58fa2067799589ba0d32dfc24361b6612c9ef94d9e1a6422e",
+        "dispatch_plan": [
+          0
+        ],
+        "programs": 1,
+        "scratch_bytes": [
+          6832128
+        ],
+        "compiler_toolchain": "mil-hwxc 7ab3eb579c6935605d8b046bc11d9c69689e530c sha256:d86bebb25b2b5023b3071b612654c42c79a1b93f51c471e07cfc1c1df82520c2",
+        "payloads": {
+          "program-0.anec": "0879c6277cf3d89888735ea69ef96d29fb492d43eacfe42a0f154f8f0f91c8eb"
+        }
+      }
+    }
+  },
+  "encoder": {
+    "mil": "/var/tmp/EncoderParityAne/encoder-source/model.mil",
+    "mil_sha256": "ac8e9526154ac8b8d4c08b83e44dbc1a2208d7ec33e42a7838d57b698b14f133",
+    "model_repo": "mweinbach1/parakeet-tdt-0.6b-v3-coreml",
+    "model_revision": "b650695c2322ee5281dff48d7345b2f3a58ff018"
+  },
+  "contract": {
+    "lock": "overlay/tools/coreml/parakeet-reference.lock",
+    "lock_sha256": "63415836246175d34748c1c44f2c8d00c79affc5be0f4d7da058eb7d5328f8d1",
+    "encoder_parity_py_sha256": "5a4eb2947981224d16c50a1d05be7652c9fc9373cab8def0ecfb0d7f0d1e92b3",
+    "liveness_helper_sha256": "361d8e8caf7a3690b6b50e5892bac0f828d1885c33a70a488b7bc9ed338c1870",
+    "macos_reference_environment": {
+      "chip": "Apple M1 Ultra (Mac13,2)",
+      "compute_units": "cpuAndNeuralEngine (ParakeetComputeUnits.ane)",
+      "coreml_framework_version": "3520.5.1",
+      "coremltools_version": "9.0 (converter toolchain recorded in package spec metadata)",
+      "macos_release": "macOS 26.6.2 (25G83)",
+      "parakeet_coreml_swift_commit": "75aec2a1c991319657ff4dec5f602c12da6c5012",
+      "swift_toolchain": "Apple Swift 6.3.3 (swiftlang-6.3.3.1.3 clang-2100.1.1.101)"
+    },
+    "derived_from": "Encoder bounds unchanged from the prior JFK reference derivation (max=0.3, mean=0.02, relative L2=0.1). Licensed LibriSpeech capture 20260912T154759Z-librispeech/ane is the new golden input/output pair. ANE-vs-GPU max_abs=0.139700 mean_abs=0.003890 rel_l2=0.023345; ANE-vs-CPU max_abs=0.145203 mean_abs=0.004393 rel_l2=0.025172. All preprocessing and masks match exactly; all tensors finite. ANE and GPU emit identical 104 tokens including a repeated-punctuation/Cyrillic suffix; CPU emits 100 tokens and differs. Each capture matches its own pinned end-to-end transcriber. No text cleanup or tolerance change; this is a parity reference, not evidence of clean transcription."
+  },
+  "derivation": {
+    "check_conv_semantics.py": "684f45d933625e61e5f8693107f66fa93b55975b4d9efa899135914a8aadecb0",
+    "check_invariants.py": "2411244f3cd10cf990798a1627fd74ef5f92ace277cb4a47d401bc37ce996833",
+    "compare_golden.py": "7d7271d2ced2f29889844a2f7435ff05888816e09e483b500bb5c8728da5ea61",
+    "vulkan_encoder.py": "cd858ed352f6b0d25e035643cef3e5bd43ad689614fe7e396a3f7af1d4edec6d"
+  },
+  "harness": {
+    "ep3-analyse.sh": "9899010179cd9215c6a96ec944955ce26c0becd9c2bd07defc07d024c299969f",
+    "ep3-arms.sh": "460cce059ae4848e988e3d1429e3028b3db0590eea639af293635654a09a5221",
+    "ep3-run.sh": "7789d0781e39878191b61134436cdae00b8d555ef060807b6466c874edaea023",
+    "ep3-state.sh": "81fea237cc06547030b729f71760fa3c696878df260cbc2cc852a2fe4dbf99df"
+  }
+}

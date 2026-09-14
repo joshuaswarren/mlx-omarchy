@@ -1,0 +1,71 @@
+{
+  "golden_encoder_hidden_sha256": "7e442034cb42521f7b76ec9645e8d0082899a5f551ea8d046c62a9283cc6e4e5",
+  "arms": {
+    "ane3": {
+      "encoder_hidden_sha256": "b3d60c81bcd9c63fcdcb5c5578d765cc221b0126af3482fb165d769a65c23e6e",
+      "encoder_mask_sha256": "d8bf6ec9a4065ce6dff4d9252edc07e2910eeeac87f8fc3c05bd949e1e7861a7",
+      "float64_metrics": {
+        "max_abs_err": 0.14715576171875,
+        "mean_abs_err": 0.004182379897435506,
+        "rel_l2_err": 0.024916646726580935,
+        "nan": 0,
+        "inf": 0
+      },
+      "encoder_mask_exact": true
+    },
+    "ane2": {
+      "encoder_hidden_sha256": "b3d60c81bcd9c63fcdcb5c5578d765cc221b0126af3482fb165d769a65c23e6e",
+      "encoder_mask_sha256": "d8bf6ec9a4065ce6dff4d9252edc07e2910eeeac87f8fc3c05bd949e1e7861a7",
+      "float64_metrics": {
+        "max_abs_err": 0.14715576171875,
+        "mean_abs_err": 0.004182379897435506,
+        "rel_l2_err": 0.024916646726580935,
+        "nan": 0,
+        "inf": 0
+      },
+      "encoder_mask_exact": true
+    },
+    "vulkan": {
+      "encoder_hidden_sha256": "02092bac3054e1dd31afc96658446b9ce35e3bed72424955f57e87ca6ad850b7",
+      "encoder_mask_sha256": "d8bf6ec9a4065ce6dff4d9252edc07e2910eeeac87f8fc3c05bd949e1e7861a7",
+      "float64_metrics": {
+        "max_abs_err": 0.13494873046875,
+        "mean_abs_err": 0.004096068836500247,
+        "rel_l2_err": 0.024596151286470417,
+        "nan": 0,
+        "inf": 0
+      },
+      "encoder_mask_exact": true
+    }
+  },
+  "pairwise": {
+    "ane3_vs_ane2": {
+      "bitwise_identical": true,
+      "differing_elements": 0,
+      "max_abs_diff": 0.0,
+      "rel_l2_delta": 0.0
+    },
+    "ane3_vs_vulkan": {
+      "bitwise_identical": false,
+      "differing_elements": 216304,
+      "max_abs_diff": 0.0240478515625,
+      "rel_l2_delta": -0.000320495440110518
+    },
+    "ane2_vs_vulkan": {
+      "bitwise_identical": false,
+      "differing_elements": 216304,
+      "max_abs_diff": 0.0240478515625,
+      "rel_l2_delta": -0.000320495440110518
+    }
+  },
+  "prior_run": {
+    "receipt": "receipts/2026-09-14-encoder-parity-ane.json",
+    "ane_split_encoder_hidden_sha256": "b3d60c81bcd9c63fcdcb5c5578d765cc221b0126af3482fb165d769a65c23e6e",
+    "vulkan_only_encoder_hidden_sha256": "02092bac3054e1dd31afc96658446b9ce35e3bed72424955f57e87ca6ad850b7",
+    "ane_split_rel_l2_as_recorded": 0.024916470050811768,
+    "vulkan_only_rel_l2_as_recorded": 0.024595974013209343,
+    "ane2_reproduces_prior_bytes": true,
+    "vulkan_reproduces_prior_bytes": true
+  },
+  "float32_nondeterminism": "compare_golden.py reduces in float32, so its rel_l2 and mean are reproducible only to about 1e-9 relative across invocations even on byte-identical inputs. The float64_metrics above are the deterministic numbers; a rel_l2 difference below that floor is comparator noise, not a placement effect. max_abs_err is a max rather than a sum and is exact in both dtypes."
+}

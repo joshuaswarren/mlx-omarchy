@@ -1,0 +1,68 @@
+{
+  "counter_report": {
+    "ane_models_loaded": 48,
+    "ane_packages_compiled": 0,
+    "ane_package_cache_hits": 0,
+    "ane_worker_starts": 48,
+    "ane_submissions": 48,
+    "ane_timeouts": 0,
+    "ane_input_bytes": 164542848,
+    "ane_output_bytes": 180288000,
+    "ane_exec_ns": 3132340262,
+    "gpu_primitive_dispatches": 9298,
+    "vk_compute_dispatches": 6010,
+    "cpu_tensor_events": 0,
+    "accounted_input_bytes": 164542848,
+    "accounted_output_bytes": 180288000,
+    "expected_input_bytes": 164542848,
+    "expected_output_bytes": 180288000
+  },
+  "ane_counter_fields": [
+    "ane_models_loaded",
+    "ane_packages_compiled",
+    "ane_package_cache_hits",
+    "ane_worker_starts",
+    "ane_submissions",
+    "ane_timeouts",
+    "ane_input_bytes",
+    "ane_output_bytes",
+    "ane_exec_ns"
+  ],
+  "evaluated_by": "overlay/tools/coreml/encoder_parity.py::evaluate_invariants at receipts/2026-09-14-encoder-split-plan",
+  "violations": [],
+  "section_43_clean": true,
+  "islands_placed": "AC",
+  "dispatch_accounting": {
+    "measured_submissions": 48,
+    "expected_submissions": 48,
+    "submissions_match": true,
+    "programs_total": 72,
+    "task_descriptors_total": 14976,
+    "derivation": "24 layers x islands AC: A 1 submit / 2 program(s) / 416 TDs, C 1 submit / 1 program(s) / 208 TDs. Programs and task descriptors are the manifests' counts, not measured at the worker; submissions are measured."
+  },
+  "byte_accounting": {
+    "measured_input_bytes": 164542848,
+    "analytic_input_bytes": 164542848,
+    "input_match": true,
+    "measured_output_bytes": 180288000,
+    "analytic_output_bytes": 180288000,
+    "output_match": true,
+    "derivation": "24 layers x islands AC, bytes in A 3837952 + C 3018000; bytes out A 6744000 + C 768000. Sizes are the manifests' declared logical byte sizes: fp16 operands at two bytes an element, island B's bool cond at one.",
+    "scope_note": "Section 43's byte-accounting clause is written for a single in-framework run where the ANE and Vulkan path counters both report. Here the compared checkpoints (encoder_hidden, encoder_mask) are produced on the GPU, and the ANE traffic is island tensors measured at the worker boundary. What is accounted is therefore every byte that crossed to and from the ANE, checked against the manifests rather than against the checkpoint totals. The deviation from the clause as literally written is named here rather than hidden by picking numbers that make the equality hold."
+  },
+  "worker_completions": 48,
+  "completions_equal_submissions": true,
+  "lingering_worker_processes": {
+    "value": 0,
+    "device_holders": [],
+    "workers": [],
+    "measured_by": {
+      "tool": "tools/ane_worker_liveness.py::snapshot",
+      "landed": "origin/main 4ded332c",
+      "tool_sha256": "361d8e8caf7a3690b6b50e5892bac0f828d1885c33a70a488b7bc9ed338c1870",
+      "doc": "docs/ane-worker-liveness.md",
+      "method": "ps -ww -eo pid=,args= matched on basename(argv[0]); /proc/<pid>/fd compared by device identity. pgrep -x cannot match a 22-character name and pgrep -f matches the caller's own shell."
+    },
+    "why_not_pgrep": "Neither pgrep form answers this. `pgrep -x mlx-omarchy-ane-worker` compares a 22-character name against /proc/<pid>/comm, which Linux truncates at 15 bytes, so it reports 0 with a worker alive; `pgrep -f` matches the calling shell and reports workers that do not exist. The helper above matches basename(argv[0]) and separates a real worker from a look-alike by an open descriptor on the accel device. The 2026-09-14 two-island receipt carried this reasoning inline because the helper did not exist on origin/main yet; it does now, so this run imports it instead of restating it."
+  }
+}

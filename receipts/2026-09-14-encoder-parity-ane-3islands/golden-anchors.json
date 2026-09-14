@@ -1,0 +1,181 @@
+{
+  "anchors": {
+    "crosscheck.json": {
+      "present": true,
+      "sha256": "30c662e2eb2c31e257f3332e216b1e3d053f1f5e84fdd4d3dced47c277f3b266",
+      "lock_sha256": "30c662e2eb2c31e257f3332e216b1e3d053f1f5e84fdd4d3dced47c277f3b266",
+      "matches_lock": true
+    },
+    "encoder_hidden.npy": {
+      "present": true,
+      "sha256": "7e442034cb42521f7b76ec9645e8d0082899a5f551ea8d046c62a9283cc6e4e5",
+      "lock_sha256": "7e442034cb42521f7b76ec9645e8d0082899a5f551ea8d046c62a9283cc6e4e5",
+      "matches_lock": true
+    },
+    "encoder_input_features.npy": {
+      "present": true,
+      "sha256": "638f1f22b36f33cdcf8cf5f63581497917fe2d8a9108da2f39dd1e99e9130731",
+      "lock_sha256": "638f1f22b36f33cdcf8cf5f63581497917fe2d8a9108da2f39dd1e99e9130731",
+      "matches_lock": true
+    },
+    "encoder_input_mask.npy": {
+      "present": true,
+      "sha256": "69afe545178dd33ed9f521b3934c77c687d64af3692a9f075b9e02c74516d804",
+      "lock_sha256": "69afe545178dd33ed9f521b3934c77c687d64af3692a9f075b9e02c74516d804",
+      "matches_lock": true
+    },
+    "encoder_mask.npy": {
+      "present": true,
+      "sha256": "6c70a6a0b2f3f1d46846fb095cb178ceca7ccd2fec2d239de4516ccc79512d33",
+      "lock_sha256": "6c70a6a0b2f3f1d46846fb095cb178ceca7ccd2fec2d239de4516ccc79512d33",
+      "matches_lock": true
+    },
+    "environment.json": {
+      "present": true,
+      "sha256": "a8db84c279eae98de5e9a76be778daf0c5ed9ffc2ee668b1b1446d217410b913",
+      "lock_sha256": "a8db84c279eae98de5e9a76be778daf0c5ed9ffc2ee668b1b1446d217410b913",
+      "matches_lock": true
+    },
+    "mel.npy": {
+      "present": true,
+      "sha256": "4ed24d7da64c17f58419ec45f15aa24ac9d1cfd93a4de51ee4f05e1d712b4d22",
+      "lock_sha256": "4ed24d7da64c17f58419ec45f15aa24ac9d1cfd93a4de51ee4f05e1d712b4d22",
+      "matches_lock": true
+    },
+    "mel_mask.npy": {
+      "present": true,
+      "sha256": "5f3d2d4f4c9ee6aaa0e1fa1268e518dcdc1356260a27b64e1a77957838fd7ed2",
+      "lock_sha256": "5f3d2d4f4c9ee6aaa0e1fa1268e518dcdc1356260a27b64e1a77957838fd7ed2",
+      "matches_lock": true
+    },
+    "mel_stage/dft_imag.npy": {
+      "present": false,
+      "lock_sha256": "26858cabc9d8d9d8dd6b4d3ef2e680be5adba09199d33f7481530c6017c1647b",
+      "matches_lock": false,
+      "note": "pinned by the lock, absent from this capture directory"
+    },
+    "mel_stage/dft_real.npy": {
+      "present": false,
+      "lock_sha256": "c08ba5ce111d0f8abb0ae960f6694bf7a32db58889530a6a636b1ff1030c3bc6",
+      "matches_lock": false,
+      "note": "pinned by the lock, absent from this capture directory"
+    },
+    "mel_stage/frames.npy": {
+      "present": false,
+      "lock_sha256": "8a1e0716f1d7c99eacc0b8529a0da7e10bb21e08a6cfd5c7b53db137b4e3e134",
+      "matches_lock": false,
+      "note": "pinned by the lock, absent from this capture directory"
+    },
+    "mel_stage/hann.npy": {
+      "present": false,
+      "lock_sha256": "939f8d4c7a84902b46b709914001a04931b8f8d4c053476419c45b372342c038",
+      "matches_lock": false,
+      "note": "pinned by the lock, absent from this capture directory"
+    },
+    "mel_stage/logmel.npy": {
+      "present": false,
+      "lock_sha256": "86c2a2de87d76258e0a474fa91fd2b26fe4b9c1bb11937c2774520e89f114f41",
+      "matches_lock": false,
+      "note": "pinned by the lock, absent from this capture directory"
+    },
+    "mel_stage/mean.npy": {
+      "present": false,
+      "lock_sha256": "cdca48c02f86c90a2b8547d115dc04461b4a735d36729877fb1684478a72a292",
+      "matches_lock": false,
+      "note": "pinned by the lock, absent from this capture directory"
+    },
+    "mel_stage/mel_fb.npy": {
+      "present": false,
+      "lock_sha256": "0705f27885970556c6b84628a2bff08c3c672a325119b03e3195c00abd28e2cc",
+      "matches_lock": false,
+      "note": "pinned by the lock, absent from this capture directory"
+    },
+    "mel_stage/mel_mask.npy": {
+      "present": false,
+      "lock_sha256": "11b0d5ace674b3eb80119a60bda0bf15763c2e2774fabb8b1d10f832c4e97aae",
+      "matches_lock": false,
+      "note": "pinned by the lock, absent from this capture directory"
+    },
+    "mel_stage/mel_pinned.npy": {
+      "present": false,
+      "lock_sha256": "4ed24d7da64c17f58419ec45f15aa24ac9d1cfd93a4de51ee4f05e1d712b4d22",
+      "matches_lock": false,
+      "note": "pinned by the lock, absent from this capture directory"
+    },
+    "mel_stage/mel_stepwise.npy": {
+      "present": false,
+      "lock_sha256": "4ed24d7da64c17f58419ec45f15aa24ac9d1cfd93a4de51ee4f05e1d712b4d22",
+      "matches_lock": false,
+      "note": "pinned by the lock, absent from this capture directory"
+    },
+    "mel_stage/melproj.npy": {
+      "present": false,
+      "lock_sha256": "00797ea1f6d63bcac4dcb7d68b9be9534788a130e46b55fd9a4e3705ac132a07",
+      "matches_lock": false,
+      "note": "pinned by the lock, absent from this capture directory"
+    },
+    "mel_stage/power.npy": {
+      "present": false,
+      "lock_sha256": "f821f1cc193581f1b8198c59e30951ece515db747b0e4bf3629f94fe2b504994",
+      "matches_lock": false,
+      "note": "pinned by the lock, absent from this capture directory"
+    },
+    "mel_stage/preemph.npy": {
+      "present": false,
+      "lock_sha256": "5e2965b2d14f12e6010a51413aaa32b959e37ff935efaac503108ac7efb9cd65",
+      "matches_lock": false,
+      "note": "pinned by the lock, absent from this capture directory"
+    },
+    "mel_stage/std.npy": {
+      "present": false,
+      "lock_sha256": "aa8cf1f1c1c33c388e546f1c8dc3c6abcec57cd4f359cd5996388d077ae78d66",
+      "matches_lock": false,
+      "note": "pinned by the lock, absent from this capture directory"
+    },
+    "mel_stage_manifest.json": {
+      "present": false,
+      "lock_sha256": "67ecd46384c33040869093cde9b0615e0a0e7aaaa8450212c46a366405c61a14",
+      "matches_lock": false,
+      "note": "pinned by the lock, absent from this capture directory"
+    },
+    "token_ids.json": {
+      "present": true,
+      "sha256": "a175a5f9ce8c1e91fc28f6e1fce9deee29c24c3ef49e62ce4b144cc44f8401c8",
+      "lock_sha256": "a175a5f9ce8c1e91fc28f6e1fce9deee29c24c3ef49e62ce4b144cc44f8401c8",
+      "matches_lock": true
+    },
+    "transcript.txt": {
+      "present": true,
+      "sha256": "db501a8c080380ea027ffa50a4b4956c39df77cb692c4fb78e556311a11a0790",
+      "lock_sha256": "db501a8c080380ea027ffa50a4b4956c39df77cb692c4fb78e556311a11a0790",
+      "matches_lock": true
+    },
+    "waveform.npy": {
+      "present": true,
+      "sha256": "9109d935561ce8972e5ca1bb126914e91111c3a51d9db60d54a5ecd65ee3d2bd",
+      "lock_sha256": "9109d935561ce8972e5ca1bb126914e91111c3a51d9db60d54a5ecd65ee3d2bd",
+      "matches_lock": true
+    }
+  },
+  "pinned": 26,
+  "present": 11,
+  "absent": [
+    "mel_stage/dft_imag.npy",
+    "mel_stage/dft_real.npy",
+    "mel_stage/frames.npy",
+    "mel_stage/hann.npy",
+    "mel_stage/logmel.npy",
+    "mel_stage/mean.npy",
+    "mel_stage/mel_fb.npy",
+    "mel_stage/mel_mask.npy",
+    "mel_stage/mel_pinned.npy",
+    "mel_stage/mel_stepwise.npy",
+    "mel_stage/melproj.npy",
+    "mel_stage/power.npy",
+    "mel_stage/preemph.npy",
+    "mel_stage/std.npy",
+    "mel_stage_manifest.json"
+  ],
+  "all_present_match": true,
+  "run_inputs_match": true
+}
