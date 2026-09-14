@@ -1,0 +1,286 @@
+{
+  "artifactFormat": "anec",
+  "dispatchPlan": [
+    0,
+    1
+  ],
+  "intermediates": [
+    "product"
+  ],
+  "logicalResults": [
+    {
+      "conversion": "identity",
+      "dtype": "float16",
+      "name": "y",
+      "physical": {
+        "elementCount": 1125000,
+        "elementOffset": 0,
+        "tensor": "y"
+      },
+      "shape": [
+        1,
+        8,
+        375,
+        375
+      ]
+    }
+  ],
+  "physicalOutputs": [
+    {
+      "dtype": "float16",
+      "logicalBytes": 2250000,
+      "shape": [
+        1,
+        8,
+        375,
+        375
+      ],
+      "tensor": "y"
+    }
+  ],
+  "programs": [
+    {
+      "bytes": 182400,
+      "constantBytes": 16384,
+      "constantInputs": {},
+      "constantOffset": 161920,
+      "encoder": "apple-parity-batched-matmul",
+      "file": "program-0.anec",
+      "inputs": [
+        {
+          "allocationBytes": 786432,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 768000,
+          "name": "w",
+          "nchw": [
+            1,
+            8,
+            128,
+            375,
+            98304,
+            768
+          ],
+          "shape": [
+            1,
+            8,
+            128,
+            375
+          ]
+        },
+        {
+          "allocationBytes": 770048,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 768000,
+          "name": "x",
+          "nchw": [
+            1,
+            8,
+            375,
+            128,
+            96000,
+            256
+          ],
+          "shape": [
+            1,
+            8,
+            375,
+            128
+          ]
+        }
+      ],
+      "operation": "matmul",
+      "outputs": [
+        {
+          "allocationBytes": 2310144,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 2250000,
+          "name": "product",
+          "nchw": [
+            1,
+            8,
+            375,
+            375,
+            288000,
+            768
+          ],
+          "role": "intermediate",
+          "shape": [
+            1,
+            8,
+            375,
+            375
+          ]
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 208
+    },
+    {
+      "bytes": 9216,
+      "constantBytes": 2048,
+      "constantInputs": {},
+      "constantOffset": 3072,
+      "encoder": "apple-parity-boolean",
+      "file": "program-1.anec",
+      "inputs": [
+        {
+          "allocationBytes": 2310144,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 2250000,
+          "name": "ninf_rt",
+          "nchw": [
+            1,
+            8,
+            375,
+            375,
+            288000,
+            768
+          ],
+          "shape": [
+            1,
+            8,
+            375,
+            375
+          ]
+        },
+        {
+          "allocationBytes": 2310144,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 2250000,
+          "name": "product",
+          "nchw": [
+            1,
+            8,
+            375,
+            375,
+            288000,
+            768
+          ],
+          "role": "intermediate",
+          "shape": [
+            1,
+            8,
+            375,
+            375
+          ]
+        },
+        {
+          "allocationBytes": 1163264,
+          "dtype": "bool",
+          "index": 7,
+          "logicalBytes": 1125000,
+          "name": "cond",
+          "nchw": [
+            1,
+            8,
+            375,
+            375,
+            144000,
+            384
+          ],
+          "shape": [
+            1,
+            8,
+            375,
+            375
+          ]
+        }
+      ],
+      "operation": "select",
+      "outputs": [
+        {
+          "allocationBytes": 2310144,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 2250000,
+          "name": "y",
+          "nchw": [
+            1,
+            8,
+            375,
+            375,
+            288000,
+            768
+          ],
+          "shape": [
+            1,
+            8,
+            375,
+            375
+          ]
+        }
+      ],
+      "scratchBytes": 2310144,
+      "taskDescriptors": 5
+    }
+  ],
+  "schema": "mil-hwxc.h13-anec-package.v2",
+  "target": "H13",
+  "tensors": {
+    "cond": {
+      "logicalBytes": 1125000,
+      "role": "input",
+      "shape": [
+        1,
+        8,
+        375,
+        375
+      ]
+    },
+    "ninf_rt": {
+      "logicalBytes": 2250000,
+      "role": "input",
+      "shape": [
+        1,
+        8,
+        375,
+        375
+      ]
+    },
+    "product": {
+      "logicalBytes": 2250000,
+      "role": "intermediate",
+      "shape": [
+        1,
+        8,
+        375,
+        375
+      ]
+    },
+    "w": {
+      "logicalBytes": 768000,
+      "role": "input",
+      "shape": [
+        1,
+        8,
+        128,
+        375
+      ]
+    },
+    "x": {
+      "logicalBytes": 768000,
+      "role": "input",
+      "shape": [
+        1,
+        8,
+        375,
+        128
+      ]
+    },
+    "y": {
+      "logicalBytes": 2250000,
+      "role": "output",
+      "shape": [
+        1,
+        8,
+        375,
+        375
+      ]
+    }
+  }
+}

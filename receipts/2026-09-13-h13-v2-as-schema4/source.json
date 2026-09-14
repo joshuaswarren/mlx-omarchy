@@ -1,0 +1,19 @@
+{
+  "artifact_format": "anec",
+  "compiler_binary_sha256": "82f1d4ce44dc8f2cb5eefd843eea41c47527af3fbff2def0ed1fc154ccd3ce71",
+  "compiler_manifest_sha256": "3fcbb7b43473b86a5918b03d1b74a750c6176c6db72c24d34a1d1f241b3cba9e",
+  "original_compiler_manifest_sha256": "d121475f651a764e75bb51438884795b20351477a79d9ea321736b3ee3056224",
+  "adapter_staging_note": "Removed tensors.cond.dtype from a copy of the v2 manifest; bool dtype remains on programs[1].inputs[2]. Original island package was not rewritten.",
+  "compiler_executable_source_commit": "c2cf32e4aa0200d72cecbce203bf6b47f50f729e",
+  "generation_command": "/home/joshuawarren/src/mil-hwx-compiler/build/mil-hwxc --mil receipts/2026-09-13-attn-select-island/attn-select-island.mil --model-root receipts/2026-09-13-attn-select-island --target H13 --format anec --output receipts/2026-09-13-attn-select-island/attn-select-island",
+  "graph_source_sha256": "e0daeb7fd056f79f97a1552a1e11b0a92146dd480dcec216fac750613ea1b745",
+  "hardware_executed": false,
+  "payloads": {
+    "program-0.anec": "a3aa2fe1333a48eba3e7fcae5b848563e2bfa747a232dadf9ed2d568821c5627",
+    "program-1.anec": "860de06c53e3fdfed9452859042df59902fb733bef0a364b134dd9d9d6374cdd"
+  },
+  "qualification_scope": "Explicit --format anec package structure and schema-4 loader adaptation only; no device execution.",
+  "schema": "mil-hwxc.h13-anec-package.v2",
+  "target": "H13",
+  "compiler_host_build": "Linux 6.17.2-1-pve x86_64"
+}
