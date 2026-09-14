@@ -1,0 +1,14 @@
+{
+  "installed_wheel": "mlx-omarchy==0.32.2.dev202609122355+diag.b41e2b74",
+  "private_prefix": "/var/tmp/mlx-omarchy-profile-enabled-b41e2b74",
+  "cmake_option": "MLX_OMARCHY_GPU_PROFILING",
+  "cmake_value": "ON",
+  "cmake_default": "OFF",
+  "build_invocation": "CMAKE_ARGS='-DMLX_BUILD_OMARCHY=ON -DMLX_BUILD_CPU=ON -DMLX_BUILD_METAL=OFF -DMLX_BUILD_CUDA=OFF -DMLX_BUILD_TESTS=OFF -DMLX_BUILD_EXAMPLES=OFF -DMLX_BUILD_BENCHMARKS=OFF -DMLX_OMARCHY_GPU_PROFILING=ON' CMAKE_BUILD_PARALLEL_LEVEL=4 DEV_RELEASE=1 MLX_OMARCHY_LOCAL_VERSION=diag.b41e2b74 pip wheel --no-build-isolation --no-deps --wheel-dir /var/tmp/mlx-omarchy-profile-enabled-b41e2b74/dist /var/tmp/mlx-omarchy-profile-enabled-b41e2b74/mlx",
+  "libmlx_contains_MLX_DISABLE_COMPILE": true,
+  "libmlx_contains_MLX_OMARCHY_GPU_PROFILE": true,
+  "profile_jsonl_emitted": true,
+  "profile_jsonl_bytes": 329607,
+  "reason": "Private diagnostics rebuild of b41e2b74 with -DMLX_OMARCHY_GPU_PROFILING=ON. Reused 422 cached shaders; recompiled mlx C++ with the profiling define. Did not touch grouped-base dist/ or venv-run.",
+  "kernel_table": "analysis.txt and prefill-summary.json"
+}

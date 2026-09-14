@@ -1,0 +1,371 @@
+{
+  "phase": "complete",
+  "result": "PASS",
+  "oneshot_exact": true,
+  "soak_exit": 0,
+  "soak_stdout": "{\"successful_runs\": 100, \"all_matched_baseline\": true, \"median_ms\": 4, \"p95_ms\": 4, \"timeouts\": 0, \"workers_released_each_run\": true, \"post_workers\": \"none\", \"post_nproc\": \"10\", \"post_module\": \"\", \"abort_reason\": null}",
+  "soak_stderr": "",
+  "set_post": {
+    "set0": {
+      "raw": "0x000003ff",
+      "ACTUAL": "0xf",
+      "TARGET": "0xf",
+      "phys": "0x28e08c000"
+    },
+    "base": {
+      "raw": "0x000003ff",
+      "ACTUAL": "0xf",
+      "TARGET": "0xf"
+    },
+    "set1": {
+      "raw": "0x000003ff",
+      "ACTUAL": "0xf",
+      "TARGET": "0xf"
+    },
+    "set2": {
+      "raw": "0x000003ff",
+      "ACTUAL": "0xf",
+      "TARGET": "0xf"
+    },
+    "set3": {
+      "raw": "0x000003ff",
+      "ACTUAL": "0xf",
+      "TARGET": "0xf"
+    },
+    "set4": {
+      "raw": "0x000003ff",
+      "ACTUAL": "0xf",
+      "TARGET": "0xf"
+    },
+    "set5": {
+      "raw": "0x00000000",
+      "ACTUAL": "0x0",
+      "TARGET": "0x0"
+    }
+  },
+  "health_post": {
+    "hostname": "jw16mbp1-linux",
+    "boot_id": "f6ad865b-b85e-499e-8308-28b57b24f0c8",
+    "nproc": "10",
+    "cpu_online": "0-9",
+    "accel": "crw-rw-rw- root:render 105,0 /dev/accel/accel0",
+    "bound": "285c04000.ane",
+    "module_initstate": "live",
+    "refcnt": "0",
+    "runtime_status": "active",
+    "workers": "none",
+    "kernel": "7.1.6-1-1-ARCH"
+  },
+  "set_during_100": [
+    {
+      "t_ms": 0.019,
+      "set0": {
+        "raw": "0x000003ff",
+        "ACTUAL": "0xf",
+        "TARGET": "0xf",
+        "phys": "0x28e08c000"
+      }
+    },
+    {
+      "t_ms": 20.002,
+      "set0": {
+        "raw": "0x000003ff",
+        "ACTUAL": "0xf",
+        "TARGET": "0xf",
+        "phys": "0x28e08c000"
+      }
+    },
+    {
+      "t_ms": 40.004,
+      "set0": {
+        "raw": "0x000003ff",
+        "ACTUAL": "0xf",
+        "TARGET": "0xf",
+        "phys": "0x28e08c000"
+      }
+    },
+    {
+      "t_ms": 60.005,
+      "set0": {
+        "raw": "0x000003ff",
+        "ACTUAL": "0xf",
+        "TARGET": "0xf",
+        "phys": "0x28e08c000"
+      }
+    },
+    {
+      "t_ms": 80.005,
+      "set0": {
+        "raw": "0x000003ff",
+        "ACTUAL": "0xf",
+        "TARGET": "0xf",
+        "phys": "0x28e08c000"
+      }
+    },
+    {
+      "t_ms": 100.006,
+      "set0": {
+        "raw": "0x000003ff",
+        "ACTUAL": "0xf",
+        "TARGET": "0xf",
+        "phys": "0x28e08c000"
+      }
+    },
+    {
+      "t_ms": 120.008,
+      "set0": {
+        "raw": "0x000003ff",
+        "ACTUAL": "0xf",
+        "TARGET": "0xf",
+        "phys": "0x28e08c000"
+      }
+    },
+    {
+      "t_ms": 140.009,
+      "set0": {
+        "raw": "0x000003ff",
+        "ACTUAL": "0xf",
+        "TARGET": "0xf",
+        "phys": "0x28e08c000"
+      }
+    },
+    {
+      "t_ms": 160.011,
+      "set0": {
+        "raw": "0x000003ff",
+        "ACTUAL": "0xf",
+        "TARGET": "0xf",
+        "phys": "0x28e08c000"
+      }
+    },
+    {
+      "t_ms": 180.012,
+      "set0": {
+        "raw": "0x000003ff",
+        "ACTUAL": "0xf",
+        "TARGET": "0xf",
+        "phys": "0x28e08c000"
+      }
+    },
+    {
+      "t_ms": 200.013,
+      "set0": {
+        "raw": "0x000003ff",
+        "ACTUAL": "0xf",
+        "TARGET": "0xf",
+        "phys": "0x28e08c000"
+      }
+    },
+    {
+      "t_ms": 220.014,
+      "set0": {
+        "raw": "0x000003ff",
+        "ACTUAL": "0xf",
+        "TARGET": "0xf",
+        "phys": "0x28e08c000"
+      }
+    },
+    {
+      "t_ms": 240.014,
+      "set0": {
+        "raw": "0x000003ff",
+        "ACTUAL": "0xf",
+        "TARGET": "0xf",
+        "phys": "0x28e08c000"
+      }
+    },
+    {
+      "t_ms": 260.014,
+      "set0": {
+        "raw": "0x000003ff",
+        "ACTUAL": "0xf",
+        "TARGET": "0xf",
+        "phys": "0x28e08c000"
+      }
+    },
+    {
+      "t_ms": 280.015,
+      "set0": {
+        "raw": "0x000003ff",
+        "ACTUAL": "0xf",
+        "TARGET": "0xf",
+        "phys": "0x28e08c000"
+      }
+    },
+    {
+      "t_ms": 300.017,
+      "set0": {
+        "raw": "0x000003ff",
+        "ACTUAL": "0xf",
+        "TARGET": "0xf",
+        "phys": "0x28e08c000"
+      }
+    },
+    {
+      "t_ms": 320.017,
+      "set0": {
+        "raw": "0x000003ff",
+        "ACTUAL": "0xf",
+        "TARGET": "0xf",
+        "phys": "0x28e08c000"
+      }
+    },
+    {
+      "t_ms": 340.018,
+      "set0": {
+        "raw": "0x000003ff",
+        "ACTUAL": "0xf",
+        "TARGET": "0xf",
+        "phys": "0x28e08c000"
+      }
+    },
+    {
+      "t_ms": 360.02,
+      "set0": {
+        "raw": "0x000003ff",
+        "ACTUAL": "0xf",
+        "TARGET": "0xf",
+        "phys": "0x28e08c000"
+      }
+    },
+    {
+      "t_ms": 380.021,
+      "set0": {
+        "raw": "0x000003ff",
+        "ACTUAL": "0xf",
+        "TARGET": "0xf",
+        "phys": "0x28e08c000"
+      }
+    },
+    {
+      "t_ms": 400.021,
+      "set0": {
+        "raw": "0x000003ff",
+        "ACTUAL": "0xf",
+        "TARGET": "0xf",
+        "phys": "0x28e08c000"
+      }
+    },
+    {
+      "t_ms": 420.024,
+      "set0": {
+        "raw": "0x000003ff",
+        "ACTUAL": "0xf",
+        "TARGET": "0xf",
+        "phys": "0x28e08c000"
+      }
+    },
+    {
+      "t_ms": 440.024,
+      "set0": {
+        "raw": "0x000003ff",
+        "ACTUAL": "0xf",
+        "TARGET": "0xf",
+        "phys": "0x28e08c000"
+      }
+    },
+    {
+      "t_ms": 460.026,
+      "set0": {
+        "raw": "0x000003ff",
+        "ACTUAL": "0xf",
+        "TARGET": "0xf",
+        "phys": "0x28e08c000"
+      }
+    },
+    {
+      "t_ms": 480.027,
+      "set0": {
+        "raw": "0x000003ff",
+        "ACTUAL": "0xf",
+        "TARGET": "0xf",
+        "phys": "0x28e08c000"
+      }
+    }
+  ],
+  "dmesg_tail": [
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: submit: tq status written",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: submit: enqueue returned 0",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: submit: calling execute",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: submit: push tq qid=4 addr=0x18000",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: submit: ringing doorbell (engine DMA starts)",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: submit: doorbell survived",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: submit: execute returned 0",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: submit: ioctl entry",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: submit: enqueue qid=4 td_size=0x1f8 nid=0x40 iova=0x30000",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: submit: tq status written",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: submit: enqueue returned 0",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: submit: calling execute",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: submit: push tq qid=4 addr=0x30000",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: submit: ringing doorbell (engine DMA starts)",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: submit: doorbell survived",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: submit: execute returned 0",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: ane_drm_open called",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: pm_runtime_resume_and_get returned 0",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: bo: mapping 2 page(s) at iova 0x4000",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: bo: mapping 1 page(s) at iova 0xc000",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: bo: mapping 1 page(s) at iova 0x10000",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: bo: mapping 1 page(s) at iova 0x14000",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: bo: mapping 1 page(s) at iova 0x18000",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: ane_drm_open called",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: pm_runtime_resume_and_get returned 0",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: bo: mapping 2 page(s) at iova 0x1c000",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: bo: mapping 1 page(s) at iova 0x24000",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: bo: mapping 1 page(s) at iova 0x28000",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: bo: mapping 1 page(s) at iova 0x2c000",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: bo: mapping 1 page(s) at iova 0x30000",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: submit: ioctl entry",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: submit: enqueue qid=4 td_size=0x1f8 nid=0x40 iova=0x18000",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: submit: tq status written",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: submit: enqueue returned 0",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: submit: calling execute",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: submit: push tq qid=4 addr=0x18000",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: submit: ringing doorbell (engine DMA starts)",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: submit: doorbell survived",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: submit: execute returned 0",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: submit: ioctl entry",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: submit: enqueue qid=4 td_size=0x1f8 nid=0x40 iova=0x30000",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: submit: tq status written",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: submit: enqueue returned 0",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: submit: calling execute",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: submit: push tq qid=4 addr=0x30000",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: submit: ringing doorbell (engine DMA starts)",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: submit: doorbell survived",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: submit: execute returned 0",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: ane_drm_open called",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: pm_runtime_resume_and_get returned 0",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: bo: mapping 2 page(s) at iova 0x4000",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: bo: mapping 1 page(s) at iova 0xc000",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: bo: mapping 1 page(s) at iova 0x10000",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: bo: mapping 1 page(s) at iova 0x14000",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: bo: mapping 1 page(s) at iova 0x18000",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: ane_drm_open called",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: pm_runtime_resume_and_get returned 0",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: bo: mapping 2 page(s) at iova 0x1c000",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: bo: mapping 1 page(s) at iova 0x24000",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: bo: mapping 1 page(s) at iova 0x28000",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: bo: mapping 1 page(s) at iova 0x2c000",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: bo: mapping 1 page(s) at iova 0x30000",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: submit: ioctl entry",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: submit: enqueue qid=4 td_size=0x1f8 nid=0x40 iova=0x18000",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: submit: tq status written",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: submit: enqueue returned 0",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: submit: calling execute",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: submit: push tq qid=4 addr=0x18000",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: submit: ringing doorbell (engine DMA starts)",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: submit: doorbell survived",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: submit: execute returned 0",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: submit: ioctl entry",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: submit: enqueue qid=4 td_size=0x1f8 nid=0x40 iova=0x30000",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: submit: tq status written",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: submit: enqueue returned 0",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: submit: calling execute",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: submit: push tq qid=4 addr=0x30000",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: submit: ringing doorbell (engine DMA starts)",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: submit: doorbell survived",
+    "[Mon Sep 14 08:34:51 2026] ane 285c04000.ane: submit: execute returned 0"
+  ],
+  "worker_sha256": "575e2acd0152cec13f06dd9b09e4af0d7e4a91bfe4d8fa086b633b8b82a83e59",
+  "libane_sha256": "1ab9d95debcc8b5fee3b6653dfce0b50412bc7efef43c2d2167dc83ce270ca49",
+  "set0_phys": "0x28e08c000"
+}

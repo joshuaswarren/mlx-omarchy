@@ -1,0 +1,142 @@
+{
+  "schema": "mlx-omarchy.jw16-ane-abi1-exec.v1",
+  "date": "2026-09-13",
+  "result": "FAIL",
+  "exact_fp16": "no",
+  "host": "jw16mbp1-linux",
+  "resolved_model": {
+    "configured": "openai-codex/gpt-5.6-sol",
+    "actual": "openai-codex/gpt-5.6-sol",
+    "fallback": false
+  },
+  "source": {
+    "omarchy_ane_base_commit": "59e846f77f5da5e853167c79677dc25229937930",
+    "omarchy_ane_base_subject": "Add read-only ps_ane_sys_cpu ACTUAL discriminator",
+    "omarchy_ane_drv_dirty": "ane_drm_driver.major/minor/patchlevel set to 1.0.0; uncommitted on feature/t6001-ane-bind",
+    "ane_drv_c_sha256": "6b332b55cfa67f70bae411acb5c54afe97aa2d7f14c75a9b99bf3c6869b290dd",
+    "ane_ko_path": "/home/joshuawarren/ane-build-abi1/ane.ko",
+    "ane_ko_sha256": "1b801564a1a6c5801dc26cfd1e4a8d820761881f4a1e98543429bc43ccc9744f",
+    "ane_ko_vermagic": "7.1.6-1-1-ARCH SMP preempt mod_unload aarch64",
+    "headers": "/lib/modules/7.1.6-1-1-ARCH/build",
+    "worker_commit": "3629a66544d3da1aa8399a93ef4a5d0cc273311d",
+    "worker_commit_subject": "feat(ane): prove the bounded worker on jwm1 hardware",
+    "built_tree_commit": "c05ba1df2aa0427a36685a4e4661e6a1f47ff33d",
+    "worker_sha256": "575e2acd0152cec13f06dd9b09e4af0d7e4a91bfe4d8fa086b633b8b82a83e59",
+    "libane_source_commit": "f261a6cb537aca62f267ad3d01beda0d6877544c",
+    "libane_sha256": "1ab9d95debcc8b5fee3b6653dfce0b50412bc7efef43c2d2167dc83ce270ca49",
+    "graph_hash": "5584d0fd8d40027229890408e924e6f7930cd5f02516466a442193408482ce76",
+    "bundle_manifest_version": 4,
+    "bundle_name": "schema4-add-mul-worker",
+    "expect_y_sha256": "abd3b8c9f1439c1fa508b42aa229c4b1688e06271d2bf7b823d71cd730200054"
+  },
+  "reload": {
+    "reboot": false,
+    "boot_id_unchanged": "54c0b95d-0d46-421b-a17e-f58e4ccbeee2",
+    "rmmod": true,
+    "insmod": "/home/joshuawarren/ane-build-abi1/ane.ko",
+    "dmesg_initialized": "[ 996.271787] [drm] Initialized ane 1.0.0 for 285c04000.ane on minor 0",
+    "drm_version_ioctl": {
+      "version": "1.0.0",
+      "name": "ane",
+      "desc": "Apple Neural Engine driver"
+    },
+    "bound_after": "285c04000.ane"
+  },
+  "device": {
+    "path": "/dev/accel/accel0",
+    "stat": "crw-rw-rw- root:render 261,0",
+    "bound": "285c04000.ane",
+    "module": "Live",
+    "refcnt": 0,
+    "nproc": 10,
+    "cpu_online": "0-9",
+    "boot_id": "54c0b95d-0d46-421b-a17e-f58e4ccbeee2",
+    "drm_initialized": "ane 1.0.0",
+    "still_live_after": true
+  },
+  "open": {
+    "result": "OPEN_OK",
+    "drm": "1.0.0 name=ane"
+  },
+  "submit": {
+    "attempted": true,
+    "command": "/var/tmp/jw16-ane-first-exec/mlx-omarchy-ane-worker --bundle /var/tmp/jw16-ane-first-exec/bundle --libane /var/tmp/jw16-ane-first-exec/libane.so --deadline-ms 5000 --iterations 1 --input a=/var/tmp/jw16-ane-first-exec/a.bin --input b=/var/tmp/jw16-ane-first-exec/b.bin --expect y=/var/tmp/jw16-ane-first-exec/y.bin --save y=/var/tmp/jw16-ane-abi1-exec/y.out.bin",
+    "deadline_ms": 5000,
+    "iterations_requested": 1,
+    "iterations_completed": 0,
+    "worker_exit": 1,
+    "worker_status": 1,
+    "worker_status_name": "DeviceFailed",
+    "released_programs": 0,
+    "elapsed_ms": 1003,
+    "detail": "ane_exec failed for program 0",
+    "stdout": [
+      "bundle name=schema4-add-mul-worker programs=2 driver_abi=1 graph=5584d0fd8d40027229890408e924e6f7930cd5f02516466a442193408482ce76",
+      "worker status=1 iterations=0 released=0 elapsed_ms=1003",
+      "worker detail=ane_exec failed for program 0"
+    ],
+    "libane_errors": [],
+    "program_submitted_to_ane": true,
+    "hang": false,
+    "errno_110": true,
+    "box_reset": false,
+    "started_at": "2026-09-13T18:12:11-05:00",
+    "finished_at": "2026-09-13T18:12:13-05:00"
+  },
+  "dmesg_submit": [
+    "[ 1021.341525] ane 285c04000.ane: ane_drm_open called",
+    "[ 1021.341531] ane 285c04000.ane: pm_runtime_resume_and_get returned 0",
+    "[ 1021.341546] ane 285c04000.ane: bo: mapping 2 page(s) at iova 0x4000",
+    "[ 1021.341570] ane 285c04000.ane: bo: mapping 1 page(s) at iova 0xc000",
+    "[ 1021.341583] ane 285c04000.ane: bo: mapping 1 page(s) at iova 0x10000",
+    "[ 1021.341598] ane 285c04000.ane: bo: mapping 1 page(s) at iova 0x14000",
+    "[ 1021.341610] ane 285c04000.ane: bo: mapping 1 page(s) at iova 0x18000",
+    "[ 1021.341661] ane 285c04000.ane: ane_drm_open called",
+    "[ 1021.341662] ane 285c04000.ane: pm_runtime_resume_and_get returned 0",
+    "[ 1021.341669] ane 285c04000.ane: bo: mapping 2 page(s) at iova 0x1c000",
+    "[ 1021.341692] ane 285c04000.ane: bo: mapping 1 page(s) at iova 0x24000",
+    "[ 1021.341705] ane 285c04000.ane: bo: mapping 1 page(s) at iova 0x28000",
+    "[ 1021.341717] ane 285c04000.ane: bo: mapping 1 page(s) at iova 0x2c000",
+    "[ 1021.341729] ane 285c04000.ane: bo: mapping 1 page(s) at iova 0x30000",
+    "[ 1021.341750] ane 285c04000.ane: submit: ioctl entry",
+    "[ 1021.341751] ane 285c04000.ane: submit: enqueue qid=4 td_size=0x1f8 nid=0x40 iova=0x18000",
+    "[ 1021.341752] ane 285c04000.ane: submit: tq status written",
+    "[ 1021.341765] ane 285c04000.ane: submit: enqueue returned 0",
+    "[ 1021.341766] ane 285c04000.ane: submit: calling execute",
+    "[ 1021.341767] ane 285c04000.ane: submit: push tq qid=4 addr=0x18000",
+    "[ 1021.341769] ane 285c04000.ane: submit: ringing doorbell (engine DMA starts)",
+    "[ 1021.341770] ane 285c04000.ane: submit: doorbell survived",
+    "[ 1022.341747] ane 285c04000.ane: tm execution failed w/ -110",
+    "[ 1022.341793] ane 285c04000.ane: submit: execute returned -110"
+  ],
+  "failure": {
+    "class": "kernel_tm_execute_timeout",
+    "evidence": "ABI gate closed: DRM 1.0.0 name=ane, libane opened accel0, ane_init succeeded, program 0 was enqueued and the doorbell survived. ane_tm execute returned -110 (ETIMEDOUT) after ~1003 ms. No y.out. Device remained 285c04000.ane /dev/accel/accel0 with unchanged boot_id.",
+    "drm_version_ioctl": {
+      "version": "1.0.0",
+      "name": "ane",
+      "desc": "Apple Neural Engine driver"
+    }
+  },
+  "post": {
+    "boot_id": "54c0b95d-0d46-421b-a17e-f58e4ccbeee2",
+    "device": "crw-rw-rw- root:render 261,0 /dev/accel/accel0",
+    "bound": "285c04000.ane",
+    "module": "Live",
+    "refcnt": 0,
+    "workers": "none",
+    "y_out": "absent"
+  },
+  "prohibited_actions_observed": {
+    "ane_unloaded_then_reloaded": true,
+    "rebooted": false,
+    "executed_1x896": false,
+    "took_gpu_lock": false,
+    "retried_after_failure": false,
+    "iterations_2": false,
+    "ran_100": false
+  },
+  "encoder_claim": false,
+  "prior_receipt": "receipts/2026-09-13-jw16-ane-first-exec.json",
+  "log": "/var/tmp/jw16-ane-abi1-exec/iter1.log"
+}

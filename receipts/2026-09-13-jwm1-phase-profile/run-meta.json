@@ -1,0 +1,27 @@
+{
+  "returncode": 0,
+  "wall_ms": 2832.121439,
+  "cmd_wo_prompt": [
+    "/home/joshuawarren/src/mlx-bf16-grouped-base-b41e2b74/.work/venv-run/bin/python",
+    "/home/joshuawarren/src/mlx-bf16-grouped-base-b41e2b74/scripts/profile_generate.py",
+    "--model",
+    "/home/joshuawarren/models/Qwen2.5-0.5B-Instruct-4bit-mlx",
+    "--prompt",
+    "<prompt>",
+    "--max-tokens",
+    "2",
+    "--temp",
+    "0",
+    "--seed",
+    "0",
+    "--markers",
+    "/tmp/jwm1-phase-profile-20260913/markers.jsonl"
+  ],
+  "env": {
+    "MLX_DISABLE_COMPILE": "1",
+    "MLX_OMARCHY_GPU_PROFILE": "/tmp/jwm1-phase-profile-20260913/profile.jsonl",
+    "MLX_OMARCHY_GPU_PROFILE_LABEL": "jwm1-b41e2b74-m1053",
+    "MESA_SHADER_CACHE_DISABLE": "true",
+    "HF_HUB_OFFLINE": "1"
+  }
+}

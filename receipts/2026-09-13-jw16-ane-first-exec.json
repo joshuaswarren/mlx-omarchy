@@ -1,0 +1,99 @@
+{
+  "schema": "mlx-omarchy.jw16-ane-first-exec.v1",
+  "date": "2026-09-13",
+  "result": "FAIL",
+  "host": "jw16mbp1-linux",
+  "resolved_model": {
+    "configured": "openai-codex/gpt-5.6-sol",
+    "actual": "openai-codex/gpt-5.6-sol",
+    "fallback": false
+  },
+  "source": {
+    "worker_commit": "3629a66544d3da1aa8399a93ef4a5d0cc273311d",
+    "worker_commit_subject": "feat(ane): prove the bounded worker on jwm1 hardware",
+    "built_tree_commit": "c05ba1df2aa0427a36685a4e4661e6a1f47ff33d",
+    "worker_sha256": "575e2acd0152cec13f06dd9b09e4af0d7e4a91bfe4d8fa086b633b8b82a83e59",
+    "libane_source_commit": "f261a6cb537aca62f267ad3d01beda0d6877544c",
+    "libane_sha256": "1ab9d95debcc8b5fee3b6653dfce0b50412bc7efef43c2d2167dc83ce270ca49",
+    "graph_hash": "5584d0fd8d40027229890408e924e6f7930cd5f02516466a442193408482ce76",
+    "bundle_manifest_version": 4,
+    "bundle_name": "schema4-add-mul-worker",
+    "expect_y_sha256": "abd3b8c9f1439c1fa508b42aa229c4b1688e06271d2bf7b823d71cd730200054"
+  },
+  "device": {
+    "path": "/dev/accel/accel0",
+    "stat": "crw-rw-rw- root:render 261,0",
+    "bound": "285c04000.ane",
+    "module": "Live",
+    "refcnt": 0,
+    "nproc": 10,
+    "cpu_online": "0-9",
+    "boot_id": "54c0b95d-0d46-421b-a17e-f58e4ccbeee2",
+    "drm_initialized": "ane 0.0.0",
+    "still_live_after": true
+  },
+  "open": {
+    "result": "OPEN_OK",
+    "fd": 3,
+    "close": "CLOSE_OK",
+    "dmesg": [
+      "[  433.702375] ane 285c04000.ane: ane_drm_open called",
+      "[  433.902611] ane 285c04000.ane: pm_runtime_resume_and_get returned 0"
+    ]
+  },
+  "submit": {
+    "attempted": true,
+    "command": "/var/tmp/jw16-ane-first-exec/mlx-omarchy-ane-worker --bundle .../bundle --libane .../libane.so --deadline-ms 5000 --iterations 1 --input a=a.bin --input b=b.bin --expect y=y.bin --save y=y.out.bin",
+    "deadline_ms": 5000,
+    "iterations_requested": 1,
+    "iterations_completed": 0,
+    "worker_exit": 1,
+    "worker_status": 1,
+    "worker_status_name": "DeviceFailed",
+    "released_programs": 0,
+    "elapsed_ms": 1,
+    "detail": "ane_init failed for /var/tmp/jw16-ane-first-exec/bundle/program-0.anec",
+    "libane_errors": [
+      "failed to find device with dev_id 0",
+      "failed to open device with dev_id 0"
+    ],
+    "program_submitted_to_ane": false,
+    "hang": false,
+    "errno_110": false,
+    "box_reset": false,
+    "started_at": "2026-09-13T18:02:24-05:00",
+    "finished_at": "2026-09-13T18:02:24-05:00"
+  },
+  "exact_fp16": "no",
+  "dmesg_submit": [
+    "[  433.925888] ane 285c04000.ane: ane_drm_open called",
+    "[  433.925896] ane 285c04000.ane: pm_runtime_resume_and_get returned 0"
+  ],
+  "failure": {
+    "class": "userspace_abi_mismatch_before_exec",
+    "evidence": "Bound driver advertises DRM version 0.0.0 name=ane. Proven libane (f261a6cb) rejects any node whose version_major != ANE_ABI_MAJOR (1), so device_open never returns fd 0 and ane_init fails. Kernel open of /dev/accel/accel0 succeeded. No ANEC program was submitted.",
+    "drm_version_ioctl": {
+      "version": "0.0.0",
+      "name": "ane",
+      "desc": "Apple Neural Engine driver"
+    }
+  },
+  "post": {
+    "boot_id": "54c0b95d-0d46-421b-a17e-f58e4ccbeee2",
+    "device": "crw-rw-rw- root:render 261,0 /dev/accel/accel0",
+    "module": "Live",
+    "refcnt": 0,
+    "workers": "none",
+    "y_out": "absent"
+  },
+  "prohibited_actions_observed": {
+    "ane_unloaded": false,
+    "rebooted": false,
+    "executed_1x896": false,
+    "took_gpu_lock": false,
+    "retried_after_failure": false,
+    "iterations_2": false
+  },
+  "encoder_claim": false,
+  "log": "/var/tmp/jw16-ane-first-exec/iter1.log"
+}

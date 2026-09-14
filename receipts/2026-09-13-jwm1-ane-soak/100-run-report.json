@@ -1,0 +1,1858 @@
+{
+  "schema": "mlx-omarchy.coreml.inference-report.v1",
+  "runs": [
+    {
+      "iteration": 0,
+      "elapsed_ms": 10,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 1,
+      "elapsed_ms": 9,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 2,
+      "elapsed_ms": 6,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 3,
+      "elapsed_ms": 4,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 4,
+      "elapsed_ms": 6,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 5,
+      "elapsed_ms": 5,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 6,
+      "elapsed_ms": 4,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 7,
+      "elapsed_ms": 6,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 8,
+      "elapsed_ms": 5,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 9,
+      "elapsed_ms": 5,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 10,
+      "elapsed_ms": 4,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 11,
+      "elapsed_ms": 6,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 12,
+      "elapsed_ms": 6,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 13,
+      "elapsed_ms": 5,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 14,
+      "elapsed_ms": 5,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 15,
+      "elapsed_ms": 5,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 16,
+      "elapsed_ms": 4,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 17,
+      "elapsed_ms": 6,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 18,
+      "elapsed_ms": 6,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 19,
+      "elapsed_ms": 5,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 20,
+      "elapsed_ms": 5,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 21,
+      "elapsed_ms": 5,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 22,
+      "elapsed_ms": 4,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 1000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 23,
+      "elapsed_ms": 6,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 24,
+      "elapsed_ms": 4,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 3000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 25,
+      "elapsed_ms": 4,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 26,
+      "elapsed_ms": 6,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 27,
+      "elapsed_ms": 6,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 28,
+      "elapsed_ms": 4,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 29,
+      "elapsed_ms": 6,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 30,
+      "elapsed_ms": 6,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 31,
+      "elapsed_ms": 4,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 32,
+      "elapsed_ms": 6,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 33,
+      "elapsed_ms": 6,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 34,
+      "elapsed_ms": 4,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 35,
+      "elapsed_ms": 6,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 36,
+      "elapsed_ms": 6,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 37,
+      "elapsed_ms": 4,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 38,
+      "elapsed_ms": 6,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 39,
+      "elapsed_ms": 5,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 40,
+      "elapsed_ms": 6,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 41,
+      "elapsed_ms": 6,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 42,
+      "elapsed_ms": 5,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 43,
+      "elapsed_ms": 6,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 44,
+      "elapsed_ms": 6,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 45,
+      "elapsed_ms": 4,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 46,
+      "elapsed_ms": 6,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 47,
+      "elapsed_ms": 6,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 48,
+      "elapsed_ms": 5,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 49,
+      "elapsed_ms": 6,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 50,
+      "elapsed_ms": 5,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 51,
+      "elapsed_ms": 6,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 52,
+      "elapsed_ms": 4,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 53,
+      "elapsed_ms": 6,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 54,
+      "elapsed_ms": 4,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 3000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 55,
+      "elapsed_ms": 6,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 56,
+      "elapsed_ms": 4,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 57,
+      "elapsed_ms": 6,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 58,
+      "elapsed_ms": 5,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 3000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 59,
+      "elapsed_ms": 6,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 60,
+      "elapsed_ms": 4,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 61,
+      "elapsed_ms": 6,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 62,
+      "elapsed_ms": 6,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 63,
+      "elapsed_ms": 5,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 64,
+      "elapsed_ms": 7,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 65,
+      "elapsed_ms": 6,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 66,
+      "elapsed_ms": 4,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 67,
+      "elapsed_ms": 6,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 3000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 68,
+      "elapsed_ms": 6,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 69,
+      "elapsed_ms": 4,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 70,
+      "elapsed_ms": 6,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 71,
+      "elapsed_ms": 6,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 72,
+      "elapsed_ms": 5,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 73,
+      "elapsed_ms": 6,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 74,
+      "elapsed_ms": 5,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 75,
+      "elapsed_ms": 6,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 76,
+      "elapsed_ms": 6,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 77,
+      "elapsed_ms": 4,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 78,
+      "elapsed_ms": 6,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 79,
+      "elapsed_ms": 5,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 80,
+      "elapsed_ms": 8,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 81,
+      "elapsed_ms": 4,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 82,
+      "elapsed_ms": 7,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 83,
+      "elapsed_ms": 6,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 84,
+      "elapsed_ms": 4,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 85,
+      "elapsed_ms": 8,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 3000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 86,
+      "elapsed_ms": 5,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 87,
+      "elapsed_ms": 5,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 88,
+      "elapsed_ms": 8,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 89,
+      "elapsed_ms": 6,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 90,
+      "elapsed_ms": 6,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 91,
+      "elapsed_ms": 4,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 92,
+      "elapsed_ms": 6,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 93,
+      "elapsed_ms": 5,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 3000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 94,
+      "elapsed_ms": 6,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 3000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 95,
+      "elapsed_ms": 4,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 96,
+      "elapsed_ms": 6,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 97,
+      "elapsed_ms": 6,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 98,
+      "elapsed_ms": 4,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    },
+    {
+      "iteration": 99,
+      "elapsed_ms": 6,
+      "status": "Completed",
+      "outputs_match_baseline": true,
+      "counter_deltas": {
+        "ane_models_loaded": 0,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 1,
+        "ane_submissions": 2,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 256,
+        "ane_output_bytes": 128,
+        "ane_exec_ns": 2000000
+      },
+      "violations": []
+    }
+  ],
+  "median_ms": 6,
+  "p95_ms": 8,
+  "all_matched_baseline": true,
+  "aggregate_counters": {
+    "ane_models_loaded": 0,
+    "ane_packages_compiled": 0,
+    "ane_package_cache_hits": 0,
+    "ane_worker_starts": 100,
+    "ane_submissions": 200,
+    "ane_timeouts": 0,
+    "ane_input_bytes": 25600,
+    "ane_output_bytes": 12800,
+    "ane_exec_ns": 206000000
+  },
+  "host": "jwm1-linux",
+  "pre": {
+    "device": {
+      "hostname": "jwm1-linux",
+      "accel": "character special file",
+      "module_version": "f2a3e5e+lifecycle6",
+      "cpu_online": "0-7",
+      "nproc": "8",
+      "workers": "none"
+    },
+    "memory": {
+      "mem_available_kb": 13159168,
+      "mem_free_kb": 3826656,
+      "anon_pages_kb": 813280
+    },
+    "t": 1789343325.0747433
+  },
+  "post": {
+    "device": {
+      "hostname": "jwm1-linux",
+      "accel": "character special file",
+      "module_version": "f2a3e5e+lifecycle6",
+      "cpu_online": "0-7",
+      "nproc": "8",
+      "workers": "none"
+    },
+    "memory": {
+      "mem_available_kb": 13171664,
+      "mem_free_kb": 3838064,
+      "anon_pages_kb": 812960
+    },
+    "t": 1789343325.693351
+  },
+  "successful_runs": 100,
+  "timeouts": 0,
+  "device_loss": false,
+  "workers_released_each_run": true,
+  "gpu_lock": "not acquired",
+  "per_run_meta_failures": []
+}

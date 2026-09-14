@@ -1,0 +1,267 @@
+{
+  "exit": 0,
+  "stdout": [
+    "bundle name=schema4-add-mul-worker programs=2 driver_abi=1 graph=5584d0fd8d40027229890408e924e6f7930cd5f02516466a442193408482ce76",
+    "worker status=0 iterations=1 released=2 elapsed_ms=203",
+    "worker detail=worker completed 1 iteration(s) and released its programs",
+    "saved output y (128 bytes)",
+    "verified output y exact"
+  ],
+  "stderr": [],
+  "exact": true,
+  "errno_110": false,
+  "wall_s": 0.205,
+  "y_sha256": "bade941d7d8f1e1097b9ce0298ff05617d85a9928de0e8c7eead5743f3f24352",
+  "y_bytes": 128,
+  "set_pre": {
+    "set0": {
+      "raw": "0x00000300",
+      "ACTUAL": "0x0",
+      "TARGET": "0x0",
+      "phys": "0x28e08c000"
+    },
+    "base": {
+      "raw": "0x00000300",
+      "ACTUAL": "0x0",
+      "TARGET": "0x0"
+    },
+    "set1": {
+      "raw": "0x00000300",
+      "ACTUAL": "0x0",
+      "TARGET": "0x0"
+    },
+    "set2": {
+      "raw": "0x00000300",
+      "ACTUAL": "0x0",
+      "TARGET": "0x0"
+    },
+    "set3": {
+      "raw": "0x00000300",
+      "ACTUAL": "0x0",
+      "TARGET": "0x0"
+    },
+    "set4": {
+      "raw": "0x00000300",
+      "ACTUAL": "0x0",
+      "TARGET": "0x0"
+    },
+    "set5": {
+      "raw": "0x00000000",
+      "ACTUAL": "0x0",
+      "TARGET": "0x0"
+    }
+  },
+  "set_after": {
+    "set0": {
+      "raw": "0x000003ff",
+      "ACTUAL": "0xf",
+      "TARGET": "0xf",
+      "phys": "0x28e08c000"
+    },
+    "base": {
+      "raw": "0x000003ff",
+      "ACTUAL": "0xf",
+      "TARGET": "0xf"
+    },
+    "set1": {
+      "raw": "0x000003ff",
+      "ACTUAL": "0xf",
+      "TARGET": "0xf"
+    },
+    "set2": {
+      "raw": "0x000003ff",
+      "ACTUAL": "0xf",
+      "TARGET": "0xf"
+    },
+    "set3": {
+      "raw": "0x000003ff",
+      "ACTUAL": "0xf",
+      "TARGET": "0xf"
+    },
+    "set4": {
+      "raw": "0x000003ff",
+      "ACTUAL": "0xf",
+      "TARGET": "0xf"
+    },
+    "set5": {
+      "raw": "0x00000000",
+      "ACTUAL": "0x0",
+      "TARGET": "0x0"
+    }
+  },
+  "set_during": [
+    {
+      "t_ms": 0.02,
+      "set0": {
+        "raw": "0x00000300",
+        "ACTUAL": "0x0",
+        "TARGET": "0x0",
+        "phys": "0x28e08c000"
+      }
+    },
+    {
+      "t_ms": 20.001,
+      "set0": {
+        "raw": "0x00000300",
+        "ACTUAL": "0x0",
+        "TARGET": "0x0",
+        "phys": "0x28e08c000"
+      }
+    },
+    {
+      "t_ms": 23.368,
+      "set0": {
+        "raw": "0x0000030f",
+        "ACTUAL": "0x0",
+        "TARGET": "0xf",
+        "phys": "0x28e08c000"
+      }
+    },
+    {
+      "t_ms": 23.392,
+      "set0": {
+        "raw": "0x000003ff",
+        "ACTUAL": "0xf",
+        "TARGET": "0xf",
+        "phys": "0x28e08c000"
+      }
+    },
+    {
+      "t_ms": 40.003,
+      "set0": {
+        "raw": "0x000003ff",
+        "ACTUAL": "0xf",
+        "TARGET": "0xf",
+        "phys": "0x28e08c000"
+      }
+    },
+    {
+      "t_ms": 60.004,
+      "set0": {
+        "raw": "0x000003ff",
+        "ACTUAL": "0xf",
+        "TARGET": "0xf",
+        "phys": "0x28e08c000"
+      }
+    },
+    {
+      "t_ms": 80.006,
+      "set0": {
+        "raw": "0x000003ff",
+        "ACTUAL": "0xf",
+        "TARGET": "0xf",
+        "phys": "0x28e08c000"
+      }
+    },
+    {
+      "t_ms": 100.007,
+      "set0": {
+        "raw": "0x000003ff",
+        "ACTUAL": "0xf",
+        "TARGET": "0xf",
+        "phys": "0x28e08c000"
+      }
+    },
+    {
+      "t_ms": 120.008,
+      "set0": {
+        "raw": "0x000003ff",
+        "ACTUAL": "0xf",
+        "TARGET": "0xf",
+        "phys": "0x28e08c000"
+      }
+    },
+    {
+      "t_ms": 140.009,
+      "set0": {
+        "raw": "0x000003ff",
+        "ACTUAL": "0xf",
+        "TARGET": "0xf",
+        "phys": "0x28e08c000"
+      }
+    },
+    {
+      "t_ms": 160.01,
+      "set0": {
+        "raw": "0x000003ff",
+        "ACTUAL": "0xf",
+        "TARGET": "0xf",
+        "phys": "0x28e08c000"
+      }
+    },
+    {
+      "t_ms": 180.01,
+      "set0": {
+        "raw": "0x000003ff",
+        "ACTUAL": "0xf",
+        "TARGET": "0xf",
+        "phys": "0x28e08c000"
+      }
+    },
+    {
+      "t_ms": 200.012,
+      "set0": {
+        "raw": "0x000003ff",
+        "ACTUAL": "0xf",
+        "TARGET": "0xf",
+        "phys": "0x28e08c000"
+      }
+    },
+    {
+      "t_ms": 220.013,
+      "set0": {
+        "raw": "0x000003ff",
+        "ACTUAL": "0xf",
+        "TARGET": "0xf",
+        "phys": "0x28e08c000"
+      }
+    }
+  ],
+  "health_pre": {
+    "hostname": "jw16mbp1-linux",
+    "boot_id": "f6ad865b-b85e-499e-8308-28b57b24f0c8",
+    "nproc": "10",
+    "cpu_online": "0-9",
+    "accel": "crw-rw-rw- root:render 105,0 /dev/accel/accel0",
+    "bound": "285c04000.ane",
+    "module_initstate": "live",
+    "refcnt": "0",
+    "runtime_status": "suspended",
+    "workers": "none",
+    "kernel": "7.1.6-1-1-ARCH"
+  },
+  "health_mid": {
+    "hostname": "jw16mbp1-linux",
+    "boot_id": "f6ad865b-b85e-499e-8308-28b57b24f0c8",
+    "nproc": "10",
+    "cpu_online": "0-9",
+    "accel": "crw-rw-rw- root:render 105,0 /dev/accel/accel0",
+    "bound": "285c04000.ane",
+    "module_initstate": "live",
+    "refcnt": "0",
+    "runtime_status": "active",
+    "workers": "none",
+    "kernel": "7.1.6-1-1-ARCH"
+  },
+  "worker_sha256": "575e2acd0152cec13f06dd9b09e4af0d7e4a91bfe4d8fa086b633b8b82a83e59",
+  "libane_sha256": "1ab9d95debcc8b5fee3b6653dfce0b50412bc7efef43c2d2167dc83ce270ca49",
+  "command": [
+    "/var/tmp/jw16-ane-first-exec/mlx-omarchy-ane-worker",
+    "--bundle",
+    "/var/tmp/jw16-ane-first-exec/bundle",
+    "--libane",
+    "/var/tmp/jw16-ane-first-exec/libane.so",
+    "--deadline-ms",
+    "5000",
+    "--iterations",
+    "1",
+    "--input",
+    "a=/var/tmp/jw16-ane-first-exec/a.bin",
+    "--input",
+    "b=/var/tmp/jw16-ane-first-exec/b.bin",
+    "--expect",
+    "y=/var/tmp/jw16-ane-first-exec/y.bin",
+    "--save",
+    "y=/var/tmp/jw16-ane-set-resume-20260914/y.out.bin"
+  ]
+}

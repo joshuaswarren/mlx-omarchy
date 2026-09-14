@@ -1,0 +1,21 @@
+{
+  "clock": "time.monotonic_ns",
+  "load_ms": 733.616496,
+  "prefill_ms": 1177.86082,
+  "decode_ms": 19.941884,
+  "inter_token_ms": 14.345808,
+  "prompt_tokens": 1053,
+  "generated_tokens": 2,
+  "host_prefill_tok_s": 893.993,
+  "generated_text": "Thank you",
+  "markers": [
+    {"t": 27968977876075, "p": "load_start"},
+    {"t": 27969711492571, "p": "load_done"},
+    {"t": 27969719787061, "p": "prefill_start"},
+    {"t": 27970897647881, "p": "prefill_done"},
+    {"t": 27970897682130, "p": "decode_start"},
+    {"t": 27970897686380, "p": "tok"},
+    {"t": 27970912032188, "p": "tok"},
+    {"t": 27970917624014, "p": "decode_done"}
+  ]
+}

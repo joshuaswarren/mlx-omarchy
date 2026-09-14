@@ -1,0 +1,185 @@
+{
+  "device": "Apple M1 (G13G B1)",
+  "label": "jwm1-b41e2b74-m1053-profile-enabled",
+  "host": {
+    "clock": "time.monotonic_ns",
+    "load_ms": 669.418006,
+    "prefill_ms": 1260.590939,
+    "decode_ms": 27.561834,
+    "inter_token_ms": 19.75238,
+    "prompt_tokens": 1053,
+    "generated_tokens": 2,
+    "generated_text": "Thank you",
+    "markers": [
+      {
+        "t": 29296157752970,
+        "p": "load_start"
+      },
+      {
+        "t": 29296827170976,
+        "p": "load_done"
+      },
+      {
+        "t": 29296835420589,
+        "p": "prefill_start"
+      },
+      {
+        "t": 29298096011528,
+        "p": "prefill_done"
+      },
+      {
+        "t": 29298096050361,
+        "p": "decode_start"
+      },
+      {
+        "t": 29298096056944,
+        "p": "tok"
+      },
+      {
+        "t": 29298115809324,
+        "p": "tok"
+      },
+      {
+        "t": 29298123612195,
+        "p": "decode_done"
+      }
+    ],
+    "host_prefill_tok_s": 835.3225201153061
+  },
+  "overall_gpu": {
+    "dispatches": 1312,
+    "submissions": 12,
+    "busy_ms": 951.960558,
+    "span_ms": 1142.375209,
+    "busy_fraction": 0.8333168914207416
+  },
+  "prefill_gpu": {
+    "dispatches": 1063,
+    "submissions": 10,
+    "busy_ms": 934.58118,
+    "span_ms": 1118.761042,
+    "busy_fraction": 0.8353715806274921
+  },
+  "prefill_kernels": [
+    {
+      "name": "QmmPrefillCoopmatF16",
+      "dispatches": 163,
+      "gpu_ms": 702.559129,
+      "share_gpu_busy": 0.75173686784491
+    },
+    {
+      "name": "MatmulRbF16",
+      "dispatches": 46,
+      "gpu_ms": 106.375874,
+      "share_gpu_busy": 0.11382197317519277
+    },
+    {
+      "name": "SoftmaxF16",
+      "dispatches": 23,
+      "gpu_ms": 27.410542,
+      "share_gpu_busy": 0.029329225311384936
+    },
+    {
+      "name": "QmmVecQ4MultiSubgroupF16",
+      "dispatches": 192,
+      "gpu_ms": 22.712879,
+      "share_gpu_busy": 0.024302735263725297
+    },
+    {
+      "name": "SwigluF16",
+      "dispatches": 71,
+      "gpu_ms": 22.0457,
+      "share_gpu_busy": 0.02358885506339856
+    },
+    {
+      "name": "CopyGeneralF16",
+      "dispatches": 71,
+      "gpu_ms": 10.84509,
+      "share_gpu_busy": 0.0116042246859711
+    },
+    {
+      "name": "BinaryVecF16",
+      "dispatches": 117,
+      "gpu_ms": 8.229921,
+      "share_gpu_busy": 0.008805999067946137
+    },
+    {
+      "name": "FastRmsNormF16",
+      "dispatches": 145,
+      "gpu_ms": 7.89458,
+      "share_gpu_busy": 0.008447184866273468
+    },
+    {
+      "name": "QmmVecQ4WordSubgroupF16",
+      "dispatches": 2,
+      "gpu_ms": 7.363875,
+      "share_gpu_busy": 0.00787933157395701
+    },
+    {
+      "name": "FastRopeF16",
+      "dispatches": 143,
+      "gpu_ms": 7.177423,
+      "share_gpu_busy": 0.007679828305551798
+    },
+    {
+      "name": "SdpaDecodeNativeF16",
+      "dispatches": 48,
+      "gpu_ms": 4.385457,
+      "share_gpu_busy": 0.004692430249879417
+    },
+    {
+      "name": "TakeF16",
+      "dispatches": 6,
+      "gpu_ms": 3.333292,
+      "share_gpu_busy": 0.003566615796821417
+    },
+    {
+      "name": "SliceUpdatePairF16",
+      "dispatches": 24,
+      "gpu_ms": 1.483752,
+      "share_gpu_busy": 0.0015876116829144794
+    },
+    {
+      "name": "LogSumExpF16",
+      "dispatches": 2,
+      "gpu_ms": 0.888708,
+      "share_gpu_busy": 0.0009509157888242518
+    },
+    {
+      "name": "ElementwiseF16",
+      "dispatches": 2,
+      "gpu_ms": 0.715,
+      "share_gpu_busy": 0.0007650485750205242
+    },
+    {
+      "name": "TakeU32",
+      "dispatches": 3,
+      "gpu_ms": 0.482333,
+      "share_gpu_busy": 0.0005160953487208035
+    },
+    {
+      "name": "ArgReduceF16",
+      "dispatches": 2,
+      "gpu_ms": 0.442459,
+      "share_gpu_busy": 0.0004734302481888197
+    },
+    {
+      "name": "DequantF16",
+      "dispatches": 3,
+      "gpu_ms": 0.235166,
+      "share_gpu_busy": 0.00025162715131926797
+    }
+  ],
+  "QmmPrefillCoopmatF16_prefill": {
+    "name": "QmmPrefillCoopmatF16",
+    "dispatches": 163,
+    "gpu_ms": 702.559129,
+    "share_gpu_busy": 0.75173686784491
+  },
+  "MatmulRbF16_prefill": {
+    "name": "MatmulRbF16",
+    "dispatches": 46,
+    "gpu_ms": 106.375874,
+    "share_gpu_busy": 0.11382197317519277
+  }
+}

@@ -1,0 +1,20 @@
+[2026-09-13T17:42:43-05:00] rewrite cmake paths
+rewrote 290 files
+[2026-09-13T17:42:43-05:00] pip wheel diagnostics
+Processing ./mlx
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Building wheels for collected packages: mlx-omarchy
+  Building wheel for mlx-omarchy (pyproject.toml): started
+  Building wheel for mlx-omarchy (pyproject.toml): still running...
+  Building wheel for mlx-omarchy (pyproject.toml): still running...
+  Building wheel for mlx-omarchy (pyproject.toml): still running...
+  Building wheel for mlx-omarchy (pyproject.toml): finished with status 'done'
+  Created wheel for mlx-omarchy: filename=mlx_omarchy-0.32.2.dev202609122355+diag.b41e2b74-cp314-cp314-linux_aarch64.whl size=7619026 sha256=e0ce679e545850a4b5ea2f1385e9061b0255e2632c8685ee69d1850016815244
+  Stored in directory: /tmp/pip-ephem-wheel-cache-gv2ta4_t/wheels/d9/35/3a/b8b249536aa4f2531ae5864335f29630954ef0f29830f692a1
+Successfully built mlx-omarchy
+[2026-09-13T17:45:52-05:00] wheel done
+wheel_count=1
+[receipt] wheel: /var/tmp/mlx-omarchy-profile-enabled-b41e2b74/dist/mlx_omarchy-0.32.2.dev202609122355+diag.b41e2b74-cp314-cp314-linux_aarch64.whl
+[receipt] size: 7619026 bytes
+[receipt] sha256: e0ce679e545850a4b5ea2f1385e9061b0255e2632c8685ee69d1850016815244

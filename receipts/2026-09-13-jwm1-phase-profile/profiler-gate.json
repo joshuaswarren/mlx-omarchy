@@ -1,0 +1,10 @@
+{
+  "installed_wheel": "mlx-omarchy==0.32.2.dev202609122355+b41e2b74",
+  "cmake_option": "MLX_OMARCHY_GPU_PROFILING",
+  "cmake_default": "OFF",
+  "libmlx_contains_MLX_DISABLE_COMPILE": true,
+  "libmlx_contains_MLX_OMARCHY_GPU_PROFILE": false,
+  "profile_jsonl_emitted": false,
+  "reason": "Release wheels compile the GPU profiler out. MLX_OMARCHY_GPU_PROFILE is a no-op unless the wheel was built with scripts/build-wheel.sh --diagnostics.",
+  "kernel_table": null
+}

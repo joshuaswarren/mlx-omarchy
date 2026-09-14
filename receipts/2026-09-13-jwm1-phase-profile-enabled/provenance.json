@@ -1,0 +1,30 @@
+{
+  "dist": "mlx-omarchy",
+  "verified": "match",
+  "mismatch": null,
+  "build": {
+    "source_commit": "b41e2b74c330f910b24cab0e7516e306527858f0",
+    "dirty": false,
+    "cmake_option": "-DMLX_OMARCHY_GPU_PROFILING=ON",
+    "prefix": "/var/tmp/mlx-omarchy-profile-enabled-b41e2b74",
+    "parallel": 4,
+    "reused_shader_cache": 422,
+    "rebuild_started": "2026-09-13T17:42:43-05:00",
+    "rebuild_finished": "2026-09-13T17:45:52-05:00"
+  },
+  "files": [
+    {
+      "path": "mlx/lib/libmlx.so",
+      "label": "mlx/lib/libmlx.so",
+      "sha256": "d41f311ec19e23634213e420ec3f131ddb83509a87a16aee264b323d2fcc7051",
+      "contains_MLX_OMARCHY_GPU_PROFILE": true,
+      "contains_MLX_DISABLE_COMPILE": true,
+      "match": true
+    }
+  ],
+  "wheel": "mlx_omarchy-0.32.2.dev202609122355+diag.b41e2b74-cp314-cp314-linux_aarch64.whl",
+  "wheel_sha256": "e0ce679e545850a4b5ea2f1385e9061b0255e2632c8685ee69d1850016815244",
+  "dist_version": "0.32.2.dev202609122355+diag.b41e2b74",
+  "mx_version": "0.32.2.dev202609122355+diag.b41e2b74",
+  "version_match": true
+}

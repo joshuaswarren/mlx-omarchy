@@ -1,0 +1,33 @@
+{
+  "pinned": {
+    "path": "receipts/2026-09-10-prefill-qmm-isa/distribution/m1053/prefill-summary.json",
+    "host_prefill_ms": 1321.838644,
+    "gpu_dispatches": 1231,
+    "gpu_submissions": 53,
+    "gpu_busy_ms": 943.089041,
+    "gpu_span_ms": 1210.941708,
+    "busy_fraction": 0.7788063081563296,
+    "QmmPrefillCoopmatF16": {
+      "dispatches": 163,
+      "gpu_ms": 702.4762989999998,
+      "share_gpu_busy": 0.7448674180914375
+    },
+    "MatmulRbF16": {
+      "dispatches": 46,
+      "gpu_ms": 109.41883099999998,
+      "share_gpu_busy": 0.11602173945736688
+    }
+  },
+  "current_wheel_b41e2b74": {
+    "host_prefill_ms": 1177.86082,
+    "host_prefill_tok_s": 893.993,
+    "generated_text": "Thank you",
+    "prompt_tokens": 1053,
+    "gpu_profile": null,
+    "busy_fraction": null,
+    "kernels": null
+  },
+  "host_prefill_ms_delta": -143.977824,
+  "host_prefill_ms_ratio": 0.891077,
+  "gpu_comparison": "unavailable: installed release wheel has MLX_OMARCHY_GPU_PROFILING compiled out"
+}

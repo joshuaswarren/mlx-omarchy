@@ -1,0 +1,1 @@
+no GPU profile.jsonl: installed b41e2b74 release wheel has MLX_OMARCHY_GPU_PROFILING compiled out

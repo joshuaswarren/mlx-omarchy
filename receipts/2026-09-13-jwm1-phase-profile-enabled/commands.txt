@@ -1,0 +1,35 @@
+# Host: jwm1-linux. Lock inode 29. Never unlinked.
+# Nested `flock -n /tmp/m1-gpu.lock -c true` returned 1 while held.
+# Build did not take the GPU lock. Profile run did. fuser after release: free.
+
+# Bounded rebuild into /var/tmp (grouped-base dist/ and venv-run untouched):
+CMAKE_ARGS="-DMLX_BUILD_OMARCHY=ON -DMLX_BUILD_CPU=ON -DMLX_BUILD_METAL=OFF -DMLX_BUILD_CUDA=OFF -DMLX_BUILD_TESTS=OFF -DMLX_BUILD_EXAMPLES=OFF -DMLX_BUILD_BENCHMARKS=OFF -DMLX_OMARCHY_GPU_PROFILING=ON"
+CMAKE_BUILD_PARALLEL_LEVEL=4
+DEV_RELEASE=1
+MLX_OMARCHY_LOCAL_VERSION=diag.b41e2b74
+pip wheel --no-build-isolation --no-deps \
+  --wheel-dir /var/tmp/mlx-omarchy-profile-enabled-b41e2b74/dist \
+  /var/tmp/mlx-omarchy-profile-enabled-b41e2b74/mlx
+# wheel sha256 e0ce679e545850a4b5ea2f1385e9061b0255e2632c8685ee69d1850016815244
+# c++ line contained -DMLX_OMARCHY_GPU_PROFILING; libmlx.so contains MLX_OMARCHY_GPU_PROFILE
+
+MLX_DISABLE_COMPILE=1
+MLX_OMARCHY_GPU_PROFILE=/var/tmp/mlx-omarchy-profile-enabled-b41e2b74/run/profile.jsonl
+MLX_OMARCHY_GPU_PROFILE_LABEL=jwm1-b41e2b74-m1053-profile-enabled
+MESA_SHADER_CACHE_DISABLE=true
+HF_HUB_OFFLINE=1
+
+/var/tmp/mlx-omarchy-profile-enabled-b41e2b74/venv/bin/python \
+  /home/joshuawarren/src/mlx-bf16-grouped-base-b41e2b74/scripts/profile_generate.py \
+  --model /home/joshuawarren/models/Qwen2.5-0.5B-Instruct-4bit-mlx \
+  --prompt <bench_matrix ctx1024, 4759 bytes, 1053 chat-template tokens> \
+  --max-tokens 2 --temp 0 --seed 0 \
+  --markers /var/tmp/mlx-omarchy-profile-enabled-b41e2b74/run/markers.jsonl
+
+/var/tmp/mlx-omarchy-profile-enabled-b41e2b74/venv/bin/python \
+  /home/joshuawarren/src/mlx-bf16-grouped-base-b41e2b74/scripts/profile_analyze.py \
+  /var/tmp/mlx-omarchy-profile-enabled-b41e2b74/run/profile.jsonl \
+  --compute-h /home/joshuawarren/src/mlx-bf16-grouped-base-b41e2b74/overlay/mlx/backend/omarchy/compute.h \
+  --markers /var/tmp/mlx-omarchy-profile-enabled-b41e2b74/run/markers.jsonl
+
+# generate rc=0, text "Thank you", profile.jsonl 329607 bytes.

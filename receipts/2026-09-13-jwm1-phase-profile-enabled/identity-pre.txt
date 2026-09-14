@@ -1,0 +1,7 @@
+mx 0.32.2.dev202609122355+diag.b41e2b74
+core /var/tmp/mlx-omarchy-profile-enabled-b41e2b74/venv/lib/python3.14/site-packages/mlx/core.cpython-314-aarch64-linux-gnu.so
+lib /var/tmp/mlx-omarchy-profile-enabled-b41e2b74/venv/lib/python3.14/site-packages/mlx/lib/libmlx.so
+PROFILE True
+DISABLE True
+sha d41f311ec19e23634213e420ec3f131ddb83509a87a16aee264b323d2fcc7051
+device Device(gpu, 0)

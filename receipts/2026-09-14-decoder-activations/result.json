@@ -1,0 +1,1873 @@
+{
+  "schema": "mlx-omarchy.parakeet-decoder-activations/1",
+  "named_hole": "parakeet.tdt.decoder-lstm.fp16-elementwise-activation-vs-native-coreml",
+  "execution": "host-only NumPy; no MLX, no GPU, no ANE, no device execution",
+  "capture_dir": "/home/joshuawarren/.cache/mlx-omarchy/parakeet-reference/captures/b650695c-75aec2a/20260913T105550Z-librispeech-tdt-tensors/ane",
+  "package": "/home/joshuawarren/.cache/mlx-omarchy/parakeet-reference/mweinbach1/parakeet-tdt-0.6b-v3-coreml/b650695c2322ee5281dff48d7345b2f3a58ff018/decoder.mlpackage",
+  "capture_sha256": {
+    "tdt_tensors.json": "6eaf2bfe801584af570cd66f42e8dc17efd67776fb181f691585d2bcab590e0a",
+    "manifest.sha256": "ab37e0317ced1587cbe35aca39a08265b9af01120ffd668ee4cbf706e1ecbe19"
+  },
+  "transitions": [
+    0,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15
+  ],
+  "declared_mil_activations": {
+    "input_lstm_layer_0_cast_fp16_0.recurrent_activation": "sigmoid",
+    "input_lstm_layer_0_cast_fp16_0.cell_activation": "tanh",
+    "input_lstm_layer_0_cast_fp16_0.activation": "tanh",
+    "input_batch_first_cast_fp16_0.recurrent_activation": "sigmoid",
+    "input_batch_first_cast_fp16_0.cell_activation": "tanh",
+    "input_batch_first_cast_fp16_0.activation": "tanh"
+  },
+  "reduction_free_lanes": {
+    "trace": 0,
+    "token": 8192,
+    "embedding_row_is_identically_zero": true,
+    "entry_hidden_is_zero": true,
+    "entry_cell_is_zero": true,
+    "cell_lanes": 640,
+    "hidden_lanes": 640,
+    "pinned_baseline_bit_exact_cell_lanes": 413,
+    "pinned_baseline_max_abs": 0.0009765625,
+    "pinned_baseline_signed_ulp_histogram": {
+      "-3": 1,
+      "-2": 21,
+      "-1": 91,
+      "0": 413,
+      "1": 91,
+      "2": 23
+    },
+    "native_is_fp16_representable": true,
+    "shared_sigmoid_arguments_cell_vs_hidden": 46,
+    "shared_tanh_arguments_cell_vs_hidden": 39,
+    "duplicate_sigmoid_arguments_within_cell": 34,
+    "duplicate_tanh_arguments_within_cell": 19
+  },
+  "catalogue": {
+    "sigmoid_contracts": 38,
+    "tanh_contracts": 268,
+    "combinations": 10184,
+    "pinned_baseline": {
+      "sigmoid": "sig:exact:161616",
+      "tanh": "tanh:exact:161616",
+      "cell_lanes": 413,
+      "hidden_lanes": 403,
+      "joint_lanes": 816,
+      "cell_max_abs": 0.0009765625,
+      "hidden_max_abs": 0.00048828125
+    },
+    "best_by_joint": [
+      {
+        "sigmoid": "sig:recip:161616",
+        "tanh": "tanh:diffsig[sig:exact:161632]:161616",
+        "cell_lanes": 500,
+        "hidden_lanes": 486,
+        "joint_lanes": 986,
+        "cell_max_abs": 0.0009765625,
+        "hidden_max_abs": 0.00048828125
+      },
+      {
+        "sigmoid": "sig:recip:161616",
+        "tanh": "tanh:exact:161616",
+        "cell_lanes": 500,
+        "hidden_lanes": 486,
+        "joint_lanes": 986,
+        "cell_max_abs": 0.0009765625,
+        "hidden_max_abs": 0.00048828125
+      },
+      {
+        "sigmoid": "sig:recip:161616",
+        "tanh": "tanh:via_sig[sig:posexp:323232]:161616",
+        "cell_lanes": 500,
+        "hidden_lanes": 486,
+        "joint_lanes": 986,
+        "cell_max_abs": 0.0009765625,
+        "hidden_max_abs": 0.00048828125
+      },
+      {
+        "sigmoid": "sig:recip:161616",
+        "tanh": "tanh:diffsig[sig:fromtanh:163232]:161632",
+        "cell_lanes": 500,
+        "hidden_lanes": 485,
+        "joint_lanes": 985,
+        "cell_max_abs": 0.0009765625,
+        "hidden_max_abs": 0.00048828125
+      },
+      {
+        "sigmoid": "sig:recip:161616",
+        "tanh": "tanh:oneminus:323216",
+        "cell_lanes": 500,
+        "hidden_lanes": 485,
+        "joint_lanes": 985,
+        "cell_max_abs": 0.0009765625,
+        "hidden_max_abs": 0.00048828125
+      },
+      {
+        "sigmoid": "sig:recip:161616",
+        "tanh": "tanh:sigshift[sig:posexp:323232]:161616",
+        "cell_lanes": 500,
+        "hidden_lanes": 485,
+        "joint_lanes": 985,
+        "cell_max_abs": 0.0009765625,
+        "hidden_max_abs": 0.00048828125
+      },
+      {
+        "sigmoid": "sig:exp2.e64:161616",
+        "tanh": "tanh:diffsig[sig:exact:161632]:161616",
+        "cell_lanes": 492,
+        "hidden_lanes": 481,
+        "joint_lanes": 973,
+        "cell_max_abs": 0.0009765625,
+        "hidden_max_abs": 0.00048828125
+      },
+      {
+        "sigmoid": "sig:exp2.e64:161616",
+        "tanh": "tanh:exact:161616",
+        "cell_lanes": 492,
+        "hidden_lanes": 481,
+        "joint_lanes": 973,
+        "cell_max_abs": 0.0009765625,
+        "hidden_max_abs": 0.00048828125
+      },
+      {
+        "sigmoid": "sig:exp2.e64:161616",
+        "tanh": "tanh:via_sig[sig:posexp:323232]:161616",
+        "cell_lanes": 492,
+        "hidden_lanes": 481,
+        "joint_lanes": 973,
+        "cell_max_abs": 0.0009765625,
+        "hidden_max_abs": 0.00048828125
+      },
+      {
+        "sigmoid": "sig:exp2.e64:161616",
+        "tanh": "tanh:diffsig[sig:fromtanh:163232]:161632",
+        "cell_lanes": 492,
+        "hidden_lanes": 480,
+        "joint_lanes": 972,
+        "cell_max_abs": 0.0009765625,
+        "hidden_max_abs": 0.00048828125
+      },
+      {
+        "sigmoid": "sig:exp2.e64:161616",
+        "tanh": "tanh:oneminus:323216",
+        "cell_lanes": 492,
+        "hidden_lanes": 480,
+        "joint_lanes": 972,
+        "cell_max_abs": 0.0009765625,
+        "hidden_max_abs": 0.00048828125
+      },
+      {
+        "sigmoid": "sig:exp2.e64:161616",
+        "tanh": "tanh:sigshift[sig:posexp:323232]:161616",
+        "cell_lanes": 492,
+        "hidden_lanes": 480,
+        "joint_lanes": 972,
+        "cell_max_abs": 0.0009765625,
+        "hidden_max_abs": 0.00048828125
+      },
+      {
+        "sigmoid": "sig:exp2wide.e16:161616",
+        "tanh": "tanh:diffsig[sig:exact:161632]:161616",
+        "cell_lanes": 480,
+        "hidden_lanes": 474,
+        "joint_lanes": 954,
+        "cell_max_abs": 0.0009765625,
+        "hidden_max_abs": 0.00048828125
+      },
+      {
+        "sigmoid": "sig:exp2wide.e16:161616",
+        "tanh": "tanh:exact:161616",
+        "cell_lanes": 480,
+        "hidden_lanes": 474,
+        "joint_lanes": 954,
+        "cell_max_abs": 0.0009765625,
+        "hidden_max_abs": 0.00048828125
+      },
+      {
+        "sigmoid": "sig:exp2wide.e16:161616",
+        "tanh": "tanh:via_sig[sig:posexp:323232]:161616",
+        "cell_lanes": 480,
+        "hidden_lanes": 474,
+        "joint_lanes": 954,
+        "cell_max_abs": 0.0009765625,
+        "hidden_max_abs": 0.00048828125
+      },
+      {
+        "sigmoid": "sig:exp2wide.e16:161616",
+        "tanh": "tanh:diffsig[sig:fromtanh:163232]:161632",
+        "cell_lanes": 480,
+        "hidden_lanes": 473,
+        "joint_lanes": 953,
+        "cell_max_abs": 0.0009765625,
+        "hidden_max_abs": 0.00048828125
+      },
+      {
+        "sigmoid": "sig:exp2wide.e16:161616",
+        "tanh": "tanh:oneminus:323216",
+        "cell_lanes": 480,
+        "hidden_lanes": 473,
+        "joint_lanes": 953,
+        "cell_max_abs": 0.0009765625,
+        "hidden_max_abs": 0.00048828125
+      },
+      {
+        "sigmoid": "sig:exp2wide.e16:161616",
+        "tanh": "tanh:sigshift[sig:posexp:323232]:161616",
+        "cell_lanes": 480,
+        "hidden_lanes": 473,
+        "joint_lanes": 953,
+        "cell_max_abs": 0.0009765625,
+        "hidden_max_abs": 0.00048828125
+      },
+      {
+        "sigmoid": "sig:exp2.e16:161616",
+        "tanh": "tanh:diffsig[sig:exact:161632]:161616",
+        "cell_lanes": 479,
+        "hidden_lanes": 468,
+        "joint_lanes": 947,
+        "cell_max_abs": 0.0009765625,
+        "hidden_max_abs": 0.00048828125
+      },
+      {
+        "sigmoid": "sig:exp2.e16:161616",
+        "tanh": "tanh:exact:161616",
+        "cell_lanes": 479,
+        "hidden_lanes": 468,
+        "joint_lanes": 947,
+        "cell_max_abs": 0.0009765625,
+        "hidden_max_abs": 0.00048828125
+      }
+    ],
+    "best_by_cell": [
+      {
+        "sigmoid": "sig:recip:161616",
+        "tanh": "tanh:diffsig[sig:exact:161632]:161616",
+        "cell_lanes": 500,
+        "hidden_lanes": 486,
+        "joint_lanes": 986,
+        "cell_max_abs": 0.0009765625,
+        "hidden_max_abs": 0.00048828125
+      },
+      {
+        "sigmoid": "sig:recip:161616",
+        "tanh": "tanh:exact:161616",
+        "cell_lanes": 500,
+        "hidden_lanes": 486,
+        "joint_lanes": 986,
+        "cell_max_abs": 0.0009765625,
+        "hidden_max_abs": 0.00048828125
+      },
+      {
+        "sigmoid": "sig:recip:161616",
+        "tanh": "tanh:via_sig[sig:posexp:323232]:161616",
+        "cell_lanes": 500,
+        "hidden_lanes": 486,
+        "joint_lanes": 986,
+        "cell_max_abs": 0.0009765625,
+        "hidden_max_abs": 0.00048828125
+      },
+      {
+        "sigmoid": "sig:recip:161616",
+        "tanh": "tanh:diffsig[sig:fromtanh:163232]:161632",
+        "cell_lanes": 500,
+        "hidden_lanes": 485,
+        "joint_lanes": 985,
+        "cell_max_abs": 0.0009765625,
+        "hidden_max_abs": 0.00048828125
+      },
+      {
+        "sigmoid": "sig:recip:161616",
+        "tanh": "tanh:oneminus:323216",
+        "cell_lanes": 500,
+        "hidden_lanes": 485,
+        "joint_lanes": 985,
+        "cell_max_abs": 0.0009765625,
+        "hidden_max_abs": 0.00048828125
+      },
+      {
+        "sigmoid": "sig:recip:161616",
+        "tanh": "tanh:sigshift[sig:posexp:323232]:161616",
+        "cell_lanes": 500,
+        "hidden_lanes": 485,
+        "joint_lanes": 985,
+        "cell_max_abs": 0.0009765625,
+        "hidden_max_abs": 0.00048828125
+      },
+      {
+        "sigmoid": "sig:exp2.e64:161616",
+        "tanh": "tanh:diffsig[sig:exact:161632]:161616",
+        "cell_lanes": 492,
+        "hidden_lanes": 481,
+        "joint_lanes": 973,
+        "cell_max_abs": 0.0009765625,
+        "hidden_max_abs": 0.00048828125
+      },
+      {
+        "sigmoid": "sig:exp2.e64:161616",
+        "tanh": "tanh:exact:161616",
+        "cell_lanes": 492,
+        "hidden_lanes": 481,
+        "joint_lanes": 973,
+        "cell_max_abs": 0.0009765625,
+        "hidden_max_abs": 0.00048828125
+      },
+      {
+        "sigmoid": "sig:exp2.e64:161616",
+        "tanh": "tanh:via_sig[sig:posexp:323232]:161616",
+        "cell_lanes": 492,
+        "hidden_lanes": 481,
+        "joint_lanes": 973,
+        "cell_max_abs": 0.0009765625,
+        "hidden_max_abs": 0.00048828125
+      },
+      {
+        "sigmoid": "sig:exp2.e64:161616",
+        "tanh": "tanh:diffsig[sig:fromtanh:163232]:161632",
+        "cell_lanes": 492,
+        "hidden_lanes": 480,
+        "joint_lanes": 972,
+        "cell_max_abs": 0.0009765625,
+        "hidden_max_abs": 0.00048828125
+      }
+    ],
+    "best_by_hidden": [
+      {
+        "sigmoid": "sig:recip:161616",
+        "tanh": "tanh:diffsig[sig:exact:161632]:161616",
+        "cell_lanes": 500,
+        "hidden_lanes": 486,
+        "joint_lanes": 986,
+        "cell_max_abs": 0.0009765625,
+        "hidden_max_abs": 0.00048828125
+      },
+      {
+        "sigmoid": "sig:recip:161616",
+        "tanh": "tanh:exact:161616",
+        "cell_lanes": 500,
+        "hidden_lanes": 486,
+        "joint_lanes": 986,
+        "cell_max_abs": 0.0009765625,
+        "hidden_max_abs": 0.00048828125
+      },
+      {
+        "sigmoid": "sig:recip:161616",
+        "tanh": "tanh:via_sig[sig:posexp:323232]:161616",
+        "cell_lanes": 500,
+        "hidden_lanes": 486,
+        "joint_lanes": 986,
+        "cell_max_abs": 0.0009765625,
+        "hidden_max_abs": 0.00048828125
+      },
+      {
+        "sigmoid": "sig:recip:161616",
+        "tanh": "tanh:diffsig[sig:fromtanh:163232]:161632",
+        "cell_lanes": 500,
+        "hidden_lanes": 485,
+        "joint_lanes": 985,
+        "cell_max_abs": 0.0009765625,
+        "hidden_max_abs": 0.00048828125
+      },
+      {
+        "sigmoid": "sig:recip:161616",
+        "tanh": "tanh:oneminus:323216",
+        "cell_lanes": 500,
+        "hidden_lanes": 485,
+        "joint_lanes": 985,
+        "cell_max_abs": 0.0009765625,
+        "hidden_max_abs": 0.00048828125
+      },
+      {
+        "sigmoid": "sig:recip:161616",
+        "tanh": "tanh:sigshift[sig:posexp:323232]:161616",
+        "cell_lanes": 500,
+        "hidden_lanes": 485,
+        "joint_lanes": 985,
+        "cell_max_abs": 0.0009765625,
+        "hidden_max_abs": 0.00048828125
+      },
+      {
+        "sigmoid": "sig:exp2.e64:161616",
+        "tanh": "tanh:diffsig[sig:exact:161632]:161616",
+        "cell_lanes": 492,
+        "hidden_lanes": 481,
+        "joint_lanes": 973,
+        "cell_max_abs": 0.0009765625,
+        "hidden_max_abs": 0.00048828125
+      },
+      {
+        "sigmoid": "sig:exp2.e64:161616",
+        "tanh": "tanh:exact:161616",
+        "cell_lanes": 492,
+        "hidden_lanes": 481,
+        "joint_lanes": 973,
+        "cell_max_abs": 0.0009765625,
+        "hidden_max_abs": 0.00048828125
+      },
+      {
+        "sigmoid": "sig:exp2.e64:161616",
+        "tanh": "tanh:via_sig[sig:posexp:323232]:161616",
+        "cell_lanes": 492,
+        "hidden_lanes": 481,
+        "joint_lanes": 973,
+        "cell_max_abs": 0.0009765625,
+        "hidden_max_abs": 0.00048828125
+      },
+      {
+        "sigmoid": "sig:exp2.e64:161616",
+        "tanh": "tanh:diffsig[sig:fromtanh:163232]:161632",
+        "cell_lanes": 492,
+        "hidden_lanes": 480,
+        "joint_lanes": 972,
+        "cell_max_abs": 0.0009765625,
+        "hidden_max_abs": 0.00048828125
+      }
+    ],
+    "bit_exact_on_all_1280": []
+  },
+  "residual": {
+    "note": "q = native / (exact sigmoid * exact tanh) - 1. Only the SUM of the two relative activation errors is identifiable from a product, so the mean below is the joint magnitude bias of the pair, not either one alone.",
+    "cell_mean_relative_bias": 9.547893782035615e-05,
+    "cell_relative_bias_standard_error": 1.735982689299222e-05,
+    "cell_relative_bias_sigma": 5.499993658283476,
+    "cell_relative_std": 0.0004391727421447964,
+    "hidden_mean_relative_bias": 5.038859410398857e-05,
+    "hidden_relative_bias_sigma": 2.6184306324163913,
+    "product_rounding_only_relative_std": 0.00021241172642110943,
+    "excess_relative_std_beyond_product_rounding": 0.00038408734731263386,
+    "per_activation_rms_ulps_if_independent_and_equal": 0.3825173283070937,
+    "mean_bias_in_product_ulps": 0.14868561482524315
+  },
+  "error_curves": {
+    "note": "Binned additive fit. A constant relative offset is degenerate between the two curves, so read the shapes, and read only the sum of the levels.",
+    "sigmoid": [
+      {
+        "b_i": -1.040228271984375,
+        "sigmoid": 0.2611059510839033,
+        "abs_error": 8.848077979888075e-05,
+        "ulps": 0.7105881644950671,
+        "relative": 0.0003388692576005229
+      },
+      {
+        "b_i": -0.304254150390625,
+        "sigmoid": 0.42451785157467414,
+        "abs_error": -1.1511545379710623e-05,
+        "ulps": -0.04013285771868729,
+        "relative": -2.711675218606373e-05
+      },
+      {
+        "b_i": -0.1331451416015625,
+        "sigmoid": 0.46676280149114735,
+        "abs_error": -1.552796969087663e-06,
+        "ulps": -0.005581301523344129,
+        "relative": -3.326736758214254e-06
+      },
+      {
+        "b_i": -0.021664428710937468,
+        "sigmoid": 0.4945841046486743,
+        "abs_error": -6.22707382665004e-05,
+        "ulps": -0.2155127655045789,
+        "relative": -0.0001259052559134187
+      },
+      {
+        "b_i": 0.07882385253906252,
+        "sigmoid": 0.5196957663797654,
+        "abs_error": -7.024698044919749e-05,
+        "ulps": -0.21696912453258516,
+        "relative": -0.00013516942987344793
+      },
+      {
+        "b_i": 0.17222595214843753,
+        "sigmoid": 0.5429503751078893,
+        "abs_error": -2.328633160782791e-05,
+        "ulps": -0.045960819720492624,
+        "relative": -4.288850818677618e-05
+      },
+      {
+        "b_i": 0.23825073242187506,
+        "sigmoid": 0.5592825248476592,
+        "abs_error": -6.164070105434054e-05,
+        "ulps": -0.2141881368188042,
+        "relative": -0.00011021388710675453
+      },
+      {
+        "b_i": 0.302862548828125,
+        "sigmoid": 0.5751421411009019,
+        "abs_error": 3.680084602671141e-05,
+        "ulps": 0.06796687778333027,
+        "relative": 6.398565397463222e-05
+      },
+      {
+        "b_i": 0.384832763671875,
+        "sigmoid": 0.5950381759458272,
+        "abs_error": -0.00014325998035091687,
+        "ulps": -0.2154450471835505,
+        "relative": -0.00024075762890877
+      },
+      {
+        "b_i": 0.461456298828125,
+        "sigmoid": 0.6133595937899194,
+        "abs_error": -1.4487631714818087e-05,
+        "ulps": -0.03534107790971615,
+        "relative": -2.3620127346993476e-05
+      },
+      {
+        "b_i": 0.5313720703125,
+        "sigmoid": 0.6298030686907209,
+        "abs_error": -4.540049143316281e-05,
+        "ulps": -0.07992691641242271,
+        "relative": -7.208680568601319e-05
+      },
+      {
+        "b_i": 0.59302978515625,
+        "sigmoid": 0.6440600167376954,
+        "abs_error": -9.507402751510107e-05,
+        "ulps": -0.20175576539342385,
+        "relative": -0.00014761672056072005
+      },
+      {
+        "b_i": 0.6452270507812501,
+        "sigmoid": 0.6559340848778038,
+        "abs_error": -5.5064556877890386e-05,
+        "ulps": -0.17430174438972507,
+        "relative": -8.39483084464936e-05
+      },
+      {
+        "b_i": 0.7126831054687501,
+        "sigmoid": 0.6709937567424651,
+        "abs_error": 2.2515849210813476e-05,
+        "ulps": 0.057297776322086276,
+        "relative": 3.355597423159827e-05
+      },
+      {
+        "b_i": 0.7849365234375001,
+        "sigmoid": 0.6867430712817058,
+        "abs_error": -1.3013726829820094e-05,
+        "ulps": -0.04844165073450929,
+        "relative": -1.894992082778771e-05
+      },
+      {
+        "b_i": 0.8728027343750002,
+        "sigmoid": 0.7053285538701682,
+        "abs_error": -8.693217107643194e-05,
+        "ulps": -0.1197192465752805,
+        "relative": -0.00012325060512498944
+      },
+      {
+        "b_i": 1.0141357421875004,
+        "sigmoid": 0.7338287402429051,
+        "abs_error": -8.792464433776536e-05,
+        "ulps": -0.16095757228276597,
+        "relative": -0.00011981629979313889
+      },
+      {
+        "b_i": 1.1741455078125003,
+        "sigmoid": 0.7638935181601746,
+        "abs_error": -0.00012088215916005013,
+        "ulps": -0.45335667998222384,
+        "relative": -0.00015824477664268298
+      },
+      {
+        "b_i": 1.4225585937500007,
+        "sigmoid": 0.8057392098552365,
+        "abs_error": -0.0001405926825378175,
+        "ulps": -0.34030778960487335,
+        "relative": -0.00017448906645994944
+      },
+      {
+        "b_i": 2.244726563000001,
+        "sigmoid": 0.9041946875889192,
+        "abs_error": 4.6570764365837785e-05,
+        "ulps": 0.07887084859100436,
+        "relative": 5.15052399721802e-05
+      }
+    ],
+    "tanh": [
+      {
+        "b_c": -2.2238525395625,
+        "tanh": -0.9768600639185891,
+        "abs_error": -0.0001292704227624238,
+        "ulps": -0.19038393643447765,
+        "relative": 0.00013233259044685147
+      },
+      {
+        "b_c": -1.0029296875,
+        "tanh": -0.7628218068473439,
+        "abs_error": -0.00020184816029776453,
+        "ulps": -0.5579200319742861,
+        "relative": 0.00026460722345101814
+      },
+      {
+        "b_c": -0.8214477539062499,
+        "tanh": -0.6758570893737798,
+        "abs_error": -0.0001322144530632545,
+        "ulps": -0.3205650557962511,
+        "relative": 0.0001956248667684447
+      },
+      {
+        "b_c": -0.6492065429687499,
+        "tanh": -0.5711355737230683,
+        "abs_error": -0.0001450081567368238,
+        "ulps": -0.22595034147997706,
+        "relative": 0.0002538944576531232
+      },
+      {
+        "b_c": -0.496575927734375,
+        "tanh": -0.4594200462301628,
+        "abs_error": -2.850000519756838e-05,
+        "ulps": -0.09604024689888753,
+        "relative": 6.2034744525036e-05
+      },
+      {
+        "b_c": -0.371307373046875,
+        "tanh": -0.35513472879589825,
+        "abs_error": -9.83625914457258e-05,
+        "ulps": -0.29448008161709854,
+        "relative": 0.000276972606366122
+      },
+      {
+        "b_c": -0.25963134765624996,
+        "tanh": -0.25395068732296855,
+        "abs_error": -5.130382046622023e-05,
+        "ulps": -0.25690021118499323,
+        "relative": 0.00020202276673098046
+      },
+      {
+        "b_c": -0.17004394531249992,
+        "tanh": -0.16842374492207193,
+        "abs_error": -3.0259544417813646e-05,
+        "ulps": -0.19477470891773283,
+        "relative": 0.000179663172979644
+      },
+      {
+        "b_c": -0.0872062683105468,
+        "tanh": -0.08698587277428757,
+        "abs_error": -9.401647682071295e-07,
+        "ulps": -0.01870600981705224,
+        "relative": 1.0808246652265997e-05
+      },
+      {
+        "b_c": 0.003946685791015637,
+        "tanh": 0.003946665299518214,
+        "abs_error": -2.160973055334001e-06,
+        "ulps": -0.4030863232177636,
+        "relative": -0.0005475440381523612
+      },
+      {
+        "b_c": 0.10000305175781254,
+        "tanh": 0.09967101606657483,
+        "abs_error": -1.4573929774992578e-06,
+        "ulps": -0.024117345089891776,
+        "relative": -1.4622033917320541e-05
+      },
+      {
+        "b_c": 0.18538818359375012,
+        "tanh": 0.18329312557464084,
+        "abs_error": 1.7086976588236127e-05,
+        "ulps": 0.09569634837654861,
+        "relative": 9.322213549835479e-05
+      },
+      {
+        "b_c": 0.26145629882812504,
+        "tanh": 0.25565715290534413,
+        "abs_error": 5.350218956517866e-05,
+        "ulps": 0.2645714339782013,
+        "relative": 0.00020927319637713246
+      },
+      {
+        "b_c": 0.3461853027343751,
+        "tanh": 0.3329881441881568,
+        "abs_error": 6.200126286985952e-05,
+        "ulps": 0.23502336051152578,
+        "relative": 0.00018619660775317384
+      },
+      {
+        "b_c": 0.4450012207031251,
+        "tanh": 0.41778135277281886,
+        "abs_error": 7.439196429434568e-05,
+        "ulps": 0.3969747333691194,
+        "relative": 0.000178064348254429
+      },
+      {
+        "b_c": 0.535968017578125,
+        "tanh": 0.48992984359382874,
+        "abs_error": 0.00010992321125801564,
+        "ulps": 0.360958538365655,
+        "relative": 0.00022436520798913882
+      },
+      {
+        "b_c": 0.6456298828125,
+        "tanh": 0.5687206825031476,
+        "abs_error": 0.0002487945464509412,
+        "ulps": 0.4043763118117504,
+        "relative": 0.0004374635108326032
+      },
+      {
+        "b_c": 0.8013916015625,
+        "tanh": 0.6648140335617783,
+        "abs_error": 9.296180267569008e-05,
+        "ulps": 0.13032451268842962,
+        "relative": 0.000139831288123751
+      },
+      {
+        "b_c": 1.031958007812504,
+        "tanh": 0.7746924408203671,
+        "abs_error": 0.00017579783349253936,
+        "ulps": 0.2517929202935878,
+        "relative": 0.0002269259698808688
+      },
+      {
+        "b_c": 2.6083251958125038,
+        "tanh": 0.9892076099491802,
+        "abs_error": 3.866130835492076e-05,
+        "ulps": 0.0717966042730784,
+        "relative": 3.9083108506319474e-05
+      }
+    ],
+    "tanh_magnitude_bias_sign_agrees_with_argument_sign": 18
+  },
+  "faithfulness_bound": {
+    "note": "A lane is explainable at k if some pair of fp16 values within k ulps of the correctly rounded sigmoid and tanh multiplies and rounds to the native lane. Unexplainable lanes falsify that accuracy claim outright.",
+    "by_max_ulp_offset": {
+      "0": {
+        "cell_lanes_explainable": 413,
+        "hidden_lanes_explainable": 403,
+        "cell_lanes_unexplainable": 227,
+        "hidden_lanes_unexplainable": 237
+      },
+      "1": {
+        "cell_lanes_explainable": 640,
+        "hidden_lanes_explainable": 639,
+        "cell_lanes_unexplainable": 0,
+        "hidden_lanes_unexplainable": 1
+      },
+      "2": {
+        "cell_lanes_explainable": 640,
+        "hidden_lanes_explainable": 640,
+        "cell_lanes_unexplainable": 0,
+        "hidden_lanes_unexplainable": 0
+      },
+      "3": {
+        "cell_lanes_explainable": 640,
+        "hidden_lanes_explainable": 640,
+        "cell_lanes_unexplainable": 0,
+        "hidden_lanes_unexplainable": 0
+      },
+      "4": {
+        "cell_lanes_explainable": 640,
+        "hidden_lanes_explainable": 640,
+        "cell_lanes_unexplainable": 0,
+        "hidden_lanes_unexplainable": 0
+      }
+    }
+  },
+  "isolated_constraints": {
+    "note": "A group is a set of lanes sharing one activation argument, so the shared activation value is one unknown. An empty feasible interval falsifies the OTHER activation's contract with no assumption about this one; an empty fp16 intersection falsifies it given only that this activation emits fp16.",
+    "sigmoid_argument_groups": 101,
+    "sigmoid_argument_group_lanes": 209,
+    "tanh_argument_groups_same_op": 42,
+    "tanh_argument_group_lanes_same_op": 85,
+    "tanh_argument_groups_including_cross_op": 78,
+    "tanh_contracts_surviving_sigmoid_free_test": 0,
+    "tanh_contracts_tested": 268,
+    "sigmoid_contracts_surviving_tanh_free_test": 0,
+    "sigmoid_contracts_surviving_with_cross_op_groups": 0,
+    "sigmoid_contracts_tested": 38,
+    "exact_tanh_verdict": {
+      "groups_with_no_real_value": 17,
+      "groups_with_no_fp16_value": 25
+    },
+    "exact_sigmoid_verdict": {
+      "groups_with_no_real_value": 12,
+      "groups_with_no_fp16_value": 18
+    },
+    "fp16_chain_sigmoid_verdict": {
+      "groups_with_no_real_value": 2,
+      "groups_with_no_fp16_value": 4
+    },
+    "surviving_sigmoid_contracts": [],
+    "surviving_tanh_contracts": []
+  },
+  "measured_native_values": {
+    "note": "Discrete arc consistency over fp16 domains of the stated radius around correct rounding. Radii whose lane set is fully satisfiable are sound; a radius with unsatisfiable lanes is refuted as an accuracy claim and its pins are not used. Each listed entry is a native activation value read out of the capture with no candidate contract assumed.",
+    "domain_radii_in_ulps": [
+      1,
+      2,
+      3
+    ],
+    "lanes_unsatisfiable_within_radius": {
+      "1": 1,
+      "2": 0,
+      "3": 0
+    },
+    "lanes_unsatisfiable_within_radius_monotone": {
+      "1": 5,
+      "2": 0,
+      "3": 0
+    },
+    "lane_constraints": 1280,
+    "sigmoid_arguments": 1172,
+    "tanh_arguments": 1198,
+    "sigmoid": {
+      "pinned": [
+        {
+          "argument": 0.09002685546875,
+          "native_value": 0.5224609375,
+          "correctly_rounded": 0.5224609375,
+          "signed_ulp_offset": 0
+        },
+        {
+          "argument": 0.1546630859375,
+          "native_value": 0.53857421875,
+          "correctly_rounded": 0.53857421875,
+          "signed_ulp_offset": 0
+        }
+      ],
+      "signed_ulp_offset_from_correct_rounding": {
+        "0": 2
+      },
+      "pinned_per_radius": [
+        129,
+        5,
+        2
+      ],
+      "pinned_count": 2
+    },
+    "tanh": {
+      "pinned": [
+        {
+          "argument": -0.11395263671875,
+          "native_value": -0.11346435546875,
+          "correctly_rounded": -0.11346435546875,
+          "signed_ulp_offset": 0
+        }
+      ],
+      "signed_ulp_offset_from_correct_rounding": {
+        "0": 1
+      },
+      "pinned_per_radius": [
+        123,
+        5,
+        1
+      ],
+      "pinned_count": 1
+    },
+    "monotone_note": "Same solver plus the structural assumption that each native activation is non-decreasing in its argument, which chains all arguments together instead of leaving most nodes with a single lane.",
+    "monotone_sigmoid": {
+      "pinned": [
+        {
+          "argument": -0.2880859375,
+          "native_value": 0.428466796875,
+          "correctly_rounded": 0.428466796875,
+          "signed_ulp_offset": 0
+        },
+        {
+          "argument": 0.09002685546875,
+          "native_value": 0.5224609375,
+          "correctly_rounded": 0.5224609375,
+          "signed_ulp_offset": 0
+        },
+        {
+          "argument": 0.1544189453125,
+          "native_value": 0.53857421875,
+          "correctly_rounded": 0.53857421875,
+          "signed_ulp_offset": 0
+        },
+        {
+          "argument": 0.1546630859375,
+          "native_value": 0.53857421875,
+          "correctly_rounded": 0.53857421875,
+          "signed_ulp_offset": 0
+        },
+        {
+          "argument": 0.26123046875,
+          "native_value": 0.56494140625,
+          "correctly_rounded": 0.56494140625,
+          "signed_ulp_offset": 0
+        },
+        {
+          "argument": 0.314453125,
+          "native_value": 0.57763671875,
+          "correctly_rounded": 0.578125,
+          "signed_ulp_offset": -1
+        },
+        {
+          "argument": 0.43896484375,
+          "native_value": 0.60791015625,
+          "correctly_rounded": 0.60791015625,
+          "signed_ulp_offset": 0
+        },
+        {
+          "argument": 0.52978515625,
+          "native_value": 0.62939453125,
+          "correctly_rounded": 0.62939453125,
+          "signed_ulp_offset": 0
+        },
+        {
+          "argument": 0.56640625,
+          "native_value": 0.63818359375,
+          "correctly_rounded": 0.6376953125,
+          "signed_ulp_offset": 1
+        },
+        {
+          "argument": 0.56689453125,
+          "native_value": 0.63818359375,
+          "correctly_rounded": 0.63818359375,
+          "signed_ulp_offset": 0
+        },
+        {
+          "argument": 0.56787109375,
+          "native_value": 0.63818359375,
+          "correctly_rounded": 0.63818359375,
+          "signed_ulp_offset": 0
+        }
+      ],
+      "signed_ulp_offset_from_correct_rounding": {
+        "0": 9,
+        "-1": 1,
+        "1": 1
+      },
+      "pinned_per_radius": [
+        251,
+        26,
+        11
+      ],
+      "pinned_count": 11
+    },
+    "monotone_tanh": {
+      "pinned": [
+        {
+          "argument": -1.099609375,
+          "native_value": -0.80029296875,
+          "correctly_rounded": -0.80029296875,
+          "signed_ulp_offset": 0
+        },
+        {
+          "argument": -0.681640625,
+          "native_value": -0.5927734375,
+          "correctly_rounded": -0.5927734375,
+          "signed_ulp_offset": 0
+        },
+        {
+          "argument": -0.560546875,
+          "native_value": -0.50830078125,
+          "correctly_rounded": -0.50830078125,
+          "signed_ulp_offset": 0
+        },
+        {
+          "argument": -0.11395263671875,
+          "native_value": -0.11346435546875,
+          "correctly_rounded": -0.11346435546875,
+          "signed_ulp_offset": 0
+        },
+        {
+          "argument": 0.28271484375,
+          "native_value": 0.275390625,
+          "correctly_rounded": 0.275390625,
+          "signed_ulp_offset": 0
+        },
+        {
+          "argument": 0.319091796875,
+          "native_value": 0.308837890625,
+          "correctly_rounded": 0.30859375,
+          "signed_ulp_offset": 1
+        },
+        {
+          "argument": 0.458984375,
+          "native_value": 0.42919921875,
+          "correctly_rounded": 0.42919921875,
+          "signed_ulp_offset": 0
+        },
+        {
+          "argument": 0.6220703125,
+          "native_value": 0.552734375,
+          "correctly_rounded": 0.552734375,
+          "signed_ulp_offset": 0
+        }
+      ],
+      "signed_ulp_offset_from_correct_rounding": {
+        "0": 7,
+        "1": 1
+      },
+      "pinned_per_radius": [
+        224,
+        18,
+        8
+      ],
+      "pinned_count": 8
+    },
+    "pointwise_contract_agreement": {
+      "sigmoid": {
+        "pinned_values": 11,
+        "best_agreement": 11,
+        "paired_with": "tanh:exact:161616",
+        "reproducing_every_pinned_value": [
+          {
+            "contract": "sig:exp2.e16:321616",
+            "joint_lanes": 915
+          },
+          {
+            "contract": "sig:exp2.e64:161616",
+            "joint_lanes": 973
+          },
+          {
+            "contract": "sig:recip:161616",
+            "joint_lanes": 986
+          },
+          {
+            "contract": "sig:recip:321616",
+            "joint_lanes": 914
+          }
+        ],
+        "leaders": [
+          {
+            "contract": "sig:exp2.e16:321616",
+            "joint_lanes": 915
+          },
+          {
+            "contract": "sig:exp2.e64:161616",
+            "joint_lanes": 973
+          },
+          {
+            "contract": "sig:recip:161616",
+            "joint_lanes": 986
+          },
+          {
+            "contract": "sig:recip:321616",
+            "joint_lanes": 914
+          }
+        ]
+      },
+      "tanh": {
+        "pinned_values": 8,
+        "best_agreement": 8,
+        "paired_with": "sig:recip:161616",
+        "reproducing_every_pinned_value": [
+          {
+            "contract": "tanh:mulrcppos:321616",
+            "joint_lanes": 713
+          }
+        ],
+        "leaders": [
+          {
+            "contract": "tanh:mulrcppos:321616",
+            "joint_lanes": 713
+          }
+        ]
+      }
+    }
+  },
+  "error_bounds_from_pins": {
+    "note": "Bounds on the native evaluation error at the pinned arguments, in fp16 ulps toward larger magnitude. A window means one constant magnitude offset satisfies every pin; null means the native error demonstrably varies with the argument.",
+    "sigmoid": {
+      "per_argument": [
+        {
+          "argument": -0.2880859375,
+          "exact": 0.42847252569977934,
+          "exact_position_in_cell": 0.02346526629617074,
+          "native_minus_correctly_rounded_ulps": 0,
+          "magnitude_error_bound_ulps": [
+            -0.5234652662961707,
+            0.47653473370382926
+          ]
+        },
+        {
+          "argument": 0.09002685546875,
+          "exact": 0.5224915250776933,
+          "exact_position_in_cell": 0.062643359115782,
+          "native_minus_correctly_rounded_ulps": 0,
+          "magnitude_error_bound_ulps": [
+            -0.562643359115782,
+            0.437356640884218
+          ]
+        },
+        {
+          "argument": 0.1544189453125,
+          "exact": 0.5385282073021326,
+          "exact_position_in_cell": -0.09423144523248084,
+          "native_minus_correctly_rounded_ulps": 0,
+          "magnitude_error_bound_ulps": [
+            -0.40576855476751916,
+            0.5942314452324808
+          ]
+        },
+        {
+          "argument": 0.1546630859375,
+          "exact": 0.5385888794794806,
+          "exact_position_in_cell": 0.03002517397635529,
+          "native_minus_correctly_rounded_ulps": 0,
+          "magnitude_error_bound_ulps": [
+            -0.5300251739763553,
+            0.4699748260236447
+          ]
+        },
+        {
+          "argument": 0.26123046875,
+          "exact": 0.5649387441833068,
+          "exact_position_in_cell": -0.005451912587659535,
+          "native_minus_correctly_rounded_ulps": 0,
+          "magnitude_error_bound_ulps": [
+            -0.49454808741234046,
+            0.5054519125876595
+          ]
+        },
+        {
+          "argument": 0.314453125,
+          "exact": 0.5779718446113501,
+          "exact_position_in_cell": -0.3136622359550074,
+          "native_minus_correctly_rounded_ulps": -1,
+          "magnitude_error_bound_ulps": [
+            -1.1863377640449926,
+            -0.18633776404499258
+          ]
+        },
+        {
+          "argument": 0.43896484375,
+          "exact": 0.6080123461109374,
+          "exact_position_in_cell": 0.20928483519969632,
+          "native_minus_correctly_rounded_ulps": 0,
+          "magnitude_error_bound_ulps": [
+            -0.7092848351996963,
+            0.2907151648003037
+          ]
+        },
+        {
+          "argument": 0.52978515625,
+          "exact": 0.6294330016798207,
+          "exact_position_in_cell": 0.07878744027289031,
+          "native_minus_correctly_rounded_ulps": 0,
+          "magnitude_error_bound_ulps": [
+            -0.5787874402728903,
+            0.4212125597271097
+          ]
+        },
+        {
+          "argument": 0.56640625,
+          "exact": 0.6379335232532979,
+          "exact_position_in_cell": 0.48785562275406846,
+          "native_minus_correctly_rounded_ulps": 1,
+          "magnitude_error_bound_ulps": [
+            0.012144377245931537,
+            1.0121443772459315
+          ]
+        },
+        {
+          "argument": 0.56689453125,
+          "exact": 0.638046296096764,
+          "exact_position_in_cell": -0.2811855938273311,
+          "native_minus_correctly_rounded_ulps": 0,
+          "magnitude_error_bound_ulps": [
+            -0.2188144061726689,
+            0.7811855938273311
+          ]
+        },
+        {
+          "argument": 0.56787109375,
+          "exact": 0.6382717961674019,
+          "exact_position_in_cell": 0.1806385508391486,
+          "native_minus_correctly_rounded_ulps": 0,
+          "magnitude_error_bound_ulps": [
+            -0.6806385508391486,
+            0.3193614491608514
+          ]
+        }
+      ],
+      "constant_magnitude_offset_window_ulps": null
+    },
+    "tanh": {
+      "per_argument": [
+        {
+          "argument": -1.099609375,
+          "exact": -0.8003586648647537,
+          "exact_position_in_cell": -0.13454564301559913,
+          "native_minus_correctly_rounded_ulps": 0,
+          "magnitude_error_bound_ulps": [
+            -0.6345456430155991,
+            0.3654543569844009
+          ]
+        },
+        {
+          "argument": -0.681640625,
+          "exact": -0.5925849386025818,
+          "exact_position_in_cell": 0.3860457419125396,
+          "native_minus_correctly_rounded_ulps": 0,
+          "magnitude_error_bound_ulps": [
+            -0.1139542580874604,
+            0.8860457419125396
+          ]
+        },
+        {
+          "argument": -0.560546875,
+          "exact": -0.5083830789574848,
+          "exact_position_in_cell": -0.16854570492887433,
+          "native_minus_correctly_rounded_ulps": 0,
+          "magnitude_error_bound_ulps": [
+            -0.6685457049288743,
+            0.33145429507112567
+          ]
+        },
+        {
+          "argument": -0.11395263671875,
+          "exact": -0.11346195249254719,
+          "exact_position_in_cell": 0.039370362106865286,
+          "native_minus_correctly_rounded_ulps": 0,
+          "magnitude_error_bound_ulps": [
+            -0.4606296378931347,
+            0.5393703621068653
+          ]
+        },
+        {
+          "argument": 0.28271484375,
+          "exact": 0.27541586400386076,
+          "exact_position_in_cell": 0.10337895981365364,
+          "native_minus_correctly_rounded_ulps": 0,
+          "magnitude_error_bound_ulps": [
+            -0.6033789598136536,
+            0.39662104018634636
+          ]
+        },
+        {
+          "argument": 0.319091796875,
+          "exact": 0.3086854883080684,
+          "exact_position_in_cell": 0.3757601098482155,
+          "native_minus_correctly_rounded_ulps": 1,
+          "magnitude_error_bound_ulps": [
+            0.1242398901517845,
+            1.1242398901517845
+          ]
+        },
+        {
+          "argument": 0.458984375,
+          "exact": 0.42925608758178646,
+          "exact_position_in_cell": 0.23293473499734318,
+          "native_minus_correctly_rounded_ulps": 0,
+          "magnitude_error_bound_ulps": [
+            -0.7329347349973432,
+            0.2670652650026568
+          ]
+        },
+        {
+          "argument": 0.6220703125,
+          "exact": 0.5525678550541767,
+          "exact_position_in_cell": -0.341032849046087,
+          "native_minus_correctly_rounded_ulps": 0,
+          "magnitude_error_bound_ulps": [
+            -0.158967150953913,
+            0.841032849046087
+          ]
+        }
+      ],
+      "constant_magnitude_offset_window_ulps": [
+        0.1242398901517845,
+        0.2670652650026568
+      ]
+    }
+  },
+  "tanh_bias_sweep": {
+    "note": "Exact tanh biased toward larger magnitude, paired with the fp16 chain sigmoid, scored on all 1280 reduction-free lanes. A fitted correction, not a contract: it measures the size of the native tanh bias.",
+    "unbiased_lanes": 986,
+    "best_magnitude_offset": {
+      "magnitude_offset_ulps": 0.2,
+      "lanes": 1024
+    },
+    "best_relative_scale": {
+      "relative_scale": 0.0001,
+      "lanes": 1018
+    },
+    "magnitude_offset_sweep": [
+      {
+        "magnitude_offset_ulps": -0.4,
+        "lanes": 644
+      },
+      {
+        "magnitude_offset_ulps": -0.38,
+        "lanes": 655
+      },
+      {
+        "magnitude_offset_ulps": -0.36,
+        "lanes": 671
+      },
+      {
+        "magnitude_offset_ulps": -0.34,
+        "lanes": 689
+      },
+      {
+        "magnitude_offset_ulps": -0.32,
+        "lanes": 700
+      },
+      {
+        "magnitude_offset_ulps": -0.3,
+        "lanes": 717
+      },
+      {
+        "magnitude_offset_ulps": -0.28,
+        "lanes": 730
+      },
+      {
+        "magnitude_offset_ulps": -0.26,
+        "lanes": 741
+      },
+      {
+        "magnitude_offset_ulps": -0.24,
+        "lanes": 754
+      },
+      {
+        "magnitude_offset_ulps": -0.22,
+        "lanes": 776
+      },
+      {
+        "magnitude_offset_ulps": -0.2,
+        "lanes": 791
+      },
+      {
+        "magnitude_offset_ulps": -0.18,
+        "lanes": 811
+      },
+      {
+        "magnitude_offset_ulps": -0.16,
+        "lanes": 821
+      },
+      {
+        "magnitude_offset_ulps": -0.14,
+        "lanes": 838
+      },
+      {
+        "magnitude_offset_ulps": -0.12,
+        "lanes": 857
+      },
+      {
+        "magnitude_offset_ulps": -0.1,
+        "lanes": 886
+      },
+      {
+        "magnitude_offset_ulps": -0.08,
+        "lanes": 903
+      },
+      {
+        "magnitude_offset_ulps": -0.06,
+        "lanes": 924
+      },
+      {
+        "magnitude_offset_ulps": -0.04,
+        "lanes": 948
+      },
+      {
+        "magnitude_offset_ulps": -0.02,
+        "lanes": 964
+      },
+      {
+        "magnitude_offset_ulps": 0.0,
+        "lanes": 986
+      },
+      {
+        "magnitude_offset_ulps": 0.02,
+        "lanes": 991
+      },
+      {
+        "magnitude_offset_ulps": 0.04,
+        "lanes": 991
+      },
+      {
+        "magnitude_offset_ulps": 0.06,
+        "lanes": 995
+      },
+      {
+        "magnitude_offset_ulps": 0.08,
+        "lanes": 997
+      },
+      {
+        "magnitude_offset_ulps": 0.1,
+        "lanes": 1007
+      },
+      {
+        "magnitude_offset_ulps": 0.12,
+        "lanes": 1007
+      },
+      {
+        "magnitude_offset_ulps": 0.14,
+        "lanes": 1010
+      },
+      {
+        "magnitude_offset_ulps": 0.16,
+        "lanes": 1010
+      },
+      {
+        "magnitude_offset_ulps": 0.18,
+        "lanes": 1019
+      },
+      {
+        "magnitude_offset_ulps": 0.2,
+        "lanes": 1024
+      },
+      {
+        "magnitude_offset_ulps": 0.22,
+        "lanes": 1022
+      },
+      {
+        "magnitude_offset_ulps": 0.24,
+        "lanes": 1021
+      },
+      {
+        "magnitude_offset_ulps": 0.26,
+        "lanes": 1014
+      },
+      {
+        "magnitude_offset_ulps": 0.28,
+        "lanes": 1015
+      },
+      {
+        "magnitude_offset_ulps": 0.3,
+        "lanes": 1011
+      },
+      {
+        "magnitude_offset_ulps": 0.32,
+        "lanes": 1013
+      },
+      {
+        "magnitude_offset_ulps": 0.34,
+        "lanes": 1004
+      },
+      {
+        "magnitude_offset_ulps": 0.36,
+        "lanes": 997
+      },
+      {
+        "magnitude_offset_ulps": 0.38,
+        "lanes": 982
+      },
+      {
+        "magnitude_offset_ulps": 0.4,
+        "lanes": 969
+      },
+      {
+        "magnitude_offset_ulps": 0.42,
+        "lanes": 939
+      },
+      {
+        "magnitude_offset_ulps": 0.44,
+        "lanes": 923
+      },
+      {
+        "magnitude_offset_ulps": 0.46,
+        "lanes": 892
+      },
+      {
+        "magnitude_offset_ulps": 0.48,
+        "lanes": 858
+      },
+      {
+        "magnitude_offset_ulps": 0.5,
+        "lanes": 815
+      },
+      {
+        "magnitude_offset_ulps": 0.52,
+        "lanes": 757
+      },
+      {
+        "magnitude_offset_ulps": 0.54,
+        "lanes": 718
+      },
+      {
+        "magnitude_offset_ulps": 0.56,
+        "lanes": 679
+      },
+      {
+        "magnitude_offset_ulps": 0.58,
+        "lanes": 636
+      },
+      {
+        "magnitude_offset_ulps": 0.6,
+        "lanes": 572
+      },
+      {
+        "magnitude_offset_ulps": 0.62,
+        "lanes": 516
+      },
+      {
+        "magnitude_offset_ulps": 0.64,
+        "lanes": 448
+      },
+      {
+        "magnitude_offset_ulps": 0.66,
+        "lanes": 373
+      },
+      {
+        "magnitude_offset_ulps": 0.68,
+        "lanes": 338
+      },
+      {
+        "magnitude_offset_ulps": 0.7,
+        "lanes": 338
+      },
+      {
+        "magnitude_offset_ulps": 0.72,
+        "lanes": 338
+      },
+      {
+        "magnitude_offset_ulps": 0.74,
+        "lanes": 338
+      },
+      {
+        "magnitude_offset_ulps": 0.76,
+        "lanes": 338
+      },
+      {
+        "magnitude_offset_ulps": 0.78,
+        "lanes": 338
+      },
+      {
+        "magnitude_offset_ulps": 0.8,
+        "lanes": 338
+      }
+    ],
+    "relative_scale_sweep": [
+      {
+        "relative_scale": -0.0002,
+        "lanes": 760
+      },
+      {
+        "relative_scale": -0.00019,
+        "lanes": 771
+      },
+      {
+        "relative_scale": -0.00018,
+        "lanes": 785
+      },
+      {
+        "relative_scale": -0.00017,
+        "lanes": 800
+      },
+      {
+        "relative_scale": -0.00016,
+        "lanes": 810
+      },
+      {
+        "relative_scale": -0.00015,
+        "lanes": 824
+      },
+      {
+        "relative_scale": -0.00014,
+        "lanes": 830
+      },
+      {
+        "relative_scale": -0.00013,
+        "lanes": 838
+      },
+      {
+        "relative_scale": -0.00012,
+        "lanes": 846
+      },
+      {
+        "relative_scale": -0.00011,
+        "lanes": 853
+      },
+      {
+        "relative_scale": -0.0001,
+        "lanes": 869
+      },
+      {
+        "relative_scale": -9e-05,
+        "lanes": 888
+      },
+      {
+        "relative_scale": -8e-05,
+        "lanes": 900
+      },
+      {
+        "relative_scale": -7e-05,
+        "lanes": 908
+      },
+      {
+        "relative_scale": -6e-05,
+        "lanes": 921
+      },
+      {
+        "relative_scale": -5e-05,
+        "lanes": 931
+      },
+      {
+        "relative_scale": -4e-05,
+        "lanes": 944
+      },
+      {
+        "relative_scale": -3e-05,
+        "lanes": 954
+      },
+      {
+        "relative_scale": -2e-05,
+        "lanes": 965
+      },
+      {
+        "relative_scale": -1e-05,
+        "lanes": 974
+      },
+      {
+        "relative_scale": -2.71e-20,
+        "lanes": 986
+      },
+      {
+        "relative_scale": 1e-05,
+        "lanes": 990
+      },
+      {
+        "relative_scale": 2e-05,
+        "lanes": 996
+      },
+      {
+        "relative_scale": 3e-05,
+        "lanes": 998
+      },
+      {
+        "relative_scale": 4e-05,
+        "lanes": 999
+      },
+      {
+        "relative_scale": 5e-05,
+        "lanes": 1007
+      },
+      {
+        "relative_scale": 6e-05,
+        "lanes": 1010
+      },
+      {
+        "relative_scale": 7e-05,
+        "lanes": 1009
+      },
+      {
+        "relative_scale": 8e-05,
+        "lanes": 1010
+      },
+      {
+        "relative_scale": 9e-05,
+        "lanes": 1011
+      },
+      {
+        "relative_scale": 0.0001,
+        "lanes": 1018
+      },
+      {
+        "relative_scale": 0.00011,
+        "lanes": 1016
+      },
+      {
+        "relative_scale": 0.00012,
+        "lanes": 1014
+      },
+      {
+        "relative_scale": 0.00013,
+        "lanes": 996
+      },
+      {
+        "relative_scale": 0.00014,
+        "lanes": 993
+      },
+      {
+        "relative_scale": 0.00015,
+        "lanes": 997
+      },
+      {
+        "relative_scale": 0.00016,
+        "lanes": 988
+      },
+      {
+        "relative_scale": 0.00017,
+        "lanes": 985
+      },
+      {
+        "relative_scale": 0.00018,
+        "lanes": 990
+      },
+      {
+        "relative_scale": 0.00019,
+        "lanes": 985
+      },
+      {
+        "relative_scale": 0.0002,
+        "lanes": 980
+      },
+      {
+        "relative_scale": 0.00021,
+        "lanes": 975
+      },
+      {
+        "relative_scale": 0.00022,
+        "lanes": 969
+      },
+      {
+        "relative_scale": 0.00023,
+        "lanes": 960
+      },
+      {
+        "relative_scale": 0.00024,
+        "lanes": 950
+      },
+      {
+        "relative_scale": 0.00025,
+        "lanes": 932
+      },
+      {
+        "relative_scale": 0.00026,
+        "lanes": 922
+      },
+      {
+        "relative_scale": 0.00027,
+        "lanes": 912
+      },
+      {
+        "relative_scale": 0.00028,
+        "lanes": 901
+      },
+      {
+        "relative_scale": 0.00029,
+        "lanes": 893
+      },
+      {
+        "relative_scale": 0.0003,
+        "lanes": 880
+      },
+      {
+        "relative_scale": 0.00031,
+        "lanes": 864
+      },
+      {
+        "relative_scale": 0.00032,
+        "lanes": 842
+      },
+      {
+        "relative_scale": 0.00033,
+        "lanes": 829
+      },
+      {
+        "relative_scale": 0.00034,
+        "lanes": 822
+      },
+      {
+        "relative_scale": 0.00035,
+        "lanes": 812
+      },
+      {
+        "relative_scale": 0.00036,
+        "lanes": 794
+      },
+      {
+        "relative_scale": 0.00037,
+        "lanes": 777
+      },
+      {
+        "relative_scale": 0.00038,
+        "lanes": 767
+      },
+      {
+        "relative_scale": 0.00039,
+        "lanes": 748
+      },
+      {
+        "relative_scale": 0.0004,
+        "lanes": 739
+      },
+      {
+        "relative_scale": 0.00041,
+        "lanes": 723
+      },
+      {
+        "relative_scale": 0.00042,
+        "lanes": 704
+      },
+      {
+        "relative_scale": 0.00043,
+        "lanes": 688
+      },
+      {
+        "relative_scale": 0.00044,
+        "lanes": 678
+      },
+      {
+        "relative_scale": 0.00045,
+        "lanes": 664
+      },
+      {
+        "relative_scale": 0.00046,
+        "lanes": 649
+      },
+      {
+        "relative_scale": 0.00047,
+        "lanes": 635
+      },
+      {
+        "relative_scale": 0.00048,
+        "lanes": 619
+      },
+      {
+        "relative_scale": 0.00049,
+        "lanes": 605
+      },
+      {
+        "relative_scale": 0.0005,
+        "lanes": 593
+      }
+    ]
+  },
+  "all_transitions": {
+    "note": "Full two-layer LSTM from native-injected state, with the fp32-class gate reduction the previous study measured as least-bad. The gate reduction is still unresolved, so these counts are not a clean activation measurement; they only show whether the elementwise gain survives a reduction.",
+    "variants": [
+      {
+        "sigmoid": "sig:exact:161616",
+        "tanh": "tanh:exact:161616",
+        "next_cell_lanes": 3369,
+        "next_hidden_lanes": 3185,
+        "lanes": 19200,
+        "next_cell_max_abs": 0.03125,
+        "next_hidden_max_abs": 0.019287109375
+      },
+      {
+        "sigmoid": "sig:recip:161616",
+        "tanh": "tanh:diffsig[sig:exact:161632]:161616",
+        "next_cell_lanes": 3821,
+        "next_hidden_lanes": 2888,
+        "lanes": 19200,
+        "next_cell_max_abs": 0.027515411376953125,
+        "next_hidden_max_abs": 0.019287109375
+      },
+      {
+        "sigmoid": "sig:recip:161616",
+        "tanh": "tanh:exact:161616",
+        "next_cell_lanes": 3821,
+        "next_hidden_lanes": 2890,
+        "lanes": 19200,
+        "next_cell_max_abs": 0.027515411376953125,
+        "next_hidden_max_abs": 0.019287109375
+      },
+      {
+        "sigmoid": "sig:recip:161616",
+        "tanh": "tanh:via_sig[sig:posexp:323232]:161616",
+        "next_cell_lanes": 3821,
+        "next_hidden_lanes": 2890,
+        "lanes": 19200,
+        "next_cell_max_abs": 0.027515411376953125,
+        "next_hidden_max_abs": 0.019287109375
+      },
+      {
+        "sigmoid": "sig:recip:161616",
+        "tanh": "tanh:diffsig[sig:fromtanh:163232]:161632",
+        "next_cell_lanes": 3821,
+        "next_hidden_lanes": 2887,
+        "lanes": 19200,
+        "next_cell_max_abs": 0.027515411376953125,
+        "next_hidden_max_abs": 0.019287109375
+      }
+    ]
+  }
+}

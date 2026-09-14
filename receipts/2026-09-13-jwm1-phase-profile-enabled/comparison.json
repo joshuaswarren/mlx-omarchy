@@ -1,0 +1,54 @@
+{
+  "pinned": {
+    "path": "receipts/2026-09-10-prefill-qmm-isa/distribution/m1053/prefill-summary.json",
+    "host_prefill_ms": 1321.838644,
+    "gpu_dispatches": 1231,
+    "gpu_submissions": 53,
+    "gpu_busy_ms": 943.089041,
+    "gpu_span_ms": 1210.941708,
+    "busy_fraction": 0.7788063081563296,
+    "QmmPrefillCoopmatF16": {
+      "dispatches": 163,
+      "gpu_ms": 702.4762989999998,
+      "share_gpu_busy": 0.7448674180914375
+    },
+    "MatmulRbF16": {
+      "dispatches": 46,
+      "gpu_ms": 109.41883099999998,
+      "share_gpu_busy": 0.11602173945736688
+    }
+  },
+  "current_wheel_b41e2b74_profile_enabled": {
+    "host_prefill_ms": 1260.590939,
+    "host_prefill_tok_s": 835.323,
+    "generated_text": "Thank you",
+    "prompt_tokens": 1053,
+    "overall_gpu": {
+      "dispatches": 1312,
+      "submissions": 12,
+      "busy_ms": 951.960558,
+      "span_ms": 1142.375209,
+      "busy_fraction": 0.8333168914207416
+    },
+    "prefill_gpu": {
+      "dispatches": 1063,
+      "submissions": 10,
+      "busy_ms": 934.58118,
+      "span_ms": 1118.761042,
+      "busy_fraction": 0.8353715806274921
+    },
+    "QmmPrefillCoopmatF16_prefill": {
+      "dispatches": 163,
+      "gpu_ms": 702.559129,
+      "share_gpu_busy": 0.75173686784491
+    },
+    "MatmulRbF16_prefill": {
+      "dispatches": 46,
+      "gpu_ms": 106.375874,
+      "share_gpu_busy": 0.11382197317519277
+    }
+  },
+  "host_prefill_ms_delta": -61.247705,
+  "host_prefill_ms_ratio": 0.953665,
+  "gpu_comparison": "prefill-window vs pinned m1053: busy_fraction 0.8354 vs 0.7788; QmmPrefillCoopmatF16 n=163/163, share 75.17% vs 74.49%, gpu_ms 702.559 vs 702.476"
+}
