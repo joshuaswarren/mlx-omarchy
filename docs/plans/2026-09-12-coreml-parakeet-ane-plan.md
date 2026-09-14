@@ -3045,6 +3045,8 @@ Evidence base (read-only, verified at persistence time):
 - `mlx-omarchy` worktree at base `f365d5b5` (this document's branch).
 - Local read-only checkouts: `~/src/mil-hwx-compiler`, `~/src/omarchy-ane`, `~/src/ane-linux-experiments`, `~/src/omarchy-mac` (stale; see A.5).
 
+Restamp 2026-09-14 (StatusDocSync, at `main` `7f8786b0`): rows marked `restamped` below were re-read against the receipts named in the row. Rows without that marker still describe the `f365d5b5` base and have not been re-verified.
+
 Status legend:
 
 - `OPEN` — no implementing surface exists yet at the persistence base.
@@ -3068,13 +3070,13 @@ Status legend:
 | 5 | Current mlx-omarchy ANE state | `overlay/mlx/backend/omarchy/ane/{manifest,bundle}.{h,cpp}` present at `f365d5b5`; bundle validation tests in `overlay/tests/omarchy/ane/test_bundle.cpp` | EXISTS |
 | 6 | Existing ANE compiler | `mil-hwx-compiler` README: source-native H13/M1 backend, Linux GNUstep build, H13/H14 ANEC + HWX emission; per-op Parakeet inventory deliberately not assumed | EXISTS (inventory OPEN) |
 | 7 | Compiler integration strategy | Pin + adapter design; `scripts/prepare-mlx.sh` is the existing pattern to mirror | OPEN |
-| 8 | Compiler lock and preparation | `scripts/` contains `prepare-mlx.sh` only; no `ane-compiler.lock`, no `prepare-ane-compiler.sh` | OPEN |
+| 8 | Compiler lock and preparation | restamped: `ane-compiler.lock` pins mil-hwx-compiler `417554c` (`7f8786b0`, `receipts/2026-09-14-compiler-pin-bump.md`); `scripts/prepare-ane-compiler.sh` and `scripts/verify-ane-compiler.sh` exist | EXISTS |
 | 9 | Do not vendor the compiler yet | Decision recorded in plan; no vendoring present | STANDING |
 | 10 | Public reference model | `mweinbach/parakeet-coreml-swift`, `mweinbach1/parakeet-tdt-0.6b-v3-coreml` to be pinned; nothing pinned in-repo yet | OPEN (IN-FLIGHT) |
 | 11 | Reference Parakeet contract | Encoder/decoder/joint/tokenizer contract to be recorded by reference lane | OPEN (IN-FLIGHT) |
 | 12 | Freeze the reference first | Reference lock file and hashes not yet in repo | OPEN (IN-FLIGHT) |
 | 13 | Public model downloader | No downloader yet; naming per plan (`mlx-omarchy-parakeet download`) | OPEN (IN-FLIGHT) |
-| 14 | Core ML package inspector | No inspector yet | OPEN (IN-FLIGHT) |
+| 14 | Core ML package inspector | restamped: `overlay/tools/mlx-omarchy-coreml/mlx_omarchy_coreml.py` with `overlay/tests/omarchy/coreml/test_mlpackage.py`, `test_eligibility.py`, `test_parakeet_cli.py` | EXISTS |
 | 15 | Core ML package parsing | No ML Program parser yet | OPEN |
 | 16 | Frontend architecture | Reader→MIL→compiler path designed in plan; no code | OPEN |
 | 17 | Textual MIL vs compiler API | Decision investigation not started | OPEN |
@@ -3084,9 +3086,9 @@ Status legend:
 | 21 | Multi-program compiler packages | Runtime accommodation not built | OPEN |
 | 22 | ANE driver/runtime | `~/src/omarchy-ane` layout matches plan (`ane/`, `libane/`, `bindings/`); consume-don't-copy | EXISTS |
 | 23 | Driver ABI | Runtime ABI check not implemented; ABI constant not located in the local `omarchy-ane` checkout greps — verify against the canonical repo before implementation | OPEN |
-| 24 | ANE worker boundary | No worker code under `overlay/mlx/backend/omarchy/ane/` (manifest + bundle only) | OPEN |
+| 24 | ANE worker boundary | restamped: `overlay/mlx/backend/omarchy/ane/{worker,worker_main,runtime_worker,worker_libane}.cpp`, `overlay/tools/mlx-omarchy-ane-worker`, `overlay/tests/omarchy/ane/test_worker.cpp`; bounded one-shot worker exercised on both SoCs (`receipts/2026-09-14-m1-test-host-ane-full-100-run-report.json`, `receipts/2026-09-13-t6001-test-host-ane-soak/`) | EXISTS |
 | 25 | Worker ≠ inference server | Contract; contained helper allowed | STANDING |
-| 26 | Timeout and hardware failure | Bounded-submission policy not implemented; AGENTS.md hardware-window rules apply meanwhile | OPEN |
+| 26 | Timeout and hardware failure | restamped: `--deadline-ms` bounded submits, device lock and boot-id-keyed quarantine in `runtime_ownership.h` / `runtime_detail.h`, liveness check `tools/ane_worker_liveness.py` (`docs/ane-worker-liveness.md`); 0 timeouts over 100 runs on m1-test-host (`receipts/2026-09-14-m1-test-host-ane-full-100-run-report.json`) | EXISTS |
 | 27 | Host staging | Conservative staging is current behavior; dma-buf stays non-prerequisite | STANDING |
 | 28 | Core ML compiled cache | No `~/.cache/mlx-omarchy/coreml/` producer yet | OPEN |
 | 29 | Cache key | No cache yet; key field list is the contract | OPEN |
@@ -3099,14 +3101,14 @@ Status legend:
 | 36 | User-facing Core ML model API | No API yet | OPEN |
 | 37 | Explicit compute target semantics | No semantics implemented | OPEN |
 | 38 | Core ML errors | Error taxonomy designed; `overlay/tests/omarchy/test_error_contract.cpp` is the existing MLX-side pattern | OPEN |
-| 39 | Inspector eligibility output | Depends on §14 inspector | OPEN |
+| 39 | Inspector eligibility output | restamped: eligibility classification exists (`overlay/tests/omarchy/coreml/test_eligibility.py`); the exact output shape in this section is not pinned by a receipt | PARTIAL |
 | 40 | Numerical acceptance layers | Layer plan recorded; `docs/differential-harness.md` is the existing parity-harness home | OPEN |
 | 41 | Tolerance policy | Fixed-tolerance rule recorded | STANDING |
 | 42 | Backend tracing | `overlay/mlx/backend/omarchy/trace.h` exists; ANE/Core ML counters not yet added | PARTIAL |
 | 43 | No CPU tensor proof | Depends on §42 counters | OPEN |
 | 44 | Performance measurements | Bench tooling exists (`overlay/tools/*bench`); stage attribution not built | PARTIAL |
 | 45 | Repeated inference | 100-run harness not built | OPEN |
-| 46 | Compiler qualification gate | Gate 4 chain not yet run end to end | OPEN |
+| 46 | Compiler qualification gate | restamped: pinned `417554c` passes `make test-h13` (15 CLI suites) and `tests/test_h13_parity.py` (846 cases) before push (`receipts/2026-09-14-compiler-pin-bump.md`) | EXISTS |
 | 47 | Parakeet compiler gate | Depends on §18 inventory | OPEN |
 | 48 | ANE package gate | Strict validation layer exists and must stay; application to generated packages not yet exercised | PARTIAL |
 | 49 | Host-only tests | `overlay/tests/omarchy/CMakeLists.txt` structure exists; named suites not created | OPEN |
@@ -3168,11 +3170,11 @@ Status legend:
 | 3 | Compiler coverage classified | §6, §18 | OPEN |
 | 4 | Compiler integration | §7, §8, §46 | OPEN |
 | 5 | Package adaptation passes strict validation | §20, §48 (`bundle.cpp` contract) | OPEN |
-| 6 | Runtime one-op execute | §22, §23, §24 | OPEN |
-| 7 | Full encoder compile | §47 | OPEN |
-| 8 | Full encoder parity + ANE trace | §40, §42 | OPEN |
-| 9 | End-to-end Parakeet, no server | §31–§36, §58 | OPEN |
-| 10 | 100-run stability | §45, §26 | OPEN |
+| 6 | Runtime one-op execute | restamped: §22, §23, §24; exact fp16 on T8103 and T6001 for add-mul, tiny select, 1x1 conv, `(1,256,128)` and `(32,256,128)` linear (`receipts/2026-09-14-m1-test-host-linear-32-256-128.json`, `receipts/2026-09-14-t6001-test-host-linear-32-256-128.json`, `receipts/2026-09-13-t6001-test-host-ane-set-exec.json`) | EXISTS |
+| 7 | Full encoder compile | restamped: §47; the 24 selects now compile, but concat, non-foldable transpose, non-contiguous slice, layer_norm, silu/sigmoid, softmax and encoder conv still fail H13 on the encoder form (`receipts/2026-09-14-encoder-leftover.md`) | OPEN |
+| 8 | Full encoder parity + ANE trace | restamped: §40, §42; encoder runs with ANE islands A and C on all 24 layers within the frozen contract (`receipts/2026-09-14-encoder-parity-ane.json`); island B select had 10728 wrong lanes from under-sized channel-3 scratch, fixed in mil-hwx-compiler `7ab3eb5`, three-island run in flight | PARTIAL |
+| 9 | End-to-end Parakeet, no server | restamped: §31–§36, §58; one Linux process, no server, no CPU tensor primitive, mel bit-exact, encoder in bounds, but token ids diverge from native at emission 101 of 104 on the decoder LSTM activation hole (`receipts/2026-09-14-parakeet-e2e.json`, `receipts/2026-09-14-decoder-activation-stages.md`) | OPEN (not green) |
+| 10 | 100-run stability | restamped: §45, §26; 100/100 add-mul, 0 timeouts, one y hash, workers released each run on m1-test-host (`receipts/2026-09-14-m1-test-host-ane-full-100-run-report.json`) and the t6001-test-host soak (`receipts/2026-09-13-t6001-test-host-ane-soak/`); not yet run on the encoder or Parakeet path | PARTIAL |
 | 11 | Clean installation without dev clones | §64–§89 packaging chain | OPEN |
 
 ## A.3 Ordered phases (section 61, ten)
