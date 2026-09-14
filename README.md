@@ -16,7 +16,7 @@ One-command install on an M1 running Omarchy, the first model download, the stre
 
 ## Hardware
 
-Apple M1 is verified on [Omarchy](https://github.com/omarchy-mac/omarchy-mac) with Mesa Honeykrisp. Apple M1 Max GPU is measured; its Neural Engine is not bound. Later SoCs follow.
+Apple M1 is verified on [Omarchy](https://github.com/omarchy-mac/omarchy-mac) with Mesa Honeykrisp. Apple M1 Max GPU is measured; T6001 `/dev/accel/accel0` is live. Later SoCs follow.
 
 ## Install (v0.4.2)
 
@@ -123,9 +123,9 @@ Known gaps: compiled bfloat16 graphs are refused (`MLX_DISABLE_COMPILE=1` runs t
 
 The Apple Neural Engine is an internal accelerator for static graph regions, not a user-facing `mx.ane` device.
 
-T8103 ANE works: persistent module, schema-4 add-mul through the v2 H13 adapter on device. T6001 DTS is sourced; bind is blocked on the T6001 ANE DART register layout, where a T8103-style TTBR write SErrors.
+T8103 ANE works: persistent module, schema-4 add-mul through the v2 H13 adapter on device. T6001 `/dev/accel/accel0` is live after SET genpd, with exact fp16 64-element add-mul and a 100/100 soak ([receipts/2026-09-13-jw16-ane-set-exec.json](receipts/2026-09-13-jw16-ane-set-exec.json), [receipts/2026-09-13-jw16-ane-soak/](receipts/2026-09-13-jw16-ane-soak/)). The 1x896 path is still forbidden.
 
-The Core ML lane in this repo has inspect, eligibility, download, worker, cache, TDT, tokenizer, pad elimination, and the bool-surface ABI. Public encoder compile is not closed: 253 layout and boolean ops still need compiler primitives.
+The Core ML lane in this repo has inspect, eligibility, download, worker, cache, TDT, tokenizer, pad elimination, and the bool-surface ABI. Public encoder compile is not closed: named H13 holes remain ([receipts/2026-09-13-encoder-leftover-now.md](receipts/2026-09-13-encoder-leftover-now.md)).
 
 Plan and contracts: [docs/plans/2026-09-12-coreml-parakeet-ane-plan.md](docs/plans/2026-09-12-coreml-parakeet-ane-plan.md), [docs/ane-bundles.md](docs/ane-bundles.md), [docs/2026-09-13-encoder-parity-harness.md](docs/2026-09-13-encoder-parity-harness.md).
 
