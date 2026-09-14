@@ -1,0 +1,37 @@
+{
+  "wall_s": 18.364828423,
+  "ane_exec_s": 4.982801163,
+  "leftover_s": 13.38202726,
+  "gpu_busy_s": 9.514631949,
+  "gpu_busy_over_leftover": 0.711000789651657,
+  "vk_compute_dispatches": 5914,
+  "vk_submissions": 197,
+  "gpu_ops_mil": 1278,
+  "ane_ops_mil": 96,
+  "inter_submit_gaps_ms": 8615.786,
+  "profile_sha256": "f6d266b92b4c40e007cf71402f72ecc3406df870115a706a6733c42a2db67b23",
+  "run_report_sha256": "2e2e5322eef575d01eb4df4e9fd3f5c55d49d4b5f51b2879fa4bd7b6dee5743c",
+  "kernels": [
+    {"kernel": "ConvF32", "dispatches": 77, "gpu_busy_ms": 6320.78, "share_of_gpu_busy": 0.664322, "share_of_leftover_wall": 0.472334},
+    {"kernel": "ElementwiseF32", "dispatches": 1986, "gpu_busy_ms": 1382.575, "share_of_gpu_busy": 0.14531, "share_of_leftover_wall": 0.103316},
+    {"kernel": "MatmulF32Coopmat", "dispatches": 194, "gpu_busy_ms": 1239.43, "share_of_gpu_busy": 0.130266, "share_of_leftover_wall": 0.092619},
+    {"kernel": "CastF16F32", "dispatches": 1950, "gpu_busy_ms": 178.587, "share_of_gpu_busy": 0.01877, "share_of_leftover_wall": 0.013345},
+    {"kernel": "ReduceF32", "dispatches": 288, "gpu_busy_ms": 109.881, "share_of_gpu_busy": 0.011549, "share_of_leftover_wall": 0.008211},
+    {"kernel": "CopyGeneralF32", "dispatches": 225, "gpu_busy_ms": 99.38, "share_of_gpu_busy": 0.010445, "share_of_leftover_wall": 0.007426},
+    {"kernel": "CopyGeneralF16", "dispatches": 193, "gpu_busy_ms": 78.379, "share_of_gpu_busy": 0.008238, "share_of_leftover_wall": 0.005857},
+    {"kernel": "CastF32F16", "dispatches": 879, "gpu_busy_ms": 73.243, "share_of_gpu_busy": 0.007698, "share_of_leftover_wall": 0.005473},
+    {"kernel": "CopyGeneralBool", "dispatches": 25, "gpu_busy_ms": 22.791, "share_of_gpu_busy": 0.002395, "share_of_leftover_wall": 0.001703}
+  ],
+  "conv_f32_by_n": [
+    {"dispatches": 24, "n": 768000, "shape": [1, 2048, 375], "gpu_busy_ms": 4154.02, "mean_ms": 173.084, "share_of_leftover_wall": 0.310418},
+    {"dispatches": 48, "n": 384000, "shape": [1, 1024, 375], "gpu_busy_ms": 1743.42, "mean_ms": 36.321, "share_of_leftover_wall": 0.130281},
+    {"dispatches": 2, "n": 6144000, "shape": [1, 256, 750, 32], "gpu_busy_ms": 297.51, "mean_ms": 148.753, "share_of_leftover_wall": 0.022232},
+    {"dispatches": 2, "n": 1536000, "shape": [1, 256, 375, 16], "gpu_busy_ms": 74.45, "mean_ms": 37.227, "share_of_leftover_wall": 0.005563},
+    {"dispatches": 1, "n": 24576000, "shape": [1, 256, 1500, 64], "gpu_busy_ms": 51.38, "mean_ms": 51.381, "share_of_leftover_wall": 0.003839}
+  ],
+  "matmul_f32_coopmat_by_n": [
+    {"dispatches": 145, "n": 384000, "shape": [1, 375, 1024], "gpu_busy_ms": 858.81, "note": "q/k/v/o + ffn-down + projector/subsampling"},
+    {"dispatches": 48, "n": 1536000, "shape": [1, 375, 4096], "gpu_busy_ms": 379.18, "note": "ffn-up x2 per layer"},
+    {"dispatches": 1, "n": 240000, "shape": [1, 375, 640], "gpu_busy_ms": 1.44, "note": "epilogue projector"}
+  ]
+}
