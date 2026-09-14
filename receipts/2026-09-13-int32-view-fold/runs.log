@@ -1,0 +1,3 @@
+=== peel+fold (model-fp16-noview.mil) ===
+162:5: error [h13.invalid-transpose-parameters]: H13 transpose requires x and an exact rank-matching tensor<int32,[rank]> perm constant over a positive-rank static fp16 input
+exit=65
