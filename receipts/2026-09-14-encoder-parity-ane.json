@@ -158,7 +158,406 @@
     "output_bytes": 180288000,
     "ane_exec_ns": 3179529661,
     "ane_exec_ms": 3179.5,
-    "one_process_per_submit": "The bounded worker CLI takes one bundle and one input set per process, so each layer's islands are separate launches. worker_starts equals submissions by construction; a persistent worker or the graph-level partitioner would change this."
+    "one_process_per_submit": "The bounded worker CLI takes one bundle and one input set per process, so each layer's islands are separate launches. worker_starts equals submissions by construction; a persistent worker or the graph-level partitioner would change this.",
+    "per_layer_dispatch": {
+      "schema": "encoder_layers_NN -> {A: island-attn-a-kt, C: island-pv}, each with exit status, wall ms measured around the worker process, and the bytes shipped in and read back",
+      "programs_per_layer": {
+        "A": 2,
+        "C": 1
+      },
+      "task_descriptors_per_layer": {
+        "A": 416,
+        "C": 208,
+        "total": 624
+      },
+      "submits_per_layer": 2,
+      "layers": {
+        "L00": {
+          "A": {
+            "bundle": "island-attn-a-kt",
+            "exit": 0,
+            "elapsed_ms": 94.136,
+            "input_bytes": 3837952,
+            "output_bytes": 6744000
+          },
+          "C": {
+            "bundle": "island-pv",
+            "exit": 0,
+            "elapsed_ms": 38.733,
+            "input_bytes": 3018000,
+            "output_bytes": 768000
+          }
+        },
+        "L01": {
+          "A": {
+            "bundle": "island-attn-a-kt",
+            "exit": 0,
+            "elapsed_ms": 93.05,
+            "input_bytes": 3837952,
+            "output_bytes": 6744000
+          },
+          "C": {
+            "bundle": "island-pv",
+            "exit": 0,
+            "elapsed_ms": 46.026,
+            "input_bytes": 3018000,
+            "output_bytes": 768000
+          }
+        },
+        "L02": {
+          "A": {
+            "bundle": "island-attn-a-kt",
+            "exit": 0,
+            "elapsed_ms": 88.1,
+            "input_bytes": 3837952,
+            "output_bytes": 6744000
+          },
+          "C": {
+            "bundle": "island-pv",
+            "exit": 0,
+            "elapsed_ms": 46.543,
+            "input_bytes": 3018000,
+            "output_bytes": 768000
+          }
+        },
+        "L03": {
+          "A": {
+            "bundle": "island-attn-a-kt",
+            "exit": 0,
+            "elapsed_ms": 85.504,
+            "input_bytes": 3837952,
+            "output_bytes": 6744000
+          },
+          "C": {
+            "bundle": "island-pv",
+            "exit": 0,
+            "elapsed_ms": 46.557,
+            "input_bytes": 3018000,
+            "output_bytes": 768000
+          }
+        },
+        "L04": {
+          "A": {
+            "bundle": "island-attn-a-kt",
+            "exit": 0,
+            "elapsed_ms": 93.36,
+            "input_bytes": 3837952,
+            "output_bytes": 6744000
+          },
+          "C": {
+            "bundle": "island-pv",
+            "exit": 0,
+            "elapsed_ms": 34.374,
+            "input_bytes": 3018000,
+            "output_bytes": 768000
+          }
+        },
+        "L05": {
+          "A": {
+            "bundle": "island-attn-a-kt",
+            "exit": 0,
+            "elapsed_ms": 83.596,
+            "input_bytes": 3837952,
+            "output_bytes": 6744000
+          },
+          "C": {
+            "bundle": "island-pv",
+            "exit": 0,
+            "elapsed_ms": 43.828,
+            "input_bytes": 3018000,
+            "output_bytes": 768000
+          }
+        },
+        "L06": {
+          "A": {
+            "bundle": "island-attn-a-kt",
+            "exit": 0,
+            "elapsed_ms": 91.267,
+            "input_bytes": 3837952,
+            "output_bytes": 6744000
+          },
+          "C": {
+            "bundle": "island-pv",
+            "exit": 0,
+            "elapsed_ms": 46.004,
+            "input_bytes": 3018000,
+            "output_bytes": 768000
+          }
+        },
+        "L07": {
+          "A": {
+            "bundle": "island-attn-a-kt",
+            "exit": 0,
+            "elapsed_ms": 97.947,
+            "input_bytes": 3837952,
+            "output_bytes": 6744000
+          },
+          "C": {
+            "bundle": "island-pv",
+            "exit": 0,
+            "elapsed_ms": 38.295,
+            "input_bytes": 3018000,
+            "output_bytes": 768000
+          }
+        },
+        "L08": {
+          "A": {
+            "bundle": "island-attn-a-kt",
+            "exit": 0,
+            "elapsed_ms": 90.829,
+            "input_bytes": 3837952,
+            "output_bytes": 6744000
+          },
+          "C": {
+            "bundle": "island-pv",
+            "exit": 0,
+            "elapsed_ms": 41.415,
+            "input_bytes": 3018000,
+            "output_bytes": 768000
+          }
+        },
+        "L09": {
+          "A": {
+            "bundle": "island-attn-a-kt",
+            "exit": 0,
+            "elapsed_ms": 98.033,
+            "input_bytes": 3837952,
+            "output_bytes": 6744000
+          },
+          "C": {
+            "bundle": "island-pv",
+            "exit": 0,
+            "elapsed_ms": 41.261,
+            "input_bytes": 3018000,
+            "output_bytes": 768000
+          }
+        },
+        "L10": {
+          "A": {
+            "bundle": "island-attn-a-kt",
+            "exit": 0,
+            "elapsed_ms": 89.903,
+            "input_bytes": 3837952,
+            "output_bytes": 6744000
+          },
+          "C": {
+            "bundle": "island-pv",
+            "exit": 0,
+            "elapsed_ms": 40.648,
+            "input_bytes": 3018000,
+            "output_bytes": 768000
+          }
+        },
+        "L11": {
+          "A": {
+            "bundle": "island-attn-a-kt",
+            "exit": 0,
+            "elapsed_ms": 91.99,
+            "input_bytes": 3837952,
+            "output_bytes": 6744000
+          },
+          "C": {
+            "bundle": "island-pv",
+            "exit": 0,
+            "elapsed_ms": 40.36,
+            "input_bytes": 3018000,
+            "output_bytes": 768000
+          }
+        },
+        "L12": {
+          "A": {
+            "bundle": "island-attn-a-kt",
+            "exit": 0,
+            "elapsed_ms": 90.176,
+            "input_bytes": 3837952,
+            "output_bytes": 6744000
+          },
+          "C": {
+            "bundle": "island-pv",
+            "exit": 0,
+            "elapsed_ms": 41.932,
+            "input_bytes": 3018000,
+            "output_bytes": 768000
+          }
+        },
+        "L13": {
+          "A": {
+            "bundle": "island-attn-a-kt",
+            "exit": 0,
+            "elapsed_ms": 91.072,
+            "input_bytes": 3837952,
+            "output_bytes": 6744000
+          },
+          "C": {
+            "bundle": "island-pv",
+            "exit": 0,
+            "elapsed_ms": 28.789,
+            "input_bytes": 3018000,
+            "output_bytes": 768000
+          }
+        },
+        "L14": {
+          "A": {
+            "bundle": "island-attn-a-kt",
+            "exit": 0,
+            "elapsed_ms": 91.317,
+            "input_bytes": 3837952,
+            "output_bytes": 6744000
+          },
+          "C": {
+            "bundle": "island-pv",
+            "exit": 0,
+            "elapsed_ms": 41.649,
+            "input_bytes": 3018000,
+            "output_bytes": 768000
+          }
+        },
+        "L15": {
+          "A": {
+            "bundle": "island-attn-a-kt",
+            "exit": 0,
+            "elapsed_ms": 92.048,
+            "input_bytes": 3837952,
+            "output_bytes": 6744000
+          },
+          "C": {
+            "bundle": "island-pv",
+            "exit": 0,
+            "elapsed_ms": 40.724,
+            "input_bytes": 3018000,
+            "output_bytes": 768000
+          }
+        },
+        "L16": {
+          "A": {
+            "bundle": "island-attn-a-kt",
+            "exit": 0,
+            "elapsed_ms": 91.319,
+            "input_bytes": 3837952,
+            "output_bytes": 6744000
+          },
+          "C": {
+            "bundle": "island-pv",
+            "exit": 0,
+            "elapsed_ms": 41.194,
+            "input_bytes": 3018000,
+            "output_bytes": 768000
+          }
+        },
+        "L17": {
+          "A": {
+            "bundle": "island-attn-a-kt",
+            "exit": 0,
+            "elapsed_ms": 93.885,
+            "input_bytes": 3837952,
+            "output_bytes": 6744000
+          },
+          "C": {
+            "bundle": "island-pv",
+            "exit": 0,
+            "elapsed_ms": 41.565,
+            "input_bytes": 3018000,
+            "output_bytes": 768000
+          }
+        },
+        "L18": {
+          "A": {
+            "bundle": "island-attn-a-kt",
+            "exit": 0,
+            "elapsed_ms": 90.964,
+            "input_bytes": 3837952,
+            "output_bytes": 6744000
+          },
+          "C": {
+            "bundle": "island-pv",
+            "exit": 0,
+            "elapsed_ms": 40.352,
+            "input_bytes": 3018000,
+            "output_bytes": 768000
+          }
+        },
+        "L19": {
+          "A": {
+            "bundle": "island-attn-a-kt",
+            "exit": 0,
+            "elapsed_ms": 93.68,
+            "input_bytes": 3837952,
+            "output_bytes": 6744000
+          },
+          "C": {
+            "bundle": "island-pv",
+            "exit": 0,
+            "elapsed_ms": 41.366,
+            "input_bytes": 3018000,
+            "output_bytes": 768000
+          }
+        },
+        "L20": {
+          "A": {
+            "bundle": "island-attn-a-kt",
+            "exit": 0,
+            "elapsed_ms": 89.733,
+            "input_bytes": 3837952,
+            "output_bytes": 6744000
+          },
+          "C": {
+            "bundle": "island-pv",
+            "exit": 0,
+            "elapsed_ms": 41.822,
+            "input_bytes": 3018000,
+            "output_bytes": 768000
+          }
+        },
+        "L21": {
+          "A": {
+            "bundle": "island-attn-a-kt",
+            "exit": 0,
+            "elapsed_ms": 90.508,
+            "input_bytes": 3837952,
+            "output_bytes": 6744000
+          },
+          "C": {
+            "bundle": "island-pv",
+            "exit": 0,
+            "elapsed_ms": 41.143,
+            "input_bytes": 3018000,
+            "output_bytes": 768000
+          }
+        },
+        "L22": {
+          "A": {
+            "bundle": "island-attn-a-kt",
+            "exit": 0,
+            "elapsed_ms": 89.288,
+            "input_bytes": 3837952,
+            "output_bytes": 6744000
+          },
+          "C": {
+            "bundle": "island-pv",
+            "exit": 0,
+            "elapsed_ms": 41.36,
+            "input_bytes": 3018000,
+            "output_bytes": 768000
+          }
+        },
+        "L23": {
+          "A": {
+            "bundle": "island-attn-a-kt",
+            "exit": 0,
+            "elapsed_ms": 90.915,
+            "input_bytes": 3837952,
+            "output_bytes": 6744000
+          },
+          "C": {
+            "bundle": "island-pv",
+            "exit": 0,
+            "elapsed_ms": 40.968,
+            "input_bytes": 3018000,
+            "output_bytes": 768000
+          }
+        }
+      }
+    }
   },
   "timing": {
     "ane_split_wall_ns": 15961515319,
@@ -395,7 +794,7 @@
       }
     },
     "derivation": {
-      "build_receipt.py": "48827decc534050a6dcb989e8304ca082f3773a940c7f3d8a40e143952c43ba0",
+      "build_receipt.py": "29a90e89e3e6199374b06735071a721f6b1f6a6b76518998a3f141489ac0733c",
       "check_conv_semantics.py": "684f45d933625e61e5f8693107f66fa93b55975b4d9efa899135914a8aadecb0",
       "check_invariants.py": "b33dc5ce1d8108b92a8814ca8062c9226f378fe338673d3bb2c0ecf13b5ba848",
       "compare_golden.py": "7d7271d2ced2f29889844a2f7435ff05888816e09e483b500bb5c8728da5ea61",
