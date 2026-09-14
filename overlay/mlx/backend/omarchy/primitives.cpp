@@ -5850,21 +5850,33 @@ uint32_t coopmat_tile_rows(
   return static_cast<uint64_t>(m_groups_32) * n_groups < target ? 16u : 32u;
 }
 
-// Occupancy ceiling for the 16-column twin, in workgroups per GPU
-// core: above it the shipped 32-column tile stays. Fat prefill shapes
-// (n=896, k=896/4864 on Qwen2.5-0.5B at m=1053) land at 28.9
-// workgroups per core on the M1 Max - past the 16-row crossover where
-// halved reuse loses, but still under the ~157 per core where the
-// measured rate stops climbing
-// (receipts/2026-09-14-jw16-max-gpu-attribution/), so halving the
-// columns instead doubles the grid without touching per-output weight
-// reuse. The gate is set past the fat grids (32 per core on 32 cores =
-// 1024 workgroups) and far below the n=4864 gate/up grid (5016
-// workgroups, 156.8 per core), and on an 8-core M1 the same grids sit
-// at 115 per core, so the base part never picks the twin.
-// MLX_OMARCHY_QMM_COOPMAT_N16_WG_PER_CORE overrides it for A/B; 0
-// disables the step-down and restores the shipped pick exactly.
-constexpr uint32_t kCoopmatN16WorkgroupsPerCore = 32u;
+// Occupancy gate for the 16-column twin, measured on the M1 Max and
+// the base M1 at the eight real Qwen2.5-0.5B prefill cells
+// (receipts/2026-09-14-qmm-prefill-fat/). The twin trades x-tile
+// staging reuse across the halved column tile for a doubled grid, so
+// it only pays on a wide part with a small-to-mid prompt:
+//
+//   cell (m x n x k)      M1 Max 32c       M1 8c
+//   262x896x128           +3.5%            (never fires: 8c excluded)
+//   262x896x896           +4.0%            -22.8% when forced
+//   262x4864x896          +24.5%           -56.6% when forced
+//   1053x896x896          -18.3%           -0.4% when forced
+//   1053x4864x896         -34.1%           -1.2% when forced
+//   1053x896x9728         -6.0%            +0.3% when forced
+//
+// Hence three conjuncts, each backed by a losing cell it excludes:
+// wide parts only (the 8-core M1 loses everywhere the twin fires),
+// m <= 512 (halved staging reuse loses on long-prompt x working sets),
+// and under 64 workgroups per core (the 85.5-per-core 262x896x9728
+// grid loses 3%; the winners sit at 42.8 and below). Digests are
+// identical wherever the twin fires; cells it does not pick keep the
+// shipped kernel unchanged.
+// MLX_OMARCHY_QMM_COOPMAT_N16_WG_PER_CORE overrides the per-core
+// ceiling for A/B; 0 disables the step-down and restores the shipped
+// pick exactly.
+constexpr uint32_t kCoopmatN16WorkgroupsPerCore = 64u;
+constexpr uint32_t kCoopmatN16MaxRows = 512u;
+constexpr uint32_t kCoopmatN16MinCores = 24u;
 
 uint32_t coopmat_n16_workgroups_per_core() {
   static const uint32_t value = [] {
@@ -5885,17 +5897,17 @@ uint32_t coopmat_n16_workgroups_per_core() {
 }
 
 // Output columns per coopmat workgroup: the shipped 32, or the
-// 16-column twin when the 32-column grid is under the occupancy
-// ceiling. Column splits leave each output's ascending-k f32 chain and
-// its 8-wide coopMatMulAdd updates untouched, so the pick does not
-// move generated ids.
+// 16-column twin inside the measured win region. Column splits leave
+// each output's ascending-k f32 chain and its 8-wide coopMatMulAdd
+// updates untouched, so the pick does not move generated ids.
 uint32_t coopmat_tile_cols(
     uint32_t matrix_m,
     uint32_t n_groups,
     const std::string& device_name) {
   uint32_t cores = apple_gpu_cores(device_name);
   uint32_t per_core = coopmat_n16_workgroups_per_core();
-  if (cores == 0u || per_core == 0u) {
+  if (cores < kCoopmatN16MinCores || per_core == 0u ||
+      matrix_m > kCoopmatN16MaxRows) {
     return 32u;
   }
   uint64_t target = static_cast<uint64_t>(cores) * per_core;
