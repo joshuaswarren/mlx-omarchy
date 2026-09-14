@@ -1256,11 +1256,110 @@ TEST_CASE("eager q4 decode gemv group: gate/up pair and residual fold") {
   unsetenv("MLX_OMARCHY_FUSED_GEMV");
 }
 
-// The q/k/v group with the attention head split and forward RoPE that
-// mlx-lm applies to q and k: the rotation folds into the GEMV store
-// (one dispatch for three projections, three biases, and two RoPEs),
-// bit-exact against the per-node path for every intermediate and both
-// rotated outputs.
+// Trig read-out: with all-zero packed weights the GEMV store is zero,
+// so the Add sum is the bias itself and each head's pair is exactly
+// (x1, x2) = (1, 0). The rotated low half is then the fold's (or the
+// kernel's) f16 cos_t and the high half its f16 sin_t, printed bit for
+// bit wherever the two dispatch shapes disagree.
+TEST_CASE("eager q4 decode gemv group RoPE trig bits per dispatch shape") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  enable_fusion();
+  set_compile_mode(CompileMode::disabled);
+  const int k = 896;
+  const int heads = 14;
+  const int kv_heads = 2;
+  const int head_dim = 64;
+  const int half = head_dim / 2;
+
+  auto impulse_linear = [&](int n) {
+    QuantizedLinear l;
+    l.w = zeros(Shape{n, k / 8}, uint32, stream);
+    l.scales = zeros(Shape{n, k / 64}, float16, stream);
+    l.biases = zeros(Shape{n, k / 64}, float16, stream);
+    std::vector<float> hb(n);
+    for (int j = 0; j < n; ++j) {
+      hb[j] = (j % head_dim) < half ? 1.0f : 0.0f;
+    }
+    l.bias = astype(array(hb, Shape{n}, float32), float16, stream);
+    for (array* a : {&l.w, &l.scales, &l.biases, &l.bias}) {
+      a->eval();
+    }
+    sync_stream(stream);
+    return l;
+  };
+  auto q = impulse_linear(heads * head_dim);
+  auto kk = impulse_linear(kv_heads * head_dim);
+  auto v = impulse_linear(kv_heads * head_dim);
+  array x = zeros(Shape{1, 1, k}, float16, stream);
+  x.eval();
+  sync_stream(stream);
+
+  auto forward = [&](int offset) {
+    array q_sum = add(project(x, q, stream), q.bias, stream);
+    array k_sum = add(project(x, kk, stream), kk.bias, stream);
+    add(project(x, v, stream), v.bias, stream).eval();
+    auto split = [&](const array& row, int n) {
+      return transpose(
+          reshape(row, {1, 1, n, head_dim}, stream), {0, 2, 1, 3}, stream);
+    };
+    array q_rot = fast::rope(
+        split(q_sum, heads), head_dim, false, 1000000.0f, 1.0f, offset,
+        std::nullopt, stream);
+    array k_rot = fast::rope(
+        split(k_sum, kv_heads), head_dim, false, 1000000.0f, 1.0f, offset,
+        std::nullopt, stream);
+    return std::vector<array>{q_rot, k_rot};
+  };
+
+  std::vector<int> offsets;
+  for (int o = 0; o <= 64; ++o) {
+    offsets.push_back(o);
+  }
+  for (int o = 1000; o <= 1120; ++o) {
+    offsets.push_back(o);
+  }
+  int diffs = 0;
+  for (int offset : offsets) {
+    setenv("MLX_OMARCHY_FUSED_GEMV", "0", 1);
+    auto baseline = forward(offset);
+    eval({baseline[0]});
+    sync_stream(stream);
+    setenv("MLX_OMARCHY_FUSED_GEMV", "1", 1);
+    auto candidate = forward(offset);
+    eval({candidate[0]});
+    sync_stream(stream);
+    array b32 = astype(baseline[0], float32, stream);
+    array c32 = astype(candidate[0], float32, stream);
+    b32.eval();
+    c32.eval();
+    sync_stream(stream);
+    const float* bp = b32.data<float>();
+    const float* cp = c32.data<float>();
+    for (uint32_t i = 0; i < static_cast<uint32_t>(half); ++i) {
+      float bc = bp[i];
+      float bs = bp[half + i];
+      float cc = cp[i];
+      float cs = cp[half + i];
+      if (bc != cc || bs != cs) {
+        ++diffs;
+        std::printf("TRIGDIFF offset=%d i=%u base_cos=%.9g cand_cos=%.9g "
+                    "base_sin=%.9g cand_sin=%.9g\n",
+                    offset,
+                    i,
+                    (double)bc,
+                    (double)cc,
+                    (double)bs,
+                    (double)cs);
+      }
+    }
+  }
+  unsetenv("MLX_OMARCHY_FUSED_GEMV");
+  CHECK_EQ(diffs, 0);
+}
+
 TEST_CASE("eager q4 decode gemv group folds RoPE into the q/k store") {
   if (!compute_available()) {
     return;
