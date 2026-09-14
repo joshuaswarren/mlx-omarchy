@@ -1294,14 +1294,10 @@ TEST_CASE("eager q4 decode gemv group RoPE trig bits per dispatch shape") {
   auto q = impulse_linear(heads * head_dim);
   auto kk = impulse_linear(kv_heads * head_dim);
   auto v = impulse_linear(kv_heads * head_dim);
-  array x = zeros(Shape{1, 1, k}, float16, stream);
-  x.eval();
-  sync_stream(stream);
-
   auto forward = [&](int offset) {
     array q_sum = add(project(x, q, stream), q.bias, stream);
     array k_sum = add(project(x, kk, stream), kk.bias, stream);
-    add(project(x, v, stream), v.bias, stream).eval();
+    array v_sum = add(project(x, v, stream), v.bias, stream);
     auto split = [&](const array& row, int n) {
       return transpose(
           reshape(row, {1, 1, n, head_dim}, stream), {0, 2, 1, 3}, stream);
@@ -1309,10 +1305,7 @@ TEST_CASE("eager q4 decode gemv group RoPE trig bits per dispatch shape") {
     array q_rot = fast::rope(
         split(q_sum, heads), head_dim, false, 1000000.0f, 1.0f, offset,
         std::nullopt, stream);
-    array k_rot = fast::rope(
-        split(k_sum, kv_heads), head_dim, false, 1000000.0f, 1.0f, offset,
-        std::nullopt, stream);
-    return std::vector<array>{q_rot, k_rot};
+    return std::vector<array>{q_sum, k_sum, v_sum, q_rot, k_rot};
   };
 
   std::vector<int> offsets;
@@ -1328,7 +1321,7 @@ TEST_CASE("eager q4 decode gemv group RoPE trig bits per dispatch shape") {
     setenv("MLX_OMARCHY_FUSED_GEMV", "1", 1);
     auto probe = forward(7);
     uint64_t before = counters().vk_compute_dispatches.load();
-    eval({probe[0], probe[1]});
+    eval({probe[3], probe[4]});
     sync_stream(stream);
     CHECK_EQ(counters().vk_compute_dispatches.load() - before, 1u);
     array s32 = astype(
@@ -1342,16 +1335,16 @@ TEST_CASE("eager q4 decode gemv group RoPE trig bits per dispatch shape") {
   for (int offset : offsets) {
     setenv("MLX_OMARCHY_FUSED_GEMV", "0", 1);
     auto baseline = forward(offset);
-    eval({baseline[0]});
+    eval({baseline[3]});
     sync_stream(stream);
     setenv("MLX_OMARCHY_FUSED_GEMV", "1", 1);
     uint64_t before = counters().vk_compute_dispatches.load();
     auto candidate = forward(offset);
-    eval({candidate[0]});
+    eval({candidate[3]});
     sync_stream(stream);
     CHECK_EQ(counters().vk_compute_dispatches.load() - before, 1u);
-    array b32 = astype(baseline[0], float32, stream);
-    array c32 = astype(candidate[0], float32, stream);
+    array b32 = astype(baseline[3], float32, stream);
+    array c32 = astype(candidate[3], float32, stream);
     b32.eval();
     c32.eval();
     sync_stream(stream);
