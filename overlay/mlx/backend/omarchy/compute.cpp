@@ -107,6 +107,14 @@
 #include "searchsorted_u32.h"
 #include "random_bits_u32.h"
 #include "qmm_bf16.h"
+#include "matmul_vec_bf16.h"
+#include "matmul_vec_f16.h"
+#include "matmul_vec_f32.h"
+#include "qmm_vec_bf16.h"
+#include "fused_chain_f32.h"
+#include "fused_chain_f16.h"
+#include "qmm_vec_f16.h"
+#include "qmm_vec_f32.h"
 #include "qmm_f16.h"
 #include "qmm_f32.h"
 #include "dequant_f32.h"
@@ -132,17 +140,10 @@
 #include "scatter_fadd_f16.h"
 #include "scatter_fadd_f32.h"
 #include "scatter_fadd_multi_f32.h"
-#include "scatter_fcas_bf16.h"
-#include "scatter_fcas_f16.h"
-#include "scatter_fcas_f32.h"
-#include "scatter_fcas_multi_f32.h"
 #include "scatter_axis_bool.h"
 #include "scatter_axis_fadd_bf16.h"
 #include "scatter_axis_fadd_f16.h"
 #include "scatter_axis_fadd_f32.h"
-#include "scatter_axis_fcas_bf16.h"
-#include "scatter_axis_fcas_f16.h"
-#include "scatter_axis_fcas_f32.h"
 #include "scatter_multi_u32.h"
 #include "scatter_u32.h"
 #include "conv_f16.h"
@@ -625,14 +626,6 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {scatter_fadd_bf16, scatter_fadd_bf16_size};
     case ComputeKernel::ScatterFAddMultiF32:
       return {scatter_fadd_multi_f32, scatter_fadd_multi_f32_size};
-    case ComputeKernel::ScatterFCasF32:
-      return {scatter_fcas_f32, scatter_fcas_f32_size};
-    case ComputeKernel::ScatterFCasF16:
-      return {scatter_fcas_f16, scatter_fcas_f16_size};
-    case ComputeKernel::ScatterFCasBF16:
-      return {scatter_fcas_bf16, scatter_fcas_bf16_size};
-    case ComputeKernel::ScatterFCasMultiF32:
-      return {scatter_fcas_multi_f32, scatter_fcas_multi_f32_size};
     case ComputeKernel::ScatterBool:
       return {scatter_bool, scatter_bool_size};
     case ComputeKernel::ScatterBoolMulti:
@@ -643,14 +636,29 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {scatter_axis_fadd_f16, scatter_axis_fadd_f16_size};
     case ComputeKernel::ScatterAxisFAddBF16:
       return {scatter_axis_fadd_bf16, scatter_axis_fadd_bf16_size};
-    case ComputeKernel::ScatterAxisFCasF32:
-      return {scatter_axis_fcas_f32, scatter_axis_fcas_f32_size};
-    case ComputeKernel::ScatterAxisFCasF16:
-      return {scatter_axis_fcas_f16, scatter_axis_fcas_f16_size};
-    case ComputeKernel::ScatterAxisFCasBF16:
-      return {scatter_axis_fcas_bf16, scatter_axis_fcas_bf16_size};
     case ComputeKernel::ScatterAxisBool:
       return {scatter_axis_bool, scatter_axis_bool_size};
+    // DecodeGemv: dedicated matrix-vector kernels (decode shape, lhs
+    // single row). MatmulVec handles Matmul::eval_gpu at matrix_m == 1;
+    // QmmVec is the fused-dequant QuantizedMatmul variant under the same
+    // gate, with operation carrying bits and reduce_size the group size.
+    case ComputeKernel::MatmulVecF32:
+      return {matmul_vec_f32, matmul_vec_f32_size};
+    case ComputeKernel::MatmulVecF16:
+      return {matmul_vec_f16, matmul_vec_f16_size};
+    case ComputeKernel::MatmulVecBF16:
+      return {matmul_vec_bf16, matmul_vec_bf16_size};
+    case ComputeKernel::QmmVecF32:
+      return {qmm_vec_f32, qmm_vec_f32_size};
+    case ComputeKernel::QmmVecF16:
+      return {qmm_vec_f16, qmm_vec_f16_size};
+    case ComputeKernel::QmmVecBF16:
+      return {qmm_vec_bf16, qmm_vec_bf16_size};
+    // FuseDecodeChains: interpreted elementwise-chain kernels.
+    case ComputeKernel::FusedChainF32:
+      return {fused_chain_f32, fused_chain_f32_size};
+    case ComputeKernel::FusedChainF16:
+      return {fused_chain_f16, fused_chain_f16_size};
     case ComputeKernel::Count:
       break;
   }

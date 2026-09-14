@@ -1,12 +1,3 @@
-# Env-gated GPU profiling harness (gpu_profiler.h). Compiled OUT by
-# default: release builds carry zero profiling code. Turn on only for
-# diagnostic builds (MLX_OMARCHY_GPU_PROFILE env var selects the output).
-option(MLX_OMARCHY_GPU_PROFILING
-       "Compile in the env-gated GPU profiling harness" OFF)
-if(MLX_OMARCHY_GPU_PROFILING)
-  target_compile_definitions(mlx PRIVATE MLX_OMARCHY_GPU_PROFILING)
-endif()
-
 find_program(OMARCHY_GLSLC glslc)
 find_program(OMARCHY_GLSLANG glslangValidator)
 if(NOT OMARCHY_GLSLC AND NOT OMARCHY_GLSLANG)
@@ -72,6 +63,21 @@ omarchy_shader(reduce_bf16 shaders/reduce_suffix.comp -DUSE_BF16=1)
 omarchy_shader(matmul_f32 shaders/matmul.comp)
 omarchy_shader(matmul_f16 shaders/matmul.comp -DUSE_FP16=1)
 omarchy_shader(matmul_bf16 shaders/matmul.comp -DUSE_BF16=1)
+# DecodeGemv: dedicated matrix-vector kernels for the decode shape
+# (lhs single row); qmm_vec fuses affine dequantization into the dot.
+omarchy_shader(matmul_vec_f32 shaders/matmul_vec.comp)
+omarchy_shader(matmul_vec_f16 shaders/matmul_vec.comp -DUSE_FP16=1)
+omarchy_shader(matmul_vec_bf16 shaders/matmul_vec.comp -DUSE_BF16=1)
+omarchy_shader(matmul_vec_subgroup_f32 shaders/matmul_vec.comp -DUSE_SUBGROUP=1)
+omarchy_shader(matmul_vec_subgroup_f16 shaders/matmul_vec.comp -DUSE_FP16=1 -DUSE_SUBGROUP=1)
+omarchy_shader(matmul_vec_subgroup_bf16 shaders/matmul_vec.comp -DUSE_BF16=1 -DUSE_SUBGROUP=1)
+omarchy_shader(qmm_vec_f32 shaders/qmm_vec.comp)
+omarchy_shader(qmm_vec_f16 shaders/qmm_vec.comp -DUSE_FP16=1)
+omarchy_shader(qmm_vec_bf16 shaders/qmm_vec.comp -DUSE_BF16=1)
+# FuseDecodeChains: interpreted elementwise-chain kernels (one dispatch
+# per fusable tape chain; bf16 tapes are refused before chains run).
+omarchy_shader(fused_chain_f32 shaders/fused_chain.comp)
+omarchy_shader(fused_chain_f16 shaders/fused_chain.comp -DUSE_FP16=1)
 omarchy_shader(fill_f32 shaders/fill.comp)
 omarchy_shader(fill_f16 shaders/fill.comp -DUSE_FP16=1)
 omarchy_shader(fill_bf16 shaders/fill.comp -DUSE_BF16=1)
@@ -154,22 +160,15 @@ omarchy_shader(scatter_axis_bf16 shaders/scatter_axis.comp -DUSE_BF16=1)
 omarchy_shader(masked_scatter_u32 shaders/masked_scatter.comp -DUSE_U32=1)
 omarchy_shader(masked_scatter_f16 shaders/masked_scatter.comp -DUSE_FP16=1)
 omarchy_shader(masked_scatter_bf16 shaders/masked_scatter.comp -DUSE_BF16=1)
-omarchy_shader(scatter_fadd_f32 shaders/scatter.comp -DUSE_FADD=1 -DUSE_HW_ATOMIC=1)
-omarchy_shader(scatter_fadd_f16 shaders/scatter.comp -DUSE_FADD=1 -DUSE_HW_ATOMIC=1 -DUSE_FP16=1)
-omarchy_shader(scatter_fadd_bf16 shaders/scatter.comp -DUSE_FADD=1 -DUSE_HW_ATOMIC=1 -DUSE_BF16=1)
-omarchy_shader(scatter_fadd_multi_f32 shaders/scatter.comp -DUSE_FADD=1 -DUSE_HW_ATOMIC=1 -DUSE_MULTI_INDEX=1)
-omarchy_shader(scatter_fcas_f32 shaders/scatter.comp -DUSE_FADD=1)
-omarchy_shader(scatter_fcas_f16 shaders/scatter.comp -DUSE_FADD=1 -DUSE_FP16=1)
-omarchy_shader(scatter_fcas_bf16 shaders/scatter.comp -DUSE_FADD=1 -DUSE_BF16=1)
-omarchy_shader(scatter_fcas_multi_f32 shaders/scatter.comp -DUSE_FADD=1 -DUSE_MULTI_INDEX=1)
+omarchy_shader(scatter_fadd_f32 shaders/scatter.comp -DUSE_FADD=1)
+omarchy_shader(scatter_fadd_f16 shaders/scatter.comp -DUSE_FADD=1 -DUSE_FP16=1)
+omarchy_shader(scatter_fadd_bf16 shaders/scatter.comp -DUSE_FADD=1 -DUSE_BF16=1)
+omarchy_shader(scatter_fadd_multi_f32 shaders/scatter.comp -DUSE_FADD=1 -DUSE_MULTI_INDEX=1)
 omarchy_shader(scatter_bool shaders/scatter.comp -DUSE_BOOL=1)
 omarchy_shader(scatter_bool_multi shaders/scatter.comp -DUSE_BOOL=1 -DUSE_MULTI_INDEX=1)
-omarchy_shader(scatter_axis_fadd_f32 shaders/scatter_axis.comp -DUSE_FADD=1 -DUSE_HW_ATOMIC=1)
-omarchy_shader(scatter_axis_fadd_f16 shaders/scatter_axis.comp -DUSE_FADD=1 -DUSE_HW_ATOMIC=1 -DUSE_FP16=1)
-omarchy_shader(scatter_axis_fadd_bf16 shaders/scatter_axis.comp -DUSE_FADD=1 -DUSE_HW_ATOMIC=1 -DUSE_BF16=1)
-omarchy_shader(scatter_axis_fcas_f32 shaders/scatter_axis.comp -DUSE_FADD=1)
-omarchy_shader(scatter_axis_fcas_f16 shaders/scatter_axis.comp -DUSE_FADD=1 -DUSE_FP16=1)
-omarchy_shader(scatter_axis_fcas_bf16 shaders/scatter_axis.comp -DUSE_FADD=1 -DUSE_BF16=1)
+omarchy_shader(scatter_axis_fadd_f32 shaders/scatter_axis.comp -DUSE_FADD=1)
+omarchy_shader(scatter_axis_fadd_f16 shaders/scatter_axis.comp -DUSE_FADD=1 -DUSE_FP16=1)
+omarchy_shader(scatter_axis_fadd_bf16 shaders/scatter_axis.comp -DUSE_FADD=1 -DUSE_BF16=1)
 omarchy_shader(scatter_axis_bool shaders/scatter_axis.comp -DUSE_BOOL=1)
 omarchy_shader(clear_u32 shaders/clear_uint.comp)
 omarchy_shader(reduce_general_f32 shaders/reduce_general.comp)
@@ -279,6 +278,7 @@ target_sources(
           ${CMAKE_CURRENT_SOURCE_DIR}/device_info.cpp
           ${CMAKE_CURRENT_SOURCE_DIR}/encoder.cpp
           ${CMAKE_CURRENT_SOURCE_DIR}/eval.cpp
+          ${CMAKE_CURRENT_SOURCE_DIR}/fused_chain.cpp
           ${CMAKE_CURRENT_SOURCE_DIR}/event.cpp
           ${CMAKE_CURRENT_SOURCE_DIR}/fence.cpp
           ${CMAKE_CURRENT_SOURCE_DIR}/copy.cpp

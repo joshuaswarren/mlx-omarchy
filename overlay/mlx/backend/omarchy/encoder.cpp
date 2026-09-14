@@ -75,12 +75,9 @@ void CommandEncoder::ensure_recording() {
   if (recording_) {
     return;
   }
-  uint64_t begin_t0 = prof::get().profiling() ? prof::host_ns() : 0;
   // Acquire a ring slot whose submission has completed. Newer submissions
   // keep executing on the device while this batch records; only when all
-  // slots are in flight does the host join the oldest. The profiler's
-  // begin cost includes this wait: it is the residual host-side stall the
-  // 2026-09-02 profile attributed to per-record joins.
+  // slots are in flight does the host join the oldest.
   auto& completions = device_.completions();
   int chosen = -1;
   uint64_t oldest_value = UINT64_MAX;
@@ -104,6 +101,7 @@ void CommandEncoder::ensure_recording() {
   }
   current_slot_ = chosen;
   cmd_ = slots_[chosen].cmd;
+  uint64_t begin_t0 = prof::get().profiling() ? prof::host_ns() : 0;
   VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
   bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
   VKX_CHECK(vk::device_table().BeginCommandBuffer(cmd_, &bi));
@@ -208,6 +206,7 @@ void CommandEncoder::dispatch_compute(
   group_count_z = std::min(group_count_z, kMaxComputeGroupCountX);
 
   auto& dt = vk::device_table();
+  uint64_t host_t0 = prof::get().profiling() ? prof::host_ns() : 0;
   VkPipeline pipeline = compute.pipeline(kernel);
 
   VkDescriptorSet descriptor_set = acquire_descriptor_set(compute);
@@ -232,7 +231,6 @@ void CommandEncoder::dispatch_compute(
       nullptr);
 
   ensure_recording();
-  uint64_t host_t0 = prof::get().profiling() ? prof::host_ns() : 0;
   VkMemoryBarrier before{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
   before.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT |
       VK_ACCESS_SHADER_WRITE_BIT;
@@ -300,6 +298,7 @@ void CommandEncoder::dispatch_compute(
       nullptr);
 
   node_count_++;
+  batch_work_ += params.count;
   trace::counters().vk_compute_dispatches++;
 }
 
@@ -308,11 +307,28 @@ void CommandEncoder::commit() {
       completed_handlers_.empty()) {
     return;
   }
+  // Keep the batch open while it is under budget and no semaphore
+  // operation is pending; the next eval appends to the same command
+  // buffer. Everything else flushes. Semaphore operations (event
+  // waits/signals) always flush so event ordering matches the unbatched
+  // encoder exactly.
+  if (!recording_ || node_count_ >= kBatchNodeBudget ||
+      batch_work_ >= kBatchWorkBudget || !wait_semaphores_.empty() ||
+      !signal_semaphores_.empty()) {
+    submit();
+  }
+}
+
+void CommandEncoder::commit_now() {
+  if (!recording_ && wait_semaphores_.empty() && signal_semaphores_.empty() &&
+      completed_handlers_.empty()) {
+    return;
+  }
   submit();
 }
 
 void CommandEncoder::synchronize() {
-  commit();
+  commit_now();
   join_last_completion();
 }
 
@@ -402,6 +418,7 @@ void CommandEncoder::submit() {
       // typed error propagates to the stream's error handling.
       recording_ = false;
       node_count_ = 0;
+      batch_work_ = 0;
       wait_semaphores_.clear();
       signal_semaphores_.clear();
       completed_handlers_.clear();
@@ -421,6 +438,7 @@ void CommandEncoder::submit() {
 
   recording_ = false;
   node_count_ = 0;
+  batch_work_ = 0;
   wait_semaphores_.clear();
   signal_semaphores_.clear();
   completed_handlers_.clear();
