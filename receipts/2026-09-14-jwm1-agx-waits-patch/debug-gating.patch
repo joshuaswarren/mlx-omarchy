@@ -1,0 +1,120 @@
+commit ed1895cb7149413a163a0a5a3b73580a2de789e4
+Author: MesaWaitsPatch <agent@warrenappliedlabs.com>
+Date:   Mon Sep 14 10:20:24 2026 -0500
+
+    agx: gate wait-insertion tracing behind AGXWAITS_DEBUG
+    
+    The region pass wrote several lines per shader compile to stderr
+    unconditionally, which pollutes timed A/B runs. Keep the tracing (it is
+    how the pass was proven inert at 84fcd220de1) but require an opt-in env
+    var, so the firing proof and the timing can come from one binary.
+
+diff --git a/src/asahi/compiler/agx_insert_waits.c b/src/asahi/compiler/agx_insert_waits.c
+index dc6e3447788..2c354c22ced 100644
+--- a/src/asahi/compiler/agx_insert_waits.c
++++ b/src/asahi/compiler/agx_insert_waits.c
+@@ -6,6 +6,29 @@
+ #include "agx_builder.h"
+ #include "agx_compiler.h"
+ #include "agx_debug.h"
++#include <stdlib.h>
++
++/* The region pass traces every frame decision. That tracing is load-bearing
++ * evidence - it is how the pass was proven inert at 84fcd220de1 - but it
++ * writes several lines per shader compile, so it must not run in a timed
++ * build. Opt in with AGXWAITS_DEBUG=1.
++ */
++static bool
++agxwaits_verbose(void)
++{
++   static int enabled = -1;
++
++   if (enabled < 0)
++      enabled = getenv("AGXWAITS_DEBUG") != NULL;
++
++   return enabled;
++}
++
++#define AGXWAITS_LOG(...)                                                    \
++   do {                                                                      \
++      if (agxwaits_verbose())                                                \
++         fprintf(stderr, __VA_ARGS__);                                       \
++   } while (0)
+ 
+ #define AGX_MAX_PENDING (8)
+ 
+@@ -156,7 +179,7 @@ agx_insert_waits_regions(agx_context *ctx)
+     * visited has index i.
+     */
+    agx_block **order = calloc(ctx->num_blocks, sizeof(agx_block *));
+-   fprintf(stderr, "AGXWAITS: enter shader=%s blocks=%u\n",
++   AGXWAITS_LOG("AGXWAITS: enter shader=%s blocks=%u\n",
+            (ctx->nir && ctx->nir->info.name) ? ctx->nir->info.name
+                                              : "(unnamed)",
+            ctx->num_blocks);
+@@ -173,7 +196,7 @@ agx_insert_waits_regions(agx_context *ctx)
+              * complete them), so the else arm must see the union of the
+              * entry and then-exit state.
+              */
+-            fprintf(stderr, "AGXWAITS: blk%u else-arrival frame=%u\n",
++            AGXWAITS_LOG("AGXWAITS: blk%u else-arrival frame=%u\n",
+                     block->index, nr_frames - 1);
+             slots_union(slots, f->entry);
+             f->else_seen = true;
+@@ -195,7 +218,7 @@ agx_insert_waits_regions(agx_context *ctx)
+             }
+ 
+             if (overflow) {
+-               fprintf(stderr, "AGXWAITS: blk%u overflow-drain mask=%x\n",
++               AGXWAITS_LOG("AGXWAITS: blk%u overflow-drain mask=%x\n",
+                        block->index, overflow);
+             }
+ 
+@@ -204,7 +227,7 @@ agx_insert_waits_regions(agx_context *ctx)
+             agx_instr *prev_term = block_terminator(order[block->index - 1]);
+ 
+             if (prev_term && prev_term->op == AGX_OPCODE_POP_EXEC) {
+-               fprintf(stderr, "AGXWAITS: blk%u close frame=%u\n",
++               AGXWAITS_LOG("AGXWAITS: blk%u close frame=%u\n",
+                        block->index, nr_frames - 1);
+                nr_frames--;
+                continue;
+@@ -322,10 +345,10 @@ agx_insert_waits_regions(agx_context *ctx)
+                f->else_index = else_blk->index;
+                f->else_seen = false;
+                carry = true;
+-               fprintf(stderr, "AGXWAITS: blk%u ACCEPT frame=%u else=%u\n",
++               AGXWAITS_LOG("AGXWAITS: blk%u ACCEPT frame=%u else=%u\n",
+                        block->index, nr_frames - 1, f->else_index);
+             } else {
+-               fprintf(stderr,
++               AGXWAITS_LOG(
+                        "AGXWAITS: blk%u reject shape tgt=%d s0=%d s1=%d\n",
+                        block->index,
+                        term->target ? (int)term->target->index : -1,
+@@ -333,10 +356,10 @@ agx_insert_waits_regions(agx_context *ctx)
+                        else_blk ? (int)else_blk->index : -1);
+             }
+          } else if (is_mask_branch(term) && !term->target) {
+-            fprintf(stderr, "AGXWAITS: blk%u reject target=NULL\n",
++            AGXWAITS_LOG("AGXWAITS: blk%u reject target=NULL\n",
+                     block->index);
+          } else if (is_mask_branch(term) && nr_frames >= AGX_MAX_FRAMES) {
+-            fprintf(stderr, "AGXWAITS: blk%u reject frames-full\n",
++            AGXWAITS_LOG("AGXWAITS: blk%u reject frames-full\n",
+                     block->index);
+          } else if (nr_frames > 0 && !block->unconditional_jumps &&
+                     (!term || term->op == AGX_OPCODE_POP_EXEC)) {
+@@ -359,10 +382,10 @@ agx_insert_waits_regions(agx_context *ctx)
+          }
+ 
+          if (drained)
+-            fprintf(stderr, "AGXWAITS: blk%u drain slots=%u\n",
++            AGXWAITS_LOG("AGXWAITS: blk%u drain slots=%u\n",
+                     block->index, drained);
+       } else {
+-         fprintf(stderr, "AGXWAITS: blk%u carry\n", block->index);
++         AGXWAITS_LOG("AGXWAITS: blk%u carry\n", block->index);
+       }
+    }
+ 

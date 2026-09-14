@@ -1,0 +1,10 @@
+== base.dump.log (699 instructions)
+   load -> next wait, instruction gaps: 4, 1, 1, 1, 1, 1, 1
+   waits within 2 instructions before a barrier: 0 of 23
+   matrix window: 48 instructions, waits inside: 0 lloads inside: 16
+   order: loadx2 waitx2 load wait load wait load wait load wait lstorex8 load wait lstorex8 barrier lloadx8 simd_matrix_fmadd32x2 lloadx2 simd_matrix_fmadd32x2 lloadx2 simd_matrix_fmadd32x4 lloadx8 simd_matrix_fmadd32x2 lloadx2 simd_matrix_fmadd32x2 lloadx2 simd_matrix_fmadd32x4 barrier lstorex8 barrier lload wait lload wait lload wait lload wait barrier lstorex8 barrier lload wait lload wait lload wait lload wait barrier lstorex8 barrier lload wait lload wait lload wait lload wait barrier lstorex8 barrier lload wait lload wait lload wait lload wait barrier
+== patched.dump.log (699 instructions)
+   load -> next wait, instruction gaps: 5, 2, 2, 2, 2, 2, 2
+   waits within 2 instructions before a barrier: 8 of 19
+   matrix window: 48 instructions, waits inside: 0 lloads inside: 16
+   order: loadx2 waitx2 load wait load wait load wait load wait lstorex8 load wait lstorex8 barrier lloadx8 simd_matrix_fmadd32x2 lloadx2 simd_matrix_fmadd32x2 lloadx2 simd_matrix_fmadd32x4 lloadx8 simd_matrix_fmadd32x2 lloadx2 simd_matrix_fmadd32x2 lloadx2 simd_matrix_fmadd32x4 barrier lstorex8 barrier lloadx4 waitx3 barrier lstorex8 barrier lloadx4 waitx3 barrier lstorex8 barrier lloadx4 waitx3 barrier lstorex8 barrier lloadx4 waitx3 barrier

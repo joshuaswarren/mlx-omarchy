@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+exec env   VK_DRIVER_FILES=/home/joshuawarren/benchq/qmm-coop-bench/icd-waitbatch-base.json   VK_ICD_FILENAMES=/home/joshuawarren/benchq/qmm-coop-bench/icd-waitbatch-base.json   AGX_SIMDMAT=1   /var/tmp/mlx-omarchy-profile-enabled-b41e2b74/venv/bin/python "$@"

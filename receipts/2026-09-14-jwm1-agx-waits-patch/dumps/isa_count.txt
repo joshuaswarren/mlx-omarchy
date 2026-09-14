@@ -1,0 +1,44 @@
+== base.dump.log
+   packed instructions: 699
+   simd_matrix_fmadd32: 16
+   wait: 23
+   load: 7
+   lload: 40
+   lstore: 48
+   barrier: 10
+   if: 34
+   pop_exec: 35
+   iadd: 209
+   imadd: 44
+   bfeil: 20
+   shr: 28
+   and: 48
+   ffma: 8
+   fadd: 24
+   u32_to_f: 8
+   mov: 19
+   ldimm: 27
+   stop: 1
+   other: store=16, jmp_none=9, shl=6, else=6, while=5, jmp_any=5, imul=3
+== patched.dump.log
+   packed instructions: 699
+   simd_matrix_fmadd32: 16
+   wait: 19
+   load: 7
+   lload: 40
+   lstore: 48
+   barrier: 10
+   if: 34
+   pop_exec: 35
+   iadd: 209
+   imadd: 44
+   bfeil: 20
+   shr: 28
+   and: 48
+   ffma: 8
+   fadd: 24
+   u32_to_f: 8
+   mov: 19
+   ldimm: 27
+   stop: 1
+   other: store=16, else=10, jmp_none=9, shl=6, while=5, jmp_any=5, imul=3

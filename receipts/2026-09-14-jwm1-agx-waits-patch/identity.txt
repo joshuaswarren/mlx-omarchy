@@ -1,0 +1,54 @@
+== host
+jwm1-linux
+Linux jwm1-linux 7.1.6-1-1-ARCH #1 SMP PREEMPT_DYNAMIC Sat, 08 Aug 2026 17:14:04 +0000 aarch64 GNU/Linux
+2026-09-14T10:29:03-05:00
+
+== system driver (UNCHANGED by this work - no install was performed)
+mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1
+abcce1bbed9592111ac62dd8f9eb241cc225c39a5b570bf9e5e2512f0072a292  /usr/lib/libvulkan_asahi.so
+system ICD:
+{
+    "ICD": {
+        "api_version": "1.4.359",
+        "library_arch": "64",
+        "library_path": "/usr/lib/libvulkan_asahi.so"
+    },
+    "file_format_version": "1.0.1"
+}
+== staged rollback package (byte-verified against the installed driver)
+-rw-r--r-- 1 joshuawarren joshuawarren 11054144 Sep  8 09:22 /home/joshuawarren/src/mesa-pkg-20260908/mesa-honeykrisp-omarchy-26.3.0.devel.hk6f6afc8-1-aarch64.pkg.tar.xz
+cef58afea49c39852dc023bf0eb0f7179166119f53c6d4b7db29be50d7ef0519  /home/joshuawarren/src/mesa-pkg-20260908/mesa-honeykrisp-omarchy-26.3.0.devel.hk6f6afc8-1-aarch64.pkg.tar.xz
+
+== A/B arms (locally built, selected per-command by VK_DRIVER_FILES)
+-- ~/src/mesa-wt-waitbatch-base
+   HEAD 6f6afc896844730f6d6c47f12a91145351cb4c28
+   asahi: enable VK_KHR_cooperative_matrix by default (AGX_SIMDMAT=0 disables)
+c3c2a4ec3d88cd0074e1c2f1019328d84335c2de05b99e294d570f03f897477d  /home/joshuawarren/src/mesa-wt-waitbatch-base/build/src/asahi/vulkan/libvulkan_asahi.so
+   buildtype=debugoptimized, debug=True, optimization=2, b_ndebug=if-release
+-- ~/src/mesa-wt-waitbatch
+   HEAD ed1895cb7149413a163a0a5a3b73580a2de789e4
+   agx: gate wait-insertion tracing behind AGXWAITS_DEBUG
+485c6274bc851606bdfa59ec313864126a81990f620b227e57297d953d194959  /home/joshuawarren/src/mesa-wt-waitbatch/build/src/asahi/vulkan/libvulkan_asahi.so
+   buildtype=debugoptimized, debug=True, optimization=2, b_ndebug=if-release
+
+== patched branch history above the packaged base 6f6afc89684
+   ed1895cb714 2026-09-14 agx: gate wait-insertion tracing behind AGXWAITS_DEBUG
+   14eb6778a69 2026-09-12 agx: reference mirrored constants in insert-waits test
+   4eae6e5b5bb 2026-09-12 agx: fix insert-waits test block wiring, assert capacity invariant
+   29020ee569c 2026-09-12 agx: wait insertion - skip the pointless end-of-shader drain again
+   93a3bcf78f0 2026-09-12 agx: guard wait-insertion entry print against bare test contexts
+   f11106ddfb0 2026-09-12 agx: host capacity/hazard tests for wait insertion
+   30ffef135e0 2026-09-12 agx: wait insertion - conservative scoreboard carry, pop_exec close, two slots
+   c3cebc011bd 2026-09-12 agx: fix wait-insertion frame detection, restore hazard scoping, add firing proof logs
+   8f3169a4342 2026-09-12 agx: resolve if/else merge lazily at else-arrival in wait insertion
+   2a6eb586547 2026-09-12 WIP debug2: per-block terminator dump
+   8818596cca8 2026-09-12 WIP debug: log frame pushes
+   84fcd220de1 2026-09-12 agx: carry scoreboard state across divergent if/else regions
+
+== mlx build (identical across both arms - the driver is the only variable)
+   python 3.14.7
+   mlx-omarchy 0.32.2.dev202609122355+diag.b41e2b74
+d41f311ec19e23634213e420ec3f131ddb83509a87a16aee264b323d2fcc7051  /var/tmp/mlx-omarchy-profile-enabled-b41e2b74/venv/lib/python3.14/site-packages/mlx/lib/libmlx.so
+
+== GPU lock
+29 -rw-r--r-- 1 joshuawarren joshuawarren 0 Sep 14 10:27 /tmp/m1-gpu.lock

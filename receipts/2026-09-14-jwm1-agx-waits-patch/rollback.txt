@@ -1,0 +1,32 @@
+== installed driver now
+mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1
+abcce1bbed9592111ac62dd8f9eb241cc225c39a5b570bf9e5e2512f0072a292  /usr/lib/libvulkan_asahi.so
+
+== staged rollback package
+cef58afea49c39852dc023bf0eb0f7179166119f53c6d4b7db29be50d7ef0519  /home/joshuawarren/src/mesa-pkg-20260908/mesa-honeykrisp-omarchy-26.3.0.devel.hk6f6afc8-1-aarch64.pkg.tar.xz
+
+== proof the package reproduces the installed driver
+abcce1bbed9592111ac62dd8f9eb241cc225c39a5b570bf9e5e2512f0072a292  /tmp/tmp.jUmR2wr5Om/usr/lib/libvulkan_asahi.so
+VERIFIED: byte-identical
+
+== rollback command, if it were ever needed
+   sudo pacman -U --noconfirm /home/joshuawarren/src/mesa-pkg-20260908/mesa-honeykrisp-omarchy-26.3.0.devel.hk6f6afc8-1-aarch64.pkg.tar.xz
+
+== shared ICD state (must be untouched)
+total 12
+drwxr-xr-x 1 root root 130 Sep 11 02:19 .
+drwxr-xr-x 1 root root  90 Sep 11 02:19 ..
+-rw-r--r-- 1 root root 176 Sep  8 09:19 asahi_icd.aarch64.json
+-rw-r--r-- 1 root root 174 Sep  8 09:19 lvp_icd.aarch64.json
+-rw-r--r-- 1 root root 177 Sep  8 09:19 virtio_icd.aarch64.json
+{
+    "ICD": {
+        "api_version": "1.4.359",
+        "library_arch": "64",
+        "library_path": "/usr/lib/libvulkan_asahi.so"
+    },
+    "file_format_version": "1.0.1"
+}
+== GPU lock state
+29 -rw-r--r-- 1 joshuawarren joshuawarren 0 Sep 14 10:36 /tmp/m1-gpu.lock
+   free

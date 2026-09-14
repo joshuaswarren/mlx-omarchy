@@ -1,0 +1,7 @@
+{
+  "env_vk_driver_files": "/home/joshuawarren/benchq/qmm-coop-bench/icd-waitbatch-patched.json",
+  "mapped_driver": [
+    "/home/joshuawarren/src/mesa-wt-waitbatch/build/src/asahi/vulkan/libvulkan_asahi.so"
+  ],
+  "sha256_/home/joshuawarren/src/mesa-wt-waitbatch/build/src/asahi/vulkan/libvulkan_asahi.so": "485c6274bc851606bdfa59ec313864126a81990f620b227e57297d953d194959"
+}
