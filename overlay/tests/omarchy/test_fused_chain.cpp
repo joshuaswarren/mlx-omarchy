@@ -1320,6 +1320,22 @@ TEST_CASE("eager q4 decode gemv group RoPE trig bits per dispatch shape") {
   for (int o = 1000; o <= 1120; ++o) {
     offsets.push_back(o);
   }
+  // Prove the candidate arm really folded: one dispatch for the whole
+  // q/k/v group. Without this the trig identity below is vacuous.
+  {
+    setenv("MLX_OMARCHY_FUSED_GEMV", "1", 1);
+    auto probe = forward(7);
+    uint64_t before = counters().vk_compute_dispatches.load();
+    eval({probe[0], probe[1]});
+    sync_stream(stream);
+    CHECK_EQ(counters().vk_compute_dispatches.load() - before, 1u);
+    array s32 = astype(
+        add(project(x, q, stream), q.bias, stream), float32, stream);
+    s32.eval();
+    sync_stream(stream);
+    CHECK_EQ(s32.data<float>()[0], 1.0f);
+    CHECK_EQ(s32.data<float>()[half], 0.0f);
+  }
   int diffs = 0;
   for (int offset : offsets) {
     setenv("MLX_OMARCHY_FUSED_GEMV", "0", 1);
@@ -1327,9 +1343,11 @@ TEST_CASE("eager q4 decode gemv group RoPE trig bits per dispatch shape") {
     eval({baseline[0]});
     sync_stream(stream);
     setenv("MLX_OMARCHY_FUSED_GEMV", "1", 1);
+    uint64_t before = counters().vk_compute_dispatches.load();
     auto candidate = forward(offset);
     eval({candidate[0]});
     sync_stream(stream);
+    CHECK_EQ(counters().vk_compute_dispatches.load() - before, 1u);
     array b32 = astype(baseline[0], float32, stream);
     array c32 = astype(candidate[0], float32, stream);
     b32.eval();
