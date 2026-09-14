@@ -1,6 +1,40 @@
+import json
+import os
+import subprocess
+import sys
+import tempfile
+import textwrap
 import unittest
+from pathlib import Path
 
 import mlx.core as mx
+
+# A whole separate process, because the disk cache exists precisely to serve a
+# process that has never compiled this kernel before.
+CACHE_PROBE = textwrap.dedent(
+    """
+    import json
+    import mlx.core as mx
+
+    kernel = mx.fast.metal_kernel(
+        name="omarchy_spirv_cache_probe",
+        input_names=["values"],
+        output_names=["out"],
+        source="uint i = thread_position_in_grid.x; out[i] = values[i] * 3.0f + 1.0f;",
+    )
+    values = mx.array([1.0, 2.0, 3.0, 4.0], dtype=mx.float32)
+    out = kernel(
+        inputs=[values],
+        output_shapes=[(4,)],
+        output_dtypes=[mx.float32],
+        grid=(4, 1, 1),
+        threadgroup=(4, 1, 1),
+        stream=mx.gpu,
+    )[0]
+    mx.eval(out)
+    print(json.dumps(out.tolist()))
+    """
+)
 
 
 class CustomKernelSmoke(unittest.TestCase):
@@ -242,6 +276,48 @@ class CustomKernelSmoke(unittest.TestCase):
         )
         with self.assertRaisesRegex(RuntimeError, "fast::CustomKernel MSL subset"):
             mx.eval(out)
+
+    def probe(self, cache, cwd):
+        environment = dict(os.environ, MLX_OMARCHY_SPIRV_CACHE=str(cache))
+        finished = subprocess.run(
+            [sys.executable, "-c", CACHE_PROBE],
+            env=environment,
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+            timeout=600,
+        )
+        self.assertEqual(finished.returncode, 0, finished.stderr)
+        return json.loads(finished.stdout.strip().splitlines()[-1])
+
+    def test_spirv_cache_hit_serves_the_cold_compile_byte_for_byte(self):
+        expected = [4.0, 7.0, 10.0, 13.0]
+        with tempfile.TemporaryDirectory() as root:
+            first_cache = Path(root) / "first"
+            second_cache = Path(root) / "second"
+
+            first = self.probe(first_cache, root)
+            entries = sorted(first_cache.glob("*.spv"))
+            self.assertEqual(len(entries), 1)
+            compiled = entries[0].read_bytes()
+
+            # An independent cold compile lands on the same entry name with the
+            # same bytes, so the key names the compilation rather than the run.
+            second = self.probe(second_cache, root)
+            repeated = sorted(second_cache.glob("*.spv"))
+            self.assertEqual([p.name for p in repeated], [entries[0].name])
+            self.assertEqual(repeated[0].read_bytes(), compiled)
+
+            stamp = entries[0].stat().st_mtime_ns
+            third = self.probe(first_cache, root)
+            self.assertEqual(entries[0].stat().st_mtime_ns, stamp)
+
+            self.assertEqual([first, second, third], [expected] * 3)
+
+    def test_spirv_cache_is_disabled_by_the_environment(self):
+        with tempfile.TemporaryDirectory() as root:
+            self.assertEqual(self.probe("0", root), [4.0, 7.0, 10.0, 13.0])
+            self.assertEqual(sorted(Path(root).iterdir()), [])
 
 
 if __name__ == "__main__":
