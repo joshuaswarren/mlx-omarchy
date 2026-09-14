@@ -924,6 +924,38 @@ const std::vector<uint32_t>& cached_compile(const std::string& glsl) {
   return cache.emplace(glsl, std::move(words)).first->second;
 }
 
+// Translation is pure in the kernel's source and launch geometry, and it is
+// regex-heavy: a decode-time kernel dispatched per token paid milliseconds per
+// call for it, several times the cost of the compute it was dispatching. The
+// SPIR-V below is already cached, so cache the step that produces it too.
+const Translation& cached_translation(
+    const std::string& source,
+    const std::tuple<int, int, int>& grid,
+    const std::tuple<int, int, int>& threadgroup,
+    size_t output_count,
+    int compile_mode) {
+  static std::mutex mutex;
+  static std::unordered_map<std::string, Translation> cache;
+  const auto [grid_x, grid_y, grid_z] = grid;
+  const auto [threads_x, threads_y, threads_z] = threadgroup;
+  std::ostringstream key;
+  key << grid_x << ',' << grid_y << ',' << grid_z << ';' << threads_x << ','
+      << threads_y << ',' << threads_z << ';' << output_count << ';'
+      << compile_mode << '\n'
+      << source;
+  std::lock_guard lock(mutex);
+  auto identity = key.str();
+  auto found = cache.find(identity);
+  if (found != cache.end()) {
+    return found->second;
+  }
+  return cache
+      .emplace(
+          std::move(identity),
+          translate_msl(source, grid, threadgroup, output_count, compile_mode))
+      .first->second;
+}
+
 omarchy::ComputeBinding binding(const array& value) {
   auto* buffer = static_cast<const omarchy::VulkanBuffer*>(value.buffer().ptr());
   return {buffer->buffer, 0, buffer->size, buffer};
@@ -972,9 +1004,9 @@ void CustomKernel::eval_gpu(
         out_for_error);
   }
 
-  Translation translation;
+  const Translation* translation = nullptr;
   try {
-    translation = translate_msl(
+    translation = &cached_translation(
         source_, grid_, threadgroup_, outputs.size(), compile_options_);
   } catch (const std::exception& error) {
     omarchy::unsupported(
@@ -1013,7 +1045,7 @@ void CustomKernel::eval_gpu(
   }
 
   std::vector<omarchy::ComputeBinding> bindings;
-  bindings.reserve(translation.parameters.size());
+  bindings.reserve(translation->parameters.size());
   for (size_t index = 0; index < checked_inputs.size(); ++index) {
     const auto& input = checked_inputs[index];
     bindings.push_back(binding(input));
@@ -1043,7 +1075,7 @@ void CustomKernel::eval_gpu(
   for (const auto& output : outputs) {
     bindings.push_back(binding(output));
   }
-  if (bindings.size() != translation.parameters.size()) {
+  if (bindings.size() != translation->parameters.size()) {
     omarchy::unsupported(
         "fast::CustomKernel MSL subset: generated binding count mismatch",
         out_for_error);
@@ -1063,7 +1095,7 @@ void CustomKernel::eval_gpu(
 
   const std::vector<uint32_t>* spirv = nullptr;
   try {
-    spirv = &cached_compile(translation.glsl);
+    spirv = &cached_compile(translation->glsl);
   } catch (const std::exception& error) {
     omarchy::unsupported(
         std::string("fast::CustomKernel MSL subset: ") + error.what(),
@@ -1071,7 +1103,7 @@ void CustomKernel::eval_gpu(
   }
   omarchy::ComputeParams params;
   encoder.dispatch_compute(
-      translation.glsl,
+      translation->glsl,
       *spirv,
       bindings,
       params,
