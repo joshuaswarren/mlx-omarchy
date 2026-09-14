@@ -1,0 +1,598 @@
+{
+  "schema": "mlx-omarchy.parakeet-decoder-activation-stages/1",
+  "named_hole": "parakeet.tdt.decoder-lstm.fp16-elementwise-activation-vs-native-coreml",
+  "execution": "host-only NumPy; no MLX, no GPU, no ANE, no device execution",
+  "capture_dir": "/home/joshuawarren/.cache/mlx-omarchy/parakeet-reference/captures/b650695c-75aec2a/20260913T105550Z-librispeech-tdt-tensors/ane",
+  "capture_sha256": {
+    "tdt_tensors.json": "6eaf2bfe801584af570cd66f42e8dc17efd67776fb181f691585d2bcab590e0a",
+    "manifest.sha256": "ab37e0317ced1587cbe35aca39a08265b9af01120ffd668ee4cbf706e1ecbe19"
+  },
+  "pins_source": {
+    "path": "/home/joshuawarren/src/mlx-omarchy/receipts/2026-09-14-decoder-activations/result.json",
+    "sha256": "89baf47e12c3460de30c053f2ef9e65330376f4759a508b252feef2080bef0b1"
+  },
+  "transitions": [
+    0,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15
+  ],
+  "hardware_unary_tables": {
+    "sigmoid": {
+      "record_sha256": {
+        "h13": "cc931d42ac06c72457549cb193bf9a03f5452afc1b5c4d3c3f83bef0d0dc9a42",
+        "h14": "91a7eb6e954b576bdefa3f7ff1d2e7cfb8af15cfe2cd8c9d2e416b6da55f72f4"
+      },
+      "prefix_128_sha256": "73f5680aa5f7b3833479e0ecd5a9dd0e3ec221e3aad5170e9db1e40e7a0c7469",
+      "h13_and_h14_prefix_identical": true,
+      "header_clamp_low_high_out_below_out_above": [
+        -9.9375,
+        8.3203125,
+        0.0,
+        1.0
+      ],
+      "knot_arguments": [
+        -8.0,
+        -7.5,
+        8.0
+      ],
+      "knots_are_exact_fp16_of_the_function": true,
+      "knots_differing": 0,
+      "max_abs_difference": 0.0
+    },
+    "tanh": {
+      "record_sha256": {
+        "h13": "8c6492e0e5929422ef9513b445ad265f54fedd514fa8e71b1e3dae9be5f1448d",
+        "h14": "9fbff813e26c00ae680ec55f9ef71d7ce235acfb7a1fc6de683a3e0e14dd07ce"
+      },
+      "prefix_128_sha256": "f4a38468b2a29430c8ffa4bb04cef84b8347394bbe2d6eb1081093ed4eaa57c6",
+      "h13_and_h14_prefix_identical": true,
+      "header_clamp_low_high_out_below_out_above": [
+        0.0,
+        4.0,
+        0.0,
+        1.0
+      ],
+      "knot_arguments": [
+        0.0,
+        0.125,
+        4.0
+      ],
+      "knots_are_exact_fp16_of_the_function": true,
+      "knots_differing": 0,
+      "max_abs_difference": 0.0
+    },
+    "exp": {
+      "record_sha256": {
+        "h13": "7421bc14106b66e0c28d2ee4fc9eb4dcbb425bf276c7d1734ce64c954127fe28",
+        "h14": "c79e64af497492f0d2ebde56bb523c856bbf881fbc06382bbe387e6598c6a278"
+      },
+      "prefix_128_sha256": "b7b6085a1edc7def0f0bb2fc1fe345f1ba9d9a1a47e55b4516273149323b54d2",
+      "h13_and_h14_prefix_identical": true,
+      "header_clamp_low_high_out_below_out_above": [
+        -25.0,
+        16.0,
+        0.0,
+        Infinity
+      ],
+      "knot_arguments": [
+        0.0,
+        0.03125,
+        1.0
+      ],
+      "knots_are_exact_fp16_of_the_function": true,
+      "knots_differing": 0,
+      "max_abs_difference": 0.0
+    },
+    "silu": {
+      "record_sha256": "9a5d034fd290834bc87480a6c72b5a2c696ce679e33c883ecb4d9131b063f2db",
+      "note": "control: same 128-byte block, knots are a fit, not exact samples",
+      "knots_are_exact_fp16_of_the_function": false,
+      "knots_differing": 24
+    },
+    "gelu": {
+      "record_sha256": "923ba3e158073f87fd4611bb1351c40d6731a2cce9455dd35eecddb3759338b7",
+      "note": "control: same 128-byte block, knots are a fit, not exact samples",
+      "knots_are_exact_fp16_of_the_function": false,
+      "knots_differing": 25
+    }
+  },
+  "candidates": {
+    "sigmoid_contracts": 169,
+    "tanh_contracts": 911,
+    "note": "refuting_arguments is the count of the OTHER activation's arguments with no feasible fp16 value, assuming only that the other activation is a deterministic fp16 function and the lane is one fp16 multiply. Zero is necessary, not sufficient.",
+    "sigmoid_argument_count": 1172,
+    "tanh_argument_count": 1198,
+    "named": [
+      {
+        "sigmoid": "S[exact16|1616|div|plain]",
+        "tanh": "T[correctly_rounded]",
+        "cell_lanes": 500,
+        "hidden_lanes": 486,
+        "joint_lanes": 986,
+        "sigmoid_pins": 11,
+        "tanh_pins": 7,
+        "sigmoid_refuting_arguments": 15,
+        "tanh_refuting_arguments": 49
+      },
+      {
+        "sigmoid": "S[exact16|1616|newton12|plain]",
+        "tanh": "T[correctly_rounded]",
+        "cell_lanes": 385,
+        "hidden_lanes": 365,
+        "joint_lanes": 750,
+        "sigmoid_pins": 8,
+        "tanh_pins": 7,
+        "sigmoid_refuting_arguments": 76,
+        "tanh_refuting_arguments": 49
+      },
+      {
+        "sigmoid": "S[exact16|1632|newton12|plain]",
+        "tanh": "T[correctly_rounded]",
+        "cell_lanes": 500,
+        "hidden_lanes": 486,
+        "joint_lanes": 986,
+        "sigmoid_pins": 11,
+        "tanh_pins": 7,
+        "sigmoid_refuting_arguments": 15,
+        "tanh_refuting_arguments": 49
+      },
+      {
+        "sigmoid": "S[table16|1616|div|plain]",
+        "tanh": "T[correctly_rounded]",
+        "cell_lanes": 480,
+        "hidden_lanes": 470,
+        "joint_lanes": 950,
+        "sigmoid_pins": 11,
+        "tanh_pins": 7,
+        "sigmoid_refuting_arguments": 29,
+        "tanh_refuting_arguments": 49
+      },
+      {
+        "sigmoid": "S[exact16.sq3|1616|div|plain]",
+        "tanh": "T[correctly_rounded]",
+        "cell_lanes": 314,
+        "hidden_lanes": 220,
+        "joint_lanes": 534,
+        "sigmoid_pins": 4,
+        "tanh_pins": 7,
+        "sigmoid_refuting_arguments": 110,
+        "tanh_refuting_arguments": 49
+      },
+      {
+        "sigmoid": "S[exact16|1616|div|halves]",
+        "tanh": "T[correctly_rounded]",
+        "cell_lanes": 461,
+        "hidden_lanes": 404,
+        "joint_lanes": 865,
+        "sigmoid_pins": 10,
+        "tanh_pins": 7,
+        "sigmoid_refuting_arguments": 43,
+        "tanh_refuting_arguments": 49
+      },
+      {
+        "sigmoid": "S[correctly_rounded]",
+        "tanh": "T[correctly_rounded]",
+        "cell_lanes": 413,
+        "hidden_lanes": 403,
+        "joint_lanes": 816,
+        "sigmoid_pins": 9,
+        "tanh_pins": 7,
+        "sigmoid_refuting_arguments": 67,
+        "tanh_refuting_arguments": 49
+      },
+      {
+        "sigmoid": "S[lut.lerp16]",
+        "tanh": "T[lut.lerp16]",
+        "cell_lanes": 19,
+        "hidden_lanes": 26,
+        "joint_lanes": 45,
+        "sigmoid_pins": 0,
+        "tanh_pins": 1,
+        "sigmoid_refuting_arguments": 172,
+        "tanh_refuting_arguments": 196
+      },
+      {
+        "sigmoid": "S[exact16|1616|div|plain]",
+        "tanh": "T[lut.lerp16]",
+        "cell_lanes": 74,
+        "hidden_lanes": 31,
+        "joint_lanes": 105,
+        "sigmoid_pins": 11,
+        "tanh_pins": 1,
+        "sigmoid_refuting_arguments": 15,
+        "tanh_refuting_arguments": 196
+      },
+      {
+        "sigmoid": "S[exact16|1616|div|plain]",
+        "tanh": "tanh:mulrcppos:321616",
+        "cell_lanes": 360,
+        "hidden_lanes": 353,
+        "joint_lanes": 713,
+        "sigmoid_pins": 11,
+        "tanh_pins": 8,
+        "sigmoid_refuting_arguments": 15,
+        "tanh_refuting_arguments": 100
+      }
+    ],
+    "sigmoid_least_refuted": [
+      [
+        "S[exact16|1616|div|plain]",
+        15
+      ],
+      [
+        "S[exact16|1632|div|plain]",
+        15
+      ],
+      [
+        "S[exact16|1632|newton12|plain]",
+        15
+      ],
+      [
+        "sig:recip:161616",
+        15
+      ],
+      [
+        "sig:recip:161632",
+        15
+      ],
+      [
+        "sig:exp2wide.e16:161616",
+        23
+      ],
+      [
+        "sig:exp2wide.e16:161632",
+        23
+      ],
+      [
+        "sig:exp2.e64:161616",
+        24
+      ]
+    ],
+    "tanh_least_refuted": [
+      [
+        "T[exact32|3216|div|ratio|odd]",
+        49
+      ],
+      [
+        "T[exact32|3216|div|ratio|dir]",
+        49
+      ],
+      [
+        "T[exact32|3216|div|negexp|odd]",
+        49
+      ],
+      [
+        "T[exact32|3216|div|negexp|dir]",
+        49
+      ],
+      [
+        "T[exact32|3216|newton12|ratio|odd]",
+        49
+      ],
+      [
+        "T[exact32|3216|newton12|ratio|dir]",
+        49
+      ],
+      [
+        "T[exact32|3216|newton12|negexp|odd]",
+        49
+      ],
+      [
+        "T[exact32|3216|newton12|negexp|dir]",
+        49
+      ]
+    ],
+    "sigmoid_refuting_minimum": 15,
+    "sigmoid_contracts_at_minimum": 5,
+    "tanh_refuting_minimum": 49,
+    "tanh_contracts_at_minimum": 82,
+    "combinations": 153959,
+    "best_joint_lanes": {
+      "sigmoid": "S[exact16|1616|div|plain]",
+      "tanh": "T[exact32|3216|div|ratio|odd]",
+      "cell_lanes": 500,
+      "hidden_lanes": 486,
+      "joint_lanes": 986,
+      "sigmoid_pins": 11,
+      "tanh_pins": 7,
+      "sigmoid_refuting_arguments": 15,
+      "tanh_refuting_arguments": 49
+    },
+    "bit_exact_on_1280": []
+  },
+  "conditional_native_tanh": {
+    "note": "Native tanh values solved lane by lane with the leading sigmoid contract held fixed. Conditional on that contract: the level of the bias is degenerate with the sigmoid's own mean bias, the shape is not.",
+    "conditioning_sigmoid": "S[exact16|1616|div|plain]",
+    "arguments": 1198,
+    "arguments_with_no_feasible_value": 15,
+    "arguments_uniquely_determined": 949,
+    "signed_ulp_offset_from_correct_rounding": {
+      "-3": 1,
+      "-2": 3,
+      "-1": 124,
+      "0": 703,
+      "1": 107,
+      "2": 9,
+      "3": 1,
+      "4": 1
+    },
+    "signed_ulp_offset_by_argument_sign": {
+      "-3": {
+        "negative_arguments": 1,
+        "positive_arguments": 0
+      },
+      "-2": {
+        "negative_arguments": 1,
+        "positive_arguments": 2
+      },
+      "-1": {
+        "negative_arguments": 94,
+        "positive_arguments": 30
+      },
+      "0": {
+        "negative_arguments": 329,
+        "positive_arguments": 374
+      },
+      "1": {
+        "negative_arguments": 20,
+        "positive_arguments": 87
+      },
+      "2": {
+        "negative_arguments": 4,
+        "positive_arguments": 5
+      },
+      "3": {
+        "negative_arguments": 0,
+        "positive_arguments": 1
+      },
+      "4": {
+        "negative_arguments": 1,
+        "positive_arguments": 0
+      }
+    },
+    "mean_magnitude_bias_ulps": 0.13311742312012306,
+    "standard_error": 0.015953734381089848,
+    "binned_magnitude_bias": [
+      {
+        "abs_argument_low": 0.0,
+        "count": 96,
+        "mean_magnitude_bias_ulps": -0.1274360283844421,
+        "standard_error": 0.05429522487349352
+      },
+      {
+        "abs_argument_low": 0.0625,
+        "count": 101,
+        "mean_magnitude_bias_ulps": 0.0029065494496999145,
+        "standard_error": 0.050790436650026034
+      },
+      {
+        "abs_argument_low": 0.125,
+        "count": 116,
+        "mean_magnitude_bias_ulps": 0.08220280117730626,
+        "standard_error": 0.04205513267084709
+      },
+      {
+        "abs_argument_low": 0.1875,
+        "count": 68,
+        "mean_magnitude_bias_ulps": 0.1373694996215838,
+        "standard_error": 0.0651404469497409
+      },
+      {
+        "abs_argument_low": 0.25,
+        "count": 93,
+        "mean_magnitude_bias_ulps": 0.13941502333004155,
+        "standard_error": 0.06271719497978412
+      },
+      {
+        "abs_argument_low": 0.3125,
+        "count": 74,
+        "mean_magnitude_bias_ulps": 0.36221679374202537,
+        "standard_error": 0.04752064224473066
+      },
+      {
+        "abs_argument_low": 0.375,
+        "count": 63,
+        "mean_magnitude_bias_ulps": 0.2487229500676106,
+        "standard_error": 0.05015564377221484
+      },
+      {
+        "abs_argument_low": 0.4375,
+        "count": 44,
+        "mean_magnitude_bias_ulps": 0.12650346558885675,
+        "standard_error": 0.06542417026638135
+      },
+      {
+        "abs_argument_low": 0.5,
+        "count": 38,
+        "mean_magnitude_bias_ulps": 0.23981768732819905,
+        "standard_error": 0.08226880793147766
+      },
+      {
+        "abs_argument_low": 0.5625,
+        "count": 49,
+        "mean_magnitude_bias_ulps": 0.30952102923656266,
+        "standard_error": 0.047045374832688815
+      },
+      {
+        "abs_argument_low": 0.625,
+        "count": 43,
+        "mean_magnitude_bias_ulps": 0.3192139005336949,
+        "standard_error": 0.06093279905355048
+      },
+      {
+        "abs_argument_low": 0.6875,
+        "count": 28,
+        "mean_magnitude_bias_ulps": 0.07359889221016504,
+        "standard_error": 0.07431136456669
+      },
+      {
+        "abs_argument_low": 0.75,
+        "count": 25,
+        "mean_magnitude_bias_ulps": 0.019223573059953196,
+        "standard_error": 0.13176977999246023
+      },
+      {
+        "abs_argument_low": 0.8125,
+        "count": 26,
+        "mean_magnitude_bias_ulps": 0.08560463636919954,
+        "standard_error": 0.07024176669124277
+      },
+      {
+        "abs_argument_low": 0.875,
+        "count": 22,
+        "mean_magnitude_bias_ulps": 0.2754173661704313,
+        "standard_error": 0.09420538349748635
+      },
+      {
+        "abs_argument_low": 0.9375,
+        "count": 9,
+        "mean_magnitude_bias_ulps": 0.1936732811435478,
+        "standard_error": 0.09650996110655075
+      }
+    ],
+    "best_agreement": 703,
+    "correctly_rounded_agreement": 703,
+    "contracts_reaching_best": [
+      "T[correctly_rounded]",
+      "T[exact32.sq3|3216|div|negexp|odd]",
+      "T[exact32.sq3|3216|div|ratio|dir]",
+      "T[exact32.sq3|3216|newton12|negexp|odd]",
+      "T[exact32.sq3|3216|newton12|ratio|dir]",
+      "T[exact32.sq3|3232|div|mulrcp|dir]"
+    ]
+  },
+  "structural_quantization": {
+    "note": "Tested where |tanh| is in [0.25,0.5), the binade in which each form's output grid is coarser than fp16. A value off the grid is a counterexample.",
+    "measured_values_in_window": 291,
+    "consistent_with_one_minus_two_reciprocal": 151,
+    "consistent_with_two_sigmoid_minus_one": 73,
+    "control_value_is_fp16": 291
+  },
+  "second_tanh_argument": {
+    "note": "the hidden lane's tanh argument: the captured fp16 cell, or an internal one",
+    "variants": {
+      "native_fp16_cell": 486,
+      "unrounded_internal_cell": 362,
+      "fp32_internal_cell": 362,
+      "fp16_internal_cell": 409
+    },
+    "lanes": 640
+  },
+  "all_transitions": {
+    "note": "Full two-layer LSTM from native-injected state with the fp32-class gate reduction. The reduction is still an open hole, so these counts are not a clean activation measurement.",
+    "variants": [
+      {
+        "sigmoid": "S[exact16|1616|div|plain]",
+        "tanh": "T[correctly_rounded]",
+        "next_cell_lanes": 3821,
+        "next_hidden_lanes": 2890,
+        "lanes": 19200,
+        "nonfinite_lanes": 0,
+        "next_cell_max_abs": 0.027515411376953125,
+        "next_hidden_max_abs": 0.019287109375
+      },
+      {
+        "sigmoid": "S[exact16|1616|newton12|plain]",
+        "tanh": "T[correctly_rounded]",
+        "next_cell_lanes": 1021,
+        "next_hidden_lanes": 581,
+        "lanes": 19200,
+        "nonfinite_lanes": 26987,
+        "next_cell_max_abs": NaN,
+        "next_hidden_max_abs": NaN
+      },
+      {
+        "sigmoid": "S[exact16|1632|newton12|plain]",
+        "tanh": "T[correctly_rounded]",
+        "next_cell_lanes": 1136,
+        "next_hidden_lanes": 780,
+        "lanes": 19200,
+        "nonfinite_lanes": 26987,
+        "next_cell_max_abs": NaN,
+        "next_hidden_max_abs": NaN
+      },
+      {
+        "sigmoid": "S[table16|1616|div|plain]",
+        "tanh": "T[correctly_rounded]",
+        "next_cell_lanes": 3703,
+        "next_hidden_lanes": 2462,
+        "lanes": 19200,
+        "nonfinite_lanes": 0,
+        "next_cell_max_abs": 0.027393341064453125,
+        "next_hidden_max_abs": 0.019287109375
+      },
+      {
+        "sigmoid": "S[exact16.sq3|1616|div|plain]",
+        "tanh": "T[correctly_rounded]",
+        "next_cell_lanes": 3300,
+        "next_hidden_lanes": 1961,
+        "lanes": 19200,
+        "nonfinite_lanes": 0,
+        "next_cell_max_abs": 0.03125,
+        "next_hidden_max_abs": 0.0191650390625
+      },
+      {
+        "sigmoid": "S[exact16|1616|div|halves]",
+        "tanh": "T[correctly_rounded]",
+        "next_cell_lanes": 3740,
+        "next_hidden_lanes": 3165,
+        "lanes": 19200,
+        "nonfinite_lanes": 0,
+        "next_cell_max_abs": 0.027454376220703125,
+        "next_hidden_max_abs": 0.0191650390625
+      },
+      {
+        "sigmoid": "S[correctly_rounded]",
+        "tanh": "T[correctly_rounded]",
+        "next_cell_lanes": 3369,
+        "next_hidden_lanes": 3185,
+        "lanes": 19200,
+        "nonfinite_lanes": 0,
+        "next_cell_max_abs": 0.03125,
+        "next_hidden_max_abs": 0.019287109375
+      },
+      {
+        "sigmoid": "S[lut.lerp16]",
+        "tanh": "T[lut.lerp16]",
+        "next_cell_lanes": 1716,
+        "next_hidden_lanes": 842,
+        "lanes": 19200,
+        "nonfinite_lanes": 0,
+        "next_cell_max_abs": 0.0390625,
+        "next_hidden_max_abs": 0.019775390625
+      },
+      {
+        "sigmoid": "S[exact16|1616|div|plain]",
+        "tanh": "T[lut.lerp16]",
+        "next_cell_lanes": 3052,
+        "next_hidden_lanes": 1643,
+        "lanes": 19200,
+        "nonfinite_lanes": 0,
+        "next_cell_max_abs": 0.0390625,
+        "next_hidden_max_abs": 0.0186767578125
+      },
+      {
+        "sigmoid": "S[exact16|1616|div|plain]",
+        "tanh": "tanh:mulrcppos:321616",
+        "next_cell_lanes": 1367,
+        "next_hidden_lanes": 1455,
+        "lanes": 19200,
+        "nonfinite_lanes": 22370,
+        "next_cell_max_abs": NaN,
+        "next_hidden_max_abs": NaN
+      }
+    ]
+  }
+}
