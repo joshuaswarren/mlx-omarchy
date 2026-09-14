@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
+#include <functional>
 #include <limits>
 #include <memory>
 #include <optional>
@@ -779,6 +780,59 @@ DirectPlan plan_keys_window(const array& member, const array* update) {
   return plan;
 }
 
+// Composes the index map of a chain of view-only ops (Reshape /
+// Transpose, listed consumer first: chain.back() reads the buffer
+// directly) applied to a freshly written
+// row-contiguous array of |shape|: the resulting logical shape and the
+// element strides into that buffer. Reshape composes only from a
+// contiguous map (a reshape of anything else materializes); Transpose
+// always composes. nullopt when the chain is not provably a view.
+std::optional<std::pair<Shape, Strides>> compose_view_chain(
+    const Shape& shape,
+    const std::vector<const array*>& chain) {
+  auto contiguous_strides = [](const Shape& shape) {
+    Strides strides(shape.size(), 0);
+    strides.back() = 1;
+    for (int ax = static_cast<int>(shape.size()) - 2; ax >= 0; --ax) {
+      strides[ax] = strides[ax + 1] * shape[ax + 1];
+    }
+    return strides;
+  };
+  Shape map_shape(shape);
+  Strides map_strides = contiguous_strides(map_shape);
+  for (auto it = chain.rbegin(); it != chain.rend(); ++it) {
+    const array& view = **it;
+    if (is_op(&view, typeid(Transpose))) {
+      const auto& axes =
+          static_cast<const Transpose&>(view.primitive()).state();
+      if (axes.size() != map_shape.size()) {
+        return std::nullopt;
+      }
+      Shape next_shape(map_shape.size());
+      Strides next_strides(map_shape.size());
+      for (size_t ax = 0; ax < axes.size(); ++ax) {
+        if (axes[ax] < 0 ||
+            static_cast<size_t>(axes[ax]) >= map_shape.size()) {
+          return std::nullopt;
+        }
+        next_shape[ax] = map_shape[axes[ax]];
+        next_strides[ax] = map_strides[axes[ax]];
+      }
+      map_shape = std::move(next_shape);
+      map_strides = std::move(next_strides);
+    } else if (is_op(&view, typeid(Reshape))) {
+      if (map_strides != contiguous_strides(map_shape)) {
+        return std::nullopt;
+      }
+      map_shape = view.shape();
+      map_strides = contiguous_strides(map_shape);
+    } else {
+      return std::nullopt;
+    }
+  }
+  return std::make_pair(std::move(map_shape), std::move(map_strides));
+}
+
 // Values: the epilogue sum is one flat row of n_kv * head_dim columns;
 // its store maps column c to offset + (c / head_dim) * row_gap +
 // (c % head_dim), which needs a single batch and a window whose inner
@@ -841,50 +895,9 @@ DirectPlan plan_values_window(
   // Prove the chain re-indexes the sum without moving bytes and in
   // the store order the GEMV writes: element (head, dim) of the
   // update must read the sum buffer at head * head_dim + dim.
-  // Compose the map from the freshly written row-contiguous sum
-  // forward through the chain. Reshape composes only from a
-  // contiguous map (a reshape of anything else materializes);
-  // Transpose always composes.
-  auto contiguous_strides = [](const Shape& shape) {
-    Strides strides(shape.size(), 0);
-    strides.back() = 1;
-    for (int ax = static_cast<int>(shape.size()) - 2; ax >= 0; --ax) {
-      strides[ax] = strides[ax + 1] * shape[ax + 1];
-    }
-    return strides;
-  };
-  Shape map_shape(sum->shape());
-  Strides map_strides = contiguous_strides(map_shape);
-  for (auto it = chain.rbegin(); it != chain.rend(); ++it) {
-    const array& view = **it;
-    if (is_op(&view, typeid(Transpose))) {
-      const auto& axes =
-          static_cast<const Transpose&>(view.primitive()).state();
-      if (axes.size() != map_shape.size()) {
-        return plan;
-      }
-      Shape next_shape(map_shape.size());
-      Strides next_strides(map_shape.size());
-      for (size_t ax = 0; ax < axes.size(); ++ax) {
-        if (axes[ax] < 0 ||
-            static_cast<size_t>(axes[ax]) >= map_shape.size()) {
-          return plan;
-        }
-        next_shape[ax] = map_shape[axes[ax]];
-        next_strides[ax] = map_strides[axes[ax]];
-      }
-      map_shape = std::move(next_shape);
-      map_strides = std::move(next_strides);
-    } else {
-      if (map_strides != contiguous_strides(map_shape)) {
-        return plan;
-      }
-      map_shape = view.shape();
-      map_strides = contiguous_strides(map_shape);
-    }
-  }
-  if (map_shape != upd.shape() || map_strides[3] != 1 ||
-      map_strides[1] != static_cast<ptrdiff_t>(head_dim)) {
+  auto map = compose_view_chain(sum->shape(), chain);
+  if (!map || map->first != upd.shape() || map->second[3] != 1 ||
+      map->second[1] != static_cast<ptrdiff_t>(head_dim)) {
     return plan;
   }
   for (const array* view : chain) {
@@ -903,6 +916,58 @@ DirectPlan plan_values_window(
       /*head_dim=*/head_dim};
   plan.kind = DirectKind::values_sum;
   return plan;
+}
+
+// RoPE fold classification: |value| (a member's Add sum or output, one
+// flat row of n columns) is read, through view-only ops each with one
+// consumer, by a forward half-split fast::RoPE over one token with a
+// host-constant scalar offset and no freqs, whose logical element
+// (b, head, 0, d) reads column (b * heads + head) * D + d. That is the
+// layout the GEMV epilogue rotates in place: pairs (d, d + D / 2) of one
+// head. Returns the RoPE node, or null when the fold does not apply.
+const array* plan_rope_fold(
+    const array& value,
+    const std::function<const array*(const array&)>& sole_consumer) {
+  // Consumer first, the order compose_view_chain takes.
+  std::vector<const array*> chain;
+  const array* node = sole_consumer(value);
+  while (is_op(node, typeid(Reshape)) || is_op(node, typeid(Transpose))) {
+    chain.insert(chain.begin(), node);
+    node = sole_consumer(*node);
+  }
+  if (!is_op(node, typeid(fast::RoPE)) || node->inputs().size() != 2 ||
+      node->dtype() != float16 || value.dtype() != float16 ||
+      node->primitive().stream() != value.primitive().stream()) {
+    return nullptr;
+  }
+  auto [fallback, dims, traditional, base, scale, forward] =
+      static_cast<const fast::RoPE&>(node->primitive()).state();
+  (void)fallback;
+  const array& in = node->inputs()[0];
+  const array& offset = node->inputs()[1];
+  const int D = in.shape(-1);
+  if (!forward || traditional || dims != D || D % 2 != 0 || in.ndim() < 3 ||
+      in.shape(-2) != 1 || value.size() % 8 != 0 ||
+      value.size() != in.size() || offset.size() != 1 ||
+      offset.dtype() != int32 || offset.has_primitive() ||
+      offset.status() != array::Status::available) {
+    return nullptr;
+  }
+  // The composed map must read the value row in logical order: every
+  // non-unit axis carries the row-contiguous stride of the RoPE input's
+  // shape.
+  auto map = compose_view_chain(value.shape(), chain);
+  if (!map || map->first != in.shape()) {
+    return nullptr;
+  }
+  ptrdiff_t expected = 1;
+  for (int ax = static_cast<int>(in.ndim()) - 1; ax >= 0; --ax) {
+    if (in.shape(ax) != 1 && map->second[ax] != expected) {
+      return nullptr;
+    }
+    expected *= in.shape(ax);
+  }
+  return node;
 }
 
 } // namespace
@@ -930,6 +995,9 @@ EagerFusionScope::EagerFusionScope(const std::deque<array>& tape)
     return it == nodes.end() ? nullptr : it->second;
   };
   std::unordered_set<std::uintptr_t> claimed;
+  // Eager SwiGLU chains. Planned after the GEMV groups so a chain the
+  // gate/up group folds into its own dispatch is left alone.
+  auto plan_swiglu_chains = [&] {
   for (const auto& tail : tape) {
     if (!is_op(&tail, typeid(Multiply)) || tail.inputs().size() != 2 ||
         claimed.count(tail.id())) {
@@ -970,6 +1038,7 @@ EagerFusionScope::EagerFusionScope(const std::deque<array>& tape)
     claimed.insert(inner->id());
     claimed.insert(tail.id());
   }
+  };
   for (size_t i = 1; i < tape.size(); ++i) {
     const array& first = tape[i - 1];
     const array& second = tape[i];
@@ -998,6 +1067,7 @@ EagerFusionScope::EagerFusionScope(const std::deque<array>& tape)
   }
 
   if (!fused_gemv_enabled()) {
+    plan_swiglu_chains();
     return;
   }
 
@@ -1012,11 +1082,15 @@ EagerFusionScope::EagerFusionScope(const std::deque<array>& tape)
   // group dispatches (checked then, refused otherwise). A group of one
   // member without an epilogue gains nothing and is not planned.
   std::unordered_map<std::uintptr_t, const array*> single_consumer;
+  std::unordered_map<std::uintptr_t, const array*> sigmoid_of;
   for (const auto& node : tape) {
     for (const auto& input : node.inputs()) {
       if (uses[input.id()] == 1) {
         single_consumer[input.id()] = &node;
       }
+    }
+    if (is_op(&node, typeid(Sigmoid)) && node.inputs().size() == 1) {
+      sigmoid_of.emplace(node.inputs()[0].id(), &node);
     }
   }
   std::unordered_map<std::uintptr_t, std::vector<const array*>> by_x;
@@ -1087,6 +1161,91 @@ EagerFusionScope::EagerFusionScope(const std::deque<array>& tape)
         worth = worth || member.epilogue.has_value();
         group.members.push_back(std::move(member));
       }
+      // RoPE fold: a member whose Add sum (or output) feeds one forward
+      // single-token RoPE through views. Every folded member of a group
+      // shares the kernel's one set of rotation parameters.
+      auto sole_consumer = [&](const array& value) -> const array* {
+        auto it = single_consumer.find(value.id());
+        return it == single_consumer.end() ? nullptr : it->second;
+      };
+      const bool fold = fold_epilogue_enabled();
+      std::optional<std::tuple<int, float, float, int>> rotation;
+      for (auto& member : group.members) {
+        if (!fold) {
+          break;
+        }
+        const array& value =
+            member.epilogue ? *member.epilogue : member.node;
+        const array* rope = plan_rope_fold(value, sole_consumer);
+        if (!rope || claimed.count(rope->id())) {
+          continue;
+        }
+        auto [fallback, dims, traditional, base, scale, forward] =
+            static_cast<const fast::RoPE&>(rope->primitive()).state();
+        (void)fallback;
+        (void)traditional;
+        (void)forward;
+        std::tuple<int, float, float, int> parameters{
+            dims, base, scale, rope->inputs()[1].item<int>()};
+        if (rotation && *rotation != parameters) {
+          continue;
+        }
+        rotation = parameters;
+        member.rope = *rope;
+        worth = true;
+      }
+      // SwiGLU fold: exactly a gate/up pair of equal width without Add
+      // epilogues, read by sigmoid(gate), gate * sigmoid, and the
+      // product with up, the interior two consumed once.
+      if (fold && group.members.size() == 2 && !group.members[0].epilogue &&
+          !group.members[1].epilogue && !group.members[0].rope &&
+          !group.members[1].rope &&
+          group.members[0].node.size() == group.members[1].node.size() &&
+          group.members[0].node.size() % 4 == 0 &&
+          group.members[0].node.dtype() == float16) {
+        for (size_t gate_index = 0; gate_index < 2; ++gate_index) {
+          const array& gate = group.members[gate_index].node;
+          const array& up = group.members[1 - gate_index].node;
+          auto sigmoid_it = sigmoid_of.find(gate.id());
+          const array* sigmoid =
+              sigmoid_it == sigmoid_of.end() ? nullptr : sigmoid_it->second;
+          if (!sigmoid || uses[sigmoid->id()] != 1 ||
+              claimed.count(sigmoid->id())) {
+            continue;
+          }
+          const array* inner = sole_consumer(*sigmoid);
+          if (!is_op(inner, typeid(Multiply)) || inner->inputs().size() != 2 ||
+              uses[inner->id()] != 1 || claimed.count(inner->id())) {
+            continue;
+          }
+          const array& inner_other = inner->inputs()[0].id() == sigmoid->id()
+              ? inner->inputs()[1]
+              : inner->inputs()[0];
+          const array* tail = sole_consumer(*inner);
+          if (inner_other.id() != gate.id() ||
+              !is_op(tail, typeid(Multiply)) || tail->inputs().size() != 2 ||
+              claimed.count(tail->id())) {
+            continue;
+          }
+          const array& tail_other = tail->inputs()[0].id() == inner->id()
+              ? tail->inputs()[1]
+              : tail->inputs()[0];
+          if (tail_other.id() != up.id() || tail->dtype() != float16 ||
+              inner->dtype() != float16 || sigmoid->dtype() != float16 ||
+              tail->size() != gate.size() ||
+              tail->primitive().stream() != gate.primitive().stream() ||
+              inner->primitive().stream() != gate.primitive().stream() ||
+              sigmoid->primitive().stream() != gate.primitive().stream()) {
+            continue;
+          }
+          if (gate_index == 1) {
+            std::swap(group.members[0], group.members[1]);
+          }
+          group.members[0].swiglu = {*sigmoid, *inner, *tail};
+          worth = true;
+          break;
+        }
+      }
       if (group.members.size() < 2 && !worth) {
         continue;
       }
@@ -1098,10 +1257,21 @@ EagerFusionScope::EagerFusionScope(const std::deque<array>& tape)
           state->gemv_roles.emplace(member.epilogue->id(), index);
           claimed.insert(member.epilogue->id());
         }
+        if (member.rope) {
+          state->gemv_roles.emplace(member.rope->id(), index);
+          claimed.insert(member.rope->id());
+        }
+        if (member.swiglu) {
+          for (const auto& folded : *member.swiglu) {
+            state->gemv_roles.emplace(folded.id(), index);
+            claimed.insert(folded.id());
+          }
+        }
       }
       state->gemv_groups.push_back(std::move(group));
     }
   }
+  plan_swiglu_chains();
   std::unordered_map<std::uintptr_t, std::vector<const array*>> dense_by_x;
   std::vector<std::uintptr_t> dense_x_order;
   for (const auto& node : tape) {
@@ -1178,12 +1348,28 @@ EagerFusionScope::EagerFusionScope(const std::deque<array>& tape)
       int rope_side = plans[0].kind == DirectKind::keys_rope ? 0 : 1;
       int sum_side = 1 - rope_side;
       DirectPlan& sum_plan = plans[sum_side];
-      // Copy the values window into its GEMV member BEFORE the pair
-      // moves it: an optional move leaves the source empty, and the
-      // member's window must carry the arrays themselves.
+      // Copy the windows into their GEMV members BEFORE the pair moves
+      // them: an optional move leaves the source empty, and a member's
+      // window must carry the arrays themselves. The keys window goes
+      // to the member whose folded RoPE produces the rows, if any;
+      // otherwise the RoPE kernel finds it through rope_redirect_roles.
       state->gemv_groups[sum_plan.group_index]
           .members[sum_plan.member_index]
-          .sum_window = sum_plan.window;
+          .window = sum_plan.window;
+      const std::uintptr_t rope_id = pair.nodes[rope_side].inputs()[1].id();
+      for (auto& group : state->gemv_groups) {
+        for (auto& member : group.members) {
+          if (member.rope && member.rope->id() == rope_id) {
+            // The epilogue stores column c = head * D + d at
+            // offset + head * matrix_stride + d, the keys kernel's
+            // (matrix, feature) map for the single token row.
+            member.window = plans[rope_side].window;
+            member.window->row_gap = member.window->strides[0];
+            member.window->head_dim =
+                static_cast<uint32_t>(member.rope->shape(-1));
+          }
+        }
+      }
       pair.windows[0] = std::move(plans[rope_side].window);
       pair.windows[1] = std::move(sum_plan.window);
       state->rope_redirect_roles.emplace(
@@ -1205,6 +1391,11 @@ bool fused_gemv_enabled() {
   return fused_chain_enabled() &&
       (std::getenv("MLX_OMARCHY_FUSED_GEMV") == nullptr ||
        env_flag("MLX_OMARCHY_FUSED_GEMV"));
+}
+
+bool fold_epilogue_enabled() {
+  return std::getenv("MLX_OMARCHY_FOLD_EPILOGUE") == nullptr ||
+      env_flag("MLX_OMARCHY_FOLD_EPILOGUE");
 }
 
 bool kv_direct_enabled() {

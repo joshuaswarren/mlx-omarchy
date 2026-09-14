@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <cstdint>
 #include <cstdlib>
 #include <cstdio>
@@ -7002,6 +7003,20 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
       omarchy::compute_dispatch_group_count(params.count));
 }
 
+namespace fast {
+// Defined beside RoPE::eval_gpu below; the fused GEMV RoPE epilogue
+// carries the same gate.
+void rope_trig_gate(
+    const std::string& name,
+    const array& in,
+    const array& offset,
+    const array* freqs,
+    int dims,
+    float base,
+    float scale,
+    const array& out);
+} // namespace fast
+
 namespace omarchy {
 
 namespace {
@@ -7075,6 +7090,10 @@ bool dispatch_quantized_gemv_group(
   }
   ComputeParams params;
   uint32_t total_groups = 0;
+  uint32_t rope_half = 0;
+  float rope_beta = 0.0f;
+  float rope_scale = 0.0f;
+  int rope_offset = 0;
   for (size_t i = 0; i < members.size(); ++i) {
     const array& node = members[i].node;
     if (node.inputs().size() != 4 || node.inputs()[0].id() != x.id() ||
@@ -7117,6 +7136,50 @@ bool dispatch_quantized_gemv_group(
       }
       params.flags |= 256u << i;
     }
+    if (members[i].rope) {
+      // Forward half-split single-token RoPE over this member's last
+      // value; the planner proved the view chain, the offset is a host
+      // constant. One rotation parameter set per dispatch.
+      const array& rope = *members[i].rope;
+      const array& offset = rope.inputs().at(1);
+      auto [fallback, dims, traditional, base, scale, forward] =
+          static_cast<const fast::RoPE&>(rope.primitive()).state();
+      (void)fallback;
+      const int half = dims / 2;
+      const float beta = static_cast<float>(std::log(base) / half);
+      if (dtype != float16 || rope.dtype() != dtype || !forward ||
+          traditional || dims != rope.shape(-1) || half <= 0 ||
+          dims % 2 != 0 || rope.size() != node.size() || n % 8 != 0 ||
+          rope.primitive().stream() != stream || offset.size() != 1 ||
+          offset.dtype() != int32 || offset.has_primitive() ||
+          offset.status() != array::Status::available ||
+          (rope_half != 0 &&
+           (rope_half != static_cast<uint32_t>(half) || rope_beta != beta ||
+            rope_scale != scale || rope_offset != offset.item<int>()))) {
+        return false;
+      }
+      rope_half = static_cast<uint32_t>(half);
+      rope_beta = beta;
+      rope_scale = scale;
+      rope_offset = offset.item<int>();
+      params.flags |= 65536u << i;
+    }
+    if (members[i].swiglu) {
+      const auto& folded = *members[i].swiglu;
+      if (i != 0 || members.size() != 2 || dtype != float16 ||
+          members[0].epilogue || members[1].epilogue || members[0].rope ||
+          members[1].rope || members[0].node.size() != members[1].node.size() ||
+          members[0].node.size() % 4 != 0) {
+        return false;
+      }
+      for (const array& out : folded) {
+        if (out.dtype() != dtype || out.size() != node.size() ||
+            out.primitive().stream() != stream) {
+          return false;
+        }
+      }
+      params.flags |= 1u << 20;
+    }
     params.shape[i] = static_cast<uint32_t>(n);
     total_groups += (static_cast<uint32_t>(n) + 7u) / 8u;
   }
@@ -7134,31 +7197,62 @@ bool dispatch_quantized_gemv_group(
   }
   params.lhs_offset = static_cast<uint32_t>(x_offset);
   params.count = static_cast<uint32_t>(total_groups);
+  if (rope_half != 0) {
+    // The fold runs fast::RoPE's arithmetic without its eval_gpu, so it
+    // carries that path's trig-argument gate (rope_trig_gate).
+    for (const auto& member : members) {
+      if (member.rope) {
+        auto [fallback, dims, traditional, base, scale, forward] =
+            static_cast<const fast::RoPE&>(member.rope->primitive()).state();
+        (void)fallback;
+        (void)traditional;
+        (void)forward;
+        fast::rope_trig_gate(
+            member.rope->primitive().name(),
+            member.rope->inputs().at(0),
+            member.rope->inputs().at(1),
+            nullptr,
+            dims,
+            base,
+            scale,
+            *member.rope);
+      }
+    }
+    params.output_size = rope_half;
+    params.alpha = rope_scale;
+    params.beta = rope_beta;
+    params.rhs_offset = static_cast<uint32_t>(rope_offset);
+  }
 
-  // Producer-direct KV windows: a member's Add epilogue may store its
-  // sum straight into an updated cache copy (see fused_chain.h), which
-  // deletes the merged SliceUpdatePair dispatch for that layer. The
-  // base copy of the cache is enqueued here so the rows land in order.
+  // Producer-direct KV windows: a member's last store (its RoPE output
+  // or its Add sum) may land straight in an updated cache copy (see
+  // fused_chain.h), which deletes the merged SliceUpdatePair dispatch
+  // for that layer. The base copy of the cache is enqueued here so the
+  // rows land in order. Both windows of a pair ride one dispatch, so a
+  // window that cannot fire unwinds every window of the group.
   bool any_kv_window = false;
+  bool window_abort = false;
   for (auto& member : members) {
-    if (!member.sum_window) {
+    if (!member.window) {
       continue;
     }
-    auto& window = *member.sum_window;
-    if (!member.epilogue || window.node.data_shared_ptr() != nullptr ||
+    const auto& window = *member.window;
+    if ((!member.epilogue && !member.rope) ||
+        window.node.data_shared_ptr() != nullptr ||
         window.base.data_shared_ptr() == nullptr ||
         window.base.dtype() != float16 ||
         !window.base.flags().row_contiguous ||
         window.base.size() != window.base.data_size() ||
         window.base.offset() % window.base.itemsize() != 0 ||
-        !input_ready(window.base, stream)) {
-      // The direct write cannot fire: keep the sum in its own buffer
-      // and unwind the pair plan to the merged pair dispatch.
-      abort_kv_direct();
-      member.sum_window.reset();
-      continue;
+        window.head_dim == 0 || !input_ready(window.base, stream)) {
+      window_abort = true;
     }
-    any_kv_window = true;
+  }
+  if (window_abort) {
+    abort_kv_direct();
+    for (auto& member : members) {
+      member.window.reset();
+    }
   }
   // Contract satisfied: allocate every output, then bind. Unused
   // weight slots bind the first member's output so every binding the
@@ -7168,8 +7262,16 @@ bool dispatch_quantized_gemv_group(
     if (member.epilogue) {
       member.epilogue->set_data(allocator().malloc(member.epilogue->nbytes()));
     }
-    if (member.sum_window) {
-      auto& window = *member.sum_window;
+    if (member.rope) {
+      member.rope->set_data(allocator().malloc(member.rope->nbytes()));
+    }
+    if (member.swiglu) {
+      for (array& out : *member.swiglu) {
+        out.set_data(allocator().malloc(out.nbytes()));
+      }
+    }
+    if (member.window) {
+      auto& window = *member.window;
       window.node.set_data(allocator().malloc(window.node.nbytes()));
       copy_gpu(
           window.base,
@@ -7178,16 +7280,16 @@ bool dispatch_quantized_gemv_group(
                                          : CopyType::General,
           stream);
       encoder.add_temporary(window.node);
-      commit_values_kv_write(window.node);
       encoder.add_temporary(window.base);
+      any_kv_window = true;
     }
   }
   if (any_kv_window) {
     for (size_t i = 0; i < members.size(); ++i) {
-      if (!members[i].sum_window) {
+      if (!members[i].window) {
         continue;
       }
-      const auto& window = *members[i].sum_window;
+      const auto& window = *members[i].window;
       params.in_strides[i] = window.row_gap;
       params.out_strides[i] = window.offset;
       params.flags |= 4096u << i;
@@ -7207,10 +7309,25 @@ bool dispatch_quantized_gemv_group(
       bindings[base + 3] = binding(member.node);
       bindings[base + 4] =
           member.addend ? binding(*member.addend) : binding(member.node);
-      bindings[base + 5] = member.sum_window
-          ? binding(member.sum_window->node)
-          : (member.epilogue ? binding(*member.epilogue)
-                             : binding(member.node));
+      // Sum: the Add output, windowed when it is the last store; the
+      // SwiGLU pair parks sigmoid(gate) and gate * sigmoid in the two
+      // sum slots. Epilogue: the RoPE output (windowed when the keys
+      // row goes to the cache) or the SwiGLU product.
+      const bool window_on_sum = member.window && !member.rope;
+      bindings[base + 5] = window_on_sum
+          ? binding(member.window->node)
+          : (member.epilogue ? binding(*member.epilogue) : filler);
+      bindings[base + 6] = member.rope
+          ? (member.window ? binding(member.window->node)
+                           : binding(*member.rope))
+          : filler;
+      if (members[0].swiglu) {
+        const auto& folded = *members[0].swiglu;
+        bindings[base + 5] = binding(folded[i]);
+        if (i == 0) {
+          bindings[base + 6] = binding(folded[2]);
+        }
+      }
     } else {
       for (uint32_t j = 0; j < kQmmVecMultiBindingsPerWeight; ++j) {
         bindings[base + j] = filler;
@@ -7231,6 +7348,16 @@ bool dispatch_quantized_gemv_group(
             ComputeKernel::QmmVecQ4MultiF16,
             ComputeKernel::QmmVecQ4MultiBF16);
   encoder.dispatch_compute(kernel, bindings, params, total_groups, 1u, 1u);
+  for (const auto& member : members) {
+    if (!member.window) {
+      continue;
+    }
+    if (member.rope) {
+      commit_rope_kv_redirect(*member.rope);
+    } else {
+      commit_values_kv_write(member.window->node);
+    }
+  }
   return true;
 }
 
