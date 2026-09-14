@@ -27,6 +27,7 @@
 #include "mlx/backend/omarchy/encoder.h"
 #include "mlx/backend/omarchy/trace.h"
 #include "mlx/compile.h"
+#include "mlx/fast.h"
 #include "mlx/ops.h"
 #include "mlx/random.h"
 #include "mlx/stream.h"
@@ -1218,16 +1219,20 @@ TEST_CASE("eager q4 decode gemv group: gate/up pair and residual fold") {
   // mlx-lm's block tail: gate/up share x, SwiGLU, down, residual add
   // against the tape-computed residual stream h2 (an ancestor of the
   // GEMV, so it is evaluated before the group dispatches). Per node: 2 gemv + 1 swiglu + 1 gemv +
-  // 1 multiply + 1 add = 6; fused: gate/up (1) + swiglu (1) + down with
-  // the residual folded (1) + multiply (1) = 4.
+  // 1 multiply + 1 add = 6; fused: gate/up with SwiGLU folded into its
+  // store (1) + down with the residual folded (1) + multiply (1) = 3.
   auto forward = [&] {
     array h2 = multiply(h, array(2.0f, float16), stream);
     array x = h2;
     array g = project(x, gate, stream);
     array u = project(x, up, stream);
-    array act = multiply(multiply(g, sigmoid(g, stream), stream), u, stream);
+    array sig = sigmoid(g, stream);
+    array silu = multiply(g, sig, stream);
+    array act = multiply(silu, u, stream);
     array d = project(act, down, stream);
-    return std::vector<array>{g, u, d, add(h2, d, stream)};
+    // Every array of the folded chain stays materialized: the retained
+    // sigmoid, silu, and product must carry the per-node bits too.
+    return std::vector<array>{g, u, d, add(h2, d, stream), sig, silu, act};
   };
   setenv("MLX_OMARCHY_FUSED_GEMV", "0", 1);
   auto baseline = forward();
@@ -1243,10 +1248,71 @@ TEST_CASE("eager q4 decode gemv group: gate/up pair and residual fold") {
   sync_stream(stream);
   uint64_t fused = counters().vk_compute_dispatches.load() - before;
   CHECK_EQ(per_node, 6);
-  CHECK_EQ(fused, 4);
+  CHECK_EQ(fused, 3);
   for (size_t i = 0; i < baseline.size(); ++i) {
     INFO("output ", i);
     expect_bit_exact(baseline[i], candidate[i], stream);
+  }
+  unsetenv("MLX_OMARCHY_FUSED_GEMV");
+}
+
+// The q/k/v group with the attention head split and forward RoPE that
+// mlx-lm applies to q and k: the rotation folds into the GEMV store
+// (one dispatch for three projections, three biases, and two RoPEs),
+// bit-exact against the per-node path for every intermediate and both
+// rotated outputs.
+TEST_CASE("eager q4 decode gemv group folds RoPE into the q/k store") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  enable_fusion();
+  set_compile_mode(CompileMode::disabled);
+  const int k = 896;
+  const int heads = 14;
+  const int kv_heads = 2;
+  const int head_dim = 64;
+  auto q = make_linear(heads * head_dim, k, float16, stream);
+  auto kk = make_linear(kv_heads * head_dim, k, float16, stream);
+  auto v = make_linear(kv_heads * head_dim, k, float16, stream);
+  array x = astype(
+      random::normal(Shape{1, 1, k}, float32, std::nullopt, stream), float16,
+      stream);
+  x.eval();
+  sync_stream(stream);
+  auto forward = [&](int offset) {
+    array q_sum = add(project(x, q, stream), q.bias, stream);
+    array k_sum = add(project(x, kk, stream), kk.bias, stream);
+    array v_sum = add(project(x, v, stream), v.bias, stream);
+    auto split = [&](const array& row, int n) {
+      return transpose(
+          reshape(row, {1, 1, n, head_dim}, stream), {0, 2, 1, 3}, stream);
+    };
+    array q_rot = fast::rope(
+        split(q_sum, heads), head_dim, false, 1000000.0f, 1.0f, offset,
+        std::nullopt, stream);
+    array k_rot = fast::rope(
+        split(k_sum, kv_heads), head_dim, false, 1000000.0f, 1.0f, offset,
+        std::nullopt, stream);
+    return std::vector<array>{q_sum, k_sum, v_sum, q_rot, k_rot};
+  };
+  for (int offset : {0, 7, 1052}) {
+    setenv("MLX_OMARCHY_FUSED_GEMV", "0", 1);
+    auto baseline = forward(offset);
+    eval({baseline[3], baseline[4], baseline[2]});
+    sync_stream(stream);
+
+    setenv("MLX_OMARCHY_FUSED_GEMV", "1", 1);
+    auto candidate = forward(offset);
+    uint64_t before = counters().vk_compute_dispatches.load();
+    eval({candidate[3], candidate[4], candidate[2]});
+    sync_stream(stream);
+    INFO("offset ", offset);
+    CHECK_EQ(counters().vk_compute_dispatches.load() - before, 1);
+    for (size_t i = 0; i < baseline.size(); ++i) {
+      INFO("output ", i);
+      expect_bit_exact(baseline[i], candidate[i], stream);
+    }
   }
   unsetenv("MLX_OMARCHY_FUSED_GEMV");
 }

@@ -47,15 +47,20 @@ compiled bf16 tapes remain refused. Set `MLX_OMARCHY_FUSED_CHAIN=0` to use
 the per-node path.
 
 Eager single-row 4-bit/group-64 quantized projections that read one x
-(q/k/v, gate/up) dispatch as one multi-weight GEMV, and the bias or
-residual `Add` that is a projection's only consumer is folded into that
-GEMV's store: a Qwen2 decode layer drops from 22 dispatches to 14 with
-every array still materialized and every value bit-identical to the
-per-node path. Eager dense BF16 decode projections that share one
-evaluated input (q/k/v or gate/up) dispatch as one grouped GEMV with
-independent per-output accumulation, also bit-identical to the per-node
-path. Set `MLX_OMARCHY_FUSED_GEMV=0` to keep either grouping on the
-per-node path (`MLX_OMARCHY_FUSED_CHAIN=0` disables it too).
+(q/k/v, gate/up) dispatch as one multi-weight GEMV, and the elementwise
+consumers of a projection fold into that GEMV's store: the bias or
+residual `Add` that is its only consumer, the forward single-token RoPE
+that reads the q and k rows through the head split, and the SwiGLU
+(`gate * sigmoid(gate) * up`) over a gate/up pair. A Qwen2 decode layer
+runs 7 dispatches (four GEMVs, two RMS norms, one attention) with every
+array still materialized and every value bit-identical to the per-node
+path. Eager dense BF16 decode projections that share one evaluated
+input (q/k/v or gate/up) dispatch as one grouped GEMV with independent
+per-output accumulation, also bit-identical to the per-node path. Set
+`MLX_OMARCHY_FUSED_GEMV=0` to keep either grouping, and the folds, on
+the per-node path (`MLX_OMARCHY_FUSED_CHAIN=0` disables it too);
+`MLX_OMARCHY_FOLD_EPILOGUE=0` keeps the grouped GEMV and its `Add` fold
+but leaves RoPE and SwiGLU on their own dispatches.
 
 Dispatches record unconditional pre+post memory barriers by default.
 `MLX_OMARCHY_GATED_BARRIERS=1` replaces them with dependency-gated

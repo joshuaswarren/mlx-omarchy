@@ -123,20 +123,21 @@ class EagerFusionScope {
 bool try_eval_eager_fusion(array& node, const Stream& stream);
 
 // Producer-direct KV cache write window. When a SliceUpdate pair's new
-// rows can be stored by the row's PRODUCER (the RoPE kernel for keys,
-// the fused GEMV Add epilogue for values), the merged pair dispatch is
-// deleted: the producer writes the updated cache copy's window directly
-// and the copy of the bytes never happens. The window is the paste
-// region of the SliceUpdate output |node| (a fresh copy of |base|, the
-// cache), addressed in elements relative to the node buffer start.
+// rows can be stored by the row's PRODUCER (the RoPE kernel or the
+// fused GEMV RoPE epilogue for keys, the fused GEMV Add epilogue for
+// values), the merged pair dispatch is deleted: the producer writes the
+// updated cache copy's window directly and the copy of the bytes never
+// happens. The window is the paste region of the SliceUpdate output
+// |node| (a fresh copy of |base|, the cache), addressed in elements
+// relative to the node buffer start.
 struct KvDirectWindow {
   array node;
   array base;
   uint32_t offset{0};
   uint32_t strides[4]{};
   uint32_t ndim{0};
-  // GEMV sum-store column map only: column c of the epilogue sum lands
-  // at offset + (c / head_dim) * row_gap + (c % head_dim). Single-batch
+  // GEMV store column map only: column c of the epilogue lands at
+  // offset + (c / head_dim) * row_gap + (c % head_dim). Single-batch
   // decode only.
   uint32_t row_gap{0};
   uint32_t head_dim{0};
@@ -146,15 +147,26 @@ struct KvDirectWindow {
 // affine transposed 4-bit/group-64 QuantizedMatmul nodes that read one
 // single-row x, each optionally followed by the Add that is its only
 // consumer (a bias or residual add), recorded as ONE QmmVecQ4Multi
-// dispatch when the first member evaluates. Every member output and
-// every Add output is materialized, so retained references stay valid.
+// dispatch when the first member evaluates. Two elementwise consumers
+// fold into the same dispatch as well (receipts/2026-09-14-decode-epilogue-fold):
+// the forward half-split single-token fast::RoPE that reads a member's
+// Add sum (or output) through view-only ops, and the SwiGLU chain
+// gate * sigmoid(gate) * up over a two-member gate/up group. Every
+// member output, Add output, and folded output is materialized, so
+// retained references stay valid.
 struct GemvFusionMember {
   array node;
   std::optional<array> epilogue;
   std::optional<array> addend;
-  // Planned producer-direct write of the epilogue sum into the values
-  // cache copy; empty keeps the sum in its own buffer.
-  std::optional<KvDirectWindow> sum_window;
+  // Folded RoPE node; its rotated row is the member's last store.
+  std::optional<array> rope;
+  // Member 0 of a gate/up pair only: sigmoid(gate), gate * sigmoid,
+  // and the product with member 1's output, in that order.
+  std::optional<std::array<array, 3>> swiglu;
+  // Planned producer-direct write of the member's last store (the
+  // RoPE output when one rides, else the Add sum) into a KV cache
+  // copy; empty keeps the value in its own buffer.
+  std::optional<KvDirectWindow> window;
 };
 
 
@@ -200,4 +212,9 @@ bool kv_direct_enabled();
 // decode GEMV group, and Add on the per-node path (the
 // MLX_OMARCHY_FUSED_CHAIN gate also covers it).
 bool fused_gemv_enabled();
+
+// MLX_OMARCHY_FOLD_EPILOGUE=0 keeps the RoPE and SwiGLU consumers of a
+// grouped GEMV on their own dispatches (the Add fold and the group
+// itself stay); the A/B and bisection knob for the fold.
+bool fold_epilogue_enabled();
 } // namespace mlx::core::omarchy

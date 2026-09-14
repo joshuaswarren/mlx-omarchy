@@ -109,10 +109,33 @@ layout(set = 0, binding = 0, std430) readonly buffer InputX {
 // carries weight i's N, dims the weight count, flags bit 8+i the
 // epilogue for weight i. Every weight, scale, bias, output, and addend
 // starts at element 0 of its buffer (the host refuses otherwise), so no
-// per-weight offsets ride in the push constants — except a weight's sum
-// store under the direct-KV flag (bit 12+i), which the host may aim at
-// one token row of a KV cache copy: out_strides[i] base element,
+// per-weight offsets ride in the push constants — except a weight's
+// last store under the direct-KV flag (bit 12+i), which the host may
+// aim at one token row of a KV cache copy: out_strides[i] base element,
 // in_strides[i] the row gap, matrix_m the head dim.
+//
+// Two further epilogues fold the elementwise consumer of a decode
+// projection into this dispatch (receipts/2026-09-14-decode-epilogue-fold).
+// Each is a map over a PAIR of columns, so the workgroup's eight
+// column slots are laid out so that every pair sits in slots s and
+// s ^ 4 of one workgroup and the two rounded values meet through
+// shared memory after the reduction; the per-column accumulation
+// chain is the one the plain layout runs, so every stored GEMV output
+// and Add sum is bit-identical to the unfolded dispatch.
+//   * RoPE (flags bit 16+i, forward, half-split, one token, scalar
+//     offset): workgroup w of weight i owns pairs 4w..4w+3; slot s < 4
+//     is column (p / half) * 2 * half + p % half of pair p, slot s + 4
+//     its partner half columns later. output_size is half, rhs_offset
+//     the int offset, alpha the scale, beta log(base) / half, and the
+//     rotated value lands in epilogue_i (windowed under bit 12+i)
+//     exactly as shaders/fast_rope.comp computes it from the stored
+//     Add sum (or the stored output when no Add rides).
+//   * SwiGLU (flags bit 20, weights 0 and 1 with equal N and no Add):
+//     the two weights share one workgroup range of ceil(N / 4);
+//     slots 0-3 are gate columns 4w..4w+3, slots 4-7 the matching up
+//     columns. sigmoid(gate) lands in sum_0, gate * sigmoid in sum_1
+//     and the product in epilogue_0, each rounded as shaders/swiglu.comp
+//     rounds them.
 #define QMM_VEC_MULTI_WEIGHT(I, B) \
 layout(set = 0, binding = B, std430) readonly buffer InputW##I { \
   uint values[]; \
@@ -131,10 +154,13 @@ layout(set = 0, binding = B + 4, std430) readonly buffer Addend##I { \
 } addend##I; \
 layout(set = 0, binding = B + 5, std430) writeonly buffer Sum##I { \
   STORAGE_TYPE values[]; \
-} sum##I;
+} sum##I; \
+layout(set = 0, binding = B + 6, std430) writeonly buffer Epilogue##I { \
+  STORAGE_TYPE values[]; \
+} epilogue##I;
 QMM_VEC_MULTI_WEIGHT(0, 1)
-QMM_VEC_MULTI_WEIGHT(1, 7)
-QMM_VEC_MULTI_WEIGHT(2, 13)
+QMM_VEC_MULTI_WEIGHT(1, 8)
+QMM_VEC_MULTI_WEIGHT(2, 15)
 #else
 layout(set = 0, binding = 1, std430) readonly buffer InputW {
   uint values[];
@@ -364,17 +390,20 @@ uint q6_at(uint e, uint c0, uint c1, uint c2) {
 
 #ifdef QMM_VEC_MULTI
 // Multi-weight main: workgroup ranges [0, g0), [g0, g0 + g1), and the
-// rest select weight 0, 1, 2; the selection is uniform per workgroup so
-// the barrier rounds of the tree reduction stay uniform. Each weight's
-// column runs the same Q4_ROW chain the single kernel runs for that
-// weight alone (n is that weight's N, so the qmv_fast tile choice is
-// the same). The epilogue must add the STORED value: the per-node Add
+// rest select weight 0, 1, 2. The weight is uniform per 32-lane slot,
+// which is all the subgroup reduction needs; the tree reduction's
+// barriers sit outside every per-slot branch. Each weight's column
+// runs the same Q4_ROW chain the single kernel runs for that weight
+// alone (n is that weight's N, so the qmv_fast tile choice is the
+// same). The epilogue must add the STORED value: the per-node Add
 // reads the rounded output back from memory. A float16_t round trip
 // in registers does not survive the AGX compiler (the epilogue then
 // added the unrounded total; 270 of 896 sums differed on the M1), so
 // the rounding goes through integer packing, as fused_chain.comp
 // does, and both the output and the sum derive from that rounded
 // value (converting an f16-representable float to float16_t is exact).
+// The RoPE and SwiGLU epilogues round every intermediate the same way,
+// where shaders/fast_rope.comp and shaders/swiglu.comp round theirs.
 #ifdef USE_FP16
 #define ROUND_STORAGE(f) (unpackHalf2x16(packHalf2x16(vec2(f, 0.0))).x)
 #elif defined(USE_BF16)
@@ -382,19 +411,35 @@ uint q6_at(uint e, uint c0, uint c1, uint c2) {
 #else
 #define ROUND_STORAGE(f) (f)
 #endif
-#define Q4_MULTI_STORE(I, rounded) { \
-  output##I.values[column] = STORE_VALUE(rounded); \
-  if ((params.flags & (256u << I)) != 0u) { \
-    uint sum_column = column; \
-    if ((params.flags & (4096u << I)) != 0u) { \
-      sum_column = params.out_strides[I] + \
+const uint FLAG_ADD = 256u;
+const uint FLAG_WINDOW = 4096u;
+const uint FLAG_ROPE = 65536u;
+const uint FLAG_SWIGLU = 1048576u;
+// Element of the last store of weight I for `column`: the direct-KV
+// window row when bit 12+I is set, the column itself otherwise.
+#define Q4_LAST_COLUMN(I) \
+  (((params.flags & (FLAG_WINDOW << I)) != 0u) \
+       ? (params.out_strides[I] + \
           (column / params.matrix_m) * params.in_strides[I] + \
-          (column % params.matrix_m); \
-    } \
-    sum##I.values[sum_column] = STORE_VALUE( \
-        (rounded) + LOAD_VALUE(addend##I.values[column])); \
+          (column % params.matrix_m)) \
+       : column)
+// Stores the output and the Add sum of weight I; `value` becomes the
+// stored sum (or the output without an Add), the value a folded
+// consumer reads. The sum is the last store only when no RoPE rides.
+#define Q4_MULTI_STORE(I, rounded, value) { \
+  output##I.values[column] = STORE_VALUE(rounded); \
+  if ((params.flags & (FLAG_ADD << I)) != 0u) { \
+    float addend_value = LOAD_VALUE(addend##I.values[column]); \
+    uint sum_column = ((params.flags & (FLAG_ROPE << I)) != 0u) \
+        ? column : Q4_LAST_COLUMN(I); \
+    sum##I.values[sum_column] = STORE_VALUE((rounded) + addend_value); \
+    value = ROUND_STORAGE((rounded) + addend_value); \
   } \
 }
+#define Q4_ROPE_STORE(I, rotated) { \
+  epilogue##I.values[Q4_LAST_COLUMN(I)] = STORE_VALUE(rotated); \
+}
+shared float epilogue_exchange[COLUMNS_PER_GROUP];
 void main() {
   uint lane = gl_LocalInvocationID.x;
   uint column_slot = lane / LANES;
@@ -402,8 +447,11 @@ void main() {
   uint n0 = params.shape[0];
   uint n1 = params.shape[1];
   uint n2 = params.shape[2];
-  uint groups0 = (n0 + COLUMNS_PER_GROUP - 1u) / COLUMNS_PER_GROUP;
-  uint groups1 = (n1 + COLUMNS_PER_GROUP - 1u) / COLUMNS_PER_GROUP;
+  bool swiglu = (params.flags & FLAG_SWIGLU) != 0u;
+  uint groups0 = swiglu ? (n0 + 3u) / 4u
+                        : (n0 + COLUMNS_PER_GROUP - 1u) / COLUMNS_PER_GROUP;
+  uint groups1 = swiglu ? 0u
+                        : (n1 + COLUMNS_PER_GROUP - 1u) / COLUMNS_PER_GROUP;
   uint workgroup = gl_WorkGroupID.x;
   uint which;
   uint n;
@@ -419,7 +467,23 @@ void main() {
     workgroup -= groups0 + groups1;
     n = n2;
   }
-  uint column = workgroup * COLUMNS_PER_GROUP + column_slot;
+  // Pair layouts: slot s and slot s ^ 4 hold the two columns a folded
+  // epilogue combines (see the binding block above).
+  bool pair_slot = column_slot >= 4u;
+  uint pair = workgroup * 4u + (column_slot & 3u);
+  bool rope = (params.flags & (FLAG_ROPE << which)) != 0u;
+  uint column;
+  if (swiglu && which == 0u) {
+    column = pair;
+    which = pair_slot ? 1u : 0u;
+    n = pair_slot ? n1 : n0;
+  } else if (rope) {
+    uint half_dims = params.output_size;
+    column = (pair / half_dims) * (2u * half_dims) + (pair % half_dims) +
+        (pair_slot ? half_dims : 0u);
+  } else {
+    column = workgroup * COLUMNS_PER_GROUP + column_slot;
+  }
   bool column_active = column < n;
   precise float accumulator = 0.0;
   if (column_active) {
@@ -450,15 +514,65 @@ void main() {
   }
   float total = reduce_scratch[lane];
 #endif
+  float value = ROUND_STORAGE(total);
   if (lane_in_slot == 0u && column_active) {
-    float rounded = ROUND_STORAGE(total);
+    float rounded = value;
     if (which == 0u) {
-      Q4_MULTI_STORE(0, rounded)
+      Q4_MULTI_STORE(0, rounded, value)
     } else if (which == 1u) {
-      Q4_MULTI_STORE(1, rounded)
+      Q4_MULTI_STORE(1, rounded, value)
     } else {
-      Q4_MULTI_STORE(2, rounded)
+      Q4_MULTI_STORE(2, rounded, value)
     }
+    epilogue_exchange[column_slot] = value;
+  }
+  // Push-constant flags are uniform across the dispatch, so every
+  // invocation of a folded dispatch reaches this barrier.
+  if (!swiglu && !rope) {
+    return;
+  }
+  barrier();
+  if (lane_in_slot != 0u || !column_active) {
+    return;
+  }
+  float partner = epilogue_exchange[column_slot ^ 4u];
+  if (swiglu) {
+    if (!pair_slot) {
+      // shaders/swiglu.comp: sig = sigmoid(gate), silu = gate * sig,
+      // out = silu * up, each rounded to storage.
+      float gate = value;
+      float sig = ROUND_STORAGE(1.0 / (1.0 + exp(-gate)));
+      float silu = ROUND_STORAGE(gate * sig);
+      float product = ROUND_STORAGE(silu * partner);
+      sum0.values[column] = STORE_VALUE(sig);
+      sum1.values[column] = STORE_VALUE(silu);
+      epilogue0.values[column] = STORE_VALUE(product);
+    }
+    return;
+  }
+  // shaders/fast_rope.comp, forward half-split, one token (t = 0):
+  // theta = scale * (0 + offset) * exp(-i * beta) for pair index i,
+  // x1 the low half, x2 the high half, each product rounded.
+  uint i = pair % params.output_size;
+  float offset = float(int(params.rhs_offset));
+  float position = params.alpha * (0.0 + offset);
+  float inv_freq = exp(-float(i) * params.beta);
+  float theta = position * inv_freq;
+  float cos_t = ROUND_STORAGE(cos(theta));
+  float sin_t = ROUND_STORAGE(sin(theta));
+  float x1 = pair_slot ? partner : value;
+  float x2 = pair_slot ? value : partner;
+  float xa = ROUND_STORAGE(x1 * cos_t);
+  float xb = ROUND_STORAGE(x2 * sin_t);
+  float xc = ROUND_STORAGE(x1 * sin_t);
+  float xd = ROUND_STORAGE(x2 * cos_t);
+  float rotated = pair_slot ? (xc + xd) : (xa - xb);
+  if (which == 0u) {
+    Q4_ROPE_STORE(0, rotated)
+  } else if (which == 1u) {
+    Q4_ROPE_STORE(1, rotated)
+  } else {
+    Q4_ROPE_STORE(2, rotated)
   }
 }
 #else
