@@ -383,8 +383,12 @@ def adapt(package: Path, output: Path, identity: dict) -> dict:
         where = f"compiler manifest tensors.{name}"
         if not isinstance(name, str) or not name or not isinstance(tensor, dict):
             fail(f"{where} must be a named object")
+        # The compiler spells `dtype` on a graph tensor only where the
+        # surface is not the default fp16 (bool cond). It is redundant with
+        # the program binding, so it is accepted and then checked against it.
         require_fields(tensor, {"logicalBytes", "role", "shape"},
-                       {"accumulation", "aliasOf", "logicalBytes", "role", "shape"}, where)
+                       {"accumulation", "aliasOf", "dtype", "logicalBytes",
+                        "role", "shape"}, where)
         role = tensor["role"]
         if role not in ROLES:
             fail(f"{where}.role '{role}' is unsupported")
@@ -397,6 +401,8 @@ def adapt(package: Path, output: Path, identity: dict) -> dict:
         facts = inferred.get(name)
         if not facts:
             fail(f"{where} has no program binding")
+        if "dtype" in tensor and tensor["dtype"] != facts["dtype"]:
+            fail(f"{where}.dtype does not match the program binding dtype")
         if byte_size != product(tensor_shape) * DTYPE_BYTES[facts["dtype"]]:
             fail(f"{where}.logicalBytes does not match inferred dtype geometry")
         if role == "intermediate":
