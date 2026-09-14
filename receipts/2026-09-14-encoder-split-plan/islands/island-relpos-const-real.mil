@@ -1,0 +1,10 @@
+program(1.3)
+[buildInfo = dict<string, string>({})]
+{
+  func main<ios18>(tensor<fp16, [1, 8, 375, 128]> q_v) {
+    bool tx = const()[name = string("tx"), val = bool(false)];
+    bool ty = const()[name = string("ty"), val = bool(false)];
+    tensor<fp16, [1, 8, 128, 749]> pos_kT = const()[name = string("op_355_to_fp16"), val = tensor<fp16, [1, 8, 128, 749]>(BLOBFILE(path = string("@model_path/weights/weight.bin"), offset = uint64(8195008)))];
+    tensor<fp16, [1, 8, 375, 749]> attention_scores_1 = matmul(transpose_x = tx, transpose_y = ty, x = q_v, y = pos_kT)[name = string("attention_scores_1")];
+  } -> (attention_scores_1);
+}

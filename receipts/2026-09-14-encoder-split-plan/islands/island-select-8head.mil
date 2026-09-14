@@ -1,0 +1,7 @@
+program(1.3)
+[buildInfo = dict<string, string>({})]
+{
+  func main<ios18>(tensor<fp16, [1, 8, 375, 375]> ninf_rt, tensor<fp16, [1, 8, 375, 375]> matrix_bd_5, tensor<bool, [1, 8, 375, 375]> cond) {
+    tensor<fp16, [1, 8, 375, 375]> attention_mask_9 = select(a = ninf_rt, b = matrix_bd_5, cond = cond)[name = string("attention_mask_9")];
+  } -> (attention_mask_9);
+}

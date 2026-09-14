@@ -1,0 +1,10 @@
+program(1.3)
+[buildInfo = dict<string, string>({})]
+{
+  func main<ios18>(tensor<fp16, [1, 8, 375, 128]> q_scaled, tensor<fp16, [1, 8, 375, 128]> k_heads, tensor<fp16, [1, 8, 375, 375]> ninf_rt, tensor<fp16, [1, 8, 375, 375]> matrix_bd_5, tensor<bool, [1, 1, 375, 375]> cond) {
+    bool tx = const()[name = string("tx"), val = bool(false)];
+    bool ty = const()[name = string("ty"), val = bool(true)];
+    tensor<fp16, [1, 8, 375, 375]> matmul_0 = matmul(transpose_x = tx, transpose_y = ty, x = q_scaled, y = k_heads)[name = string("matmul_0")];
+    tensor<fp16, [1, 8, 375, 375]> attention_mask_9 = select(a = ninf_rt, b = matrix_bd_5, cond = cond)[name = string("attention_mask_9")];
+  } -> (matmul_0, attention_mask_9);
+}

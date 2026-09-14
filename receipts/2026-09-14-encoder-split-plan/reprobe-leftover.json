@@ -1,0 +1,128 @@
+{
+ "concat-values-tuple": {
+  "anec_files": 0,
+  "diag": "h13.unsupported-concat",
+  "elapsed": 0.02,
+  "rc": 65,
+  "stderr": "6:5: error [h13.unsupported-concat]: H13 has no concat encoder: every decoded H13 program writes one output surface from one input or a broadcast pair, and the binding ABI carries one contiguous slice"
+ },
+ "concat-xn-heads": {
+  "anec_files": 0,
+  "diag": "h13.invalid-concat-parameters",
+  "elapsed": 0.02,
+  "rc": 65,
+  "stderr": "6:5: error [h13.invalid-concat-parameters]: H13 concat requires a tuple of at least two values and an exact rank-zero tensor<int32,[]> axis"
+ },
+ "conv-1x1-750": {
+  "anec_files": 0,
+  "diag": "h13.conv-outside-envelope",
+  "elapsed": 0.02,
+  "rc": 65,
+  "stderr": "11:5: error [h13.conv-outside-envelope]: H13 conv needs a decoded geometry: an fp16 rank-4 input and result with a batch of one, a constant [Cout, Cin/groups, k, k] weight, unit dilations, zero explic"
+ },
+ "layer-norm-encoder": {
+  "anec_files": 0,
+  "diag": "h13.norm-outside-envelope",
+  "elapsed": 0.02,
+  "rc": 65,
+  "stderr": "8:5: error [h13.norm-outside-envelope]: H13 'layer_norm' needs a decoded geometry: fp16 static shapes, constant axes, no gamma or beta, epsilon 1e-5, and an input and output surface inside the oracle "
+ },
+ "matmul-pv": {
+  "anec_files": 2,
+  "diag": "",
+  "elapsed": 0.02,
+  "rc": 0,
+  "stderr": ""
+ },
+ "matmul-relpos": {
+  "anec_files": 2,
+  "diag": "",
+  "elapsed": 0.02,
+  "rc": 0,
+  "stderr": ""
+ },
+ "matmul-scores-ty0": {
+  "anec_files": 2,
+  "diag": "",
+  "elapsed": 0.02,
+  "rc": 0,
+  "stderr": ""
+ },
+ "matmul-scores-ty1": {
+  "anec_files": 2,
+  "diag": "",
+  "elapsed": 0.02,
+  "rc": 0,
+  "stderr": ""
+ },
+ "select-encoder-cond-broadcast": {
+  "anec_files": 2,
+  "diag": "",
+  "elapsed": 0.02,
+  "rc": 0,
+  "stderr": ""
+ },
+ "select-fp16-cond": {
+  "anec_files": 0,
+  "diag": "h13.boolean-outside-envelope",
+  "elapsed": 0.02,
+  "rc": 65,
+  "stderr": "5:5: error [h13.boolean-outside-envelope]: H13 select is outside the decoded boolean envelope: the captured geometries are less at CHW (375,1,1)/(750,1,1)/(1500,1,1)/(64,1,1) with a bool result, floor"
+ },
+ "select-rrb-8375375": {
+  "anec_files": 2,
+  "diag": "",
+  "elapsed": 0.02,
+  "rc": 0,
+  "stderr": ""
+ },
+ "sigmoid-1024-375": {
+  "anec_files": 0,
+  "diag": "h13.unary-outside-envelope",
+  "elapsed": 0.02,
+  "rc": 65,
+  "stderr": "5:5: error [h13.unary-outside-envelope]: H13 sigmoid is outside the decoded unary envelope: the captured geometries are silu, sigmoid, exp, gelu, leaky_relu, relu, rsqrt, sqrt, and tanh at CHW (64,1,1"
+ },
+ "silu-1024-375": {
+  "anec_files": 0,
+  "diag": "h13.unary-outside-envelope",
+  "elapsed": 0.02,
+  "rc": 65,
+  "stderr": "5:5: error [h13.unary-outside-envelope]: H13 silu is outside the decoded unary envelope: the captured geometries are silu, sigmoid, exp, gelu, leaky_relu, relu, rsqrt, sqrt, and tanh at CHW (64,1,1)/("
+ },
+ "silu-375-4096": {
+  "anec_files": 0,
+  "diag": "h13.unary-outside-envelope",
+  "elapsed": 0.01,
+  "rc": 65,
+  "stderr": "5:5: error [h13.unary-outside-envelope]: H13 silu is outside the decoded unary envelope: the captured geometries are silu, sigmoid, exp, gelu, leaky_relu, relu, rsqrt, sqrt, and tanh at CHW (64,1,1)/("
+ },
+ "slice-lastdim-375-749": {
+  "anec_files": 0,
+  "diag": "h13.noncontiguous-slice",
+  "elapsed": 0.02,
+  "rc": 65,
+  "stderr": "7:5: error [h13.noncontiguous-slice]: H13 slice_by_index over non-unit head dimensions reads 3000 chunks of 375 elements spaced 749 apart, and one binding slice cannot represent interleaved chunks: a "
+ },
+ "softmax-8375375": {
+  "anec_files": 0,
+  "diag": "h13.norm-outside-envelope",
+  "elapsed": 0.02,
+  "rc": 65,
+  "stderr": "6:5: error [h13.norm-outside-envelope]: H13 'softmax' needs a decoded geometry: fp16 static shapes, constant axes, no gamma or beta, epsilon 1e-5, and an input and output surface inside the oracle par"
+ },
+ "transpose-r3-021": {
+  "anec_files": 0,
+  "diag": "h13.nonfoldable-transpose",
+  "elapsed": 0.02,
+  "rc": 65,
+  "stderr": "6:5: error [h13.nonfoldable-transpose]: H13 a tail-swap transpose moves the storage-fastest axis, so its view reads rows whose elements sit a non-unit storage stride apart: the NCHW descriptor carries"
+ },
+ "transpose-r4-0213": {
+  "anec_files": 0,
+  "diag": "h13.nonfoldable-transpose",
+  "elapsed": 0.02,
+  "rc": 65,
+  "stderr": "6:5: error [h13.nonfoldable-transpose]: H13 transpose with several consumers or a returned value needs a materialized transposed surface, and the decoded corpus holds no data-movement encoder"
+ }
+}

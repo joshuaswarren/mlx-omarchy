@@ -1,0 +1,79 @@
+$ mlx-omarchy-info --check-bundle receipts/2026-09-14-encoder-split-plan/bundles/island-attn-a-kt
+[receipt] bundle: /home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/EncoderSplitPlan/receipts/2026-09-14-encoder-split-plan/bundles/island-attn-a-kt
+[receipt] graph: parakeet-encoder-island-attn-a-kt
+[receipt] graph_hash: 85325f3059a345dee7c62c53a0072b2e869c0c8116385c992e8963587714ff88
+[receipt] task_descriptors: 416
+[receipt] input k_headsT: index=0 dtype=float16 shape=[1,8,128,375] byte_size=768000 stride=786432
+[receipt] input pos_kT: index=1 dtype=float16 shape=[1,8,128,749] byte_size=1533952 stride=1572864
+[receipt] input q_scaled: index=2 dtype=float16 shape=[1,8,375,128] byte_size=768000 stride=770048
+[receipt] input q_v: index=3 dtype=float16 shape=[1,8,375,128] byte_size=768000 stride=770048
+[receipt] output attention_scores_1: index=0 dtype=float16 shape=[1,8,375,749] byte_size=4494000 stride=4620288
+[receipt] output matmul_0: index=1 dtype=float16 shape=[1,8,375,375] byte_size=2250000 stride=2310144
+[receipt] logical_result 0 attention_scores_1: dtype=float16 shape=[1,8,375,749] tensor=attention_scores_1 element_offset=0 element_count=2247000 conversion=identity
+[receipt] logical_result 1 matmul_0: dtype=float16 shape=[1,8,375,375] tensor=matmul_0 element_offset=0 element_count=1125000 conversion=identity
+[receipt] state: none
+[receipt] intermediate: none
+[receipt] dispatch_plan: 0 1
+[receipt] dispatch 0: program=0 payload=program-0.anec operation=matmul encoder=apple-parity-batched-matmul scratch_bytes=0 payload_size=178304 td_size=628 td_count=208 sources=2 destinations=1
+[receipt] anec input pos_kT: channel=5 logical_bytes=1533952 allocation_bytes=1572864 element_offset=0 element_count=766976 physical_elements=766976 nchw=[1,8,128,749,196608,1536]
+[receipt] anec input q_v: channel=6 logical_bytes=768000 allocation_bytes=770048 element_offset=0 element_count=384000 physical_elements=384000 nchw=[1,8,375,128,96000,256]
+[receipt] anec output attention_scores_1: channel=4 logical_bytes=4494000 allocation_bytes=4620288 element_offset=0 element_count=2247000 physical_elements=2247000 nchw=[1,8,375,749,576000,1536]
+[receipt] dispatch 1: program=1 payload=program-1.anec operation=matmul encoder=apple-parity-batched-matmul scratch_bytes=0 payload_size=178304 td_size=628 td_count=208 sources=2 destinations=1
+[receipt] anec input k_headsT: channel=5 logical_bytes=768000 allocation_bytes=786432 element_offset=0 element_count=384000 physical_elements=384000 nchw=[1,8,128,375,98304,768]
+[receipt] anec input q_scaled: channel=6 logical_bytes=768000 allocation_bytes=770048 element_offset=0 element_count=384000 physical_elements=384000 nchw=[1,8,375,128,96000,256]
+[receipt] anec output matmul_0: channel=4 logical_bytes=2250000 allocation_bytes=2310144 element_offset=0 element_count=1125000 physical_elements=1125000 nchw=[1,8,375,375,288000,768]
+[receipt] payload anec: program-0.anec sha256=d05e193a620d7edc25ee61f865c164182155f84e7fb925a38c303a9c0db1d8df byte_size=182400
+[receipt] payload anec: program-1.anec sha256=a3aa2fe1333a48eba3e7fcae5b848563e2bfa747a232dadf9ed2d568821c5627 byte_size=182400
+[receipt] compiler: host_build=Linux 6.17.2-1-pve x86_64 toolchain=mil-hwxc 83d486b178e83e602ab894f1154004bb7f2600b9 sha256:77521fb36681f8ace6e4aff97ef7ca856b57137e3808680f85dfd4742248de61 target=h13
+[receipt] driver_abi_major: 1
+[receipt] provenance: repo=joshuaswarren/mlx-omarchy commit=030bab6ff6c279a5d76770b9dfc4ab03aa7975d8
+[receipt] OK: bundle valid
+EXIT:0
+
+$ mlx-omarchy-info --check-bundle receipts/2026-09-14-encoder-split-plan/bundles/island-select-8head
+[receipt] bundle: /home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/EncoderSplitPlan/receipts/2026-09-14-encoder-split-plan/bundles/island-select-8head
+[receipt] graph: parakeet-encoder-island-select-8head
+[receipt] graph_hash: fd9e6c5b64f8b2c58fa2067799589ba0d32dfc24361b6612c9ef94d9e1a6422e
+[receipt] task_descriptors: 5
+[receipt] input cond: index=0 dtype=bool shape=[1,8,375,375] byte_size=1125000 stride=1163264
+[receipt] input matrix_bd_5: index=1 dtype=float16 shape=[1,8,375,375] byte_size=2250000 stride=2310144
+[receipt] input ninf_rt: index=2 dtype=float16 shape=[1,8,375,375] byte_size=2250000 stride=2310144
+[receipt] output attention_mask_9: index=0 dtype=float16 shape=[1,8,375,375] byte_size=2250000 stride=2310144
+[receipt] logical_result 0 attention_mask_9: dtype=float16 shape=[1,8,375,375] tensor=attention_mask_9 element_offset=0 element_count=1125000 conversion=identity
+[receipt] state: none
+[receipt] intermediate: none
+[receipt] dispatch_plan: 0
+[receipt] dispatch 0: program=0 payload=program-0.anec operation=select encoder=apple-parity-boolean scratch_bytes=2310144 payload_size=5120 td_size=628 td_count=5 sources=3 destinations=1
+[receipt] anec input ninf_rt: channel=5 logical_bytes=2250000 allocation_bytes=2310144 element_offset=0 element_count=1125000 physical_elements=1125000 nchw=[1,8,375,375,288000,768]
+[receipt] anec input matrix_bd_5: channel=6 logical_bytes=2250000 allocation_bytes=2310144 element_offset=0 element_count=1125000 physical_elements=1125000 nchw=[1,8,375,375,288000,768]
+[receipt] anec input cond: channel=7 logical_bytes=1125000 allocation_bytes=1163264 element_offset=0 element_count=1125000 physical_elements=1125000 nchw=[1,8,375,375,144000,384]
+[receipt] anec output attention_mask_9: channel=4 logical_bytes=2250000 allocation_bytes=2310144 element_offset=0 element_count=1125000 physical_elements=1125000 nchw=[1,8,375,375,288000,768]
+[receipt] payload anec: program-0.anec sha256=d40ec023cfd5b2c5d5cfeb95f4a4673024f495224acd4448e8498bf50114780f byte_size=9216
+[receipt] compiler: host_build=Linux 6.17.2-1-pve x86_64 toolchain=mil-hwxc 83d486b178e83e602ab894f1154004bb7f2600b9 sha256:77521fb36681f8ace6e4aff97ef7ca856b57137e3808680f85dfd4742248de61 target=h13
+[receipt] driver_abi_major: 1
+[receipt] provenance: repo=joshuaswarren/mlx-omarchy commit=030bab6ff6c279a5d76770b9dfc4ab03aa7975d8
+[receipt] OK: bundle valid
+EXIT:0
+
+$ mlx-omarchy-info --check-bundle receipts/2026-09-14-encoder-split-plan/bundles/island-pv
+[receipt] bundle: /home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/EncoderSplitPlan/receipts/2026-09-14-encoder-split-plan/bundles/island-pv
+[receipt] graph: parakeet-encoder-island-pv
+[receipt] graph_hash: ed03818974f7e2728daff0c839fcd4486a87282515347e68db7d2219605905c3
+[receipt] task_descriptors: 208
+[receipt] input probs: index=0 dtype=float16 shape=[1,8,375,375] byte_size=2250000 stride=2310144
+[receipt] input v_heads: index=1 dtype=float16 shape=[1,8,375,128] byte_size=768000 stride=770048
+[receipt] output attn_output_1: index=0 dtype=float16 shape=[1,8,375,128] byte_size=768000 stride=770048
+[receipt] logical_result 0 attn_output_1: dtype=float16 shape=[1,8,375,128] tensor=attn_output_1 element_offset=0 element_count=384000 conversion=identity
+[receipt] state: none
+[receipt] intermediate: none
+[receipt] dispatch_plan: 0
+[receipt] dispatch 0: program=0 payload=program-0.anec operation=matmul encoder=apple-parity-batched-matmul scratch_bytes=0 payload_size=178304 td_size=628 td_count=208 sources=2 destinations=1
+[receipt] anec input v_heads: channel=5 logical_bytes=768000 allocation_bytes=770048 element_offset=0 element_count=384000 physical_elements=384000 nchw=[1,8,375,128,96000,256]
+[receipt] anec input probs: channel=6 logical_bytes=2250000 allocation_bytes=2310144 element_offset=0 element_count=1125000 physical_elements=1125000 nchw=[1,8,375,375,288000,768]
+[receipt] anec output attn_output_1: channel=4 logical_bytes=768000 allocation_bytes=770048 element_offset=0 element_count=384000 physical_elements=384000 nchw=[1,8,375,128,96000,256]
+[receipt] payload anec: program-0.anec sha256=76496b74eff176f8e0358dbb5e285f7fe60c8a7c270c2b5f400b5407195c3fca byte_size=182400
+[receipt] compiler: host_build=Linux 6.17.2-1-pve x86_64 toolchain=mil-hwxc 83d486b178e83e602ab894f1154004bb7f2600b9 sha256:77521fb36681f8ace6e4aff97ef7ca856b57137e3808680f85dfd4742248de61 target=h13
+[receipt] driver_abi_major: 1
+[receipt] provenance: repo=joshuaswarren/mlx-omarchy commit=030bab6ff6c279a5d76770b9dfc4ab03aa7975d8
+[receipt] OK: bundle valid
+EXIT:0
