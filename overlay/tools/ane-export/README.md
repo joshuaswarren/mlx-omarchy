@@ -1,20 +1,26 @@
 # ane-export
 
- This directory contains two host-side paths that produce schema-4 ANE bundles:
+Export a small elementwise or matmul region as an ANE bundle that passes
+`mlx-omarchy-info --check-bundle` on Linux. The tool runs on **macOS on Apple
+silicon with Xcode and ANECompiler installed**; compilation uses the private
+`ANECCompile` entry point, so Linux cannot produce bundles. No MLX and no
+coremltools dependency: the input is a JSON descriptor, and the MIL
+`program(1.3)` text plus `weights.bin` are emitted directly.
 
-- `ane_export.py` retains the macOS reference workflow for small elementwise
-  captures. It uses Xcode, ANECompiler, and the private `ANECCompile` entry
-  point.
-- `h13_package_to_bundle.py` adapts an explicit Linux `mil-hwxc` H13 ANEC
-  package without private Apple frameworks.
+Proven path: `receipts/2026-08-31-mil-oneop-proof.md` (one-op add) and
+`receipts/2026-09-01-ane-exporter.md` (exporter, add/mul coverage, matmul
+boundary).
 
-Both outputs must pass `mlx-omarchy-info --check-bundle` before any device work.
-A successful check proves bundle structure and declared H13/driver-ABI
-compatibility. It does not prove physical-device or numerical qualification.
+## Layout
 
-## macOS reference workflow
+```
+ane_export.py               this tool (stdlib-only Python 3.10+)
+test_ane_export.py          converter-contract tests (run on Linux)
+ane-compile-hwx             built on the mac from tools/ane-compile-hwx.mm
+hwxv2-to-anec.py            HWX -> ANEC converter, copied unmodified
+```
 
-Build the companion compiler tool:
+`ane-compile-hwx` builds with:
 
 ```
 xcrun clang++ -std=c++17 -fblocks -framework Foundation \
@@ -22,70 +28,63 @@ xcrun clang++ -std=c++17 -fblocks -framework Foundation \
   ane-compile-hwx.mm -o ane-compile-hwx
 ```
 
-Describe and export one region:
+`hwxv2-to-anec.py` is the canonical converter from
+`joshuaswarren/ane-linux-experiments` (`tools/hwxv2-to-anec.py`), copied in
+unmodified - do not fork it. It must be 52a3211 or later: that commit reads
+the weight payload offset out of the blob record and derives the nchw plane
+and row bytes from the task's tile-DMA counts, and it subsumes the old
+`-patched` fork's widened TD flag word (`0x4401F800`). The exporter refuses
+an older copy, and passes `--weights` so a blob-backed object without its
+`weights.bin` is refused rather than silently truncated. Use a Python 3.10+
+interpreter for it (Xcode's bundled Python 3.9 is too old; the proof used a
+3.12 venv).
+
+## Workflow
+
+1. Describe the region:
+
+```json
+{"op": "add", "input_shape": [1, 512], "const_value": 0.25}
+```
+
+`op` is `add`, `mul`, or `matmul`; `matmul` also needs
+`"weight_shape": [16, 32]` and takes `"input_shape": [1, 16]`. The const is a
+single fill value written to `weights.bin` in fp16.
+
+2. Export on the mac (tools dir holds the two companion files):
 
 ```
-printf '%s\n' '{"op":"add","input_shape":[1,512],"const_value":0.25}' > desc.json
 python3 ane_export.py desc.json --out-dir out-add-1x512 \
-  --tools-dir . --target h13 --source-commit <40-hex commit>
+  --tools-dir . --source-commit <40-hex commit>
 ```
 
-The exporter emits `bundle/manifest.json`, `bundle/model.anec`, and
-`bundle/weights.bin`. It also retains the MIL capture and HWX conversion input
- outside the bundle. Schema 4 records one program, explicit ordered identity
- return views, exact channel allocations, and driver ABI major 1.
-
-Both producers set `release_asset.model_sha256` to the same compiled-payload
-collection identity. They sort payload records by `path`, retain exactly
-`role`, `path`, `byte_size`, and `sha256`, serialize with
-`json.dumps(records, sort_keys=True, separators=(",", ":"),
-ensure_ascii=True)`, and hash the UTF-8 bytes. ANEC and weights records are
-included.
-
-Supported descriptors use `add`, `mul`, or `matmul`, positive input shapes, and
-fp16. `matmul` also needs `weight_shape`. The retained compiler rejected the
-hand-authored matmul forms in the 2026-09-01 receipt. Const tensors use
-`weights.bin` through `BLOBFILE`; inline fp16 constants are not accepted by
-that reference compiler.
-
-## Explicit Linux package workflow
-
- The adapter accepts only `mil-hwxc.h13-anec-package.v2`, target `H13`, and
-artifact format `anec`. The compiler invocation must use `--format anec`.
-Provide the source graph, a repository containing the recorded generation
-commit, and the generation receipt. The receipt binds the compiler manifest,
-compiler source commit, generation binary digest, graph digest, and every
-emitted payload digest. `--compiler-source` only proves that the recorded
-commit exists in the supplied repository. It does not verify the historical
-binary or require the checkout HEAD to match.
-
-```
-python3 h13_package_to_bundle.py package \
-  --out-dir bundle \
-  --graph-source model.mil \
-  --compiler-source /path/to/mil-hwx-compiler \
-  --compiler-receipt package/source.json \
-  --name graph-region \
-  --source-repo owner/repository \
-  --source-commit <40-hex commit> \
-  --model graph-region
-```
-
- The adapter preserves explicit physical outputs and ordered logical return
- views, including duplicates, reshapes, and overlapping slices. It retains
- program order, bindings, NCHW geometry, and allocations. The manifest digest
- must match the receipt before wiring is read. HWX packages, non-H13 targets,
- old schemas, unknown fields, invalid receipts, and embedded `constantInputs`
- are rejected. The old v1 archive in `ane-compiler.lock` is incompatible with
- this adapter; a new release pin awaits full compiler qualification.
-
-## Validate
+3. Ship `out-add-1x512/bundle/` (manifest.json + model.anec + weights.bin,
+   nothing else) to the Linux host and check it:
 
 ```
 ./.work/build/tools/mlx-omarchy-info/mlx-omarchy-info \
-  --check-bundle bundle
+  --check-bundle receipts/fixtures/exported/ane-add-fp16-1x512
 ```
 
-The check opens no Vulkan or ANE device. A missing or invalid bundle leaves the
-region on Vulkan. The runtime-generated cache key and qualification boundaries
-are documented in `docs/ane-bundles.md`.
+Exit 0 plus `[receipt]` lines means the bundle validates. The exporter also
+leaves `capture/` (model.mil + weights.bin) and `hwx-output/model.hwx` beside
+the bundle for inspection.
+
+## Coverage and limits
+
+- Proven: fp16 `add` and `mul` on `[1, N]` shapes (N = 512 and 896 exported).
+- Not accepted by ANECompiler 9.509.0: `matmul` authored as MIL text, with and
+  without explicit `transpose_x/transpose_y` attrs. See the 2026-09-01
+  receipt for the exact rejected program.
+- Const tensors must ride `weights.bin` via `BLOBFILE`; inline fp16 const
+  tensors are rejected by the compiler.
+
+## Community submissions
+
+A community bundle submission must reproduce through this public exporter and
+pass exactly the `--check-bundle` checks on Linux, with no private Apple
+frameworks, compiler binaries, firmware, or model weights inside the bundle.
+Release assets are keyed by exact model, shapes, compiler, firmware, and graph
+hash; a missing asset leaves the region on Vulkan. On-device execution of a
+converted `.anec` is not yet proven; bundles record the compiler and firmware
+range they were compiled against.

@@ -11,14 +11,14 @@ Runs on macOS (Apple silicon) with Xcode and ANECompiler installed. The tool:
    ``receipts/2026-08-31-mil-oneop-proof.md``).
 3. Compiles through the private ``ANECCompile`` entry point via the
    companion ``ane-compile-hwx`` tool, producing ``model.hwx``.
-4. Converts the HWX to the Linux ``.anec`` container with
-   ``hwxv2-to-anec-patched.py`` (accepts the TD flag word emitted by
-   ANECompiler 9.509.0).
+4. Converts the HWX to the Linux ``.anec`` container with the canonical
+   ``hwxv2-to-anec.py`` from ``joshuaswarren/ane-linux-experiments``, passing
+   ``--weights`` so the weight payload offset comes out of the blob record.
 5. Packages a ``bundle/`` directory (manifest.json + payloads) that passes
    ``mlx-omarchy-info --check-bundle`` on Linux.
 
 Usage:
-    python3 ane_export.py DESCRIPTOR.json --out-dir EXPORT_DIR [--target h13]
+    python3 ane_export.py DESCRIPTOR.json --out-dir EXPORT_DIR
 
 Descriptor fields:
     op           "add" | "mul" | "matmul"          (required)
@@ -30,7 +30,8 @@ Descriptor fields:
 
 The scratch layout this tool expects (see the mlx-omarchy exporter README):
     ane-compile-hwx              built from ane-compile-hwx.mm (Xcode clang++)
-    hwxv2-to-anec-patched.py     HWX -> ANEC converter, TD-magic widened
+    hwxv2-to-anec.py             HWX -> ANEC converter, copied unmodified from
+                                 ane-linux-experiments (52a3211 or later)
 """
 
 import argparse
@@ -43,7 +44,6 @@ import subprocess
 import sys
 import datetime
 from pathlib import Path
-from bundle_payload_identity import payload_collection_sha256
 
 TILE_ALIGNMENT = 0x4000
 FP16_SIZES = {"fp16": 2}
@@ -52,6 +52,13 @@ WEIGHTS_ENTRY_COUNT = 2
 BLOB_MAGIC = 0xDEADBEEF
 BLOB_VERSION = 1
 BLOB_DATA_OFFSET = 128  # 0x40 header + 0x40 blob record
+CONVERTER = "hwxv2-to-anec.py"
+# ane-linux-experiments 52a3211 made the converter read the weight payload
+# offset out of the blob record and derive nchw geometry from the task's
+# tile-DMA counts. An earlier copy takes no --weights, emits a header-prefixed
+# weight stream and convention geometry, and the export is wrong but silent -
+# so refuse it by the two names that fix introduced.
+CONVERTER_MARKERS = ("--weights", "derive_strides")
 
 
 def die(message: str) -> "NoReturn":  # type: ignore[valid-type]
@@ -64,11 +71,7 @@ def log(message: str) -> None:
 
 
 def sha256_file(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as stream:
-        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
+    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def product(shape: list) -> int:
@@ -76,25 +79,6 @@ def product(shape: list) -> int:
     for dim in shape:
         result *= int(dim)
     return result
-
-
-def anec_physical_elements(
-    nchw: tuple,
-    logical_elements: int,
-    allocation_bytes: int,
-    element_bytes: int,
-    label: str,
-) -> int:
-    physical = product(list(nchw[:4]))
-    if logical_elements > physical:
-        die(f"{label} logical elements exceed NCHW physical elements")
-    if (nchw[4] % nchw[5] or nchw[5] % element_bytes or
-            nchw[4] // nchw[5] < nchw[2] or
-            nchw[5] // element_bytes < nchw[3]):
-        die(f"{label} NCHW packed tile is smaller than logical data")
-    if nchw[0] * nchw[1] * nchw[4] > allocation_bytes:
-        die(f"{label} NCHW physical bytes exceed channel allocation")
-    return physical
 
 
 def tile_stride(byte_size: int) -> int:
@@ -182,18 +166,30 @@ def probe(command: list, fallback: str = "") -> str:
     return fallback
 
 
+def check_converter(path: Path) -> None:
+    """Refuse a converter that predates the export fix."""
+    if not path.exists():
+        die(f"missing {path}; copy tools/{CONVERTER} from "
+            "ane-linux-experiments (52a3211 or later)")
+    source = path.read_text(errors="replace")
+    missing = [name for name in CONVERTER_MARKERS if name not in source]
+    if missing:
+        die(f"{path} predates the export fix (no {', '.join(missing)}); "
+            "copy it again from ane-linux-experiments 52a3211 or later")
+
+
 def compile_region(tools_dir: Path, capture: Path, hwx_output: Path,
-                   anec_path: Path, in_elems: int, out_elems: int,
-                   target: str) -> dict:
+                   anec_path: Path, weights_path: Path, in_elems: int,
+                   out_elems: int) -> dict:
     """Compile + convert. Returns converter facts (td-count, workspace)."""
     transcript = run_tool(
-        ["./ane-compile-hwx", str(capture), str(hwx_output), target],
+        ["./ane-compile-hwx", str(capture), str(hwx_output), "h13"],
         cwd=tools_dir, stage="ANECCompile",
     )
     convert = run_tool(
-        [sys.executable, "hwxv2-to-anec-patched.py",
+        [sys.executable, CONVERTER,
          str(hwx_output / "model.hwx"), str(anec_path),
-         str(in_elems), str(out_elems)],
+         str(in_elems), str(out_elems), "--weights", str(weights_path)],
         cwd=tools_dir, stage="hwxv2-to-anec",
     )
     (Path.cwd() / "export.log").open("a").write(transcript + convert)
@@ -219,16 +215,14 @@ def main() -> int:
     parser.add_argument("--source-repo", default="joshuaswarren/mlx-omarchy")
     parser.add_argument("--source-commit", default="",
                         help="40-hex commit of the source repo")
+    parser.add_argument("--firmware-min", default="26.0")
+    parser.add_argument("--firmware-max", default="26.6")
     parser.add_argument("--macos-build", default="",
                         help="override probed sw_vers -buildVersion")
     parser.add_argument("--anecompiler", default="",
                         help="override probed compiler identity string")
-    parser.add_argument("--target", default="h13",
-                        help="ANECompiler hardware target passed to ane-compile-hwx")
     args = parser.parse_args()
 
-    if args.target.lower() != "h13":
-        die("--target must be h13")
     descriptor = json.loads(args.descriptor.read_text())
     op = descriptor.get("op")
     if op not in ("add", "mul", "matmul"):
@@ -261,6 +255,7 @@ def main() -> int:
     tools_dir = (args.tools_dir or Path(__file__).resolve().parent).resolve()
     if not (tools_dir / "ane-compile-hwx").exists():
         die(f"missing {tools_dir}/ane-compile-hwx (build ane-compile-hwx.mm)")
+    check_converter(tools_dir / CONVERTER)
 
     out_dir = args.out_dir.resolve()
     bundle_dir = out_dir / "bundle"
@@ -287,15 +282,14 @@ def main() -> int:
 
     # 3-4: compile + convert.
     anec_path = bundle_dir / "model.anec"
-    log(f"target={args.target}")
     facts = compile_region(tools_dir, capture_dir, hwx_dir, anec_path,
-                           in_elems, out_elems, args.target)
+                           capture_weights, in_elems, out_elems)
     bundle_weights = bundle_dir / "weights.bin"
     bundle_weights.write_bytes(weights_bin)
 
     # 5: manifest.
     elem_size = FP16_SIZES[dtype]
-    ws_bytes = facts["workspace_bytes"]
+    ws_bytes = max(TILE_ALIGNMENT, facts["workspace_bytes"])
     commit = args.source_commit
     if not re.fullmatch(r"[0-9a-f]{40}", commit):
         die("--source-commit must be a 40-hex commit hash")
@@ -317,35 +311,8 @@ def main() -> int:
         )
 
     anec_sha = sha256_file(anec_path)
-    with anec_path.open("rb") as stream:
-        header = stream.read(0x6a8)
-    if len(header) != 0x6a8:
-        die("compiled ANEC is smaller than its libane header")
-    source_count, destination_count = struct.unpack_from("<II", header, 32)
-    if source_count != 1 or destination_count != 1:
-        die("reference exporter expected one ANEC source and one destination")
-    tiles = struct.unpack_from("<32I", header, 40)
-    nchw_offset = 40 + 32 * 4
-    nchw = [struct.unpack_from("<6Q", header, nchw_offset + index * 48)
-            for index in range(32)]
-    input_channel = 4 + destination_count
-    input_allocation = tiles[input_channel] * TILE_ALIGNMENT
-    output_allocation = tiles[4] * TILE_ALIGNMENT
-    input_physical = anec_physical_elements(
-        nchw[input_channel], in_elems, input_allocation, elem_size, "input"
-    )
-    output_physical = anec_physical_elements(
-        nchw[4], out_elems, output_allocation, elem_size, "output"
-    )
-    payloads = [
-        {"role": "anec", "path": "model.anec", "sha256": anec_sha,
-         "byte_size": anec_path.stat().st_size},
-        {"role": "weights", "path": "weights.bin",
-         "sha256": sha256_file(bundle_weights),
-         "byte_size": bundle_weights.stat().st_size},
-    ]
     manifest = {
-        "manifest_version": 4,
+        "manifest_version": 1,
         "name": name,
         "graph_hash": sha256_file(mil_path),
         "task_descriptors": facts["task_descriptors"],
@@ -353,59 +320,35 @@ def main() -> int:
             "name": "t1", "index": 0, "dtype": "float16",
             "shape": in_shape,
             "byte_size": in_elems * elem_size,
-            "stride": input_allocation,
+            "stride": tile_stride(in_elems * elem_size),
         }],
         "outputs": [{
-            "name": "t2", "index": 0, "dtype": "float16",
+            "name": "t2", "index": 1, "dtype": "float16",
             "shape": out_shape,
             "byte_size": out_elems * elem_size,
-            "stride": output_allocation,
-        }],
-        "logical_results": [{
-            "name": "t2", "dtype": "float16", "shape": out_shape,
-            "tensor": "t2", "element_offset": 0,
-            "element_count": out_elems, "conversion": "identity",
+            "stride": tile_stride(out_elems * elem_size),
         }],
         "state": [],
-        "intermediates": [],
-        "programs": [{
-            "payload": "model.anec",
-            "operation": op,
-            "encoder": "ANECompiler",
-            "task_descriptors": facts["task_descriptors"],
-            "scratch_bytes": facts["workspace_bytes"],
-            "inputs": [{
-                "tensor": "t1", "channel": input_channel, "dtype": "float16",
-                "shape": in_shape, "nchw": list(nchw[input_channel]),
-                "logical_bytes": in_elems * elem_size,
-                "allocation_bytes": input_allocation,
-                "element_offset": 0, "element_count": in_elems,
-                "physical_elements": input_physical,
-            }],
-            "outputs": [{
-                "tensor": "t2", "channel": 4, "dtype": "float16",
-                "shape": out_shape, "nchw": list(nchw[4]),
-                "logical_bytes": out_elems * elem_size,
-                "allocation_bytes": output_allocation,
-                "element_offset": 0, "element_count": out_elems,
-                "physical_elements": output_physical,
-            }],
+        "workspace": [{
+            "name": "workspace", "index": 0, "dtype": "uint8",
+            "shape": [ws_bytes], "byte_size": ws_bytes, "stride": ws_bytes,
         }],
-        "dispatch_plan": [0],
-        "payloads": payloads,
-        "compiler": {"host_build": macos_build, "toolchain": anecompiler,
-                     "target": "h13"},
-        "driver_abi_major": 1,
+        "payloads": [
+            {"role": "anec", "path": "model.anec", "sha256": anec_sha,
+             "byte_size": anec_path.stat().st_size},
+            {"role": "weights", "path": "weights.bin",
+             "sha256": sha256_file(bundle_weights),
+             "byte_size": bundle_weights.stat().st_size},
+        ],
+        "compiler": {"macos_build": macos_build, "anecompiler": anecompiler},
+        "firmware": {"min": args.firmware_min, "max": args.firmware_max},
         "provenance": {
             "source_repo": args.source_repo,
             "source_commit": commit,
             "exported_at": datetime.datetime.now(datetime.timezone.utc)
             .strftime("%Y-%m-%d"),
         },
-        "release_asset": {
-            "model": name,
-            "model_sha256": payload_collection_sha256(payloads),
-        },
+        "release_asset": {"model": name, "model_sha256": anec_sha},
     }
     (bundle_dir / "manifest.json").write_text(
         json.dumps(manifest, indent=2) + "\n"
