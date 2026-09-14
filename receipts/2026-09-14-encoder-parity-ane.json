@@ -1,0 +1,456 @@
+{
+  "schema": "mlx-omarchy.encoder-parity-ane.v1",
+  "date": "2026-09-14",
+  "host": "jwm1-linux",
+  "result": "ENCODER_RUN_WITH_ANE_ISLANDS_A_AND_C_ON_ALL_24_LAYERS_WITHIN_CONTRACT",
+  "what_was_run": {
+    "claim": "The complete pinned Parakeet encoder for the golden LibriSpeech clip, with ANE islands A and C carrying the attention matmuls in every one of the 24 transformer layers and the Apple GPU (Vulkan, through mlx-omarchy) executing every other tensor op.",
+    "ane_carries": [
+      "island A program 0: attention_scores_N = matmul(q_v, pos_kT)",
+      "island A program 1: matmul_N = matmul(q_scaled, k_headsT)",
+      "island C: attn_output_N = matmul(probs, v_heads)"
+    ],
+    "gpu_carries": "everything else: the 4-stage subsampling conv stack, mask derivation, all layer norms, both feed-forwards per layer, the depthwise conv module, softmax, the attention-mask select, and the epilogue layer_norm plus projector linear",
+    "layers_with_ane_attention": 24,
+    "ops_total": 3351,
+    "ops_on_ane": 72,
+    "ops_on_gpu": 1302,
+    "ops_const_loads": 1977
+  },
+  "resolved_model": {
+    "assigned_route": "openai (mlx-openai-deep agent type)",
+    "actual": "anthropic/claude-opus-5 (session-reported identity)",
+    "fallback": true,
+    "note": "The assignment named an OpenAI route; this session reports an Anthropic model. Reported to the parent, which authorised proceeding on the fallback model provided the identity is disclosed here. The same discrepancy is recorded in receipts/2026-09-14-encoder-islands-exec-jwm1-linux.json, so it is systemic to this batch rather than a one-off."
+  },
+  "contract": {
+    "source": "overlay/tools/coreml/parakeet-reference.lock",
+    "lock_sha256": "63415836246175d34748c1c44f2c8d00c79affc5be0f4d7da058eb7d5328f8d1",
+    "bounds": {
+      "encoder_max_abs_err": 0.3,
+      "encoder_mean_abs_err": 0.02,
+      "encoder_rel_l2_err": 0.1,
+      "nan_count_allowed": 0,
+      "inf_count_allowed": 0
+    },
+    "ane_split_run": {
+      "label": "ANE islands A+C on all 24 layers, Vulkan rest",
+      "encoder_hidden_shape": [
+        1,
+        375,
+        640
+      ],
+      "encoder_hidden_sha256": "b3d60c81bcd9c63fcdcb5c5578d765cc221b0126af3482fb165d769a65c23e6e",
+      "golden_encoder_hidden_sha256": "7e442034cb42521f7b76ec9645e8d0082899a5f551ea8d046c62a9283cc6e4e5",
+      "bounds": {
+        "encoder_max_abs_err": 0.3,
+        "encoder_mean_abs_err": 0.02,
+        "encoder_rel_l2_err": 0.1,
+        "nan_count_allowed": 0,
+        "inf_count_allowed": 0
+      },
+      "measured": {
+        "max_abs_err": 0.14715576171875,
+        "mean_abs_err": 0.0041823796927928925,
+        "rel_l2_err": 0.024916470050811768,
+        "nan": 0,
+        "inf": 0
+      },
+      "per_bound": {
+        "encoder_max_abs_err": {
+          "measured": 0.14715576171875,
+          "bound": 0.3,
+          "pass": true
+        },
+        "encoder_mean_abs_err": {
+          "measured": 0.0041823796927928925,
+          "bound": 0.02,
+          "pass": true
+        },
+        "encoder_rel_l2_err": {
+          "measured": 0.024916470050811768,
+          "bound": 0.1,
+          "pass": true
+        },
+        "nan_count": {
+          "measured": 0,
+          "bound": 0,
+          "pass": true
+        },
+        "inf_count": {
+          "measured": 0,
+          "bound": 0,
+          "pass": true
+        }
+      },
+      "encoder_mask_exact": true,
+      "encoder_mask_sum": 375,
+      "golden_encoder_mask_sum": 375,
+      "all_bounds_pass": true
+    },
+    "vulkan_only_control": {
+      "label": "vulkan-only control (no ANE)",
+      "encoder_hidden_shape": [
+        1,
+        375,
+        640
+      ],
+      "encoder_hidden_sha256": "02092bac3054e1dd31afc96658446b9ce35e3bed72424955f57e87ca6ad850b7",
+      "golden_encoder_hidden_sha256": "7e442034cb42521f7b76ec9645e8d0082899a5f551ea8d046c62a9283cc6e4e5",
+      "bounds": {
+        "encoder_max_abs_err": 0.3,
+        "encoder_mean_abs_err": 0.02,
+        "encoder_rel_l2_err": 0.1,
+        "nan_count_allowed": 0,
+        "inf_count_allowed": 0
+      },
+      "measured": {
+        "max_abs_err": 0.13494873046875,
+        "mean_abs_err": 0.004096068907529116,
+        "rel_l2_err": 0.024595974013209343,
+        "nan": 0,
+        "inf": 0
+      },
+      "per_bound": {
+        "encoder_max_abs_err": {
+          "measured": 0.13494873046875,
+          "bound": 0.3,
+          "pass": true
+        },
+        "encoder_mean_abs_err": {
+          "measured": 0.004096068907529116,
+          "bound": 0.02,
+          "pass": true
+        },
+        "encoder_rel_l2_err": {
+          "measured": 0.024595974013209343,
+          "bound": 0.1,
+          "pass": true
+        },
+        "nan_count": {
+          "measured": 0,
+          "bound": 0,
+          "pass": true
+        },
+        "inf_count": {
+          "measured": 0,
+          "bound": 0,
+          "pass": true
+        }
+      },
+      "encoder_mask_exact": true,
+      "encoder_mask_sum": 375,
+      "golden_encoder_mask_sum": 375,
+      "all_bounds_pass": true
+    },
+    "verdict": "PASS on every frozen bound"
+  },
+  "ane_submissions": {
+    "submissions": 48,
+    "worker_starts": 48,
+    "timeouts": 0,
+    "expected_submissions": 48,
+    "submissions_match_expectation": true,
+    "accounting": "24 layers x 2 islands = 48 submits. Island A is one submit carrying two programs (dispatchPlan [0, 1], 416 task descriptors); island C is one submit of one program (208 task descriptors). That is 14976 task descriptors and 72 ANE programs across the pass.",
+    "task_descriptors_total": 14976,
+    "programs_total": 72,
+    "input_bytes": 164542848,
+    "output_bytes": 180288000,
+    "ane_exec_ns": 3179529661,
+    "ane_exec_ms": 3179.5,
+    "one_process_per_submit": "The bounded worker CLI takes one bundle and one input set per process, so each layer's islands are separate launches. worker_starts equals submissions by construction; a persistent worker or the graph-level partitioner would change this."
+  },
+  "timing": {
+    "ane_split_wall_ns": 15961515319,
+    "ane_split_wall_s": 15.962,
+    "vulkan_only_wall_ns": 9666356999,
+    "vulkan_only_wall_s": 9.666,
+    "ane_share_of_wall": 0.1992,
+    "interpretation": "These two numbers are not a fair speed comparison and must not be read as one. The ANE split pays 48 process launches, 48 bundle loads and a host round trip per island, none of which a graph-level partitioner would pay. What the pair does establish is that moving the attention matmuls to the ANE keeps the encoder inside the frozen contract."
+  },
+  "counters": {
+    "section_42": {
+      "ane_split": {
+        "gpu_primitive_dispatches": 9298,
+        "vk_submissions": 124,
+        "vk_buffer_copies": 0,
+        "vk_buffer_fills": 101,
+        "vk_compute_dispatches": 6010,
+        "omarchy_finalize_calls": 145,
+        "commit_calls_with_work": 124,
+        "commit_calls_noop": 145
+      },
+      "vulkan_only": {
+        "gpu_primitive_dispatches": 9370,
+        "vk_submissions": 28,
+        "vk_buffer_copies": 0,
+        "vk_buffer_fills": 101,
+        "vk_compute_dispatches": 6298,
+        "omarchy_finalize_calls": 1,
+        "commit_calls_with_work": 28,
+        "commit_calls_noop": 1
+      }
+    },
+    "ane_counter_provenance": "The nine MLX-backend ane_* counters in trace.h stay zero here because this run does not submit through MLX eval: there is no AneRegion graph partitioner, so the islands go through the bounded mlx-omarchy-ane-worker CLI. The submission counts above are measured at the worker process boundary, which is the real authority for this run. Reporting the backend counters as the ANE evidence would understate the work as zero.",
+    "section_43": {
+      "counter_report": {
+        "ane_models_loaded": 48,
+        "ane_packages_compiled": 0,
+        "ane_package_cache_hits": 0,
+        "ane_worker_starts": 48,
+        "ane_submissions": 48,
+        "ane_timeouts": 0,
+        "ane_input_bytes": 164542848,
+        "ane_output_bytes": 180288000,
+        "ane_exec_ns": 3179529661,
+        "gpu_primitive_dispatches": 9298,
+        "vk_compute_dispatches": 6010,
+        "cpu_tensor_events": 0,
+        "accounted_input_bytes": 164542848,
+        "accounted_output_bytes": 180288000,
+        "expected_input_bytes": 164542848,
+        "expected_output_bytes": 180288000
+      },
+      "ane_counter_fields": [
+        "ane_models_loaded",
+        "ane_packages_compiled",
+        "ane_package_cache_hits",
+        "ane_worker_starts",
+        "ane_submissions",
+        "ane_timeouts",
+        "ane_input_bytes",
+        "ane_output_bytes",
+        "ane_exec_ns"
+      ],
+      "evaluated_by": "overlay/tools/coreml/encoder_parity.py::evaluate_invariants at receipts/2026-09-14-encoder-split-plan",
+      "violations": [],
+      "section_43_clean": true,
+      "byte_accounting": {
+        "measured_input_bytes": 164542848,
+        "analytic_input_bytes": 164542848,
+        "input_match": true,
+        "measured_output_bytes": 180288000,
+        "analytic_output_bytes": 180288000,
+        "output_match": true,
+        "derivation": "24 layers x (island A inputs 3837952 + island C inputs 3018000) bytes in; 24 x (island A outputs 6744000 + island C outputs 768000) bytes out. Sizes are the manifests' declared fp16 logical byte sizes.",
+        "scope_note": "Section 43's byte-accounting clause is written for a single in-framework run where the ANE and Vulkan path counters both report. Here the compared checkpoints (encoder_hidden, encoder_mask) are produced on the GPU, and the ANE traffic is island tensors measured at the worker boundary. What is accounted is therefore every byte that crossed to and from the ANE, checked against the manifests rather than against the checkpoint totals. The deviation from the clause as literally written is named here rather than hidden by picking numbers that make the equality hold."
+      },
+      "worker_completions": 48,
+      "completions_equal_submissions": true,
+      "lingering_worker_processes": {
+        "value": 0,
+        "verified_by": "ps -eo pid,etimes,stat,comm,args filtered for ane-worker returned NONE, and /proc/*/fd showed 0 descriptors on /dev/accel/accel0 after the run.",
+        "instrumentation_correction": "The snapshot helper's worker count is unreliable in both directions and neither reading was used. `pgrep -c -x mlx-omarchy-ane-worker` can never match, because the process name is 22 characters and -x matches the name exactly, so it reports 0 whether or not workers are alive; that is the form the 2026-09-14 islands receipt used. `pgrep -cf mlx-omarchy-ane-worker` matches its own shell and reported 3 workers here when there were none. The value above is the ps and /proc verification, not either pgrep."
+      }
+    }
+  },
+  "no_cpu_tensor_fallback": {
+    "cpu_tensor_events": 0,
+    "how_enforced": "Every op in the evaluator is implemented with mlx.core only and dispatch raises EncoderRunError on any op it cannot express in mx, so there is no CPU arithmetic path available to fall back to. Both runs executed all 3351 ops with zero unimplemented-op errors.",
+    "explicitly_not_arithmetic": [
+      "Pinned constants are byte-reinterpreted from the adapter's blob-v2 files straight into device arrays. That is a load, not a computation.",
+      "Island tensors cross to the ANE worker as dense row-major bytes through files, and its outputs come back the same way. That is process I/O, not arithmetic. The bytes are counted above.",
+      "The golden comparison runs in numpy off-device. It is analysis of the result, not part of the execution path.",
+      "The two encoder inputs are marshalled from the golden .npy files into device arrays. The reshape is metadata and the dtype casts are verified no-ops: encoder_input_features.npy is already float32 (1, 3000, 128) and encoder_input_mask.npy is already int32 (1, 3000) on disk, so astype changes no value and computes nothing."
+    ],
+    "host_side_metadata": "Shapes, axes, perms, strides, masks, epsilon and transpose flags are read as host constants. The pinned encoder derives no shape from a computed tensor, so this never forces a device sync on a value the run computed."
+  },
+  "island_b_is_not_on_the_ane": {
+    "placement": "The -inf attention-mask select runs on the Apple GPU, not the ANE. The h13.select-first-l2-tile defect is therefore outside this run's execution path rather than tolerated inside it.",
+    "why_excluded": "The ANE select is a reproduced device defect that corrupts its passthrough lanes independently of cond content: 1341 wrong lanes per head on jwm1 and 1337 per head on jw16, all in H rows 0-8, max_abs_err 11.1640625, with cond genuinely false everywhere in both runs. Credit to AneChannelPolarity for correcting an earlier framing of mine that treated the all-false cond as making the clip immune to the hole; it does not.",
+    "separate_coverage_gap": "Independently of the defect, this clip's cond is all false (0 of 1125000 elements true, 375 valid frames of 375), so the select's -inf fill semantics are not exercised by this input on either device. A padded-frame clip is still required to test that path. This is a gap in what the run covers, not a justification for anything.",
+    "not_a_fix": "This run establishes nothing about ANE select correctness and does not close the defect.",
+    "not_generalised": "Skipping the ANE select is a placement decision for this run. It is not a claim that the select can be skipped in general, and not a claim that any other clip behaves this way."
+  },
+  "pins": {
+    "worktree": "mlx-omarchy main b28deb1cbf7899cab71df08d432dd47cb31862ce",
+    "predecessor_receipt": "receipts/2026-09-14-encoder-islands-exec-jwm1-linux.json (branch receipts/2026-09-14-encoder-split-plan, 23d3172d)",
+    "environment": {
+      "host": "jwm1-linux",
+      "kernel": "7.1.6-1-1-ARCH",
+      "boot_id": "95872130-fd28-4d67-8247-03a0e8b61202",
+      "boot_id_matches_islands_run": true,
+      "gpu_stack": {
+        "mesa": "mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1",
+        "libvulkan_asahi_sha256": "abcce1bbed9592111ac62dd8f9eb241cc225c39a5b570bf9e5e2512f0072a292",
+        "attribution": "System ICD, unmodified. MesaWaitsPatch confirmed their A/B selects locally-built mesa trees per-invocation via VK_DRIVER_FILES and never touches the system driver, so both runs sit on one known stack with no patch boundary between them."
+      },
+      "mlx": {
+        "mlx_omarchy": "0.32.2.dev202609121216+8f6de34c",
+        "python": "Python 3.14.7",
+        "venv": "~/venv-agxgen",
+        "build_is_committed": true,
+        "contains_select_fix": "build commit 8f6de34c has 959c7a0e ('fix: four red suites on real M1 hardware, and a fourth driver miscompile') as an ancestor, verified with git merge-base --is-ancestor",
+        "why_not_the_working_tree": "overlay/mlx/backend/omarchy/shaders/select.comp is modified and unstaged in the checkout and is owned by neither this agent nor AneChannelPolarity. The GPU now carries the attention-mask select, so measuring an unattributable working tree would have made the number unciteable."
+      },
+      "ane": {
+        "device": "/dev/accel/accel0, character special file 666",
+        "worker": "/var/tmp/jwm1-select-island-exec2/mlx-omarchy-ane-worker",
+        "worker_sha256": "762dd1de868b52e4d6ffa30e18d842d9341db463b06aef2355f18fb1eb248929",
+        "libane": "/var/tmp/AneWorkerValidation-c05ba1df/receipts/2026-09-13-ane-worker-validation/libane.so",
+        "libane_sha256": "1ab9d95debcc8b5fee3b6653dfce0b50412bc7efef43c2d2167dc83ce270ca49",
+        "libane_source_commit": "f261a6cb537aca62f267ad3d01beda0d6877544c",
+        "bundles": {
+          "island-attn-a-kt": {
+            "manifest_sha256": "516c16efdb4360623893b396d169c29f6c812eb38d2ee94411780edb682764c4",
+            "programs": 2,
+            "task_descriptors": 416
+          },
+          "island-pv": {
+            "manifest_sha256": "5f0190f730aacff7282128c8a3abab08a861ced52d8084f5c774eb73a3edbffc",
+            "programs": 1,
+            "task_descriptors": 208
+          }
+        },
+        "all_pins_match_islands_receipt": true
+      },
+      "encoder": {
+        "model_repo": "mweinbach1/parakeet-tdt-0.6b-v3-coreml",
+        "model_revision": "b650695c2322ee5281dff48d7345b2f3a58ff018",
+        "mil_sha256": "ac8e9526154ac8b8d4c08b83e44dbc1a2208d7ec33e42a7838d57b698b14f133",
+        "mil_matches_islands_run": true,
+        "ops": 3351,
+        "op_types": 28,
+        "layers": 24
+      },
+      "device_state": {
+        "pre": [
+          "tag=pre",
+          "at=2026-09-14T10:38:17-05:00",
+          "device=character special file 666",
+          "module=ane refs=0",
+          "boot_id=95872130-fd28-4d67-8247-03a0e8b61202",
+          "uptime_start=2026-09-13 09:43:25",
+          "quarantine_bytes=0",
+          "workers=0",
+          "0",
+          "dmesg_tm_failed=0",
+          "dmesg_errno110=0"
+        ],
+        "post": [
+          "tag=post",
+          "at=2026-09-14T10:38:56-05:00",
+          "device=character special file 666",
+          "module=ane refs=0",
+          "boot_id=95872130-fd28-4d67-8247-03a0e8b61202",
+          "uptime_start=2026-09-13 09:43:25",
+          "quarantine_bytes=0",
+          "workers=3",
+          "dmesg_tm_failed=0",
+          "dmesg_errno110=0"
+        ],
+        "boot_id_unchanged": true,
+        "module_never_unloaded": true,
+        "quarantine_bytes_after": 0,
+        "dmesg_tm_execution_failed": 0,
+        "dmesg_errno_110": 0,
+        "worker_processes_after": 0,
+        "worker_count_caveat": "Both snapshots' worker lines are instrumentation artifacts and are not used: pre used `pgrep -c -x` which can never match a 22-character process name, post used `pgrep -cf` which matched its own shell and reported 3. The real value 0 comes from ps and from 0 descriptors on /dev/accel/accel0."
+      }
+    },
+    "golden_capture": {
+      "path": "~/.cache/mlx-omarchy/parakeet-reference/captures/b650695c-75aec2a/20260912T154759Z-librispeech/ane",
+      "anchors_verified_against_lock": {
+        "encoder_input_features.npy": {
+          "sha256": "638f1f22b36f33cdcf8cf5f63581497917fe2d8a9108da2f39dd1e99e9130731",
+          "lock_sha256": "638f1f22b36f33cdcf8cf5f63581497917fe2d8a9108da2f39dd1e99e9130731",
+          "matches_lock": true
+        },
+        "encoder_input_mask.npy": {
+          "sha256": "69afe545178dd33ed9f521b3934c77c687d64af3692a9f075b9e02c74516d804",
+          "lock_sha256": "69afe545178dd33ed9f521b3934c77c687d64af3692a9f075b9e02c74516d804",
+          "matches_lock": true
+        },
+        "encoder_hidden.npy": {
+          "sha256": "7e442034cb42521f7b76ec9645e8d0082899a5f551ea8d046c62a9283cc6e4e5",
+          "lock_sha256": "7e442034cb42521f7b76ec9645e8d0082899a5f551ea8d046c62a9283cc6e4e5",
+          "matches_lock": true
+        },
+        "encoder_mask.npy": {
+          "sha256": "6c70a6a0b2f3f1d46846fb095cb178ceca7ccd2fec2d239de4516ccc79512d33",
+          "lock_sha256": "6c70a6a0b2f3f1d46846fb095cb178ceca7ccd2fec2d239de4516ccc79512d33",
+          "matches_lock": true
+        },
+        "token_ids.json": {
+          "sha256": "a175a5f9ce8c1e91fc28f6e1fce9deee29c24c3ef49e62ce4b144cc44f8401c8",
+          "lock_sha256": "a175a5f9ce8c1e91fc28f6e1fce9deee29c24c3ef49e62ce4b144cc44f8401c8",
+          "matches_lock": true
+        },
+        "transcript.txt": {
+          "sha256": "db501a8c080380ea027ffa50a4b4956c39df77cb692c4fb78e556311a11a0790",
+          "lock_sha256": "db501a8c080380ea027ffa50a4b4956c39df77cb692c4fb78e556311a11a0790",
+          "matches_lock": true
+        },
+        "mel.npy": {
+          "sha256": "4ed24d7da64c17f58419ec45f15aa24ac9d1cfd93a4de51ee4f05e1d712b4d22",
+          "lock_sha256": "4ed24d7da64c17f58419ec45f15aa24ac9d1cfd93a4de51ee4f05e1d712b4d22",
+          "matches_lock": true
+        },
+        "waveform.npy": {
+          "sha256": "9109d935561ce8972e5ca1bb126914e91111c3a51d9db60d54a5ecd65ee3d2bd",
+          "lock_sha256": "9109d935561ce8972e5ca1bb126914e91111c3a51d9db60d54a5ecd65ee3d2bd",
+          "matches_lock": true
+        },
+        "all_match": true
+      }
+    },
+    "derivation": {
+      "build_receipt.py": "48827decc534050a6dcb989e8304ca082f3773a940c7f3d8a40e143952c43ba0",
+      "check_conv_semantics.py": "684f45d933625e61e5f8693107f66fa93b55975b4d9efa899135914a8aadecb0",
+      "check_invariants.py": "b33dc5ce1d8108b92a8814ca8062c9226f378fe338673d3bb2c0ecf13b5ba848",
+      "compare_golden.py": "7d7271d2ced2f29889844a2f7435ff05888816e09e483b500bb5c8728da5ea61",
+      "vulkan_encoder.py": "0665dccd0d7f923e73a12c90616a12174485a1696d204bd51622ac4168cc837b"
+    }
+  },
+  "what_this_establishes": [
+    "The complete 24-layer pinned Parakeet encoder runs for the golden clip with the attention matmuls of every layer executing on a physical t8103 ANE and every other tensor op on the Apple GPU, and the final encoder_hidden lands inside every frozen bound in the reference lock, with encoder_mask bit-exact.",
+    "The 2026-09-14 islands receipt listed 'any other layer than layer 0, and any multi-layer or full-encoder pass' as not established. This run establishes it for islands A and C.",
+    "The layer-0 island bundles are reusable across all 24 layers unchanged, because every operand is a runtime input to the bundle and no weight is baked into the compiled anec. Note this is not because the islands bind only activations: island A's pos_kT is a distinct per-layer constant (var_355_to_fp16 through var_3805_to_fp16, 24 distinct [1,8,128,749] fp16 blobs in weight.bin, 1533952 bytes each). The bundles are shape-identical across layers and take that weight as an input, so one compiled bundle per island serves every layer with different input bytes. Those 24 per-layer constants are included in the ANE input byte accounting.",
+    "A MIL-to-MLX encoder executor now exists. Before this run the encoder was the one pinned component with no Vulkan executor: mel, decoder and joint had one, the encoder did not, and the only encoder evaluator in tree was a CPU numpy one.",
+    "The Vulkan-only control, Linux Apple-GPU against the macOS ANE golden, lands at rel_l2 0.024596. The lock records macOS GPU against that same macOS ANE golden at rel_l2 0.023345. Those are different GPUs on different operating systems measured against one common reference, so they are comparable in kind, and landing that close is independent evidence the port is faithful rather than accidentally compensating for an error elsewhere.",
+    "The ANE contribution is separable and small. Islands A and C move rel_l2 from 0.024596 to 0.024916, a change of 0.000320, for all 72 attention matmuls across 24 layers. The control arm is what makes that attribution falsifiable instead of asserted."
+  ],
+  "not_established": [
+    "Island B on the ANE. The select defect is untouched by this run.",
+    "The -inf fill path of the attention-mask select, on either device: this clip's cond is all false.",
+    "Whether the ANE split is faster than Vulkan alone. The two wall times here are not comparable: the split pays 48 process launches and 48 bundle loads that a real partitioner would not.",
+    "The AneRegion graph-level partitioner. These submits went through the bounded worker CLI, not through MLX eval, so the encoder is not yet ANE-accelerated from inside the framework.",
+    "End-to-end transcription. This run compares encoder_hidden and encoder_mask; the lock's token_ids and transcript equality bounds need the decoder and joint, which are not part of this slice.",
+    "Any clip other than the pinned golden LibriSpeech capture, and any sequence length other than this one's 375 valid frames. The island bundles are compiled for these exact shapes."
+  ],
+  "remaining_before_the_encoder_is_ane_complete": [
+    "Fix or route around h13.select-first-l2-tile so island B can run on the ANE, or establish that the select belongs on the GPU by design.",
+    "Exercise the -inf fill with a padded-frame clip, where cond has true lanes.",
+    "Land the AneRegion graph-level partitioner so eval places the islands, replacing 48 worker processes with in-framework submits, and only then measure ANE-on versus ANE-off for speed.",
+    "Give the ANE more of the layer than the three attention matmuls: the feed-forwards and the projector linear are the remaining large accumulating ops, and they are still entirely on the GPU.",
+    "Shape generality: bundles compiled for 375 frames only."
+  ],
+  "prohibited_actions_observed": {
+    "reboot": false,
+    "module_unload": false,
+    "executed_1x896": false,
+    "set_writes": false,
+    "gpu_lock_stolen": false,
+    "ane_taken_without_ownership": false,
+    "ane_linux_experiments_edited_or_executed": false,
+    "formatter_or_linter_run": false,
+    "retry_after_failure": false
+  },
+  "coordination": {
+    "jwm1_ane": "Granted by the parent, queued behind AneChannelPolarity, and taken only after they confirmed release with a verified post state (boot_id unchanged, module refs=0, quarantine 0 bytes, no tm-execution-failed or errno-110 for the whole boot).",
+    "gpu_lock": "Taken with a waiting flock, never stolen. MesaWaitsPatch asked to place their six paired prefill rounds before the ANE pass, because a multi-second encoder pass landing between the arms of a sub-one-percent A/B would silently destroy the pairing. That was a correct call and the ANE pass was sequenced after their runs.",
+    "libane_choice": "Pinned to the same libane the islands run used (1ab9d95debcc8b5fee3b6653dfce0b50412bc7efef43c2d2167dc83ce270ca49, source f261a6cb) so the numbers stay comparable to the proven island acceptance. AneChannelPolarity's channel-polarity fix is device-proven and is deliberately NOT in this binary; they confirmed island A and C channel binding is already correct under the positional assumption, and swapping libane mid-run would have confounded the comparison.",
+    "build_attribution": "Measured on the committed build in ~/venv-agxgen, not on the dirty working tree. overlay/.../shaders/select.comp is modified and unstaged in the checkout and belongs to neither me nor AneChannelPolarity, so measuring the working tree would have produced an unattributable number."
+  },
+  "artifacts": {
+    "in_repo": {
+      "receipt": "receipts/2026-09-14-encoder-parity-ane.json",
+      "derivation": "receipts/2026-09-14-encoder-parity-ane/derivation/ (vulkan_encoder.py the MIL-to-MLX executor with the ANE splice, compare_golden.py, check_conv_semantics.py, check_invariants.py, build_receipt.py)",
+      "measurements": "receipts/2026-09-14-encoder-parity-ane/{run-report-ane,run-report-vulkan,compare-ane,compare-vulkan,invariants,environment,golden-anchors}.json"
+    },
+    "not_in_repo": {
+      "encoder_model_root": "/var/tmp/EncoderParityAne/encoder-source on jwm1 (1.2 GB of depalettized fp16 blobs; regenerate with mil_adapter.py emit against the pinned revision)",
+      "run_outputs": "/var/tmp/EncoderParityAne/out-{ane,vulkan}/encoder_hidden.npy (sha256 recorded under contract.*.encoder_hidden_sha256)"
+    }
+  }
+}

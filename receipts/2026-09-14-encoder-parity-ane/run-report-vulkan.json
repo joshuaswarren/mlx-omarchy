@@ -1,0 +1,24 @@
+{
+  "layers": 24,
+  "ops_executed": 3351,
+  "gpu_ops": 1374,
+  "ane_ops": 0,
+  "cpu_tensor_events": 0,
+  "wall_ns": 9666356999,
+  "ane_mode": false,
+  "gpu_counters": {
+    "gpu_primitive_dispatches": 9370,
+    "vk_submissions": 28,
+    "vk_buffer_copies": 0,
+    "vk_buffer_fills": 101,
+    "vk_compute_dispatches": 6298,
+    "omarchy_finalize_calls": 1,
+    "commit_calls_with_work": 28,
+    "commit_calls_noop": 1
+  },
+  "encoder_hidden_shape": [
+    1,
+    375,
+    640
+  ]
+}

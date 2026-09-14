@@ -1,0 +1,55 @@
+{
+  "label": "ANE islands A+C on all 24 layers, Vulkan rest",
+  "encoder_hidden_shape": [
+    1,
+    375,
+    640
+  ],
+  "encoder_hidden_sha256": "b3d60c81bcd9c63fcdcb5c5578d765cc221b0126af3482fb165d769a65c23e6e",
+  "golden_encoder_hidden_sha256": "7e442034cb42521f7b76ec9645e8d0082899a5f551ea8d046c62a9283cc6e4e5",
+  "bounds": {
+    "encoder_max_abs_err": 0.3,
+    "encoder_mean_abs_err": 0.02,
+    "encoder_rel_l2_err": 0.1,
+    "nan_count_allowed": 0,
+    "inf_count_allowed": 0
+  },
+  "measured": {
+    "max_abs_err": 0.14715576171875,
+    "mean_abs_err": 0.0041823796927928925,
+    "rel_l2_err": 0.024916470050811768,
+    "nan": 0,
+    "inf": 0
+  },
+  "per_bound": {
+    "encoder_max_abs_err": {
+      "measured": 0.14715576171875,
+      "bound": 0.3,
+      "pass": true
+    },
+    "encoder_mean_abs_err": {
+      "measured": 0.0041823796927928925,
+      "bound": 0.02,
+      "pass": true
+    },
+    "encoder_rel_l2_err": {
+      "measured": 0.024916470050811768,
+      "bound": 0.1,
+      "pass": true
+    },
+    "nan_count": {
+      "measured": 0,
+      "bound": 0,
+      "pass": true
+    },
+    "inf_count": {
+      "measured": 0,
+      "bound": 0,
+      "pass": true
+    }
+  },
+  "encoder_mask_exact": true,
+  "encoder_mask_sum": 375,
+  "golden_encoder_mask_sum": 375,
+  "all_bounds_pass": true
+}

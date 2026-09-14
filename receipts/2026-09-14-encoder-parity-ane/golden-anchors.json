@@ -1,0 +1,43 @@
+{
+  "encoder_input_features.npy": {
+    "sha256": "638f1f22b36f33cdcf8cf5f63581497917fe2d8a9108da2f39dd1e99e9130731",
+    "lock_sha256": "638f1f22b36f33cdcf8cf5f63581497917fe2d8a9108da2f39dd1e99e9130731",
+    "matches_lock": true
+  },
+  "encoder_input_mask.npy": {
+    "sha256": "69afe545178dd33ed9f521b3934c77c687d64af3692a9f075b9e02c74516d804",
+    "lock_sha256": "69afe545178dd33ed9f521b3934c77c687d64af3692a9f075b9e02c74516d804",
+    "matches_lock": true
+  },
+  "encoder_hidden.npy": {
+    "sha256": "7e442034cb42521f7b76ec9645e8d0082899a5f551ea8d046c62a9283cc6e4e5",
+    "lock_sha256": "7e442034cb42521f7b76ec9645e8d0082899a5f551ea8d046c62a9283cc6e4e5",
+    "matches_lock": true
+  },
+  "encoder_mask.npy": {
+    "sha256": "6c70a6a0b2f3f1d46846fb095cb178ceca7ccd2fec2d239de4516ccc79512d33",
+    "lock_sha256": "6c70a6a0b2f3f1d46846fb095cb178ceca7ccd2fec2d239de4516ccc79512d33",
+    "matches_lock": true
+  },
+  "token_ids.json": {
+    "sha256": "a175a5f9ce8c1e91fc28f6e1fce9deee29c24c3ef49e62ce4b144cc44f8401c8",
+    "lock_sha256": "a175a5f9ce8c1e91fc28f6e1fce9deee29c24c3ef49e62ce4b144cc44f8401c8",
+    "matches_lock": true
+  },
+  "transcript.txt": {
+    "sha256": "db501a8c080380ea027ffa50a4b4956c39df77cb692c4fb78e556311a11a0790",
+    "lock_sha256": "db501a8c080380ea027ffa50a4b4956c39df77cb692c4fb78e556311a11a0790",
+    "matches_lock": true
+  },
+  "mel.npy": {
+    "sha256": "4ed24d7da64c17f58419ec45f15aa24ac9d1cfd93a4de51ee4f05e1d712b4d22",
+    "lock_sha256": "4ed24d7da64c17f58419ec45f15aa24ac9d1cfd93a4de51ee4f05e1d712b4d22",
+    "matches_lock": true
+  },
+  "waveform.npy": {
+    "sha256": "9109d935561ce8972e5ca1bb126914e91111c3a51d9db60d54a5ecd65ee3d2bd",
+    "lock_sha256": "9109d935561ce8972e5ca1bb126914e91111c3a51d9db60d54a5ecd65ee3d2bd",
+    "matches_lock": true
+  },
+  "all_match": true
+}

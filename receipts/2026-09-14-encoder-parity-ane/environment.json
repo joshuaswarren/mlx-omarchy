@@ -1,0 +1,83 @@
+{
+  "host": "jwm1-linux",
+  "kernel": "7.1.6-1-1-ARCH",
+  "boot_id": "95872130-fd28-4d67-8247-03a0e8b61202",
+  "boot_id_matches_islands_run": true,
+  "gpu_stack": {
+    "mesa": "mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1",
+    "libvulkan_asahi_sha256": "abcce1bbed9592111ac62dd8f9eb241cc225c39a5b570bf9e5e2512f0072a292",
+    "attribution": "System ICD, unmodified. MesaWaitsPatch confirmed their A/B selects locally-built mesa trees per-invocation via VK_DRIVER_FILES and never touches the system driver, so both runs sit on one known stack with no patch boundary between them."
+  },
+  "mlx": {
+    "mlx_omarchy": "0.32.2.dev202609121216+8f6de34c",
+    "python": "Python 3.14.7",
+    "venv": "~/venv-agxgen",
+    "build_is_committed": true,
+    "contains_select_fix": "build commit 8f6de34c has 959c7a0e ('fix: four red suites on real M1 hardware, and a fourth driver miscompile') as an ancestor, verified with git merge-base --is-ancestor",
+    "why_not_the_working_tree": "overlay/mlx/backend/omarchy/shaders/select.comp is modified and unstaged in the checkout and is owned by neither this agent nor AneChannelPolarity. The GPU now carries the attention-mask select, so measuring an unattributable working tree would have made the number unciteable."
+  },
+  "ane": {
+    "device": "/dev/accel/accel0, character special file 666",
+    "worker": "/var/tmp/jwm1-select-island-exec2/mlx-omarchy-ane-worker",
+    "worker_sha256": "762dd1de868b52e4d6ffa30e18d842d9341db463b06aef2355f18fb1eb248929",
+    "libane": "/var/tmp/AneWorkerValidation-c05ba1df/receipts/2026-09-13-ane-worker-validation/libane.so",
+    "libane_sha256": "1ab9d95debcc8b5fee3b6653dfce0b50412bc7efef43c2d2167dc83ce270ca49",
+    "libane_source_commit": "f261a6cb537aca62f267ad3d01beda0d6877544c",
+    "bundles": {
+      "island-attn-a-kt": {
+        "manifest_sha256": "516c16efdb4360623893b396d169c29f6c812eb38d2ee94411780edb682764c4",
+        "programs": 2,
+        "task_descriptors": 416
+      },
+      "island-pv": {
+        "manifest_sha256": "5f0190f730aacff7282128c8a3abab08a861ced52d8084f5c774eb73a3edbffc",
+        "programs": 1,
+        "task_descriptors": 208
+      }
+    },
+    "all_pins_match_islands_receipt": true
+  },
+  "encoder": {
+    "model_repo": "mweinbach1/parakeet-tdt-0.6b-v3-coreml",
+    "model_revision": "b650695c2322ee5281dff48d7345b2f3a58ff018",
+    "mil_sha256": "ac8e9526154ac8b8d4c08b83e44dbc1a2208d7ec33e42a7838d57b698b14f133",
+    "mil_matches_islands_run": true,
+    "ops": 3351,
+    "op_types": 28,
+    "layers": 24
+  },
+  "device_state": {
+    "pre": [
+      "tag=pre",
+      "at=2026-09-14T10:38:17-05:00",
+      "device=character special file 666",
+      "module=ane refs=0",
+      "boot_id=95872130-fd28-4d67-8247-03a0e8b61202",
+      "uptime_start=2026-09-13 09:43:25",
+      "quarantine_bytes=0",
+      "workers=0",
+      "0",
+      "dmesg_tm_failed=0",
+      "dmesg_errno110=0"
+    ],
+    "post": [
+      "tag=post",
+      "at=2026-09-14T10:38:56-05:00",
+      "device=character special file 666",
+      "module=ane refs=0",
+      "boot_id=95872130-fd28-4d67-8247-03a0e8b61202",
+      "uptime_start=2026-09-13 09:43:25",
+      "quarantine_bytes=0",
+      "workers=3",
+      "dmesg_tm_failed=0",
+      "dmesg_errno110=0"
+    ],
+    "boot_id_unchanged": true,
+    "module_never_unloaded": true,
+    "quarantine_bytes_after": 0,
+    "dmesg_tm_execution_failed": 0,
+    "dmesg_errno_110": 0,
+    "worker_processes_after": 0,
+    "worker_count_caveat": "Both snapshots' worker lines are instrumentation artifacts and are not used: pre used `pgrep -c -x` which can never match a 22-character process name, post used `pgrep -cf` which matched its own shell and reported 3. The real value 0 comes from ps and from 0 descriptors on /dev/accel/accel0."
+  }
+}
