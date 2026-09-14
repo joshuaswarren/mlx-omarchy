@@ -1,0 +1,151 @@
+{
+  "schema": "mlx-omarchy.slice-layout-rewrite.v1",
+  "rewritten": [
+    "var_367_cast_fp16",
+    "var_517_cast_fp16",
+    "var_667_cast_fp16",
+    "var_817_cast_fp16",
+    "var_967_cast_fp16",
+    "var_1117_cast_fp16",
+    "var_1267_cast_fp16",
+    "var_1417_cast_fp16",
+    "var_1567_cast_fp16",
+    "var_1717_cast_fp16",
+    "var_1867_cast_fp16",
+    "var_2017_cast_fp16",
+    "var_2167_cast_fp16",
+    "var_2317_cast_fp16",
+    "var_2467_cast_fp16",
+    "var_2617_cast_fp16",
+    "var_2767_cast_fp16",
+    "var_2917_cast_fp16",
+    "var_3067_cast_fp16",
+    "var_3217_cast_fp16",
+    "var_3367_cast_fp16",
+    "var_3517_cast_fp16",
+    "var_3667_cast_fp16",
+    "var_3817_cast_fp16"
+  ],
+  "refused": [
+    {
+      "index": 260,
+      "output": "matrix_bd_3_cast_fp16",
+      "reason": "noncontiguous slice is not one wrapping dim over a full suffix; a single concat cannot name the chunks"
+    },
+    {
+      "index": 520,
+      "output": "matrix_bd_9_cast_fp16",
+      "reason": "noncontiguous slice is not one wrapping dim over a full suffix; a single concat cannot name the chunks"
+    },
+    {
+      "index": 758,
+      "output": "matrix_bd_15_cast_fp16",
+      "reason": "noncontiguous slice is not one wrapping dim over a full suffix; a single concat cannot name the chunks"
+    },
+    {
+      "index": 996,
+      "output": "matrix_bd_21_cast_fp16",
+      "reason": "noncontiguous slice is not one wrapping dim over a full suffix; a single concat cannot name the chunks"
+    },
+    {
+      "index": 1234,
+      "output": "matrix_bd_27_cast_fp16",
+      "reason": "noncontiguous slice is not one wrapping dim over a full suffix; a single concat cannot name the chunks"
+    },
+    {
+      "index": 1472,
+      "output": "matrix_bd_33_cast_fp16",
+      "reason": "noncontiguous slice is not one wrapping dim over a full suffix; a single concat cannot name the chunks"
+    },
+    {
+      "index": 1710,
+      "output": "matrix_bd_39_cast_fp16",
+      "reason": "noncontiguous slice is not one wrapping dim over a full suffix; a single concat cannot name the chunks"
+    },
+    {
+      "index": 1948,
+      "output": "matrix_bd_45_cast_fp16",
+      "reason": "noncontiguous slice is not one wrapping dim over a full suffix; a single concat cannot name the chunks"
+    },
+    {
+      "index": 2186,
+      "output": "matrix_bd_51_cast_fp16",
+      "reason": "noncontiguous slice is not one wrapping dim over a full suffix; a single concat cannot name the chunks"
+    },
+    {
+      "index": 2424,
+      "output": "matrix_bd_57_cast_fp16",
+      "reason": "noncontiguous slice is not one wrapping dim over a full suffix; a single concat cannot name the chunks"
+    },
+    {
+      "index": 2662,
+      "output": "matrix_bd_63_cast_fp16",
+      "reason": "noncontiguous slice is not one wrapping dim over a full suffix; a single concat cannot name the chunks"
+    },
+    {
+      "index": 2900,
+      "output": "matrix_bd_69_cast_fp16",
+      "reason": "noncontiguous slice is not one wrapping dim over a full suffix; a single concat cannot name the chunks"
+    },
+    {
+      "index": 3138,
+      "output": "matrix_bd_75_cast_fp16",
+      "reason": "noncontiguous slice is not one wrapping dim over a full suffix; a single concat cannot name the chunks"
+    },
+    {
+      "index": 3376,
+      "output": "matrix_bd_81_cast_fp16",
+      "reason": "noncontiguous slice is not one wrapping dim over a full suffix; a single concat cannot name the chunks"
+    },
+    {
+      "index": 3614,
+      "output": "matrix_bd_87_cast_fp16",
+      "reason": "noncontiguous slice is not one wrapping dim over a full suffix; a single concat cannot name the chunks"
+    },
+    {
+      "index": 3852,
+      "output": "matrix_bd_93_cast_fp16",
+      "reason": "noncontiguous slice is not one wrapping dim over a full suffix; a single concat cannot name the chunks"
+    },
+    {
+      "index": 4090,
+      "output": "matrix_bd_99_cast_fp16",
+      "reason": "noncontiguous slice is not one wrapping dim over a full suffix; a single concat cannot name the chunks"
+    },
+    {
+      "index": 4328,
+      "output": "matrix_bd_105_cast_fp16",
+      "reason": "noncontiguous slice is not one wrapping dim over a full suffix; a single concat cannot name the chunks"
+    },
+    {
+      "index": 4566,
+      "output": "matrix_bd_111_cast_fp16",
+      "reason": "noncontiguous slice is not one wrapping dim over a full suffix; a single concat cannot name the chunks"
+    },
+    {
+      "index": 4804,
+      "output": "matrix_bd_117_cast_fp16",
+      "reason": "noncontiguous slice is not one wrapping dim over a full suffix; a single concat cannot name the chunks"
+    },
+    {
+      "index": 5042,
+      "output": "matrix_bd_123_cast_fp16",
+      "reason": "noncontiguous slice is not one wrapping dim over a full suffix; a single concat cannot name the chunks"
+    },
+    {
+      "index": 5280,
+      "output": "matrix_bd_129_cast_fp16",
+      "reason": "noncontiguous slice is not one wrapping dim over a full suffix; a single concat cannot name the chunks"
+    },
+    {
+      "index": 5518,
+      "output": "matrix_bd_135_cast_fp16",
+      "reason": "noncontiguous slice is not one wrapping dim over a full suffix; a single concat cannot name the chunks"
+    },
+    {
+      "index": 5756,
+      "output": "matrix_bd_141_cast_fp16",
+      "reason": "noncontiguous slice is not one wrapping dim over a full suffix; a single concat cannot name the chunks"
+    }
+  ]
+}
