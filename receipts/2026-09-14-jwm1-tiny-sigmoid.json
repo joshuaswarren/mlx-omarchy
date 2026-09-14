@@ -1,0 +1,107 @@
+{
+  "schema": "mlx-omarchy.jwm1-tiny-sigmoid.v1",
+  "date": "2026-09-14",
+  "host": "jwm1-linux",
+  "operation": "sigmoid",
+  "shape": [1, 64, 1, 1],
+  "dtype": "float16",
+  "result": "EXECUTED_NOT_EXACT_VS_NUMPY",
+  "execute": "PASS",
+  "exact_vs_numpy": false,
+  "started_at": "2026-09-14T04:46:19-05:00",
+  "finished_at": "2026-09-14T04:46:19-05:00",
+  "device_live_verified_at": "2026-09-14T04:49:17-05:00",
+  "command": "mlx-omarchy-ane-worker --bundle /var/tmp/jwm1-tiny-sigmoid-20260914/bundle --libane libane.so --deadline-ms 5000 --iterations 1 --input x=/var/tmp/jwm1-tiny-sigmoid-20260914/x.bin --expect y=/var/tmp/jwm1-tiny-sigmoid-20260914/y_expect.bin --save y=/var/tmp/jwm1-tiny-sigmoid-20260914/y.out.bin",
+  "source": {
+    "worker_path": "/var/tmp/AneWorkerValidation-c05ba1df/.work/mlx/build-ane-device/tools/mlx-omarchy-ane-worker/mlx-omarchy-ane-worker",
+    "worker_sha256": "762dd1de868b52e4d6ffa30e18d842d9341db463b06aef2355f18fb1eb248929",
+    "libane_path": "/var/tmp/AneWorkerValidation-c05ba1df/receipts/2026-09-13-ane-worker-validation/libane.so",
+    "libane_sha256": "1ab9d95debcc8b5fee3b6653dfce0b50412bc7efef43c2d2167dc83ce270ca49",
+    "libane_commit": "f261a6cb537aca62f267ad3d01beda0d6877544c",
+    "compiler_commit": "37fb29ed1688a22e2b2ff2dfbf032c10ba879c16",
+    "compiler_binary_sha256": "77521fb36681f8ace6e4aff97ef7ca856b57137e3808680f85dfd4722248de61",
+    "compiler_source_repo": "mil-hwxc",
+    "graph_hash": "e0a91e3386ddac5c0d3a621610c6d160a9cf381ff96324cfb3491970a2dc171c",
+    "bundle_name": "schema4-sigmoid-64",
+    "bundle_manifest_sha256": "f295b3007165a0d8b3be3f1ab08c007817938708a371df9d76b5e548614e9cba",
+    "payload_sha256": {
+      "program-0.anec": "93e3af5314e899781fd269a91142ed1330ed973035b41a6aa3344ad8679e14f3"
+    },
+    "adapter": "h13_package_to_bundle.py (staged copy sha256 83934107188b77c5e5c80d0ca542f96805d5ea14d7f648b26854a30375c0a4b2, plus bundle_payload_identity.py 0e7d044b4c0fc23de51a2dcf552671b8be81e93551b614e0c9035445f757edd9)"
+  },
+  "fixture": {
+    "generation": "x[i] = fp16(i*0.25 - 8.0) for i in 0..63",
+    "x_sha256": "89f3acad0033b537b3927e9d49dfe3c0e28a4f0a52a0820092b8ae638766e2d0",
+    "numpy_oracle": "y = fp16(1 / (1 + exp(-x))) computed in float64 then rounded to float16",
+    "y_expect_sha256": "760aa63638d40b898b77bb15a0e1e963e2f7967eea4223437197b241b949db5a",
+    "element_count": 64
+  },
+  "probe": {
+    "result": "COMPLETED_WITH_MISMATCH",
+    "deadline_ms": 5000,
+    "iterations": 1,
+    "status": 0,
+    "released": 1,
+    "elapsed_ms": 2,
+    "stdout": [
+      "bundle name=schema4-sigmoid-64 programs=1 driver_abi=1 graph=e0a91e3386ddac5c0d3a621610c6d160a9cf381ff96324cfb3491970a2dc171c",
+      "worker status=0 iterations=1 released=1 elapsed_ms=2",
+      "worker detail=worker completed 1 iteration(s) and released its programs",
+      "saved output y (128 bytes)",
+      "output 'y' does not match the expected fp16 values"
+    ],
+    "worker_exit": 1,
+    "y_out_path": "/var/tmp/jwm1-tiny-sigmoid-20260914/y.out.bin",
+    "y_out_sha256": "c882e41b3f13986b4ce4abce94130972bbb40733ea4fc311d2e84c48bafafd0a"
+  },
+  "numerics": {
+    "exact_vs_numpy_lanes": "38/64 bit-identical",
+    "lanes_differing": 26,
+    "max_abs_diff": 0.0030517578125,
+    "max_abs_diff_at_x": -1.25,
+    "max_rel_diff_where_abs_y_gt_1e-3": 0.03181076672104405,
+    "max_fp16_field_distance": 57,
+    "device_output_structure": "monotone non-decreasing, saturating to 0x3BFF region; near-symmetric about (0, 0.5)",
+    "table_model": {
+      "constant_section_offset_in_anec": 4736,
+      "table_prefix_sha256": "73f5680aa5f7b3833479e0ecd5a9dd0e3ec221e3aad5170e9db1e40e7a0c7469",
+      "domain_bounds_words": [-9.9375, 8.3203125],
+      "output_bounds_words": [0.0, 1.0],
+      "node_count": 33,
+      "node_grid": "x_k = -8 + 0.5*k, k = 0..32",
+      "on_node_lanes": 32,
+      "on_node_lanes_equal_table_entry": 31,
+      "on_node_exception": "lane 0 (x = -8.0, domain edge) returns one fp16 field step above table[0]",
+      "on_node_lanes_equal_numpy": 31,
+      "midpoint_lanes": 32,
+      "midpoint_lanes_equal_fp16_average_of_neighbors": 27,
+      "note": "Interpolation between nodes is close to but not exactly fp16((lo+hi)/2) on 5 of 32 midpoint lanes; the hardware rounding rule between table nodes remains the documented open question (mil-hwx-compiler docs/ane/numerics.md)."
+    }
+  },
+  "interpretation": "The one-shot executed cleanly (status 0, program released, 2 ms, device healthy before and after). The H13 sigmoid LUT does not reproduce a true-sigmoid numpy oracle bit-exactly: 26/64 lanes differ, worst 3.05e-3 absolute and 3.2 percent relative. This is the documented table contract, not a failure of execution: on-node inputs return the 128-byte table's fp16 entries exactly (31/32, edge lane off by one field step), and between-node inputs carry table interpolation error. The 2026-09-13-jwm1 add-mul exactness does not transfer to LUT unaries.",
+  "device": {
+    "path": "/dev/accel/accel0",
+    "kind": "character special file",
+    "mode": "666 root",
+    "module_version": "f2a3e5e+lifecycle6",
+    "dt_node": "26bc04000.ane",
+    "dt_compatible": "apple,t8103-ane",
+    "kernel": "7.1.6-1-1-ARCH",
+    "machine": "aarch64",
+    "nproc": 8,
+    "uptime_s": "2026-09-13 09:43:25",
+    "quarantine_path": "/sys/kernel/ane/quarantine absent on this module build; checked, no quarantine mechanism consulted",
+    "workers_after": "none",
+    "healthy_at_end": true
+  },
+  "prohibited_actions_observed": {
+    "ane_unloaded": false,
+    "rebooted": false,
+    "executed_1x896": false,
+    "took_gpu_lock": false,
+    "t6001_touched": false,
+    "wide_375": false,
+    "retry_on_timeout": false
+  },
+  "model": "openai-codex/gpt-5.6-sol"
+}
