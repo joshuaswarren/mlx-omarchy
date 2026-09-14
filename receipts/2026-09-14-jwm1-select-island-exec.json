@@ -1,0 +1,103 @@
+{
+  "schema": "mlx-omarchy.jwm1-select-island-exec.v1",
+  "date": "2026-09-14",
+  "result": "HOST_REJECT_BOOL_DTYPE",
+  "exact_fp16": "not observed",
+  "value_match": false,
+  "host": "jwm1-linux",
+  "resolved_model": {
+    "configured": "openai-codex/gpt-5.6-sol",
+    "actual": "openai-codex/gpt-5.6-sol",
+    "fallback": false
+  },
+  "source": {
+    "overlay_commit": "15ecc733ee91327dbf7887eac21ef14bebe824ce",
+    "worker_tree_commit": "c05ba1df2aa0427a36685a4e4661e6a1f47ff33d",
+    "worker_sha256": "575e2acd0152cec13f06dd9b09e4af0d7e4a91bfe4d8fa086b633b8b82a83e59",
+    "libane_source_commit": "f261a6cb537aca62f267ad3d01beda0d6877544c",
+    "libane_sha256": "1ab9d95debcc8b5fee3b6653dfce0b50412bc7efef43c2d2167dc83ce270ca49",
+    "compiler_commit": "c2cf32e4aa0200d72cecbce203bf6b47f50f729e",
+    "bool_abi_commit": "389fb4de82f3b338319cf974f29446bd1eed3b04",
+    "bool_abi_note": "landed 2026-09-13 15:27; 100-run worker binary is dated 2026-09-13 14:26 and does not include it"
+  },
+  "bundle": {
+    "name": "schema4-attn-select",
+    "manifest_version": 4,
+    "programs": 1,
+    "operation": "select",
+    "encoder": "apple-parity-boolean",
+    "task_descriptors": 5,
+    "dispatch_plan": [0],
+    "graph_hash": "998f81dee926a012be067467aee2b4bf138146f9944fb36ae40a732f40c89463",
+    "mil": "receipts/2026-09-13-attn-select-island/attn-select.mil",
+    "v2_package": "receipts/2026-09-13-attn-select-island/attn-select",
+    "wrap_tool": "overlay/tools/coreml/h13_v2_to_schema4.py",
+    "dropped": [["cond", "dtype"]],
+    "bool_binding_kept": "programs[0].inputs[2].dtype=bool",
+    "program0_anec_sha256": "860de06c53e3fdfed9452859042df59902fb733bef0a364b134dd9d9d6374cdd",
+    "program0_anec_bytes": 9216,
+    "manifest_sha256": "d1f30584b085e6bac9e36e32265b979c54b46c7f5ca2cb2e3e605ad0abb508d3",
+    "not_included": "208-TD matmul program-0 from the combined island"
+  },
+  "inputs": {
+    "ninf_rt": {"dtype": "float16", "elements": 1125000, "bytes": 2250000, "sha256": "98cabc7db74c4a173e1bc2a1e22afc5c3595a5a5f91a53a19c2e89e903726d3b", "fill": "fp16 -inf 0xfc00"},
+    "b": {"dtype": "float16", "elements": 1125000, "bytes": 2250000, "sha256": "fe0afb9bd9567bca8c5ab2c23d39f023c1e335e0940679cd55ecad9a163bc017", "fill": "fp16 1.0 0x3c00"},
+    "cond": {"dtype": "bool", "elements": 1125000, "bytes": 1125000, "sha256": "658def707323f286aa8acbf7765984e75f7f3167b686f61b9d729d372d2da08e", "fill": "first 562500 bytes 0x01, rest 0x00"},
+    "expect_y": {"dtype": "float16", "elements": 1125000, "bytes": 2250000, "sha256": "dd8dbb3a55336d4597c637553165f028a5304065f68c6ce8bfa915f301b2364c", "fill": "select(a=ninf_rt, b=b, cond=cond)"}
+  },
+  "device": {
+    "path": "/dev/accel/accel0",
+    "pre": "character special file 666",
+    "post": "character special file 666",
+    "module_version": "f2a3e5e+lifecycle6",
+    "nproc": 8,
+    "cpu_online": "0-7",
+    "boot_id": "95872130-fd28-4d67-8247-03a0e8b61202",
+    "workers": "none",
+    "still_live_after": true
+  },
+  "submit": {
+    "attempted": true,
+    "command": "/var/tmp/AneWorkerValidation-c05ba1df/.work/mlx/build-ane-device/tools/mlx-omarchy-ane-worker/mlx-omarchy-ane-worker --bundle /var/tmp/jwm1-select-island-exec/bundle --libane /var/tmp/AneWorkerValidation-c05ba1df/receipts/2026-09-13-ane-worker-validation/libane.so --deadline-ms 5000 --iterations 1 --input ninf_rt=/var/tmp/jwm1-select-island-exec/ninf_rt.bin --input b=/var/tmp/jwm1-select-island-exec/b.bin --input cond=/var/tmp/jwm1-select-island-exec/cond.bin --expect y=/var/tmp/jwm1-select-island-exec/y.bin --save y=/var/tmp/jwm1-select-island-exec/y.out.bin",
+    "deadline_ms": 5000,
+    "iterations_requested": 1,
+    "iterations_completed": 0,
+    "worker_exit": 1,
+    "stdout": [],
+    "stderr": [
+      "error: [omarchy-ane] manifest: inputs[1] has unsupported dtype 'bool'."
+    ],
+    "named_error": "[omarchy-ane] manifest: inputs[1] has unsupported dtype 'bool'.",
+    "program_submitted_to_ane": false,
+    "hang": false,
+    "errno_110": false,
+    "started_at": "2026-09-14T02:19:33-05:00",
+    "finished_at": "2026-09-14T02:19:33-05:00"
+  },
+  "numeric": {
+    "y_out": "missing",
+    "worker_verified_exact": false
+  },
+  "post": {
+    "boot_id": "95872130-fd28-4d67-8247-03a0e8b61202",
+    "boot_id_unchanged": true,
+    "device": "character special file 666",
+    "module_version": "f2a3e5e+lifecycle6",
+    "nproc": 8,
+    "cpu_online": "0-7",
+    "workers": "none",
+    "gpu_lock": "free"
+  },
+  "prohibited_actions_observed": {
+    "ane_unloaded": false,
+    "rebooted": false,
+    "executed_1x896": false,
+    "took_gpu_lock": false,
+    "retried_after_failure": false,
+    "submitted_208_td_matmul": false,
+    "t6001": false
+  },
+  "encoder_claim": false,
+  "unresolved_prerequisite": "The add-mul 100-run worker 575e2acd rejects schema-4 bool at host parse. Bool surfaces need overlay 389fb4de or later. Same libane 1ab9d95d was not paired with a bool-capable worker on this host. No ANE exec ran.",
+  "receipt": "receipts/2026-09-14-jwm1-select-island-exec.json"
+}

@@ -1,0 +1,138 @@
+{
+  "schema": "mlx-omarchy.jwm1-select-island-exec.v1",
+  "date": "2026-09-14",
+  "result": "ANE_EXEC_VALUE_MISMATCH",
+  "exact_fp16": false,
+  "value_match": false,
+  "host": "jwm1-linux",
+  "resolved_model": {
+    "configured": "openai-codex/gpt-5.6-sol",
+    "actual": "openai-codex/gpt-5.6-sol",
+    "fallback": false
+  },
+  "source": {
+    "overlay_commit": "15ecc733ee91327dbf7887eac21ef14bebe824ce",
+    "bool_abi_commit": "389fb4de82f3b338319cf974f29446bd1eed3b04",
+    "worker_build_base": "AneWorkerValidation-c05ba1df cmake cache; overlay ane sources replaced from 15ecc733 then ninja mlx-omarchy-ane-worker",
+    "worker_sha256": "762dd1de868b52e4d6ffa30e18d842d9341db463b06aef2355f18fb1eb248929",
+    "previous_worker_sha256": "575e2acd0152cec13f06dd9b09e4af0d7e4a91bfe4d8fa086b633b8b82a83e59",
+    "libane_source_commit": "f261a6cb537aca62f267ad3d01beda0d6877544c",
+    "libane_sha256": "1ab9d95debcc8b5fee3b6653dfce0b50412bc7efef43c2d2167dc83ce270ca49",
+    "compiler_commit": "c2cf32e4aa0200d72cecbce203bf6b47f50f729e",
+    "overlay_source_sha256": {
+      "manifest.cpp": "fee93eae167c052a7f75ea130e03b36265d23fa34df1109e1765a76e1057abc2",
+      "bundle.cpp": "7eb7130f9053e8345c1e44a309a10c527957589cea80b12dc35b7f4eb57a7264",
+      "worker_libane.cpp": "710ded4edcb89149603d1d75e954219841925d7066b4da1bb24b98f98e795da0",
+      "tile_layout.h": "c88b4d7a0c844a084a5a8ea251403daae5a6c783d2d5fa2574275f278b493f22",
+      "main.cpp": "40183118dc032c18f1ec86d17384f211536ac092431dcb1e763ec00444a3fa04"
+    }
+  },
+  "bundle": {
+    "name": "schema4-attn-select",
+    "manifest_version": 4,
+    "programs": 1,
+    "operation": "select",
+    "encoder": "apple-parity-boolean",
+    "task_descriptors": 5,
+    "dispatch_plan": [0],
+    "graph_hash": "998f81dee926a012be067467aee2b4bf138146f9944fb36ae40a732f40c89463",
+    "mil": "receipts/2026-09-13-attn-select-island/attn-select.mil",
+    "v2_package": "receipts/2026-09-13-attn-select-island/attn-select",
+    "program0_anec_sha256": "860de06c53e3fdfed9452859042df59902fb733bef0a364b134dd9d9d6374cdd",
+    "program0_anec_bytes": 9216,
+    "manifest_sha256": "d1f30584b085e6bac9e36e32265b979c54b46c7f5ca2cb2e3e605ad0abb508d3",
+    "not_included": "208-TD matmul program-0 from the combined island"
+  },
+  "inputs": {
+    "ninf_rt": {"dtype": "float16", "elements": 1125000, "bytes": 2250000, "sha256": "98cabc7db74c4a173e1bc2a1e22afc5c3595a5a5f91a53a19c2e89e903726d3b", "fill": "fp16 -inf 0xfc00"},
+    "b": {"dtype": "float16", "elements": 1125000, "bytes": 2250000, "sha256": "fe0afb9bd9567bca8c5ab2c23d39f023c1e335e0940679cd55ecad9a163bc017", "fill": "fp16 1.0 0x3c00"},
+    "cond": {"dtype": "bool", "elements": 1125000, "bytes": 1125000, "sha256": "658def707323f286aa8acbf7765984e75f7f3167b686f61b9d729d372d2da08e", "fill": "first 562500 bytes 0x01, rest 0x00"},
+    "expect_y": {"dtype": "float16", "elements": 1125000, "bytes": 2250000, "sha256": "dd8dbb3a55336d4597c637553165f028a5304065f68c6ce8bfa915f301b2364c", "fill": "select(a=ninf_rt, b=b, cond=cond)"}
+  },
+  "device": {
+    "path": "/dev/accel/accel0",
+    "kernel": "7.1.6-1-1-ARCH",
+    "pre": "character special file 666",
+    "post": "character special file 666",
+    "module_version": "f2a3e5e+lifecycle6",
+    "nproc": 8,
+    "cpu_online": "0-7",
+    "boot_id": "95872130-fd28-4d67-8247-03a0e8b61202",
+    "workers": "none after command",
+    "still_live_after": true
+  },
+  "submit": {
+    "attempted": true,
+    "command": "/var/tmp/jwm1-select-island-exec2/mlx-omarchy-ane-worker --bundle /var/tmp/jwm1-select-island-exec/bundle --libane /var/tmp/AneWorkerValidation-c05ba1df/receipts/2026-09-13-ane-worker-validation/libane.so --deadline-ms 5000 --iterations 1 --input ninf_rt=/var/tmp/jwm1-select-island-exec/ninf_rt.bin --input b=/var/tmp/jwm1-select-island-exec/b.bin --input cond=/var/tmp/jwm1-select-island-exec/cond.bin --expect y=/var/tmp/jwm1-select-island-exec/y.bin --save y=/var/tmp/jwm1-select-island-exec2/y.out.bin",
+    "deadline_ms": 5000,
+    "iterations_requested": 1,
+    "iterations_completed": 1,
+    "released_programs": 1,
+    "elapsed_ms": 56,
+    "worker_status": 0,
+    "worker_exit": 1,
+    "stdout": [
+      "bundle name=schema4-attn-select programs=1 driver_abi=1 graph=998f81dee926a012be067467aee2b4bf138146f9944fb36ae40a732f40c89463",
+      "worker status=0 iterations=1 released=1 elapsed_ms=56",
+      "worker detail=worker completed 1 iteration(s) and released its programs",
+      "saved output y (2250000 bytes)"
+    ],
+    "stderr": [
+      "output 'y' does not match the expected fp16 values"
+    ],
+    "named_error": "output 'y' does not match the expected fp16 values",
+    "program_submitted_to_ane": true,
+    "hang": false,
+    "errno_110": false,
+    "started_at": "2026-09-14T02:27:58-05:00",
+    "finished_at": "2026-09-14T02:27:58-05:00"
+  },
+  "numeric": {
+    "y_out_sha256": "a5a22246dc963d0d949016c2ea96fd7f2b3663535b1b4767f8d44a9733a3d7ac",
+    "expect_y_sha256": "dd8dbb3a55336d4597c637553165f028a5304065f68c6ce8bfa915f301b2364c",
+    "elements": 1125000,
+    "exact_equal": 277575,
+    "mismatch": 847425,
+    "got_finite": 1125000,
+    "got_nan": 0,
+    "got_inf": 0,
+    "got_unique": 41,
+    "got_min": -36096.0,
+    "got_max": 32768.0,
+    "got_nonzero": 695546,
+    "first_mismatch_index": 0,
+    "first_got_fp16": 1.531839370727539e-05,
+    "first_got_u16": "0x101",
+    "first_expect_fp16": "-inf",
+    "first_expect_u16": "0xfc00",
+    "worker_verified_exact": false,
+    "compared_without_resubmit": true
+  },
+  "post": {
+    "boot_id": "95872130-fd28-4d67-8247-03a0e8b61202",
+    "boot_id_unchanged": true,
+    "device": "character special file 666",
+    "module_version": "f2a3e5e+lifecycle6",
+    "nproc": 8,
+    "cpu_online": "0-7",
+    "workers": "none after command",
+    "gpu_lock": "free"
+  },
+  "prohibited_actions_observed": {
+    "ane_unloaded": false,
+    "rebooted": false,
+    "executed_1x896": false,
+    "took_gpu_lock": false,
+    "retried_after_failure": false,
+    "submitted_208_td_matmul": false,
+    "t6001": false
+  },
+  "dmesg": {
+    "tm_execution_failed": false,
+    "errno_110_from_this_run": false,
+    "note": "dmesg -110 hits are spi-hid-apple-of / magicmouse from 2026-09-13 boot, not this submit"
+  },
+  "encoder_claim": false,
+  "unresolved_prerequisite": "Bool ABI worker 762dd1de accepted schema-4 bool and completed one 5-TD select in 56 ms. Device y does not match host select(ninf_rt, 1.0, cond). No retry.",
+  "receipt": "receipts/2026-09-14-jwm1-select-island-exec2.json"
+}
