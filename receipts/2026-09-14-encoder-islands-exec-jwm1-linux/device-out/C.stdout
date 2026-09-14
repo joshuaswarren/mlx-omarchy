@@ -1,0 +1,4 @@
+bundle name=parakeet-encoder-island-pv programs=1 driver_abi=1 graph=ed03818974f7e2728daff0c839fcd4486a87282515347e68db7d2219605905c3
+worker status=0 iterations=1 released=1 elapsed_ms=15
+worker detail=worker completed 1 iteration(s) and released its programs
+saved output attn_output_1 (768000 bytes)

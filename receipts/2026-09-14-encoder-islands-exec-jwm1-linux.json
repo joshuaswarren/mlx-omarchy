@@ -1,0 +1,704 @@
+{
+  "schema": "mlx-omarchy.encoder-islands-exec.v1",
+  "date": "2026-09-14",
+  "host": "jwm1-linux",
+  "result": "ALL_THREE_ISLANDS_EXECUTED_ON_HARDWARE",
+  "summary": {
+    "islands_submitted": 3,
+    "programs_dispatched": 4,
+    "task_descriptors_dispatched": 629,
+    "worker_completions": 3,
+    "timeouts": 0,
+    "errno_110": 0,
+    "retries": 0,
+    "device_live_at_end": true,
+    "islands_numerically_accepted": [
+      "A",
+      "C"
+    ],
+    "islands_numerically_rejected": [
+      "B"
+    ]
+  },
+  "resolved_model": {
+    "assigned_route": "openai (mlx-openai-deep agent type)",
+    "actual": "anthropic/claude-opus-5 (session-reported identity)",
+    "fallback": true,
+    "note": "The assignment named an OpenAI route; this session reports an Anthropic model. The routing discrepancy is reported to the parent and recorded here rather than hidden behind the usual receipt line, matching the disclosure in receipts/2026-09-14-encoder-split-plan.md."
+  },
+  "pins": {
+    "worktree": "mlx-omarchy receipts/2026-09-14-encoder-split-plan 5a9d780c5c23209c3429c6ae4fe2dda7ea6bc0d6",
+    "plan": "receipts/2026-09-14-encoder-split-plan.md",
+    "worker_binary": "/var/tmp/jwm1-select-island-exec2/mlx-omarchy-ane-worker",
+    "worker_sha256": "762dd1de868b52e4d6ffa30e18d842d9341db463b06aef2355f18fb1eb248929",
+    "worker_overlay_commit": "15ecc733ee91327dbf7887eac21ef14bebe824ce",
+    "worker_source_identity": "the five ane/worker sources this binary was built from hash identically to this worktree, so no rebuild was needed",
+    "overlay_source_sha256": {
+      "manifest.cpp": "fee93eae167c052a7f75ea130e03b36265d23fa34df1109e1765a76e1057abc2",
+      "bundle.cpp": "7eb7130f9053e8345c1e44a309a10c527957589cea80b12dc35b7f4eb57a7264",
+      "worker_libane.cpp": "710ded4edcb89149603d1d75e954219841925d7066b4da1bb24b98f98e795da0",
+      "tile_layout.h": "c88b4d7a0c844a084a5a8ea251403daae5a6c783d2d5fa2574275f278b493f22",
+      "mlx-omarchy-ane-worker/main.cpp": "40183118dc032c18f1ec86d17384f211536ac092431dcb1e763ec00444a3fa04"
+    },
+    "libane": "/var/tmp/AneWorkerValidation-c05ba1df/receipts/2026-09-13-ane-worker-validation/libane.so",
+    "libane_sha256": "1ab9d95debcc8b5fee3b6653dfce0b50412bc7efef43c2d2167dc83ce270ca49",
+    "libane_source_commit": "f261a6cb537aca62f267ad3d01beda0d6877544c",
+    "encoder": "mweinbach1/parakeet-tdt-0.6b-v3-coreml revision b650695c2322ee5281dff48d7345b2f3a58ff018",
+    "kernel": "7.1.6-1-1-ARCH",
+    "run_directory": "/var/tmp/jwm1-encoder-islands"
+  },
+  "bundles": {
+    "island-attn-a-kt": {
+      "task_descriptors": 416,
+      "graph_hash": "85325f3059a345dee7c62c53a0072b2e869c0c8116385c992e8963587714ff88",
+      "manifest_sha256": "516c16efdb4360623893b396d169c29f6c812eb38d2ee94411780edb682764c4",
+      "anec_sha256": {
+        "program-0.anec": "d05e193a620d7edc25ee61f865c164182155f84e7fb925a38c303a9c0db1d8df",
+        "program-1.anec": "a3aa2fe1333a48eba3e7fcae5b848563e2bfa747a232dadf9ed2d568821c5627"
+      }
+    },
+    "island-select-8head": {
+      "task_descriptors": 5,
+      "graph_hash": "fd9e6c5b64f8b2c58fa2067799589ba0d32dfc24361b6612c9ef94d9e1a6422e",
+      "manifest_sha256": "8afed938ab491ba6fb33ad50267fcea6438cd4e9396c78b47b69f6f737abc86b",
+      "anec_sha256": {
+        "program-0.anec": "d40ec023cfd5b2c5d5cfeb95f4a4673024f495224acd4448e8498bf50114780f"
+      }
+    },
+    "island-pv": {
+      "task_descriptors": 208,
+      "graph_hash": "ed03818974f7e2728daff0c839fcd4486a87282515347e68db7d2219605905c3",
+      "manifest_sha256": "5f0190f730aacff7282128c8a3abab08a861ced52d8084f5c774eb73a3edbffc",
+      "anec_sha256": {
+        "program-0.anec": "76496b74eff176f8e0358dbb5e285f7fe60c8a7c270c2b5f400b5407195c3fca"
+      }
+    }
+  },
+  "tensor_provenance": {
+    "claim": "The staged island inputs are the real layer-0 encoder tensors, derived from the authenticated golden capture. They are not synthetic fills.",
+    "why_derivation_was_needed": "The golden capture stores only the encoder function inputs and outputs, not per-layer intermediates, so q_v / q_scaled / k_headsT / matrix_bd_5 / cond / probs / v_heads had to be recomputed from the capture inputs through the pinned encoder graph.",
+    "capture": "/home/joshuawarren/.cache/mlx-omarchy/parakeet-reference/captures/b650695c-75aec2a/20260912T154759Z-librispeech/ane",
+    "capture_sha256": {
+      "encoder_input_features.npy": "638f1f22b36f33cdcf8cf5f63581497917fe2d8a9108da2f39dd1e99e9130731",
+      "encoder_input_mask.npy": "69afe545178dd33ed9f521b3934c77c687d64af3692a9f075b9e02c74516d804",
+      "encoder_hidden.npy": "7e442034cb42521f7b76ec9645e8d0082899a5f551ea8d046c62a9283cc6e4e5",
+      "encoder_mask.npy": "6c70a6a0b2f3f1d46846fb095cb178ceca7ccd2fec2d239de4516ccc79512d33"
+    },
+    "encoder_mil": {
+      "path": "/var/tmp/IslandsExecJwm1/encoder-source/model.mil",
+      "sha256": "ac8e9526154ac8b8d4c08b83e44dbc1a2208d7ec33e42a7838d57b698b14f133",
+      "produced_by": "overlay/tools/coreml/mil_adapter.py emit (pinned reference lock)"
+    },
+    "evaluator": {
+      "milrun.py": "dfd148da123fd1e71df1d540bca6f2b2c9da0ca96be4162b626144da9516e36f",
+      "validate_full.py": "b1efd51d8cd390520cfebdb668333cf30ad431aa64887c8674bdda0259ee815c",
+      "stage.py": "f912104ff67b907431cbc00eb35fbb9ba568312f199a6dcc2152098cc7e5319a",
+      "compare.py": "3c00ad1846a1f39db8ae586db1b175261a0d3e3ee574f2347e2798b2e432146e",
+      "analyze.py": "e06403188df39bae5bc7cca176165e08ebe24cefbf60d256dfa871023fdd5581",
+      "run_islands.sh": "21ef8b1a0774e6ed0ea527d187bd4dcd9022e9d9ae485a8c4255b5a4cd05ac18"
+    },
+    "full_encoder_validation": {
+      "ops_executed": 3351,
+      "encoder_hidden_shape": [
+        1,
+        375,
+        640
+      ],
+      "max_abs_err": 0.13885498046875,
+      "mean_abs_err": 0.007216926664113998,
+      "rel_l2_err": 0.04364258423447609,
+      "lock_bounds": {
+        "encoder_max_abs_err": 0.3,
+        "encoder_mean_abs_err": 0.02,
+        "encoder_rel_l2_err": 0.1
+      },
+      "within_lock_bounds": true,
+      "nan": 0,
+      "inf": 0,
+      "encoder_mask_exact": true,
+      "encoder_mask_sum": 375
+    },
+    "validation_verdict": "The same evaluator run end to end over all 3351 encoder ops reproduces the authenticated ANE capture inside every frozen tolerance in the reference lock, and encoder_mask is bit-exact. That is the proof the layer-0 tensors the islands bind are the real encoder tensors.",
+    "staged": {
+      "cond_true_elements": 0,
+      "cond_total_elements": 1125000,
+      "ninf_fp16_bits": "0xfc00",
+      "staged": {
+        "A/q_v": {
+          "file": "A_q_v.bin",
+          "dtype": "float16",
+          "shape": [
+            1,
+            8,
+            375,
+            128
+          ],
+          "bytes": 768000,
+          "sha256": "73496b73d2582f739f19421e52e5c00de9e946cf39164142405c94f83f604b82"
+        },
+        "A/pos_kT": {
+          "file": "A_pos_kT.bin",
+          "dtype": "float16",
+          "shape": [
+            1,
+            8,
+            128,
+            749
+          ],
+          "bytes": 1533952,
+          "sha256": "7d659505b2eb495b0b96405ad20b07492cc0db594f5180f28687ee1bb77f04ab"
+        },
+        "A/q_scaled": {
+          "file": "A_q_scaled.bin",
+          "dtype": "float16",
+          "shape": [
+            1,
+            8,
+            375,
+            128
+          ],
+          "bytes": 768000,
+          "sha256": "b078e022692999019ae6832ee8887425889827206da8b7ffdbd43e36ec5cbb93"
+        },
+        "A/k_headsT": {
+          "file": "A_k_headsT.bin",
+          "dtype": "float16",
+          "shape": [
+            1,
+            8,
+            128,
+            375
+          ],
+          "bytes": 768000,
+          "sha256": "2ed9663e07e48cd46d17642efe2c007e107dd6df85e5d0e0be713b8006216f89"
+        },
+        "B/ninf_rt": {
+          "file": "B_ninf_rt.bin",
+          "dtype": "float16",
+          "shape": [
+            1,
+            8,
+            375,
+            375
+          ],
+          "bytes": 2250000,
+          "sha256": "98cabc7db74c4a173e1bc2a1e22afc5c3595a5a5f91a53a19c2e89e903726d3b"
+        },
+        "B/matrix_bd_5": {
+          "file": "B_matrix_bd_5.bin",
+          "dtype": "float16",
+          "shape": [
+            1,
+            8,
+            375,
+            375
+          ],
+          "bytes": 2250000,
+          "sha256": "9ceed6167044e086fc667505117163bbdb54ff4fe23cd3133bbfba39190fc15c"
+        },
+        "B/cond": {
+          "file": "B_cond.bin",
+          "dtype": "uint8",
+          "shape": [
+            1,
+            8,
+            375,
+            375
+          ],
+          "bytes": 1125000,
+          "sha256": "f268acb26e8d325c9f23fc98eee4571ffcabd7cfe47fce3f04f3301708cf2b91"
+        },
+        "C/probs": {
+          "file": "C_probs.bin",
+          "dtype": "float16",
+          "shape": [
+            1,
+            8,
+            375,
+            375
+          ],
+          "bytes": 2250000,
+          "sha256": "b9a2c34d4fc3160816d78b52bae24319fc56894b18d203c998df2edb874c3203"
+        },
+        "C/v_heads": {
+          "file": "C_v_heads.bin",
+          "dtype": "float16",
+          "shape": [
+            1,
+            8,
+            375,
+            128
+          ],
+          "bytes": 768000,
+          "sha256": "58b424682b8cc9d4c18f3b919722d9fdaa9926882de9d17973410630e553e148"
+        },
+        "A/ref attention_scores_1": {
+          "file": "A_ref_attention_scores_1.bin",
+          "dtype": "float16",
+          "shape": [
+            1,
+            8,
+            375,
+            749
+          ],
+          "bytes": 4494000,
+          "sha256": "d8fe01267f9da27ced91c303c51b0923f318ef46c0e6b282eb70a599ecf5c371"
+        },
+        "A/ref matmul_0": {
+          "file": "A_ref_matmul_0.bin",
+          "dtype": "float16",
+          "shape": [
+            1,
+            8,
+            375,
+            375
+          ],
+          "bytes": 2250000,
+          "sha256": "0275238eae730d18adff666c14a7ea5f71bf3eb0a460a54bf2a20969d2a98abe"
+        },
+        "B/ref attention_mask_9": {
+          "file": "B_ref_attention_mask_9.bin",
+          "dtype": "float16",
+          "shape": [
+            1,
+            8,
+            375,
+            375
+          ],
+          "bytes": 2250000,
+          "sha256": "9ceed6167044e086fc667505117163bbdb54ff4fe23cd3133bbfba39190fc15c"
+        },
+        "C/ref attn_output_1": {
+          "file": "C_ref_attn_output_1.bin",
+          "dtype": "float16",
+          "shape": [
+            1,
+            8,
+            375,
+            128
+          ],
+          "bytes": 768000,
+          "sha256": "bb9735acc9827c8cbd26d76418536b5cbab438d38e6e7ed37354f5ef80e6d131"
+        }
+      },
+      "reference_vs_graph": {
+        "attention_scores_1": {
+          "elements": 2247000,
+          "bitwise_equal": 2247000,
+          "max_abs_err": 0.0
+        },
+        "matmul_0": {
+          "elements": 1125000,
+          "bitwise_equal": 1125000,
+          "max_abs_err": 0.0
+        },
+        "attention_mask_9": {
+          "elements": 1125000,
+          "bitwise_equal": 1125000,
+          "max_abs_err": 0.0
+        },
+        "attn_output_1": {
+          "elements": 384000,
+          "bitwise_equal": 384000,
+          "max_abs_err": 0.0
+        }
+      }
+    }
+  },
+  "device_state": {
+    "pre": {
+      "tag": "pre",
+      "at": "2026-09-14T10:13:38-05:00",
+      "device": "character special file 666",
+      "module": "ane refs=0",
+      "boot_id": "95872130-fd28-4d67-8247-03a0e8b61202",
+      "uptime_start": "2026-09-13 09:43:25",
+      "quarantine_bytes": "0",
+      "workers": "0",
+      "dmesg_tm_failed": "0",
+      "dmesg_errno110": "0"
+    },
+    "post_B": {
+      "tag": "post-B",
+      "at": "2026-09-14T10:13:38-05:00",
+      "device": "character special file 666",
+      "module": "ane refs=0",
+      "boot_id": "95872130-fd28-4d67-8247-03a0e8b61202",
+      "uptime_start": "2026-09-13 09:43:25",
+      "quarantine_bytes": "0",
+      "workers": "0",
+      "dmesg_tm_failed": "0",
+      "dmesg_errno110": "0"
+    },
+    "post_C": {
+      "tag": "post-C",
+      "at": "2026-09-14T10:13:38-05:00",
+      "device": "character special file 666",
+      "module": "ane refs=0",
+      "boot_id": "95872130-fd28-4d67-8247-03a0e8b61202",
+      "uptime_start": "2026-09-13 09:43:25",
+      "quarantine_bytes": "0",
+      "workers": "0",
+      "dmesg_tm_failed": "0",
+      "dmesg_errno110": "0"
+    },
+    "post": {
+      "tag": "post",
+      "at": "2026-09-14T10:13:38-05:00",
+      "device": "character special file 666",
+      "module": "ane refs=0",
+      "boot_id": "95872130-fd28-4d67-8247-03a0e8b61202",
+      "uptime_start": "2026-09-13 09:43:25",
+      "quarantine_bytes": "0",
+      "workers": "0",
+      "dmesg_tm_failed": "0",
+      "dmesg_errno110": "0"
+    },
+    "boot_id_unchanged": true,
+    "module_never_unloaded": true,
+    "quarantine_bytes_after": 0,
+    "workers_after": 0,
+    "dmesg_tm_execution_failed": 0,
+    "dmesg_errno_110": 0,
+    "dmesg_tail": "/var/tmp/jwm1-encoder-islands/out/dmesg-tail.txt"
+  },
+  "islands": {
+    "A": {
+      "bundle": "parakeet-encoder-island-attn-a-kt",
+      "programs": 2,
+      "task_descriptors": 416,
+      "submit": {
+        "exit": 0,
+        "started_at": "2026-09-14T10:13:38-05:00",
+        "finished_at": "2026-09-14T10:13:38-05:00",
+        "worker_status": 0,
+        "iterations_completed": 1,
+        "released_programs": 2,
+        "elapsed_ms": 66,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-attn-a-kt programs=2 driver_abi=1 graph=85325f3059a345dee7c62c53a0072b2e869c0c8116385c992e8963587714ff88",
+          "worker status=0 iterations=1 released=2 elapsed_ms=66",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attention_scores_1 (4494000 bytes)",
+          "saved output matmul_0 (2250000 bytes)"
+        ],
+        "stderr": [],
+        "timed_out": false,
+        "errno_110": false,
+        "retried": false
+      },
+      "outputs": {
+        "attention_scores_1": {
+          "island": "A",
+          "output": "attention_scores_1",
+          "elements": 2247000,
+          "device_sha256": "f1f18eeee69f2583e96c0c3057a448c1dbe0b833edc51cf8fb568f04ff1ca286",
+          "reference_sha256": "d8fe01267f9da27ced91c303c51b0923f318ef46c0e6b282eb70a599ecf5c371",
+          "value_equal": 2239419,
+          "mismatch": 7581,
+          "exact_fp16": false,
+          "device_nan": 0,
+          "device_inf": 0,
+          "reference_inf": 0,
+          "device_unique_values": 20916,
+          "max_abs_err": 0.25,
+          "mean_abs_err": 3.5403154470259324e-05,
+          "rel_l2_err": 1.0909240152486215e-05,
+          "compared_finite_elements": 2247000,
+          "first_mismatch": {
+            "index": 372,
+            "device_u16": "0x4cc2",
+            "device_fp16": 19.03125,
+            "reference_u16": "0x4cc3",
+            "reference_fp16": 19.046875
+          }
+        },
+        "matmul_0": {
+          "island": "A",
+          "output": "matmul_0",
+          "elements": 1125000,
+          "device_sha256": "c1c53be96bac095d25ea22f2a54bcf3044d234d27e7ad771d9efbdf45f364795",
+          "reference_sha256": "0275238eae730d18adff666c14a7ea5f71bf3eb0a460a54bf2a20969d2a98abe",
+          "value_equal": 960933,
+          "mismatch": 164067,
+          "exact_fp16": false,
+          "device_nan": 0,
+          "device_inf": 0,
+          "reference_inf": 0,
+          "device_unique_values": 16628,
+          "max_abs_err": 0.00390625,
+          "mean_abs_err": 3.649895006674342e-05,
+          "rel_l2_err": 0.00011289394998642051,
+          "compared_finite_elements": 1125000,
+          "first_mismatch": {
+            "index": 1,
+            "device_u16": "0x371a",
+            "device_fp16": 0.44384765625,
+            "reference_u16": "0x371b",
+            "reference_fp16": 0.444091796875
+          }
+        }
+      },
+      "difference_structure": {
+        "attention_scores_1": {
+          "elements": 2247000,
+          "max_ulp": 148,
+          "ulp_histogram": {
+            "0": 2239419,
+            "1": 7171,
+            "2": 298,
+            "3": 36,
+            "4": 16,
+            "5": 9,
+            "6": 8,
+            "7": 4,
+            "8": 39
+          },
+          "all_within_1_ulp": false
+        },
+        "matmul_0": {
+          "elements": 1125000,
+          "max_ulp": 1444,
+          "ulp_histogram": {
+            "0": 960933,
+            "1": 142783,
+            "2": 8229,
+            "3": 3188,
+            "4": 1619,
+            "5": 1841,
+            "6": 976,
+            "7": 1061,
+            "8": 4370
+          },
+          "all_within_1_ulp": false
+        }
+      },
+      "verdict": "ACCEPTED_RELATIVE_L2",
+      "verdict_detail": "Both 208-TD batched matmuls completed and are numerically correct. attention_scores_1: 2239419/2247000 bit-exact, rel_l2 1.09e-05, max_abs 0.25 on a tensor spanning +/-2000. matmul_0: 960933/1125000 bit-exact, rel_l2 1.13e-04, max_abs 0.0039. On every element with |reference| > 1 the worst relative error is 2^-10, exactly one fp16 ULP; the larger ULP distances all sit at near-zero magnitudes. That is an accumulation-order difference against an fp32-accumulate host reference, which is why the parity harness classifies matmul as relative_l2 and not fp16_value_exact. Both are three to four orders of magnitude inside the lock bound of 0.1."
+    },
+    "B": {
+      "bundle": "parakeet-encoder-island-select-8head",
+      "programs": 1,
+      "task_descriptors": 5,
+      "submit": {
+        "exit": 1,
+        "started_at": "2026-09-14T10:13:38-05:00",
+        "finished_at": "2026-09-14T10:13:38-05:00",
+        "worker_status": 0,
+        "iterations_completed": 1,
+        "released_programs": 1,
+        "elapsed_ms": 53,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-select-8head programs=1 driver_abi=1 graph=fd9e6c5b64f8b2c58fa2067799589ba0d32dfc24361b6612c9ef94d9e1a6422e",
+          "worker status=0 iterations=1 released=1 elapsed_ms=53",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attention_mask_9 (2250000 bytes)"
+        ],
+        "stderr": [
+          "output 'attention_mask_9' does not match the expected fp16 values"
+        ],
+        "timed_out": false,
+        "errno_110": false,
+        "retried": false
+      },
+      "outputs": {
+        "attention_mask_9": {
+          "island": "B",
+          "output": "attention_mask_9",
+          "elements": 1125000,
+          "device_sha256": "276a23d6e39bc21d1638a74140474f152bd65bf548452c90528496aae8530674",
+          "reference_sha256": "9ceed6167044e086fc667505117163bbdb54ff4fe23cd3133bbfba39190fc15c",
+          "value_equal": 1114272,
+          "mismatch": 10728,
+          "exact_fp16": false,
+          "device_nan": 0,
+          "device_inf": 0,
+          "reference_inf": 0,
+          "device_unique_values": 16232,
+          "max_abs_err": 11.1640625,
+          "mean_abs_err": 0.09539181739091873,
+          "rel_l2_err": 0.0910401393144156,
+          "compared_finite_elements": 1125000,
+          "first_mismatch": {
+            "index": 72,
+            "device_u16": "0xc823",
+            "device_fp16": -8.2734375,
+            "reference_u16": "0x3b83",
+            "reference_fp16": 0.93896484375
+          }
+        }
+      },
+      "difference_structure": {
+        "attention_mask_9": {
+          "cond_true_elements": 0,
+          "mismatch_total": 10728,
+          "per_head": [
+            1341,
+            1341,
+            1341,
+            1341,
+            1341,
+            1341,
+            1341,
+            1341
+          ],
+          "heads_identical_mask": true,
+          "rows_touched": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8
+          ],
+          "mismatches_per_touched_row": {
+            "0": 167,
+            "1": 167,
+            "2": 168,
+            "3": 147,
+            "4": 139,
+            "5": 139,
+            "6": 139,
+            "7": 139,
+            "8": 136
+          },
+          "first_column": 32,
+          "last_column": 374,
+          "device_inf_written": 0,
+          "device_min": -50.71875,
+          "device_max": 40.84375
+        }
+      },
+      "verdict": "REJECTED_VALUE_MISMATCH",
+      "verdict_detail": "The 5-TD select completed in 53 ms and the worker's own --expect comparator refused it: 'output attention_mask_9 does not match the expected fp16 values'. 1114272/1125000 lanes are bit-exact; 10728 are wrong. The wrong lanes are exactly 1341 per head, the per-head mismatch mask is identical across all 8 heads, and every one of them lives in H rows 0-8 with no mismatch at H >= 9. That reproduces the already-named first-8-row L2 bool-tile signature from receipts/2026-09-14-select-tile-edge.md (its per-row leftover was 167, 167, 168, 155, 143, 139, 139, 139, 136; this run's is 167, 167, 168, 147, 139, 139, 139, 139, 136) on the recompiled d40ec023 anec with real encoder tensors instead of synthetic fills.",
+      "new_facts_from_real_tensors": [
+        "The real layer-0 cond is all false: this capture's encoder_mask has all 375 frames valid, so var_373 = logical_not(attention_mask_7) has zero true elements. The correct output is therefore matrix_bd_5 verbatim.",
+        "The device wrote no -inf at all (device_inf_written 0) and its value range is exactly matrix_bd_5's range (-50.71875 to 40.84375), so the -inf fill channel was never selected and the defect is entirely in the cond/b read, not in the fill path.",
+        "The defect is independent of cond content: it appears with an all-false cond, where a correct select never has to choose 'a' at any lane.",
+        "The wrong values are not a column shift of b in the same row: no offset within +/-96 columns explains any of the 1341 head-0 mismatching lanes, and only 1170 of 1341 device values appear anywhere in the full 8-head b value set. The wrong lanes are therefore not characterized here beyond the positional signature above."
+      ]
+    },
+    "C": {
+      "bundle": "parakeet-encoder-island-pv",
+      "programs": 1,
+      "task_descriptors": 208,
+      "submit": {
+        "exit": 0,
+        "started_at": "2026-09-14T10:13:38-05:00",
+        "finished_at": "2026-09-14T10:13:38-05:00",
+        "worker_status": 0,
+        "iterations_completed": 1,
+        "released_programs": 1,
+        "elapsed_ms": 15,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-pv programs=1 driver_abi=1 graph=ed03818974f7e2728daff0c839fcd4486a87282515347e68db7d2219605905c3",
+          "worker status=0 iterations=1 released=1 elapsed_ms=15",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attn_output_1 (768000 bytes)"
+        ],
+        "stderr": [],
+        "timed_out": false,
+        "errno_110": false,
+        "retried": false
+      },
+      "outputs": {
+        "attn_output_1": {
+          "island": "C",
+          "output": "attn_output_1",
+          "elements": 384000,
+          "device_sha256": "e1de9eecb7e522ab957dad3d499541766967a74199a4f9d61dd0f594c57ae2dc",
+          "reference_sha256": "bb9735acc9827c8cbd26d76418536b5cbab438d38e6e7ed37354f5ef80e6d131",
+          "value_equal": 275572,
+          "mismatch": 108428,
+          "exact_fp16": false,
+          "device_nan": 0,
+          "device_inf": 0,
+          "reference_inf": 0,
+          "device_unique_values": 19783,
+          "max_abs_err": 0.0078125,
+          "mean_abs_err": 0.00012199016055092216,
+          "rel_l2_err": 0.00022153973711770423,
+          "compared_finite_elements": 384000,
+          "first_mismatch": {
+            "index": 2,
+            "device_u16": "0xa8eb",
+            "device_fp16": -0.038421630859375,
+            "reference_u16": "0xa8e9",
+            "reference_fp16": -0.038360595703125
+          }
+        }
+      },
+      "difference_structure": {
+        "attn_output_1": {
+          "elements": 384000,
+          "max_ulp": 11290,
+          "ulp_histogram": {
+            "0": 275572,
+            "1": 77516,
+            "2": 12285,
+            "3": 5514,
+            "4": 2995,
+            "5": 1858,
+            "6": 1220,
+            "7": 877,
+            "8": 6163
+          },
+          "all_within_1_ulp": false
+        }
+      },
+      "verdict": "ACCEPTED_RELATIVE_L2",
+      "verdict_detail": "The 208-TD PV matmul completed in 15 ms. 275572/384000 bit-exact, rel_l2 2.22e-04, max_abs 0.0078, no NaN and no Inf. At |reference| > 1 the worst relative error is 0.0033, about three fp16 ULP, consistent with a 375-term dot product accumulated in a different order than the host fp32 reference. Three orders of magnitude inside the lock bound."
+    }
+  },
+  "prohibited_actions_observed": {
+    "retry_after_failure": false,
+    "retry_after_110": false,
+    "more_than_one_submit_per_island": false,
+    "reboot": false,
+    "module_unload": false,
+    "gpu_lock_taken": false,
+    "executed_1x896": false,
+    "wrote_0xf_on_jw16": "n/a (jwm1 only; jw16 never touched)",
+    "ane_linux_experiments_edited_or_executed": false,
+    "formatter_or_linter_run": false
+  },
+  "submit_order": {
+    "order": [
+      "B",
+      "C",
+      "A"
+    ],
+    "reason": "B is 5 TDs, C is 208, A is 416. Running the cheap islands first banks their results in case the largest program wedges the task manager. Nothing was re-run in either case."
+  },
+  "what_this_establishes": [
+    "Hardware execution of all three encoder ANE islands on a physical t8103 ANE. The 2026-09-14 plan listed this as not established.",
+    "416 task descriptors in one package with dispatchPlan [0, 1] dispatch and release cleanly: two ordered logical results, no intermediate, 66 ms.",
+    "The boundary contract in the plan is executable as written: dense row-major bytes in the manifest nchw order, runtime-side tile placement, no caller-side surface construction. Every staged buffer was accepted at its declared logical_bytes with no refusal.",
+    "Islands A and C are numerically accepted against a host reference computed from the same staged bytes, inside the reference lock's relative_l2 class.",
+    "Island B's select defect is confirmed on the recompiled d40ec023 anec with real encoder tensors and an all-false cond, and is confined to H rows 0-8."
+  ],
+  "not_established": [
+    "Numerical agreement of island B. It is a named, reproduced device-side defect, not closed here.",
+    "The -inf fill path of island B. This capture's real cond is all false, so no lane in this run required the fill; a capture with padded frames is needed to exercise it.",
+    "Whether the ANE split is faster than Vulkan alone. This run is three isolated single-iteration submits, not the alternating ANE-on / ANE-off measurement.",
+    "Any other layer than layer 0, and any multi-layer or full-encoder pass.",
+    "The AneRegion graph-level partitioner. These submits went through the bounded worker CLI, not through eval."
+  ],
+  "artifacts": {
+    "in_repo": {
+      "receipt": "receipts/2026-09-14-encoder-islands-exec-jwm1-linux.json",
+      "derivation": "receipts/2026-09-14-encoder-islands-exec-jwm1-linux/derivation/ (milrun.py evaluator, validate_full.py, stage.py, compare.py, analyze.py, run_islands.sh, build_receipt.py)",
+      "device_evidence": "receipts/2026-09-14-encoder-islands-exec-jwm1-linux/device-out/ (per-island stdout, stderr, exit, timestamps, pre/post device state)",
+      "measurements": "receipts/2026-09-14-encoder-islands-exec-jwm1-linux/{stage-manifest,validate-full,compare,analyze}.json"
+    },
+    "not_in_repo": {
+      "staged_tensors": "/var/tmp/IslandsExecJwm1/stage (15 MB of fp16/bool buffers; sha256 of every one is recorded under tensor_provenance.staged)",
+      "device_outputs": "/var/tmp/IslandsExecJwm1/device-out/*.out.bin (sha256 recorded per output under islands.*.outputs.*.device_sha256)",
+      "encoder_model_root": "/var/tmp/IslandsExecJwm1/encoder-source (1 GB depalettized weights; regenerate with mil_adapter.py emit against the pinned revision)",
+      "on_jwm1": "/var/tmp/jwm1-encoder-islands (bundles, staged inputs, out/)"
+    }
+  }
+}

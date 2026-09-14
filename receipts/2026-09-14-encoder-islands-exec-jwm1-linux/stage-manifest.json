@@ -1,0 +1,185 @@
+{
+  "cond_true_elements": 0,
+  "cond_total_elements": 1125000,
+  "ninf_fp16_bits": "0xfc00",
+  "staged": {
+    "A/q_v": {
+      "file": "A_q_v.bin",
+      "dtype": "float16",
+      "shape": [
+        1,
+        8,
+        375,
+        128
+      ],
+      "bytes": 768000,
+      "sha256": "73496b73d2582f739f19421e52e5c00de9e946cf39164142405c94f83f604b82"
+    },
+    "A/pos_kT": {
+      "file": "A_pos_kT.bin",
+      "dtype": "float16",
+      "shape": [
+        1,
+        8,
+        128,
+        749
+      ],
+      "bytes": 1533952,
+      "sha256": "7d659505b2eb495b0b96405ad20b07492cc0db594f5180f28687ee1bb77f04ab"
+    },
+    "A/q_scaled": {
+      "file": "A_q_scaled.bin",
+      "dtype": "float16",
+      "shape": [
+        1,
+        8,
+        375,
+        128
+      ],
+      "bytes": 768000,
+      "sha256": "b078e022692999019ae6832ee8887425889827206da8b7ffdbd43e36ec5cbb93"
+    },
+    "A/k_headsT": {
+      "file": "A_k_headsT.bin",
+      "dtype": "float16",
+      "shape": [
+        1,
+        8,
+        128,
+        375
+      ],
+      "bytes": 768000,
+      "sha256": "2ed9663e07e48cd46d17642efe2c007e107dd6df85e5d0e0be713b8006216f89"
+    },
+    "B/ninf_rt": {
+      "file": "B_ninf_rt.bin",
+      "dtype": "float16",
+      "shape": [
+        1,
+        8,
+        375,
+        375
+      ],
+      "bytes": 2250000,
+      "sha256": "98cabc7db74c4a173e1bc2a1e22afc5c3595a5a5f91a53a19c2e89e903726d3b"
+    },
+    "B/matrix_bd_5": {
+      "file": "B_matrix_bd_5.bin",
+      "dtype": "float16",
+      "shape": [
+        1,
+        8,
+        375,
+        375
+      ],
+      "bytes": 2250000,
+      "sha256": "9ceed6167044e086fc667505117163bbdb54ff4fe23cd3133bbfba39190fc15c"
+    },
+    "B/cond": {
+      "file": "B_cond.bin",
+      "dtype": "uint8",
+      "shape": [
+        1,
+        8,
+        375,
+        375
+      ],
+      "bytes": 1125000,
+      "sha256": "f268acb26e8d325c9f23fc98eee4571ffcabd7cfe47fce3f04f3301708cf2b91"
+    },
+    "C/probs": {
+      "file": "C_probs.bin",
+      "dtype": "float16",
+      "shape": [
+        1,
+        8,
+        375,
+        375
+      ],
+      "bytes": 2250000,
+      "sha256": "b9a2c34d4fc3160816d78b52bae24319fc56894b18d203c998df2edb874c3203"
+    },
+    "C/v_heads": {
+      "file": "C_v_heads.bin",
+      "dtype": "float16",
+      "shape": [
+        1,
+        8,
+        375,
+        128
+      ],
+      "bytes": 768000,
+      "sha256": "58b424682b8cc9d4c18f3b919722d9fdaa9926882de9d17973410630e553e148"
+    },
+    "A/ref attention_scores_1": {
+      "file": "A_ref_attention_scores_1.bin",
+      "dtype": "float16",
+      "shape": [
+        1,
+        8,
+        375,
+        749
+      ],
+      "bytes": 4494000,
+      "sha256": "d8fe01267f9da27ced91c303c51b0923f318ef46c0e6b282eb70a599ecf5c371"
+    },
+    "A/ref matmul_0": {
+      "file": "A_ref_matmul_0.bin",
+      "dtype": "float16",
+      "shape": [
+        1,
+        8,
+        375,
+        375
+      ],
+      "bytes": 2250000,
+      "sha256": "0275238eae730d18adff666c14a7ea5f71bf3eb0a460a54bf2a20969d2a98abe"
+    },
+    "B/ref attention_mask_9": {
+      "file": "B_ref_attention_mask_9.bin",
+      "dtype": "float16",
+      "shape": [
+        1,
+        8,
+        375,
+        375
+      ],
+      "bytes": 2250000,
+      "sha256": "9ceed6167044e086fc667505117163bbdb54ff4fe23cd3133bbfba39190fc15c"
+    },
+    "C/ref attn_output_1": {
+      "file": "C_ref_attn_output_1.bin",
+      "dtype": "float16",
+      "shape": [
+        1,
+        8,
+        375,
+        128
+      ],
+      "bytes": 768000,
+      "sha256": "bb9735acc9827c8cbd26d76418536b5cbab438d38e6e7ed37354f5ef80e6d131"
+    }
+  },
+  "reference_vs_graph": {
+    "attention_scores_1": {
+      "elements": 2247000,
+      "bitwise_equal": 2247000,
+      "max_abs_err": 0.0
+    },
+    "matmul_0": {
+      "elements": 1125000,
+      "bitwise_equal": 1125000,
+      "max_abs_err": 0.0
+    },
+    "attention_mask_9": {
+      "elements": 1125000,
+      "bitwise_equal": 1125000,
+      "max_abs_err": 0.0
+    },
+    "attn_output_1": {
+      "elements": 384000,
+      "bitwise_equal": 384000,
+      "max_abs_err": 0.0
+    }
+  }
+}

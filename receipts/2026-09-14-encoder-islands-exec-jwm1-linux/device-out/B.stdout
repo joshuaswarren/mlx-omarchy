@@ -1,0 +1,4 @@
+bundle name=parakeet-encoder-island-select-8head programs=1 driver_abi=1 graph=fd9e6c5b64f8b2c58fa2067799589ba0d32dfc24361b6612c9ef94d9e1a6422e
+worker status=0 iterations=1 released=1 elapsed_ms=53
+worker detail=worker completed 1 iteration(s) and released its programs
+saved output attention_mask_9 (2250000 bytes)
