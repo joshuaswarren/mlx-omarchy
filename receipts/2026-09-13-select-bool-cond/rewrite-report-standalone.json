@@ -1,0 +1,35 @@
+{
+  "schema": "mlx-omarchy.select-runtime-rewrite.v1",
+  "rewritten": [
+    "y"
+  ],
+  "refused": [],
+  "fills": [
+    {
+      "input": "ninf_rt",
+      "shape": [
+        1,
+        8,
+        375,
+        375
+      ],
+      "const": "ninf",
+      "storage": "immediate",
+      "value": "-inf",
+      "bits": 64512
+    }
+  ],
+  "bool_conds": [
+    {
+      "input": "cond",
+      "shape": [
+        1,
+        8,
+        375,
+        375
+      ],
+      "source": "cond",
+      "storage": "param"
+    }
+  ]
+}

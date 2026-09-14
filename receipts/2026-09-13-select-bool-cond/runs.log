@@ -1,0 +1,33 @@
+# mil-hwxc c2cf32e4aa0200d72cecbce203bf6b47f50f729e
+# sha256 82f1d4ce44dc8f2cb5eefd843eea41c47527af3fbff2def0ed1fc154ccd3ce71
+
+=== fp16-rrb (runtime-a fp16 cond [1,8,375,375], expect 65) ===
+/home/joshuawarren/src/mil-hwx-compiler/build/mil-hwxc \
+  --mil receipts/2026-09-13-select-bool-cond/select-fp16-rrb.mil \
+  --model-root receipts/2026-09-13-select-bool-cond \
+  --target H13 --output receipts/2026-09-13-select-bool-cond/select-fp16-rrb
+5:5: error [h13.boolean-outside-envelope]: H13 select is outside the decoded boolean envelope: the captured geometries are less at CHW (375,1,1)/(750,1,1)/(1500,1,1)/(64,1,1) with a bool result, floor at (1,1,1)/(64,1,1)/(512,1,1) runtime or blob x, select at (64,1,1)/(8,375,375) with runtime a and a bool cond, and floor_div at (1,1,1)/(64,1,1) with runtime y or the scalar 2.0 — fp16-result less and fp16-cond select are rejected by Apple's own tool, so no device form exists for them
+rc=65
+
+=== bool-cond rewrite product (runtime-a bool cond) ===
+/home/joshuawarren/src/mil-hwx-compiler/build/mil-hwxc \
+  --mil receipts/2026-09-13-select-bool-cond/select-bool-cond.mil \
+  --model-root receipts/2026-09-13-select-bool-cond \
+  --target H13 --output receipts/2026-09-13-select-bool-cond/select-bool-cond
+compiled target=H13 artifacts=1 format=anec output=receipts/2026-09-13-select-bool-cond/select-bool-cond
+rc=0
+programs 1 op select encoder apple-parity-boolean tasks 5
+
+=== rrb standalone ===
+/home/joshuawarren/src/mil-hwx-compiler/build/mil-hwxc \
+  --mil receipts/2026-09-13-select-bool-cond/select-rrb.mil \
+  --model-root receipts/2026-09-13-select-bool-cond \
+  --target H13 --output receipts/2026-09-13-select-bool-cond/select-rrb
+compiled target=H13 artifacts=1 format=anec output=receipts/2026-09-13-select-bool-cond/select-rrb
+rc=0
+programs 1 op select encoder apple-parity-boolean tasks 5
+
+=== host tests ===
+python3 overlay/tests/omarchy/coreml/test_select_runtime.py -v
+Ran 9 tests in 0.212s
+OK
