@@ -1,0 +1,19 @@
+--- mlx/backend/omarchy/primitives.cpp	2026-09-12 18:55:17.116496509 -0500
++++ arm/primitives.uvec4.cpp	2026-09-14 10:03:02.480326902 -0500
+@@ -6747,13 +6747,13 @@
+   }
+   // The f16 Q4 shader reads eight halves as one uvec4. Materialize only the
+   // rare row-contiguous view whose element offset is not 16-byte aligned;
+-  // the coopmat word-pair reader extends the same rule to a 2-byte
+-  // alignment (an even f16 element offset).
++  // the coopmat staging reader takes its x tile as 16-byte quads too, so
++  // it carries the same rule.
+   bool packed_q4_x = use_q4_word && out.dtype() == float16 &&
+       (x.ndim() < 2 || x.shape(-2) == 1);
+   bool x_dense = x.flags().row_contiguous &&
+       (!packed_q4_x || x.offset() % (8 * x.itemsize()) == 0) &&
+-      (!coopmat_reachable || x.offset() % (2 * x.itemsize()) == 0) &&
++      (!coopmat_reachable || x.offset() % (8 * x.itemsize()) == 0) &&
+       (!qmm_fma_reachable || x.offset() % (8 * x.itemsize()) == 0);
+   std::optional<array> x_temp;
+   std::optional<array> w_temp;

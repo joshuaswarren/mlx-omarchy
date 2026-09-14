@@ -1,0 +1,212 @@
+#version 460
+#extension GL_KHR_cooperative_matrix : require
+#extension GL_KHR_memory_scope_semantics : require
+#extension GL_KHR_shader_subgroup_basic : require
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
+
+// Prefill Q4/group-64 f16 matmul on the G13 subgroup cooperative
+// matrix, expressed in the driver's 16x16x16 fp32 shape instead of
+// 8x8x8. hk_physical_device.c advertises both sizes off the same
+// hardware 8x8x8 matrix MAC; agx_nir_lower_simdmat.c expands one
+// 16x16x16 multiply-add into the 2x2x2 tiling of hardware ops, so this
+// arm asks the driver for the same 16 hardware ops per 16-k step that
+// the 8x8x8 form issues by hand, with a third of the fragment loads and
+// no ks loop.
+//
+// A 64-lane workgroup owns a 32x32 output tile; each subgroup owns a
+// 16x32 half, which is exactly one 16x16 A fragment and two 16x16 B
+// fragments per staged 16-k step. Staging, dequantization and the
+// ascending-k order over the staged tiles are unchanged.
+
+const uint TILE_M = 32u;
+const uint TILE_N = 32u;
+const uint CHUNK_K = 64u;
+const uint STEP_K = 16u;
+const uint MAT = 16u;
+
+layout(local_size_x = 64) in;
+
+layout(set = 0, binding = 0, std430) readonly buffer InputX {
+  uint values[];
+} input_x;
+layout(set = 0, binding = 1, std430) readonly buffer InputW {
+  uint values[];
+} input_w;
+layout(set = 0, binding = 2, std430) readonly buffer Scales {
+  float16_t values[];
+} scales;
+layout(set = 0, binding = 3, std430) readonly buffer Biases {
+  float16_t values[];
+} biases;
+layout(set = 0, binding = 4, std430) writeonly buffer Output {
+  float16_t values[];
+} output_data;
+
+layout(push_constant) uniform Params {
+  uint count;
+  uint operation;
+  uint lhs_size;
+  uint rhs_size;
+  uint reduce_size;
+  uint output_size;
+  uint lhs_offset;
+  uint rhs_offset;
+  uint output_offset;
+  uint aux_size;
+  uint aux_offset;
+  uint matrix_m;
+  uint matrix_n;
+  uint matrix_k;
+  uint flags;
+  float alpha;
+  float beta;
+  uint dims;
+  uint shape[4];
+  uint in_strides[4];
+  uint out_strides[4];
+} params;
+
+// 4 KiB shared: one 32x16 x tile and one 16x32 f32 weight tile. The
+// epilogue reuses all 512 f32 of x_s as drain scratch for one
+// subgroup's two 16x16 accumulators at a time.
+shared float x_s[TILE_M * STEP_K];
+shared float w_s[STEP_K * TILE_N];
+
+void main() {
+  uint lid = gl_LocalInvocationID.x;
+  uint sub = gl_SubgroupID;
+  uint batch = params.shape[0];
+  uint w_batch_words = params.shape[1];
+  uint param_batch = params.shape[2];
+  uint x_batch_rows = params.matrix_m * params.matrix_k;
+  uint m_tiles = (params.matrix_m + TILE_M - 1u) / TILE_M;
+  uint n_tiles = (params.matrix_n + TILE_N - 1u) / TILE_N;
+  uint k_chunks = params.matrix_k / CHUNK_K;
+  uint words_per_row = params.matrix_k / 8u;
+  uint groups_per_row = params.matrix_k / 64u;
+  uint x_words_per_row = params.matrix_k / 2u;
+  uint w_column_local = lid % 32u;
+  uint w_part = lid / 32u;
+
+  for (uint b = 0u; b < batch; ++b) {
+  uint w_slice = params.rhs_offset + b * w_batch_words;
+  uint scale_slice = params.aux_offset + b * param_batch;
+  uint bias_slice = params.aux_size + b * param_batch;
+  uint x_slice = (params.lhs_offset + b * x_batch_rows) / 2u;
+  uint out_slice = params.output_offset +
+      b * params.matrix_m * params.matrix_n;
+  for (uint tile_row = gl_WorkGroupID.y; tile_row < m_tiles;
+       tile_row += gl_NumWorkGroups.y) {
+    uint row_base = tile_row * TILE_M;
+    for (uint tile_col = gl_WorkGroupID.x; tile_col < n_tiles;
+         tile_col += gl_NumWorkGroups.x) {
+      uint column = tile_col * TILE_N + w_column_local;
+      bool column_ok = column < params.matrix_n;
+      uint w_row = w_slice + column * words_per_row;
+      uint scale_row = scale_slice + column * groups_per_row;
+      uint bias_row = bias_slice + column * groups_per_row;
+
+      coopmat<float, gl_ScopeSubgroup, MAT, MAT, gl_MatrixUseAccumulator>
+          acc[2];
+      for (uint cb = 0u; cb < 2u; ++cb) {
+        acc[cb] = coopmat<float, gl_ScopeSubgroup, MAT, MAT,
+            gl_MatrixUseAccumulator>(0.0);
+      }
+
+      for (uint chunk = 0u; chunk < k_chunks; ++chunk) {
+        float scale = 0.0;
+        float bias = 0.0;
+        if (column_ok) {
+          scale = float(scales.values[scale_row + chunk]);
+          bias = float(biases.values[bias_row + chunk]);
+        }
+        for (uint step = 0u; step < CHUNK_K / STEP_K; ++step) {
+          uint k_base = chunk * CHUNK_K + step * STEP_K;
+          // Four half2 loads per lane cover the 32x16 x tile.
+          uint x_words[4];
+          for (uint j = 0u; j < 4u; ++j) {
+            uint i = lid + 64u * j;
+            uint local_row = i / 8u;
+            uint row = row_base + local_row;
+            x_words[j] = row < params.matrix_m
+                ? input_x.values[
+                      x_slice + row * x_words_per_row + k_base / 2u +
+                      (i % 8u)]
+                : 0u;
+          }
+          for (uint j = 0u; j < 4u; ++j) {
+            uint i = lid + 64u * j;
+            uint local_row = i / 8u;
+            vec2 pair = unpackHalf2x16(x_words[j]);
+            x_s[local_row * STEP_K + 2u * (i % 8u)] = pair.x;
+            x_s[local_row * STEP_K + 2u * (i % 8u) + 1u] = pair.y;
+          }
+          // One packed word per lane covers the 16x32 weight tile.
+          uint packed = column_ok
+              ? input_w.values[w_row + k_base / 8u + w_part] : 0u;
+          uint w_base = 8u * w_part * TILE_N + w_column_local;
+          w_s[w_base + 0u * TILE_N] = scale * float(packed & 0xFu) + bias;
+          w_s[w_base + 1u * TILE_N] =
+              scale * float((packed >> 4u) & 0xFu) + bias;
+          w_s[w_base + 2u * TILE_N] =
+              scale * float((packed >> 8u) & 0xFu) + bias;
+          w_s[w_base + 3u * TILE_N] =
+              scale * float((packed >> 12u) & 0xFu) + bias;
+          w_s[w_base + 4u * TILE_N] =
+              scale * float((packed >> 16u) & 0xFu) + bias;
+          w_s[w_base + 5u * TILE_N] =
+              scale * float((packed >> 20u) & 0xFu) + bias;
+          w_s[w_base + 6u * TILE_N] =
+              scale * float((packed >> 24u) & 0xFu) + bias;
+          w_s[w_base + 7u * TILE_N] = scale * float(packed >> 28u) + bias;
+          barrier();
+
+          coopmat<float, gl_ScopeSubgroup, MAT, MAT, gl_MatrixUseA> mat_a;
+          coopmat<float, gl_ScopeSubgroup, MAT, MAT, gl_MatrixUseB> mat_b[2];
+          coopMatLoad(
+              mat_a, x_s, sub * MAT * STEP_K, STEP_K,
+              gl_CooperativeMatrixLayoutRowMajor);
+          for (uint cb = 0u; cb < 2u; ++cb) {
+            coopMatLoad(
+                mat_b[cb], w_s, cb * MAT, TILE_N,
+                gl_CooperativeMatrixLayoutRowMajor);
+          }
+          for (uint cb = 0u; cb < 2u; ++cb) {
+            acc[cb] = coopMatMulAdd(mat_a, mat_b[cb], acc[cb]);
+          }
+          barrier();
+        }
+      }
+
+      // Each subgroup drains its own 16x32 half through all 512 f32 of
+      // x_s in turn; every barrier stays in workgroup-uniform control
+      // flow. Lane l owns output column l of the tile and walks its 16
+      // rows, reading the accumulator half that holds that column.
+      for (uint s = 0u; s < 2u; ++s) {
+        barrier();
+        if (sub == s) {
+          for (uint cb = 0u; cb < 2u; ++cb) {
+            coopMatStore(
+                acc[cb], x_s, cb * MAT * MAT, MAT,
+                gl_CooperativeMatrixLayoutRowMajor);
+          }
+        }
+        barrier();
+        if (sub == s && column_ok) {
+          uint half_sel = w_column_local / MAT;
+          uint col_in_mat = w_column_local % MAT;
+          for (uint r = 0u; r < MAT; ++r) {
+            uint row = row_base + s * MAT + r;
+            if (row < params.matrix_m) {
+              output_data.values[out_slice + row * params.matrix_n + column] =
+                  float16_t(
+                      x_s[half_sel * MAT * MAT + r * MAT + col_in_mat]);
+            }
+          }
+        }
+      }
+    }
+  }
+  }
+}

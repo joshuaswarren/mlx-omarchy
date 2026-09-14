@@ -1,0 +1,101 @@
+== host
+jwm1-linux
+Linux 7.1.6-1-1-ARCH aarch64
+8
+== kernel cmdline
+BOOT_IMAGE=/@/boot/vmlinuz-linux-asahi root=UUID=725346d2-f127-47bc-b464-9dd46155e8d6 rw rootflags=subvol=@ loglevel=3 quiet splash
+== mesa package
+mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1
+== vulkan device
+==========
+VULKANINFO
+==========
+
+Vulkan Instance Version: 1.4.357
+
+
+Instance Extensions: count = 26
+-------------------------------
+VK_EXT_acquire_drm_display             : extension revision 1
+VK_EXT_acquire_xlib_display            : extension revision 1
+VK_EXT_debug_report                    : extension revision 10
+VK_EXT_debug_utils                     : extension revision 2
+VK_EXT_direct_mode_display             : extension revision 1
+VK_EXT_display_surface_counter         : extension revision 1
+VK_EXT_headless_surface                : extension revision 1
+VK_EXT_layer_settings                  : extension revision 2
+VK_EXT_surface_maintenance1            : extension revision 1
+VK_EXT_swapchain_colorspace            : extension revision 5
+VK_KHR_device_group_creation           : extension revision 1
+VK_KHR_display                         : extension revision 23
+VK_KHR_external_fence_capabilities     : extension revision 1
+VK_KHR_external_memory_capabilities    : extension revision 1
+VK_KHR_external_semaphore_capabilities : extension revision 1
+VK_KHR_get_display_properties2         : extension revision 1
+VK_KHR_get_physical_device_properties2 : extension revision 2
+VK_KHR_get_surface_capabilities2       : extension revision 1
+VK_KHR_portability_enumeration         : extension revision 1
+VK_KHR_surface                         : extension revision 25
+VK_KHR_surface_maintenance1            : extension revision 1
+VK_KHR_surface_protected_capabilities  : extension revision 1
+VK_KHR_wayland_surface                 : extension revision 6
+VK_KHR_xcb_surface                     : extension revision 6
+VK_KHR_xlib_surface                    : extension revision 6
+VK_LUNARG_direct_driver_loading        : extension revision 1
+
+Instance Layers: count = 2
+--------------------------
+VK_LAYER_KHRONOS_validation Khronos Validation Layer     1.4.357  version 1
+VK_LAYER_MESA_device_select Linux device selection layer 1.4.303  version 1
+== agx / ane modules
+ane                    65536  0
+== power
+/sys/class/power_supply/macsmc-ac/online=1
+/sys/class/power_supply/tps6598x-source-psy-0-0038/online=1
+/sys/class/power_supply/tps6598x-source-psy-0-003f/online=0
+/sys/class/power_supply/macsmc-battery/status=Full
+== source commit
+b41e2b74c330f910b24cab0e7516e306527858f0
+== model
+b045e57ea90b8f1b35f89f954b176a5c1faa02bd0af2c89bcec191239d66cef4  /home/joshuawarren/models/Qwen2.5-0.5B-Instruct-4bit-mlx/config.json
+54001cb4c11197119c206dde28e7be08e5872aab6c6d271aed339ec77e84f870  /home/joshuawarren/models/Qwen2.5-0.5B-Instruct-4bit-mlx/model.safetensors.index.json
+== prompt
+40e058593532cb7e1d79dd8c8274894a4d0ce02915ca365a78d14c7d051a91fb  /tmp/jwm1-phase-profile-20260913/prompt.txt
+4759 /tmp/jwm1-phase-profile-20260913/prompt.txt
+== probe
+e8774456d8c7a637cc7ff52121ce4b236f28316d9e39b5646b68ad7473858322  /home/joshuawarren/benchq/qmm-coop-bench/qmm_coop_bench_probe.py
+e8774456d8c7a637cc7ff52121ce4b236f28316d9e39b5646b68ad7473858322  /home/joshuawarren/benchq/qmmpad/probe.py
+e09059348e15c136e9e08a4532368f71de95962e384d5fa9ccd829e7d9d0c898  /home/joshuawarren/benchq/qmm-coop-bench/qmm_dump_probe.py
+== wheels
+e0ce679e545850a4b5ea2f1385e9061b0255e2632c8685ee69d1850016815244  /var/tmp/mlx-omarchy-profile-enabled-b41e2b74/dist/mlx_omarchy-0.32.2.dev202609122355+diag.b41e2b74-cp314-cp314-linux_aarch64.whl
+22225c01ee63e04f7dcfb3f90ac94a24d8463ded505657ac50562b02655026ef  /var/tmp/qmm-coop-arms/dist-clamp/mlx_omarchy-0.32.2.dev202609122355+diag.clamp-cp314-cp314-linux_aarch64.whl
+a8b422d35bdf6d44c758763c0a32e2244dd4d68752eae0261c083f60c5a73df2  /var/tmp/qmm-coop-arms/dist-mat16/mlx_omarchy-0.32.2.dev202609122355+diag.mat16-cp314-cp314-linux_aarch64.whl
+69c3ba2b5a797ef2ef38a861f2a097f3ed757a3cd7dfa1d2500ddb1ec25ed86f  /var/tmp/qmm-coop-arms/dist-pad2/mlx_omarchy-0.32.2.dev202609122355+diag.pad2-cp314-cp314-linux_aarch64.whl
+128d83998855186f3630199ac440cc7575d99a16ae1beb48fed8ccc81ed2d32a  /var/tmp/qmm-coop-arms/dist-pad4/mlx_omarchy-0.32.2.dev202609122355+diag.pad4-cp314-cp314-linux_aarch64.whl
+cf149a006d5a61174162a06dafaf601638af1cf42b368fd1cc56ef49b9ed4e6f  /var/tmp/qmm-coop-arms/dist-swz8/mlx_omarchy-0.32.2.dev202609122355+diag.swz8-cp314-cp314-linux_aarch64.whl
+9a7e248555f390cb65485d28bd55efaf21b26c5dd95272ffd4354183bbddd958  /var/tmp/qmm-coop-arms/dist-uvec4/mlx_omarchy-0.32.2.dev202609122355+diag.uvec4-cp314-cp314-linux_aarch64.whl
+== installed libmlx per arm
+/var/tmp/mlx-omarchy-profile-enabled-b41e2b74/venv d41f311ec19e23634213e420ec3f131ddb83509a87a16aee264b323d2fcc7051
+/var/tmp/qmm-coop-arms/venv-clamp 1ebbf9691c46d4d614af484fce8a7e78a324da5697b702dcb1e12133b49c29cb
+/var/tmp/qmm-coop-arms/venv-mat16 df697666bec28136769c9e2421d06cf0cd6afdd03ff6735107195a3108863825
+/var/tmp/qmm-coop-arms/venv-pad2 45399056b7f89d133b05d41ef9b5b502f2cd7c2ff7a06355da3e5473114897d2
+/var/tmp/qmm-coop-arms/venv-pad4 85197766c81cd262dbb07636d7292e0dda94930fb4eadc90071f2d85d6a7c3f2
+/var/tmp/qmm-coop-arms/venv-swz8 7ac57b1bae427907eab41c3ed06252d344249aaebeef53e3b697eadec8f2cf10
+/var/tmp/qmm-coop-arms/venv-uvec4 9f58dde4a147efe6cf8785140d29eb5a960a72cf17fdfceef1606a59a946c25b
+== arm shader sha256
+68cc00fff6ea13a125b59ff2256f0aef224edfc2bf66675bc0a5e44f95d5c1b4  /var/tmp/qmm-coop-arms/stage/arms/qmm_coopmat.base.comp
+82b064846722aea609a08c21fbbec5feafcdcd09ed3555a34da4d7c57aa8f7a0  /var/tmp/qmm-coop-arms/stage/arms/qmm_coopmat.clamp.comp
+e483ee67a313cbf5c13c3d4e09001a6efc92179aae867a4b10be1a33194c4944  /var/tmp/qmm-coop-arms/stage/arms/qmm_coopmat.mat16.comp
+35b12fc807624a67684735c008853e5567fbc63aa059535004bcd55b54acfa49  /var/tmp/qmm-coop-arms/stage/arms/qmm_coopmat.padded.comp
+abf95445a6afe96842f798ee137adede554eaf47e29ae2405cee1d020b478d9f  /var/tmp/qmm-coop-arms/stage/arms/qmm_coopmat.swz8.comp
+5584bdc4d9bea05100a0f6c8ae4d87bae41f250f9f800bceafe397cb9f724ced  /var/tmp/qmm-coop-arms/stage/arms/qmm_coopmat.uvec4.comp
+4dbe9d82de5b7b90d71d56c4809671a84f7391704748ffb5181ee83441730f3c  /var/tmp/qmm-coop-arms/stage/arms/primitives.uvec4.cpp
+== base tree restored?
+68cc00fff6ea13a125b59ff2256f0aef224edfc2bf66675bc0a5e44f95d5c1b4  /var/tmp/mlx-omarchy-profile-enabled-b41e2b74/mlx/mlx/backend/omarchy/shaders/qmm_coopmat.comp
+68cc00fff6ea13a125b59ff2256f0aef224edfc2bf66675bc0a5e44f95d5c1b4  /home/joshuawarren/src/mlx-bf16-grouped-base-b41e2b74/overlay/mlx/backend/omarchy/shaders/qmm_coopmat.comp
+1e3a0a24b3ea301715aee932a0642bbd461481d68cb94ea679a04e146e5c65ff  /var/tmp/mlx-omarchy-profile-enabled-b41e2b74/mlx/mlx/backend/omarchy/primitives.cpp
+1e3a0a24b3ea301715aee932a0642bbd461481d68cb94ea679a04e146e5c65ff  /home/joshuawarren/src/mlx-bf16-grouped-base-b41e2b74/overlay/mlx/backend/omarchy/primitives.cpp
+== lock state
+flock -n: free
+fuser: empty
+inode=29 path=/tmp/m1-gpu.lock
