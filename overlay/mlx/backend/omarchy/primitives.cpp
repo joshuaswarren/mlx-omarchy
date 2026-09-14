@@ -4083,6 +4083,55 @@ void Convolution::eval_gpu(const std::vector<array>& inputs, array& out) {
   auto pad_lo_axis = [&](int axis) {
     return axis_or_one(padding_lo_, axis);
   };
+  bool unit_window = !flip_ && groups_ == 1;
+  for (int axis = 0; axis < spatial; ++axis) {
+    if (kern_ext[axis] != 1 || in_ext[axis] != out.shape(1 + axis) ||
+        axis_or_one(kernel_strides_, axis) != 1u ||
+        pad_lo_axis(axis) != 0u ||
+        axis_or_one(kernel_dilation_, axis) != 1u ||
+        axis_or_one(input_dilation_, axis) != 1u) {
+      unit_window = false;
+    }
+  }
+  if (unit_window) {
+    const uint32_t matrix_n =
+        checked_u32(out_channels, "Convolution", out);
+    const uint32_t matrix_k =
+        checked_u32(in_channels, "Convolution", out);
+    const uint32_t matrix_m = total / matrix_n;
+    omarchy::ComputeParams gemm;
+    gemm.count = total;
+    gemm.reduce_size = matrix_k;
+    gemm.output_size = total;
+    gemm.matrix_m = matrix_m;
+    gemm.matrix_n = matrix_n;
+    gemm.matrix_k = matrix_k;
+    gemm.flags = 1u;
+    gemm.lhs_gap = matrix_k;
+    gemm.rhs_gap = matrix_k;
+    gemm.lhs_offset = checked_item_offset(x, x.size(), "Convolution", out);
+    gemm.rhs_offset = checked_item_offset(w, w.size(), "Convolution", out);
+    gemm.output_offset =
+        checked_item_offset(out, out.size(), "Convolution", out);
+    gemm.lhs_size = checked_u32(x.size(), "Convolution", out);
+    gemm.rhs_size = checked_u32(w.size(), "Convolution", out);
+    std::array<omarchy::ComputeBinding, 4> bindings{
+        binding(x), binding(w), binding(out), binding(out)};
+    auto gemm_kernel = select_float_kernel(
+        out.dtype(),
+        omarchy::ComputeKernel::MatmulF32,
+        omarchy::ComputeKernel::MatmulF16,
+        omarchy::ComputeKernel::MatmulBF16);
+    encoder.dispatch_compute(
+        gemm_kernel,
+        bindings,
+        gemm,
+        matrix_group_count(matrix_n),
+        matrix_group_count(matrix_m),
+        1u);
+    return;
+  }
+
   params.count = total;
   params.reduce_size = checked_u32(in_channels_per_group, "Convolution", out);
   params.lhs_offset = checked_item_offset(x, x.size(), "Convolution", out);
