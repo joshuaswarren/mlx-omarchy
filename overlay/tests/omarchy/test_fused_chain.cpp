@@ -1277,13 +1277,12 @@ TEST_CASE("eager q4 decode gemv group RoPE trig bits per dispatch shape") {
   auto impulse_linear = [&](int n) {
     QuantizedLinear l;
     l.w = zeros(Shape{n, k / 8}, uint32, stream);
-    l.scales = zeros(Shape{n, k / 64}, float16, stream);
-    l.biases = zeros(Shape{n, k / 64}, float16, stream);
-    std::vector<float> hb(n);
-    for (int j = 0; j < n; ++j) {
-      hb[j] = (j % head_dim) < half ? 1.0f : 0.0f;
-    }
-    l.bias = astype(array(hb), float16, stream);
+    array idx = arange(n, int32, stream);
+    array bit = astype(
+        less(remainder(idx, array(head_dim, int32), stream),
+             array(half, int32), stream),
+        float32, stream);
+    l.bias = astype(bit, float16, stream);
     for (array* a : {&l.w, &l.scales, &l.biases, &l.bias}) {
       a->eval();
     }
