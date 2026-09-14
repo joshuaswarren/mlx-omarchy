@@ -1,0 +1,225 @@
+{
+  "schema": "mlx-omarchy.jw16-ane-set-exec.v1",
+  "date": "2026-09-13",
+  "result": "PASS",
+  "exact_fp16": "yes",
+  "host": "jw16mbp1-linux",
+  "ssh_alias": "jw16mbp1-linux",
+  "kernel": "7.1.6-1-1-ARCH",
+  "resolved_model": {
+    "configured": "openai-codex/gpt-5.6-sol",
+    "actual": "openai-codex/gpt-5.6-sol",
+    "fallback": false
+  },
+  "source": {
+    "omarchy_ane": "0ab37586c479dd79ac36615f794ccf789ec99b2c",
+    "ane_ko_path": "/home/joshuawarren/ane-build-abi1/ane.ko",
+    "ane_ko_sha256": "1b801564a1a6c5801dc26cfd1e4a8d820761881f4a1e98543429bc43ccc9744f",
+    "worker_commit": "3629a66544d3da1aa8399a93ef4a5d0cc273311d",
+    "built_tree_commit": "c05ba1df2aa0427a36685a4e4661e6a1f47ff33d",
+    "worker_sha256": "575e2acd0152cec13f06dd9b09e4af0d7e4a91bfe4d8fa086b633b8b82a83e59",
+    "libane_source_commit": "f261a6cb537aca62f267ad3d01beda0d6877544c",
+    "libane_sha256": "1ab9d95debcc8b5fee3b6653dfce0b50412bc7efef43c2d2167dc83ce270ca49",
+    "graph_hash": "5584d0fd8d40027229890408e924e6f7930cd5f02516466a442193408482ce76",
+    "bundle_manifest_version": 4,
+    "bundle_name": "schema4-add-mul-worker",
+    "program0_anec_sha256": "9a6a6a9a701ce207d4a8ea80ee1ca6d5ade076be2115b73a9aed6f4236aa56ab",
+    "program1_anec_sha256": "62595e4a61db24066b83a4f7c077d459c69a6a740109098ee0122b4b46dcd3cc",
+    "expect_y_sha256": "abd3b8c9f1439c1fa508b42aa229c4b1688e06271d2bf7b823d71cd730200054"
+  },
+  "set_pre": {
+    "set0": {
+      "phys": "0x28e08c000",
+      "raw": "0x000003ff",
+      "ACTUAL": "0xf",
+      "TARGET": "0xf"
+    },
+    "base": {
+      "raw": "0x000003ff",
+      "ACTUAL": "0xf",
+      "TARGET": "0xf"
+    },
+    "set1": {
+      "raw": "0x000003ff",
+      "ACTUAL": "0xf",
+      "TARGET": "0xf"
+    },
+    "set2": {
+      "raw": "0x000003ff",
+      "ACTUAL": "0xf",
+      "TARGET": "0xf"
+    },
+    "set3": {
+      "raw": "0x000003ff",
+      "ACTUAL": "0xf",
+      "TARGET": "0xf"
+    },
+    "set4": {
+      "raw": "0x000003ff",
+      "ACTUAL": "0xf",
+      "TARGET": "0xf"
+    },
+    "set5": {
+      "raw": "0x00000000",
+      "ACTUAL": "0x0",
+      "TARGET": "0x0"
+    }
+  },
+  "device": {
+    "path": "/dev/accel/accel0",
+    "stat": "crw-rw-rw- root:render 261,0",
+    "bound": "285c04000.ane",
+    "module": "Live",
+    "refcnt": 0,
+    "nproc": 10,
+    "boot_id": "f6ad865b-b85e-499e-8308-28b57b24f0c8",
+    "drm_initialized": "ane 1.0.0",
+    "drm_version_ioctl": {
+      "version": "1.0.0",
+      "name": "ane",
+      "desc": "Apple Neural Engine driver"
+    },
+    "still_live_after": true
+  },
+  "submit": {
+    "attempted": true,
+    "command": "/var/tmp/jw16-ane-first-exec/mlx-omarchy-ane-worker --bundle /var/tmp/jw16-ane-first-exec/bundle --libane /var/tmp/jw16-ane-first-exec/libane.so --deadline-ms 5000 --iterations 1 --input a=/var/tmp/jw16-ane-first-exec/a.bin --input b=/var/tmp/jw16-ane-first-exec/b.bin --expect y=/var/tmp/jw16-ane-first-exec/y.bin --save y=/var/tmp/jw16-ane-set-exec/y.out.bin",
+    "deadline_ms": 5000,
+    "iterations_requested": 1,
+    "iterations_completed": 1,
+    "worker_exit": 0,
+    "worker_status": 0,
+    "released_programs": 2,
+    "elapsed_ms": 2,
+    "detail": "worker completed 1 iteration(s) and released its programs",
+    "stdout": [
+      "bundle name=schema4-add-mul-worker programs=2 driver_abi=1 graph=5584d0fd8d40027229890408e924e6f7930cd5f02516466a442193408482ce76",
+      "worker status=0 iterations=1 released=2 elapsed_ms=2",
+      "worker detail=worker completed 1 iteration(s) and released its programs",
+      "saved output y (128 bytes)",
+      "verified output y exact"
+    ],
+    "stderr": [],
+    "program_submitted_to_ane": true,
+    "hang": false,
+    "errno_110": false,
+    "box_reset": false,
+    "started_at": "2026-09-13T22:27:04-05:00",
+    "finished_at": "2026-09-13T22:27:04-05:00"
+  },
+  "dmesg_submit": [
+    "[  434.102503] JW16_SET_EXEC_PRE 2026-09-13T22:27:04-05:00 boot=f6ad865b-b85e-499e-8308-28b57b24f0c8",
+    "[  434.120504] ane 285c04000.ane: ane_drm_open called",
+    "[  434.120513] ane 285c04000.ane: pm_runtime_resume_and_get returned 0",
+    "[  434.120532] ane 285c04000.ane: bo: mapping 2 page(s) at iova 0x4000",
+    "[  434.120557] ane 285c04000.ane: bo: mapping 1 page(s) at iova 0xc000",
+    "[  434.120572] ane 285c04000.ane: bo: mapping 1 page(s) at iova 0x10000",
+    "[  434.120585] ane 285c04000.ane: bo: mapping 1 page(s) at iova 0x14000",
+    "[  434.120599] ane 285c04000.ane: bo: mapping 1 page(s) at iova 0x18000",
+    "[  434.120637] ane 285c04000.ane: ane_drm_open called",
+    "[  434.120642] ane 285c04000.ane: pm_runtime_resume_and_get returned 0",
+    "[  434.120650] ane 285c04000.ane: bo: mapping 2 page(s) at iova 0x1c000",
+    "[  434.120679] ane 285c04000.ane: bo: mapping 1 page(s) at iova 0x24000",
+    "[  434.120695] ane 285c04000.ane: bo: mapping 1 page(s) at iova 0x28000",
+    "[  434.120717] ane 285c04000.ane: bo: mapping 1 page(s) at iova 0x2c000",
+    "[  434.120733] ane 285c04000.ane: bo: mapping 1 page(s) at iova 0x30000",
+    "[  434.120761] ane 285c04000.ane: submit: ioctl entry",
+    "[  434.120766] ane 285c04000.ane: submit: enqueue qid=4 td_size=0x1f8 nid=0x40 iova=0x18000",
+    "[  434.120769] ane 285c04000.ane: submit: tq status written",
+    "[  434.120783] ane 285c04000.ane: submit: enqueue returned 0",
+    "[  434.120788] ane 285c04000.ane: submit: calling execute",
+    "[  434.120790] ane 285c04000.ane: submit: push tq qid=4 addr=0x18000",
+    "[  434.120792] ane 285c04000.ane: submit: ringing doorbell (engine DMA starts)",
+    "[  434.120795] ane 285c04000.ane: submit: doorbell survived",
+    "[  434.120824] ane 285c04000.ane: submit: execute returned 0",
+    "[  434.120929] ane 285c04000.ane: submit: ioctl entry",
+    "[  434.120933] ane 285c04000.ane: submit: enqueue qid=4 td_size=0x1f8 nid=0x40 iova=0x30000",
+    "[  434.120936] ane 285c04000.ane: submit: tq status written",
+    "[  434.120949] ane 285c04000.ane: submit: enqueue returned 0",
+    "[  434.120954] ane 285c04000.ane: submit: calling execute",
+    "[  434.120956] ane 285c04000.ane: submit: push tq qid=4 addr=0x30000",
+    "[  434.120959] ane 285c04000.ane: submit: ringing doorbell (engine DMA starts)",
+    "[  434.120962] ane 285c04000.ane: submit: doorbell survived",
+    "[  434.120990] ane 285c04000.ane: submit: execute returned 0",
+    "[  434.137680] JW16_SET_EXEC_POST 2026-09-13T22:27:04-05:00 rc=0"
+  ],
+  "set_post": {
+    "set0": {
+      "phys": "0x28e08c000",
+      "raw": "0x000003ff",
+      "ACTUAL": "0xf",
+      "TARGET": "0xf"
+    },
+    "base": {
+      "raw": "0x000003ff",
+      "ACTUAL": "0xf",
+      "TARGET": "0xf"
+    },
+    "set1": {
+      "raw": "0x000003ff",
+      "ACTUAL": "0xf",
+      "TARGET": "0xf"
+    },
+    "set2": {
+      "raw": "0x000003ff",
+      "ACTUAL": "0xf",
+      "TARGET": "0xf"
+    },
+    "set3": {
+      "raw": "0x000003ff",
+      "ACTUAL": "0xf",
+      "TARGET": "0xf"
+    },
+    "set4": {
+      "raw": "0x000003ff",
+      "ACTUAL": "0xf",
+      "TARGET": "0xf"
+    },
+    "set5": {
+      "raw": "0x00000000",
+      "ACTUAL": "0x0",
+      "TARGET": "0x0"
+    },
+    "set0_still_0xf": true
+  },
+  "numeric": {
+    "element_count": 64,
+    "worker_verified_exact": true,
+    "y_out_sha256": "bade941d7d8f1e1097b9ce0298ff05617d85a9928de0e8c7eead5743f3f24352",
+    "y_out_bytes": 128,
+    "max_abs_fp16": 0.0,
+    "byte_diff": "signed_zero_only",
+    "signed_zero_high_bytes_1based": [
+      8,
+      22,
+      36,
+      50,
+      64
+    ],
+    "note": "y.bin has IEEE -0 at five fp16 slots; device wrote +0. Worker signed-zero compare: verified output y exact."
+  },
+  "post": {
+    "boot_id": "f6ad865b-b85e-499e-8308-28b57b24f0c8",
+    "boot_id_unchanged": true,
+    "device": "crw-rw-rw- root:render 261,0 /dev/accel/accel0",
+    "bound": "285c04000.ane",
+    "module": "Live",
+    "refcnt": 0,
+    "workers": "none",
+    "y_out": "/var/tmp/jw16-ane-set-exec/y.out.bin"
+  },
+  "prohibited_actions_observed": {
+    "ane_unloaded": false,
+    "rebooted": false,
+    "executed_1x896": false,
+    "took_gpu_lock": false,
+    "retried_after_failure": false,
+    "iterations_2": false,
+    "ran_100": false,
+    "wrote_0xf_userspace": false
+  },
+  "encoder_claim": false,
+  "prior_receipt": "receipts/2026-09-13-jw16-ane-abi1-exec.json",
+  "set_domains_receipt": "ane-linux-experiments/receipts/2026-09-13-t6001-set-domains.json",
+  "log": "/var/tmp/jw16-ane-set-exec/worker.stdout"
+}
