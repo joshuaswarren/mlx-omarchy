@@ -1,0 +1,503 @@
+{
+  "agent_identity": {
+    "actual": "xai-oauth/grok-4.6",
+    "agent": "TdtEmission99",
+    "assigned_route": "openai",
+    "fallback": true
+  },
+  "ane_encoder_arm": {
+    "decoder_calls": 145,
+    "elapsed_s": 3.5388414780027233,
+    "emissions": 105,
+    "first_divergence": {
+      "actual": {
+        "duration": 1,
+        "frame_index": 6,
+        "token_id": 303
+      },
+      "emission_index": 1,
+      "native": {
+        "duration": 2,
+        "frame_index": 6,
+        "token_id": 303
+      }
+    },
+    "joint_calls": 146,
+    "matching_prefix": 99,
+    "name": "ane",
+    "snapshots": {
+      "98": {
+        "cell": {
+          "dtype": "float32",
+          "finite": true,
+          "max": 78.5625,
+          "mean_abs": 2.8132642017211764,
+          "min": -84.25,
+          "sha256": "569bf9e71262f56ad925521e271121ea1adc095c69b513e056d72f3ff783569f",
+          "shape": [
+            2,
+            1,
+            640
+          ]
+        },
+        "decoder_input_token": 7883,
+        "decoder_state": {
+          "dtype": "float32",
+          "finite": true,
+          "max": 2.255859375,
+          "mean_abs": 0.1747907817363739,
+          "min": -2.15625,
+          "sha256": "8aa9d9a9a093854de5346bf3e2da21865752ebd2cf2f96a1db99eb751dffe327",
+          "shape": [
+            1,
+            640
+          ]
+        },
+        "emission_index": 98,
+        "frame_index": 373,
+        "hidden": {
+          "dtype": "float32",
+          "finite": true,
+          "max": 0.94287109375,
+          "mean_abs": 0.06917336750775575,
+          "min": -1.0,
+          "sha256": "94820caa1505170fa6dfd5c2509beaee1e21e5b7a543b2e0a2ca8ca93759a22f",
+          "shape": [
+            2,
+            1,
+            640
+          ]
+        },
+        "logits": {
+          "argmax": 7883,
+          "duration_argmax": 0,
+          "duration_logits": [
+            11.03125,
+            9.234375,
+            -5.1171875,
+            -36.90625,
+            -5.40625
+          ],
+          "gap_7883_minus_7863": 0.5390625,
+          "logit_7863": -13.234375,
+          "logit_7883": -12.6953125
+        }
+      },
+      "99": {
+        "cell": {
+          "dtype": "float32",
+          "finite": true,
+          "max": 79.5,
+          "mean_abs": 2.8072423588950186,
+          "min": -85.125,
+          "sha256": "e6192cbce88151b355a17635ae457767bbcc86286f35f9f8a745cfe085140bdb",
+          "shape": [
+            2,
+            1,
+            640
+          ]
+        },
+        "decoder_input_token": 7883,
+        "decoder_state": {
+          "dtype": "float32",
+          "finite": true,
+          "max": 2.396484375,
+          "mean_abs": 0.19183521270751952,
+          "min": -2.1796875,
+          "sha256": "c7eca51552bcadb5b068b405ba4660be6079e3c89f9cb86a4c1165ff70872af4",
+          "shape": [
+            1,
+            640
+          ]
+        },
+        "emission_index": 99,
+        "frame_index": 373,
+        "hidden": {
+          "dtype": "float32",
+          "finite": true,
+          "max": 0.8388671875,
+          "mean_abs": 0.07241197880357504,
+          "min": -1.0,
+          "sha256": "9cb33a89281010f80442bec3a9c07769ab3a10672a1ccb15f6d2899f6c75160f",
+          "shape": [
+            2,
+            1,
+            640
+          ]
+        },
+        "logits": {
+          "argmax": 7883,
+          "duration_argmax": 0,
+          "duration_logits": [
+            14.015625,
+            9.7890625,
+            -8.2109375,
+            -45.75,
+            -9.03125
+          ],
+          "gap_7883_minus_7863": 6.6171875,
+          "logit_7863": -15.546875,
+          "logit_7883": -8.9296875
+        }
+      }
+    },
+    "tokens_96_103": [
+      {
+        "duration": 0,
+        "frame_index": 373,
+        "token_id": 7883
+      },
+      {
+        "duration": 0,
+        "frame_index": 373,
+        "token_id": 7883
+      },
+      {
+        "duration": 0,
+        "frame_index": 373,
+        "token_id": 7883
+      },
+      {
+        "duration": 0,
+        "frame_index": 373,
+        "token_id": 7883
+      },
+      {
+        "duration": 0,
+        "frame_index": 373,
+        "token_id": 7863
+      },
+      {
+        "duration": 0,
+        "frame_index": 373,
+        "token_id": 8135
+      },
+      {
+        "duration": 0,
+        "frame_index": 373,
+        "token_id": 8029
+      },
+      {
+        "duration": 0,
+        "frame_index": 373,
+        "token_id": 8062
+      }
+    ]
+  },
+  "cause": {
+    "letter": "a",
+    "linux_token_99": 7883,
+    "named": "parakeet.tdt.encoder-residual-accumulated-into-decoder-state",
+    "native_token_99": 7863,
+    "not_this_hole": {
+      "letter": "b",
+      "named": "parakeet.tdt.decoder-lstm.fp16-recurrent-vs-native-coreml",
+      "where": "native-encoder arm first token miss is emission 101, 8029 vs 7892, not emission 99"
+    },
+    "probe_auto_letter_was": "b",
+    "probe_auto_letter_why_wrong": "The probe treated 'ANE state 99 + native frame 373 still 7883' as LSTM-operator failure. That swap only excludes the current encoder frame. The native-encoder full TDT is the (a) vs (b) test, and it passes emission 99.",
+    "rule": "The emission-99 argmax is decoder_state, not encoder frame 373 and not joint/projector. Native encoder_hidden through the same decoder emits native 7863 at 99. ANE encoder_hidden emits 7883 at 99. Swapping only frame 373 does not flip either state. ANE decoder_state at 99 matches native-encoder decoder_state at 98 (hidden rel_l2 0.00364): the ANE residual has already been absorbed into LSTM recurrence one emission earlier.",
+    "tensor": "decoder_state at emission 99 (projected LSTM hidden; also next_hidden/next_cell)"
+  },
+  "encoder_frame_373": {
+    "all_frames": {
+      "bit_exact": false,
+      "max_abs": 0.14715576171875,
+      "mean_abs": 0.004182379897435506,
+      "rel_l2": 0.024916646726580935
+    },
+    "ane_frame_373": {
+      "dtype": "float32",
+      "finite": true,
+      "max": 0.587890625,
+      "mean_abs": 0.10413966849446296,
+      "min": -0.57666015625,
+      "sha256": "421794456d89104b2ddeb0beec4075078a96fe14ce2f4787f0b4e061f488b48b",
+      "shape": [
+        640
+      ]
+    },
+    "ane_sha256": "9ebb680321a8efb4016dcd1efb87fc15172fe68a4b28c5259247bf30c0bb5bf8",
+    "frame_373": {
+      "bit_exact": false,
+      "max_abs": 0.009765625,
+      "mean_abs": 0.001470879465341568,
+      "rel_l2": 0.013847761306488965
+    },
+    "native_frame_373": {
+      "dtype": "float32",
+      "finite": true,
+      "max": 0.59130859375,
+      "mean_abs": 0.10409255027770996,
+      "min": -0.57666015625,
+      "sha256": "421387a213f3d218dfd55d08a0a22446b7252810711aceb31307b0e598c2d56d",
+      "shape": [
+        640
+      ]
+    },
+    "native_sha256": "51830b6ffe992568c9fd19a3636373fd36939e14ff998c558fb85038acbd13b8"
+  },
+  "host": {
+    "hostname": "jwm1-linux",
+    "kernel": "7.1.6-1-1-ARCH",
+    "machine": "aarch64"
+  },
+  "inputs": {
+    "ane_encoder": "/var/tmp/ParakeetE2EAne/out/encoder_hidden.npy",
+    "ane_encoder_sha256": "b3d60c81bcd9c63fcdcb5c5578d765cc221b0126af3482fb165d769a65c23e6e",
+    "model": "/home/joshuawarren/.cache/mlx-omarchy/parakeet-reference/mweinbach1/parakeet-tdt-0.6b-v3-coreml/b650695c2322ee5281dff48d7345b2f3a58ff018",
+    "native_encoder": "/var/tmp/EncoderParityAne/capture/encoder_hidden.npy",
+    "native_encoder_sha256": "7e442034cb42521f7b76ec9645e8d0082899a5f551ea8d046c62a9283cc6e4e5",
+    "native_tokens": "/var/tmp/EncoderParityAne/capture/token_ids.json"
+  },
+  "mlx": {
+    "device": "Device(gpu, 0)",
+    "device_name": "Apple M1 (G13G B1)",
+    "version": "0.32.2.dev202609121216+8f6de34c"
+  },
+  "native_capture_tensors_at_99": false,
+  "native_encoder_arm": {
+    "decoder_calls": 145,
+    "elapsed_s": 3.4193017900106497,
+    "emissions": 104,
+    "first_divergence": {
+      "actual": {
+        "duration": 0,
+        "frame_index": 373,
+        "token_id": 8029
+      },
+      "emission_index": 101,
+      "native": {
+        "duration": 0,
+        "frame_index": 373,
+        "token_id": 7892
+      }
+    },
+    "joint_calls": 146,
+    "matching_prefix": 101,
+    "name": "native_enc",
+    "snapshots": {
+      "98": {
+        "cell": {
+          "dtype": "float32",
+          "finite": true,
+          "max": 79.625,
+          "mean_abs": 2.8073548113461584,
+          "min": -85.0625,
+          "sha256": "f0315afd69ccf88c307c0515ecd69d04c7930510215b2b55d7e48ee178f52de0",
+          "shape": [
+            2,
+            1,
+            640
+          ]
+        },
+        "decoder_input_token": 7883,
+        "decoder_state": {
+          "dtype": "float32",
+          "finite": true,
+          "max": 2.41015625,
+          "mean_abs": 0.1917521119117737,
+          "min": -2.1796875,
+          "sha256": "8fd90ec7d296027947b0a27eb5523fa83f4083ca6b2ab482b695ffc52fe1c16e",
+          "shape": [
+            1,
+            640
+          ]
+        },
+        "emission_index": 98,
+        "frame_index": 373,
+        "hidden": {
+          "dtype": "float32",
+          "finite": true,
+          "max": 0.8388671875,
+          "mean_abs": 0.0723741146735847,
+          "min": -1.0,
+          "sha256": "772e5a4f8e5944dd0058206320e1106dc6fb2a884486c4d76eb69508dca1a6f3",
+          "shape": [
+            2,
+            1,
+            640
+          ]
+        },
+        "logits": {
+          "argmax": 7883,
+          "duration_argmax": 0,
+          "duration_logits": [
+            13.984375,
+            9.8046875,
+            -8.203125,
+            -45.78125,
+            -8.984375
+          ],
+          "gap_7883_minus_7863": 6.546875,
+          "logit_7863": -15.5546875,
+          "logit_7883": -9.0078125
+        }
+      },
+      "99": {
+        "cell": {
+          "dtype": "float32",
+          "finite": true,
+          "max": 80.625,
+          "mean_abs": 2.860239409049973,
+          "min": -86.0,
+          "sha256": "4db11d7b3f29df03631109b686469276a122dfd4d296287c0e9321a88407c106",
+          "shape": [
+            2,
+            1,
+            640
+          ]
+        },
+        "decoder_input_token": 7883,
+        "decoder_state": {
+          "dtype": "float32",
+          "finite": true,
+          "max": 2.23828125,
+          "mean_abs": 0.17402052283287048,
+          "min": -2.12109375,
+          "sha256": "fe8070cb046ff946b6da5cd560514b170a0a41b860a5b8076d51cbc869f57a67",
+          "shape": [
+            1,
+            640
+          ]
+        },
+        "emission_index": 99,
+        "frame_index": 373,
+        "hidden": {
+          "dtype": "float32",
+          "finite": true,
+          "max": 0.94287109375,
+          "mean_abs": 0.06897514900192618,
+          "min": -1.0,
+          "sha256": "41d8c6f200acfeba690c5afff09c9eddbb2ea7969e9f169b589a6c2a096fe8a9",
+          "shape": [
+            2,
+            1,
+            640
+          ]
+        },
+        "logits": {
+          "argmax": 7863,
+          "duration_argmax": 0,
+          "duration_logits": [
+            12.015625,
+            9.234375,
+            -4.93359375,
+            -36.84375,
+            -5.96875
+          ],
+          "gap_7883_minus_7863": -0.421875,
+          "logit_7863": -14.1484375,
+          "logit_7883": -14.5703125
+        }
+      }
+    },
+    "tokens_96_103": [
+      {
+        "duration": 0,
+        "frame_index": 373,
+        "token_id": 7883
+      },
+      {
+        "duration": 0,
+        "frame_index": 373,
+        "token_id": 7883
+      },
+      {
+        "duration": 0,
+        "frame_index": 373,
+        "token_id": 7883
+      },
+      {
+        "duration": 0,
+        "frame_index": 373,
+        "token_id": 7863
+      },
+      {
+        "duration": 0,
+        "frame_index": 373,
+        "token_id": 8135
+      },
+      {
+        "duration": 0,
+        "frame_index": 373,
+        "token_id": 8029
+      },
+      {
+        "duration": 0,
+        "frame_index": 373,
+        "token_id": 8062
+      },
+      {
+        "duration": 0,
+        "frame_index": 373,
+        "token_id": 8029
+      }
+    ]
+  },
+  "schema": "mlx-omarchy.tdt-emission-99/1",
+  "source": {
+    "parakeet_tdt_py_sha256": "104e5762edd626b1ddc16e8afb522de729133f18bfab176cf1e9389cb2ac051c",
+    "probe_sha256": "7f31764037ba2e4a1e2ea919855fc60746ad00d16d030ed1c71be3ffe9e64e91",
+    "vulkan_decoder_py_sha256": "bea0e2e6f503cb635c40928b1f52bbd0e63d09f94c67ed16bcd85ed0e241fd47",
+    "vulkan_joint_py_sha256": "bf31537d504612c6d9873051c9ad5f7b84a978268e6d7ed4eaec173a18626115"
+  },
+  "swaps_at_emission_99": {
+    "ane_state99_x_ane_frame": {
+      "argmax": 7883,
+      "duration_argmax": 0,
+      "duration_logits": [
+        14.015625,
+        9.7890625,
+        -8.2109375,
+        -45.75,
+        -9.03125
+      ],
+      "gap_7883_minus_7863": 6.6171875,
+      "logit_7863": -15.546875,
+      "logit_7883": -8.9296875
+    },
+    "ane_state99_x_native_frame": {
+      "argmax": 7883,
+      "duration_argmax": 0,
+      "duration_logits": [
+        14.0,
+        9.7890625,
+        -8.2265625,
+        -45.78125,
+        -9.0
+      ],
+      "gap_7883_minus_7863": 6.59375,
+      "logit_7863": -15.5625,
+      "logit_7883": -8.96875
+    },
+    "native_enc_state99_x_ane_frame": {
+      "argmax": 7863,
+      "duration_argmax": 0,
+      "duration_logits": [
+        12.015625,
+        9.2265625,
+        -4.90234375,
+        -36.78125,
+        -5.9765625
+      ],
+      "gap_7883_minus_7863": -0.4140625,
+      "logit_7863": -14.125,
+      "logit_7883": -14.5390625
+    },
+    "native_enc_state99_x_native_frame": {
+      "argmax": 7863,
+      "duration_argmax": 0,
+      "duration_logits": [
+        12.015625,
+        9.234375,
+        -4.93359375,
+        -36.84375,
+        -5.96875
+      ],
+      "gap_7883_minus_7863": -0.421875,
+      "logit_7863": -14.1484375,
+      "logit_7883": -14.5703125
+    }
+  }
+}
