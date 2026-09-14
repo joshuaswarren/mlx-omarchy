@@ -1,0 +1,41 @@
+[
+  {
+    "name": "select-rrb-8375375",
+    "rc": 0,
+    "code": null,
+    "stderr": "",
+    "stdout": "compiled target=H13 artifacts=1 format=anec output=/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/main-land2/receipts/2026-09-14-encoder-leftover/probes/select-rrb-8375375/out",
+    "programs": [
+      {
+        "operation": "select",
+        "encoder": "apple-parity-boolean",
+        "taskDescriptors": 5
+      }
+    ],
+    "out_exists": true
+  },
+  {
+    "name": "select-encoder-cond-broadcast",
+    "rc": 0,
+    "code": null,
+    "stderr": "",
+    "stdout": "compiled target=H13 artifacts=1 format=anec output=/home/joshuawarren/.config/superpowers/worktrees/mlx-omarchy/main-land2/receipts/2026-09-14-encoder-leftover/probes/select-encoder-cond-broadcast/out",
+    "programs": [
+      {
+        "operation": "select",
+        "encoder": "apple-parity-boolean",
+        "taskDescriptors": 5
+      }
+    ],
+    "out_exists": true
+  },
+  {
+    "name": "select-fp16-cond",
+    "rc": 65,
+    "code": "h13.boolean-outside-envelope",
+    "stderr": "5:5: error [h13.boolean-outside-envelope]: H13 select is outside the decoded boolean envelope: the captured geometries are less at CHW (375,1,1)/(750,1,1)/(1500,1,1)/(64,1,1) with a bool result, floor at (1,1,1)/(64,1,1)/(512,1,1) runtime or blob x, select at (64,1,1)/(8,375,375) with runtime a and a bool cond, and floor_div at (1,1,1)/(64,1,1) with runtime y or the scalar 2.0 \u2014 fp16-result less and fp16-cond select are rejected by Apple's own tool, so no device form exists for them",
+    "stdout": "",
+    "programs": null,
+    "out_exists": false
+  }
+]

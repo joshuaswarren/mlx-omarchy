@@ -1,0 +1,231 @@
+{
+  "artifactFormat": "anec",
+  "bytes": 182400,
+  "constantBytes": 16384,
+  "constantInputs": {
+  },
+  "constantOffset": 161920,
+  "dispatchPlan": [
+    0
+  ],
+  "encoder": "apple-parity-batched-matmul",
+  "file": "program-0.anec",
+  "inputs": [
+    {
+      "allocationBytes": 1572864,
+      "dtype": "float16",
+      "index": 5,
+      "logicalBytes": 1533952,
+      "name": "w",
+      "nchw": [
+        1,
+        8,
+        128,
+        749,
+        196608,
+        1536
+      ],
+      "shape": [
+        1,
+        8,
+        128,
+        749
+      ]
+    },
+    {
+      "allocationBytes": 770048,
+      "dtype": "float16",
+      "index": 6,
+      "logicalBytes": 768000,
+      "name": "x",
+      "nchw": [
+        1,
+        8,
+        375,
+        128,
+        96000,
+        256
+      ],
+      "shape": [
+        1,
+        8,
+        375,
+        128
+      ]
+    }
+  ],
+  "intermediates": [
+  ],
+  "logicalResults": [
+    {
+      "conversion": "identity",
+      "dtype": "float16",
+      "name": "product",
+      "physical": {
+        "elementCount": 2247000,
+        "elementOffset": 0,
+        "tensor": "product"
+      },
+      "shape": [
+        1,
+        8,
+        375,
+        749
+      ]
+    }
+  ],
+  "operation": "matmul",
+  "outputs": [
+    {
+      "allocationBytes": 4620288,
+      "dtype": "float16",
+      "index": 4,
+      "logicalBytes": 4494000,
+      "name": "product",
+      "nchw": [
+        1,
+        8,
+        375,
+        749,
+        576000,
+        1536
+      ],
+      "shape": [
+        1,
+        8,
+        375,
+        749
+      ]
+    }
+  ],
+  "physicalOutputs": [
+    {
+      "dtype": "float16",
+      "logicalBytes": 4494000,
+      "shape": [
+        1,
+        8,
+        375,
+        749
+      ],
+      "tensor": "product"
+    }
+  ],
+  "programs": [
+    {
+      "bytes": 182400,
+      "constantBytes": 16384,
+      "constantInputs": {
+      },
+      "constantOffset": 161920,
+      "encoder": "apple-parity-batched-matmul",
+      "file": "program-0.anec",
+      "inputs": [
+        {
+          "allocationBytes": 1572864,
+          "dtype": "float16",
+          "index": 5,
+          "logicalBytes": 1533952,
+          "name": "w",
+          "nchw": [
+            1,
+            8,
+            128,
+            749,
+            196608,
+            1536
+          ],
+          "shape": [
+            1,
+            8,
+            128,
+            749
+          ]
+        },
+        {
+          "allocationBytes": 770048,
+          "dtype": "float16",
+          "index": 6,
+          "logicalBytes": 768000,
+          "name": "x",
+          "nchw": [
+            1,
+            8,
+            375,
+            128,
+            96000,
+            256
+          ],
+          "shape": [
+            1,
+            8,
+            375,
+            128
+          ]
+        }
+      ],
+      "operation": "matmul",
+      "outputs": [
+        {
+          "allocationBytes": 4620288,
+          "dtype": "float16",
+          "index": 4,
+          "logicalBytes": 4494000,
+          "name": "product",
+          "nchw": [
+            1,
+            8,
+            375,
+            749,
+            576000,
+            1536
+          ],
+          "shape": [
+            1,
+            8,
+            375,
+            749
+          ]
+        }
+      ],
+      "scratchBytes": 0,
+      "taskDescriptors": 208
+    }
+  ],
+  "schema": "mil-hwxc.h13-anec-package.v2",
+  "scratchBytes": 0,
+  "target": "H13",
+  "taskDescriptors": 208,
+  "tensors": {
+    "product": {
+      "logicalBytes": 4494000,
+      "role": "output",
+      "shape": [
+        1,
+        8,
+        375,
+        749
+      ]
+    },
+    "w": {
+      "logicalBytes": 1533952,
+      "role": "input",
+      "shape": [
+        1,
+        8,
+        128,
+        749
+      ]
+    },
+    "x": {
+      "logicalBytes": 768000,
+      "role": "input",
+      "shape": [
+        1,
+        8,
+        375,
+        128
+      ]
+    }
+  }
+}

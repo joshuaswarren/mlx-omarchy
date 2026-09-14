@@ -1,0 +1,143 @@
+[
+  {
+    "name": "concat-xn-heads",
+    "rc": 65,
+    "code": "h13.invalid-concat-parameters",
+    "msg": "6:5: error [h13.invalid-concat-parameters]: H13 concat requires a tuple of at least two values and an exact rank-zero tensor<int32,[]> axis",
+    "programs": null
+  },
+  {
+    "name": "concat-values-tuple",
+    "rc": 65,
+    "code": "h13.unsupported-concat",
+    "msg": "6:5: error [h13.unsupported-concat]: H13 has no concat encoder: every decoded H13 program writes one output surface from one input or a broadcast pair, and the binding ABI carries one contiguous slice per binding, so joining independent sources into one buffer needs a data-movement program the decoded corpus does not hold",
+    "programs": null
+  },
+  {
+    "name": "transpose-r3-021",
+    "rc": 65,
+    "code": "h13.nonfoldable-transpose",
+    "msg": "6:5: error [h13.nonfoldable-transpose]: H13 a tail-swap transpose moves the storage-fastest axis, so its view reads rows whose elements sit a non-unit storage stride apart: the NCHW descriptor carries contiguous rows and no surface interpretation expresses the permutation at any size; a consuming matmul's transpose flag is the only decoded mechanism that absorbs one, and this view has several consumers or a returned value needing a materialized surface the decoded corpus cannot produce",
+    "programs": null
+  },
+  {
+    "name": "transpose-r4-0213",
+    "rc": 65,
+    "code": "h13.nonfoldable-transpose",
+    "msg": "6:5: error [h13.nonfoldable-transpose]: H13 transpose with several consumers or a returned value needs a materialized transposed surface, and the decoded corpus holds no data-movement encoder",
+    "programs": null
+  },
+  {
+    "name": "slice-lastdim-375-749",
+    "rc": 65,
+    "code": "h13.noncontiguous-slice",
+    "msg": "7:5: error [h13.noncontiguous-slice]: H13 slice_by_index over non-unit head dimensions reads 3000 chunks of 375 elements spaced 749 apart, and one binding slice cannot represent interleaved chunks: a chunked consumer decomposition has no MIL-expressible direct reference to byte-prove against, because no view op exposes mid-range head slices",
+    "programs": null
+  },
+  {
+    "name": "layer-norm-encoder",
+    "rc": 65,
+    "code": "h13.norm-outside-envelope",
+    "msg": "8:5: error [h13.norm-outside-envelope]: H13 'layer_norm' needs a decoded geometry: fp16 static shapes, constant axes, no gamma or beta, epsilon 1e-5, and an input and output surface inside the oracle parity envelope",
+    "programs": null
+  },
+  {
+    "name": "silu-375-4096",
+    "rc": 65,
+    "code": "h13.unary-outside-envelope",
+    "msg": "5:5: error [h13.unary-outside-envelope]: H13 silu is outside the decoded unary envelope: the captured geometries are silu, sigmoid, exp, gelu, leaky_relu, relu, rsqrt, sqrt, and tanh at CHW (64,1,1)/(512,1,1), and abs at (64,1,1)/(128,1,1)/(256,1,1)/(512,1,1)/(1024,1,1)/(2048,1,1)/(4096,1,1) \u2014 LUT unaries have no 64-lane split",
+    "programs": null
+  },
+  {
+    "name": "silu-1024-375",
+    "rc": 65,
+    "code": "h13.unary-outside-envelope",
+    "msg": "5:5: error [h13.unary-outside-envelope]: H13 silu is outside the decoded unary envelope: the captured geometries are silu, sigmoid, exp, gelu, leaky_relu, relu, rsqrt, sqrt, and tanh at CHW (64,1,1)/(512,1,1), and abs at (64,1,1)/(128,1,1)/(256,1,1)/(512,1,1)/(1024,1,1)/(2048,1,1)/(4096,1,1) \u2014 LUT unaries have no 64-lane split",
+    "programs": null
+  },
+  {
+    "name": "sigmoid-1024-375",
+    "rc": 65,
+    "code": "h13.unary-outside-envelope",
+    "msg": "5:5: error [h13.unary-outside-envelope]: H13 sigmoid is outside the decoded unary envelope: the captured geometries are silu, sigmoid, exp, gelu, leaky_relu, relu, rsqrt, sqrt, and tanh at CHW (64,1,1)/(512,1,1), and abs at (64,1,1)/(128,1,1)/(256,1,1)/(512,1,1)/(1024,1,1)/(2048,1,1)/(4096,1,1) \u2014 LUT unaries have no 64-lane split",
+    "programs": null
+  },
+  {
+    "name": "softmax-8375375",
+    "rc": 65,
+    "code": "h13.norm-outside-envelope",
+    "msg": "6:5: error [h13.norm-outside-envelope]: H13 'softmax' needs a decoded geometry: fp16 static shapes, constant axes, no gamma or beta, epsilon 1e-5, and an input and output surface inside the oracle parity envelope",
+    "programs": null
+  },
+  {
+    "name": "conv-1x1-750",
+    "rc": 65,
+    "code": "h13.conv-outside-envelope",
+    "msg": "11:5: error [h13.conv-outside-envelope]: H13 conv needs a decoded geometry: an fp16 rank-4 input and result with a batch of one, a constant [Cout, Cin/groups, k, k] weight, unit dilations, zero explicit padding, pad_type 'same' or 'valid', and a kernel, stride, group count and surface pair inside the oracle parity envelope",
+    "programs": null
+  },
+  {
+    "name": "matmul-scores-ty1",
+    "rc": 0,
+    "code": null,
+    "msg": null,
+    "programs": {
+      "count": 1,
+      "ops": [
+        {
+          "operation": "matmul",
+          "encoder": "apple-parity-batched-matmul",
+          "taskDescriptors": 209
+        }
+      ]
+    }
+  },
+  {
+    "name": "matmul-scores-ty0",
+    "rc": 0,
+    "code": null,
+    "msg": null,
+    "programs": {
+      "count": 1,
+      "ops": [
+        {
+          "operation": "matmul",
+          "encoder": "apple-parity-batched-matmul",
+          "taskDescriptors": 208
+        }
+      ]
+    }
+  },
+  {
+    "name": "matmul-relpos",
+    "rc": 0,
+    "code": null,
+    "msg": null,
+    "programs": {
+      "count": 1,
+      "ops": [
+        {
+          "operation": "matmul",
+          "encoder": "apple-parity-batched-matmul",
+          "taskDescriptors": 208
+        }
+      ]
+    }
+  },
+  {
+    "name": "matmul-pv",
+    "rc": 0,
+    "code": null,
+    "msg": null,
+    "programs": {
+      "count": 1,
+      "ops": [
+        {
+          "operation": "matmul",
+          "encoder": "apple-parity-batched-matmul",
+          "taskDescriptors": 208
+        }
+      ]
+    }
+  }
+]

@@ -1,0 +1,8 @@
+program(1.3)
+[buildInfo = dict<string, string>({})]
+{
+  func main<ios18>(tensor<fp16, [1, 375, 1024]> a) {
+    tensor<int32, [3]> perm = const()[name = string("perm"), val = tensor<int32, [3]>([0, 2, 1])];
+    tensor<fp16, [1, 1024, 375]> y = transpose(perm = perm, x = a)[name = string("y")];
+  } -> (y);
+}

@@ -1,0 +1,9 @@
+program(1.3)
+[buildInfo = dict<string, string>({})]
+{
+  func main<ios18>(tensor<fp16, [1, 8, 375, 749]> a) {
+    tensor<int32, [4]> begin = const()[name = string("begin"), val = tensor<int32, [4]>([0, 0, 0, 0])];
+    tensor<int32, [4]> end = const()[name = string("end"), val = tensor<int32, [4]>([1, 8, 375, 375])];
+    tensor<fp16, [1, 8, 375, 375]> y = slice_by_index(begin = begin, end = end, x = a)[name = string("y")];
+  } -> (y);
+}

@@ -1,0 +1,105 @@
+{
+  "peels_applied": [
+    "conv_layout",
+    "select_runtime"
+  ],
+  "peels_planned_not_emitted": {
+    "attention_layout": "24/0 K-birth expansion not kept",
+    "slice_layout_last_dim": "24/0 101MB expansion not kept"
+  },
+  "conv": {
+    "schema": "mlx-omarchy.conv-layout-rewrite.v1",
+    "rewritten": [
+      "hidden_states_5_cast_fp16",
+      "hidden_states_9_cast_fp16"
+    ],
+    "refused": []
+  },
+  "select": {
+    "schema": "mlx-omarchy.select-runtime-rewrite.v1",
+    "rewritten": [
+      "attention_mask_9_cast_fp16",
+      "attention_mask_11_cast_fp16",
+      "attention_mask_13_cast_fp16",
+      "attention_mask_15_cast_fp16",
+      "attention_mask_17_cast_fp16",
+      "attention_mask_19_cast_fp16",
+      "attention_mask_21_cast_fp16",
+      "attention_mask_23_cast_fp16",
+      "attention_mask_25_cast_fp16",
+      "attention_mask_27_cast_fp16",
+      "attention_mask_29_cast_fp16",
+      "attention_mask_31_cast_fp16",
+      "attention_mask_33_cast_fp16",
+      "attention_mask_35_cast_fp16",
+      "attention_mask_37_cast_fp16",
+      "attention_mask_39_cast_fp16",
+      "attention_mask_41_cast_fp16",
+      "attention_mask_43_cast_fp16",
+      "attention_mask_45_cast_fp16",
+      "attention_mask_47_cast_fp16",
+      "attention_mask_49_cast_fp16",
+      "attention_mask_51_cast_fp16",
+      "attention_mask_53_cast_fp16",
+      "attention_mask_cast_fp16"
+    ],
+    "refused": [],
+    "fills": [
+      {
+        "input": "var_8_to_fp16_rt",
+        "shape": [
+          1,
+          8,
+          375,
+          375
+        ],
+        "const": "var_8_to_fp16",
+        "storage": "blob",
+        "path": "@model_path/weights/normalized.bin",
+        "offset": 3520
+      }
+    ],
+    "bool_conds": [
+      {
+        "input": "var_373_bool",
+        "shape": [
+          1,
+          1,
+          375,
+          375
+        ],
+        "source": "var_373",
+        "storage": "promoted"
+      }
+    ]
+  },
+  "ops": {
+    "const": 3925,
+    "cast": 9,
+    "expand_dims": 589,
+    "reduce_sum": 1,
+    "conv": 101,
+    "add": 210,
+    "sub": 3,
+    "floor_div": 3,
+    "less": 4,
+    "mul": 180,
+    "relu": 3,
+    "transpose": 73,
+    "reshape": 73,
+    "linear": 698,
+    "floor": 3,
+    "tile": 2,
+    "layer_norm": 120,
+    "silu": 72,
+    "concat": 96,
+    "matmul": 72,
+    "slice_by_index": 408,
+    "select": 24,
+    "softmax": 24,
+    "sigmoid": 24,
+    "reduce_max": 1
+  },
+  "mil_sha256": "a7f08439c281b8e1e1dfe7dbabbef8bf844a7094c1fe98a00688340fcb8db4dd",
+  "mil_bytes": 1361130
+}

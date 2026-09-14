@@ -1,0 +1,7 @@
+program(1.3)
+[buildInfo = dict<string, string>({})]
+{
+  func main<ios18>(tensor<fp16, [1, 8, 375, 375]> a, tensor<fp16, [1, 8, 375, 375]> b, tensor<fp16, [1, 1, 375, 375]> cond) {
+    tensor<fp16, [1, 8, 375, 375]> y = select(a = a, b = b, cond = cond)[name = string("y")];
+  } -> (y);
+}

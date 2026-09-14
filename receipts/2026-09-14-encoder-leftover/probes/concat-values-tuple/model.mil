@@ -1,0 +1,8 @@
+program(1.3)
+[buildInfo = dict<string, string>({})]
+{
+  func main<ios18>(tensor<fp16, [1, 1, 375, 128]> a, tensor<fp16, [1, 1, 375, 128]> b) {
+    tensor<int32, []> axis = const()[name = string("axis"), val = tensor<int32, []>(1)];
+    tensor<fp16, [1, 2, 375, 128]> y = concat(values = (a, b), axis = axis)[name = string("y")];
+  } -> (y);
+}

@@ -1,0 +1,7 @@
+program(1.3)
+[buildInfo = dict<string, string>({})]
+{
+  func main<ios18>(tensor<fp16, [1, 1024, 375]> x) {
+    tensor<fp16, [1, 1024, 375]> y = silu(x = x)[name = string("y")];
+  } -> (y);
+}
