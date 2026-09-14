@@ -1,0 +1,4 @@
+bundle name=schema4-attn-select programs=1 driver_abi=1 graph=998f81dee926a012be067467aee2b4bf138146f9944fb36ae40a732f40c89463
+worker status=0 iterations=1 released=1 elapsed_ms=57
+worker detail=worker completed 1 iteration(s) and released its programs
+saved output y (2250000 bytes)

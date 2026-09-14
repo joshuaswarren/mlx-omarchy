@@ -1,0 +1,215 @@
+{
+  "compiler": {
+    "host_build": "Linux 6.17.2-1-pve x86_64",
+    "target": "h13",
+    "toolchain": "mil-hwxc 8f97f504edb4ed525767fad6d90f814ff1c13241 sha256:38c4d2cbc279624b2a151a0137775ce14d9fa2ac1adbbf0b5d8ff8ec787f1ef1"
+  },
+  "dispatch_plan": [
+    0
+  ],
+  "driver_abi_major": 1,
+  "graph_hash": "998f81dee926a012be067467aee2b4bf138146f9944fb36ae40a732f40c89463",
+  "inputs": [
+    {
+      "byte_size": 2250000,
+      "dtype": "float16",
+      "index": 0,
+      "name": "b",
+      "shape": [
+        1,
+        8,
+        375,
+        375
+      ],
+      "stride": 2310144
+    },
+    {
+      "byte_size": 1125000,
+      "dtype": "bool",
+      "index": 1,
+      "name": "cond",
+      "shape": [
+        1,
+        8,
+        375,
+        375
+      ],
+      "stride": 1163264
+    },
+    {
+      "byte_size": 2250000,
+      "dtype": "float16",
+      "index": 2,
+      "name": "ninf_rt",
+      "shape": [
+        1,
+        8,
+        375,
+        375
+      ],
+      "stride": 2310144
+    }
+  ],
+  "intermediates": [],
+  "logical_results": [
+    {
+      "conversion": "identity",
+      "dtype": "float16",
+      "element_count": 1125000,
+      "element_offset": 0,
+      "name": "y",
+      "shape": [
+        1,
+        8,
+        375,
+        375
+      ],
+      "tensor": "y"
+    }
+  ],
+  "manifest_version": 4,
+  "name": "schema4-attn-select",
+  "outputs": [
+    {
+      "byte_size": 2250000,
+      "dtype": "float16",
+      "index": 0,
+      "name": "y",
+      "shape": [
+        1,
+        8,
+        375,
+        375
+      ],
+      "stride": 2310144
+    }
+  ],
+  "payloads": [
+    {
+      "byte_size": 9216,
+      "path": "program-0.anec",
+      "role": "anec",
+      "sha256": "27dc7f35fc9efc9431e4d05847798390fe0cfe79f930c3040f32dd76ef8e8e73"
+    }
+  ],
+  "programs": [
+    {
+      "encoder": "apple-parity-boolean",
+      "inputs": [
+        {
+          "allocation_bytes": 2310144,
+          "channel": 5,
+          "dtype": "float16",
+          "element_count": 1125000,
+          "element_offset": 0,
+          "logical_bytes": 2250000,
+          "nchw": [
+            1,
+            8,
+            375,
+            375,
+            288000,
+            768
+          ],
+          "physical_elements": 1125000,
+          "shape": [
+            1,
+            8,
+            375,
+            375
+          ],
+          "tensor": "ninf_rt"
+        },
+        {
+          "allocation_bytes": 2310144,
+          "channel": 6,
+          "dtype": "float16",
+          "element_count": 1125000,
+          "element_offset": 0,
+          "logical_bytes": 2250000,
+          "nchw": [
+            1,
+            8,
+            375,
+            375,
+            288000,
+            768
+          ],
+          "physical_elements": 1125000,
+          "shape": [
+            1,
+            8,
+            375,
+            375
+          ],
+          "tensor": "b"
+        },
+        {
+          "allocation_bytes": 1163264,
+          "channel": 7,
+          "dtype": "bool",
+          "element_count": 1125000,
+          "element_offset": 0,
+          "logical_bytes": 1125000,
+          "nchw": [
+            1,
+            8,
+            375,
+            375,
+            144000,
+            384
+          ],
+          "physical_elements": 1125000,
+          "shape": [
+            1,
+            8,
+            375,
+            375
+          ],
+          "tensor": "cond"
+        }
+      ],
+      "operation": "select",
+      "outputs": [
+        {
+          "allocation_bytes": 2310144,
+          "channel": 4,
+          "dtype": "float16",
+          "element_count": 1125000,
+          "element_offset": 0,
+          "logical_bytes": 2250000,
+          "nchw": [
+            1,
+            8,
+            375,
+            375,
+            288000,
+            768
+          ],
+          "physical_elements": 1125000,
+          "shape": [
+            1,
+            8,
+            375,
+            375
+          ],
+          "tensor": "y"
+        }
+      ],
+      "payload": "program-0.anec",
+      "scratch_bytes": 2310144,
+      "task_descriptors": 5
+    }
+  ],
+  "provenance": {
+    "exported_at": "2026-09-14",
+    "source_commit": "15ecc733ee91327dbf7887eac21ef14bebe824ce",
+    "source_repo": "joshuaswarren/mlx-omarchy"
+  },
+  "release_asset": {
+    "model": "attn-select",
+    "model_sha256": "4a490133540f50402c0bfa20f7454d9e88bf8f828eaae1497d27d1ffc293c44c"
+  },
+  "state": [],
+  "task_descriptors": 5
+}
