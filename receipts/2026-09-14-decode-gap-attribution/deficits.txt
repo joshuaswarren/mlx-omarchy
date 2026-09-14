@@ -1,0 +1,43 @@
+== clean-run wall per decode token (existing receipts)
+   leg               linux ms  native ms  deficit ms   parity
+   jwm1 30/32         9.32097    6.64143     2.67954   71.25%
+   jwm1 1053/32      10.52242    7.12352     3.39890   67.70%
+   jw16 30/32         5.89355    3.48481     2.40875   59.13%
+   jw16 1053/32       6.98394    3.52373     3.46021   50.45%
+
+== two-term decomposition (per-token, from the rates above)
+   term A = deficit at 30-token context: context-independent, and
+            the dispatch count per token does not vary with
+            context (see the grid census), so A is per-dispatch.
+   term B = deficit growth from 30 to 1053 context: the KV stream.
+   jwm1: A=2.6795 ms (78.8% of deficit) = 10.76 us/dispatch | B=0.7194 ms (21.2%)
+   jw16: A=2.4087 ms (69.6% of deficit) =  9.67 us/dispatch | B=1.0515 ms (30.4%)
+   1053 deficit jwm1/jw16 = 0.9823  <- device-invariance:
+   the GPU is 3.30x faster (measured prefill GPU-busy ratio,
+   receipts/2026-09-14-jw16-max-gpu-attribution.md) yet the
+   absolute deficit is the same.
+
+== required traffic and arithmetic per token (from the model config; 14909440 weight elements per layer)
+   290.88 MB, 1.078 GFLOP
+   jwm1 linux    27.64 GB/s =  40.5% of spec |   102.5 GFLOP/s =  3.86% of fp32 peak
+   jwm1 native   40.83 GB/s =  59.8% of spec |   151.4 GFLOP/s =  5.70% of fp32 peak
+   jw16 linux    41.65 GB/s =  10.4% of spec |   154.4 GFLOP/s =  1.45% of fp32 peak
+   jw16 native   82.55 GB/s =  20.6% of spec |   306.1 GFLOP/s =  2.88% of fp32 peak
+
+== term B as a stream: 12.57 MB of extra KV per token
+   (mean KV length 45.5 on the 30/32 leg, 1068.5 on the 1053/32 leg)
+   jwm1: linux +1.2014 ms ->   10.46 GB/s | native +0.4821 ms ->   26.08 GB/s
+   jw16: linux +1.0904 ms ->   11.53 GB/s | native +0.0389 ms ->  322.94 GB/s
+
+== proposal pricing (term A rate = 30-token deficit / 249)
+   jwm1: 10.76 us/dispatch; today 249 disp, 10.5224 ms, 95.04 tok/s, 67.70% of native
+     - 72 disp -> 177 disp, 9.7476 ms,  102.59 tok/s, 73.08% of native   [RoPE + SwiGLU folded]
+     -121 disp -> 128 disp, 9.2203 ms,  108.46 tok/s, 77.26% of native   [+ RMS norm folded]
+     -151 disp ->  98 disp, 8.8975 ms,  112.39 tok/s, 80.06% of native   [every <=14-wg dispatch gone (ceiling)]
+   jw16: 9.67 us/dispatch; today 249 disp, 6.9839 ms, 143.19 tok/s, 50.45% of native
+     - 72 disp -> 177 disp, 6.2874 ms,  159.05 tok/s, 56.04% of native   [RoPE + SwiGLU folded]
+     -121 disp -> 128 disp, 5.8134 ms,  172.02 tok/s, 60.61% of native   [+ RMS norm folded]
+     -151 disp ->  98 disp, 5.5232 ms,  181.05 tok/s, 63.80% of native   [every <=14-wg dispatch gone (ceiling)]
+   Conservative: removing a dispatch removes the whole per-dispatch
+   cost, not only the part exceeding native. Optimistic: term A's
+   rate averages 1-workgroup and 1216-workgroup dispatches alike.

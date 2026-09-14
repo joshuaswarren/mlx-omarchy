@@ -1,0 +1,41 @@
+== ../2026-09-13-jwm1-phase-profile-enabled/profile.jsonl
+   device=Apple M1 (G13G B1) dispatches=1312 submissions=12
+   dispatches per submission: [91, 96, 96, 96, 96, 90, 214, 35, 214, 35, 214, 35]
+
+== host vkQueueSubmit duration vs dispatch count
+    sub  disp  vkQueueSubmit us  us/disp
+      1    91            1464.4    16.09
+      2    96            1156.6    12.05
+      3    96            1013.8    10.56
+      4    96            1061.0    11.05
+      5    96            1082.7    11.28
+      6    90             684.2     7.60
+      7   214            5630.7    26.31
+      8    35             564.2    16.12
+      9   214            2769.2    12.94
+     10    35             768.1    21.95
+     11   214            2142.1    10.01
+     12    35             306.6     8.76
+   median-pair slope over all submissions: 14.27 us/dispatch, intercept -285.0 us/submission
+
+== last decode token (submissions [11, 12]), 249 dispatches
+   kernel                         n  /layer            grids (wg)  bracketed ms   share
+   QmmVecQ4MultiSubgroupF16      96   4.000 112x48,144x24,1216x24         9.990   57.5%
+   QmmVecQ4WordSubgroupF16        1   0.042               18992x1         2.127   12.2%
+   SdpaDecodeNativeF16           24   1.000                 14x24         1.517    8.7%
+   FastRmsNormF16                49   2.042                  1x49         1.314    7.6%
+   FastRopeF16                   48   2.000             1x24,2x24         1.154    6.6%
+   SwigluF16                     24   1.000                  5x24         0.459    2.6%
+   LogSumExpF16                   1   0.042                   1x1         0.281    1.6%
+   ElementwiseF16                 1   0.042                 594x1         0.187    1.1%
+   ArgReduceF16                   1   0.042                   1x1         0.175    1.0%
+   TakeF16                        2   0.083                   1x2         0.082    0.5%
+   TakeU32                        1   0.042                   1x1         0.048    0.3%
+   DequantF16                     1   0.042                   1x1         0.044    0.3%
+   dispatches launching <=14 workgroups: 151/249 (60.6%); exactly 1 workgroup: 79
+   distinct binding footprint: 235.59 MB over 829 (buffer,offset,range) triples
+   host dispatch-record cost: 0.250 ms/token, p50 0.83 us
+   bracketed busy 17.379 ms, span 23.183 ms, intra gaps n=247 total 5.546 ms p50 14.1 us
+   NOT A PRICE: bracketed busy and span both exceed the clean-run
+   wall for this leg, so no per-dispatch duration here is usable.
+
