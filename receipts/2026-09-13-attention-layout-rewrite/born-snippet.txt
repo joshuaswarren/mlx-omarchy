@@ -1,0 +1,42 @@
+program(1)
+{
+  func main<CoreML8>(tensor<fp16, [1, 2, 8]> hidden, tensor<fp16, [1, 2, 2, 4]> query) {
+    tensor<fp16, [4, 8]> k0_w = const()[val = tensor<fp16, [4, 8]>(BLOBFILE(path = string("@model_path/weights/weight.bin"), offset = uint64(0)))];
+    tensor<fp16, [4]> k0_b = const()[val = tensor<fp16, [4]>(BLOBFILE(path = string("@model_path/weights/weight.bin"), offset = uint64(100)))];
+    tensor<fp16, [1, 2, 4]> k0_lin = linear(bias = k0_b, weight = k0_w, x = hidden)[name = tensor<string, []>("k0_lin")];
+    tensor<int32, [1]> k_axes = const()[name = tensor<string, []>("k_axes"), val = tensor<int32, [1]>(1)];
+    tensor<int32, [3]> k0_exp_row_shape = const()[name = tensor<string, []>("k0_exp_row_shape"), val = tensor<int32, [3]>([1, 4, 1])];
+    tensor<int32, []> k0_exp_token_axis = const()[name = tensor<string, []>("k0_exp_token_axis"), val = tensor<int32, []>(2)];
+    tensor<int32, [3]> k0_exp_t0_begin = const()[name = tensor<string, []>("k0_exp_t0_begin"), val = tensor<int32, [3]>([0, 0, 0])];
+    tensor<int32, [3]> k0_exp_t0_end = const()[name = tensor<string, []>("k0_exp_t0_end"), val = tensor<int32, [3]>([1, 1, 4])];
+    tensor<fp16, [1, 1, 4]> k0_exp_t0_sl = slice_by_index(begin = k0_exp_t0_begin, end = k0_exp_t0_end, x = k0_lin)[name = tensor<string, []>("k0_exp_t0_sl")];
+    tensor<fp16, [1, 4, 1]> k0_exp_t0_row = reshape(shape = k0_exp_row_shape, x = k0_exp_t0_sl)[name = tensor<string, []>("k0_exp_t0_row")];
+    tensor<int32, [3]> k0_exp_t1_begin = const()[name = tensor<string, []>("k0_exp_t1_begin"), val = tensor<int32, [3]>([0, 1, 0])];
+    tensor<int32, [3]> k0_exp_t1_end = const()[name = tensor<string, []>("k0_exp_t1_end"), val = tensor<int32, [3]>([1, 2, 4])];
+    tensor<fp16, [1, 1, 4]> k0_exp_t1_sl = slice_by_index(begin = k0_exp_t1_begin, end = k0_exp_t1_end, x = k0_lin)[name = tensor<string, []>("k0_exp_t1_sl")];
+    tensor<fp16, [1, 4, 1]> k0_exp_t1_row = reshape(shape = k0_exp_row_shape, x = k0_exp_t1_sl)[name = tensor<string, []>("k0_exp_t1_row")];
+    tensor<fp16, [1, 4, 2]> k0_exp_dt = concat(axis = k0_exp_token_axis, x0 = k0_exp_t0_row, x1 = k0_exp_t1_row)[name = tensor<string, []>("k0_exp_dt_attn_concat")];
+    tensor<fp16, [1, 1, 4, 2]> k0_exp = expand_dims(axes = k_axes, x = k0_exp_dt)[name = tensor<string, []>("k0_exp_attn_exp")];
+    tensor<fp16, [4, 8]> k1_w = const()[val = tensor<fp16, [4, 8]>(BLOBFILE(path = string("@model_path/weights/weight.bin"), offset = uint64(200)))];
+    tensor<fp16, [4]> k1_b = const()[val = tensor<fp16, [4]>(BLOBFILE(path = string("@model_path/weights/weight.bin"), offset = uint64(300)))];
+    tensor<fp16, [1, 2, 4]> k1_lin = linear(bias = k1_b, weight = k1_w, x = hidden)[name = tensor<string, []>("k1_lin")];
+    tensor<int32, [3]> k1_exp_row_shape = const()[name = tensor<string, []>("k1_exp_row_shape"), val = tensor<int32, [3]>([1, 4, 1])];
+    tensor<int32, []> k1_exp_token_axis = const()[name = tensor<string, []>("k1_exp_token_axis"), val = tensor<int32, []>(2)];
+    tensor<int32, [3]> k1_exp_t0_begin = const()[name = tensor<string, []>("k1_exp_t0_begin"), val = tensor<int32, [3]>([0, 0, 0])];
+    tensor<int32, [3]> k1_exp_t0_end = const()[name = tensor<string, []>("k1_exp_t0_end"), val = tensor<int32, [3]>([1, 1, 4])];
+    tensor<fp16, [1, 1, 4]> k1_exp_t0_sl = slice_by_index(begin = k1_exp_t0_begin, end = k1_exp_t0_end, x = k1_lin)[name = tensor<string, []>("k1_exp_t0_sl")];
+    tensor<fp16, [1, 4, 1]> k1_exp_t0_row = reshape(shape = k1_exp_row_shape, x = k1_exp_t0_sl)[name = tensor<string, []>("k1_exp_t0_row")];
+    tensor<int32, [3]> k1_exp_t1_begin = const()[name = tensor<string, []>("k1_exp_t1_begin"), val = tensor<int32, [3]>([0, 1, 0])];
+    tensor<int32, [3]> k1_exp_t1_end = const()[name = tensor<string, []>("k1_exp_t1_end"), val = tensor<int32, [3]>([1, 2, 4])];
+    tensor<fp16, [1, 1, 4]> k1_exp_t1_sl = slice_by_index(begin = k1_exp_t1_begin, end = k1_exp_t1_end, x = k1_lin)[name = tensor<string, []>("k1_exp_t1_sl")];
+    tensor<fp16, [1, 4, 1]> k1_exp_t1_row = reshape(shape = k1_exp_row_shape, x = k1_exp_t1_sl)[name = tensor<string, []>("k1_exp_t1_row")];
+    tensor<fp16, [1, 4, 2]> k1_exp_dt = concat(axis = k1_exp_token_axis, x0 = k1_exp_t0_row, x1 = k1_exp_t1_row)[name = tensor<string, []>("k1_exp_dt_attn_concat")];
+    tensor<fp16, [1, 1, 4, 2]> k1_exp = expand_dims(axes = k_axes, x = k1_exp_dt)[name = tensor<string, []>("k1_exp_attn_exp")];
+    tensor<int32, []> k_axis = const()[name = tensor<string, []>("k_axis"), val = tensor<int32, []>(1)];
+    tensor<fp16, [1, 2, 4, 2]> keys = concat(axis = k_axis, x0 = k0_exp, x1 = k1_exp)[name = tensor<string, []>("keys_heads_concat")];
+    tensor<bool, []> tx = const()[name = tensor<string, []>("tx"), val = tensor<bool, []>(false)];
+    tensor<bool, []> ty = const()[name = tensor<string, []>("ty"), val = tensor<bool, []>(true)];
+    tensor<bool, []> scores_ty0 = const()[name = tensor<string, []>("scores_ty0"), val = tensor<bool, []>(false)];
+    tensor<fp16, [1, 2, 2, 2]> scores = matmul(transpose_x = tx, transpose_y = scores_ty0, x = query, y = keys)[name = tensor<string, []>("scores")];
+  } -> (scores);
+}
