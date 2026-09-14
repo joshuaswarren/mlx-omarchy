@@ -1,0 +1,61 @@
+{
+  "started_at": "2026-09-14T08:34:12-05:00",
+  "finished_at": "2026-09-14T08:34:13-05:00",
+  "worker_sha256": "762dd1de868b52e4d6ffa30e18d842d9341db463b06aef2355f18fb1eb248929",
+  "libane_sha256": "1ab9d95debcc8b5fee3b6653dfce0b50412bc7efef43c2d2167dc83ce270ca49",
+  "successful_runs": 100,
+  "timeouts": 0,
+  "stop_reason": null,
+  "device_loss": false,
+  "workers_released_each_run": true,
+  "all_matched_baseline": true,
+  "y_files": 100,
+  "y_hashes": {
+    "bade941d7d8f1e1097b9ce0298ff05617d85a9928de0e8c7eead5743f3f24352": 100
+  },
+  "median_ms": 2.0,
+  "p95_ms": 2,
+  "ane_exec_ns_sum": 202000000,
+  "ane_worker_starts": 100,
+  "ane_submissions": 200,
+  "pre": {
+    "device": {
+      "hostname": "jwm1-linux",
+      "accel": "character special file",
+      "module_version": "f2a3e5e+lifecycle6",
+      "cpu_online": "0-7",
+      "nproc": "8",
+      "service": "active",
+      "workers": "none",
+      "uptime_s": "2026-09-13 09:43:25",
+      "boot_id": "95872130-fd28-4d67-8247-03a0e8b61202"
+    },
+    "memory": {
+      "mem_available_kb": 13071376,
+      "mem_free_kb": 3903520,
+      "anon_pages_kb": 771136
+    },
+    "t": 1789392852.5276322
+  },
+  "post": {
+    "device": {
+      "hostname": "jwm1-linux",
+      "accel": "character special file",
+      "module_version": "f2a3e5e+lifecycle6",
+      "cpu_online": "0-7",
+      "nproc": "8",
+      "service": "active",
+      "workers": "none",
+      "uptime_s": "2026-09-13 09:43:25",
+      "boot_id": "95872130-fd28-4d67-8247-03a0e8b61202"
+    },
+    "memory": {
+      "mem_available_kb": 13062224,
+      "mem_free_kb": 3892832,
+      "anon_pages_kb": 772368
+    },
+    "t": 1789392853.1283119
+  },
+  "gpu_lock": "not acquired",
+  "failures": []
+}
