@@ -97,7 +97,7 @@ Every MIL compiled for this receipt is kept under
 | --- | --- | ---: | ---: | --- | ---: | ---: | --- |
 | **A** `island-attn-a-kt` prog 0 | rel-pos matmul `[1,8,375,128]x[1,8,128,749]` | 0 | 1 | `apple-parity-batched-matmul` | 208 | 182400 | `d05e193a620d7edc25ee61f865c164182155f84e7fb925a38c303a9c0db1d8df` |
 | **A** prog 1 | scores matmul `[1,8,375,128]x[1,8,128,375]` | 0 | 1 | `apple-parity-batched-matmul` | 208 | 182400 | `a3aa2fe1333a48eba3e7fcae5b848563e2bfa747a232dadf9ed2d568821c5627` |
-| **B** `island-select-8head` | select, runtime a, bool cond `[1,8,375,375]` | 0 | 1 | `apple-parity-boolean` | 5 | 9216 | `d40ec023cfd5b2c5d5cfeb95f4a4673024f495224acd4448e8498bf50114780f` |
+| **B** `island-select-8head` | select, runtime a, bool cond `[1,8,375,375]` | 0 | 1 | `apple-parity-boolean` | 5 | 9216 | `0879c6277cf3d89888735ea69ef96d29fb492d43eacfe42a0f154f8f0f91c8eb` (was `d40ec023…`, see the scratch correction below) |
 | **C** `island-pv` | PV matmul `[1,8,375,375]x[1,8,375,128]` | 0 | 1 | `apple-parity-batched-matmul` | 208 | 182400 | `76496b74eff176f8e0358dbb5e285f7fe60c8a7c270c2b5f400b5407195c3fca` |
 
 Island A is one package, `dispatchPlan [0, 1]`, two ordered logical results
@@ -160,7 +160,29 @@ walk dense elements in linear order and place element *i* at
 | in | `cond` | `var_373_bool` broadcast to 8 heads | bool | `[1,8,375,375]` | 1125000 | 144000, 384 | 7 |
 | out | `attention_mask_9` | → `add_0` | fp16 | `[1,8,375,375]` | 2250000 | 288000, 768 | 4 |
 
-Program scratch is 2310144 bytes (channel 3). `scratch_bytes` is not a tensor.
+Program scratch is **6832128** bytes, 417 tiles (channel 3). `scratch_bytes`
+is not a tensor.
+
+This figure was 2310144 when this plan was written, and that was the defect
+`h13.select-first-l2-tile` turned out to be. Channel 3 is an arena with three
+stages — the cond-false half head-interleaved at offset 0 (row 6016 =
+8 x 752, span 2256000), the cond expanded to fp16 at 2256000 (span 2304000),
+and the cond-true half at 4560000 (span 2256000) — so the program touches
+6816000 bytes, while mil-hwxc declared the output allocation, 2310144. Task 3's
+write of the cond-true half and task 4's read of it ran 4.5 MB past the end of
+the declared surface, and island B came back with 10728 wrong lanes, 1341 per
+head, in H rows 0-8. 417 tiles is Apple's own `__DATA/__bss` gap for this
+program. Fixed in mil-hwx-compiler `7ab3eb5` on `feature/h13-concat`; verified
+on jwm1-linux 2026-09-14T10:57:20-05:00, 10728 wrong lanes -> 0, output
+byte-identical to the reference. Receipts: mil-hwx-compiler
+`receipts/2026-09-14-h13-select-l2-fix.md` and
+`receipts/2026-09-14-encoder-islands-exec-jwm1-linux.json`.
+
+The anec is 9216 bytes either way — the fix moves two header bytes, tiles[3]
+141 -> 417 — so the 556416-byte on-disk total above is unchanged. Rebuilding
+this bundle requires re-stamping `programs[].scratch_bytes` to 6832128:
+`load_bundle` requires it to equal the ANEC channel-3 allocation exactly, and
+refuses the pair before the device is touched.
 
 ### Island C — `parakeet-encoder-island-pv`
 
