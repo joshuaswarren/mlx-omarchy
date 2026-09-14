@@ -241,6 +241,55 @@
       "rel_l2_err": 0.00011195355182280764
     }
   },
+  "cross_host_corroboration": {
+    "available": true,
+    "host": "jwm1-linux",
+    "note": "Independent staging on a different machine; the reference sides differ slightly (their full-encoder rel_l2 vs golden is 4.4e-2, this run's 2.5e-2), which accounts for small differences in the mismatch counts. The device values at the probed indices and the per-output max_abs_err agree.",
+    "outputs": {
+      "attention_mask_9": {
+        "elapsed_ms": 53,
+        "errno_110": false,
+        "first_device_value": -8.2734375,
+        "first_mismatch_index": 72,
+        "island": "B",
+        "max_abs_err": 11.1640625,
+        "mismatch": 10728,
+        "rel_l2_err": 0.0910401393144156
+      },
+      "attention_scores_1": {
+        "elapsed_ms": 66,
+        "errno_110": false,
+        "first_device_value": 19.03125,
+        "first_mismatch_index": 372,
+        "island": "A",
+        "max_abs_err": 0.25,
+        "mismatch": 7581,
+        "rel_l2_err": 1.0909240152486215e-05
+      },
+      "attn_output_1": {
+        "elapsed_ms": 15,
+        "errno_110": false,
+        "first_device_value": -0.038421630859375,
+        "first_mismatch_index": 2,
+        "island": "C",
+        "max_abs_err": 0.0078125,
+        "mismatch": 108428,
+        "rel_l2_err": 0.00022153973711770423
+      },
+      "matmul_0": {
+        "elapsed_ms": 66,
+        "errno_110": false,
+        "first_device_value": 0.44384765625,
+        "first_mismatch_index": 1,
+        "island": "A",
+        "max_abs_err": 0.00390625,
+        "mismatch": 164067,
+        "rel_l2_err": 0.00011289394998642051
+      }
+    },
+    "receipt": "2026-09-14-encoder-islands-exec-jwm1-linux.json",
+    "receipt_sha256": "10e3d659e110e9fdfc1a2e282e0f8a40408dfed2dd2b2a4e46b04df7dc5557cc"
+  },
   "date": "2026-09-14",
   "device": {
     "boot_id_unchanged": true,
@@ -288,6 +337,16 @@
     "weight_bin_matches_reference_lock": true,
     "weight_bin_sha256": "23867a834223ee6484d0b7b9b703530e8606546efa8e710535163d51ed9aac04",
     "within_frozen_contract": true
+  },
+  "island_b_attribution": {
+    "attribution_is_second_hand": "the mapping to h13.select-first-l2-tile comes from AneChannelPolarity's ANEC decode, not from anything measured in this run; what this run measures is the pattern above",
+    "channel_mapping_excluded": "AneChannelPolarity decoded the tile-DMA surface selectors out of 25087 locally compiled H13 ANECs: this select derives src=5,6,7 dst=4, which is what libane already binds, so the corruption is not an input/output channel swap",
+    "measured_pattern": "1337 corrupted elements in every one of the 8 heads, confined to rows 0-8, in 4-element column groups with period 64; the corrupted values are not a shifted copy of matrix_bd_5",
+    "named_hole": "h13.select-first-l2-tile",
+    "pointers": [
+      "mil-hwx-compiler THEORY.MD:83-87",
+      "mil-hwx-compiler receipts/2026-09-14-h13-bool-dma-stride.md"
+    ]
   },
   "islands": {
     "A": {

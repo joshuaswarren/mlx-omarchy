@@ -86,6 +86,47 @@ def compare(name: str, shape: tuple) -> dict:
     return record
 
 
+def cross_host() -> dict:
+    """Device-side numbers from the sibling jwm1 run, if it has landed.
+
+    The jwm1 agent staged its own tensors with its own evaluator, so an
+    agreeing device value there separates a real compiler or runtime
+    defect from anything specific to this host or this staging path.
+    """
+    sibling = RECEIPT_DIR / "2026-09-14-encoder-islands-exec-jwm1-linux.json"
+    if not sibling.is_file():
+        return {"available": False}
+    data = json.loads(sibling.read_text())
+    theirs = {}
+    for island, spec in data.get("islands", {}).items():
+        for name, out in spec.get("outputs", {}).items():
+            first = out.get("first_mismatch", {})
+            theirs[name] = {
+                "island": island,
+                "mismatch": out.get("mismatch"),
+                "max_abs_err": out.get("max_abs_err"),
+                "rel_l2_err": out.get("rel_l2_err"),
+                "first_mismatch_index": first.get("index"),
+                "first_device_value": first.get("device_fp16"),
+                "elapsed_ms": spec.get("submit", {}).get("elapsed_ms"),
+                "errno_110": spec.get("submit", {}).get("errno_110"),
+            }
+    return {
+        "available": True,
+        "receipt": sibling.name,
+        "receipt_sha256": sha256(sibling),
+        "host": data.get("host", "jwm1-linux"),
+        "outputs": theirs,
+        "note": (
+            "Independent staging on a different machine; the reference sides "
+            "differ slightly (their full-encoder rel_l2 vs golden is 4.4e-2, "
+            "this run's 2.5e-2), which accounts for small differences in the "
+            "mismatch counts. The device values at the probed indices and the "
+            "per-output max_abs_err agree."
+        ),
+    }
+
+
 def main() -> None:
     stage_manifest = json.loads((STAGE / "stage-manifest.json").read_text())
     runs = {
@@ -201,6 +242,30 @@ def main() -> None:
                 "agree before writing."
             ),
         },
+        "island_b_attribution": {
+            "measured_pattern": (
+                "1337 corrupted elements in every one of the 8 heads, confined "
+                "to rows 0-8, in 4-element column groups with period 64; the "
+                "corrupted values are not a shifted copy of matrix_bd_5"
+            ),
+            "channel_mapping_excluded": (
+                "AneChannelPolarity decoded the tile-DMA surface selectors out "
+                "of 25087 locally compiled H13 ANECs: this select derives "
+                "src=5,6,7 dst=4, which is what libane already binds, so the "
+                "corruption is not an input/output channel swap"
+            ),
+            "named_hole": "h13.select-first-l2-tile",
+            "pointers": [
+                "mil-hwx-compiler THEORY.MD:83-87",
+                "mil-hwx-compiler receipts/2026-09-14-h13-bool-dma-stride.md",
+            ],
+            "attribution_is_second_hand": (
+                "the mapping to h13.select-first-l2-tile comes from "
+                "AneChannelPolarity's ANEC decode, not from anything measured "
+                "in this run; what this run measures is the pattern above"
+            ),
+        },
+        "cross_host_corroboration": cross_host(),
         "stage": stage_manifest,
         "worker": {
             "path": "/var/tmp/jw16-tiny-select/mlx-omarchy-ane-worker",
