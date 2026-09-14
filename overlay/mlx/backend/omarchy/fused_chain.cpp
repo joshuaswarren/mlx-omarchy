@@ -1164,7 +1164,7 @@ EagerFusionScope::EagerFusionScope(const std::deque<array>& tape)
     // Add would) and the normalized row; a GEMV-epilogue Add is already
     // claimed above and is never stolen.
     for (const auto& node : tape) {
-      if (!is_op(&node, typeid(RMSNorm)) || node.inputs().size() != 2 ||
+      if (!is_op(&node, typeid(mlx::core::fast::RMSNorm)) || node.inputs().size() != 2 ||
           claimed.count(node.id()) || node.dtype() != float16) {
         continue;
       }
