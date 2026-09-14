@@ -1,0 +1,18 @@
+date_utc=2026-09-14T16:02:40Z
+host=jw16mbp1-linux
+arch=aarch64
+kernel=7.1.6-1-1-ARCH
+boot_id=f6ad865b-b85e-499e-8308-28b57b24f0c8
+nproc=10
+worktree_commit=b78fd0b64815736e20e06fb16fcd0899ddd85f46
+worktree_describe=v0.4.2-453-gb78fd0b6
+worktree_dirty=0
+base_commit=d9272a80974426fd9349c517198683f8034cb3e2
+wheel=/var/tmp/qmm-tilem/dist-ab/mlx_omarchy-0.32.2.dev202609141557+b78fd0b6-cp314-cp314-linux_aarch64.whl
+wheel_sha256=f765b66c281aadf6fd00faef5f1c9739cdf781ffdc5b73400326bf12b14bd6e1
+model=/home/joshuawarren/.cache/huggingface/hub/models--mlx-community--Qwen2.5-0.5B-Instruct-4bit/snapshots/a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3
+mesa_pkg=mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1
+llm_inference_service=inactive
+ane_module=ane 65536 0
+61da980e0d07716369d37e8b493c67d3057f0e6231872b40ef6daac0cf061686  /var/tmp/qmm-tilem-ab-20260914/qmm_coopmat.comp
+prompt_short_bytes=2 prompt_ctx_bytes=4759

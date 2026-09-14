@@ -1,0 +1,4 @@
+glslc=2026.3
+2581623778f0bed9951be3e46175f3da3d8aa85dd61a7125a416052759838e83  /tmp/qmm-shipped-final.spv
+2581623778f0bed9951be3e46175f3da3d8aa85dd61a7125a416052759838e83  /var/tmp/qmm-tilem/.work/mlx/build/temp.linux-aarch64-cpython-314/mlx.core/mlx/backend/omarchy/shaders/qmm_coopmat_f16.spv
+8a9692c77f57ea6b242f9963b08af14c996ba92f5cce638035a3e397f90b518f  /var/tmp/qmm-tilem/.work/mlx/build/temp.linux-aarch64-cpython-314/mlx.core/mlx/backend/omarchy/shaders/qmm_coopmat_m16_f16.spv

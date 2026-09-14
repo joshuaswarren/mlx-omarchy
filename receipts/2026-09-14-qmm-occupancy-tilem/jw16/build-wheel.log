@@ -1,0 +1,39 @@
+== identity ==
+23102851 omarchy: dispatch a 16-row coopmat prefill tile on starved grids
+== prepare ==
+patching file CMakeLists.txt
+patching file mlx/CMakeLists.txt
+patching file tests/CMakeLists.txt
+patching file mlx/transforms.cpp
+patching file setup.py
+patching file mlx/io/safetensors.cpp
+patching file mlx/io/load.cpp
+patching file mlx/export.cpp
+patching file mlx/linalg.cpp
+patching file python/src/buffer.h
+patching file mlx/ops.cpp
+Hunk #2 succeeded at 5051 (offset 1 line).
+patching file mlx/backend/cpu/distributed.cpp
+patching file mlx/fast.cpp
+patching file mlx/backend/common/metal_kernel.cpp
+patching file setup.py
+/var/tmp/qmm-tilem/.work/mlx
+build deps ok 84.0.0
+== wheel ==
+Processing ./.work/mlx
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Building wheels for collected packages: mlx-omarchy
+  Building wheel for mlx-omarchy (pyproject.toml): started
+  Building wheel for mlx-omarchy (pyproject.toml): still running...
+  Building wheel for mlx-omarchy (pyproject.toml): finished with status 'done'
+  Created wheel for mlx-omarchy: filename=mlx_omarchy-0.32.2.dev202609141611+23102851-cp314-cp314-linux_aarch64.whl size=7693616 sha256=9ed0cbb5fecde8899dfb47ee53bde28df03d04fb05fc8ef84b8a522a7751e40a
+  Stored in directory: /tmp/pip-ephem-wheel-cache-qzz3hlhv/wheels/e5/25/29/5ab41fd12977b48d7ad20a9561042adcd4a128e32926e0177b
+Successfully built mlx-omarchy
+[receipt] wheel: /var/tmp/qmm-tilem/dist-ab/mlx_omarchy-0.32.2.dev202609141611+23102851-cp314-cp314-linux_aarch64.whl
+9ed0cbb5fecde8899dfb47ee53bde28df03d04fb05fc8ef84b8a522a7751e40a  /var/tmp/qmm-tilem/dist-ab/mlx_omarchy-0.32.2.dev202609141611+23102851-cp314-cp314-linux_aarch64.whl
+== shader gate ==
+-rw-r--r-- 1 joshuawarren joshuawarren 10624 Sep 14 11:11 /var/tmp/qmm-tilem/.work/mlx/build/temp.linux-aarch64-cpython-314/mlx.core/mlx/backend/omarchy/shaders/qmm_coopmat_f16.spv
+-rw-r--r-- 1 joshuawarren joshuawarren 10616 Sep 14 11:11 /var/tmp/qmm-tilem/.work/mlx/build/temp.linux-aarch64-cpython-314/mlx.core/mlx/backend/omarchy/shaders/qmm_coopmat_m16_f16.spv
+2581623778f0bed9951be3e46175f3da3d8aa85dd61a7125a416052759838e83  /tmp/qmm-tilem-ref32.spv
+2581623778f0bed9951be3e46175f3da3d8aa85dd61a7125a416052759838e83  /var/tmp/qmm-tilem/.work/mlx/build/temp.linux-aarch64-cpython-314/mlx.core/mlx/backend/omarchy/shaders/qmm_coopmat_f16.spv
