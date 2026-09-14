@@ -172,6 +172,26 @@ bool dispatch_dense_gemv_group(
     const array& input,
     const Stream& stream);
 
+// Fused RMSNorm prologue: computes sum = lhs + rhs (rounded to the
+// storage dtype exactly as the standalone Add), writes it to |sum|, and
+// writes sum normalized by the fast_norm reduction into |normalized|.
+// Returns false having allocated nothing when the pair falls outside
+// the contract; the caller then lets both nodes take their ordinary
+// eval_gpu paths. Defined in primitives.cpp beside
+// dispatch_quantized_gemv_group.
+bool dispatch_rmsnorm_add_pair(
+    const array& lhs,
+    const array& rhs,
+    const array& weight,
+    array& sum,
+    array& normalized,
+    float eps,
+    const Stream& stream);
+
+// MLX_OMARCHY_FUSED_RMSNORM=0 keeps the Add+RMSNorm prologue pair on
+// the per-node path (the MLX_OMARCHY_FUSED_GEMV gate also covers it).
+bool fused_rmsnorm_enabled();
+
 enum class SliceUpdatePairDispatch : uint8_t { done, not_ready, unsupported };
 SliceUpdatePairDispatch dispatch_slice_update_pair(
     std::array<array, 2>& nodes,

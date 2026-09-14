@@ -644,6 +644,16 @@ struct SliceUpdatePair {
   bool values_committed{false};
 };
 
+// Fused RMSNorm prologue pair: one dispatch computes the Add sum and its
+// RMSNorm-normalized form. The pair is claimed at plan time; either side
+// firing dispatches once, and a runtime contract failure un-plans both
+// onto the per-node path.
+struct RmsNormPair {
+  array add_node;
+  array rms_node;
+  enum class State : uint8_t { pending, done, failed } state{State::pending};
+};
+
 struct EagerFusionState {
   std::unordered_map<std::uintptr_t, EagerRole> roles;
   std::unordered_map<std::uintptr_t, FusedChain> chains;
@@ -651,6 +661,8 @@ struct EagerFusionState {
   std::vector<GemvGroup> gemv_groups;
   std::unordered_map<std::uintptr_t, size_t> dense_gemv_roles;
   std::vector<DenseGemvGroup> dense_gemv_groups;
+  std::unordered_map<std::uintptr_t, size_t> rms_roles;
+  std::vector<RmsNormPair> rms_pairs;
   std::unordered_map<std::uintptr_t, size_t> slice_update_roles;
   std::vector<SliceUpdatePair> slice_update_pairs;
   std::unordered_map<std::uintptr_t, size_t> rope_redirect_roles;
@@ -1143,6 +1155,40 @@ EagerFusionScope::EagerFusionScope(const std::deque<array>& tape)
       state->dense_gemv_groups.push_back(std::move(group));
     }
   }
+  if (fused_rmsnorm_enabled()) {
+    // RMSNorm prologue fold. Pattern: a float16 Add whose output is a
+    // single row and whose shape equals a float16 RMSNorm node's shape,
+    // with the RMSNorm reading that Add output directly and a weight
+    // that is already resident (a parameter, not a tape node). The pair
+    // dispatches once and writes both the sum (exactly as the per-node
+    // Add would) and the normalized row; a GEMV-epilogue Add is already
+    // claimed above and is never stolen.
+    for (const auto& node : tape) {
+      if (!is_op(&node, typeid(RMSNorm)) || node.inputs().size() != 2 ||
+          claimed.count(node.id()) || node.dtype() != float16) {
+        continue;
+      }
+      const array* add = lookup(node.inputs()[0]);
+      if (!add || !is_op(add, typeid(Add)) || add->inputs().size() != 2 ||
+          claimed.count(add->id()) || add->dtype() != float16 ||
+          add->shape() != node.shape() ||
+          add->primitive().stream() != node.primitive().stream() ||
+          add->size() != add->shape(-1)) {
+        continue;
+      }
+      const array& weight = node.inputs()[1];
+      if (lookup(weight) ||
+          (weight.size() != 1 && weight.size() != node.shape(-1))) {
+        continue;
+      }
+      const size_t index = state->rms_pairs.size();
+      state->rms_roles.emplace(add->id(), index);
+      state->rms_roles.emplace(node.id(), index);
+      state->rms_pairs.push_back(RmsNormPair{*add, node});
+      claimed.insert(add->id());
+      claimed.insert(node.id());
+    }
+  }
   // Producer-direct KV cache writes: when one pair member's new rows
   // come from a RoPE node (keys) and the other's from a fused GEMV
   // Add epilogue through a provable chain of view-only ops (values),
@@ -1211,6 +1257,12 @@ bool kv_direct_enabled() {
   return fused_chain_enabled() &&
       (std::getenv("MLX_OMARCHY_KV_DIRECT") == nullptr ||
        env_flag("MLX_OMARCHY_KV_DIRECT"));
+}
+
+bool fused_rmsnorm_enabled() {
+  return fused_gemv_enabled() &&
+      (std::getenv("MLX_OMARCHY_FUSED_RMSNORM") == nullptr ||
+       env_flag("MLX_OMARCHY_FUSED_RMSNORM"));
 }
 
 KvDirectWindow* find_rope_kv_redirect(const array& out) {
@@ -1341,6 +1393,26 @@ bool try_eval_eager_fusion(array& node, const Stream& stream) {
           : GemvGroup::State::failed;
     }
     return group.state == GemvGroup::State::done;
+  }
+  if (auto rms = eager_state->rms_roles.find(node.id());
+      rms != eager_state->rms_roles.end()) {
+    auto& pair = eager_state->rms_pairs[rms->second];
+    if (pair.state == RmsNormPair::State::pending) {
+      float eps = std::get<1>(
+          static_cast<const mlx::core::fast::RMSNorm&>(pair.rms_node.primitive())
+              .state());
+      pair.state = dispatch_rmsnorm_add_pair(
+                       pair.add_node.inputs()[0],
+                       pair.add_node.inputs()[1],
+                       pair.rms_node.inputs()[1],
+                       pair.add_node,
+                       pair.rms_node,
+                       eps,
+                       stream)
+          ? RmsNormPair::State::done
+          : RmsNormPair::State::failed;
+    }
+    return pair.state == RmsNormPair::State::done;
   }
   auto role_it = eager_state->roles.find(node.id());
   if (role_it == eager_state->roles.end()) {
