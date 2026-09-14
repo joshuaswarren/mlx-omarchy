@@ -339,12 +339,17 @@
     "within_frozen_contract": true
   },
   "island_b_attribution": {
+    "superseded": true,
+    "superseded_by": "mil-hwx-compiler receipts/2026-09-14-h13-select-l2-fix.md (7ab3eb5, on mil-hwx-compiler main)",
+    "corrected_cause": "channel-3 scratch under-sized: encodeBooleanOp declared 2310144 bytes (141 tiles, one output surface) where the 375-wide select's three-stage scratch arena reaches 6816000 bytes, so tasks 3 and 4 ran 4.5 MB past the declared surface; the fix sizes channel 3 from the task descriptors, alignTile(6816000) = 6832128 = 417 tiles, equal to Apple's __DATA/__bss gap. The rows 0-8 pattern is the emitted scratch tail past the b half, 2310144 - 2256000 = 54144 bytes = 9.0 interleaved rows of 6016. Device after the fix: 10728 wrong lanes to 0 (quoted from IslandsExecJwm1's guarded submit in the fix receipt). h13.select-first-l2-tile is retracted; the L2 words and const 0x0001 were never the defect.",
+    "amended_by": "StatusDocSync, 2026-09-14",
     "attribution_is_second_hand": "the mapping to h13.select-first-l2-tile comes from AneChannelPolarity's ANEC decode, not from anything measured in this run; what this run measures is the pattern above",
     "channel_mapping_excluded": "AneChannelPolarity decoded the tile-DMA surface selectors out of 25087 locally compiled H13 ANECs: this select derives src=5,6,7 dst=4, which is what libane already binds, so the corruption is not an input/output channel swap",
     "measured_pattern": "1337 corrupted elements in every one of the 8 heads, confined to rows 0-8, in 4-element column groups with period 64; the corrupted values are not a shifted copy of matrix_bd_5",
-    "named_hole": "h13.select-first-l2-tile",
+    "named_hole": "h13.select-first-l2-tile (retracted, see superseded_by)",
     "pointers": [
-      "mil-hwx-compiler THEORY.MD:83-87",
+      "mil-hwx-compiler receipts/2026-09-14-h13-select-l2-fix.md",
+      "mil-hwx-compiler receipts/2026-09-14-h13-select-l2-tile.md (SUPERSEDED)",
       "mil-hwx-compiler receipts/2026-09-14-h13-bool-dma-stride.md"
     ]
   },
