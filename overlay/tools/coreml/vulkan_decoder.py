@@ -4,9 +4,10 @@
 
 The two recurrent layers follow Apple's MIL ``lstm`` definition: input,
 forget, output, cell (IFOC) gate packing; row-major ``[4H, I]`` and
-``[4H, H]`` weights; sigmoid recurrent gates; and tanh cell/output
-activations. CoreML8 inherits those equations from the iOS 15 operation and
-adds fp16 support in the iOS 17 definition.
+``[4H, H]`` weights; correctly-rounded fp16 sigmoid recurrent gates; and
+correctly-rounded fp16 tanh cell/output activations (macOS Core ML CPU).
+CoreML8 inherits those equations from the iOS 15 operation and adds fp16
+support in the iOS 17 definition.
 """
 
 from __future__ import annotations
@@ -59,6 +60,21 @@ _EXPECTED_HISTOGRAM = {
     "stack": 2,
     "transpose": 2,
 }
+
+_F16 = np.dtype("<f2")
+
+
+def fp16_sigmoid(x):
+    """Correctly-rounded binary16 sigmoid: round ``1/(1+exp(-x))`` once."""
+    x64 = np.asarray(x, dtype=np.float64)
+    with np.errstate(over="ignore"):
+        y = 1.0 / (1.0 + np.exp(-x64))
+    return np.asarray(y, dtype=_F16)
+
+
+def fp16_tanh(x):
+    """Correctly-rounded binary16 tanh: round ``tanh(x)`` once."""
+    return np.asarray(np.tanh(np.asarray(x, dtype=np.float64)), dtype=_F16)
 
 
 def _validate_graph(component: PinnedComponent) -> None:
@@ -130,19 +146,25 @@ def _validate_array(name, value, shape, dtype, mx) -> None:
         raise ValueError(f"{name} must have {dtype} dtype, got {value.dtype}")
 
 
+def _cr_fp16(fn, value, mx):
+    return mx.array(fn(np.asarray(value)), dtype=mx.float16)
+
+
 def _lstm(sequence, hidden, cell, weight_ih, weight_hh, bias, mx):
     gates = sequence[0] @ weight_ih.T + hidden @ weight_hh.T + bias
     input_gate, forget_gate, output_gate, cell_gate = mx.split(gates, 4, axis=-1)
     next_cell = (
-        mx.sigmoid(forget_gate) * cell
-        + mx.sigmoid(input_gate) * mx.tanh(cell_gate)
+        _cr_fp16(fp16_sigmoid, forget_gate, mx) * cell
+        + _cr_fp16(fp16_sigmoid, input_gate, mx) * _cr_fp16(fp16_tanh, cell_gate, mx)
     )
-    next_hidden = mx.sigmoid(output_gate) * mx.tanh(next_cell)
+    next_hidden = _cr_fp16(fp16_sigmoid, output_gate, mx) * _cr_fp16(
+        fp16_tanh, next_cell, mx
+    )
     return mx.expand_dims(next_hidden, axis=0), next_hidden, next_cell
 
 
 class VulkanDecoder:
-    """Callable pinned decoder whose tensor operations run on ``mx.gpu``."""
+    """Pinned decoder: GPU matmul, correctly-rounded fp16 activations."""
 
     __slots__ = ("_weights",)
 
