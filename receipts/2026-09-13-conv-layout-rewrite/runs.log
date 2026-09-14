@@ -1,0 +1,14 @@
+compiler=/home/joshuawarren/src/mil-hwx-compiler/build/mil-hwxc
+sha256=82f1d4ce44dc8f2cb5eefd843eea41c47527af3fbff2def0ed1fc154ccd3ce71
+commit=c2cf32e4aa0200d72cecbce203bf6b47f50f729e
+argv=/home/joshuawarren/src/mil-hwx-compiler/build/mil-hwxc --mil receipts/2026-09-13-conv-layout-rewrite/conv-r4.mil --model-root receipts/2026-09-13-conv-layout-rewrite --target H13 --output receipts/2026-09-13-conv-layout-rewrite/conv-r4
+returncode=0
+stdout:
+compiled target=H13 artifacts=1 format=anec output=/home/joshuawarren/src/ane-linux-experiments/parakeet-mel-exact/receipts/2026-09-13-conv-layout-rewrite/conv-r4
+stderr:
+
+argv=/home/joshuawarren/src/mil-hwx-compiler/build/mil-hwxc --mil receipts/2026-09-13-conv-layout-rewrite/enc-1x1-750.mil --model-root receipts/2026-09-13-conv-layout-rewrite --target H13 --output receipts/2026-09-13-conv-layout-rewrite/enc-1x1-750
+returncode=65
+stdout:
+stderr:
+12:5: error [h13.conv-outside-envelope]: H13 conv needs a decoded geometry: an fp16 rank-4 input and result with a batch of one, a constant [Cout, Cin/groups, k, k] weight, unit dilations, zero explicit padding, pad_type 'same' or 'valid', and a kernel, stride, group count and surface pair inside the oracle parity envelope
