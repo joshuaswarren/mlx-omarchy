@@ -1,0 +1,328 @@
+{
+  "runs": {
+    "brew": {
+      "archive": {
+        "bytes": 5053,
+        "file": "mlx-macos-pr-final-brew.tar.gz",
+        "sha256": "c45f27da38fc710ad85f24de721c6747d770c4386cf0c22ab9bc882aae0f6132"
+      },
+      "benchmark": [
+        {
+          "max_ms": 0.401,
+          "median_ms": 0.366,
+          "min_ms": 0.331,
+          "n": 256,
+          "reps": 8,
+          "tflops": 0.0916
+        },
+        {
+          "max_ms": 0.781,
+          "median_ms": 0.775,
+          "min_ms": 0.747,
+          "n": 512,
+          "reps": 8,
+          "tflops": 0.3465
+        },
+        {
+          "max_ms": 1.27,
+          "median_ms": 1.228,
+          "min_ms": 1.211,
+          "n": 1024,
+          "reps": 8,
+          "tflops": 1.7486
+        }
+      ],
+      "benchmark_procedure": "float32 square matmul, sizes 256/512/1024, two warmups, eight repetitions, mx.eval and mx.synchronize per repetition",
+      "command": "python3 scripts/collect_deep.py --out /tmp/mlx-macos-pr-final-brew.tar.gz --workspace /tmp/mlx-macos-pr-final-brew",
+      "context": {
+        "after": {
+          "limits": "Process scan covers known model tools only. Other GPU activity and temperature are not measured. Timings are observations, not a controlled performance comparison.",
+          "model_processes": {
+            "matched_count": 1,
+            "scanned": 695,
+            "status": "contended"
+          },
+          "power": {
+            "charging": false,
+            "percent": 69,
+            "source": "Battery"
+          }
+        },
+        "before": {
+          "limits": "Process scan covers known model tools only. Other GPU activity and temperature are not measured. Timings are observations, not a controlled performance comparison.",
+          "model_processes": {
+            "matched_count": 1,
+            "scanned": 695,
+            "status": "contended"
+          },
+          "power": {
+            "charging": false,
+            "percent": 69,
+            "source": "Battery"
+          }
+        }
+      },
+      "correctness": [
+        {
+          "detail": null,
+          "ms": 51.702,
+          "op": "add",
+          "pass": true
+        },
+        {
+          "detail": null,
+          "ms": 2.655,
+          "op": "matmul",
+          "pass": true
+        },
+        {
+          "detail": null,
+          "ms": 0.335,
+          "op": "softmax",
+          "pass": true
+        },
+        {
+          "detail": null,
+          "ms": 0.283,
+          "op": "argmax",
+          "pass": true
+        },
+        {
+          "detail": null,
+          "ms": 0.323,
+          "op": "cumsum",
+          "pass": true
+        },
+        {
+          "detail": null,
+          "ms": 1.59,
+          "op": "value_and_grad",
+          "pass": true
+        }
+      ],
+      "host": {
+        "arch": "arm64",
+        "available": true,
+        "chip": "Apple M2",
+        "cpu": {
+          "hotplug_control": null,
+          "present": 8
+        },
+        "cpu_online": 8,
+        "gpu": {
+          "chipset": "Apple M2",
+          "gpu_cores": "8",
+          "metal": "Metal 4"
+        },
+        "kernel_release": "25.6.0",
+        "memory_total_mib": 24576,
+        "model": "Mac14,2",
+        "os": "macOS 26.6.2 (25G83)",
+        "system": "Darwin"
+      },
+      "provenance": {
+        "dist": "mlx",
+        "dist_version": "0.32.1",
+        "files": [
+          {
+            "match": null,
+            "path": "libmlx.dylib",
+            "record_sha256": [],
+            "sha256": "c30b1529178de28d23817e6e73ea5133cf63af060379c41a27aa7420aa616b3d"
+          },
+          {
+            "match": null,
+            "path": "core.cpython-314-darwin.so",
+            "record_sha256": [],
+            "sha256": "996bf145d557aaa5dba40ca6798539f1c03a0f3c37194584fdc5b6852d722548"
+          }
+        ],
+        "mismatch": null,
+        "mx_version": "0.32.1",
+        "note": "Binary fingerprints only. Package hashes or version metadata are missing.",
+        "packages": {
+          "mlx": {
+            "installer": "brew",
+            "record_available": false,
+            "version": "0.32.1"
+          }
+        },
+        "verified": "unverified",
+        "version_match": true
+      },
+      "python_version": "3.14.7",
+      "validation": {
+        "files_scanned": 9,
+        "pii_matches": [],
+        "schema_errors": []
+      }
+    },
+    "pip": {
+      "archive": {
+        "bytes": 5035,
+        "file": "mlx-macos-pr-final-pip.tar.gz",
+        "sha256": "d9a06226d0d5eb450b54efcb6f3649ad34c9281ebb2fa02a81d9894b5d105bd3"
+      },
+      "benchmark": [
+        {
+          "max_ms": 0.391,
+          "median_ms": 0.362,
+          "min_ms": 0.345,
+          "n": 256,
+          "reps": 8,
+          "tflops": 0.0926
+        },
+        {
+          "max_ms": 0.805,
+          "median_ms": 0.771,
+          "min_ms": 0.741,
+          "n": 512,
+          "reps": 8,
+          "tflops": 0.3481
+        },
+        {
+          "max_ms": 2.782,
+          "median_ms": 1.165,
+          "min_ms": 1.14,
+          "n": 1024,
+          "reps": 8,
+          "tflops": 1.8441
+        }
+      ],
+      "benchmark_procedure": "float32 square matmul, sizes 256/512/1024, two warmups, eight repetitions, mx.eval and mx.synchronize per repetition",
+      "command": "/tmp/mlx-macos-pip-test/bin/python scripts/collect_deep.py --out /tmp/mlx-macos-pr-final-pip.tar.gz --workspace /tmp/mlx-macos-pr-final-pip",
+      "context": {
+        "after": {
+          "limits": "Process scan covers known model tools only. Other GPU activity and temperature are not measured. Timings are observations, not a controlled performance comparison.",
+          "model_processes": {
+            "matched_count": 1,
+            "scanned": 697,
+            "status": "contended"
+          },
+          "power": {
+            "charging": false,
+            "percent": 69,
+            "source": "Battery"
+          }
+        },
+        "before": {
+          "limits": "Process scan covers known model tools only. Other GPU activity and temperature are not measured. Timings are observations, not a controlled performance comparison.",
+          "model_processes": {
+            "matched_count": 1,
+            "scanned": 697,
+            "status": "contended"
+          },
+          "power": {
+            "charging": false,
+            "percent": 69,
+            "source": "Battery"
+          }
+        }
+      },
+      "correctness": [
+        {
+          "detail": null,
+          "ms": 60.703,
+          "op": "add",
+          "pass": true
+        },
+        {
+          "detail": null,
+          "ms": 2.512,
+          "op": "matmul",
+          "pass": true
+        },
+        {
+          "detail": null,
+          "ms": 0.435,
+          "op": "softmax",
+          "pass": true
+        },
+        {
+          "detail": null,
+          "ms": 0.471,
+          "op": "argmax",
+          "pass": true
+        },
+        {
+          "detail": null,
+          "ms": 0.351,
+          "op": "cumsum",
+          "pass": true
+        },
+        {
+          "detail": null,
+          "ms": 2.04,
+          "op": "value_and_grad",
+          "pass": true
+        }
+      ],
+      "host": {
+        "arch": "arm64",
+        "available": true,
+        "chip": "Apple M2",
+        "cpu": {
+          "hotplug_control": null,
+          "present": 8
+        },
+        "cpu_online": 8,
+        "gpu": {
+          "chipset": "Apple M2",
+          "gpu_cores": "8",
+          "metal": "Metal 4"
+        },
+        "kernel_release": "25.6.0",
+        "memory_total_mib": 24576,
+        "model": "Mac14,2",
+        "os": "macOS 26.6.2 (25G83)",
+        "system": "Darwin"
+      },
+      "provenance": {
+        "dist": "mlx",
+        "dist_version": "0.32.1",
+        "files": [
+          {
+            "match": true,
+            "path": "core.cpython-314-darwin.so",
+            "record_sha256": [
+              "19b7324d344ef5fa7cfbb78920913eee89d272bae22af87223369e36122e64dc"
+            ],
+            "sha256": "19b7324d344ef5fa7cfbb78920913eee89d272bae22af87223369e36122e64dc"
+          },
+          {
+            "match": true,
+            "path": "libmlx.dylib",
+            "record_sha256": [
+              "afb1939edc96dc10e452132e4e665276fe0c48bf8cdc1a69286feb8a14de1da0"
+            ],
+            "sha256": "afb1939edc96dc10e452132e4e665276fe0c48bf8cdc1a69286feb8a14de1da0"
+          }
+        ],
+        "mismatch": null,
+        "mx_version": "0.32.1",
+        "packages": {
+          "mlx": {
+            "installer": "pip",
+            "record_available": true,
+            "version": "0.32.1"
+          },
+          "mlx-metal": {
+            "installer": "pip",
+            "record_available": true,
+            "version": "0.32.1"
+          }
+        },
+        "verified": "match",
+        "version_match": true
+      },
+      "python_version": "3.14.7",
+      "validation": {
+        "files_scanned": 9,
+        "pii_matches": [],
+        "schema_errors": []
+      }
+    }
+  },
+  "scope": "Native macOS collector smoke. No Linux, ANE, dispatch trace, or performance parity qualification.",
+  "source_commit": "e1ca0b61f436093155f2e8f55bc962c7396ef9c6"
+}

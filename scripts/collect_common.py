@@ -68,7 +68,10 @@ class Redactor:
     # octets; redact every other dotted quad.
     _VERSION_CONTEXT = re.compile(r"(?i)(?:version\s*[:=]\s*|\d+\.)$")
 
-    def _ipv4_sub(self, match):
+    def _ipv4_sub(self, match, field=None):
+        if (isinstance(field, str) and field.lower().endswith("version")
+                and not match.string[:match.start()].strip()):
+            return match.group(0)
         line_start = match.string.rfind("\n", 0, match.start()) + 1
         prefix = match.string[line_start:match.start()]
         if self._VERSION_CONTEXT.search(prefix):
@@ -138,11 +141,25 @@ class Redactor:
             ))
         return rules
 
-    def apply(self, text):
+    def apply_value(self, value, field=None):
+        """Redact structured observations without changing their types."""
+        if isinstance(value, str):
+            return self.apply(value, field=field)
+        if isinstance(value, dict):
+            return {key: self.apply_value(item, field=key)
+                    for key, item in value.items()}
+        if isinstance(value, list):
+            return [self.apply_value(item) for item in value]
+        return value
+
+    def apply(self, text, *, field=None):
         if not isinstance(text, str):
             text = str(text)
         for pattern, repl in self._rules:
-            text = pattern.sub(repl, text)
+            if repl == self._ipv4_sub:
+                text = pattern.sub(lambda match: self._ipv4_sub(match, field), text)
+            else:
+                text = pattern.sub(repl, text)
         return text
 
 
@@ -277,6 +294,11 @@ def build_manifest(archive_name, files, extra=None):
     return manifest
 
 
+def is_native_macos(host, manifest):
+    """True when a report came from native macOS MLX rather than Linux."""
+    return (host.get("system") or manifest.get("system")) == "Darwin"
+
+
 def build_payload(kind, quick, manifest, generated_at=None, benchmark=None):
     """Build the strict-schema JSON summary sent with the upload.
 
@@ -329,20 +351,29 @@ def build_payload(kind, quick, manifest, generated_at=None, benchmark=None):
             "tflops": row.get("tflops"),
             "median_ms": row.get("median_ms"),
         })
+    native = is_native_macos(host, manifest)
+    kernel = host.get("kernel_release")
+    if native:
+        shortfall_flag = None
+        kernel = f"Darwin {kernel or 'unknown'} ({host.get('os') or 'macOS'})"
+    device = mlx.get("default_device")
+    if native and mlx.get("metal_available"):
+        device = f"Metal GPU (native macOS MLX, {device})"
     return {
         "schema_version": SCHEMA_VERSION,
         "kind": kind,
         "generated_at": generated_at or time.strftime(
             "%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "arch": host.get("arch"),
-        "model": dt.get("model"),
-        "chip": soc or (compatible[0] if compatible else None),
-        "kernel": host.get("kernel_release"),
+        "model": host.get("model") if native else dt.get("model"),
+        "chip": host.get("chip") if native else
+            soc or (compatible[0] if compatible else None),
+        "kernel": kernel,
         "mesa_driver": gpu.get("driverName"),
         "mesa_device": gpu.get("deviceName"),
         "mlx_version": distributions.get("mlx-omarchy")
             or mlx.get("mlx_version"),
-        "mlx_device": mlx.get("default_device"),
+        "mlx_device": device,
         "source_commit": manifest.get("source_commit"),
         "repo_dirty": manifest.get("repo_dirty"),
         "cpu_present": present if isinstance(present, int) else None,

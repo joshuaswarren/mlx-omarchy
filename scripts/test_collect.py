@@ -19,6 +19,7 @@ import sys
 import tarfile
 import tempfile
 import unittest
+from unittest.mock import patch
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -119,7 +120,10 @@ class UnavailableToolBehavior(unittest.TestCase):
 
     def test_deep_section_preserves_unavailability(self):
         with tempfile.TemporaryDirectory() as ws:
-            cd.section_child("correctness", ws, os.getcwd())
+            with patch.object(cd, "run_tool", return_value={
+                    "available": True, "exit_code": 0,
+                    "stdout": json.dumps({"available": False, "import_error": "No module named mlx"})}):
+                cd.section_child("correctness", ws, os.getcwd())
             with open(os.path.join(ws, "correctness.json")) as fh:
                 data = json.load(fh)
         self.assertIn("available", data)

@@ -42,6 +42,7 @@ import tempfile
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+import collect_macos
 import collect_quick
 SCRIPTS_DIR = os.path.dirname(os.path.abspath(__file__))
 from collect_common import (
@@ -50,6 +51,7 @@ from collect_common import (
     archive_bytes,
     build_manifest,
     build_payload,
+    is_native_macos,
     json_bytes,
     read_text,
     run_tool,
@@ -84,9 +86,16 @@ res["mlx_version"] = getattr(mx, "__version__", None)
 
 import sys as _sys
 _sys.path.insert(0, __SCRIPTS_DIR__)
-from mlx_provenance import installed_provenance
+from mlx_provenance import prepare_probe
 
-res["provenance"] = installed_provenance()
+try:
+    res["provenance"] = prepare_probe(mx)
+    res["device"] = str(mx.default_device())
+except Exception as exc:
+    res["available"] = False
+    res["error"] = f"{type(exc).__name__}: {exc}"
+    print(json.dumps(res))
+    raise SystemExit(0)
 if res["provenance"].get("verified") == "mismatch":
     res["available"] = False
     res["error"] = ("refusing to emit correctness numbers: "
@@ -149,9 +158,10 @@ try:
 
     import sys as _sys
     _sys.path.insert(0, __SCRIPTS_DIR__)
-    from mlx_provenance import installed_provenance
+    from mlx_provenance import prepare_probe
 
-    res["provenance"] = installed_provenance()
+    res["provenance"] = prepare_probe(mx)
+    res["device"] = str(mx.default_device())
     if res["provenance"].get("verified") == "mismatch":
         res["available"] = False
         res["error"] = ("refusing to emit timing numbers: "
@@ -283,6 +293,9 @@ def section_benchmark(redactor, repo):
             out["available"] = bool(found.get("available"))
         except (ValueError, IndexError):
             pass
+    if platform.system() == "Darwin":
+        out["kernel_spike"] = collect_macos.not_applicable()
+        return out
     spike = find_spike_binary(repo)
     if spike is None:
         out["kernel_spike"] = {"available": False, "error": "binary not built "
@@ -322,6 +335,8 @@ def find_info_tool(redactor, repo):
 
 
 def section_profile(redactor, repo, ws):
+    if platform.system() == "Darwin":
+        return collect_macos.not_applicable()
     out = {"available": False, "trace_smoke": None, "stream": None,
            "analysis": None}
     tool = find_info_tool(redactor, repo)
@@ -446,6 +461,12 @@ def assemble_files(ws, repo, thermal):
         with open(stream, "rb") as fh:
             files["profile-stream.jsonl"] = fh.read()
     files["thermal.json"] = json_bytes({"zones": thermal})
+    if platform.system() == "Darwin":
+        files["thermal.json"] = json_bytes({
+            "available": False, "zones": [],
+            "error": "macOS temperature sensors are not collected",
+        })
+        unavailable.append("thermal")
     return files, unavailable, redaction
 
 
@@ -459,29 +480,61 @@ def _member(files, name):
         return {}
 
 
-def build_submission(manifest, files, archive_name):
-    """Paste-ready cover text, derived from the manifest only."""
+def _quick_with_probe_metadata(files, manifest):
     quick = _member(files, "quick.json")
+    if not is_native_macos(quick.get("host") or {}, manifest):
+        return quick
+    mlx = dict(quick.get("mlx") or {})
+    probes = (_member(files, "correctness.json"),
+              _member(files, "benchmark.json").get("python") or {})
+    for probe in probes:
+        if not probe.get("available"):
+            continue
+        provenance = probe.get("provenance") or {}
+        mlx["mlx_version"] = (mlx.get("mlx_version") or probe.get("mlx_version")
+                              or provenance.get("mx_version") or provenance.get("dist_version"))
+        mlx["default_device"] = mlx.get("default_device") or probe.get("device")
+        if mlx.get("metal_available") is None:
+            # Native probes require Metal before reporting availability.
+            mlx["metal_available"] = True
+    return {**quick, "mlx": mlx}
+
+
+def build_submission(manifest, files, archive_name):
+    """Paste-ready cover text from the manifest and collected sections."""
+    quick = _quick_with_probe_metadata(files, manifest)
     host = quick.get("host", {})
     mesa = quick.get("mesa", {}).get("gpu", {})
     mlx = quick.get("mlx", {})
     correctness = _member(files, "correctness.json")
     ops = correctness.get("ops", [])
-    lines = [
-        "## mlx-omarchy hardware report",
-        "",
-        f"Machine: {host.get('devicetree', {}).get('model') or 'unknown model'}"
-        f" ({host.get('arch', 'unknown arch')}, kernel "
-        f"{host.get('kernel_release', 'unknown')})",
-        f"Vulkan: {mesa.get('deviceName') or 'unavailable'} / "
-        f"{mesa.get('driverName') or 'unavailable'}, API "
-        f"{mesa.get('apiVersion') or 'unavailable'}",
-        f"mlx-omarchy: {mlx.get('distributions', {}).get('mlx-omarchy') or 'not installed'}"
-        f", device {mlx.get('default_device') or 'unavailable'}",
+    lines = ["## mlx-omarchy hardware report", ""]
+    if is_native_macos(host, manifest):
+        metal = mlx.get("metal_available")
+        lines += [
+            f"Machine: {host.get('model') or 'unknown'} / {host.get('chip') or 'unknown'}"
+            f" ({host.get('os') or 'macOS'}, Darwin {host.get('kernel_release') or 'unknown'})",
+            f"Native MLX: {mlx.get('mlx_version') or 'unknown'}, "
+            f"Metal available: {metal if metal is not None else 'unknown'}",
+            "Native macOS reference only. This does not prove Linux support, "
+            "ANE execution, or performance parity.",
+        ]
+    else:
+        lines += [
+            f"Machine: {host.get('devicetree', {}).get('model') or 'unknown model'}"
+            f" ({host.get('arch', 'unknown arch')}, kernel "
+            f"{host.get('kernel_release', 'unknown')})",
+            f"Vulkan: {mesa.get('deviceName') or 'unavailable'} / "
+            f"{mesa.get('driverName') or 'unavailable'}, API "
+            f"{mesa.get('apiVersion') or 'unavailable'}",
+            f"mlx-omarchy: {mlx.get('distributions', {}).get('mlx-omarchy') or 'not installed'}"
+            f", device {mlx.get('default_device') or 'unavailable'}",
+        ]
+    lines += [
         f"Source commit: {manifest.get('source_commit') or 'unknown'}",
         f"Correctness: {sum(1 for op in ops if op.get('pass'))}/{len(ops)}"
         f" probe ops pass"
-        + (" (mlx not importable; probes did not run)"
+        + (" (probes unavailable; see correctness.json)"
            if correctness.get("available") is False else ""),
         f"Not available on this machine: "
         f"{', '.join(manifest.get('sections_unavailable', [])) or 'nothing'}",
@@ -518,14 +571,14 @@ def finalize(files, unavailable, redaction, archive_name, repo):
     manifest = build_manifest(archive_name, listed, extra={
         "source_commit": commit,
         "repo_dirty": dirty,
+        "system": platform.system(),
         "sections_unavailable": unavailable,
         "redaction_summary": dict(sorted(redaction.items())),
         "schema_note": "one file per section; probe records carry argv, "
                        "exit code, capped redacted output; the schema does "
                        "not change with the sharing path",
     })
-    quick = json.loads(files.get("quick.json", b"{}").decode("utf-8")
-                       or "{}")
+    quick = _quick_with_probe_metadata(files, manifest)
     bench = json.loads(files.get("benchmark.json", b"{}").decode("utf-8")
                        or "{}")
     matmul = ((bench.get("python") or {}).get("matmul") or []) \
@@ -553,6 +606,9 @@ def dump_preview(manifest):
 def section_child(name, ws, repo):
     redactor = Redactor()
     try:
+        context = None
+        if name == "benchmark" and platform.system() == "Darwin":
+            context = collect_macos.measurement_context()
         if name == "quick":
             data = collect_quick.collect()
         elif name == "environment":
@@ -565,9 +621,13 @@ def section_child(name, ws, repo):
             data = section_profile(redactor, repo, ws)
         else:
             data = {"available": False, "error": f"unknown section {name}"}
+        if context is not None:
+            data["context"] = {"before": context,
+                               "after": collect_macos.measurement_context()}
     except Exception as exc:
         data = {"available": False,
                 "error": redactor.apply(f"{type(exc).__name__}: {exc}")}
+    data = redactor.apply_value(data)
     if isinstance(data, dict):
         data["_redaction"] = redactor.counts
     with open(os.path.join(ws, f"{name}.json"), "wb") as fh:
