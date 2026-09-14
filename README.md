@@ -143,7 +143,7 @@ python3 -m venv ~/.venvs/mlx-collect
   --submit https://mlx-omarchy-community-data.joshua-s-warren.workers.dev
 ```
 
-`scripts/collect_quick.py` is the no-install version: hardware and driver identity only, a few seconds, no network. Details of what is collected and how it is redacted are in [CONTRIBUTING.md](CONTRIBUTING.md). Query the dataset with `python3 scripts/query_community_data.py list`.
+`scripts/collect_quick.py` is the no-install version: hardware and driver identity only, a few seconds, no network. Both collectors also support native macOS reference reports. Use the [macOS setup](CONTRIBUTING.md#macos-setup) with native MLX for correctness and benchmark data. Details of what is collected and how it is redacted are in [CONTRIBUTING.md](CONTRIBUTING.md). Query the dataset with `python3 scripts/query_community_data.py list`.
 
 ### Code
 

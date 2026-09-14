@@ -9,6 +9,9 @@ identity from the devicetree /chosen node, the redacted kernel command
 line, and whether the booted devicetree carries an ANE node. It finishes
 in seconds, downloads nothing, and never touches the network.
 
+On macOS, it records native Mac, OS, and Metal facts instead of Linux
+driver and devicetree diagnostics. Native MLX is optional.
+
 Personal data never reaches the output: every captured command output and
 every free-text field passes through the shared Redactor, and the script
 never reads serial numbers, machine IDs, or network configuration at all.
@@ -25,11 +28,13 @@ script exits 0 when the report was produced, 1 on an internal failure.
 import argparse
 import json
 import os
+import platform
 import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+import collect_macos
 from collect_common import (SCHEMA_VERSION, Redactor, build_payload,
                             dump_json, json_bytes, run_tool)
 
@@ -37,6 +42,8 @@ DT_BASE = "/sys/firmware/devicetree/base"
 
 
 def probe_host(redactor):
+    if platform.system() == "Darwin":
+        return collect_macos.probe_host(redactor)
     out = {"available": True}
     info = os.uname()
     out["arch"] = info.machine
@@ -261,6 +268,8 @@ def _primary_device(devices):
 
 def probe_mesa(redactor):
     """Vulkan stack identity from `vulkaninfo --summary`."""
+    if platform.system() == "Darwin":
+        return collect_macos.not_applicable()
     out = {"available": False, "properties": {}, "summary": None}
     rec = run_tool(["vulkaninfo", "--summary"], redactor,
                    label="vulkaninfo --summary", timeout=30)
@@ -282,6 +291,8 @@ def probe_mesa(redactor):
 
 def probe_mesa_package(redactor):
     """Mesa package version as a cross-check; distro-specific and optional."""
+    if platform.system() == "Darwin":
+        return collect_macos.not_applicable()
     return {
         "pacman": run_tool(["pacman", "-Q", "mesa"], redactor,
                            label="pacman -Q mesa", timeout=15),
@@ -293,6 +304,8 @@ def probe_mesa_package(redactor):
 
 def probe_ane(redactor):
     """Apple Neural Engine visibility: device node and libane."""
+    if platform.system() == "Darwin":
+        return collect_macos.not_applicable()
     node = os.path.exists("/dev/ane")
     out = {"available": node, "device_node": node}
     out["devicetree"] = _ane_devicetree()
@@ -322,6 +335,11 @@ import pathlib
 try:
     import mlx.core as mx
     out["import_ok"] = True
+    import platform
+    if platform.system() == "Darwin":
+        out["metal_available"] = mx.metal.is_available()
+        if out["metal_available"]:
+            mx.set_default_device(mx.gpu)
     out["default_device"] = str(mx.default_device())
     out["mlx_version"] = getattr(mx, "__version__", None)
     # mlx is a namespace package (mlx.__file__ is None); anchor on the
@@ -349,7 +367,7 @@ def probe_mlx(redactor):
         return out
     out["available"] = bool(found.get("import_ok"))
     for key in ("distributions", "import_error", "default_device",
-                "mlx_version", "info_tool"):
+                "mlx_version", "info_tool", "metal_available"):
         out[key] = found.get(key)
     tool = found.get("info_tool")
     if tool:
@@ -395,7 +413,7 @@ def collect(probes=None):
     }
     for name in sorted(active):
         try:
-            report[name] = active[name](redactor)
+            report[name] = redactor.apply_value(active[name](redactor))
         except Exception as exc:
             report[name] = {
                 "available": False,
