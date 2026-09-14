@@ -14,6 +14,8 @@ except ImportError:  # package discovery (omarchy.coreml.*)
 
 from coreml.slice_layout import (
     SliceLayoutError,
+    numpy_last_dim_prefix,
+    numpy_last_dim_suffix,
     numpy_relpos_drop_first,
     numpy_relpos_drop_last,
     plan_slice_layout,
@@ -79,6 +81,31 @@ class NumpyProofTest(unittest.TestCase):
             require_exact(original, rewritten, "rel-pos drop last")
         self.assertIn("inexact rel-pos drop last", str(caught.exception))
 
+    def test_encoder_shaped_last_dim_prefix_is_bit_exact(self):
+        rng = np.random.default_rng(20260913)
+        shape = (1, 8, 375, 749)
+        keep = 375
+        cases = [
+            rng.standard_normal(shape).astype(np.float16),
+            np.zeros(shape, np.float16),
+            np.full(shape, np.float16("-0")),
+        ]
+        cases[0][0, 0, 0, 0] = np.float16("-0")
+        cases[0][0, 7, 374, 374] = np.float16("-0")
+        for source in cases:
+            original, rewritten = numpy_last_dim_prefix(source, keep)
+            require_exact(original, rewritten, "last-dim prefix")
+            self.assertEqual(original.shape, (1, 8, 375, keep))
+
+    def test_last_dim_suffix_is_inexact(self):
+        rng = np.random.default_rng(20260913)
+        source = rng.standard_normal((1, 8, 375, 749)).astype(np.float16)
+        original, rewritten = numpy_last_dim_suffix(source, 375)
+        with self.assertRaises(SliceLayoutError) as caught:
+            require_exact(original, rewritten, "last-dim suffix")
+        self.assertIn("inexact last-dim suffix", str(caught.exception))
+
+
 
 class SliceLayoutRewriteTest(unittest.TestCase):
     def test_rewrites_encoder_relpos_slice(self):
@@ -87,6 +114,7 @@ class SliceLayoutRewriteTest(unittest.TestCase):
         self.assertEqual(plan[0].disposition, "REWRITTEN")
         self.assertEqual(plan[0].output_name, "var_367_cast_fp16")
         self.assertIn("8 chunks of 280875 spaced 281250", plan[0].reason)
+        self.assertIn("axes=[1]", plan[0].reason)
 
         text, report = rewrite_slice_layout(_ENCODER_SLICE)
         self.assertEqual(report.rewritten, ["var_367_cast_fp16"])
@@ -110,17 +138,30 @@ class SliceLayoutRewriteTest(unittest.TestCase):
             "mlx-omarchy.slice-layout-rewrite.v1",
         )
 
-    def test_last_dim_slice_is_refused(self):
+    def test_rewrites_last_dim_prefix(self):
         plan = plan_slice_layout(_LAST_DIM_SLICE)
         self.assertEqual(len(plan), 1)
-        self.assertEqual(plan[0].disposition, "REFUSED")
-        self.assertIn("one wrapping dim", plan[0].reason)
+        self.assertEqual(plan[0].disposition, "REWRITTEN")
+        self.assertEqual(plan[0].output_name, "matrix_bd_3_cast_fp16")
+        self.assertIn("3000 chunks of 375 spaced 749", plan[0].reason)
+        self.assertIn("axes=[1, 2]", plan[0].reason)
+
         text, report = rewrite_slice_layout(_LAST_DIM_SLICE)
-        self.assertEqual(report.rewritten, [])
-        self.assertIn(
+        self.assertEqual(report.rewritten, ["matrix_bd_3_cast_fp16"])
+        self.assertEqual(report.refused, [])
+        self.assertNotIn(
             "slice_by_index(begin = matrix_bd_3_begin_0",
             text,
         )
+        self.assertIn(
+            "tensor<fp16, [1, 8, 375, 375]> matrix_bd_3_cast_fp16 = concat(",
+            text,
+        )
+        self.assertIn("tensor<fp16, [1, 1, 375, 749]>", text)
+        self.assertIn("tensor<fp16, [1, 1, 1, 749]>", text)
+        self.assertIn("tensor<fp16, [1, 1, 1, 375]>", text)
+        self.assertIn("x7 =", text)
+
 
     def test_real_encoder_mil_drops_the_749_slice(self):
         mil_path = (
@@ -152,7 +193,8 @@ class SliceLayoutRewriteTest(unittest.TestCase):
             "reshape(shape = var_368, x = var_367_cast_fp16)",
             text,
         )
-        self.assertTrue(
+        self.assertIn("matrix_bd_3_cast_fp16", report.rewritten)
+        self.assertFalse(
             any(
                 entry.output_name.startswith("matrix_bd_")
                 and entry.disposition == "REFUSED"
