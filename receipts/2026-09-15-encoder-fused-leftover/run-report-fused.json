@@ -1,0 +1,1155 @@
+{
+  "layers": 24,
+  "ops_executed": 3351,
+  "gpu_ops": 1254,
+  "ane_ops": 96,
+  "cpu_tensor_events": 0,
+  "wall_ns": 19194270401,
+  "ane_mode": true,
+  "islands_placed": "ABC",
+  "gpu_counters": {
+    "gpu_primitive_dispatches": 8347,
+    "vk_submissions": 293,
+    "vk_buffer_copies": 0,
+    "vk_buffer_fills": 101,
+    "vk_compute_dispatches": 5202,
+    "omarchy_finalize_calls": 218,
+    "commit_calls_with_work": 293,
+    "commit_calls_noop": 218
+  },
+  "island_b_cond_census": {
+    "cond_tensor": "var_373",
+    "shape": [
+      1,
+      1,
+      375,
+      375
+    ],
+    "elements": 140625,
+    "true_lanes": 0,
+    "broadcast_elements": 1125000,
+    "broadcast_true_lanes": 0,
+    "fill_value": "-inf",
+    "fill_bits": "0xFC00",
+    "shared_across_layers": true
+  },
+  "encoder_hidden_shape": [
+    1,
+    375,
+    640
+  ],
+  "ane": {
+    "submissions": 72,
+    "worker_starts": 72,
+    "timeouts": 0,
+    "input_bytes": 299542848,
+    "output_bytes": 234288000,
+    "exec_ns": 5034430223,
+    "log": [
+      {
+        "tag": "L00-A",
+        "bundle": "island-attn-a-kt",
+        "exit": 0,
+        "elapsed_ns": 80644909,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-attn-a-kt programs=2 driver_abi=1 graph=85325f3059a345dee7c62c53a0072b2e869c0c8116385c992e8963587714ff88",
+          "worker status=0 iterations=1 released=2 elapsed_ms=64",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attention_scores_1 (4494000 bytes)",
+          "saved output matmul_0 (2250000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 3837952,
+        "output_bytes": 6744000
+      },
+      {
+        "tag": "L00-B",
+        "bundle": "island-select-8head-scratch417",
+        "exit": 0,
+        "elapsed_ns": 80961863,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-select-8head programs=1 driver_abi=1 graph=fd9e6c5b64f8b2c58fa2067799589ba0d32dfc24361b6612c9ef94d9e1a6422e",
+          "worker status=0 iterations=1 released=1 elapsed_ms=58",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attention_mask_9 (2250000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 5625000,
+        "output_bytes": 2250000
+      },
+      {
+        "tag": "L00-C",
+        "bundle": "island-pv",
+        "exit": 0,
+        "elapsed_ns": 41640330,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-pv programs=1 driver_abi=1 graph=ed03818974f7e2728daff0c839fcd4486a87282515347e68db7d2219605905c3",
+          "worker status=0 iterations=1 released=1 elapsed_ms=26",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attn_output_1 (768000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 3018000,
+        "output_bytes": 768000
+      },
+      {
+        "tag": "L01-A",
+        "bundle": "island-attn-a-kt",
+        "exit": 0,
+        "elapsed_ns": 93336843,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-attn-a-kt programs=2 driver_abi=1 graph=85325f3059a345dee7c62c53a0072b2e869c0c8116385c992e8963587714ff88",
+          "worker status=0 iterations=1 released=2 elapsed_ms=71",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attention_scores_1 (4494000 bytes)",
+          "saved output matmul_0 (2250000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 3837952,
+        "output_bytes": 6744000
+      },
+      {
+        "tag": "L01-B",
+        "bundle": "island-select-8head-scratch417",
+        "exit": 0,
+        "elapsed_ns": 82547130,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-select-8head programs=1 driver_abi=1 graph=fd9e6c5b64f8b2c58fa2067799589ba0d32dfc24361b6612c9ef94d9e1a6422e",
+          "worker status=0 iterations=1 released=1 elapsed_ms=60",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attention_mask_9 (2250000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 5625000,
+        "output_bytes": 2250000
+      },
+      {
+        "tag": "L01-C",
+        "bundle": "island-pv",
+        "exit": 0,
+        "elapsed_ns": 42132240,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-pv programs=1 driver_abi=1 graph=ed03818974f7e2728daff0c839fcd4486a87282515347e68db7d2219605905c3",
+          "worker status=0 iterations=1 released=1 elapsed_ms=27",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attn_output_1 (768000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 3018000,
+        "output_bytes": 768000
+      },
+      {
+        "tag": "L02-A",
+        "bundle": "island-attn-a-kt",
+        "exit": 0,
+        "elapsed_ns": 88906159,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-attn-a-kt programs=2 driver_abi=1 graph=85325f3059a345dee7c62c53a0072b2e869c0c8116385c992e8963587714ff88",
+          "worker status=0 iterations=1 released=2 elapsed_ms=68",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attention_scores_1 (4494000 bytes)",
+          "saved output matmul_0 (2250000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 3837952,
+        "output_bytes": 6744000
+      },
+      {
+        "tag": "L02-B",
+        "bundle": "island-select-8head-scratch417",
+        "exit": 0,
+        "elapsed_ns": 78946560,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-select-8head programs=1 driver_abi=1 graph=fd9e6c5b64f8b2c58fa2067799589ba0d32dfc24361b6612c9ef94d9e1a6422e",
+          "worker status=0 iterations=1 released=1 elapsed_ms=57",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attention_mask_9 (2250000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 5625000,
+        "output_bytes": 2250000
+      },
+      {
+        "tag": "L02-C",
+        "bundle": "island-pv",
+        "exit": 0,
+        "elapsed_ns": 41540207,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-pv programs=1 driver_abi=1 graph=ed03818974f7e2728daff0c839fcd4486a87282515347e68db7d2219605905c3",
+          "worker status=0 iterations=1 released=1 elapsed_ms=26",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attn_output_1 (768000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 3018000,
+        "output_bytes": 768000
+      },
+      {
+        "tag": "L03-A",
+        "bundle": "island-attn-a-kt",
+        "exit": 0,
+        "elapsed_ns": 82186636,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-attn-a-kt programs=2 driver_abi=1 graph=85325f3059a345dee7c62c53a0072b2e869c0c8116385c992e8963587714ff88",
+          "worker status=0 iterations=1 released=2 elapsed_ms=62",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attention_scores_1 (4494000 bytes)",
+          "saved output matmul_0 (2250000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 3837952,
+        "output_bytes": 6744000
+      },
+      {
+        "tag": "L03-B",
+        "bundle": "island-select-8head-scratch417",
+        "exit": 0,
+        "elapsed_ns": 79084224,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-select-8head programs=1 driver_abi=1 graph=fd9e6c5b64f8b2c58fa2067799589ba0d32dfc24361b6612c9ef94d9e1a6422e",
+          "worker status=0 iterations=1 released=1 elapsed_ms=56",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attention_mask_9 (2250000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 5625000,
+        "output_bytes": 2250000
+      },
+      {
+        "tag": "L03-C",
+        "bundle": "island-pv",
+        "exit": 0,
+        "elapsed_ns": 41111172,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-pv programs=1 driver_abi=1 graph=ed03818974f7e2728daff0c839fcd4486a87282515347e68db7d2219605905c3",
+          "worker status=0 iterations=1 released=1 elapsed_ms=26",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attn_output_1 (768000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 3018000,
+        "output_bytes": 768000
+      },
+      {
+        "tag": "L04-A",
+        "bundle": "island-attn-a-kt",
+        "exit": 0,
+        "elapsed_ns": 86609277,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-attn-a-kt programs=2 driver_abi=1 graph=85325f3059a345dee7c62c53a0072b2e869c0c8116385c992e8963587714ff88",
+          "worker status=0 iterations=1 released=2 elapsed_ms=64",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attention_scores_1 (4494000 bytes)",
+          "saved output matmul_0 (2250000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 3837952,
+        "output_bytes": 6744000
+      },
+      {
+        "tag": "L04-B",
+        "bundle": "island-select-8head-scratch417",
+        "exit": 0,
+        "elapsed_ns": 81635436,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-select-8head programs=1 driver_abi=1 graph=fd9e6c5b64f8b2c58fa2067799589ba0d32dfc24361b6612c9ef94d9e1a6422e",
+          "worker status=0 iterations=1 released=1 elapsed_ms=59",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attention_mask_9 (2250000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 5625000,
+        "output_bytes": 2250000
+      },
+      {
+        "tag": "L04-C",
+        "bundle": "island-pv",
+        "exit": 0,
+        "elapsed_ns": 40866801,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-pv programs=1 driver_abi=1 graph=ed03818974f7e2728daff0c839fcd4486a87282515347e68db7d2219605905c3",
+          "worker status=0 iterations=1 released=1 elapsed_ms=25",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attn_output_1 (768000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 3018000,
+        "output_bytes": 768000
+      },
+      {
+        "tag": "L05-A",
+        "bundle": "island-attn-a-kt",
+        "exit": 0,
+        "elapsed_ns": 92108444,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-attn-a-kt programs=2 driver_abi=1 graph=85325f3059a345dee7c62c53a0072b2e869c0c8116385c992e8963587714ff88",
+          "worker status=0 iterations=1 released=2 elapsed_ms=70",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attention_scores_1 (4494000 bytes)",
+          "saved output matmul_0 (2250000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 3837952,
+        "output_bytes": 6744000
+      },
+      {
+        "tag": "L05-B",
+        "bundle": "island-select-8head-scratch417",
+        "exit": 0,
+        "elapsed_ns": 79451760,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-select-8head programs=1 driver_abi=1 graph=fd9e6c5b64f8b2c58fa2067799589ba0d32dfc24361b6612c9ef94d9e1a6422e",
+          "worker status=0 iterations=1 released=1 elapsed_ms=57",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attention_mask_9 (2250000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 5625000,
+        "output_bytes": 2250000
+      },
+      {
+        "tag": "L05-C",
+        "bundle": "island-pv",
+        "exit": 0,
+        "elapsed_ns": 41333502,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-pv programs=1 driver_abi=1 graph=ed03818974f7e2728daff0c839fcd4486a87282515347e68db7d2219605905c3",
+          "worker status=0 iterations=1 released=1 elapsed_ms=27",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attn_output_1 (768000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 3018000,
+        "output_bytes": 768000
+      },
+      {
+        "tag": "L06-A",
+        "bundle": "island-attn-a-kt",
+        "exit": 0,
+        "elapsed_ns": 93791002,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-attn-a-kt programs=2 driver_abi=1 graph=85325f3059a345dee7c62c53a0072b2e869c0c8116385c992e8963587714ff88",
+          "worker status=0 iterations=1 released=2 elapsed_ms=71",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attention_scores_1 (4494000 bytes)",
+          "saved output matmul_0 (2250000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 3837952,
+        "output_bytes": 6744000
+      },
+      {
+        "tag": "L06-B",
+        "bundle": "island-select-8head-scratch417",
+        "exit": 0,
+        "elapsed_ns": 79926295,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-select-8head programs=1 driver_abi=1 graph=fd9e6c5b64f8b2c58fa2067799589ba0d32dfc24361b6612c9ef94d9e1a6422e",
+          "worker status=0 iterations=1 released=1 elapsed_ms=58",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attention_mask_9 (2250000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 5625000,
+        "output_bytes": 2250000
+      },
+      {
+        "tag": "L06-C",
+        "bundle": "island-pv",
+        "exit": 0,
+        "elapsed_ns": 40945591,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-pv programs=1 driver_abi=1 graph=ed03818974f7e2728daff0c839fcd4486a87282515347e68db7d2219605905c3",
+          "worker status=0 iterations=1 released=1 elapsed_ms=26",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attn_output_1 (768000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 3018000,
+        "output_bytes": 768000
+      },
+      {
+        "tag": "L07-A",
+        "bundle": "island-attn-a-kt",
+        "exit": 0,
+        "elapsed_ns": 84708472,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-attn-a-kt programs=2 driver_abi=1 graph=85325f3059a345dee7c62c53a0072b2e869c0c8116385c992e8963587714ff88",
+          "worker status=0 iterations=1 released=2 elapsed_ms=64",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attention_scores_1 (4494000 bytes)",
+          "saved output matmul_0 (2250000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 3837952,
+        "output_bytes": 6744000
+      },
+      {
+        "tag": "L07-B",
+        "bundle": "island-select-8head-scratch417",
+        "exit": 0,
+        "elapsed_ns": 82032638,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-select-8head programs=1 driver_abi=1 graph=fd9e6c5b64f8b2c58fa2067799589ba0d32dfc24361b6612c9ef94d9e1a6422e",
+          "worker status=0 iterations=1 released=1 elapsed_ms=60",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attention_mask_9 (2250000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 5625000,
+        "output_bytes": 2250000
+      },
+      {
+        "tag": "L07-C",
+        "bundle": "island-pv",
+        "exit": 0,
+        "elapsed_ns": 40365267,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-pv programs=1 driver_abi=1 graph=ed03818974f7e2728daff0c839fcd4486a87282515347e68db7d2219605905c3",
+          "worker status=0 iterations=1 released=1 elapsed_ms=25",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attn_output_1 (768000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 3018000,
+        "output_bytes": 768000
+      },
+      {
+        "tag": "L08-A",
+        "bundle": "island-attn-a-kt",
+        "exit": 0,
+        "elapsed_ns": 85398421,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-attn-a-kt programs=2 driver_abi=1 graph=85325f3059a345dee7c62c53a0072b2e869c0c8116385c992e8963587714ff88",
+          "worker status=0 iterations=1 released=2 elapsed_ms=64",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attention_scores_1 (4494000 bytes)",
+          "saved output matmul_0 (2250000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 3837952,
+        "output_bytes": 6744000
+      },
+      {
+        "tag": "L08-B",
+        "bundle": "island-select-8head-scratch417",
+        "exit": 0,
+        "elapsed_ns": 85529751,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-select-8head programs=1 driver_abi=1 graph=fd9e6c5b64f8b2c58fa2067799589ba0d32dfc24361b6612c9ef94d9e1a6422e",
+          "worker status=0 iterations=1 released=1 elapsed_ms=63",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attention_mask_9 (2250000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 5625000,
+        "output_bytes": 2250000
+      },
+      {
+        "tag": "L08-C",
+        "bundle": "island-pv",
+        "exit": 0,
+        "elapsed_ns": 40873884,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-pv programs=1 driver_abi=1 graph=ed03818974f7e2728daff0c839fcd4486a87282515347e68db7d2219605905c3",
+          "worker status=0 iterations=1 released=1 elapsed_ms=26",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attn_output_1 (768000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 3018000,
+        "output_bytes": 768000
+      },
+      {
+        "tag": "L09-A",
+        "bundle": "island-attn-a-kt",
+        "exit": 0,
+        "elapsed_ns": 83621031,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-attn-a-kt programs=2 driver_abi=1 graph=85325f3059a345dee7c62c53a0072b2e869c0c8116385c992e8963587714ff88",
+          "worker status=0 iterations=1 released=2 elapsed_ms=63",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attention_scores_1 (4494000 bytes)",
+          "saved output matmul_0 (2250000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 3837952,
+        "output_bytes": 6744000
+      },
+      {
+        "tag": "L09-B",
+        "bundle": "island-select-8head-scratch417",
+        "exit": 0,
+        "elapsed_ns": 84999677,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-select-8head programs=1 driver_abi=1 graph=fd9e6c5b64f8b2c58fa2067799589ba0d32dfc24361b6612c9ef94d9e1a6422e",
+          "worker status=0 iterations=1 released=1 elapsed_ms=62",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attention_mask_9 (2250000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 5625000,
+        "output_bytes": 2250000
+      },
+      {
+        "tag": "L09-C",
+        "bundle": "island-pv",
+        "exit": 0,
+        "elapsed_ns": 41061964,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-pv programs=1 driver_abi=1 graph=ed03818974f7e2728daff0c839fcd4486a87282515347e68db7d2219605905c3",
+          "worker status=0 iterations=1 released=1 elapsed_ms=26",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attn_output_1 (768000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 3018000,
+        "output_bytes": 768000
+      },
+      {
+        "tag": "L10-A",
+        "bundle": "island-attn-a-kt",
+        "exit": 0,
+        "elapsed_ns": 83854568,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-attn-a-kt programs=2 driver_abi=1 graph=85325f3059a345dee7c62c53a0072b2e869c0c8116385c992e8963587714ff88",
+          "worker status=0 iterations=1 released=2 elapsed_ms=63",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attention_scores_1 (4494000 bytes)",
+          "saved output matmul_0 (2250000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 3837952,
+        "output_bytes": 6744000
+      },
+      {
+        "tag": "L10-B",
+        "bundle": "island-select-8head-scratch417",
+        "exit": 0,
+        "elapsed_ns": 79108473,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-select-8head programs=1 driver_abi=1 graph=fd9e6c5b64f8b2c58fa2067799589ba0d32dfc24361b6612c9ef94d9e1a6422e",
+          "worker status=0 iterations=1 released=1 elapsed_ms=57",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attention_mask_9 (2250000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 5625000,
+        "output_bytes": 2250000
+      },
+      {
+        "tag": "L10-C",
+        "bundle": "island-pv",
+        "exit": 0,
+        "elapsed_ns": 40092145,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-pv programs=1 driver_abi=1 graph=ed03818974f7e2728daff0c839fcd4486a87282515347e68db7d2219605905c3",
+          "worker status=0 iterations=1 released=1 elapsed_ms=25",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attn_output_1 (768000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 3018000,
+        "output_bytes": 768000
+      },
+      {
+        "tag": "L11-A",
+        "bundle": "island-attn-a-kt",
+        "exit": 0,
+        "elapsed_ns": 89816937,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-attn-a-kt programs=2 driver_abi=1 graph=85325f3059a345dee7c62c53a0072b2e869c0c8116385c992e8963587714ff88",
+          "worker status=0 iterations=1 released=2 elapsed_ms=68",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attention_scores_1 (4494000 bytes)",
+          "saved output matmul_0 (2250000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 3837952,
+        "output_bytes": 6744000
+      },
+      {
+        "tag": "L11-B",
+        "bundle": "island-select-8head-scratch417",
+        "exit": 0,
+        "elapsed_ns": 72176620,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-select-8head programs=1 driver_abi=1 graph=fd9e6c5b64f8b2c58fa2067799589ba0d32dfc24361b6612c9ef94d9e1a6422e",
+          "worker status=0 iterations=1 released=1 elapsed_ms=50",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attention_mask_9 (2250000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 5625000,
+        "output_bytes": 2250000
+      },
+      {
+        "tag": "L11-C",
+        "bundle": "island-pv",
+        "exit": 0,
+        "elapsed_ns": 40055646,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-pv programs=1 driver_abi=1 graph=ed03818974f7e2728daff0c839fcd4486a87282515347e68db7d2219605905c3",
+          "worker status=0 iterations=1 released=1 elapsed_ms=25",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attn_output_1 (768000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 3018000,
+        "output_bytes": 768000
+      },
+      {
+        "tag": "L12-A",
+        "bundle": "island-attn-a-kt",
+        "exit": 0,
+        "elapsed_ns": 88158962,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-attn-a-kt programs=2 driver_abi=1 graph=85325f3059a345dee7c62c53a0072b2e869c0c8116385c992e8963587714ff88",
+          "worker status=0 iterations=1 released=2 elapsed_ms=66",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attention_scores_1 (4494000 bytes)",
+          "saved output matmul_0 (2250000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 3837952,
+        "output_bytes": 6744000
+      },
+      {
+        "tag": "L12-B",
+        "bundle": "island-select-8head-scratch417",
+        "exit": 0,
+        "elapsed_ns": 78291319,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-select-8head programs=1 driver_abi=1 graph=fd9e6c5b64f8b2c58fa2067799589ba0d32dfc24361b6612c9ef94d9e1a6422e",
+          "worker status=0 iterations=1 released=1 elapsed_ms=56",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attention_mask_9 (2250000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 5625000,
+        "output_bytes": 2250000
+      },
+      {
+        "tag": "L12-C",
+        "bundle": "island-pv",
+        "exit": 0,
+        "elapsed_ns": 40711886,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-pv programs=1 driver_abi=1 graph=ed03818974f7e2728daff0c839fcd4486a87282515347e68db7d2219605905c3",
+          "worker status=0 iterations=1 released=1 elapsed_ms=25",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attn_output_1 (768000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 3018000,
+        "output_bytes": 768000
+      },
+      {
+        "tag": "L13-A",
+        "bundle": "island-attn-a-kt",
+        "exit": 0,
+        "elapsed_ns": 85909121,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-attn-a-kt programs=2 driver_abi=1 graph=85325f3059a345dee7c62c53a0072b2e869c0c8116385c992e8963587714ff88",
+          "worker status=0 iterations=1 released=2 elapsed_ms=64",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attention_scores_1 (4494000 bytes)",
+          "saved output matmul_0 (2250000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 3837952,
+        "output_bytes": 6744000
+      },
+      {
+        "tag": "L13-B",
+        "bundle": "island-select-8head-scratch417",
+        "exit": 0,
+        "elapsed_ns": 79020224,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-select-8head programs=1 driver_abi=1 graph=fd9e6c5b64f8b2c58fa2067799589ba0d32dfc24361b6612c9ef94d9e1a6422e",
+          "worker status=0 iterations=1 released=1 elapsed_ms=57",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attention_mask_9 (2250000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 5625000,
+        "output_bytes": 2250000
+      },
+      {
+        "tag": "L13-C",
+        "bundle": "island-pv",
+        "exit": 0,
+        "elapsed_ns": 40144728,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-pv programs=1 driver_abi=1 graph=ed03818974f7e2728daff0c839fcd4486a87282515347e68db7d2219605905c3",
+          "worker status=0 iterations=1 released=1 elapsed_ms=25",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attn_output_1 (768000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 3018000,
+        "output_bytes": 768000
+      },
+      {
+        "tag": "L14-A",
+        "bundle": "island-attn-a-kt",
+        "exit": 0,
+        "elapsed_ns": 85274630,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-attn-a-kt programs=2 driver_abi=1 graph=85325f3059a345dee7c62c53a0072b2e869c0c8116385c992e8963587714ff88",
+          "worker status=0 iterations=1 released=2 elapsed_ms=64",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attention_scores_1 (4494000 bytes)",
+          "saved output matmul_0 (2250000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 3837952,
+        "output_bytes": 6744000
+      },
+      {
+        "tag": "L14-B",
+        "bundle": "island-select-8head-scratch417",
+        "exit": 0,
+        "elapsed_ns": 79208180,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-select-8head programs=1 driver_abi=1 graph=fd9e6c5b64f8b2c58fa2067799589ba0d32dfc24361b6612c9ef94d9e1a6422e",
+          "worker status=0 iterations=1 released=1 elapsed_ms=57",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attention_mask_9 (2250000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 5625000,
+        "output_bytes": 2250000
+      },
+      {
+        "tag": "L14-C",
+        "bundle": "island-pv",
+        "exit": 0,
+        "elapsed_ns": 41626164,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-pv programs=1 driver_abi=1 graph=ed03818974f7e2728daff0c839fcd4486a87282515347e68db7d2219605905c3",
+          "worker status=0 iterations=1 released=1 elapsed_ms=27",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attn_output_1 (768000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 3018000,
+        "output_bytes": 768000
+      },
+      {
+        "tag": "L15-A",
+        "bundle": "island-attn-a-kt",
+        "exit": 0,
+        "elapsed_ns": 84710263,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-attn-a-kt programs=2 driver_abi=1 graph=85325f3059a345dee7c62c53a0072b2e869c0c8116385c992e8963587714ff88",
+          "worker status=0 iterations=1 released=2 elapsed_ms=63",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attention_scores_1 (4494000 bytes)",
+          "saved output matmul_0 (2250000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 3837952,
+        "output_bytes": 6744000
+      },
+      {
+        "tag": "L15-B",
+        "bundle": "island-select-8head-scratch417",
+        "exit": 0,
+        "elapsed_ns": 82768709,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-select-8head programs=1 driver_abi=1 graph=fd9e6c5b64f8b2c58fa2067799589ba0d32dfc24361b6612c9ef94d9e1a6422e",
+          "worker status=0 iterations=1 released=1 elapsed_ms=61",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attention_mask_9 (2250000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 5625000,
+        "output_bytes": 2250000
+      },
+      {
+        "tag": "L15-C",
+        "bundle": "island-pv",
+        "exit": 0,
+        "elapsed_ns": 41748703,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-pv programs=1 driver_abi=1 graph=ed03818974f7e2728daff0c839fcd4486a87282515347e68db7d2219605905c3",
+          "worker status=0 iterations=1 released=1 elapsed_ms=26",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attn_output_1 (768000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 3018000,
+        "output_bytes": 768000
+      },
+      {
+        "tag": "L16-A",
+        "bundle": "island-attn-a-kt",
+        "exit": 0,
+        "elapsed_ns": 94535990,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-attn-a-kt programs=2 driver_abi=1 graph=85325f3059a345dee7c62c53a0072b2e869c0c8116385c992e8963587714ff88",
+          "worker status=0 iterations=1 released=2 elapsed_ms=73",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attention_scores_1 (4494000 bytes)",
+          "saved output matmul_0 (2250000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 3837952,
+        "output_bytes": 6744000
+      },
+      {
+        "tag": "L16-B",
+        "bundle": "island-select-8head-scratch417",
+        "exit": 0,
+        "elapsed_ns": 73038148,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-select-8head programs=1 driver_abi=1 graph=fd9e6c5b64f8b2c58fa2067799589ba0d32dfc24361b6612c9ef94d9e1a6422e",
+          "worker status=0 iterations=1 released=1 elapsed_ms=51",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attention_mask_9 (2250000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 5625000,
+        "output_bytes": 2250000
+      },
+      {
+        "tag": "L16-C",
+        "bundle": "island-pv",
+        "exit": 0,
+        "elapsed_ns": 39899564,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-pv programs=1 driver_abi=1 graph=ed03818974f7e2728daff0c839fcd4486a87282515347e68db7d2219605905c3",
+          "worker status=0 iterations=1 released=1 elapsed_ms=25",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attn_output_1 (768000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 3018000,
+        "output_bytes": 768000
+      },
+      {
+        "tag": "L17-A",
+        "bundle": "island-attn-a-kt",
+        "exit": 0,
+        "elapsed_ns": 84857136,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-attn-a-kt programs=2 driver_abi=1 graph=85325f3059a345dee7c62c53a0072b2e869c0c8116385c992e8963587714ff88",
+          "worker status=0 iterations=1 released=2 elapsed_ms=64",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attention_scores_1 (4494000 bytes)",
+          "saved output matmul_0 (2250000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 3837952,
+        "output_bytes": 6744000
+      },
+      {
+        "tag": "L17-B",
+        "bundle": "island-select-8head-scratch417",
+        "exit": 0,
+        "elapsed_ns": 80772364,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-select-8head programs=1 driver_abi=1 graph=fd9e6c5b64f8b2c58fa2067799589ba0d32dfc24361b6612c9ef94d9e1a6422e",
+          "worker status=0 iterations=1 released=1 elapsed_ms=59",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attention_mask_9 (2250000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 5625000,
+        "output_bytes": 2250000
+      },
+      {
+        "tag": "L17-C",
+        "bundle": "island-pv",
+        "exit": 0,
+        "elapsed_ns": 42135531,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-pv programs=1 driver_abi=1 graph=ed03818974f7e2728daff0c839fcd4486a87282515347e68db7d2219605905c3",
+          "worker status=0 iterations=1 released=1 elapsed_ms=27",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attn_output_1 (768000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 3018000,
+        "output_bytes": 768000
+      },
+      {
+        "tag": "L18-A",
+        "bundle": "island-attn-a-kt",
+        "exit": 0,
+        "elapsed_ns": 89059365,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-attn-a-kt programs=2 driver_abi=1 graph=85325f3059a345dee7c62c53a0072b2e869c0c8116385c992e8963587714ff88",
+          "worker status=0 iterations=1 released=2 elapsed_ms=67",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attention_scores_1 (4494000 bytes)",
+          "saved output matmul_0 (2250000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 3837952,
+        "output_bytes": 6744000
+      },
+      {
+        "tag": "L18-B",
+        "bundle": "island-select-8head-scratch417",
+        "exit": 0,
+        "elapsed_ns": 83504073,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-select-8head programs=1 driver_abi=1 graph=fd9e6c5b64f8b2c58fa2067799589ba0d32dfc24361b6612c9ef94d9e1a6422e",
+          "worker status=0 iterations=1 released=1 elapsed_ms=62",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attention_mask_9 (2250000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 5625000,
+        "output_bytes": 2250000
+      },
+      {
+        "tag": "L18-C",
+        "bundle": "island-pv",
+        "exit": 0,
+        "elapsed_ns": 41047797,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-pv programs=1 driver_abi=1 graph=ed03818974f7e2728daff0c839fcd4486a87282515347e68db7d2219605905c3",
+          "worker status=0 iterations=1 released=1 elapsed_ms=26",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attn_output_1 (768000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 3018000,
+        "output_bytes": 768000
+      },
+      {
+        "tag": "L19-A",
+        "bundle": "island-attn-a-kt",
+        "exit": 0,
+        "elapsed_ns": 99404042,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-attn-a-kt programs=2 driver_abi=1 graph=85325f3059a345dee7c62c53a0072b2e869c0c8116385c992e8963587714ff88",
+          "worker status=0 iterations=1 released=2 elapsed_ms=78",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attention_scores_1 (4494000 bytes)",
+          "saved output matmul_0 (2250000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 3837952,
+        "output_bytes": 6744000
+      },
+      {
+        "tag": "L19-B",
+        "bundle": "island-select-8head-scratch417",
+        "exit": 0,
+        "elapsed_ns": 84214271,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-select-8head programs=1 driver_abi=1 graph=fd9e6c5b64f8b2c58fa2067799589ba0d32dfc24361b6612c9ef94d9e1a6422e",
+          "worker status=0 iterations=1 released=1 elapsed_ms=62",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attention_mask_9 (2250000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 5625000,
+        "output_bytes": 2250000
+      },
+      {
+        "tag": "L19-C",
+        "bundle": "island-pv",
+        "exit": 0,
+        "elapsed_ns": 41676788,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-pv programs=1 driver_abi=1 graph=ed03818974f7e2728daff0c839fcd4486a87282515347e68db7d2219605905c3",
+          "worker status=0 iterations=1 released=1 elapsed_ms=26",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attn_output_1 (768000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 3018000,
+        "output_bytes": 768000
+      },
+      {
+        "tag": "L20-A",
+        "bundle": "island-attn-a-kt",
+        "exit": 0,
+        "elapsed_ns": 100617357,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-attn-a-kt programs=2 driver_abi=1 graph=85325f3059a345dee7c62c53a0072b2e869c0c8116385c992e8963587714ff88",
+          "worker status=0 iterations=1 released=2 elapsed_ms=78",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attention_scores_1 (4494000 bytes)",
+          "saved output matmul_0 (2250000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 3837952,
+        "output_bytes": 6744000
+      },
+      {
+        "tag": "L20-B",
+        "bundle": "island-select-8head-scratch417",
+        "exit": 0,
+        "elapsed_ns": 73374851,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-select-8head programs=1 driver_abi=1 graph=fd9e6c5b64f8b2c58fa2067799589ba0d32dfc24361b6612c9ef94d9e1a6422e",
+          "worker status=0 iterations=1 released=1 elapsed_ms=51",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attention_mask_9 (2250000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 5625000,
+        "output_bytes": 2250000
+      },
+      {
+        "tag": "L20-C",
+        "bundle": "island-pv",
+        "exit": 0,
+        "elapsed_ns": 41687287,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-pv programs=1 driver_abi=1 graph=ed03818974f7e2728daff0c839fcd4486a87282515347e68db7d2219605905c3",
+          "worker status=0 iterations=1 released=1 elapsed_ms=26",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attn_output_1 (768000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 3018000,
+        "output_bytes": 768000
+      },
+      {
+        "tag": "L21-A",
+        "bundle": "island-attn-a-kt",
+        "exit": 0,
+        "elapsed_ns": 90213306,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-attn-a-kt programs=2 driver_abi=1 graph=85325f3059a345dee7c62c53a0072b2e869c0c8116385c992e8963587714ff88",
+          "worker status=0 iterations=1 released=2 elapsed_ms=69",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attention_scores_1 (4494000 bytes)",
+          "saved output matmul_0 (2250000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 3837952,
+        "output_bytes": 6744000
+      },
+      {
+        "tag": "L21-B",
+        "bundle": "island-select-8head-scratch417",
+        "exit": 0,
+        "elapsed_ns": 85774497,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-select-8head programs=1 driver_abi=1 graph=fd9e6c5b64f8b2c58fa2067799589ba0d32dfc24361b6612c9ef94d9e1a6422e",
+          "worker status=0 iterations=1 released=1 elapsed_ms=64",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attention_mask_9 (2250000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 5625000,
+        "output_bytes": 2250000
+      },
+      {
+        "tag": "L21-C",
+        "bundle": "island-pv",
+        "exit": 0,
+        "elapsed_ns": 41049297,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-pv programs=1 driver_abi=1 graph=ed03818974f7e2728daff0c839fcd4486a87282515347e68db7d2219605905c3",
+          "worker status=0 iterations=1 released=1 elapsed_ms=26",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attn_output_1 (768000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 3018000,
+        "output_bytes": 768000
+      },
+      {
+        "tag": "L22-A",
+        "bundle": "island-attn-a-kt",
+        "exit": 0,
+        "elapsed_ns": 84536641,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-attn-a-kt programs=2 driver_abi=1 graph=85325f3059a345dee7c62c53a0072b2e869c0c8116385c992e8963587714ff88",
+          "worker status=0 iterations=1 released=2 elapsed_ms=63",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attention_scores_1 (4494000 bytes)",
+          "saved output matmul_0 (2250000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 3837952,
+        "output_bytes": 6744000
+      },
+      {
+        "tag": "L22-B",
+        "bundle": "island-select-8head-scratch417",
+        "exit": 0,
+        "elapsed_ns": 79156055,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-select-8head programs=1 driver_abi=1 graph=fd9e6c5b64f8b2c58fa2067799589ba0d32dfc24361b6612c9ef94d9e1a6422e",
+          "worker status=0 iterations=1 released=1 elapsed_ms=56",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attention_mask_9 (2250000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 5625000,
+        "output_bytes": 2250000
+      },
+      {
+        "tag": "L22-C",
+        "bundle": "island-pv",
+        "exit": 0,
+        "elapsed_ns": 41756119,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-pv programs=1 driver_abi=1 graph=ed03818974f7e2728daff0c839fcd4486a87282515347e68db7d2219605905c3",
+          "worker status=0 iterations=1 released=1 elapsed_ms=26",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attn_output_1 (768000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 3018000,
+        "output_bytes": 768000
+      },
+      {
+        "tag": "L23-A",
+        "bundle": "island-attn-a-kt",
+        "exit": 0,
+        "elapsed_ns": 90155556,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-attn-a-kt programs=2 driver_abi=1 graph=85325f3059a345dee7c62c53a0072b2e869c0c8116385c992e8963587714ff88",
+          "worker status=0 iterations=1 released=2 elapsed_ms=68",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attention_scores_1 (4494000 bytes)",
+          "saved output matmul_0 (2250000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 3837952,
+        "output_bytes": 6744000
+      },
+      {
+        "tag": "L23-B",
+        "bundle": "island-select-8head-scratch417",
+        "exit": 0,
+        "elapsed_ns": 79434426,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-select-8head programs=1 driver_abi=1 graph=fd9e6c5b64f8b2c58fa2067799589ba0d32dfc24361b6612c9ef94d9e1a6422e",
+          "worker status=0 iterations=1 released=1 elapsed_ms=57",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attention_mask_9 (2250000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 5625000,
+        "output_bytes": 2250000
+      },
+      {
+        "tag": "L23-C",
+        "bundle": "island-pv",
+        "exit": 0,
+        "elapsed_ns": 41554998,
+        "stdout": [
+          "bundle name=parakeet-encoder-island-pv programs=1 driver_abi=1 graph=ed03818974f7e2728daff0c839fcd4486a87282515347e68db7d2219605905c3",
+          "worker status=0 iterations=1 released=1 elapsed_ms=26",
+          "worker detail=worker completed 1 iteration(s) and released its programs",
+          "saved output attn_output_1 (768000 bytes)"
+        ],
+        "stderr": [],
+        "input_bytes": 3018000,
+        "output_bytes": 768000
+      }
+    ]
+  }
+}

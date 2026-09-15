@@ -1,0 +1,9 @@
+{
+  "silu_4096": true,
+  "glu_splitviews": true,
+  "ln": true,
+  "ln_tall": true,
+  "softmax_masked": true,
+  "softmax_masked_nan_agreement": true
+}
+ALL-IDENTICAL
