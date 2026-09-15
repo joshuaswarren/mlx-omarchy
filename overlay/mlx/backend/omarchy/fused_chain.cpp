@@ -649,6 +649,9 @@ struct GemvGroup {
   // exactly a chain's gate and up projections. The one dispatch writes
   // silu(gate) * up into this array and no swiglu dispatch exists.
   std::optional<array> swiglu_out;
+  // RMSNorm prologue fold: set at plan time when the shared x is an
+  // unclaimed float16 RMSNorm over another group's epilogue sum.
+  std::optional<GemvRmsFold> fold;
   enum class State : uint8_t { pending, done, failed } state{State::pending};
 };
 
@@ -1266,6 +1269,72 @@ EagerFusionScope::EagerFusionScope(const std::deque<array>& tape)
       }
     }
   }
+  // RMSNorm prologue fold into the consumer GEMV. When a planned
+  // group's shared x is an unclaimed float16 RMSNorm whose input Add
+  // is another planned group's epilogue, the consumer dispatch reads
+  // the unnormalized sum through the aliased x buffer and applies the
+  // fast_norm reduction in each of its own workgroups (redundant, so
+  // no cross-workgroup reduction exists). The RMSNorm node joins the
+  // consumer group's roles: its eval fires the group, and any runtime
+  // contract failure un-plans the whole group onto the per-node path.
+  // Runs after the SwiGLU matcher so a gate/up group can carry both
+  // the store epilogue and this prologue (member order is irrelevant
+  // here: every member shares the one x).
+  if (fused_gemv_rmsnorm_enabled()) {
+    std::unordered_map<std::uintptr_t, size_t> epilogue_group;
+    for (size_t gi = 0; gi < state->gemv_groups.size(); ++gi) {
+      for (const auto& member : state->gemv_groups[gi].members) {
+        if (member.epilogue) {
+          epilogue_group.emplace(member.epilogue->id(), gi);
+        }
+      }
+    }
+    for (size_t gi = 0; gi < state->gemv_groups.size(); ++gi) {
+      auto& group = state->gemv_groups[gi];
+      // One x, one chunk: a fold claims the RMSNorm node, so every
+      // node reading it must dispatch with this group.
+      if (group.members.size() > kQmmVecMultiWeights ||
+          group.members[0].node.dtype() != float16) {
+        continue;
+      }
+      const array& rms = group.members[0].node.inputs()[0];
+      if (claimed.count(rms.id()) || !is_op(&rms, typeid(
+          mlx::core::fast::RMSNorm)) || rms.inputs().size() != 2 ||
+          rms.dtype() != float16 || rms.size() != rms.shape(-1) ||
+          rms.primitive().stream() !=
+              group.members[0].node.primitive().stream()) {
+        continue;
+      }
+      auto use_it = uses.find(rms.id());
+      if (use_it == uses.end() ||
+          use_it->second != group.members.size()) {
+        continue;
+      }
+      const array* add = lookup(rms.inputs()[0]);
+      if (!add || !is_op(add, typeid(Add)) ||
+          add->inputs().size() != 2 || add->dtype() != float16 ||
+          add->size() != rms.size() || add->shape() != rms.shape() ||
+          add->primitive().stream() != rms.primitive().stream()) {
+        continue;
+      }
+      auto epi_it = epilogue_group.find(add->id());
+      if (epi_it == epilogue_group.end() || epi_it->second == gi) {
+        continue;
+      }
+      const array& weight = rms.inputs()[1];
+      if (lookup(weight) || weight.dtype() != float16 ||
+          (weight.size() != 1u &&
+           weight.size() != static_cast<size_t>(rms.shape(-1)))) {
+        continue;
+      }
+      float eps = std::get<1>(
+          static_cast<const mlx::core::fast::RMSNorm&>(rms.primitive())
+              .state());
+      state->gemv_roles.emplace(rms.id(), gi);
+      claimed.insert(rms.id());
+      group.fold = GemvRmsFold{rms, weight, eps};
+    }
+  }
   std::unordered_map<std::uintptr_t, std::vector<const array*>> dense_by_x;
   std::vector<std::uintptr_t> dense_x_order;
   for (const auto& node : tape) {
@@ -1507,6 +1576,15 @@ bool fused_gemv_swiglu_enabled() {
        env_flag("MLX_OMARCHY_FUSED_GEMV_SWIGLU"));
 }
 
+// MLX_OMARCHY_FUSED_GEMV_RMSNORM=0 keeps the GEMV-consumed RMSNorm
+// prologue fold off (the MLX_OMARCHY_FUSED_GEMV gate also covers it);
+// on by default.
+bool fused_gemv_rmsnorm_enabled() {
+  return fused_gemv_enabled() &&
+      (std::getenv("MLX_OMARCHY_FUSED_GEMV_RMSNORM") == nullptr ||
+       env_flag("MLX_OMARCHY_FUSED_GEMV_RMSNORM"));
+}
+
 bool fused_trio_enabled() {
   return fused_chain_enabled() &&
       (std::getenv("MLX_OMARCHY_FUSED_TRIO") == nullptr ||
@@ -1673,6 +1751,7 @@ bool try_eval_eager_fusion(array& node, const Stream& stream) {
     if (group.state == GemvGroup::State::pending) {
       group.state = dispatch_quantized_gemv_group(
                         group.members,
+                        group.fold ? &*group.fold : nullptr,
                         group.swiglu_out ? &*group.swiglu_out : nullptr,
                         stream)
           ? GemvGroup::State::done

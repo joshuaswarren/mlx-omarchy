@@ -28,6 +28,7 @@
 #include "mlx/backend/omarchy/trace.h"
 #include "mlx/compile.h"
 #include "mlx/ops.h"
+#include "mlx/fast.h"
 #include "mlx/random.h"
 #include "mlx/stream.h"
 #include "mlx/transforms.h"
@@ -1340,6 +1341,86 @@ TEST_CASE("eager q4 decode gemv swiglu epilogue env gate off keeps the chain") {
   expect_bit_exact(baseline[2], candidate[2], stream);
   unsetenv("MLX_OMARCHY_FUSED_GEMV");
 }
+TEST_CASE("eager q4 decode gemv consumes the RMSNorm prologue bit-exactly") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  enable_fusion();
+  set_compile_mode(CompileMode::disabled);
+  const int k = 896;
+  auto gate = make_linear(512, k, float16, stream);
+  auto up = make_linear(512, k, float16, stream);
+  auto down = make_linear(k, 512, float16, stream);
+  auto q = make_linear(256, k, float16, stream);
+  auto kv = make_linear(128, k, float16, stream);
+  array nw = astype(
+      random::normal(Shape{k}, float32, std::nullopt, stream),
+      float16,
+      stream);
+  array h = astype(
+      random::normal(Shape{1, 1, k}, float32, std::nullopt, stream), float16,
+      stream);
+  eval({nw, h});
+  sync_stream(stream);
+  // The block-head shape the fold targets: residual sum s is the down
+  // GEMV's Add epilogue, the f16 RMSNorm over s is the shared x of the
+  // (q, kv) projection group. Per node: h2 multiply 1 + gate 1 + up 1 +
+  // swiglu chain 1 + down 1 + add 1 + rms 1 + q 1 + kv 1 = 9; with the
+  // folds the RMSNorm dispatch is deleted and both groups collapse:
+  // h2 1 + gate/up+swiglu 1 + down+add 1 + q/kv 1 = 4. With the RMSNorm
+  // prologue gate off the standalone rms dispatch returns: 5.
+  auto forward = [&] {
+    array h2 = multiply(h, array(2.0f, float16), stream);
+    array g = project(h2, gate, stream);
+    array u = project(h2, up, stream);
+    array act = multiply(multiply(g, sigmoid(g, stream), stream), u, stream);
+    array d = project(act, down, stream);
+    array s = add(h2, d, stream);
+    array nrm = fast::rms_norm(s, nw, 1e-5f, stream);
+    return std::vector<array>{
+        s, nrm, project(nrm, q, stream), project(nrm, kv, stream)};
+  };
+  setenv("MLX_OMARCHY_FUSED_GEMV", "0", 1);
+  auto baseline = forward();
+  uint64_t before = counters().vk_compute_dispatches.load();
+  eval({baseline[2], baseline[3]});
+  sync_stream(stream);
+  uint64_t per_node = counters().vk_compute_dispatches.load() - before;
+
+  setenv("MLX_OMARCHY_FUSED_GEMV", "1", 1);
+  auto candidate = forward();
+  before = counters().vk_compute_dispatches.load();
+  eval({candidate[2], candidate[3]});
+  sync_stream(stream);
+  uint64_t fused = counters().vk_compute_dispatches.load() - before;
+
+  setenv("MLX_OMARCHY_FUSED_GEMV_RMSNORM", "0", 1);
+  auto ungated = forward();
+  before = counters().vk_compute_dispatches.load();
+  eval({ungated[2], ungated[3]});
+  sync_stream(stream);
+  uint64_t rms_off = counters().vk_compute_dispatches.load() - before;
+  unsetenv("MLX_OMARCHY_FUSED_GEMV_RMSNORM");
+
+  INFO("per_node ", per_node, " fused ", fused, " rms_off ", rms_off);
+  // The fold must fire (fused strictly below the ungated fold-off run)
+  // and delete exactly the standalone RMSNorm dispatch.
+  CHECK_EQ(per_node, 9);
+  CHECK_EQ(fused, 4);
+  CHECK_EQ(rms_off, 5);
+  // The fold arms' projection outputs are bit-exact through the
+  // normalized prologue dot; the RMSNorm array itself is NOT compared
+  // because a fired fold aliases its buffer to the epilogue sum (its
+  // only readers were the group members that normalize in register).
+  CHECK_EQ(candidate[1].data_shared_ptr(), candidate[0].data_shared_ptr());
+  expect_bit_exact(baseline[0], candidate[0], stream);
+  expect_bit_exact(baseline[2], candidate[2], stream);
+  expect_bit_exact(baseline[3], candidate[3], stream);
+  unsetenv("MLX_OMARCHY_FUSED_GEMV");
+}
+
+
 
 TEST_CASE("eager q4 decode gemv group refuses an addend it has not computed") {
   if (!compute_available()) {

@@ -142,12 +142,27 @@ struct KvDirectWindow {
   uint32_t head_dim{0};
 };
 
+// GEMV-consumed RMSNorm prologue fold: the group's shared x is a
+// float16 RMSNorm whose input Add is another planned group's epilogue.
+// At the RMSNorm's eval the consumer group dispatches once, aliasing
+// the RMSNorm's buffer to the epilogue sum; every workgroup reproduces
+// the fast_norm reduction over the sum and normalizes its own dot's x
+// elements in register, so the RMSNorm node dispatches nothing. On any
+// contract failure the group un-plans and the RMSNorm takes its
+// ordinary path.
+struct GemvRmsFold {
+  array rms_node;
+  array weight;
+  float eps;
+};
+
 // DecodeFusion: one fused decode GEMV group. Up to kQmmVecMultiWeights
 // affine transposed 4-bit/group-64 QuantizedMatmul nodes that read one
 // single-row x, each optionally followed by the Add that is its only
 // consumer (a bias or residual add), recorded as ONE QmmVecQ4Multi
-// dispatch when the first member evaluates. Every member output and
-// every Add output is materialized, so retained references stay valid.
+// dispatch when the first member evaluates (at the RMSNorm's eval when
+// a prologue fold is planned). Every member output and every Add
+// output is materialized, so retained references stay valid.
 struct GemvFusionMember {
   array node;
   std::optional<array> epilogue;
@@ -157,9 +172,10 @@ struct GemvFusionMember {
   std::optional<KvDirectWindow> sum_window;
 };
 
-
 // Validates the group against the kernel contract, allocates every
-// output, and records the dispatch. |swiglu_out| plans the SwiGLU
+// output, and records the dispatch. |fold| plans the RMSNorm prologue:
+// the shared x is aliased to the epilogue sum of another group and the
+// RMSNorm node dispatches nothing. |swiglu_out| plans the SwiGLU
 // store epilogue: exactly two epilogue-free members of equal length N
 // whose chain is silu(gate) * up; the dispatch computes both dots per
 // workgroup and stores only the product into |swiglu_out|, and both
@@ -170,6 +186,7 @@ struct GemvFusionMember {
 // primitives.cpp beside QuantizedMatmul::eval_gpu.
 bool dispatch_quantized_gemv_group(
     std::vector<GemvFusionMember>& members,
+    GemvRmsFold* fold,
     array* swiglu_out,
     const Stream& stream);
 
@@ -211,6 +228,11 @@ bool fused_gemv_enabled();
 // (the gate/up GEMV group that stores silu(gate) * up directly) off
 // (the MLX_OMARCHY_FUSED_GEMV gate also covers it); on by default.
 bool fused_gemv_swiglu_enabled();
+
+// MLX_OMARCHY_FUSED_GEMV_RMSNORM=0 keeps the GEMV-consumed RMSNorm
+// prologue fold off (the MLX_OMARCHY_FUSED_GEMV gate also covers it);
+// on by default.
+bool fused_gemv_rmsnorm_enabled();
 
 // Decode trio: MLX_OMARCHY_FUSED_TRIO=0 keeps f16 RMSNorm rows, the
 // fused SwiGLU chain dispatch, and RoPE pairs on their standalone
