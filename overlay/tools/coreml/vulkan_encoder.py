@@ -89,6 +89,35 @@ RE_MASK_SELECT = re.compile(r"^attention_mask(_\d+)?_cast_fp16$")
 ISLAND_B_SHAPE = (1, 8, 375, 375)
 
 
+
+@cache
+def _leftover_chain_kernel():
+    """Reduces the batched matmul's fp32 block partials with the landed
+    leftover-linear rounding: every 16-wide block's partial rounds to fp16,
+    then accumulates in fp16 ascending. One thread per output element, so
+    the chain inside the kernel is the same strictly sequential fp16 sum
+    the 5688f8bd chunk loop performed dispatch by dispatch."""
+    return mx.fast.metal_kernel(
+        name="encoder_leftover_fp16_chain_f32",
+        input_names=["partials"],
+        output_names=["reduced"],
+        source="""
+            uint n = partials_shape[2];
+            uint mn = partials_shape[1] * n;
+            uint blocks = partials_shape[0];
+            uint index = thread_position_in_grid.x;
+            half acc = half(partials[index]);
+            for (uint block = 1u; block < blocks; ++block) {
+                acc = acc + half(partials[index + block * mn]);
+            }
+            reduced[index] = acc;
+        """,
+        compile_options={"math_mode": "safe"},
+    )
+
+
+
+
 class EncoderRunError(RuntimeError):
     """The run cannot continue; the reason is named."""
 
@@ -730,22 +759,42 @@ class EncoderRunner:
                 ]
             return mx.concatenate([tensor(n) for n in names], axis=axis)
         if op == "linear":
-            # fp16 leftover datapath: each 16-wide K chunk reduces in fp32,
-            # rounds to fp16, and accumulates in fp16 (ascending). Identical
-            # mx op sequence to EncoderResidualE99 out-abc-linear16, the
-            # probe arm that decodes 104/104 and passes the frozen contract
-            # bounds. ponytail: K/16-chunk loop costs ~K/16 extra dispatches
-            # per linear; a reshape-batched matmul would need its own decode
-            # A/B before replacing this.
+            # fp16 leftover datapath, batched: one fp32 matmul over the
+            # [K/16, 16]-blocked K axis yields every block's partial, and
+            # _leftover_chain_kernel applies the landed rounding — each
+            # block rounds to fp16, then accumulates in fp16 ascending —
+            # in one dispatch. Byte-identical to the 5688f8bd chunk loop;
+            # a stock single reduce cannot reproduce the ascending fp16
+            # chain on the omarchy Vulkan backend (probed 2026-09-15:
+            # mx.sum agrees on <=0.20 of elements in every layout, cumsum
+            # has no Vulkan kernel), and the explicit chain serialized
+            # ~21k dependent dispatches into the graph, costing more wall
+            # than the chunk loop it replaced.
             x = tensor(kwargs["x"])
             weight = tensor(kwargs["weight"])
-            acc = None
-            for start in range(0, int(x.shape[-1]), 16):
-                xs = mx.contiguous(x[..., start : start + 16]).astype(mx.float32)
-                ws = mx.contiguous(weight[..., start : start + 16]).astype(mx.float32)
-                part = (xs @ mx.transpose(ws)).astype(mx.float16)
-                acc = part if acc is None else (acc + part).astype(mx.float16)
-            out = acc
+            k = int(x.shape[-1])
+            if k % 16:
+                raise EncoderRunError(f"linear K {k} not a multiple of 16")
+            blocks = k // 16
+            rows = 1
+            for dim in x.shape[:-1]:
+                rows *= dim
+            xb = mx.transpose(mx.reshape(x, (rows, blocks, 16)), (1, 0, 2)).astype(
+                mx.float32
+            )  # [K/16, M, 16]
+            wb = mx.transpose(
+                mx.reshape(weight, (weight.shape[0], blocks, 16)), (1, 2, 0)
+            ).astype(mx.float32)  # [K/16, 16, N]
+            partials = xb @ wb  # [K/16, M, N] fp32
+            out = _leftover_chain_kernel()(
+                inputs=[partials],
+                output_shapes=[(rows, weight.shape[0])],
+                output_dtypes=[mx.float16],
+                grid=(rows * weight.shape[0], 1, 1),
+                threadgroup=(256, 1, 1),
+                stream=mx.gpu,
+            )[0]
+            out = mx.reshape(out, tuple(x.shape[:-1]) + (weight.shape[0],))
             if "bias" in kwargs:
                 out = out.astype(mx.float32) + tensor(kwargs["bias"]).astype(mx.float32)
             return out.astype(mx.float16)
