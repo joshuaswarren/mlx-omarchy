@@ -27,17 +27,18 @@ inline constexpr uint32_t kComputeBindingFloor = 4;
 // that budget refuse by name instead of dispatching. The spec floor is why
 // the pre-2026-09-02 four-slot constant was portable, not a device ceiling:
 // real drivers report orders of magnitude more.
-// Twenty slots fit the widest kernel today: the multi-weight decode
-// GEMV binds x, the RMSNorm prologue weight (fold path), and per
-// weight, packed words, scales, biases, the output, an Add addend,
-// and the Add output (kQmmVecMultiBindings). The triple-index scatter
-// needs six.
-inline constexpr uint32_t kComputeBindingBudget = 20;
+// Twenty-one slots fit the widest kernel today: the multi-weight
+// decode GEMV binds x (packed view for the dot, scalar view for the
+// RMSNorm prologue reduction), the RMSNorm prologue weight (fold
+// path), and per weight, packed words, scales, biases, the output, an
+// Add addend, and the Add output (kQmmVecMultiBindings). The
+// triple-index scatter needs six.
+inline constexpr uint32_t kComputeBindingBudget = 21;
 // Bindings of the QmmVecQ4Multi kernels and their per-weight stride.
 inline constexpr uint32_t kQmmVecMultiWeights = 3;
 inline constexpr uint32_t kQmmVecMultiBindingsPerWeight = 6;
 inline constexpr uint32_t kQmmVecMultiBindings =
-    1 + kQmmVecMultiWeights * kQmmVecMultiBindingsPerWeight + 1;
+    1 + kQmmVecMultiWeights * kQmmVecMultiBindingsPerWeight + 2;
 inline constexpr uint32_t kDenseVecMultiWeights = 3;
 inline constexpr uint32_t kDenseVecMultiBindingsPerWeight = 2;
 inline constexpr uint32_t kDenseVecMultiBindings =
