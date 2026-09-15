@@ -1,0 +1,5 @@
+{"hidden": "out-abc-silu16/encoder_hidden.npy", "emissions": 100, "native_emissions": 104, "matching_prefix": 97, "tokens_match": false, "first_divergence": {"emission_index": 97, "actual": 7863, "native": 7883}, "decode_ms": 2755.9}
+{"hidden": "out-abc-linear16/encoder_hidden.npy", "emissions": 104, "native_emissions": 104, "matching_prefix": 104, "tokens_match": true, "first_divergence": null, "decode_ms": 2789.5}
+{"hidden": "out-abc-linearsilu/encoder_hidden.npy", "emissions": 104, "native_emissions": 104, "matching_prefix": 101, "tokens_match": false, "first_divergence": {"emission_index": 101, "actual": 8029, "native": 7892}, "decode_ms": 2903.0}
+{"hidden": "out-abc-allfp16/encoder_hidden.npy", "emissions": 104, "native_emissions": 104, "matching_prefix": 104, "tokens_match": true, "first_divergence": null, "decode_ms": 2786.2}
+{"hidden": "out-abc-softmaxsilu/encoder_hidden.npy", "emissions": 100, "native_emissions": 104, "matching_prefix": 97, "tokens_match": false, "first_divergence": {"emission_index": 97, "actual": 7863, "native": 7883}, "decode_ms": 2740.1}
