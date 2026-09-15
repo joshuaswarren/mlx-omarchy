@@ -1,0 +1,25 @@
+{
+ "notes": [
+  "sigma hard ceiling 1-2^-10 (sigma(8)=sigma(12)=sigma(20)=sigma(30)=0.9990234375); sigma(-30)=0.0 exactly",
+  "tanh saturates to exactly 1.0 (h_cal == K proof); tanh(0)=+0.0; -0.0 collapses to +0.0 in the cell add",
+  "internal cell arithmetic not fp16: c1 != round16(fp16(sigma20)*c0) for 1279/1282 lanes -> fused pipeline is not a chain of fp16-rounded stages"
+ ],
+ "sigma_args_ulp_histogram": {
+  "-1": 732,
+  "-2": 368,
+  "-3": 96,
+  "-4": 5,
+  "0": 79
+ },
+ "tanh_at_actual_argument": {
+  "exact_argument_lanes": 3,
+  "mismatch_vs_cr_fp32": 689,
+  "resolved_lanes": 983,
+  "ulp_offset_histogram": {
+   "0": 294,
+   "1": 329,
+   "2": 317,
+   "3": 43
+  }
+ }
+}
