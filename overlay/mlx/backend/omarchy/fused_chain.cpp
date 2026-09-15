@@ -1297,6 +1297,13 @@ EagerFusionScope::EagerFusionScope(const std::deque<array>& tape)
           group.members[0].node.dtype() != float16) {
         continue;
       }
+      // Scope knob: the per-workgroup reduction is hidden under the
+      // small attention GEMV groups but priced on the 608-workgroup
+      // SwiGLU pair (2026-09-15 jw16 A/B), so the fold can be scoped
+      // to the attention groups alone.
+      if (gemv_rmsnorm_qkv_scope() && group.swiglu_out) {
+        continue;
+      }
       const array& rms = group.members[0].node.inputs()[0];
       if (claimed.count(rms.id()) || !is_op(&rms, typeid(
           mlx::core::fast::RMSNorm)) || rms.inputs().size() != 2 ||
@@ -1583,6 +1590,13 @@ bool fused_gemv_rmsnorm_enabled() {
   return fused_gemv_enabled() &&
       (std::getenv("MLX_OMARCHY_FUSED_GEMV_RMSNORM") == nullptr ||
        env_flag("MLX_OMARCHY_FUSED_GEMV_RMSNORM"));
+}
+
+// MLX_OMARCHY_FUSED_GEMV_RMSNORM_MLP=0 scopes the GEMV-consumed
+// RMSNorm prologue fold to the attention (non-SwiGLU) GEMV groups.
+bool gemv_rmsnorm_qkv_scope() {
+  return std::getenv("MLX_OMARCHY_FUSED_GEMV_RMSNORM_MLP") != nullptr &&
+      !env_flag("MLX_OMARCHY_FUSED_GEMV_RMSNORM_MLP");
 }
 
 bool fused_trio_enabled() {
