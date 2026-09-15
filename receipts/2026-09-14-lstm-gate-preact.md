@@ -91,3 +91,27 @@ intersection + offset histograms), `modehunt.py` (anchor + 12-form hunt),
 `modehunt.json`, `results_v6.json`, `results_v7.json`,
 `z_A_sep_biafter.npz` (twin preacts vs GPU evidence). Weights and GPU gate
 dump are the impl2 artifacts (`2026-09-14-lstm-fused-impl2/`).
+
+## Addendum: the 17 ambiguous σ args measured directly (same day)
+Bias-only fused probe, one lane per v5-ambiguous arg, three tanh16 multipliers
+(c0 = 2, 4, 20; cell identity asserted), candidate intersection over the full
+fp16 grid — `ambiguous_sigma_remapped.json`:
+
+- **16/17 args admit NO fp16 gate value** consistent with all three exposures
+  (clusters at 1.095–1.100, −0.5103…−0.5120, −1.466/−1.467, −2.27, −3.73,
+  −7.22). v5's NaN was real: at these args the fused op's sigmoid output does
+  not behave as an fp16-quantized gate under the wide-product exposure — the
+  cr fallback in `unary_tables2.npz` is unverifiable through the fused op,
+  not confirmed.
+- **1/17 falsifies its fill outright**: arg −10.4 → the op produces
+  **2⁻¹⁵ = 3.0517578125e−05**; the contract fill is 511·2⁻²⁴ =
+  3.045797348022461e−05.
+- Precision caveat on the L0_i anchor lane 382 (arg 1.09765625): with the
+  v7 multiplier set (tanh16 0.5/1.0/2.0) a single fp16 gate (0.74951171875)
+  explains all exposures, but with (2, 4, 20) none does. The defensible
+  statement is: the cr fill 0.75 is inconsistent with the measured exposures;
+  0.74951171875 is consistent on one multiplier set. The op's gate at the
+  ambiguous args is not uniformly fp16-representable.
+
+Any future dense-sweep refresh should start from this remap instead of CR
+fallbacks.
