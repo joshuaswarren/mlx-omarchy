@@ -618,17 +618,10 @@ void main() {
     uint row_length = params.matrix_k;
 #if defined(USE_SUBGROUP)
     if (row_length <= 1024u) {
-      // Lanes 0..31 own fast_norm's 256 partials eight per lane,
-      // word-aligned: slot c of lane L accumulates partial 8L+c
-      // (elements 8L+c+256j), so each of the four row passes loads one
-      // whole x word with constant component extraction — no dynamic
-      // selects, and the strided loads stay coalesced. Partial chains
-      // keep fast_norm's unqualified += v*v shape; the shared rounds
-      // and lane 0's register finish keep its add order. Six barriers
-      // replace the tree's nine. No subgroup collectives: measured on
-      // t6001-test-host, both a shuffleXor and a subgroupAdd finish in this
-      // divergent context cost more than the barriers they remove.
+      float row_sum = 0.0;
       if (lane < LANES) {
+        uint tree_index = ((lane & 1u) << 4u) | ((lane & 2u) << 2u) |
+            (lane & 4u) | ((lane >> 2u) & 2u) | ((lane >> 4u) & 1u);
         float p0 = 0.0;
         float p1 = 0.0;
         float p2 = 0.0;
@@ -637,104 +630,116 @@ void main() {
         float p5 = 0.0;
         float p6 = 0.0;
         float p7 = 0.0;
-        for (uint j = 0u; j < 4u; ++j) {
-          uint word = lane + 32u * j;
 #ifdef USE_FP16
-          if (word < row_length / 8u) {
-            uvec4 packed = input_x.values[word];
-            f16vec2 h01 = unpackFloat2x16(packed.x);
-            f16vec2 h23 = unpackFloat2x16(packed.y);
-            f16vec2 h45 = unpackFloat2x16(packed.z);
-            f16vec2 h67 = unpackFloat2x16(packed.w);
-            p0 += float(h01.x) * float(h01.x);
-            p1 += float(h01.y) * float(h01.y);
-            p2 += float(h23.x) * float(h23.x);
-            p3 += float(h23.y) * float(h23.y);
-            p4 += float(h45.x) * float(h45.x);
-            p5 += float(h45.y) * float(h45.y);
-            p6 += float(h67.x) * float(h67.x);
-            p7 += float(h67.y) * float(h67.y);
-          }
+        for (uint index = tree_index; index < row_length; index += 256u) {
+          f16vec2 halves = unpackFloat2x16(
+              input_x.values[index / 8u][(index % 8u) / 2u]);
+          float value = float(halves[index % 2u]);
+          p0 += value * value;
+        }
+        for (uint index = tree_index + 32u; index < row_length;
+             index += 256u) {
+          f16vec2 halves = unpackFloat2x16(
+              input_x.values[index / 8u][(index % 8u) / 2u]);
+          float value = float(halves[index % 2u]);
+          p1 += value * value;
+        }
+        for (uint index = tree_index + 64u; index < row_length;
+             index += 256u) {
+          f16vec2 halves = unpackFloat2x16(
+              input_x.values[index / 8u][(index % 8u) / 2u]);
+          float value = float(halves[index % 2u]);
+          p2 += value * value;
+        }
+        for (uint index = tree_index + 96u; index < row_length;
+             index += 256u) {
+          f16vec2 halves = unpackFloat2x16(
+              input_x.values[index / 8u][(index % 8u) / 2u]);
+          float value = float(halves[index % 2u]);
+          p3 += value * value;
+        }
+        for (uint index = tree_index + 128u; index < row_length;
+             index += 256u) {
+          f16vec2 halves = unpackFloat2x16(
+              input_x.values[index / 8u][(index % 8u) / 2u]);
+          float value = float(halves[index % 2u]);
+          p4 += value * value;
+        }
+        for (uint index = tree_index + 160u; index < row_length;
+             index += 256u) {
+          f16vec2 halves = unpackFloat2x16(
+              input_x.values[index / 8u][(index % 8u) / 2u]);
+          float value = float(halves[index % 2u]);
+          p5 += value * value;
+        }
+        for (uint index = tree_index + 192u; index < row_length;
+             index += 256u) {
+          f16vec2 halves = unpackFloat2x16(
+              input_x.values[index / 8u][(index % 8u) / 2u]);
+          float value = float(halves[index % 2u]);
+          p6 += value * value;
+        }
+        for (uint index = tree_index + 224u; index < row_length;
+             index += 256u) {
+          f16vec2 halves = unpackFloat2x16(
+              input_x.values[index / 8u][(index % 8u) / 2u]);
+          float value = float(halves[index % 2u]);
+          p7 += value * value;
+        }
 #else
-          uint base = 8u * word;
-          if (base < row_length) {
-            float value = LOAD_VALUE(input_x.values[base]);
-            p0 += value * value;
-            value = LOAD_VALUE(input_x.values[base + 1u]);
-            p1 += value * value;
-            value = LOAD_VALUE(input_x.values[base + 2u]);
-            p2 += value * value;
-            value = LOAD_VALUE(input_x.values[base + 3u]);
-            p3 += value * value;
-            value = LOAD_VALUE(input_x.values[base + 4u]);
-            p4 += value * value;
-            value = LOAD_VALUE(input_x.values[base + 5u]);
-            p5 += value * value;
-            value = LOAD_VALUE(input_x.values[base + 6u]);
-            p6 += value * value;
-            value = LOAD_VALUE(input_x.values[base + 7u]);
-            p7 += value * value;
-          }
+        for (uint index = tree_index; index < row_length; index += 256u) {
+          float value = LOAD_VALUE(input_x.values[index]);
+          p0 += value * value;
+        }
+        for (uint index = tree_index + 32u; index < row_length;
+             index += 256u) {
+          float value = LOAD_VALUE(input_x.values[index]);
+          p1 += value * value;
+        }
+        for (uint index = tree_index + 64u; index < row_length;
+             index += 256u) {
+          float value = LOAD_VALUE(input_x.values[index]);
+          p2 += value * value;
+        }
+        for (uint index = tree_index + 96u; index < row_length;
+             index += 256u) {
+          float value = LOAD_VALUE(input_x.values[index]);
+          p3 += value * value;
+        }
+        for (uint index = tree_index + 128u; index < row_length;
+             index += 256u) {
+          float value = LOAD_VALUE(input_x.values[index]);
+          p4 += value * value;
+        }
+        for (uint index = tree_index + 160u; index < row_length;
+             index += 256u) {
+          float value = LOAD_VALUE(input_x.values[index]);
+          p5 += value * value;
+        }
+        for (uint index = tree_index + 192u; index < row_length;
+             index += 256u) {
+          float value = LOAD_VALUE(input_x.values[index]);
+          p6 += value * value;
+        }
+        for (uint index = tree_index + 224u; index < row_length;
+             index += 256u) {
+          float value = LOAD_VALUE(input_x.values[index]);
+          p7 += value * value;
+        }
 #endif
+        // Tree strides 128/64/32; precise keeps NIR from reassociating
+        // the adds away from fast_norm's order (these are pure adds,
+        // so precise cannot drift from the standalone values).
+        precise float a0 = p0 + p4;
+        precise float a1 = p2 + p6;
+        precise float a2 = p1 + p5;
+        precise float a3 = p3 + p7;
+        precise float b0 = a0 + a1;
+        precise float b1 = a2 + a3;
+        row_sum = subgroupAdd(b0 + b1);
+        if (lane == 0u) {
+          norm_values[0] = row_sum;
         }
-        norm_values[8u * lane] = p0;
-        norm_values[8u * lane + 1u] = p1;
-        norm_values[8u * lane + 2u] = p2;
-        norm_values[8u * lane + 3u] = p3;
-        norm_values[8u * lane + 4u] = p4;
-        norm_values[8u * lane + 5u] = p5;
-        norm_values[8u * lane + 6u] = p6;
-        norm_values[8u * lane + 7u] = p7;
-      }
-      barrier();
-      for (uint stride = 128u; stride >= 16u; stride >>= 1u) {
-        if (lane < stride / 8u) {
-          uint base = 8u * lane;
-          norm_values[base] += norm_values[base + stride];
-          norm_values[base + 1u] += norm_values[base + 1u + stride];
-          norm_values[base + 2u] += norm_values[base + 2u + stride];
-          norm_values[base + 3u] += norm_values[base + 3u + stride];
-          norm_values[base + 4u] += norm_values[base + 4u + stride];
-          norm_values[base + 5u] += norm_values[base + 5u + stride];
-          norm_values[base + 6u] += norm_values[base + 6u + stride];
-          norm_values[base + 7u] += norm_values[base + 7u + stride];
-        }
-        barrier();
-      }
-      if (lane == 0u) {
-        // Strides 8..1 stay in one thread's registers, add order intact.
-        float v0 = norm_values[0];
-        float v1 = norm_values[1];
-        float v2 = norm_values[2];
-        float v3 = norm_values[3];
-        float v4 = norm_values[4];
-        float v5 = norm_values[5];
-        float v6 = norm_values[6];
-        float v7 = norm_values[7];
-        float v8 = norm_values[8];
-        float v9 = norm_values[9];
-        float v10 = norm_values[10];
-        float v11 = norm_values[11];
-        float v12 = norm_values[12];
-        float v13 = norm_values[13];
-        float v14 = norm_values[14];
-        float v15 = norm_values[15];
-        v0 += v8;
-        v1 += v9;
-        v2 += v10;
-        v3 += v11;
-        v4 += v12;
-        v5 += v13;
-        v6 += v14;
-        v7 += v15;
-        v0 += v4;
-        v1 += v5;
-        v2 += v6;
-        v3 += v7;
-        v0 += v2;
-        v1 += v3;
-        v0 += v1;
-        norm_values[0] = v0;
       }
       barrier();
       float mean_square = norm_values[0] / float(row_length);
