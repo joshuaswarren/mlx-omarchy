@@ -118,6 +118,138 @@ def _leftover_chain_kernel():
 
 
 
+@cache
+def _silu_kernel():
+    """silu in one dispatch. The fp32 math and the single fp16 rounding at
+    the end replicate the two-dispatch chain exactly: mx.sigmoid lowers to
+    `1.0 / (1.0 + exp(-x))` (elementwise.comp case 5) and the product stays
+    fp32 until the op boundary cast. Buffer names never use `x` or `y`: the
+    translator macros every name (`#define src _b0.data`) and would eat the
+    `.x` swizzle of thread_position_in_grid."""
+    return mx.fast.metal_kernel(
+        name="encoder_silu_fused",
+        input_names=["src"],
+        output_names=["dst"],
+        source="""
+            uint index = thread_position_in_grid.x;
+            float v = float(src[index]);
+            dst[index] = half(v * (1.0 / (1.0 + exp(-v))));
+        """,
+        compile_options={"math_mode": "safe"},
+    )
+
+
+@cache
+def _glu_kernel():
+    """Conv-module GLU in one dispatch: `a * sigmoid(b)`.
+    The gate rounds fp32->fp16 before the product, because the stored
+    sigmoid result the mul consumes was itself an fp16 tensor. The rounding
+    must go through packHalf2x16: an fp16_t local keeps fp32 precision in
+    the following arithmetic (the fused_chain.comp M1-equality lesson)."""
+    return mx.fast.metal_kernel(
+        name="encoder_glu_fused",
+        input_names=["lhs", "rhs"],
+        output_names=["dst"],
+        source="""
+            uint index = thread_position_in_grid.x;
+            float s = 1.0 / (1.0 + exp(-float(rhs[index])));
+            float gate = float(unpackHalf2x16(packHalf2x16(vec2(s, 0.0))).x);
+            dst[index] = half(float(lhs[index]) * gate);
+        """,
+        compile_options={"math_mode": "safe"},
+    )
+
+
+@cache
+def _ln_cast_kernel():
+    return mx.fast.metal_kernel(
+        name="encoder_ln_cast",
+        input_names=["src"],
+        output_names=["dst"],
+        source="""
+            uint index = thread_position_in_grid.x;
+            dst[index] = float(src[index]);
+        """,
+        compile_options={"math_mode": "safe"},
+    )
+
+
+@cache
+def _ln_sq_kernel():
+    """(xf - mean)^2 with the row mean broadcast per 1024-wide row. Same
+    sub and square elementwise ops the separate dispatches ran, same fp32
+    storage, so the following mx.mean reduce sees identical bits."""
+    return mx.fast.metal_kernel(
+        name="encoder_ln_centered_square",
+        input_names=["xf", "mu"],
+        output_names=["t2"],
+        source="""
+            uint index = thread_position_in_grid.x;
+            uint row = index / 1024u;
+            float t = xf[index] - mu[row];
+            t2[index] = t * t;
+        """,
+        compile_options={"math_mode": "safe"},
+    )
+
+
+@cache
+def _ln_tail_kernel():
+    """LayerNorm tail in one dispatch. mx.rsqrt lowers to inversesqrt
+    (elementwise.comp case 8); the mul-mul-add order and the single fp16
+    rounding at the end match the dispatch chain statement for statement."""
+    return mx.fast.metal_kernel(
+        name="encoder_ln_tail",
+        input_names=["xf", "mu", "va", "ga", "be", "ep"],
+        output_names=["dst"],
+        source="""
+            uint index = thread_position_in_grid.x;
+            uint row = index / 1024u;
+            uint col = index % 1024u;
+            float t = xf[index] - mu[row];
+            float rstd = inversesqrt(va[row] + ep[0]);
+            precise float pr = t * rstd * float(ga[col]);
+            pr = pr + float(be[col]);
+            dst[index] = half(pr);
+        """,
+        compile_options={"math_mode": "safe"},
+    )
+
+
+@cache
+def _sm_exp_kernel():
+    """shifted exp in one dispatch. The row max runs as ReduceF16 over the
+    fp16 input: max is order-insensitive and exact, so widening its fp16
+    result is the same fp32 value the cast-then-ReduceF32 arm produced."""
+    return mx.fast.metal_kernel(
+        name="encoder_softmax_exp",
+        input_names=["src", "rmax"],
+        output_names=["expd"],
+        source="""
+            uint index = thread_position_in_grid.x;
+            uint row = index / 375u;
+            expd[index] = exp(float(src[index]) - float(rmax[row]));
+        """,
+        compile_options={"math_mode": "safe"},
+    )
+
+
+@cache
+def _sm_div_kernel():
+    return mx.fast.metal_kernel(
+        name="encoder_softmax_div",
+        input_names=["expd", "rsum"],
+        output_names=["dst"],
+        source="""
+            uint index = thread_position_in_grid.x;
+            uint row = index / 375u;
+            dst[index] = half(expd[index] / rsum[row]);
+        """,
+        compile_options={"math_mode": "safe"},
+    )
+
+
+
 class EncoderRunError(RuntimeError):
     """The run cannot continue; the reason is named."""
 
@@ -350,8 +482,11 @@ class EncoderRunner:
         self.ane_ops = 0
         self.cpu_tensor_events = 0
         self.cond_census: dict | None = None
+        self.glu_fusions: dict[int, tuple[str, str]] = {}
+        self.glu_sigmoid_done: set[int] = set()
         self._parse()
         self._index_islands()
+        self._index_fusions()
         self._last_use()
 
     # ---------------------------------------------------------------- parsing
@@ -415,6 +550,49 @@ class EncoderRunner:
         self.island_b = {s.index: (i, s) for i, s in enumerate(mask_select)}
         self.island_c = {o.index: (i, o) for i, o in enumerate(attn_out)}
 
+    def _index_fusions(self) -> None:
+        """Find the conv-module GLU: sigmoid(split_1) consumed by exactly one
+        mul whose other operand is the sibling split half. That mul becomes
+        one fused dispatch and the sigmoid statement never executes."""
+        consumers: dict[str, list[Statement]] = {}
+        for stmt in self.statements:
+            for token in stmt.kwargs.values():
+                for name in self._operand_names(token):
+                    consumers.setdefault(name, []).append(stmt)
+        for stmt in self.statements:
+            if stmt.op != "sigmoid":
+                continue
+            users = consumers.get(stmt.names[0], [])
+            if len(users) != 1 or users[0].op != "mul":
+                continue
+            mul = users[0]
+            b_name = stmt.kwargs["x"].strip()
+            a_names = [
+                token.strip()
+                for key, token in mul.kwargs.items() if key in ("x", "y")
+                and token.strip() != stmt.names[0]
+            ]
+            if len(a_names) != 1:
+                continue
+            a_name = a_names[0]
+            split = self.producer.get(a_name)
+            if split is None or split is not self.producer.get(b_name):
+                continue
+            if split.op != "split":
+                continue
+            parent = self.producer.get(split.kwargs["x"].strip())
+            if parent is None or parent.shape is None or len(parent.shape) != 3:
+                continue
+            # Only a channel-axis split of a contiguous 3D parent leaves both
+            # halves contiguous, which the flat kernel indexing requires.
+            axis = self.ints(split.kwargs["axis"])[0]
+            if axis % len(parent.shape) != 1 or self.ints(
+                split.kwargs["num_splits"]
+            )[0] != 2:
+                continue
+            self.glu_fusions[mul.index] = (a_name, b_name)
+            self.glu_sigmoid_done.add(stmt.index)
+
     def _last_use(self) -> None:
         """Index of the final statement that reads each name, so the runner can
         release device memory as it goes. The encoder's constants alone are
@@ -424,6 +602,12 @@ class EncoderRunner:
             for token in stmt.kwargs.values():
                 for name in self._operand_names(token):
                     self.last_use[name] = max(self.last_use.get(name, -1), stmt.index)
+        # The fused mul reads the split sibling after the skipped sigmoid
+        # statement, so that operand must live until the mul, not the sigmoid.
+        for mul_index, (_a, b_name) in self.glu_fusions.items():
+            self.last_use[b_name] = max(
+                self.last_use.get(b_name, -1), mul_index
+            )
 
     def _operand_names(self, token: str) -> list[str]:
         token = token.strip()
@@ -558,6 +742,27 @@ class EncoderRunner:
                 self.executed += 1
                 return
 
+        if stmt.op == "sigmoid" and stmt.index in self.glu_sigmoid_done:
+            # Consumed only by the fused mul; its value is never read.
+            self.executed += 1
+            return
+        if stmt.index in self.glu_fusions:
+            a_name, b_name = self.glu_fusions[stmt.index]
+            a = self.tensor(a_name)
+            b = self.tensor(b_name)
+            n = a.size
+            out = _glu_kernel()(
+                inputs=[a, b],
+                output_shapes=[(n,)],
+                output_dtypes=[mx.float16],
+                grid=(n, 1, 1),
+                threadgroup=(256, 1, 1),
+                stream=mx.gpu,
+            )[0]
+            self.values[stmt.names[0]] = mx.reshape(out, a.shape)
+            self.executed += 1
+            self.gpu_ops += 1
+            return
         if stmt.op == "split":
             parts = self.apply_split(stmt)
             if len(parts) != len(stmt.names):
@@ -735,8 +940,17 @@ class EncoderRunner:
         if op == "sigmoid":
             return mx.sigmoid(tensor(kwargs["x"]).astype(mx.float32)).astype(mx.float16)
         if op == "silu":
-            f = tensor(kwargs["x"]).astype(mx.float32)
-            return (f * mx.sigmoid(f)).astype(mx.float16)
+            x = tensor(kwargs["x"])
+            n = x.size
+            out = _silu_kernel()(
+                inputs=[x],
+                output_shapes=[(n,)],
+                output_dtypes=[mx.float16],
+                grid=(n, 1, 1),
+                threadgroup=(256, 1, 1),
+                stream=mx.gpu,
+            )[0]
+            return mx.reshape(out, x.shape)
         if op == "transpose":
             x = tensor(kwargs["x"])
             perm = [a % x.ndim for a in self.ints(kwargs["perm"])]
@@ -810,22 +1024,63 @@ class EncoderRunner:
             return self.apply_conv(kwargs)
         if op == "layer_norm":
             axes = tuple(self.ints(kwargs["axes"]))
-            x = tensor(kwargs["x"]).astype(mx.float32)
-            eps = float(self.scalar(kwargs["epsilon"]))
-            mean = mx.mean(x, axis=axes, keepdims=True)
-            var = mx.mean(mx.square(x - mean), axis=axes, keepdims=True)
-            out = (x - mean) * mx.rsqrt(var + eps)
-            if "gamma" in kwargs:
-                out = out * tensor(kwargs["gamma"]).astype(mx.float32)
-            if "beta" in kwargs:
-                out = out + tensor(kwargs["beta"]).astype(mx.float32)
-            return out.astype(mx.float16)
+            x = tensor(kwargs["x"])
+            if axes != (-1,) or x.ndim != 3 or x.shape[-1] != 1024:
+                raise EncoderRunError(
+                    f"layer_norm form {x.shape} axes {axes} is not the pinned "
+                    "encoder envelope"
+                )
+            # Two mx.mean reductions keep the ReduceF32 dispatches and their
+            # chunked order bit-identical; the standalone kernels only replace
+            # the elementwise chain around them, in the same fp32 ops with the
+            # same single fp16 rounding at the end.
+            rows = x.size // 1024
+            n = x.size
+            xf = _ln_cast_kernel()(
+                inputs=[x], output_shapes=[(n,)], output_dtypes=[mx.float32],
+                grid=(n, 1, 1), threadgroup=(256, 1, 1), stream=mx.gpu,
+            )[0]
+            mean = mx.mean(mx.reshape(xf, (rows, 1024)), axis=-1, keepdims=True)
+            t2 = _ln_sq_kernel()(
+                inputs=[xf, mean], output_shapes=[(n,)], output_dtypes=[mx.float32],
+                grid=(n, 1, 1), threadgroup=(256, 1, 1), stream=mx.gpu,
+            )[0]
+            var = mx.mean(mx.reshape(t2, (rows, 1024)), axis=-1, keepdims=True)
+            gamma = tensor(kwargs["gamma"]) if "gamma" in kwargs else None
+            beta = tensor(kwargs["beta"]) if "beta" in kwargs else None
+            if gamma is None or beta is None:
+                raise EncoderRunError("layer_norm without gamma/beta")
+            eps_arr = mx.array([float(self.scalar(kwargs["epsilon"]))], dtype=mx.float32)
+            y = _ln_tail_kernel()(
+                inputs=[xf, mean, var, gamma, beta, eps_arr],
+                output_shapes=[(n,)], output_dtypes=[mx.float16],
+                grid=(n, 1, 1), threadgroup=(256, 1, 1), stream=mx.gpu,
+            )[0]
+            return mx.reshape(y, x.shape)
         if op == "softmax":
             axis = self.ints(kwargs["axis"])[0]
-            x = tensor(kwargs["x"]).astype(mx.float32)
-            shifted = x - mx.max(x, axis=axis, keepdims=True)
-            exp = mx.exp(shifted)
-            return (exp / mx.sum(exp, axis=axis, keepdims=True)).astype(mx.float16)
+            x = tensor(kwargs["x"])
+            if axis % x.ndim != x.ndim - 1 or x.ndim != 4 or x.shape[-1] != 375:
+                raise EncoderRunError(
+                    f"softmax form {x.shape} axis {axis} is not the pinned "
+                    "encoder envelope"
+                )
+            # The exact ReduceF16 max and the fp32 ReduceF32 sum keep the
+            # reduction dispatches; exp and the final divide fuse around them
+            # with the same fp32 arithmetic and the same boundary rounding.
+            rows = x.size // 375
+            n = x.size
+            rowmax = mx.max(x, axis=-1, keepdims=True)
+            e = _sm_exp_kernel()(
+                inputs=[x, rowmax], output_shapes=[(n,)], output_dtypes=[mx.float32],
+                grid=(n, 1, 1), threadgroup=(256, 1, 1), stream=mx.gpu,
+            )[0]
+            rowsum = mx.sum(mx.reshape(e, (rows, 375)), axis=-1, keepdims=True)
+            y = _sm_div_kernel()(
+                inputs=[e, rowsum], output_shapes=[(n,)], output_dtypes=[mx.float16],
+                grid=(n, 1, 1), threadgroup=(256, 1, 1), stream=mx.gpu,
+            )[0]
+            return mx.reshape(y, x.shape)
         if op == "select":
             cond = tensor(kwargs["cond"])
             a = tensor(kwargs["a"]).astype(mx.float32)
