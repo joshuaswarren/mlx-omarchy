@@ -159,12 +159,18 @@ struct GemvFusionMember {
 
 
 // Validates the group against the kernel contract, allocates every
-// output, and records the dispatch. Returns false having allocated
-// nothing when any member falls outside the contract; the caller then
-// lets every node take its ordinary eval_gpu path. Defined in
+// output, and records the dispatch. |swiglu_out| plans the SwiGLU
+// store epilogue: exactly two epilogue-free members of equal length N
+// whose chain is silu(gate) * up; the dispatch computes both dots per
+// workgroup and stores only the product into |swiglu_out|, and both
+// member outputs alias that buffer (their only readers were the
+// deleted swiglu dispatch). Returns false having allocated nothing
+// when any member falls outside the contract; the caller then lets
+// every node take its ordinary eval_gpu path. Defined in
 // primitives.cpp beside QuantizedMatmul::eval_gpu.
 bool dispatch_quantized_gemv_group(
     std::vector<GemvFusionMember>& members,
+    array* swiglu_out,
     const Stream& stream);
 
 bool dispatch_dense_gemv_group(
@@ -200,6 +206,11 @@ bool kv_direct_enabled();
 // decode GEMV group, and Add on the per-node path (the
 // MLX_OMARCHY_FUSED_CHAIN gate also covers it).
 bool fused_gemv_enabled();
+
+// MLX_OMARCHY_FUSED_GEMV_SWIGLU=0 keeps the SwiGLU store epilogue
+// (the gate/up GEMV group that stores silu(gate) * up directly) off
+// (the MLX_OMARCHY_FUSED_GEMV gate also covers it); on by default.
+bool fused_gemv_swiglu_enabled();
 
 // Decode trio: MLX_OMARCHY_FUSED_TRIO=0 keeps f16 RMSNorm rows, the
 // fused SwiGLU chain dispatch, and RoPE pairs on their standalone

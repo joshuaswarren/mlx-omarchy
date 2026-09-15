@@ -7216,9 +7216,18 @@ bool input_ready(const array& value, const Stream& stream) {
 
 bool dispatch_quantized_gemv_group(
     std::vector<GemvFusionMember>& members,
+    array* swiglu_out,
     const Stream& stream) {
   if (members.empty() || members.size() > kQmmVecMultiWeights ||
       !q4_word_enabled()) {
+    return false;
+  }
+  // SwiGLU store epilogue: exactly the gate and up projections, no
+  // Add epilogues, f16/bf16 (the shader rounds through the same
+  // integer packing swiglu.comp uses; there is no f32 swiglu kernel).
+  if (swiglu_out &&
+      (members.size() != 2 || members[0].epilogue || members[1].epilogue ||
+       members[0].node.dtype() == float32)) {
     return false;
   }
   auto& encoder = get_command_encoder(stream);
@@ -7285,6 +7294,17 @@ bool dispatch_quantized_gemv_group(
     params.shape[i] = static_cast<uint32_t>(n);
     total_groups += (static_cast<uint32_t>(n) + 7u) / 8u;
   }
+  if (swiglu_out &&
+      (params.shape[0] != params.shape[1] || swiglu_out->dtype() != dtype ||
+       swiglu_out->size() != members[0].node.size())) {
+    return false;
+  }
+  if (swiglu_out) {
+    // Paired epilogue: every workgroup computes the same column slice
+    // of both weights, so the gate count is weight 0's alone.
+    total_groups = (params.shape[0] + 7u) / 8u;
+    params.flags |= 65536u;
+  }
   if (total_groups > kMaxComputeGroupCountX) {
     return false;
   }
@@ -7328,23 +7348,51 @@ bool dispatch_quantized_gemv_group(
   // Contract satisfied: allocate every output, then bind. Unused
   // weight slots bind the first member's output so every binding the
   // shader declares is a valid buffer.
-  for (auto& member : members) {
-    member.node.set_data(allocator().malloc(member.node.nbytes()));
-    if (member.epilogue) {
-      member.epilogue->set_data(allocator().malloc(member.epilogue->nbytes()));
+  if (swiglu_out) {
+    // The fold stores only the product; both member outputs alias it
+    // so their retained references stay valid (their only readers
+    // were the swiglu dispatch this fold deletes).
+    swiglu_out->set_data(allocator().malloc(swiglu_out->nbytes()));
+    Strides fold_strides(members[0].node.ndim(), 1);
+    for (int i = members[0].node.ndim() - 2; i >= 0; --i) {
+      fold_strides[i] =
+          fold_strides[i + 1] * members[0].node.shape(i + 1);
     }
-    if (member.sum_window) {
-      auto& window = *member.sum_window;
-      window.node.set_data(allocator().malloc(window.node.nbytes()));
-      copy_gpu(
-          window.base,
-          window.node,
-          window.base.flags().contiguous ? CopyType::Vector
-                                         : CopyType::General,
-          stream);
-      encoder.add_temporary(window.node);
-      commit_values_kv_write(window.node);
-      encoder.add_temporary(window.base);
+    array::Flags fold_flags;
+    fold_flags.contiguous = true;
+    fold_flags.row_contiguous = true;
+    fold_flags.col_contiguous = false;
+    members[0].node.copy_shared_buffer(
+        *swiglu_out,
+        fold_strides,
+        fold_flags,
+        members[0].node.data_size(),
+        0);
+    members[1].node.copy_shared_buffer(
+        *swiglu_out,
+        fold_strides,
+        fold_flags,
+        members[1].node.data_size(),
+        0);
+  } else {
+    for (auto& member : members) {
+      member.node.set_data(allocator().malloc(member.node.nbytes()));
+      if (member.epilogue) {
+        member.epilogue->set_data(allocator().malloc(member.epilogue->nbytes()));
+      }
+      if (member.sum_window) {
+        auto& window = *member.sum_window;
+        window.node.set_data(allocator().malloc(window.node.nbytes()));
+        copy_gpu(
+            window.base,
+            window.node,
+            window.base.flags().contiguous ? CopyType::Vector
+                                           : CopyType::General,
+            stream);
+        encoder.add_temporary(window.node);
+        commit_values_kv_write(window.node);
+        encoder.add_temporary(window.base);
+      }
     }
   }
   if (any_kv_window) {
@@ -7381,6 +7429,9 @@ bool dispatch_quantized_gemv_group(
         bindings[base + j] = filler;
       }
     }
+  }
+  if (swiglu_out) {
+    bindings[1 + 3] = binding(*swiglu_out);
   }
   bool subgroup_ready = caps.subgroup_size == 32u &&
       (caps.subgroup_operations & VK_SUBGROUP_FEATURE_ARITHMETIC_BIT) != 0;

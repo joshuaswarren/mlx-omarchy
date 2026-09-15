@@ -645,6 +645,10 @@ struct RopePair {
 // one dispatch) or failed (every node takes its own path).
 struct GemvGroup {
   std::vector<GemvFusionMember> members;
+  // SwiGLU store epilogue fold: set at plan time when the group is
+  // exactly a chain's gate and up projections. The one dispatch writes
+  // silu(gate) * up into this array and no swiglu dispatch exists.
+  std::optional<array> swiglu_out;
   enum class State : uint8_t { pending, done, failed } state{State::pending};
 };
 
@@ -1005,6 +1009,16 @@ EagerFusionScope::EagerFusionScope(const std::deque<array>& tape)
     auto it = nodes.find(ref.id());
     return it == nodes.end() ? nullptr : it->second;
   };
+  // Swiglu chains planned for the GEMV store epilogue fold: the gate
+  // and up leaves plus the tail array the fold will store into.
+  struct SwigluPlan {
+    std::uintptr_t gate_id;
+    std::uintptr_t up_id;
+    std::uintptr_t sigmoid_id;
+    std::uintptr_t inner_id;
+    array out;
+  };
+  std::vector<SwigluPlan> swiglu_plans;
   std::unordered_set<std::uintptr_t> claimed;
   for (const auto& tail : tape) {
     if (!is_op(&tail, typeid(Multiply)) || tail.inputs().size() != 2 ||
@@ -1026,6 +1040,7 @@ EagerFusionScope::EagerFusionScope(const std::deque<array>& tape)
         uses[sigmoid->id()] != 1) {
       continue;
     }
+    const array* up = inner == left ? right : left;
     const array& gate = sigmoid == inner_left ? inner->inputs()[1]
                                                : inner->inputs()[0];
     if (gate.id() != sigmoid->inputs()[0].id() ||
@@ -1034,6 +1049,11 @@ EagerFusionScope::EagerFusionScope(const std::deque<array>& tape)
         tail.primitive().stream() != sigmoid->primitive().stream() ||
         claimed.count(inner->id()) || claimed.count(sigmoid->id())) {
       continue;
+    }
+    if (up != nullptr && fused_gemv_swiglu_enabled() &&
+        tail.dtype() != float32) {
+      swiglu_plans.push_back(SwigluPlan{
+          gate.id(), up->id(), sigmoid->id(), inner->id(), tail});
     }
     const auto group = tail.id();
     state->roles.emplace(
@@ -1176,6 +1196,74 @@ EagerFusionScope::EagerFusionScope(const std::deque<array>& tape)
         }
       }
       state->gemv_groups.push_back(std::move(group));
+    }
+  }
+  // SwiGLU store epilogue fold. When a planned group is exactly the
+  // gate and up projections of a planned swiglu chain — two members,
+  // no Add epilogues, equal lengths, f16/bf16 — the group's dispatch
+  // computes both dots per workgroup and stores only silu(gate) * up.
+  // The gate leaf is read by the chain's sigmoid AND gate multiply,
+  // the up leaf by the tail multiply; when those are each leaf's ONLY
+  // readers, aliasing both projections onto the product is safe and
+  // the chain's three nodes move to the group's roles: the first
+  // member's eval fires the one dispatch and the standalone swiglu
+  // dispatch never exists. Any runtime contract failure un-plans the
+  // whole group onto the per-node path.
+  if (!swiglu_plans.empty()) {
+    std::unordered_map<std::uintptr_t, std::vector<std::uintptr_t>>
+        consumers;
+    for (const auto& node : tape) {
+      for (const auto& input : node.inputs()) {
+        consumers[input.id()].push_back(node.id());
+      }
+    }
+    auto only_readers = [&](std::uintptr_t leaf,
+                            std::vector<std::uintptr_t> want) {
+      auto it = consumers.find(leaf);
+      if (it == consumers.end()) {
+        return false;
+      }
+      std::sort(it->second.begin(), it->second.end());
+      std::sort(want.begin(), want.end());
+      return it->second == want;
+    };
+    for (size_t gi = 0; gi < state->gemv_groups.size(); ++gi) {
+      auto& group = state->gemv_groups[gi];
+      if (group.members.size() != 2 || group.members[0].epilogue ||
+          group.members[1].epilogue ||
+          group.members[0].node.dtype() == float32) {
+        continue;
+      }
+      const std::uintptr_t gate_id = group.members[0].node.id();
+      const std::uintptr_t up_id = group.members[1].node.id();
+      if (group.members[0].node.inputs()[1].shape(0) !=
+          group.members[1].node.inputs()[1].shape(0)) {
+        continue;
+      }
+      for (const auto& plan : swiglu_plans) {
+        // The tape may hold the up projection before the gate one.
+        // Weight slot 0 must be the gate for the epilogue's silu, so a
+        // swapped group is reordered; the per-slot binding/output
+        // wiring is positional, which makes the swap a no-op for the
+        // plain multi-weight path.
+        bool straight = plan.gate_id == gate_id && plan.up_id == up_id;
+        bool swapped = plan.gate_id == up_id && plan.up_id == gate_id;
+        if ((!straight && !swapped) ||
+            !only_readers(plan.gate_id, {plan.sigmoid_id, plan.inner_id}) ||
+            !only_readers(plan.up_id, {plan.out.id()})) {
+          continue;
+        }
+        if (swapped) {
+          std::swap(group.members[0], group.members[1]);
+        }
+        group.swiglu_out = plan.out;
+        for (std::uintptr_t id :
+             {plan.sigmoid_id, plan.inner_id, plan.out.id()}) {
+          state->roles.erase(id);
+          state->gemv_roles.emplace(id, gi);
+        }
+        break;
+      }
     }
   }
   std::unordered_map<std::uintptr_t, std::vector<const array*>> dense_by_x;
@@ -1410,6 +1498,15 @@ bool fused_gemv_enabled() {
       (std::getenv("MLX_OMARCHY_FUSED_GEMV") == nullptr ||
        env_flag("MLX_OMARCHY_FUSED_GEMV"));
 }
+
+// MLX_OMARCHY_FUSED_GEMV_SWIGLU=0 keeps the SwiGLU store epilogue off
+// (the MLX_OMARCHY_FUSED_GEMV gate also covers it); on by default.
+bool fused_gemv_swiglu_enabled() {
+  return fused_gemv_enabled() &&
+      (std::getenv("MLX_OMARCHY_FUSED_GEMV_SWIGLU") == nullptr ||
+       env_flag("MLX_OMARCHY_FUSED_GEMV_SWIGLU"));
+}
+
 bool fused_trio_enabled() {
   return fused_chain_enabled() &&
       (std::getenv("MLX_OMARCHY_FUSED_TRIO") == nullptr ||
@@ -1574,7 +1671,10 @@ bool try_eval_eager_fusion(array& node, const Stream& stream) {
       gemv != eager_state->gemv_roles.end()) {
     auto& group = eager_state->gemv_groups[gemv->second];
     if (group.state == GemvGroup::State::pending) {
-      group.state = dispatch_quantized_gemv_group(group.members, stream)
+      group.state = dispatch_quantized_gemv_group(
+                        group.members,
+                        group.swiglu_out ? &*group.swiglu_out : nullptr,
+                        stream)
           ? GemvGroup::State::done
           : GemvGroup::State::failed;
     }
