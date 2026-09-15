@@ -1,0 +1,443 @@
+{
+  "decision_142": {
+    "actual_logit": -12.5625,
+    "actual_minus_native_logit": 0.2734375,
+    "actual_token_id": 8029,
+    "decision_index": 142,
+    "decoder_input_token": 8135,
+    "decoder_state_sha256": "029d2fc2d93d1e8efb65a3cc379300ac297292badbf817f19e3f7649ad25b040",
+    "duration_index_actual": 0,
+    "duration_index_native": 0,
+    "duration_logits": [
+      13.15625,
+      8.71875,
+      -10.0546875,
+      -45.96875,
+      -8.390625
+    ],
+    "encoder_frame_sha256": "421387a213f3d218dfd55d08a0a22446b7252810711aceb31307b0e598c2d56d",
+    "joint_variants": {
+      "baseline_fp16_matmul_then_fp16_bias": {
+        "duration_index": 0,
+        "native_7892_logit": 155.75,
+        "token_id": 8037,
+        "winner_logit": 280.5,
+        "winner_minus_native": 124.75
+      },
+      "explicit_fp32_dot_then_fp16_bias": {
+        "duration_index": 0,
+        "native_7892_logit": 155.75,
+        "token_id": 8037,
+        "winner_logit": 280.5,
+        "winner_minus_native": 124.75
+      },
+      "fused_fp32_dot_and_bias_then_fp16": {
+        "duration_index": 0,
+        "native_7892_logit": 155.75,
+        "token_id": 8037,
+        "winner_logit": 280.5,
+        "winner_minus_native": 124.75
+      },
+      "mx_addmm_fp16": {
+        "duration_index": 0,
+        "native_7892_logit": 155.75,
+        "token_id": 8037,
+        "winner_logit": 280.5,
+        "winner_minus_native": 124.75
+      }
+    },
+    "native_token_id": 7892,
+    "native_token_logit": -12.8359375
+  },
+  "decoder_on_native_inputs": [
+    {
+      "decoder_hidden": {
+        "bit_exact": false,
+        "max_abs": 0.01953125,
+        "mean_abs": 0.0005236506462097168
+      },
+      "index": 0,
+      "next_cell": {
+        "bit_exact": false,
+        "max_abs": 0.0023193359375,
+        "mean_abs": 4.268926568329334e-05
+      },
+      "next_hidden": {
+        "bit_exact": false,
+        "max_abs": 0.0003662109375,
+        "mean_abs": 4.931166768074036e-06
+      },
+      "projector_on_native_lstm": {
+        "bit_exact": false,
+        "max_abs": 0.01953125,
+        "mean_abs": 0.0005147099494934082
+      }
+    },
+    {
+      "decoder_hidden": {
+        "bit_exact": false,
+        "max_abs": 0.01171875,
+        "mean_abs": 0.00045396685600280763
+      },
+      "index": 2,
+      "next_cell": {
+        "bit_exact": false,
+        "max_abs": 0.027530670166015625,
+        "mean_abs": 0.0005533443298190832
+      },
+      "next_hidden": {
+        "bit_exact": false,
+        "max_abs": 0.00732421875,
+        "mean_abs": 0.00019660438410937787
+      },
+      "projector_on_native_lstm": {
+        "bit_exact": false,
+        "max_abs": 0.0107421875,
+        "mean_abs": 0.00041077136993408205
+      }
+    },
+    {
+      "decoder_hidden": {
+        "bit_exact": false,
+        "max_abs": 0.01953125,
+        "mean_abs": 0.0007714509963989257
+      },
+      "index": 3,
+      "next_cell": {
+        "bit_exact": false,
+        "max_abs": 0.0156097412109375,
+        "mean_abs": 0.0006171093787997961
+      },
+      "next_hidden": {
+        "bit_exact": false,
+        "max_abs": 0.010101318359375,
+        "mean_abs": 0.0002598345745354891
+      },
+      "projector_on_native_lstm": {
+        "bit_exact": false,
+        "max_abs": 0.01953125,
+        "mean_abs": 0.000680851936340332
+      }
+    },
+    {
+      "decoder_hidden": {
+        "bit_exact": false,
+        "max_abs": 0.01171875,
+        "mean_abs": 0.0006158947944641113
+      },
+      "index": 4,
+      "next_cell": {
+        "bit_exact": false,
+        "max_abs": 0.015869140625,
+        "mean_abs": 0.0008305411320179701
+      },
+      "next_hidden": {
+        "bit_exact": false,
+        "max_abs": 0.0106201171875,
+        "mean_abs": 0.0003256350290030241
+      },
+      "projector_on_native_lstm": {
+        "bit_exact": false,
+        "max_abs": 0.01171875,
+        "mean_abs": 0.00052947998046875
+      }
+    },
+    {
+      "decoder_hidden": {
+        "bit_exact": false,
+        "max_abs": 0.009765625,
+        "mean_abs": 0.000333869457244873
+      },
+      "index": 5,
+      "next_cell": {
+        "bit_exact": false,
+        "max_abs": 0.02197265625,
+        "mean_abs": 0.000704282196238637
+      },
+      "next_hidden": {
+        "bit_exact": false,
+        "max_abs": 0.0125732421875,
+        "mean_abs": 0.00023947427980601786
+      },
+      "projector_on_native_lstm": {
+        "bit_exact": false,
+        "max_abs": 0.0078125,
+        "mean_abs": 0.00028868913650512693
+      }
+    },
+    {
+      "decoder_hidden": {
+        "bit_exact": false,
+        "max_abs": 0.0107421875,
+        "mean_abs": 0.0003239631652832031
+      },
+      "index": 6,
+      "next_cell": {
+        "bit_exact": false,
+        "max_abs": 0.012451171875,
+        "mean_abs": 0.0005725653376430273
+      },
+      "next_hidden": {
+        "bit_exact": false,
+        "max_abs": 0.008575439453125,
+        "mean_abs": 0.00019237929955124856
+      },
+      "projector_on_native_lstm": {
+        "bit_exact": false,
+        "max_abs": 0.009765625,
+        "mean_abs": 0.0002938151359558105
+      }
+    },
+    {
+      "decoder_hidden": {
+        "bit_exact": false,
+        "max_abs": 0.0068359375,
+        "mean_abs": 0.00041948556900024415
+      },
+      "index": 7,
+      "next_cell": {
+        "bit_exact": false,
+        "max_abs": 0.012603759765625,
+        "mean_abs": 0.0006441039498895407
+      },
+      "next_hidden": {
+        "bit_exact": false,
+        "max_abs": 0.00537109375,
+        "mean_abs": 0.00017963810823857785
+      },
+      "projector_on_native_lstm": {
+        "bit_exact": false,
+        "max_abs": 0.0068359375,
+        "mean_abs": 0.0003754138946533203
+      }
+    },
+    {
+      "decoder_hidden": {
+        "bit_exact": false,
+        "max_abs": 0.00390625,
+        "mean_abs": 0.0002898871898651123
+      },
+      "index": 8,
+      "next_cell": {
+        "bit_exact": false,
+        "max_abs": 0.01953125,
+        "mean_abs": 0.0005902505945414305
+      },
+      "next_hidden": {
+        "bit_exact": false,
+        "max_abs": 0.007080078125,
+        "mean_abs": 0.00017611673101782798
+      },
+      "projector_on_native_lstm": {
+        "bit_exact": false,
+        "max_abs": 0.00390625,
+        "mean_abs": 0.00026622116565704345
+      }
+    },
+    {
+      "decoder_hidden": {
+        "bit_exact": false,
+        "max_abs": 0.0166015625,
+        "mean_abs": 0.0005788564682006836
+      },
+      "index": 9,
+      "next_cell": {
+        "bit_exact": false,
+        "max_abs": 0.0205078125,
+        "mean_abs": 0.0007362952455878258
+      },
+      "next_hidden": {
+        "bit_exact": false,
+        "max_abs": 0.007568359375,
+        "mean_abs": 0.00022392235696315764
+      },
+      "projector_on_native_lstm": {
+        "bit_exact": false,
+        "max_abs": 0.013671875,
+        "mean_abs": 0.00043987035751342775
+      }
+    },
+    {
+      "decoder_hidden": {
+        "bit_exact": false,
+        "max_abs": 0.01171875,
+        "mean_abs": 0.0004890561103820801
+      },
+      "index": 10,
+      "next_cell": {
+        "bit_exact": false,
+        "max_abs": 0.03515625,
+        "mean_abs": 0.0008604284375905991
+      },
+      "next_hidden": {
+        "bit_exact": false,
+        "max_abs": 0.01416015625,
+        "mean_abs": 0.00028449585661292074
+      },
+      "projector_on_native_lstm": {
+        "bit_exact": false,
+        "max_abs": 0.0087890625,
+        "mean_abs": 0.00039093494415283204
+      }
+    },
+    {
+      "decoder_hidden": {
+        "bit_exact": false,
+        "max_abs": 0.0068359375,
+        "mean_abs": 0.0002996772527694702
+      },
+      "index": 11,
+      "next_cell": {
+        "bit_exact": false,
+        "max_abs": 0.01611328125,
+        "mean_abs": 0.0005611217115074396
+      },
+      "next_hidden": {
+        "bit_exact": false,
+        "max_abs": 0.005615234375,
+        "mean_abs": 0.000160616310313344
+      },
+      "projector_on_native_lstm": {
+        "bit_exact": false,
+        "max_abs": 0.005859375,
+        "mean_abs": 0.00028228312730789186
+      }
+    },
+    {
+      "decoder_hidden": {
+        "bit_exact": false,
+        "max_abs": 0.03125,
+        "mean_abs": 0.0007135093212127686
+      },
+      "index": 12,
+      "next_cell": {
+        "bit_exact": false,
+        "max_abs": 0.02734375,
+        "mean_abs": 0.0008765086997300387
+      },
+      "next_hidden": {
+        "bit_exact": false,
+        "max_abs": 0.0159912109375,
+        "mean_abs": 0.00027308515273034574
+      },
+      "projector_on_native_lstm": {
+        "bit_exact": false,
+        "max_abs": 0.015625,
+        "mean_abs": 0.0005438804626464843
+      }
+    },
+    {
+      "decoder_hidden": {
+        "bit_exact": false,
+        "max_abs": 0.0048828125,
+        "mean_abs": 0.0003105580806732178
+      },
+      "index": 13,
+      "next_cell": {
+        "bit_exact": false,
+        "max_abs": 0.0206298828125,
+        "mean_abs": 0.000808924250304699
+      },
+      "next_hidden": {
+        "bit_exact": false,
+        "max_abs": 0.019287109375,
+        "mean_abs": 0.0002490311395376921
+      },
+      "projector_on_native_lstm": {
+        "bit_exact": false,
+        "max_abs": 0.0068359375,
+        "mean_abs": 0.00025460124015808105
+      }
+    },
+    {
+      "decoder_hidden": {
+        "bit_exact": false,
+        "max_abs": 0.009765625,
+        "mean_abs": 0.0003203153610229492
+      },
+      "index": 14,
+      "next_cell": {
+        "bit_exact": false,
+        "max_abs": 0.012054443359375,
+        "mean_abs": 0.00034112329594790933
+      },
+      "next_hidden": {
+        "bit_exact": false,
+        "max_abs": 0.0029296875,
+        "mean_abs": 5.6645087897777555e-05
+      },
+      "projector_on_native_lstm": {
+        "bit_exact": false,
+        "max_abs": 0.009765625,
+        "mean_abs": 0.00030980110168457033
+      }
+    },
+    {
+      "decoder_hidden": {
+        "bit_exact": false,
+        "max_abs": 0.01171875,
+        "mean_abs": 0.0005612850189208984
+      },
+      "index": 15,
+      "next_cell": {
+        "bit_exact": false,
+        "max_abs": 0.03125,
+        "mean_abs": 0.0008354908786714077
+      },
+      "next_hidden": {
+        "bit_exact": false,
+        "max_abs": 0.0107421875,
+        "mean_abs": 0.0002237311564385891
+      },
+      "projector_on_native_lstm": {
+        "bit_exact": false,
+        "max_abs": 0.013671875,
+        "mean_abs": 0.0004939556121826172
+      }
+    }
+  ],
+  "device": {
+    "architecture": "honeykrisp",
+    "device_name": "Apple M1 (G13G B1)"
+  },
+  "elapsed_seconds": 3.5632745470211376,
+  "free_decode": {
+    "decoder_calls": 145,
+    "first_divergence": {
+      "actual": {
+        "duration": 0,
+        "frame_index": 373,
+        "token_id": 8029
+      },
+      "emission_index": 101,
+      "native": {
+        "duration": 0,
+        "frame_index": 373,
+        "token_id": 7892
+      }
+    },
+    "joint_calls": 146
+  },
+  "gpu_trace_delta": {
+    "commit_calls_noop": 1847,
+    "commit_calls_with_work": 1838,
+    "gpu_primitive_dispatches": 26775,
+    "omarchy_finalize_calls": 1847,
+    "vk_buffer_copies": 1208,
+    "vk_buffer_fills": 6,
+    "vk_compute_dispatches": 11866,
+    "vk_submissions": 1838
+  },
+  "hostname": "jwm1-linux",
+  "joint_on_native_decoder_state": {
+    "duration_matches": 16,
+    "token_matches": 16,
+    "traces": 16
+  },
+  "kernel": "7.1.6-1-1-ARCH",
+  "mlx_version": "0.32.2.dev202609131130+e4d079c",
+  "source_sha256": {
+    "vulkan_decoder.py": "7a790b37a8f19e87313b96dec5d5d04e039782204dc7a45c58af643414941e3c",
+    "vulkan_joint.py": "bf31537d504612c6d9873051c9ad5f7b84a978268e6d7ed4eaec173a18626115"
+  }
+}
