@@ -163,7 +163,7 @@ reason it lost is in the linked receipt.
 
 | idea | result | why it lost | receipt |
 |---|---|---|---|
-| Dispatcher-wakeup polling (1 ms in-flight poll) | bf16 decode -2.5%, 4-bit decode +0.3% on m1-test-host | within noise; the hypothesis was wrong | `receipts/2026-09-03-dispatcher-compile-and-column-replace.md` |
+| Dispatcher-wakeup polling (1 ms in-flight poll) | bf16 decode -2.5%, 4-bit decode +0.3% on M1 | within noise; the hypothesis was wrong | `receipts/2026-09-03-dispatcher-compile-and-column-replace.md` |
 | Generic tape fusion at a 7.3% ceiling | fused-fragment path covered only 7.3% of model shape changes; rest refused by name | too narrow to be worth the extra compiler surface | `receipts/2026-09-03-dispatcher-compile-and-column-replace.md` (Compiled path: two gates, two generations) |
 | Compile-the-forward alone (`ff4b05a` ordering wait, no other changes) | bf16 decode -27.5%, 4-bit decode -39.2% vs parent `4ea2f47` | the ordering fix is not free on hardware; the regression is real and ships with the correctness benefit | `receipts/2026-09-03-dispatcher-compile-and-column-replace.md` |
 | Host scalar folding (`fast::rope` host-side offset probe) | bit-exact at the offset position; the earlier divergence was the probe, not the primitive | refuted by the corrected probe; rope stands | `docs/known-defects.md` "The rope divergence: the probe, not the primitive" |

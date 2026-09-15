@@ -44,7 +44,7 @@ measurement of the run under test):
    `mul`, `cast`, `select`, `reshape`, `transpose`, masks, …).
    Comparison is fp16 value equality with **±0 equivalence**: the
    device's `+0.0` equals a mathematical `−0.0` product — proven on
-   m1-test-host (2026-09-13 worker window; the H13 compiler models zero
+   hardware (2026-09-13 worker window; the H13 compiler models zero
    products as unsigned, mil-hwx-compiler `aa688df`), and enforced by
    `mlx-omarchy-ane-worker --expect`.
 2. **`relative_l2`** — accumulating ops (`linear`, `matmul`, `conv`,
