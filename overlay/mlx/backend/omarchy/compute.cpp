@@ -290,6 +290,9 @@
 #include "matmul_rb_f16.h"
 #include "swiglu_f16.h"
 #include "swiglu_bf16.h"
+#include "fast_trio_norm_f16.h"
+#include "fast_trio_rope_pair_f16.h"
+#include "fast_trio_swiglu_f16.h"
 #include "matmul_f32_coopmat_bf16.h"
 #include "qmm_tile_f32.h"
 #include "dequant_f32.h"
@@ -1242,6 +1245,12 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {swiglu_f16, swiglu_f16_size};
     case ComputeKernel::SwigluBF16:
       return {swiglu_bf16, swiglu_bf16_size};
+    case ComputeKernel::FastTrioNormF16:
+      return {fast_trio_norm_f16, fast_trio_norm_f16_size};
+    case ComputeKernel::FastTrioRopePairF16:
+      return {fast_trio_rope_pair_f16, fast_trio_rope_pair_f16_size};
+    case ComputeKernel::FastTrioSwigluF16:
+      return {fast_trio_swiglu_f16, fast_trio_swiglu_f16_size};
     case ComputeKernel::QmmVecQ4MultiF32:
       return {qmm_vec_q4_multi_f32, qmm_vec_q4_multi_f32_size};
     case ComputeKernel::QmmVecQ4MultiF16:

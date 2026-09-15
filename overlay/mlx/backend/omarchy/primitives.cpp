@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 #include "mlx/backend/omarchy/unsupported.h"
+#include "mlx/transforms.h"
 
 #include <algorithm>
 #include <array>
@@ -30,6 +31,7 @@
 #include "mlx/distributed/primitives.h"
 #include "mlx/fast_primitives.h"
 #include "mlx/backend/gpu/copy.h"
+#include "mlx/backend/gpu/eval.h"
 #include "mlx/primitives.h"
 #include "mlx/ops.h"
 
@@ -49,6 +51,22 @@
     return true;                      \
   }                                   \
   OMARCHY_UNSUPPORTED_MULTI(func)
+
+// The RoPE fusion trig envelope gate; defined beside RoPE::eval_gpu.
+// Declared at file scope: a qualified namespace definition inside
+// mlx::core::omarchy would open mlx::core::omarchy::mlx::... and poison
+// every later mlx::core::fast:: qualified lookup in this namespace.
+namespace mlx::core::fast {
+void rope_trig_gate(
+    const std::string& name,
+    const array& in,
+    const array& offset,
+    const array* freqs,
+    int dims,
+    float base,
+    float scale,
+    const array& out);
+} // namespace mlx::core::fast
 
 namespace mlx::core {
 
@@ -7495,6 +7513,364 @@ bool dispatch_dense_gemv_group(
       1u);
   return true;
 }
+bool dispatch_rope_pair(
+    std::array<array, 2>& nodes,
+    const Stream& stream) {
+  auto& encoder = get_command_encoder(stream);
+  const auto& caps = encoder.device().capabilities();
+  if (encoder.device().compute().binding_limit() < 8 ||
+      !caps.shader_float16 || !caps.storage_buffer_16bit_access) {
+    return false;
+  }
+  static int trio_refuse_trace = 0;
+  bool trace_refusals =
+      std::getenv("MLX_OMARCHY_TRIO_TRACE") != nullptr &&
+      trio_refuse_trace < 8;
+  auto refuse = [&](const char* why) {
+    if (trace_refusals) {
+      ++trio_refuse_trace;
+      std::fprintf(stderr, "[trio-pair] refuse: %s\n", why);
+    }
+    return false;
+  };
+  array& q_node = nodes[0];
+  array& k_node = nodes[1];
+  const auto& rope =
+      static_cast<const mlx::core::fast::RoPE&>(q_node.primitive());
+  const auto& rope_k =
+      static_cast<const mlx::core::fast::RoPE&>(k_node.primitive());
+  const array& q_in = q_node.inputs()[0];
+  const array& k_in = k_node.inputs()[0];
+  const array& offset = q_node.inputs()[1];
+  auto settled = [](const array& a) {
+    return a.data_shared_ptr() != nullptr;
+  };
+  if (!settled(q_in) || !settled(k_in)) {
+    // Pre-settle the unsettled producer chains: the pair fires at the
+    // first member while bfs_max_width tape segments can leave that
+    // member's own producers unscheduled. The single path tolerates
+    // that only because its eval comes later; the pair must bind both
+    // inputs now. The offset is a host constant (checked by the
+    // shared-offset contract), so only the two input chains need
+    // settling.
+    //
+    // The chains are linear and short (Transpose <- Reshape <- bias-Add
+    // <- GEMV group), and every deeper ancestor is already evaluated by
+    // the outer tape, so record only the unsettled run, producer-first,
+    // with the same per-node work the tape loop performs (gpu::eval +
+    // status marking; no finalize - the enclosing frame owns the open
+    // command buffer). settle() schedules exactly these nodes too, but
+    // its degree pass also walks the chain's evaluated ancestors - the
+    // residual stream makes every earlier layer one - which is O(graph)
+    // host work per pair and O(graph^2) per token: the measured ctx1053
+    // bottleneck. Any chain that is not a linear same-stream run
+    // (fan-in, tracer, odd status) falls back to settle(), which
+    // produces the identical dispatch schedule.
+    std::vector<array> chain;
+    bool linear = true;
+    for (const array* leaf : {&q_in, &k_in}) {
+      array cur = *leaf;
+      while (linear && cur.data_shared_ptr() == nullptr) {
+        if (chain.size() >= 64 || cur.is_tracer() || !cur.has_primitive() ||
+            cur.status() != array::Status::unscheduled ||
+            cur.primitive().stream() != q_node.primitive().stream()) {
+          linear = false;
+          break;
+        }
+        chain.push_back(cur);
+        std::optional<array> next;
+        for (const auto& in : cur.inputs()) {
+          if (in.data_shared_ptr() != nullptr) {
+            continue;
+          }
+          if (next) {
+            linear = false; // fan-in: not a linear chain
+            break;
+          }
+          next = in;
+        }
+        if (!linear) {
+          break;
+        }
+        if (!next) {
+          break; // chain head: every producer is resident
+        }
+        cur = std::move(*next);
+      }
+      if (!linear) {
+        break;
+      }
+    }
+    if (linear) {
+      for (auto it = chain.rbegin(); it != chain.rend(); ++it) {
+        gpu::eval(*it);
+        it->set_status(array::Status::evaluated);
+        for (auto& sib : it->siblings()) {
+          sib.set_status(array::Status::evaluated);
+        }
+      }
+    } else {
+      std::vector<array> chains;
+      if (!settled(q_in)) {
+        chains.push_back(q_in);
+      }
+      if (!settled(k_in)) {
+        chains.push_back(k_in);
+      }
+      settle(chains);
+    }
+  }
+  if (!settled(q_in) || !settled(k_in) || !settled(offset)) {
+    auto dump_settled = [](const array& in, const char* side) {
+      array cur = in;
+      for (int hop = 0; hop < 5 && cur.has_primitive(); ++hop) {
+        std::fprintf(
+            stderr,
+            "[trio-settle] %s hop%d %s settled=%d status=%d size=%zu\n",
+            side,
+            hop,
+            cur.primitive().name(),
+            static_cast<int>(cur.data_shared_ptr() != nullptr),
+            static_cast<int>(cur.status()),
+            cur.size());
+        if (cur.inputs().empty()) {
+          break;
+        }
+        cur = cur.inputs()[0];
+      }
+    };
+    std::fprintf(
+        stderr,
+        "[trio-pair] unsettled: q=%d k=%d off=%d\n",
+        static_cast<int>(settled(q_in)),
+        static_cast<int>(settled(k_in)),
+        static_cast<int>(settled(offset)));
+    if (!settled(q_in)) {
+      dump_settled(q_in, "q");
+    }
+    if (!settled(k_in)) {
+      dump_settled(k_in, "k");
+    }
+    return refuse("partner input not settled");
+  }
+  if (q_node.dtype() != float16 || k_node.dtype() != float16 ||
+      q_in.dtype() != float16 || k_in.dtype() != float16) {
+    return refuse("dtype not f16");
+  }
+  if (rope.state() != rope_k.state() || k_node.inputs().size() != 2) {
+    return refuse("rope state mismatch");
+  }
+  if (offset.size() != 1) {
+    return refuse("offset not scalar");
+  }
+  if (!(offset.id() == k_node.inputs()[1].id() ||
+        (offset.size() == 1 && k_node.inputs()[1].size() == 1 &&
+         offset.dtype() == int32 && k_node.inputs()[1].dtype() == int32 &&
+         offset.status() == array::Status::available &&
+         !offset.has_primitive() &&
+         k_node.inputs()[1].status() == array::Status::available &&
+         !k_node.inputs()[1].has_primitive() &&
+         offset.item<int>() == k_node.inputs()[1].item<int>()))) {
+    return refuse("offset not shared host-constant");
+  }
+  // Input readiness is the evaluator tape contract, exactly as for the
+  // single RoPE dispatch: data_shared_ptr() can read as null for a
+  // lazily-installed producer buffer at this point while the binding is
+  // still valid (measured on t6001-test-host - the null checks refused every pair
+  // while the ordinary path produced pinned digests from the same
+  // arrays), so no null or input_ready probe happens here.
+  if (q_in.offset() % q_in.itemsize() != 0 ||
+      k_in.offset() % k_in.itemsize() != 0) {
+    return refuse("input offset unaligned");
+  }
+  const int dims = std::get<1>(rope.state());
+  const bool traditional = std::get<2>(rope.state());
+  const float base = std::get<3>(rope.state());
+  const float scale = std::get<4>(rope.state());
+  const int D = q_in.shape(-1);
+  const int T = q_in.shape(-2);
+  // Per-side input layout: the two layouts the single RoPE kernel
+  // serves without a copy - row contiguous, or the regular 4D
+  // head/seq transposed view - resolved to (matrix, time) strides with
+  // an implicit feature stride of 1. Anything else (the single path
+  // makes a contiguous temporary there) refuses the pair.
+  auto side_layout = [&](const array& in) -> std::optional<
+      std::pair<uint32_t, uint32_t>> {
+    if (in.flags().row_contiguous) {
+      return std::make_pair(
+          static_cast<uint32_t>(T * D), static_cast<uint32_t>(D));
+    }
+    if (in.ndim() == 4) {
+      const int64_t n = in.shape(1);
+      if (in.strides()[0] == static_cast<int64_t>(T) * n * D &&
+          in.strides()[1] == D &&
+          in.strides()[2] == static_cast<int64_t>(n) * D &&
+          in.strides()[3] == 1) {
+        return std::make_pair(
+            static_cast<uint32_t>(D), static_cast<uint32_t>(n) * D);
+      }
+      // Transposed slice of a wider row-contiguous [B,T,W,D] producer
+      // buffer (a fused GEMV output): per-head stride D, per-time
+      // stride W*D, batch stride T*W*D. The kernel addresses each side
+      // through (matrix, time) strides only, so any W works; the
+      // feature stride must stay 1. Row-contiguous inputs never reach
+      // this branch (resolved above).
+      if (in.strides()[1] == D && in.strides()[3] == 1 &&
+          in.strides()[2] % D == 0 &&
+          (in.shape(0) == 1 ||
+           in.strides()[0] ==
+               static_cast<int64_t>(T) * in.strides()[2])) {
+        return std::make_pair(
+            static_cast<uint32_t>(D),
+            static_cast<uint32_t>(in.strides()[2]));
+      }
+    }
+    return std::nullopt;
+  };
+  auto q_layout = side_layout(q_in);
+  auto k_layout = side_layout(k_in);
+  if (!q_layout || !k_layout) {
+    if (trace_refusals) {
+      std::fprintf(
+          stderr,
+          "[trio-pair] layout: q ndim=%d rowc=%d strides=%lld,%lld,%lld,%lld"
+          " k ndim=%d rowc=%d strides=%lld,%lld,%lld,%lld\n",
+          static_cast<int>(q_in.ndim()),
+          static_cast<int>(q_in.flags().row_contiguous),
+          static_cast<long long>(q_in.strides()[0]),
+          static_cast<long long>(q_in.strides()[1]),
+          static_cast<long long>(q_in.strides()[2]),
+          static_cast<long long>(q_in.strides()[3]),
+          static_cast<int>(k_in.ndim()),
+          static_cast<int>(k_in.flags().row_contiguous),
+          static_cast<long long>(k_in.strides()[0]),
+          static_cast<long long>(k_in.strides()[1]),
+          static_cast<long long>(k_in.strides()[2]),
+          static_cast<long long>(k_in.strides()[3]));
+    }
+    return refuse("input layout unsupported");
+  }
+  const bool q_transposed = !q_in.flags().row_contiguous;
+  const bool k_transposed = !k_in.flags().row_contiguous;
+  if (q_in.ndim() != k_in.ndim() || k_in.shape(-1) != D ||
+      k_in.shape(-2) != T || D != dims || dims % 2 != 0) {
+    return refuse("shape mismatch");
+  }
+  int64_t heads_q = 1;
+  for (int i = 1; i < q_in.ndim() - 2; ++i) {
+    heads_q *= q_in.shape(i);
+  }
+  int64_t heads_k = 1;
+  for (int i = 1; i < k_in.ndim() - 2; ++i) {
+    heads_k *= k_in.shape(i);
+  }
+  const uint32_t half = static_cast<uint32_t>(dims / 2);
+  const uint64_t cnt_q =
+      static_cast<uint64_t>(q_in.shape(0)) * heads_q * T * half;
+  const uint64_t cnt_k =
+      static_cast<uint64_t>(k_in.shape(0)) * heads_k * T * half;
+  const uint64_t total = cnt_q + cnt_k;
+  if (cnt_q == 0 || cnt_k == 0 ||
+      q_node.size() != static_cast<size_t>(2 * cnt_q) ||
+      k_node.size() != static_cast<size_t>(2 * cnt_k) ||
+      total > std::numeric_limits<uint32_t>::max() ||
+      (total + 255u) / 256u > kMaxComputeGroupCountX) {
+    return refuse("count or size consistency");
+  }
+  const uint64_t q_off = q_in.offset() / q_in.itemsize();
+  const uint64_t k_off = k_in.offset() / k_in.itemsize();
+  const uint64_t off_off = offset.offset() / offset.itemsize();
+  if (!compute_index_span_fits(q_off, q_in.size()) ||
+      !compute_index_span_fits(k_off, k_in.size()) ||
+      !compute_index_span_fits(off_off, offset.size())) {
+    return refuse("offset span does not fit");
+  }
+  // The producer-direct KV window re-check mirrors RoPE::eval_gpu:
+  // find_rope_kv_redirect only fires once the values side committed,
+  // and a committed-but-undispatchable window refuses there; un-plan
+  // here so the ordinary path raises the same contract error.
+  KvDirectWindow* kv_window = find_rope_kv_redirect(k_node);
+  if (kv_window) {
+    auto& window = *kv_window;
+    if (window.node.data_shared_ptr() != nullptr ||
+        window.base.data_shared_ptr() == nullptr ||
+        window.base.dtype() != float16 ||
+        !window.base.flags().row_contiguous ||
+        window.base.size() != window.base.data_size() ||
+        window.base.offset() % window.base.itemsize() != 0 ||
+        !input_ready(window.base, stream)) {
+      return refuse("kv window not dispatchable");
+    }
+  }
+  // One gate call covers both sides: the shared offset, T, dims, base,
+  // and scale make the theta bound identical.
+  fast::rope_trig_gate(
+      "rope_pair", q_in, offset, nullptr, dims, base, scale, q_node);
+  if (kv_window) {
+    auto& window = *kv_window;
+    window.node.set_data(allocator().malloc(window.node.nbytes()));
+    copy_gpu(
+        window.base,
+        window.node,
+        window.base.flags().contiguous ? CopyType::Vector
+                                       : CopyType::General,
+        stream);
+    encoder.add_temporary(window.node);
+    encoder.add_temporary(window.base);
+  } else {
+    k_node.set_data(allocator().malloc(k_node.nbytes()));
+  }
+  q_node.set_data(allocator().malloc(q_node.nbytes()));
+  array& k_out = kv_window ? kv_window->node : k_node;
+  ComputeParams params;
+  params.count = static_cast<uint32_t>(total);
+  params.lhs_size = static_cast<uint32_t>(cnt_q);
+  params.rhs_size = static_cast<uint32_t>(cnt_k);
+  params.lhs_offset = static_cast<uint32_t>(q_off);
+  params.rhs_offset = static_cast<uint32_t>(k_off);
+  params.output_offset = kv_window ? kv_window->offset : 0u;
+  params.aux_offset = static_cast<uint32_t>(off_off);
+  params.matrix_m = 0u;
+  params.flags = 1u | (traditional ? 2u : 0u) |
+      (q_transposed ? 4u : 0u) | (k_transposed ? 8u : 0u);
+  params.alpha = scale;
+  params.beta = static_cast<float>(std::log(base) / half);
+  params.dims = half;
+  params.shape[0] = static_cast<uint32_t>(heads_q);
+  params.shape[1] = static_cast<uint32_t>(heads_k);
+  params.shape[2] = static_cast<uint32_t>(T);
+  params.shape[3] = static_cast<uint32_t>(D);
+  params.out_strides[0] = kv_window ? kv_window->strides[0]
+                                    : static_cast<uint32_t>(T * D);
+  params.out_strides[1] = kv_window ? kv_window->strides[1]
+                                    : static_cast<uint32_t>(D);
+  params.in_strides[0] = q_layout->first;
+  params.in_strides[1] = q_layout->second;
+  params.in_strides[2] = k_layout->first;
+  params.in_strides[3] = k_layout->second;
+  params.out_strides[2] = static_cast<uint32_t>(T * D);
+  params.out_strides[3] = static_cast<uint32_t>(D);
+  const ComputeBinding ro_filler = binding(q_in);
+  const ComputeBinding wo_filler = binding(q_node);
+  std::array<ComputeBinding, 8> bindings{
+      binding(q_in),
+      ro_filler,
+      binding(k_in),
+      binding(q_node),
+      binding(k_out),
+      wo_filler,
+      wo_filler,
+      binding(offset)};
+  encoder.dispatch_compute(
+      ComputeKernel::FastTrioRopePairF16,
+      bindings,
+      params,
+      compute_dispatch_group_count(params.count));
+  if (kv_window) {
+    commit_rope_kv_redirect(k_node);
+  }
+  return true;
+}
 
 SliceUpdatePairDispatch dispatch_slice_update_pair(
     std::array<array, 2>& nodes,
@@ -9977,11 +10353,18 @@ void RMSNorm::eval_gpu(
   params.lhs_size = checked_u32(w.size(), tag, out);
   std::array<omarchy::ComputeBinding, 4> bindings{
       binding(x), binding(w), binding(w), binding(out)};
-  auto kernel = select_float_kernel(
-      out.dtype(),
-      omarchy::ComputeKernel::FastRmsNormF32,
-      omarchy::ComputeKernel::FastRmsNormF16,
-      omarchy::ComputeKernel::FastRmsNormBF16);
+  omarchy::ComputeKernel kernel;
+  if (out.dtype() == float16 && omarchy::fused_trio_enabled()) {
+    // Trio pipeline: the near-copied RMS row body on the shared decode
+    // pipeline (params.matrix_n 0 is the norm mode).
+    kernel = omarchy::ComputeKernel::FastTrioNormF16;
+  } else {
+    kernel = select_float_kernel(
+        out.dtype(),
+        omarchy::ComputeKernel::FastRmsNormF32,
+        omarchy::ComputeKernel::FastRmsNormF16,
+        omarchy::ComputeKernel::FastRmsNormBF16);
+  }
   encoder.dispatch_compute(
       kernel,
       bindings,
