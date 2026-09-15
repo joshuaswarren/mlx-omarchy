@@ -1,6 +1,6 @@
 # Community hardware data snapshot
 
-Records: 13 | dataset generated_at: 2026-09-14T03:17:08.000Z | source: https://mlx-omarchy-community-data.joshua-s-warren.workers.dev
+Records: 13 | dataset generated_at: 2026-09-15T03:17:49.000Z | source: https://mlx-omarchy-community-data.joshua-s-warren.workers.dev
 
 Mirrored by `.github/workflows/community-data.yml` from the public
 read API. Summaries only; archive blobs stay on the endpoint.
