@@ -200,4 +200,19 @@ bool kv_direct_enabled();
 // decode GEMV group, and Add on the per-node path (the
 // MLX_OMARCHY_FUSED_CHAIN gate also covers it).
 bool fused_gemv_enabled();
+
+// Decode trio: MLX_OMARCHY_FUSED_TRIO=0 keeps f16 RMSNorm rows, the
+// fused SwiGLU chain dispatch, and RoPE pairs on their standalone
+// kernels and paths (the MLX_OMARCHY_FUSED_CHAIN gate also covers it).
+bool fused_trio_enabled();
+
+// Validates a planned (query, key) RoPE pair against the FastTrioRopePairF16
+// rope-pair contract, allocates the outputs, prepares the keys-side
+// producer-direct KV window when one is planned, and records the ONE
+// dispatch that rotates both tensors with the near-copied fast_rope
+// arithmetic (fast_trio.comp mode 1). Returns false having allocated
+// nothing when anything refuses; both nodes then take the ordinary
+// RoPE path unchanged. Defined in primitives.cpp beside
+// dispatch_quantized_gemv_group.
+bool dispatch_rope_pair(std::array<array, 2>& nodes, const Stream& stream);
 } // namespace mlx::core::omarchy

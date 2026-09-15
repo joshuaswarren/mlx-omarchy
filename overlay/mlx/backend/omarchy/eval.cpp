@@ -31,10 +31,34 @@ void init() {
 
 void eval(array& arr) {
   omarchy::trace::counters().gpu_primitive_dispatches++;
+  if (!arr.has_primitive() || arr.status() == array::Status::evaluated) {
+    // A nested settle eval (rope-pair pre-settle) already ran this
+    // node and detached it: its kernel is recorded and its data is
+    // resident. Re-running it would dispatch on detached inputs.
+    if (std::getenv("MLX_OMARCHY_TRIO_TRACE") != nullptr) {
+      std::fprintf(
+          stderr,
+          "[omarchy-eval] skip id=%zu settled=%d status=%d prim=%d\n",
+          arr.id(),
+          static_cast<int>(arr.data_shared_ptr() != nullptr),
+          static_cast<int>(arr.status()),
+          static_cast<int>(arr.has_primitive()));
+    }
+    return;
+  }
 #ifdef MLX_OMARCHY_GPU_PROFILING
   ++omarchy::trace::prim_counts()[arr.primitive().name()];
 #endif
   auto outputs = arr.outputs();
+  if (std::getenv("MLX_OMARCHY_TRIO_TRACE") != nullptr) {
+    std::fprintf(
+        stderr,
+        "[omarchy-eval] run id=%zu prim=%s ninputs=%zu settled=%d\n",
+        arr.id(),
+        arr.has_primitive() ? arr.primitive().name() : "<detached>",
+        arr.inputs().size(),
+        static_cast<int>(arr.data_shared_ptr() != nullptr));
+  }
   auto& stream = arr.primitive().stream();
   auto& encoder = omarchy::get_command_encoder(stream);
   // Open-batch state BEFORE this op records: a batch spans every op

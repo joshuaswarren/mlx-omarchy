@@ -3,8 +3,10 @@
 
 #include "mlx/backend/omarchy/fused_chain.h"
 
+#include <algorithm>
 #include <array>
 #include <cstdint>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <limits>
@@ -503,6 +505,26 @@ void dispatch_chain(
     params.operation = chain.leaf_offsets[leaves->first];
     params.lhs_size = chain.leaf_offsets[leaves->second];
     params.rhs_size = materialize_nodes ? 1u : 0u;
+    if (out.dtype() == float16 && fused_trio_enabled()) {
+      // The trio pipeline keeps the same near-copied swiglu arithmetic
+      // on the shared decode pipeline; out rides binding 4 and the
+      // materialized intermediates bindings 5/6 (the fast_trio.comp
+      // slot map). The ComputeParams swiglu mapping is unchanged.
+      std::array<ComputeBinding, 7> trio_bindings{
+          chain_binding(chain.leaves[leaves->first]),
+          chain_binding(chain.leaves[leaves->second]),
+          chain_binding(out),
+          chain_binding(out),
+          chain_binding(out),
+          chain_binding(materialize_nodes ? chain.node_arrays[0] : out),
+          chain_binding(materialize_nodes ? chain.node_arrays[1] : out)};
+      encoder.dispatch_compute(
+          ComputeKernel::FastTrioSwigluF16,
+          trio_bindings,
+          params,
+          compute_dispatch_group_count(chain.count / 4u));
+      return;
+    }
     std::array<ComputeBinding, 5> bindings{
         chain_binding(chain.leaves[leaves->first]),
         chain_binding(chain.leaves[leaves->second]),
@@ -610,6 +632,14 @@ struct EagerRole {
   EagerStep step;
 };
 
+// A planned decode RoPE pair (query, key): pending until the first
+// member evaluates, then done (one FastTrioRopePairF16 dispatch wrote both
+// outputs) or failed (both nodes take the ordinary RoPE path).
+struct RopePair {
+  std::array<array, 2> nodes;
+  enum class State : uint8_t { pending, done, failed } state{State::pending};
+};
+
 // A planned decode GEMV group: pending until its first member
 // evaluates, then done (every member and epilogue is written by the
 // one dispatch) or failed (every node takes its own path).
@@ -655,6 +685,8 @@ struct EagerFusionState {
   std::vector<SliceUpdatePair> slice_update_pairs;
   std::unordered_map<std::uintptr_t, size_t> rope_redirect_roles;
   std::unordered_map<std::uintptr_t, size_t> reshape_redirect_roles;
+  std::unordered_map<std::uintptr_t, size_t> rope_pair_roles;
+  std::vector<RopePair> rope_pairs;
 };
 
 thread_local EagerFusionState* eager_state = nullptr;
@@ -662,6 +694,50 @@ thread_local EagerFusionState* eager_state = nullptr;
 bool is_op(const array* node, const std::type_info& op) {
   return node && node->has_primitive() && typeid(node->primitive()) == op;
 }
+// Two RoPE offset inputs can share one buffer binding when they are the
+// same node, or when both are host-constant int scalars with an equal
+// value (the mlx_lm decode shape: cache.offset is a Python int, so each
+// rope call materializes its own scalar array). Host-constant means
+// status available and no primitive - nothing in flight can be writing
+// it, the same test rope_trig_gate uses before reading an offset.
+bool rope_offset_shared(const array& a, const array& b) {
+  if (a.id() == b.id()) {
+    return true;
+  }
+  return a.size() == 1 && b.size() == 1 && a.dtype() == int32 &&
+      b.dtype() == int32 && a.status() == array::Status::available &&
+      !a.has_primitive() && b.status() == array::Status::available &&
+      !b.has_primitive() && a.item<int>() == b.item<int>();
+}
+// Joins the captured rope neighbor names for the plan trace line.
+std::string joined_rope_neighbors(
+    const std::vector<std::string>& names) {
+  std::string joined;
+  for (const auto& name : names) {
+    joined += name;
+    joined += ",";
+  }
+  return joined;
+}
+// Plan-time trace for the RoPE pair scan (MLX_OMARCHY_TRIO_TRACE=1):
+// one line per decode-shaped plan, capped, so a no-claim is diagnosable.
+struct RopePairScanTrace {
+  size_t rope_nodes = 0;
+  size_t rope_forward_scalar = 0;
+  size_t rej_not_rope = 0;
+  size_t rej_node_inputs = 0;
+  size_t rej_node_offset = 0;
+  size_t rej_node_dtype = 0;
+  size_t rej_node_notforward = 0;
+  size_t rej_state = 0;
+  std::vector<std::string> rope_neighbor_after;
+  std::vector<std::string> rope_shapes;
+  size_t rej_offset = 0;
+  size_t rej_shape = 0;
+  size_t rej_claimed = 0;
+  size_t rej_redirect = 0;
+  size_t pairs = 0;
+};
 
 const array& dense_gemv_source(const array& x) {
   if (is_op(&x, typeid(Flatten)) && x.inputs().size() == 1 &&
@@ -1194,6 +1270,134 @@ EagerFusionScope::EagerFusionScope(const std::deque<array>& tape)
       pair.direct = true;
     }
   }
+  // Decode RoPE pair plan: two adjacent forward RoPE nodes sharing one
+  // scalar offset input, one stream, float16 storage, identical rope
+  // state (dims, traditional, base, scale, forward; no freqs), and no
+  // passthrough tail (dims == last-axis extent) fuse into ONE
+  // FastTrioRopePairF16 rope-pair dispatch when the first member evaluates.
+  // The keys side keeps any planned producer-direct KV window; the
+  // query side must not be one. Any runtime refusal un-plans the pair
+  // and both nodes take the ordinary RoPE path unchanged.
+  if (fused_trio_enabled()) {
+    RopePairScanTrace trace;
+    // The RoPE nodes of one decode step are NOT tape-adjacent: each
+    // rope call materializes its scalar offset between them and the
+    // cache write views interleave, so collect the rope subsequence in
+    // tape order and pair consecutive members (query, key).
+    std::vector<const array*> rope_nodes;
+    for (const auto& node : tape) {
+      if (!is_op(&node, typeid(fast::RoPE))) {
+        continue;
+      }
+      if (node.inputs().size() != 2) {
+        trace.rej_node_inputs += 1;
+        continue;
+      }
+      if (node.inputs()[1].size() != 1) {
+        trace.rej_node_offset += 1;
+        continue;
+      }
+      if (node.dtype() != float16) {
+        trace.rej_node_dtype += 1;
+        continue;
+      }
+      if (!std::get<5>(
+              static_cast<const fast::RoPE&>(node.primitive()).state())) {
+        trace.rej_node_notforward += 1;
+        continue;
+      }
+      if (trace.rope_shapes.size() < 6) {
+        trace.rope_shapes.push_back(
+            "idx" + std::to_string(static_cast<long>(&node - &tape.front())) +
+            ":" + std::to_string(node.shape(-2)) + "x" +
+            std::to_string(node.shape(-1)) + ":f" +
+            std::to_string(std::get<1>(
+                static_cast<const fast::RoPE&>(node.primitive()).state())) +
+            ":off" +
+            std::to_string(node.inputs()[1].status() ==
+                           array::Status::available));
+      }
+      rope_nodes.push_back(&node);
+    }
+    trace.rope_nodes = rope_nodes.size();
+    // Greedy sliding pairing: a stray unpairable rope node (47 vs 48 in
+    // one measured plan) shifts fixed-parity pairs onto cross-layer
+    // neighbors the runtime would have to refuse, so slide by one on a
+    // failed pair instead.
+    size_t i = 1;
+    while (i < rope_nodes.size()) {
+      const array& first = *rope_nodes[i - 1];
+      const array& second = *rope_nodes[i];
+      const auto& rope_first =
+          static_cast<const fast::RoPE&>(first.primitive());
+      const auto& rope_second =
+          static_cast<const fast::RoPE&>(second.primitive());
+      if (rope_second.state() != rope_first.state() ||
+          std::get<1>(rope_first.state()) % 2 != 0 ||
+          first.primitive().stream() != second.primitive().stream()) {
+        trace.rej_state += 2;
+        i += 1;
+        continue;
+      }
+      if (!rope_offset_shared(first.inputs()[1], second.inputs()[1])) {
+        trace.rej_offset += 2;
+        i += 1;
+        continue;
+      }
+      if (first.shape().size() != second.shape().size() ||
+          first.shape(-1) != second.shape(-1) ||
+          first.shape(-2) != second.shape(-2) ||
+          first.shape(-1) != std::get<1>(rope_first.state())) {
+        trace.rej_shape += 2;
+        i += 1;
+        continue;
+      }
+      if (claimed.count(first.id()) || claimed.count(second.id())) {
+        trace.rej_claimed += 2;
+        i += 1;
+        continue;
+      }
+      if (state->rope_redirect_roles.count(first.id())) {
+        trace.rej_redirect += 2;
+        i += 1;
+        continue;
+      }
+      const size_t index = state->rope_pairs.size();
+      state->rope_pair_roles.emplace(first.id(), index);
+      state->rope_pair_roles.emplace(second.id(), index);
+      state->rope_pairs.push_back(RopePair{{first, second}});
+      claimed.insert(first.id());
+      claimed.insert(second.id());
+      trace.pairs += 1;
+      i += 2;
+    }
+    static int trio_trace_plans = 0;
+    if (std::getenv("MLX_OMARCHY_TRIO_TRACE") != nullptr &&
+        trace.rope_nodes > 0 && trio_trace_plans < 3) {
+      ++trio_trace_plans;
+      std::fprintf(
+          stderr,
+          "[trio-plan] rope_nodes=%zu rope_forward_scalar=%zu "
+          "rej_node_inputs=%zu rej_node_offset=%zu rej_node_dtype=%zu "
+          "rej_node_notforward=%zu rej_state=%zu rej_offset=%zu "
+          "rej_shape=%zu rej_claimed=%zu rej_redirect=%zu "
+          "pairs_planned=%zu rope_neighbor_after=%s rope_shapes=%s\n",
+          trace.rope_nodes,
+          trace.rope_forward_scalar,
+          trace.rej_node_inputs,
+          trace.rej_node_offset,
+          trace.rej_node_dtype,
+          trace.rej_node_notforward,
+          trace.rej_state,
+          trace.rej_offset,
+          trace.rej_shape,
+          trace.rej_claimed,
+          trace.rej_redirect,
+          trace.pairs,
+          joined_rope_neighbors(trace.rope_neighbor_after).c_str(),
+          joined_rope_neighbors(trace.rope_shapes).c_str());
+    }
+  }
 }
 
 EagerFusionScope::~EagerFusionScope() {
@@ -1205,6 +1409,11 @@ bool fused_gemv_enabled() {
   return fused_chain_enabled() &&
       (std::getenv("MLX_OMARCHY_FUSED_GEMV") == nullptr ||
        env_flag("MLX_OMARCHY_FUSED_GEMV"));
+}
+bool fused_trio_enabled() {
+  return fused_chain_enabled() &&
+      (std::getenv("MLX_OMARCHY_FUSED_TRIO") == nullptr ||
+       env_flag("MLX_OMARCHY_FUSED_TRIO"));
 }
 
 bool kv_direct_enabled() {
@@ -1269,6 +1478,35 @@ void commit_values_kv_write(const array& sum_node) {
 bool try_eval_eager_fusion(array& node, const Stream& stream) {
   if (!eager_state) {
     return false;
+  }
+  if (auto rope_pair = eager_state->rope_pair_roles.find(node.id());
+      rope_pair != eager_state->rope_pair_roles.end()) {
+    auto& pair = eager_state->rope_pairs[rope_pair->second];
+    if (pair.state == RopePair::State::done) {
+      return true;
+    }
+    if (pair.state == RopePair::State::failed) {
+      return false;
+    }
+    if (pair.nodes[0].status() == array::Status::evaluated &&
+        pair.nodes[1].status() == array::Status::evaluated) {
+      // A settle pass already evaluated both members: the pair can pop
+      // inside a nested settle scope before the outer tape reaches it,
+      // and each scope plans the same pairs. One dispatch wrote both
+      // outputs; re-firing would only rewrite them.
+      pair.state = RopePair::State::done;
+      return true;
+    }
+    bool fired = dispatch_rope_pair(pair.nodes, stream);
+    pair.state = fired ? RopePair::State::done : RopePair::State::failed;
+    static int trio_run_trace = 0;
+    if (!fired && std::getenv("MLX_OMARCHY_TRIO_TRACE") != nullptr &&
+        trio_run_trace < 3) {
+      ++trio_run_trace;
+      std::fprintf(
+          stderr, "[trio-run] pair un-planned: runtime contract refused\n");
+    }
+    return pair.state == RopePair::State::done;
   }
   if (auto update = eager_state->slice_update_roles.find(node.id());
       update != eager_state->slice_update_roles.end()) {

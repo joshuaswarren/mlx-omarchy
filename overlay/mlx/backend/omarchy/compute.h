@@ -619,6 +619,14 @@ enum class ComputeKernel : uint16_t {
   QmmPrefillFmaL8C4F16,
   QmmPrefillFmaPreciseF16,
   MatmulBf16FmaL16C4,
+  // Decode trio pipelines (shaders/fast_trio.comp compiled three
+  // times, f16): near-copies of the standalone RMSNorm row, RoPE pair,
+  // and SwiGLU kernels. One source, one straight-line body per
+  // pipeline; a single mode-switched megashader measurably regressed
+  // decode tok/s on Honeykrisp. Append-only profile ids.
+  FastTrioNormF16,
+  FastTrioRopePairF16,
+  FastTrioSwigluF16,
   Custom,
   MatmulVecMultiBF16,
   // Finer-M twin of QmmPrefillCoopmatF16 (shaders/qmm_coopmat.comp with
