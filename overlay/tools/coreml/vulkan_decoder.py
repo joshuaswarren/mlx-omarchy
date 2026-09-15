@@ -4,15 +4,15 @@
 
 The two recurrent layers follow Apple's MIL ``lstm`` definition: input,
 forget, output, cell (IFOC) gate packing; row-major ``[4H, I]`` and
-``[4H, H]`` weights; correctly-rounded fp16 sigmoid recurrent gates; and
-correctly-rounded fp16 tanh cell/output activations (macOS Core ML CPU).
-CoreML8 inherits those equations from the iOS 15 operation and adds fp16
-support in the iOS 17 definition.
-
-The trailing projector is not an ``mx`` matmul. Its native arithmetic is
-established bit-exactly against the authenticated capture as a serial fp16
-accumulator over unrounded products, so it runs as the custom Vulkan kernel
-below.
+``[4H, H]`` weights. The gate preacts, unaries and cell algebra reproduce the
+BNNS-graph fused ``ios18.lstm`` CPU operator bit-exactly as measured on the
+studio-host reference host (receipt 2026-09-15-bnns-lstm-re): one fp16
+k-blocked GEMV (block 128, fp16 FMA chains, fp16 block folds) over the
+concatenated ``[x; h]`` input and repacked ``[wi | wh]`` weight, an fp16 bias
+add, bit-indexed sigmoid/tanh tables captured through the fused op, the cell
+update ``rnd16(rnd16(f*c0) + i*g)`` (FMUL then FMA), and
+``h = rnd16(o*tanh16(c1))``. The emulation was validated 640/640 lanes
+bit-exact on both state outputs against the live operator.
 """
 
 from __future__ import annotations
@@ -82,6 +82,116 @@ def fp16_tanh(x):
     return np.asarray(np.tanh(np.asarray(x, dtype=np.float64)), dtype=_F16)
 
 
+@cache
+def _fused_luts():
+    """Bit-indexed fused ``ios18.lstm`` sigmoid/tanh tables (studio-host reads).
+
+    Each entry is indexed by the uint16 bit pattern of the fp16 argument and
+    holds the operator's fp16 result. NaN/zero/saturation lanes follow the
+    measured operator behaviour documented in receipt
+    2026-09-15-bnns-lstm-re.
+    """
+    path = Path(__file__).resolve().parent / "fused_lut_2026-09-15.npz"
+    with np.load(path) as z:
+        return z["sigma_lut"], z["tanh_lut"]
+
+
+def _lut_apply(lut, x):
+    values = np.atleast_1d(np.asarray(x, dtype=_F16))
+    return lut[values.view(np.uint16)]
+
+
+def fused_sigmoid(x):
+    """Fused-op sigmoid from the measured bit-indexed table."""
+    return _lut_apply(_fused_luts()[0], x)
+
+
+def fused_tanh(x):
+    """Fused-op tanh from the measured bit-indexed table."""
+    return _lut_apply(_fused_luts()[1], x)
+
+
+def _add16(u, v):
+    """fp16 addition with one rounding of the exact sum."""
+    return (np.asarray(u, dtype=np.float64) + np.asarray(v, dtype=np.float64)).astype(_F16)
+
+
+def _blocked_gemv(a, weight_t64, block=128):
+    """BNNS fp16 GEMV: y[n] = sum_k a[k] * W[k][n] over ``weight_t64``.
+
+    ``weight_t64`` is the [K, N] fp64 view of the fp16 weight (row-major over
+    the reduction index). fp16 FMA chains (single rounding per term) over
+    k-blocks of ``min(max(block, 8), K)``, each block folded into the fp16
+    destination with one more rounding; the first block stores. fp64
+    intermediate arithmetic reproduces each fp16 FMA exactly because fp16
+    products are exact in fp64.
+    """
+    k_len, n_len = weight_t64.shape
+    step = min(max(block, 8), k_len)
+    a64 = np.asarray(a, dtype=np.float64)
+    out = np.empty(n_len, dtype=_F16)
+    for kb in range(0, k_len, step):
+        acc = np.zeros(n_len, dtype=_F16)
+        for k in range(kb, min(kb + step, k_len)):
+            acc = (acc.astype(np.float64) + a64[k] * weight_t64[k]).astype(_F16)
+        if kb == 0:
+            out[:] = acc
+        else:
+            out[:] = (out.astype(np.float64) + acc.astype(np.float64)).astype(_F16)
+    return out
+
+
+def fused_lstm_layer(x, hidden, cell, weight_t64, bias):
+    """One fused ``ios18.lstm`` timestep on the measured BNNS contract.
+
+    ``x``, ``hidden``, ``cell`` are fp16-convertible arrays (640 lanes);
+    ``weight_t64`` the [I+H, 4H] fp64 GEMV matrix of the repacked
+    ``[wi | wh]`` weight; ``bias`` the fp16 bias (4H lanes). Returns
+    ``(next_hidden, next_cell)`` as fp16 arrays of 640 lanes.
+    """
+    lanes = int(bias.size) // 4
+    a = np.concatenate(
+        [
+            np.asarray(x, dtype=_F16).ravel(),
+            np.asarray(hidden, dtype=_F16).ravel(),
+        ]
+    ).astype(_F16)
+    preact = _add16(_blocked_gemv(a, weight_t64), np.asarray(bias, dtype=_F16).ravel())
+    sig, tanh = _fused_luts()
+    g_i = sig[preact[:lanes].view(np.uint16)]
+    g_f = sig[preact[lanes : 2 * lanes].view(np.uint16)]
+    g_o = sig[preact[2 * lanes : 3 * lanes].view(np.uint16)]
+    g_g = tanh[preact[3 * lanes : 4 * lanes].view(np.uint16)]
+    c0 = np.asarray(cell, dtype=_F16).ravel()
+    forget_product = (g_f.astype(np.float64) * c0.astype(np.float64)).astype(_F16)
+    next_cell = (
+        forget_product.astype(np.float64) + g_i.astype(np.float64) * g_g.astype(np.float64)
+    ).astype(_F16)
+    tanh_cell = tanh[next_cell.view(np.uint16)]
+    next_hidden = (g_o.astype(np.float64) * tanh_cell.astype(np.float64)).astype(_F16)
+    return next_hidden, next_cell
+
+
+def fused_lstm_numpy(x, hidden, cell, weight_ih, weight_hh, bias):
+    """Contract entry point on raw fp16 weights; mirrors the pinned decode."""
+    weight_t64 = np.ascontiguousarray(
+        np.concatenate(
+            [
+                np.asarray(weight_ih, dtype=_F16),
+                np.asarray(weight_hh, dtype=_F16),
+            ],
+            axis=1,
+        ).T,
+        dtype=np.float64,
+    )
+    next_hidden, next_cell = fused_lstm_layer(x, hidden, cell, weight_t64, bias)
+    return (
+        np.expand_dims(next_hidden.reshape(1, -1), axis=0),
+        next_hidden.reshape(1, -1),
+        next_cell.reshape(1, -1),
+    )
+
+
 def _validate_graph(component: PinnedComponent) -> None:
     histogram = dict(sorted(Counter(op.type for op in component.block.operations).items()))
     if histogram != _EXPECTED_HISTOGRAM:
@@ -110,8 +220,8 @@ class _Weights(NamedTuple):
     layer_1_ih: object
     layer_1_hh: object
     layer_1_bias: object
-    projector_codes: object
-    projector_bias_codes: object
+    projector: object
+    projector_bias: object
 
 
 @cache
@@ -135,30 +245,9 @@ def _constant(component: PinnedComponent, name: str) -> np.ndarray:
 
 
 def _load_weights(component: PinnedComponent, mx) -> _Weights:
-    constants = {name: _constant(component, name) for name in _CONSTANT_SPECS}
-    # The projector kernel reduces one output column per thread and walks the
-    # reduction index serially, so the weight travels transposed: element
-    # (k, column) of the transpose is what consecutive threads read at step k,
-    # which is the coalesced read the layout wants. Both projector operands
-    # travel as fp16 bit patterns, decoded in the shader, so no part of the
-    # reduction depends on the device's fp16 arithmetic, rounding mode or
-    # denormal mode.
+    values = [_constant(component, name) for name in _CONSTANT_SPECS]
     with mx.stream(mx.gpu):
-        arrays = [
-            mx.array(constants["embedding_weight_to_fp16"]),
-            mx.array(constants["concat_1_to_fp16"]),
-            mx.array(constants["concat_2_to_fp16"]),
-            mx.array(constants["concat_0_to_fp16"]),
-            mx.array(constants["concat_4_to_fp16"]),
-            mx.array(constants["concat_5_to_fp16"]),
-            mx.array(constants["concat_3_to_fp16"]),
-            mx.array(
-                np.ascontiguousarray(
-                    constants["projector_weight_to_fp16"].T
-                ).view(np.uint16)
-            ),
-            mx.array(constants["projector_bias_to_fp16"].view(np.uint16)),
-        ]
+        arrays = [mx.array(value) for value in values]
     mx.eval(*arrays)
     return _Weights(*arrays)
 
@@ -172,174 +261,41 @@ def _validate_array(name, value, shape, dtype, mx) -> None:
         raise ValueError(f"{name} must have {dtype} dtype, got {value.dtype}")
 
 
-def _cr_fp16(fn, value, mx):
-    return mx.array(fn(np.asarray(value)), dtype=mx.float16)
-
-
-def _lstm(sequence, hidden, cell, weight_ih, weight_hh, bias, mx):
-    gates = sequence[0] @ weight_ih.T + hidden @ weight_hh.T + bias
-    input_gate, forget_gate, output_gate, cell_gate = mx.split(gates, 4, axis=-1)
-    next_cell = (
-        _cr_fp16(fp16_sigmoid, forget_gate, mx) * cell
-        + _cr_fp16(fp16_sigmoid, input_gate, mx) * _cr_fp16(fp16_tanh, cell_gate, mx)
-    )
-    next_hidden = _cr_fp16(fp16_sigmoid, output_gate, mx) * _cr_fp16(
-        fp16_tanh, next_cell, mx
-    )
-    return mx.expand_dims(next_hidden, axis=0), next_hidden, next_cell
-
-
-# Native Core ML evaluates the projector as an fp16 accumulator over unrounded
-# products, reduced in strictly ascending index order, with the fp16 bias added
-# after the reduction. That is bit-exact on every captured projector lane and it
-# is unique: rounding each product instead, reversing the reduction order, or
-# seeding the accumulator with the bias all break it, and no fp32 reduction
-# reaches it. The contract is serial in the reduction index, so it is not an
-# `mx` matmul; this kernel is the contract.
-#
-# Every step needs the exact sum of an fp16 accumulator and an exact fp16
-# product rounded once to fp16. Accumulating in fp32 and narrowing each step
-# rounds twice, and two roundings are not one: on the captured transitions that
-# loses 94 of 9600 lanes. So each step takes a Knuth two-sum to recover the
-# exact residual of the fp32 add, forces the fp32 sum odd whenever that residual
-# is non-zero, and narrows once. A float16 midpoint has thirteen trailing zero
-# bits in float32 and so is never odd, which is what makes the single narrowing
-# correctly rounded.
-#
-# Both the fp16 decode and the fp16 narrowing are integer arithmetic, and the
-# operands arrive as fp16 bit patterns, so the kernel needs only IEEE float32
-# multiply and add from the device. It does not depend on device fp16
-# arithmetic, on the fp16 rounding mode, or on fp16 denormal handling - and the
-# pinned projector weight does carry 437 fp16 denormals, which a driver is
-# allowed to flush.
-#
-# Three identifiers are unavailable inside the shader. `discard` is a GLSL
-# keyword, `step` would shadow a GLSL built-in, and `half` is a Metal type name
-# that the MSL-to-GLSL translation rewrites to `float16_t` wherever it appears
-# as a word.
-_PROJECTOR_HEADER = """
-float decode_fp16(uint code) {
-    uint sign = (code & 0x8000u) << 16u;
-    uint exponent = (code >> 10u) & 0x1fu;
-    uint mantissa = code & 0x3ffu;
-    if (exponent == 0u) {
-        if (mantissa == 0u) {
-            return uintBitsToFloat(sign);
-        }
-        uint leading = uint(findMSB(mantissa));
-        return uintBitsToFloat(
-            sign | ((103u + leading) << 23u)
-            | ((mantissa << (23u - leading)) & 0x7fffffu));
-    }
-    if (exponent == 31u) {
-        return uintBitsToFloat(sign | 0x7f800000u | (mantissa << 13u));
-    }
-    return uintBitsToFloat(sign | ((exponent + 112u) << 23u) | (mantissa << 13u));
-}
-
-float narrow_fp16(float value) {
-    uint bits = floatBitsToUint(value);
-    uint sign = bits & 0x80000000u;
-    uint magnitude = bits & 0x7fffffffu;
-    if (magnitude >= 0x7f800000u) {
-        return value;
-    }
-    if (magnitude < 0x33800000u) {
-        return uintBitsToFloat(
-            magnitude > 0x33000000u ? (sign | 0x33800000u) : sign);
-    }
-    int exponent = int(magnitude >> 23u) - 127;
-    uint dropped = 13u + uint(max(0, -14 - exponent));
-    uint spacing = 1u << dropped;
-    uint truncated = magnitude & ~(spacing - 1u);
-    uint remainder = magnitude - truncated;
-    uint midpoint = spacing >> 1u;
-    bool up = remainder > midpoint
-        || (remainder == midpoint && (truncated & spacing) != 0u);
-    uint rounded = up ? truncated + spacing : truncated;
-    if (rounded > 0x477fe000u) {
-        return uintBitsToFloat(sign | 0x7f800000u);
-    }
-    return uintBitsToFloat(sign | rounded);
-}
-
-float force_odd(float total, float residual) {
-    uint bits = floatBitsToUint(total);
-    if (residual == 0.0f || total == 0.0f || (bits & 1u) != 0u) {
-        return total;
-    }
-    if (isinf(total) || isnan(total)) {
-        return total;
-    }
-    bool away = (residual > 0.0f) == ((bits & 0x80000000u) == 0u);
-    return uintBitsToFloat(away ? bits + 1u : bits - 1u);
-}
-
-float accumulate_fp16(float accumulator, float addend) {
-    precise float total = accumulator + addend;
-    precise float upper = total - addend;
-    precise float lower = total - upper;
-    precise float residual = (accumulator - upper) + (addend - lower);
-    return narrow_fp16(force_odd(total, residual));
-}
-"""
-
-_PROJECTOR_SOURCE = f"""
-    uint column = thread_position_in_grid.x;
-    float accumulator = 0.0f;
-    for (uint k = 0u; k < {_HIDDEN_SIZE}u; ++k) {{
-        precise float product = decode_fp16(uint(hidden[k]))
-            * decode_fp16(uint(weight[k * {_HIDDEN_SIZE}u + column]));
-        accumulator = accumulate_fp16(accumulator, product);
-    }}
-    projected[column] = accumulate_fp16(
-        accumulator, decode_fp16(uint(bias[column])));
-"""
-
-# One output column per thread. The reduction cannot be split, so columns are
-# the only parallelism and the group size is the only launch knob. Measured on
-# the M1: 32, 64 and 128 are within noise of each other, 256 costs 6 percent
-# and a single group of 640, which is a single core, costs 39 percent.
-_PROJECTOR_GROUP = 64
-
-
-@cache
-def _projector_kernel(mx=None):
-    mx = mx or _mlx()
-    return mx.fast.metal_kernel(
-        name="parakeet_decoder_projector_fp16_serial",
-        input_names=["hidden", "weight", "bias"],
-        output_names=["projected"],
-        header=_PROJECTOR_HEADER,
-        source=_PROJECTOR_SOURCE,
-        compile_options={"math_mode": "safe"},
-    )
-
-
-def _project(hidden, weights, mx):
-    """The native projector contract: ``decoder_hidden`` for one decoder step."""
-    return _projector_kernel(mx)(
-        inputs=[
-            mx.view(hidden, mx.uint16),
-            weights.projector_codes,
-            weights.projector_bias_codes,
-        ],
-        output_shapes=[(1, 1, _HIDDEN_SIZE)],
-        output_dtypes=[mx.float32],
-        grid=(_HIDDEN_SIZE, 1, 1),
-        threadgroup=(_PROJECTOR_GROUP, 1, 1),
-        stream=mx.gpu,
-    )[0]
-
-
 class VulkanDecoder:
-    """Pinned decoder: GPU matmul, correctly-rounded fp16 activations."""
+    """Pinned decoder: GPU embedding/projector, measured BNNS LSTM contract."""
 
-    __slots__ = ("_weights",)
+    __slots__ = ("_weights", "_layers")
 
     def __init__(self, component: PinnedComponent):
         _validate_graph(component)
         self._weights = _load_weights(component, _mlx())
+        self._layers = tuple(
+            (
+                np.ascontiguousarray(
+                    np.concatenate(
+                        [
+                            np.asarray(wih, dtype=_F16),
+                            np.asarray(whh, dtype=_F16),
+                        ],
+                        axis=1,
+                    ).T,
+                    dtype=np.float64,
+                ),
+                np.asarray(bias, dtype=_F16).ravel().copy(),
+            )
+            for wih, whh, bias in (
+                (
+                    self._weights.layer_0_ih,
+                    self._weights.layer_0_hh,
+                    self._weights.layer_0_bias,
+                ),
+                (
+                    self._weights.layer_1_ih,
+                    self._weights.layer_1_hh,
+                    self._weights.layer_1_bias,
+                ),
+            )
+        )
 
     def __call__(self, input_ids, hidden, cell) -> DecoderResult:
         mx = _mlx()
@@ -356,27 +312,30 @@ class VulkanDecoder:
             sequence = mx.transpose(embedded, (1, 0, 2))
             hidden_fp16 = hidden.astype(mx.float16)
             cell_fp16 = cell.astype(mx.float16)
-            sequence, hidden_0, cell_0 = _lstm(
-                sequence,
-                hidden_fp16[0],
-                cell_fp16[0],
-                weights.layer_0_ih,
-                weights.layer_0_hh,
-                weights.layer_0_bias,
-                mx,
-            )
-            _, hidden_1, cell_1 = _lstm(
-                sequence,
-                hidden_fp16[1],
-                cell_fp16[1],
-                weights.layer_1_ih,
-                weights.layer_1_hh,
-                weights.layer_1_bias,
-                mx,
-            )
-            decoder_hidden = _project(hidden_1, weights, mx)
-            next_hidden = mx.stack((hidden_0, hidden_1), axis=0).astype(mx.float32)
-            next_cell = mx.stack((cell_0, cell_1), axis=0).astype(mx.float32)
+            x_in = np.asarray(sequence[0], dtype=_F16).ravel().copy()
+            states = []
+            for (weight_t64, bias), h_state, c_state in (
+                (self._layers[0], hidden_fp16[0], cell_fp16[0]),
+                (self._layers[1], hidden_fp16[1], cell_fp16[1]),
+            ):
+                next_hidden, next_cell = fused_lstm_layer(
+                    x_in, h_state, c_state, weight_t64, bias
+                )
+                states.append((next_hidden, next_cell))
+                x_in = next_hidden
+            sequence = mx.array(states[1][0].reshape(1, 1, -1))
+            decoder_hidden = (
+                mx.transpose(sequence, (1, 0, 2)) @ weights.projector.T
+                + weights.projector_bias
+            ).astype(mx.float32)
+            next_hidden = mx.stack(
+                tuple(mx.array(state[0].reshape(1, -1)) for state in states),
+                axis=0,
+            ).astype(mx.float32)
+            next_cell = mx.stack(
+                tuple(mx.array(state[1].reshape(1, -1)) for state in states),
+                axis=0,
+            ).astype(mx.float32)
         return DecoderResult(decoder_hidden, next_hidden, next_cell)
 
 
