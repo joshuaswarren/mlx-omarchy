@@ -97,6 +97,30 @@ Passing `--submit` publishes exactly this JSON and nothing else: the
 request is marked `archive: null`, so no archive exists on this path
 and one request carries the whole submission.
 
+
+### Porting omarchy-ane to a new SoC
+
+The quick report's `ane_port` section captures the driver-port facts a
+contributor needs to write the devicetree overlay for an Apple SoC the
+ANE driver does not support yet. Per `ane` node it records the full
+property set: MMIO `reg` (decoded address/size) and `reg-names`,
+`interrupts` with `interrupt-parent`, `iommus` with phandles resolved
+to DART paths, the ordered `power-domains` list, `status`, and the
+`compatible` strings. It also dumps every DART node (`reg`,
+`reg-names`, `compatible`, `#iommu-cells`), the PMGR power-domain
+children with their labels, the AIC `compatible`, and the phandle map.
+Runtime facts — `/proc/iomem` lines mentioning ane/dart, the loaded
+`ane` module version and srcversion, and redacted `dmesg` lines
+matching ane/dart/pmgr — ride along so the report also shows whether
+the driver bound on the reporting machine.
+
+A stock t8103 dtb ships no `ane` node; the report says so
+(`ane_node_present: false`) and still dumps DART, PMGR, and AIC, which
+is exactly what authoring the overlay requires. Compare your report
+against the worked t6001 example DTS in omarchy-ane
+(`ane/t6001-j316c-set-domains.dts`), then send overlay and driver
+changes to the [omarchy-ane repo](https://github.com/joshuaswarren/omarchy-ane).
+
 ### Path 2: full report, needs an installed MLX package
 
 `scripts/collect_deep.py` runs five sections: `quick`, `environment`,

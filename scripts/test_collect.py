@@ -92,7 +92,8 @@ class QuickReportStructure(unittest.TestCase):
         self.assertEqual(cc.dump_json(one), cc.dump_json(two))
         self.assertEqual(one["schema_version"], cc.SCHEMA_VERSION)
         self.assertEqual(one["report"], "mlx-omarchy-quick")
-        for section in ("host", "mesa", "mesa_package", "ane", "mlx"):
+        for section in ("host", "mesa", "mesa_package", "ane", "ane_port",
+                        "mlx"):
             self.assertIn(section, one)
         self.assertEqual(one["host"]["gpu"] if "gpu" in one["host"]
                          else one["mesa"]["gpu"]["driverName"],
@@ -435,7 +436,7 @@ class BuildPayload(unittest.TestCase):
             "schema_version", "kind", "generated_at", "arch", "model",
             "chip", "kernel", "mesa_driver", "mesa_device", "mlx_version",
             "mlx_device", "source_commit", "repo_dirty", "cpu_online",
-            "cpu_present", "hotplug_control", "ane_dt_node",
+            "cpu_present", "hotplug_control", "ane_dt_node", "ane_port",
             "ane_dt_compatible", "boot_chain", "cmdline", "core_shortfall",
             "benchmark", "redaction_summary", "files",
         ]))
@@ -686,8 +687,131 @@ class AneDevicetreeProbe(unittest.TestCase):
     def test_absent_devicetree_is_clean(self):
         out = cq._ane_devicetree("/no/such/tree")
         self.assertFalse(out["node"])
-        self.assertIsNone(out["compatible"])
 
+
+def _write_dt(base, relpath, props, dirs=False):
+    """Create one fake devicetree node: {name: bytes} props."""
+    path = os.path.join(base, relpath)
+    os.makedirs(path, exist_ok=True)
+    for name, raw in props.items():
+        with open(os.path.join(path, name), "wb") as fh:
+            fh.write(raw)
+
+
+class AnePortDevicetreeProbe(unittest.TestCase):
+    """The t6001-style tree carries the ane node; t8103 stock does not.
+
+    Either way the DART/PMGR/AIC dump must land so a contributor can
+    author the overlay without access to the machine.
+    """
+
+    @staticmethod
+    def _u32(*vals):
+        # One DT cell per value, exactly as a compiled dtb stores them.
+        return b"".join(v.to_bytes(4, "big") for v in vals)
+
+    def build_tree(self, tmp, with_ane):
+        _write_dt(tmp, "", {
+            "compatible": b"apple,t6001\x00apple,arm-platform\x00",
+        })
+        _write_dt(tmp, "dart@681004000", {
+            "compatible": b"apple,t6000-dart\x00",
+            "reg": self._u32(0x6, 0x81004000, 0, 0x4000),
+            "reg-names": b"dart\x00",
+            "#address-cells": self._u32(2),
+            "#size-cells": self._u32(0),
+            "#iommu-cells": self._u32(1),
+            "phandle": self._u32(0x1),
+        })
+        _write_dt(tmp, "aic", {
+            "compatible": b"apple,t6000-aic\x00apple,aic\x00",
+        })
+        _write_dt(tmp, "pmgr", {
+            "compatible": b"apple,t6000-pmgr\x00apple,pmgr\x00",
+        })
+        _write_dt(tmp, "pmgr/ane-sys", {
+            "compatible": b"apple,t6000-pmgr-pwrstate\x00",
+            "label": b"ane_sys\x00",
+        })
+        _write_dt(tmp, "pmgr/ane-sys-cpu", {
+            "compatible": b"apple,t6000-pmgr-pwrstate\x00",
+            "label": b"ane_sys_cpu\x00",
+        })
+        if with_ane:
+            _write_dt(tmp, "ane@26a000000", {
+                "compatible": b"apple,t6001-ane\x00apple,ane\x00",
+                "reg": self._u32(0x2, 0x6a000000, 0, 0x100000),
+                "reg-names": b"ane\x00",
+                "#address-cells": self._u32(2),
+                "#size-cells": self._u32(2),
+                "interrupts": self._u32(592, 0),
+                "interrupt-parent": self._u32(0x2),
+                "iommus": self._u32(0x1, 0),
+                "power-domains": self._u32(0x3, 0x4, 0x5),
+                "status": b"okay\x00",
+                "phandle": self._u32(0x6),
+            })
+            _write_dt(tmp, "aic", {"phandle": self._u32(0x2)})
+            _write_dt(tmp, "pmgr/ane-sys", {"phandle": self._u32(0x3)})
+            _write_dt(tmp, "pmgr/ane-sys-cpu", {"phandle": self._u32(0x4)})
+            # an extra unrelated domain proves phandle map covers pmgr
+            _write_dt(tmp, "pmgr/ps-ane-plain", {"phandle": self._u32(0x5)})
+
+    def test_t6001_style_tree_captures_port_fields(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.build_tree(tmp, with_ane=True)
+            out = cq._ane_port_devicetree(cc.Redactor(), base=tmp)
+        self.assertTrue(out["ane_node_present"])
+        ane = out["ane_nodes"]["ane@26a000000"]
+        self.assertEqual(ane["compatible"],
+                         ["apple,t6001-ane", "apple,ane"])
+        self.assertEqual(ane["reg"], ["0x26a000000/0x100000"])
+        self.assertEqual(ane["reg-names"], "ane")
+        self.assertEqual(ane["interrupts"], [592, 0])
+        self.assertEqual(ane["interrupt-parent"], [2])
+        self.assertEqual(ane["iommus"], [1, 0])
+        self.assertEqual(ane["iommus_resolved"], ["dart@681004000"])
+        self.assertEqual(ane["power-domains"], [3, 4, 5])
+        self.assertEqual(ane["status"], "okay")
+        self.assertIn("dart@681004000", out["darts"])
+        dart = out["darts"]["dart@681004000"]
+        self.assertEqual(dart["compatible"], "apple,t6000-dart")
+        self.assertEqual(dart["#iommu-cells"], [1])
+        self.assertEqual(out["aic"]["compatible"],
+                         ["apple,t6000-aic", "apple,aic"])
+        labels = [d["label"] for d in out["pmgr_domains"]]
+        self.assertEqual(labels, ["ane_sys", "ane_sys_cpu", None])
+        self.assertEqual(out["phandles"]["3"], "pmgr/ane-sys")
+
+    def test_t8103_stock_tree_still_dumps_dart_pmgr_aic(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.build_tree(tmp, with_ane=False)
+            # t8103 uses a t8103-compatible name set; the ane node is
+            # absent exactly as in packaged dtbs.
+            out = cq._ane_port_devicetree(cc.Redactor(), base=tmp)
+        self.assertFalse(out["ane_node_present"])
+        self.assertEqual(out["ane_nodes"], {})
+        self.assertIn("dart@681004000", out["darts"])
+        self.assertEqual(out["aic"]["compatible"],
+                         ["apple,t6000-aic", "apple,aic"])
+        self.assertEqual(len(out["pmgr_domains"]), 2)
+
+    def test_payload_carries_bounded_ane_port_summary(self):
+        quick = json.loads(json.dumps(BuildPayload.QUICK))
+        quick["ane_port"] = {"devicetree": {
+            "ane_node_present": True,
+            "ane_nodes": {"ane@26a000000": {"reg":
+                                            ["0x26a000000/0x100000"]}},
+            "darts": {"dart@681004000": {}},
+            "pmgr_domains": [{"label": "ane_sys"}],
+            "aic": {"compatible": ["apple,t6000-aic"]},
+        }}
+        payload = cc.build_payload("quick", quick, {})
+        self.assertEqual(
+            payload["ane_port"],
+            "present=true ane@26a000000=0x26a000000/0x100000 darts=1 "
+            "pmgr_domains=1 aic=apple,t6000-aic")
+        self.assertIsNone(cc.build_payload("quick", {}, {})["ane_port"])
 
 class PayloadSchemaContract(unittest.TestCase):
     """build_payload and the pinned schema must agree on the key set."""

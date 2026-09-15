@@ -352,6 +352,23 @@ def build_payload(kind, quick, manifest, generated_at=None, benchmark=None):
             "median_ms": row.get("median_ms"),
         })
     native = is_native_macos(host, manifest)
+    # Bounded driver-port summary: enough for fleet queries (does this
+    # SoC expose the ane node, how many DARTs and PMGR domains, which
+    # AIC) without shipping the full devicetree dump in every payload.
+    port = (quick.get("ane_port") or {}).get("devicetree") or {}
+    port_parts = [
+        "present=" + str(bool(port.get("ane_node_present"))).lower()]
+    for name, props in sorted((port.get("ane_nodes") or {}).items()):
+        regs = props.get("reg") if isinstance(props, dict) else None
+        port_parts.append(f"{name}={regs[0] if regs else 'no-reg'}")
+    port_parts.append(f"darts={len(port.get('darts') or {})}")
+    port_parts.append(
+        f"pmgr_domains={len(port.get('pmgr_domains') or [])}")
+    aic_compat = (port.get("aic") or {}).get("compatible") or []
+    if aic_compat:
+        port_parts.append(f"aic={aic_compat[0]}")
+    ane_port = (" ".join(port_parts)[:1024]
+                if quick.get("ane_port") else None)
     kernel = host.get("kernel_release")
     if native:
         shortfall_flag = None
@@ -381,6 +398,7 @@ def build_payload(kind, quick, manifest, generated_at=None, benchmark=None):
             if isinstance(cpu.get("hotplug_control"), bool) else None,
         "ane_dt_node": ane_dt.get("node")
             if isinstance(ane_dt.get("node"), bool) else None,
+        "ane_port": ane_port or None,
         "ane_dt_compatible": ane_compat_blob[:512] if ane_compat_blob
         else None,
         "boot_chain": boot_chain[:512] or None,

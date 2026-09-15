@@ -30,6 +30,7 @@
     "ane_dt_node": { "type": ["boolean", "null"] },
     "ane_dt_compatible": { "type": ["string", "null"], "maxLength": 512 },
     "boot_chain": { "type": ["string", "null"], "maxLength": 512 },
+    "ane_port": { "type": ["string", "null"], "maxLength": 1024 },
     "cmdline": { "type": ["string", "null"], "maxLength": 1024 },
     "core_shortfall": { "type": ["boolean", "null"] },
     "benchmark": {

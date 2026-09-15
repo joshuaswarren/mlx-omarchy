@@ -6,7 +6,9 @@ Silicon machine, which kernel, which Mesa/Honeykrisp Vulkan stack, is the
 ANE visible, and which mlx-omarchy wheel is installed. It also records
 the CPU topology (present cores versus online), the boot-chain firmware
 identity from the devicetree /chosen node, the redacted kernel command
-line, and whether the booted devicetree carries an ANE node. It finishes
+line, whether the booted devicetree carries an ANE node, and the full
+driver-port devicetree capture (ane node, DARTs, PMGR domains, AIC)
+for porting omarchy-ane to a new SoC. It finishes
 in seconds, downloads nothing, and never touches the network.
 
 On macOS, it records native Mac, OS, and Metal facts instead of Linux
@@ -228,6 +230,219 @@ def _ane_devicetree(base=DT_BASE):
         out["compatible"] = sorted(set(matches))[:8]
     return out
 
+def _read_dt_raw(name, base=DT_BASE):
+    """Raw property bytes; None when absent."""
+    try:
+        with open(os.path.join(base, name), "rb") as fh:
+            return fh.read()
+    except OSError:
+        return None
+
+
+def _dt_strings(raw):
+    """Null-terminated string list from a devicetree property blob."""
+    parts = [p for p in raw.split(b"\x00") if p]
+    try:
+        texts = [p.decode("utf-8") for p in parts]
+    except UnicodeDecodeError:
+        return None
+    if any(not t.isprintable() for t in texts):
+        return None
+    return texts
+
+
+def _dt_u32s(raw):
+    """Big-endian u32 cell list from a devicetree property blob."""
+    if len(raw) % 4 or not raw:
+        return None
+    return [int.from_bytes(raw[i:i + 4], "big")
+            for i in range(0, len(raw), 4)]
+
+
+def _dt_reg(raw, base):
+    """reg as ["0xADDR/0xSIZE", ...] using the node's own cell counts."""
+    cells = _dt_u32s(raw)
+    if cells is None:
+        return None
+
+    def count(name, default):
+        raw_n = _read_dt_raw(name, base)
+        vals = _dt_u32s(raw_n) if raw_n else None
+        return vals[0] if vals else default
+
+    ac = count("#address-cells", 2)
+    sc = count("#size-cells", 1)
+    width = ac + sc
+    out = []
+    for i in range(0, len(cells) - width + 1, width):
+        addr = 0
+        for c in cells[i:i + ac]:
+            addr = (addr << 32) | c
+        size = 0
+        for c in cells[i + ac:i + width]:
+            size = (size << 32) | c
+        out.append(f"0x{addr:x}/0x{size:x}")
+    return out
+
+
+def _dt_props(node_dir, redactor, cap=16):
+    """Every property of one devicetree node, decoded and bounded.
+
+    Strings stay strings, reg gets address/size decoding, everything
+    numeric becomes a u32 cell list.
+    """
+    out = {}
+    for name in sorted(os.listdir(node_dir)):
+        path = os.path.join(node_dir, name)
+        if not os.path.isfile(path):
+            continue
+        try:
+            with open(path, "rb") as fh:
+                raw = fh.read(4096)
+        except OSError:
+            continue
+        if name == "reg":
+            value = _dt_reg(raw, node_dir)
+        else:
+            value = _dt_strings(raw)
+            if value is not None and len(value) == 1:
+                value = value[0]
+            elif value is None:
+                value = _dt_u32s(raw)
+            if value is None:
+                value = raw[:64].hex()
+        if isinstance(value, list):
+            value = value[:cap]
+        elif isinstance(value, str):
+            value = redactor.apply(value[:512])
+        out[name] = value
+    return out
+
+
+def _ane_port_devicetree(redactor, base=DT_BASE):
+    """Everything a contributor needs to port omarchy-ane to this SoC.
+
+    Captures the ane node(s) in full (MMIO reg, reg-names, IRQs, iommus,
+    power-domains, status, compatible), every DART node, the PMGR
+    power-domain children with their labels, and the AIC compatible.
+    A tree with NO ane node still dumps DART/PMGR/AIC: that is exactly
+    what authoring the overlay requires.
+    """
+    ane_nodes = {}
+    darts = {}
+    phandles = {}
+    pmgr_domains = []
+    aic = None
+    for dirpath, dirs, _files in os.walk(base):
+        dirs.sort()
+        compat = _dt_strings(_read_dt_raw("compatible", dirpath) or b"") \
+            or []
+        rel = os.path.relpath(dirpath, base)
+        ph = _dt_u32s(_read_dt_raw("phandle", dirpath) or b"")
+        if ph:
+            phandles[ph[0]] = rel
+        named = bool(re.search(r"(?:^|/)ane(?:@[0-9a-f]+)?$", dirpath))
+        hit = [t for t in compat if t == "apple,ane" or t.endswith("-ane")]
+        if named or hit:
+            ane_nodes[rel] = _dt_props(dirpath, redactor)
+        if any(t.startswith("apple,dart") for t in compat) \
+                or re.search(r"(?:^|/)dart[0-9a-f@-]", rel):
+            darts[rel] = _dt_props(dirpath, redactor)
+        if any(t == "apple,pmgr" for t in compat):
+            for child in sorted(os.listdir(dirpath)):
+                cpath = os.path.join(dirpath, child)
+                if not os.path.isdir(cpath):
+                    continue
+                ccompat = _dt_strings(
+                    _read_dt_raw("compatible", cpath) or b"") or []
+                label = _dt_strings(_read_dt_raw("label", cpath) or b"")
+                pmgr_domains.append({
+                    "path": os.path.relpath(cpath, base),
+                    "label": (label or [None])[0],
+                    "compatible": ccompat[:8],
+                })
+        if "apple,aic" in compat and aic is None:
+            aic = {"path": rel, "compatible": compat[:8]}
+    # Resolve iommu phandles to DART paths so the contributor does not
+    # have to do phandle arithmetic by hand. Each entry is one phandle
+    # plus #iommu-cells specifiers from the target DART.
+    for props in ane_nodes.values():
+        iommus = props.get("iommus")
+        if not isinstance(iommus, list):
+            continue
+        resolved = []
+        i = 0
+        while i < len(iommus) and len(resolved) < 8:
+            cell = iommus[i]
+            i += 1
+            if not isinstance(cell, int):
+                continue
+            target = phandles.get(cell, f"phandle:{cell}")
+            resolved.append(target)
+            dart = darts.get(target) or {}
+            ncells = dart.get("#iommu-cells")
+            if isinstance(ncells, list) and ncells and \
+                    isinstance(ncells[0], int):
+                i += ncells[0]
+        props["iommus_resolved"] = resolved
+    return {
+        "ane_node_present": bool(ane_nodes),
+        "ane_nodes": ane_nodes,
+        "darts": darts,
+        "pmgr_domains": pmgr_domains[:64],
+        "aic": aic,
+        "phandles": {str(k): phandles[k] for k in sorted(phandles)},
+    }
+
+
+def _ane_port_runtime(redactor):
+    """Live runtime facts about the ane driver, redacted and bounded."""
+    out = {"iomem": None, "module_version": None, "srcversion": None,
+           "loaded": None, "dmesg": None}
+    try:
+        with open("/proc/iomem", "r", encoding="utf-8",
+                  errors="replace") as fh:
+            lines = [redactor.apply(line.rstrip("\n")[:512])
+                     for line in fh
+                     if re.search(r"ane|dart", line, re.I)]
+        out["iomem"] = lines[:32] or None
+    except OSError:
+        pass
+    for key, name in (("module_version", "version"),
+                      ("srcversion", "srcversion")):
+        try:
+            with open(os.path.join("/sys/module/ane", name),
+                      "r", encoding="utf-8") as fh:
+                out[key] = redactor.apply(fh.read().strip()[:128]) or None
+        except OSError:
+            pass
+    try:
+        with open("/proc/modules", "r", encoding="utf-8") as fh:
+            for line in fh:
+                if line.startswith("ane "):
+                    out["loaded"] = redactor.apply(line.strip()[:256])
+                    break
+    except OSError:
+        pass
+    dmesg = run_tool(["sh", "-c",
+                      "dmesg 2>/dev/null | grep -iE 'ane|dart|pmgr' "
+                      "| tail -n 64"],
+                     redactor, label="dmesg ane/dart/pmgr", timeout=15)
+    if dmesg["exit_code"] == 0 and dmesg["stdout"].strip():
+        out["dmesg"] = [redactor.apply(line[:512])
+                        for line in dmesg["stdout"].splitlines()[-64:]]
+    return out
+
+
+def probe_ane_port(redactor):
+    """Driver-port capture: devicetree plus live ane driver facts."""
+    if platform.system() == "Darwin":
+        return collect_macos.not_applicable()
+    out = {"available": True}
+    out["devicetree"] = _ane_port_devicetree(redactor)
+    out["runtime"] = _ane_port_runtime(redactor)
+    return out
+
 
 def _device_blocks(text):
     """Split `vulkaninfo --summary` into one dict per GPUn: block."""
@@ -300,7 +515,6 @@ def probe_mesa_package(redactor):
                           "mesa"], redactor, label="dpkg-query mesa",
                          timeout=15),
     }
-
 
 def probe_ane(redactor):
     """Apple Neural Engine visibility: device node and libane."""
@@ -397,6 +611,7 @@ DEFAULT_PROBES = {
     "mesa": probe_mesa,
     "mesa_package": probe_mesa_package,
     "ane": probe_ane,
+    "ane_port": probe_ane_port,
     "mlx": probe_mlx,
 }
 
