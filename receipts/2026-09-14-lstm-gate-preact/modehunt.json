@@ -1,0 +1,148 @@
+{
+ "hunt": {
+  "L0_f": {
+   "resolved": 8417,
+   "scores": {
+    "f16_pairwise": 209,
+    "f16_seq": 209,
+    "f32_pairwise": 207,
+    "f32_seq": 207,
+    "f64_exact": 3541,
+    "gpu_dump": 3652,
+    "hidfirst_f32": 207,
+    "packed_f32": 207,
+    "splitk4_f32": 207,
+    "two_f32": 207,
+    "two_f32_r16each": 207,
+    "vulkan_3op": 3652,
+    "vulkan_bias_in": 3553
+   }
+  },
+  "L0_g": {
+   "resolved": 9599,
+   "scores": {
+    "f16_pairwise": 5773,
+    "f16_seq": 5780,
+    "f32_pairwise": 5773,
+    "f32_seq": 5773,
+    "f64_exact": 7816,
+    "gpu_dump": 7838,
+    "hidfirst_f32": 5773,
+    "packed_f32": 5773,
+    "splitk4_f32": 5773,
+    "two_f32": 5773,
+    "two_f32_r16each": 5773,
+    "vulkan_3op": 7837,
+    "vulkan_bias_in": 7835
+   }
+  },
+  "L0_i": {
+   "resolved": 9567,
+   "scores": {
+    "f16_pairwise": 3061,
+    "f16_seq": 3061,
+    "f32_pairwise": 3056,
+    "f32_seq": 3056,
+    "f64_exact": 5975,
+    "gpu_dump": 6057,
+    "hidfirst_f32": 3056,
+    "packed_f32": 3056,
+    "splitk4_f32": 3056,
+    "two_f32": 3056,
+    "two_f32_r16each": 3056,
+    "vulkan_3op": 6058,
+    "vulkan_bias_in": 6026
+   }
+  },
+  "L0_o": {
+   "resolved": 9280,
+   "scores": {
+    "f16_pairwise": 1639,
+    "f16_seq": 1635,
+    "f32_pairwise": 1635,
+    "f32_seq": 1635,
+    "f64_exact": 4461,
+    "gpu_dump": 4581,
+    "hidfirst_f32": 1635,
+    "packed_f32": 1635,
+    "splitk4_f32": 1635,
+    "two_f32": 1635,
+    "two_f32_r16each": 1635,
+    "vulkan_3op": 4581,
+    "vulkan_bias_in": 4520
+   }
+  },
+  "L1n_f": {
+   "resolved": 9599,
+   "scores": {
+    "f16_pairwise": 62,
+    "f16_seq": 66,
+    "f32_pairwise": 62,
+    "f32_seq": 62,
+    "f64_exact": 101,
+    "gpu_dump": 4703,
+    "hidfirst_f32": 62,
+    "packed_f32": 62,
+    "splitk4_f32": 62,
+    "two_f32": 62,
+    "two_f32_r16each": 62,
+    "vulkan_3op": 99,
+    "vulkan_bias_in": 99
+   }
+  },
+  "L1n_g": {
+   "resolved": 9600,
+   "scores": {
+    "f16_pairwise": 309,
+    "f16_seq": 310,
+    "f32_pairwise": 309,
+    "f32_seq": 309,
+    "f64_exact": 477,
+    "gpu_dump": 5349,
+    "hidfirst_f32": 309,
+    "packed_f32": 309,
+    "splitk4_f32": 309,
+    "two_f32": 309,
+    "two_f32_r16each": 309,
+    "vulkan_3op": 477,
+    "vulkan_bias_in": 477
+   }
+  },
+  "L1n_i": {
+   "resolved": 9599,
+   "scores": {
+    "f16_pairwise": 32,
+    "f16_seq": 26,
+    "f32_pairwise": 32,
+    "f32_seq": 32,
+    "f64_exact": 48,
+    "gpu_dump": 5724,
+    "hidfirst_f32": 32,
+    "packed_f32": 32,
+    "splitk4_f32": 32,
+    "two_f32": 32,
+    "two_f32_r16each": 32,
+    "vulkan_3op": 49,
+    "vulkan_bias_in": 48
+   }
+  },
+  "L1n_o": {
+   "resolved": 9596,
+   "scores": {
+    "f16_pairwise": 6,
+    "f16_seq": 5,
+    "f32_pairwise": 6,
+    "f32_seq": 6,
+    "f64_exact": 9,
+    "gpu_dump": 5139,
+    "hidfirst_f32": 6,
+    "packed_f32": 6,
+    "splitk4_f32": 6,
+    "two_f32": 6,
+    "two_f32_r16each": 6,
+    "vulkan_3op": 12,
+    "vulkan_bias_in": 10
+   }
+  }
+ }
+}

@@ -1,0 +1,56 @@
+{
+ "A_sep_biafter": {
+  "cell_bitexact": 0,
+  "hidden_bitexact": 0,
+  "lanes": 19200
+ },
+ "B_packed": {
+  "cell_bitexact": 0,
+  "hidden_bitexact": 0,
+  "lanes": 19200
+ },
+ "C_biasingemm": {
+  "cell_bitexact": 0,
+  "hidden_bitexact": 0,
+  "lanes": 19200
+ },
+ "D_hidfirst": {
+  "cell_bitexact": 0,
+  "hidden_bitexact": 0,
+  "lanes": 19200
+ },
+ "E_fp16_perop": {
+  "cell_bitexact": 1,
+  "hidden_bitexact": 1,
+  "lanes": 19200
+ },
+ "elapsed_s": 18.9,
+ "fused_plan": [
+  {
+   "op": "ios18.lstm",
+   "preferred": "MLCPUComputeDevice"
+  }
+ ],
+ "host": {
+  "chip": "Apple M1 Ultra",
+  "coremltools": "9.0",
+  "hostname": "MacStudio.local",
+  "hw_model": "Mac13,2",
+  "macos": "26.6.2",
+  "numpy": "1.26.4",
+  "python": "3.11.16"
+ },
+ "pin": {
+  "L0": {
+   "cases": 15,
+   "cell_bitexact": 15,
+   "hidden_bitexact": 15
+  },
+  "L1n": {
+   "cases": 15,
+   "cell_bitexact": 15,
+   "hidden_bitexact": 15
+  }
+ },
+ "schema": "mlx-omarchy.fused-lstm-gate-preact/6"
+}
