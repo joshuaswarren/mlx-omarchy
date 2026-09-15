@@ -1,0 +1,82 @@
+{
+ "L0_i_3op": {
+  "std": 6058,
+  "composition": 1895,
+  "ok": 9567
+ },
+ "L0_i_f64": {
+  "std": 5975,
+  "composition": 1899,
+  "ok": 9567
+ },
+ "L0_f_3op": {
+  "std": 3652,
+  "composition": 692,
+  "ok": 8417
+ },
+ "L0_f_f64": {
+  "std": 3541,
+  "composition": 695,
+  "ok": 8417
+ },
+ "L0_o_3op": {
+  "std": 4581,
+  "composition": 1555,
+  "ok": 9280
+ },
+ "L0_o_f64": {
+  "std": 4461,
+  "composition": 1559,
+  "ok": 9280
+ },
+ "L0_g_3op": {
+  "std": 7837,
+  "composition": 1151,
+  "ok": 9599
+ },
+ "L0_g_f64": {
+  "std": 7816,
+  "composition": 1140,
+  "ok": 9599
+ },
+ "L1n_i_3op": {
+  "std": 5724,
+  "composition": 2629,
+  "ok": 9599
+ },
+ "L1n_i_f64": {
+  "std": 5487,
+  "composition": 2606,
+  "ok": 9599
+ },
+ "L1n_f_3op": {
+  "std": 4702,
+  "composition": 1713,
+  "ok": 9599
+ },
+ "L1n_f_f64": {
+  "std": 4402,
+  "composition": 1739,
+  "ok": 9599
+ },
+ "L1n_o_3op": {
+  "std": 5142,
+  "composition": 1553,
+  "ok": 9596
+ },
+ "L1n_o_f64": {
+  "std": 4857,
+  "composition": 1582,
+  "ok": 9596
+ },
+ "L1n_g_3op": {
+  "std": 5349,
+  "composition": 2716,
+  "ok": 9600
+ },
+ "L1n_g_f64": {
+  "std": 5248,
+  "composition": 2726,
+  "ok": 9600
+ }
+}

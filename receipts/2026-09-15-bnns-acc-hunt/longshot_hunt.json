@@ -1,0 +1,68 @@
+{
+ "totals": {
+  "seed_b_f32seq": 41789,
+  "seed_b_f16seq": 27511,
+  "bseed_x_half_seq": 41788,
+  "p16_blk128_f64part_f32": 41594,
+  "bf16_c16_320": 38824
+ },
+ "detail": {
+  "L0_i": {
+   "seed_b_f32seq": 5976,
+   "seed_b_f16seq": 5431,
+   "bseed_x_half_seq": 5975,
+   "p16_blk128_f64part_f32": 6001,
+   "bf16_c16_320": 5758
+  },
+  "L0_f": {
+   "seed_b_f32seq": 3541,
+   "seed_b_f16seq": 2511,
+   "bseed_x_half_seq": 3541,
+   "p16_blk128_f64part_f32": 3463,
+   "bf16_c16_320": 3267
+  },
+  "L0_o": {
+   "seed_b_f32seq": 4462,
+   "seed_b_f16seq": 3662,
+   "bseed_x_half_seq": 4462,
+   "p16_blk128_f64part_f32": 4444,
+   "bf16_c16_320": 4180
+  },
+  "L0_g": {
+   "seed_b_f32seq": 7815,
+   "seed_b_f16seq": 7503,
+   "bseed_x_half_seq": 7815,
+   "p16_blk128_f64part_f32": 7808,
+   "bf16_c16_320": 7686
+  },
+  "L1n_i": {
+   "seed_b_f32seq": 5486,
+   "seed_b_f16seq": 2238,
+   "bseed_x_half_seq": 5488,
+   "p16_blk128_f64part_f32": 5460,
+   "bf16_c16_320": 4959
+  },
+  "L1n_f": {
+   "seed_b_f32seq": 4400,
+   "seed_b_f16seq": 1961,
+   "bseed_x_half_seq": 4402,
+   "p16_blk128_f64part_f32": 4354,
+   "bf16_c16_320": 3893
+  },
+  "L1n_o": {
+   "seed_b_f32seq": 4861,
+   "seed_b_f16seq": 1023,
+   "bseed_x_half_seq": 4857,
+   "p16_blk128_f64part_f32": 4802,
+   "bf16_c16_320": 4251
+  },
+  "L1n_g": {
+   "seed_b_f32seq": 5248,
+   "seed_b_f16seq": 3182,
+   "bseed_x_half_seq": 5248,
+   "p16_blk128_f64part_f32": 5262,
+   "bf16_c16_320": 4830
+  }
+ },
+ "ok": 75257
+}
