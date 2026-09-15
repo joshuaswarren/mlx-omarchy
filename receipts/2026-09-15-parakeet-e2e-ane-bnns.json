@@ -1,0 +1,179 @@
+{
+  "schema": "mlx-omarchy.parakeet-e2e-ane-encoder/1",
+  "date": "2026-09-15",
+  "phase": "7 (end-to-end transcription): vulkan mel + ANE encoder islands A+B+C + BNNS fused-LSTM vulkan decoder (origin/main 17293b51)",
+  "plan": "docs/plans/2026-09-12-coreml-parakeet-ane-plan.md",
+  "result": "DIVERGED at emission 101 (was emission 99 on 2026-09-14)",
+  "status": "diverged",
+  "headline": "The BNNS fused-LSTM decoder advanced the ANE-encoder E2E prefix from 99/105 to 101/104 with the native emission count now matched (104, was 105); the encoder reproduced its pin b3d60c81 byte-for-byte, and the remaining flip is emission 101 at frame 373 - the decision-142 zero-gap spot the BNNS receipts already flagged - emitting 8029 where native emits 7892.",
+  "source": {
+    "origin_main": "17293b5135077bbc8e508eec3c4856612a9e10fa",
+    "origin_main_subject": "receipts: BNNS fused-LSTM accumulator contract closed at 99.98% on captured gates; live decode token-exact (e101=7892)",
+    "decoder_landing": "a5a44906 coreml: BNNS fused LSTM decoder; decision 142 token 7892 gap 0.0",
+    "stack": [
+      "17293b51 receipts: BNNS accumulator contract closed",
+      "a5a44906 coreml: BNNS fused LSTM decoder",
+      "47faeb95 receipts: BNNS accumulator hunt best form",
+      "deb9c72b projector serial fp16 reduction (prior E2E base)"
+    ],
+    "did_not_merge": "63c1d3cf",
+    "vulkan_decoder_py_sha256": "637f077ece00025e5be3c341db256c8933ae19655804d3439490709d9ebc60ef",
+    "fused_lut_npz_sha256": "5a7591b89185b060ccf4f9135e6460a7429fe9988fad265b035e1dc3137b4cb7",
+    "pkg": "/var/tmp/ParakeetE2EAneBnns/pkg (prior pkg with only vulkan_decoder.py + fused_lut_2026-09-15.npz replaced from 17293b51; all other 40 files sha-verified identical to 17293b51 overlay/tools/coreml)",
+    "vulkan_encoder_py_sha256": "cd858ed352f6b0d25e035643cef3e5bd43ad689614fe7e396a3f7af1d4edec6d",
+    "encoder_runner": "/var/tmp/ParakeetE2EAne-stage/vulkan_encoder.py (3-island script, islands ABC default, unchanged from 2026-09-14 run)",
+    "e2e_runner": "/var/tmp/ParakeetE2E/parakeet_e2e.py sha256 1623707880831c963514eb07b533a3e707bfda6ce05208932a0a4522b10f12a7 (unchanged)"
+  },
+  "host": {
+    "hostname": "jwm1-linux",
+    "kernel": "7.1.6-1-1-ARCH",
+    "machine": "aarch64",
+    "boot_id": "95872130-fd28-4d67-8247-03a0e8b61202"
+  },
+  "ane_module": {
+    "sysfs_version": "6fa243a",
+    "device": "/dev/accel/accel0",
+    "pre_run_workers": 0,
+    "post_run": "worker is a one-shot process per submit; 72 starts, 72 exits, 0 timeouts"
+  },
+  "gpu_lock": {
+    "path": "/tmp/m1-gpu.lock",
+    "protocol": "flock -w 900, never unlink, never steal",
+    "pre_run": "free"
+  },
+  "mlx": {
+    "version": "0.32.2.dev202609121216+8f6de34c",
+    "device": "Apple M1 (G13G B1)",
+    "architecture": "honeykrisp",
+    "libmlx_sha256": "0947c063b4a370df90f1242b8657baf74daeac42208fe148a929f0b8c2374640",
+    "note": "Same venv-agxgen wheel as the 2026-09-14 ANE E2E, so mel+encoder stages are apples-to-apples; only the decoder package changed."
+  },
+  "worker": {
+    "path": "/var/tmp/jwm1-select-island-exec2/mlx-omarchy-ane-worker",
+    "sha256": "762dd1de868b52e4d6ffa30e18d842d9341db463b06aef2355f18fb1eb248929",
+    "libane": "/var/tmp/AneWorkerValidation-c05ba1df/receipts/2026-09-13-ane-worker-validation/libane.so",
+    "libane_sha256": "1ab9d95debcc8b5fee3b6653dfce0b50412bc7efef43c2d2167dc83ce270ca49"
+  },
+  "stages": {
+    "audio_load": { "pass": true, "wall_ms": 361.96, "notes": "pinned FLAC sha256 30885601173f96b0d8ddd020dc959b055c6c1582b85a33e3fcab8c4b08ed94c2" },
+    "mel_frontend": { "pass": true, "wall_ms": 9830.162, "mel_bit_exact": true, "mel_mask_exact": true, "encoder_input_features_bit_exact": true, "encoder_input_mask_exact": true },
+    "encoder_ane": {
+      "pass": true,
+      "pass_meaning": "frozen encoder bounds, not bit-exact vs native capture",
+      "wall_ms": 18243.903,
+      "islands": "ABC",
+      "bundles": ["island-attn-a-kt", "island-select-8head-scratch417", "island-pv"],
+      "submissions": 72,
+      "worker_starts": 72,
+      "timeouts": 0,
+      "ane_ops": 96,
+      "gpu_ops": 1278,
+      "ops_executed": 3351,
+      "ane_exec_ms": 5097.54,
+      "cpu_tensor_events": 0,
+      "all_bounds_pass": true,
+      "encoder_mask_exact": true,
+      "encoder_hidden_sha256": "b3d60c81bcd9c63fcdcb5c5578d765cc221b0126af3482fb165d769a65c23e6e",
+      "encoder_hidden_byte_identical_to_prior_ane_run": true
+    },
+    "decoder_load": { "pass": true, "wall_ms": 122.107, "decoder": "coreml.vulkan_decoder.load_decoder (BNNS fused LSTM, fp16 sigma/tanh LUTs from fused_lut_2026-09-15.npz)" },
+    "tdt_decode": { "pass": true, "wall_ms": 2851.358, "decoder_calls": 145, "joint_calls": 146, "decoder_mean_ms": 15.894, "joint_mean_ms": 3.721, "control": "greedy_tdt_decode" }
+  },
+  "decode": {
+    "native_emissions": 104,
+    "actual_emissions": 104,
+    "matching_prefix_length": 101,
+    "total_matching_emissions": 101,
+    "tokens_match": false,
+    "divergent_positions": [
+      { "emission_index": 101, "actual": 8029, "native": 7892 },
+      { "emission_index": 102, "actual": 8062, "native": 7863 },
+      { "emission_index": 103, "actual": 8029, "native": 8135 }
+    ],
+    "first_divergence": {
+      "emission_index": 101,
+      "actual": { "token_id": 8029, "piece": "\u041d", "frame_index": 373, "duration": 0 },
+      "native": { "token_id": 7892, "piece": "\u043d", "frame_index": 373, "duration": 0 }
+    },
+    "durations_match": false,
+    "duration_mismatches": [[1, 1, 2], [2, 3, 2], [53, 2, 1]],
+    "frame_mismatches": [[2, 7, 8], [53, 121, 120]]
+  },
+  "transcript": {
+    "requirement": "transcript_must_match_exactly",
+    "required": true,
+    "transcript_match": false,
+    "actual": "He hoped there would be stew for dinner, turnips and carrots and bruised potatoes and fat mutton pieces to be ladled out in thick, peppered, flour-fattened sauce........................................... \u042e\u041d\u0415\u041d",
+    "native": "He hoped there would be stew for dinner, turnips and carrots and bruised potatoes and fat mutton pieces to be ladled out in thick, peppered, flour-fattened sauce........................................... \u042e\u043d \u042e",
+    "text_equal_through_char": 205,
+    "actual_sha256": "baad4383252d7d696ee73dcad5b0a9129eb6aee011a40eb53c727ea0cfd1fa0a",
+    "native_sha256": "db501a8c080380ea027ffa50a4b4956c39df77cb692c4fb78e556311a11a0790"
+  },
+  "attribution": {
+    "claim": "The BNNS decoder is not the regression: it fixed the former emission-99 miss. The remaining single flip sits on the known zero-gap decision; the ANE encoder residual is in-bounds but not bit-exact, and that is enough to tip it.",
+    "evidence": [
+      "mel.npy sha256 5b54f4a9a2ba3434cd69b6e48e6780d3bcb6c635d9ce85cda3d85c60f2455bde is bit-exact against the capture",
+      "encoder_hidden.npy sha256 b3d60c81bcd9c63fcdcb5c5578d765cc221b0126af3482fb165d769a65c23e6e is byte-identical to the 2026-09-14 ANE run (pin reproduced; islands deterministic)",
+      "encoder bounds all pass (max 0.14716 <= 0.3, mean 0.004182 <= 0.02, rel_l2 0.024917 <= 0.1, 0 nan, 0 inf)",
+      "former emission-99 divergence (7883 vs native 7863) is gone: emissions 99 and 100 now match native",
+      "first and only divergent run starts at emission 101, frame 373: 8029 vs native 7892 - exactly the decision-142 spot where receipt 2026-09-15-bnns-acc-hunt measured token-7892 logit gap 0.0 and every earlier gate form flipped to 8029",
+      "with the native (capture) encoder feeding the same BNNS decoder, free decode was 104/104 token-exact (first_divergence null); with the in-bounds ANE encoder it flips - the residual, not the decoder, tips the tie",
+      "emissions 102 and 103 diverge only as cascade after the 101 flip; transcript differs only in the final Cyrillic name (actual '\u042e\u041d\u0415\u041d' vs native '\u042e\u043d \u042e')"
+    ],
+    "named_remaining_hole": "The ANE encoder is bounds-verified, not bit-exact vs the macOS ANE golden (max 0.14716, in-bounds). Emission 101 is decided by a zero logit gap (decision 142), so token-exact E2E with ANE encoder islands requires either a bit-exact encoder or proof the flip is decided elsewhere."
+  },
+  "comparison_to_prior_e2e": {
+    "prior_receipt": "receipts/2026-09-14-parakeet-e2e-ane-encoder.json",
+    "prior_matching_prefix": 99,
+    "prior_emissions": 105,
+    "prior_first_divergence": "emission 99, 7883 vs 7863",
+    "this_matching_prefix": 101,
+    "this_emissions": 104,
+    "this_first_divergence": "emission 101, 8029 vs 7892",
+    "decoder_delta": "old serial fp16 LSTM -> BNNS fused LSTM (a5a44906)",
+    "encoder_bytes": "identical (b3d60c81)"
+  },
+  "timing_ms": {
+    "total_pipeline": 31423.014,
+    "audio_load": 361.96,
+    "mel_frontend": 9830.162,
+    "encoder_ane": 18243.903,
+    "ane_worker_exec": 5097.54,
+    "decoder_load": 122.107,
+    "tdt_decode": 2851.358,
+    "decoder_total": 2304.627,
+    "joint_total": 543.319
+  },
+  "artifacts_on_host": {
+    "root": "/var/tmp/ParakeetE2EAneBnns/out",
+    "e2e-report.json": "bec033eea6deabf1edd2c03ad072af2165aa366a009f62873545bbe5cc4794aa",
+    "run-transcript.log": "console JSON of this run (also quoted in the receipt)",
+    "transcript.txt": "baad4383252d7d696ee73dcad5b0a9129eb6aee011a40eb53c727ea0cfd1fa0a",
+    "token_ids.json": "7a8026845386c6c0f6476b5d1bc04d752d414c99a720677aba66c1a915fabc42",
+    "encoder_hidden.npy": "b3d60c81bcd9c63fcdcb5c5578d765cc221b0126af3482fb165d769a65c23e6e",
+    "encoder_mask.npy": "d8bf6ec9a4065ce6dff4d9252edc07e2910eeeac87f8fc3c05bd949e1e7861a7",
+    "mel.npy": "5b54f4a9a2ba3434cd69b6e48e6780d3bcb6c635d9ce85cda3d85c60f2455bde",
+    "waveform.npy": "b21b0d69e89a47dfd30b50f600e0ab0f8fee2eb56a889eb84f767bbe3085ac77"
+  },
+  "run_transcript": {
+    "status": "diverged",
+    "tokens_match": false,
+    "transcript_match": false,
+    "matching_prefix_length": 101,
+    "actual_emissions": 104,
+    "native_emissions": 104,
+    "encoder_bounds_pass": true,
+    "mel_bit_exact": true,
+    "ane_submissions": 72,
+    "cpu_tensor_events": 0,
+    "total_pipeline_ms": 31423.014
+  },
+  "reproduce": "On jwm1-linux, GPU lock /tmp/m1-gpu.lock, flock -w 900 never steal:\n\nflock -w 900 /tmp/m1-gpu.lock ~/venv-agxgen/bin/python /var/tmp/ParakeetE2E/parakeet_e2e.py \\\n  --audio /var/tmp/ParakeetE2E/audio/fixture.flac \\\n  --golden /var/tmp/EncoderParityAne/capture \\\n  --model ~/.cache/mlx-omarchy/parakeet-reference/mweinbach1/parakeet-tdt-0.6b-v3-coreml/b650695c2322ee5281dff48d7345b2f3a58ff018 \\\n  --pkg /var/tmp/ParakeetE2EAneBnns/pkg \\\n  --encoder-runner /var/tmp/ParakeetE2EAne-stage/vulkan_encoder.py \\\n  --source /var/tmp/EncoderParityAne/encoder-source \\\n  --bundles /var/tmp/jwm1-encoder-islands/bundles \\\n  --worker /var/tmp/jwm1-select-island-exec2/mlx-omarchy-ane-worker \\\n  --libane /var/tmp/AneWorkerValidation-c05ba1df/receipts/2026-09-13-ane-worker-validation/libane.so \\\n  --scratch /var/tmp/ParakeetE2EAneBnns/scratch \\\n  --ane-reference /var/tmp/EncoderParityAne/out-ane/encoder_hidden.npy \\\n  --out /var/tmp/ParakeetE2EAneBnns/out \\\n  --deadline-ms 20000\n\nDecoder in pkg is origin/main 17293b51 vulkan_decoder.py sha256 637f077e... with fused_lut_2026-09-15.npz sha256 5a7591b8... alongside. Encoder runner is the unchanged 3-island script, islands ABC by default.",
+  "not_claimed": [
+    "token-exact E2E",
+    "transcript-exact E2E",
+    "bit-exact encoder vs native capture",
+    "island B cond-true coverage (clip cond is uniformly false)",
+    "latency or Phase 9 performance"
+  ]
+}
