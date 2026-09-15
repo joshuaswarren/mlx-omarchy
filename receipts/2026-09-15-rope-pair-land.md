@@ -2,16 +2,17 @@
 ## Verdict
 **LAND.** The winning decode-trio content (layout 519d7336 + non-detaching
 nested eval d6b87ee4 + targeted linear chain-settle bd3e5726) is extracted
-as a minimal single-commit branch off origin/main `1014a76e`:
-`agent/rope-pair-linear-land` at `2f20d485`, 10 files, +1191/−5. The
-branch wheel's default configuration (no env) measures **225
+as a minimal branch off origin/main `1014a76e`. The feature commit is
+`6db6377b` (10 files, +1191/−5); the branch tip carries this receipt. The
+final wheel's default configuration (no env) measures **225
 vk_compute_dispatches/token** vs the origin/main wheel's 249, both digest
-pins are exact on all 20 battery legs, and the ctx1053 (bench leg
-"ctx1024") median rises +6.0% over the origin/main wheel (the reference
-batteries on the older `b41e2b74` base measured +0.7%/+2.7%). Carries no
-ring (ctx −2%, rejected twice), no detaching nested eval (8f1ed713 was
-superseded by d6b87ee4's depth guard), no megashader change, `qmm_vec.comp`
-untouched, `63c1d3cf` not merged.
+pins are exact on all 20 legs of both A/B batteries, and the ctx1053 (bench
+leg "ctx1024") median rises over the origin/main wheel in both (final
+battery +2.8%, bring-up battery +6.0%; the two reference batteries on the
+older `b41e2b74` base measured +0.7%/+2.7%). Carries no ring (ctx −2%,
+rejected twice), no detaching nested eval (8f1ed713 was superseded by
+d6b87ee4's depth guard), no megashader change, `qmm_vec.comp` untouched,
+`63c1d3cf` not merged.
 ## What was built (three-way merge, base = merge-root b41e2b74)
 - `overlay/mlx/backend/omarchy/primitives.cpp` — `dispatch_rope_pair` with
   per-side layout resolution, the pre-settle that records only the
@@ -38,49 +39,71 @@ untouched, `63c1d3cf` not merged.
   (the `KV_DIRECT=0` merged fallback measures 249 on the branch wheel —
   the base behaviour is intact behind the gate). No new gates; the default
   build IS the 225-dispatch winning configuration.
+## Provenance note: commit hashes and the email rewrite
+The first committed pair of commits (`2f20d485` + receipt `9f78b0fb`) was
+authored with a private email that GitHub's push restrictions reject. Both
+commits were rewritten to the noreply address (`6db6377b` + first receipt
+`1c49674f`); `git diff 2f20d485 6db6377b` is empty — tree content is
+byte-identical, only author/committer metadata changed. The wheel built
+from the rewritten tree stamps `+1c49674f`, which exists in this branch's
+history, and is the wheel the final battery below measured. Wheel stamps
+`+2f20d485` (bring-up) and `+1014a76e` (base) are likewise historical
+hashes of identical or ancestor trees.
 ## Measurements (jw16, MLX_DISABLE_COMPILE=1, HF_HUB_OFFLINE=1,
 ## Qwen2.5-0.5B-Instruct-4bit snapshot a5339a4131f135d0…, 5-round
-## interleaved A/B, battery `jw16-out-rp-land`)
-| leg | origin/main 1014a76e (249 vk) | branch 2f20d485 (225 vk) | delta |
+## interleaved A/B vs the origin/main wheel)
+Final battery (`jw16-out-rp-land-b`, wheel `+1c49674f`):
+| leg | origin/main 1014a76e (249 vk) | branch (225 vk) | delta |
+|---|---|---|---|
+| short median | 168.12 | 176.77 | +5.2% |
+| ctx1053 median | 141.17 | 145.17 | +2.8% |
+Bring-up battery (`jw16-out-rp-land`, wheel `+2f20d485`, same tree):
+| leg | origin/main 1014a76e (249 vk) | branch (225 vk) | delta |
 |---|---|---|---|
 | short median | 167.97 | 178.58 | +6.3% |
 | ctx1053 median | 135.95 | 144.07 | +6.0% |
-(per-round values in `ab.json`; base rounds short 167.11–170.15, ctx
-126.01–140.62; arm rounds short 177.55–179.11, ctx 130.91–146.56.)
-Dispatch probes (8 tokens): branch wheel default 225 ×3/3 exact;
-`MLX_OMARCHY_KV_DIRECT=0` → 249 (merged fallback intact); base wheel 249.
-Pins exact on all 20 battery legs (`7fd25a869ff21678` short,
-`7da83f06ec9f001d` ctx1024); ab_decode asserts per leg and stops on any
-mismatch — none. One flock hold on `/tmp/m1-gpu.lock` for the whole
-battery, inode 12 before and after, never unlinked, nested `flock -n`
-refused. One pre-battery smoke probe of the branch wheel ran lock-free
-while the lock was free and no other holder existed — recorded here for
-completeness. No SEGV anywhere: every A/B leg, probe, and the kvdir0
-fallback completed rc=0.
-The origin/main base wheel measures ctx1053 median 135.95 — below the
-`b41e2b74` base range from the reference batteries (137.49/140.28) — so
-main's own drift (dense GEMV group, qmm coopmat m16) costs ctx; the
-branch's +6.0% is measured against main as it stands, which is the
+Dispatch probes (8 tokens, both wheels): branch default 225 ×3/3 exact
+per battery; `MLX_OMARCHY_KV_DIRECT=0` → 249 (merged fallback intact);
+base wheel 249. Pins exact on all 20 legs per battery
+(`7fd25a869ff21678` short, `7da83f06ec9f001d` ctx1024); ab_decode asserts
+per leg and stops on any mismatch — none. One flock hold on
+`/tmp/m1-gpu.lock` per battery, inode 12 before and after, never unlinked,
+nested `flock -n` refused. One pre-battery smoke probe of the first branch
+wheel ran lock-free while the lock was free and no other holder existed —
+recorded here for completeness. No SEGV anywhere: every A/B leg, probe,
+and the kvdir0 fallback completed rc=0.
+The origin/main base wheel measures ctx1053 median 135.95 (battery A) /
+141.17 (battery B) — the A run sat below the `b41e2b74` base range from
+the reference batteries (137.49/140.28), B inside it. Both batteries show
+the branch arm above its own same-run base at ctx and short, which is the
 comparison that matters for landing.
 ## Decision
-`agent/rope-pair-linear-land` at `2f20d485` is a single-parent commit on
-`origin/main` (`1014a76e`) carrying exactly the 10-file feature diff, this
-receipt included. Ready to merge; the diff applies cleanly to
-`1014a76e` by construction.
+`agent/rope-pair-linear-land` off `origin/main` (`1014a76e`) carries
+exactly the 10-file feature diff (`6db6377b`), this receipt, and nothing
+else. Ready to merge; the diff applies cleanly to `1014a76e` by
+construction (single-parent commits, no merge commits).
 ## Artifacts
-- Branch wheel `mlx_omarchy-0.32.2.dev202609151832+2f20d485-cp314-cp314-linux_aarch64.whl`
+- Final branch wheel
+  `mlx_omarchy-0.32.2.dev202609151843+1c49674f-cp314-cp314-linux_aarch64.whl`
+  sha256 `96a2594a03b519991b40798c234e920c53f03a50bb054cfdcd1c01b50292bf70`
+  (`/var/tmp/rope-pair-land/dist/`, installed in
+  `/var/tmp/DecodeTrioRun/venv-rp-arm`).
+- Bring-up branch wheel
+  `mlx_omarchy-0.32.2.dev202609151832+2f20d485-cp314-cp314-linux_aarch64.whl`
   sha256 `eac805ba1608d8175e08ae88c68db026e7a7d062e1027dd228ffc3354a835ace`
-  (`/var/tmp/rope-pair-land/dist/`, installed in `venv-trio`-style
-  private venv `/var/tmp/DecodeTrioRun/venv-rp-arm`).
-- Base wheel `mlx_omarchy-0.32.2.dev202609151835+1014a76e-cp314-cp314-linux_aarch64.whl`
+  (superseded stamp, identical tree).
+- Base wheel
+  `mlx_omarchy-0.32.2.dev202609151835+1014a76e-cp314-cp314-linux_aarch64.whl`
   sha256 `08678917247e8265ebe1ca243416d5630860b7b31eea284647c7fac8ca3fb0bb`
   (`/var/tmp/main-base/dist/`, venv `/var/tmp/DecodeTrioRun/venv-rp-base`).
-- Battery: `/var/tmp/DecodeTrioRun/jw16-out-rp-land/` (dispatch probes
+- Batteries: `/var/tmp/DecodeTrioRun/jw16-out-rp-land-b/` (final) and
+  `/var/tmp/DecodeTrioRun/jw16-out-rp-land/` (bring-up) — dispatch probes
   ×3 default + kvdir0 + base probe, provenance lines, 5-round interleaved
-  `ab.json`, wheel sha256s, lock records, started/finished stamps).
-  Runner: `/var/tmp/decode-trio/run-rpland-battery.sh`; build logs
-  `/tmp/rp-land-build.log`, `/tmp/rp-base-build.log`; battery log
-  `/tmp/rpland-battery.log`.
+  `ab.json`, wheel sha256s, lock records, started/finished stamps.
+  Runner: `/var/tmp/decode-trio/run-rpland-battery.sh` (OUT retargeted per
+  run); build logs `/tmp/rp-land-build.log`, `/tmp/rp-land-build2.log`,
+  `/tmp/rp-base-build.log`; battery logs `/tmp/rpland-battery.log`,
+  `/tmp/rpland-battery-b.log`.
 - Harness reused unchanged: `/var/tmp/DecodeEpilogueFold/ab_decode.py`
   (default 5 rounds), `/var/tmp/DecodeCompileAB/dispatch_count.py`,
   `/var/tmp/mlx-omarchy-prof-b41e2b74/scripts/{bench_decode.py,bench_matrix.json}`.
