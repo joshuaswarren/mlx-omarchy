@@ -135,6 +135,18 @@ layout(set = 0, binding = B + 5, std430) writeonly buffer Sum##I { \
 QMM_VEC_MULTI_WEIGHT(0, 1)
 QMM_VEC_MULTI_WEIGHT(1, 7)
 QMM_VEC_MULTI_WEIGHT(2, 13)
+#ifdef USE_FP16
+// RMSNorm prologue weight (fold path only): read as uvec4 half packs,
+// element k at values[k / 8] in unpackFloat2x16 order, matching the
+// packed input_x row. The host requires offset 0.
+layout(set = 0, binding = 19, std430) readonly buffer NormWeight {
+  uvec4 values[];
+} norm_weight;
+#else
+layout(set = 0, binding = 19, std430) readonly buffer NormWeight {
+  STORAGE_TYPE values[];
+} norm_weight;
+#endif
 #else
 layout(set = 0, binding = 1, std430) readonly buffer InputW {
   uint values[];
@@ -186,6 +198,10 @@ layout(push_constant) uniform Params {
 
 #ifndef USE_SUBGROUP
 shared float reduce_scratch[256];
+#endif
+#ifdef QMM_VEC_MULTI
+// RMSNorm prologue reduction scratch (fold path only).
+shared float norm_values[256];
 #endif
 
 // Push-constant routing: operation carries bits (2, 3, 4, 5, 6, or 8),
@@ -382,6 +398,97 @@ uint q6_at(uint e, uint c0, uint c1, uint c2) {
 #else
 #define ROUND_STORAGE(f) (f)
 #endif
+// Fold-path dot core: token-for-token Q4_QUAD's reduction chain with
+// the x loader factored out. h0..h3 are the (storage-rounded) x
+// elements; float16_t arguments widen exactly like the loaded halves,
+// float arguments pass through identity.
+#define Q4_QUAD_CORE(packed, h0, h1, h2, h3) { \
+  input_sum += float(((h0 + h1) + h2) + h3); \
+  float x0 = float(h0); \
+  float x1 = float(h1); \
+  float x2 = float(h2); \
+  float x3 = float(h3); \
+  uint p = (packed); \
+  dot += fma(x3, float((p >> 12u) & 0xfu), \
+      fma(x2, float((p >> 8u) & 0xfu), \
+          fma(x1, float((p >> 4u) & 0xfu), \
+              x0 * float(p & 0xfu)))); \
+}
+// One normalized x quad against one packed weight word: element =
+// ROUND_STORAGE(sum * rms_scale * weight), the standalone RMSNorm's
+// store rounding (fast_norm.comp: result = value * norm * weight, then
+// the f16 store the dot would have read back). rms_scale and
+// rms_weight0 come from the prologue in main().
+#ifdef USE_FP16
+#define Q4_NORM_QUAD(packed, s_lo, s_hi, g_lo, g_hi) { \
+  f16vec2 s01 = unpackFloat2x16(s_lo); \
+  f16vec2 s23 = unpackFloat2x16(s_hi); \
+  float w0 = (params.aux_size == 1u) \
+      ? rms_weight0 : float(unpackFloat2x16(g_lo).x); \
+  float w1 = (params.aux_size == 1u) \
+      ? rms_weight0 : float(unpackFloat2x16(g_lo).y); \
+  float w2 = (params.aux_size == 1u) \
+      ? rms_weight0 : float(unpackFloat2x16(g_hi).x); \
+  float w3 = (params.aux_size == 1u) \
+      ? rms_weight0 : float(unpackFloat2x16(g_hi).y); \
+  Q4_QUAD_CORE(packed, \
+      float16_t(ROUND_STORAGE(float(s01.x) * rms_scale * w0)), \
+      float16_t(ROUND_STORAGE(float(s01.y) * rms_scale * w1)), \
+      float16_t(ROUND_STORAGE(float(s23.x) * rms_scale * w2)), \
+      float16_t(ROUND_STORAGE(float(s23.y) * rms_scale * w3))) \
+}
+#define Q4_NORM_WORD(word, x_base) { \
+  uint word_value = (word); \
+  uvec4 s_pack = input_x.values[(x_base) / 8u]; \
+  uvec4 g_pack = (params.aux_size == 1u) \
+      ? uvec4(0u) : norm_weight.values[(x_base) / 8u]; \
+  Q4_NORM_QUAD(word_value, s_pack.x, s_pack.y, g_pack.x, g_pack.y) \
+  Q4_NORM_QUAD(word_value >> 16u, s_pack.z, s_pack.w, g_pack.z, g_pack.w) \
+}
+#else
+#define Q4_NORM_QUAD(packed, base) { \
+  float w0 = (params.aux_size == 1u) \
+      ? rms_weight0 : LOAD_VALUE(norm_weight.values[base]); \
+  float w1 = (params.aux_size == 1u) \
+      ? rms_weight0 : LOAD_VALUE(norm_weight.values[(base) + 1u]); \
+  float w2 = (params.aux_size == 1u) \
+      ? rms_weight0 : LOAD_VALUE(norm_weight.values[(base) + 2u]); \
+  float w3 = (params.aux_size == 1u) \
+      ? rms_weight0 : LOAD_VALUE(norm_weight.values[(base) + 3u]); \
+  Q4_QUAD_CORE(packed, \
+      ROUND_STORAGE(LOAD_VALUE(input_x.values[base]) * rms_scale * w0), \
+      ROUND_STORAGE(LOAD_VALUE(input_x.values[(base) + 1u]) * rms_scale * w1), \
+      ROUND_STORAGE(LOAD_VALUE(input_x.values[(base) + 2u]) * rms_scale * w2), \
+      ROUND_STORAGE(LOAD_VALUE(input_x.values[(base) + 3u]) * rms_scale * w3)) \
+}
+#define Q4_NORM_WORD(word, x_base) { \
+  uint word_value = (word); \
+  uint quad_base = (x_base); \
+  Q4_NORM_QUAD(word_value, quad_base) \
+  Q4_NORM_QUAD(word_value >> 16u, quad_base + 4u) \
+}
+#endif
+// Q4_ROW with every x element normalized on the fly (fold path). Same
+// loop shapes and block epilogue; only the word macro differs.
+#define Q4_NORM_ROW(W, S, B) { \
+  if (params.matrix_k % 512u == 0u && n % 8u == 0u) { \
+    for (uint w = lane_in_slot * 2u; w < words_per_row; \
+         w += LANES * 2u) { \
+      precise float dot = 0.0; \
+      precise float input_sum = 0.0; \
+      Q4_NORM_WORD(W.values[w_base + w], x_row + w * 8u) \
+      Q4_NORM_WORD(W.values[w_base + w + 1u], x_row + w * 8u + 8u) \
+      Q4_BLOCK_FINISH(w, S, B) \
+    } \
+  } else { \
+    for (uint w = lane_in_slot; w < words_per_row; w += LANES) { \
+      precise float dot = 0.0; \
+      precise float input_sum = 0.0; \
+      Q4_NORM_WORD(W.values[w_base + w], x_row + w * 8u) \
+      Q4_BLOCK_FINISH(w, S, B) \
+    } \
+  } \
+}
 // Workgroup reduction of `accumulator` into `total`, both flavors.
 // The paired SwiGLU epilogue (flags bit 16) runs it twice per
 // workgroup (gate, then up); the barrier rounds stay uniform because
@@ -456,6 +563,50 @@ void main() {
   }
   uint column = workgroup * COLUMNS_PER_GROUP + column_slot;
   bool column_active = column < n;
+  // RMSNorm prologue (fold path, flags bit 15): the input row is the
+  // GEMV-epilogue residual sum. Every workgroup reproduces the
+  // fast_norm.comp reduction statement-for-statement — per-thread
+  // sequential squares strided by the 256-thread workgroup, then the
+  // stride-128..1 shared-memory tree — so norm = inversesqrt(mean +
+  // eps) is bit-identical to the standalone kernel, and the dot's x
+  // elements get the same storage-rounded values it would have
+  // written. Redundant per workgroup; no cross-workgroup reduction.
+  float rms_scale = 1.0;
+  float rms_weight0 = 0.0;
+  if ((params.flags & 32768u) != 0u) {
+    uint row_length = params.matrix_k;
+    float local_sq = 0.0;
+#ifdef USE_FP16
+    for (uint index = lane; index < row_length; index += 256u) {
+      f16vec2 halves = unpackFloat2x16(
+          input_x.values[index / 8u][(index % 8u) / 2u]);
+      float value = float(halves[index % 2u]);
+      local_sq += value * value;
+    }
+#else
+    for (uint index = lane; index < row_length; index += 256u) {
+      float value = LOAD_VALUE(input_x.values[index]);
+      local_sq += value * value;
+    }
+#endif
+    norm_values[lane] = local_sq;
+    barrier();
+    for (uint stride = 128u; stride > 0u; stride >>= 1u) {
+      if (lane < stride) {
+        norm_values[lane] += norm_values[lane + stride];
+      }
+      barrier();
+    }
+    float mean_square = norm_values[0] / float(row_length);
+    rms_scale = inversesqrt(mean_square + params.alpha);
+#ifdef USE_FP16
+    rms_weight0 = float(
+        unpackFloat2x16(norm_weight.values[params.rhs_offset / 8u]
+            [(params.rhs_offset % 8u) / 2u])[params.rhs_offset % 2u]);
+#else
+    rms_weight0 = LOAD_VALUE(norm_weight.values[params.rhs_offset]);
+#endif
+  }
   precise float accumulator = 0.0;
   if ((params.flags & 65536u) != 0u) {
     float gate_rounded = 0.0;
@@ -467,7 +618,11 @@ void main() {
       uint scale_base = column * groups_per_row;
       uint bias_base = scale_base;
       uint x_row = params.lhs_offset;
-      Q4_ROW(input_w0, scales0, biases0)
+      if ((params.flags & 32768u) != 0u) {
+        Q4_NORM_ROW(input_w0, scales0, biases0)
+      } else {
+        Q4_ROW(input_w0, scales0, biases0)
+      }
     }
     float gate_total;
     Q4_REDUCE(gate_total)
@@ -480,7 +635,11 @@ void main() {
       uint scale_base = column * groups_per_row;
       uint bias_base = scale_base;
       uint x_row = params.lhs_offset;
-      Q4_ROW(input_w1, scales1, biases1)
+      if ((params.flags & 32768u) != 0u) {
+        Q4_NORM_ROW(input_w1, scales1, biases1)
+      } else {
+        Q4_ROW(input_w1, scales1, biases1)
+      }
     }
     float up_total;
     Q4_REDUCE(up_total)
@@ -500,7 +659,15 @@ void main() {
     uint scale_base = column * groups_per_row;
     uint bias_base = scale_base;
     uint x_row = params.lhs_offset;
-    if (which == 0u) {
+    if ((params.flags & 32768u) != 0u) {
+      if (which == 0u) {
+        Q4_NORM_ROW(input_w0, scales0, biases0)
+      } else if (which == 1u) {
+        Q4_NORM_ROW(input_w1, scales1, biases1)
+      } else {
+        Q4_NORM_ROW(input_w2, scales2, biases2)
+      }
+    } else if (which == 0u) {
       Q4_ROW(input_w0, scales0, biases0)
     } else if (which == 1u) {
       Q4_ROW(input_w1, scales1, biases1)
