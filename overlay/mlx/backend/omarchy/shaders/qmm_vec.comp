@@ -147,13 +147,6 @@ layout(set = 0, binding = 19, std430) readonly buffer NormWeight {
   STORAGE_TYPE values[];
 } norm_weight;
 #endif
-// Scalar view of the same x buffer (binding 0 is the packed uvec4 view
-// the dot consumes): the prologue reduction reads elements one at a
-// time, exactly like fast_norm.comp, instead of dynamic uvec4
-// component selects.
-layout(set = 0, binding = 20, std430) readonly buffer InputXRaw {
-  STORAGE_TYPE values[];
-} input_x_raw;
 #else
 layout(set = 0, binding = 1, std430) readonly buffer InputW {
   uint values[];
@@ -583,10 +576,19 @@ void main() {
   if ((params.flags & 32768u) != 0u) {
     uint row_length = params.matrix_k;
     float local_sq = 0.0;
+#ifdef USE_FP16
     for (uint index = lane; index < row_length; index += 256u) {
-      float value = LOAD_VALUE(input_x_raw.values[index]);
+      f16vec2 halves = unpackFloat2x16(
+          input_x.values[index / 8u][(index % 8u) / 2u]);
+      float value = float(halves[index % 2u]);
       local_sq += value * value;
     }
+#else
+    for (uint index = lane; index < row_length; index += 256u) {
+      float value = LOAD_VALUE(input_x.values[index]);
+      local_sq += value * value;
+    }
+#endif
     norm_values[lane] = local_sq;
     barrier();
     for (uint stride = 128u; stride > 0u; stride >>= 1u) {
