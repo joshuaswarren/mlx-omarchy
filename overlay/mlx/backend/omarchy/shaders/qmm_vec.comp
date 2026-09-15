@@ -561,7 +561,18 @@ void main() {
     workgroup -= groups0 + groups1;
     n = n2;
   }
-  uint column = workgroup * COLUMNS_PER_GROUP + column_slot;
+  // A SwiGLU+prologue dispatch (bits 16 and 15) strides four column
+  // slots per workgroup: its per-workgroup RMSNorm reduction is the
+  // cost the 2026-09-15 A/B priced (only the 608-workgroup MLP
+  // dispatches slowed; 76 waves x ~0.28us serialized reduction), and
+  // paying it once per four slices instead of once per slice removes
+  // three quarters of the redundancy. Per-column dot chains are
+  // untouched — every stored value is bit-identical.
+  uint width = ((params.flags & 65536u) != 0u &&
+                (params.flags & 32768u) != 0u)
+                   ? 4u * COLUMNS_PER_GROUP
+                   : COLUMNS_PER_GROUP;
+  uint column = workgroup * width + column_slot;
   bool column_active = column < n;
   // RMSNorm prologue (fold path, flags bit 15): the input row is the
   // GEMV-epilogue residual sum. Every workgroup reproduces the
@@ -609,46 +620,54 @@ void main() {
   }
   precise float accumulator = 0.0;
   if ((params.flags & 65536u) != 0u) {
-    float gate_rounded = 0.0;
-    float up_rounded = 0.0;
-    if (column_active) {
-      uint words_per_row = params.matrix_k / 8u;
-      uint groups_per_row = params.matrix_k / 64u;
-      uint w_base = column * words_per_row;
-      uint scale_base = column * groups_per_row;
-      uint bias_base = scale_base;
-      uint x_row = params.lhs_offset;
-      if ((params.flags & 32768u) != 0u) {
-        Q4_NORM_ROW(input_w0, scales0, biases0)
-      } else {
-        Q4_ROW(input_w0, scales0, biases0)
+    // Every slice re-runs the exact landed statement sequence for its
+    // eight columns; the prologue above ran once for the workgroup.
+    uint slices = width / COLUMNS_PER_GROUP;
+    for (uint slice = 0u; slice < slices; ++slice) {
+      uint slice_column = column + slice * COLUMNS_PER_GROUP;
+      bool slice_active = slice_column < n;
+      float gate_rounded = 0.0;
+      float up_rounded = 0.0;
+      accumulator = 0.0;
+      if (slice_active) {
+        uint words_per_row = params.matrix_k / 8u;
+        uint groups_per_row = params.matrix_k / 64u;
+        uint w_base = slice_column * words_per_row;
+        uint scale_base = slice_column * groups_per_row;
+        uint bias_base = scale_base;
+        uint x_row = params.lhs_offset;
+        if ((params.flags & 32768u) != 0u) {
+          Q4_NORM_ROW(input_w0, scales0, biases0)
+        } else {
+          Q4_ROW(input_w0, scales0, biases0)
+        }
       }
-    }
-    float gate_total;
-    Q4_REDUCE(gate_total)
-    gate_rounded = ROUND_STORAGE(gate_total);
-    accumulator = 0.0;
-    if (column_active) {
-      uint words_per_row = params.matrix_k / 8u;
-      uint groups_per_row = params.matrix_k / 64u;
-      uint w_base = column * words_per_row;
-      uint scale_base = column * groups_per_row;
-      uint bias_base = scale_base;
-      uint x_row = params.lhs_offset;
-      if ((params.flags & 32768u) != 0u) {
-        Q4_NORM_ROW(input_w1, scales1, biases1)
-      } else {
-        Q4_ROW(input_w1, scales1, biases1)
+      float gate_total;
+      Q4_REDUCE(gate_total)
+      gate_rounded = ROUND_STORAGE(gate_total);
+      accumulator = 0.0;
+      if (slice_active) {
+        uint words_per_row = params.matrix_k / 8u;
+        uint groups_per_row = params.matrix_k / 64u;
+        uint w_base = slice_column * words_per_row;
+        uint scale_base = slice_column * groups_per_row;
+        uint bias_base = scale_base;
+        uint x_row = params.lhs_offset;
+        if ((params.flags & 32768u) != 0u) {
+          Q4_NORM_ROW(input_w1, scales1, biases1)
+        } else {
+          Q4_ROW(input_w1, scales1, biases1)
+        }
       }
-    }
-    float up_total;
-    Q4_REDUCE(up_total)
-    up_rounded = ROUND_STORAGE(up_total);
-    if (lane_in_slot == 0u && column_active) {
-      float sig = ROUND_STORAGE(1.0 / (1.0 + exp(-gate_rounded)));
-      float silu = ROUND_STORAGE(gate_rounded * sig);
-      output0.values[column] =
-          STORE_VALUE(ROUND_STORAGE(silu * up_rounded));
+      float up_total;
+      Q4_REDUCE(up_total)
+      up_rounded = ROUND_STORAGE(up_total);
+      if (lane_in_slot == 0u && slice_active) {
+        float sig = ROUND_STORAGE(1.0 / (1.0 + exp(-gate_rounded)));
+        float silu = ROUND_STORAGE(gate_rounded * sig);
+        output0.values[slice_column] =
+            STORE_VALUE(ROUND_STORAGE(silu * up_rounded));
+      }
     }
     return;
   }

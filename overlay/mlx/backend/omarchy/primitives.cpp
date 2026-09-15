@@ -7329,8 +7329,13 @@ bool dispatch_quantized_gemv_group(
   }
   if (swiglu_out) {
     // Paired epilogue: every workgroup computes the same column slice
-    // of both weights, so the gate count is weight 0's alone.
-    total_groups = (params.shape[0] + 7u) / 8u;
+    // of both weights, so the gate count is weight 0's alone. With the
+    // RMSNorm prologue the workgroup strides four column slots (the
+    // per-workgroup norm is paid once per four slices; the 2026-09-15
+    // A/B priced the redundant reductions on the 608-workgroup MLP
+    // dispatches), matching qmm_vec.comp's width.
+    uint32_t width = fold ? 32u : 8u;
+    total_groups = (params.shape[0] + width - 1u) / width;
     params.flags |= 65536u;
   }
   if (total_groups > kMaxComputeGroupCountX) {
