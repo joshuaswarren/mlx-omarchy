@@ -1,0 +1,13 @@
+{
+  "elapsed_seconds": 4.17873823599075,
+  "emission_matches": 104,
+  "emissions_compared": 104,
+  "first_divergence": null,
+  "hostname": "jwm1-linux",
+  "mlx_version": "0.32.2.dev202609131130+e4d079c",
+  "schema": "mlx-omarchy.bnns-landed-decoder-check/1",
+  "trace_bitexact": {
+    "next_cell": "19170/19200",
+    "next_hidden": "19163/19200"
+  }
+}

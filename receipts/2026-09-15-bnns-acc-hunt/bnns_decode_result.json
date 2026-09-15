@@ -1,0 +1,24 @@
+{
+  "bnns_contract": {
+    "bias": "one fp16 add after fold",
+    "block": 128,
+    "cell": "rnd16(rnd16(sig_f*c0) + sig_i*tanh16(g))",
+    "gemv": "one fp16 GEMV over concat[x;h], per-term rnd16 FMA, per-block rnd16 fold",
+    "hidden": "rnd16(sig_o*tanh16(c1))",
+    "luts_sha256": "7c72e7755e14acb03e14ef70107948a536355dcdaf13bf099bbcaddc4145d251",
+    "unaries": "dense sigma16/tanh16 bit-pattern LUTs"
+  },
+  "decoder_calls": null,
+  "device": {
+    "architecture": "honeykrisp",
+    "device_name": "Apple M1 (G13G B1)"
+  },
+  "elapsed_seconds": 3.434490501997061,
+  "emission_matches": 104,
+  "emissions_compared": 104,
+  "first_divergence": null,
+  "hostname": "jwm1-linux",
+  "kernel": "7.1.6-1-1-ARCH",
+  "mlx_version": "0.32.2.dev202609131130+e4d079c",
+  "schema": "mlx-omarchy.bnns-contract-free-decode/1"
+}

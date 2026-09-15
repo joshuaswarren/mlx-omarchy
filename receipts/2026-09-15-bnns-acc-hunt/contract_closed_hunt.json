@@ -1,0 +1,68 @@
+{
+ "totals": {
+  "contract_B128": 75243,
+  "contract_B64": 42060,
+  "contract_B256": 39589,
+  "contract_B640": 33471,
+  "contract_B1280": 30155
+ },
+ "detail": {
+  "L0_i": {
+   "contract_B128": 9565,
+   "contract_B64": 6027,
+   "contract_B256": 5871,
+   "contract_B640": 5555,
+   "contract_B1280": 5475
+  },
+  "L0_f": {
+   "contract_B128": 8412,
+   "contract_B64": 3635,
+   "contract_B256": 3391,
+   "contract_B640": 2834,
+   "contract_B1280": 2626
+  },
+  "L0_o": {
+   "contract_B128": 9277,
+   "contract_B64": 4480,
+   "contract_B256": 4306,
+   "contract_B640": 3894,
+   "contract_B1280": 3694
+  },
+  "L0_g": {
+   "contract_B128": 9599,
+   "contract_B64": 7833,
+   "contract_B256": 7763,
+   "contract_B640": 7579,
+   "contract_B1280": 7519
+  },
+  "L1n_i": {
+   "contract_B128": 9598,
+   "contract_B64": 5573,
+   "contract_B256": 4981,
+   "contract_B640": 3753,
+   "contract_B1280": 3021
+  },
+  "L1n_f": {
+   "contract_B128": 9597,
+   "contract_B64": 4469,
+   "contract_B256": 4010,
+   "contract_B640": 2865,
+   "contract_B1280": 2439
+  },
+  "L1n_o": {
+   "contract_B128": 9595,
+   "contract_B64": 4814,
+   "contract_B256": 4327,
+   "contract_B640": 2897,
+   "contract_B1280": 1978
+  },
+  "L1n_g": {
+   "contract_B128": 9600,
+   "contract_B64": 5229,
+   "contract_B256": 4940,
+   "contract_B640": 4094,
+   "contract_B1280": 3403
+  }
+ },
+ "ok": 75257
+}
