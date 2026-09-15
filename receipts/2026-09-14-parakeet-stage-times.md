@@ -93,3 +93,15 @@ flock -w 900 /tmp/m1-gpu.lock \
 - bit-exact encoder vs native capture
 - a 450 ms hardware pass
 - Phase 9 latency
+
+## Superseded (2026-09-15)
+
+This baseline was measured on wheel `05015a76`, which predates the
+`ConvF32 → MatmulF32` encoder conv land (`e55c1fae`) now on origin/main.
+The full E2E has been re-run on a non-diag release wheel built from
+origin/main `b5bf90e` with the correctness contract holding (104/104,
+transcript `db501a8c…`, `encoder_hidden` pin `38c73261…`): encoder stage
+12638.7 ms, whole pipeline 16068.0 ms. The new baseline is
+`receipts/2026-09-15-parakeet-e2e-current-wheel.md` /
+`.json`. The stale pre-token-exact decoder in `/var/tmp/ParakeetE2E/pkg`
+(`bea0e2e6…`) is recorded there as a trap.
