@@ -1,0 +1,2 @@
+12 -rw-r--r-- 1 joshuawarren joshuawarren 0 Sep 15 13:47 /tmp/m1-gpu.lock
+nested flock -n returned 1 (held)
