@@ -7456,7 +7456,6 @@ bool dispatch_quantized_gemv_group(
   }
   std::array<ComputeBinding, kQmmVecMultiBindings> bindings{};
   bindings[0] = binding(x);
-  bindings[kQmmVecMultiBindings - 1] = binding(x);
   const ComputeBinding filler = binding(members[0].node);
   for (uint32_t i = 0; i < kQmmVecMultiWeights; ++i) {
     uint32_t base = 1 + i * kQmmVecMultiBindingsPerWeight;
