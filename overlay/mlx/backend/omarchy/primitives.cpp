@@ -7122,6 +7122,7 @@ bool dispatch_rmsnorm_add_pair(
 
 bool dispatch_quantized_gemv_group(
     std::vector<GemvFusionMember>& members,
+    GemvRmsFold* fold,
     const Stream& stream) {
   if (members.empty() || members.size() > kQmmVecMultiWeights ||
       !q4_word_enabled()) {
@@ -7132,10 +7133,40 @@ bool dispatch_quantized_gemv_group(
   if (encoder.device().compute().binding_limit() < kQmmVecMultiBindings) {
     return false;
   }
+  // RMSNorm prologue fold: alias the RMSNorm's buffer to its input
+  // Add's epilogue sum before the x checks read it. The aliasing is
+  // unconditionally safe — the sum is this stream's completed output
+  // either way — and on any later contract failure the group un-plans
+  // and the RMSNorm re-evaluates onto its own fresh buffer.
+  if (fold) {
+    array& rms = fold->rms_node;
+    const array& sum = rms.inputs()[0];
+    if (rms.dtype() != float16 || sum.dtype() != float16 ||
+        sum.shape() != rms.shape() ||
+        static_cast<size_t>(sum.shape(-1)) != sum.size() ||
+        sum.data_shared_ptr() == nullptr ||
+        sum.offset() % sum.itemsize() != 0 ||
+        sum.offset() != 0 || !input_ready(sum, stream)) {
+      return false;
+    }
+    Strides rms_strides(rms.ndim(), 1);
+    for (int i = rms.ndim() - 2; i >= 0; --i) {
+      rms_strides[i] = rms_strides[i + 1] * rms.shape(i + 1);
+    }
+    array::Flags rms_flags;
+    rms_flags.contiguous = true;
+    rms_flags.row_contiguous = true;
+    rms_flags.col_contiguous = false;
+    rms.copy_shared_buffer(sum, rms_strides, rms_flags, rms.data_size(), 0);
+  }
   const array& x = members[0].node.inputs().at(0);
   const Dtype dtype = members[0].node.dtype();
+  // The folded x is the RMSNorm currently being evaluated on this
+  // stream: unscheduled by definition, ready by construction (its
+  // buffer aliases the completed epilogue sum checked above).
   if (!float_dtype_supported(dtype, caps) || x.dtype() != dtype ||
-      x.ndim() < 2 || x.shape(-2) != 1 || !input_ready(x, stream) ||
+      x.ndim() < 2 || x.shape(-2) != 1 ||
+      (!fold && !input_ready(x, stream)) ||
       x.data_shared_ptr() == nullptr || !x.flags().row_contiguous ||
       x.offset() % x.itemsize() != 0) {
     return false;
@@ -7205,6 +7236,25 @@ bool dispatch_quantized_gemv_group(
   }
   params.lhs_offset = static_cast<uint32_t>(x_offset);
   params.count = static_cast<uint32_t>(total_groups);
+
+  // Fold push constants: flags bit 15, eps in alpha, norm weight
+  // routing in aux_size/rhs_offset (0 — parameters carry no offset).
+  if (fold) {
+    const array& weight = fold->weight;
+    uint64_t weight_offset = weight.offset() / weight.itemsize();
+    if (weight_offset != 0 ||
+        !compute_index_span_fits(weight_offset, weight.size()) ||
+        !whole_dense(weight, weight.size()) ||
+        !weight.flags().row_contiguous ||
+        weight.data_shared_ptr() == nullptr ||
+        !input_ready(weight, stream)) {
+      return false;
+    }
+    params.flags |= 32768u;
+    params.alpha = fold->eps;
+    params.aux_size = static_cast<uint32_t>(weight.size());
+    params.rhs_offset = static_cast<uint32_t>(weight_offset);
+  }
 
   // Producer-direct KV windows: a member's Add epilogue may store its
   // sum straight into an updated cache copy (see fused_chain.h), which
@@ -7288,6 +7338,8 @@ bool dispatch_quantized_gemv_group(
       }
     }
   }
+  bindings[1 + kQmmVecMultiWeights * kQmmVecMultiBindingsPerWeight] =
+      fold ? binding(fold->weight) : filler;
   bool subgroup_ready = caps.subgroup_size == 32u &&
       (caps.subgroup_operations & VK_SUBGROUP_FEATURE_ARITHMETIC_BIT) != 0;
   auto kernel = subgroup_ready
