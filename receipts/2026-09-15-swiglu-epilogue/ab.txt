@@ -1,0 +1,24 @@
+round 0 short    base   decode  112.2845 tok/s  prefill   376.1243 tok/s  ids 7fd25a869ff21678
+round 0 short    cand   decode  114.2096 tok/s  prefill   385.7856 tok/s  ids 7fd25a869ff21678
+round 0 ctx1024  base   decode   97.8998 tok/s  prefill  1103.9104 tok/s  ids 7da83f06ec9f001d
+round 0 ctx1024  cand   decode   97.9761 tok/s  prefill  1110.9095 tok/s  ids 7da83f06ec9f001d
+round 1 short    cand   decode  113.9894 tok/s  prefill   385.8476 tok/s  ids 7fd25a869ff21678
+round 1 short    base   decode  113.8103 tok/s  prefill   378.7797 tok/s  ids 7fd25a869ff21678
+round 1 ctx1024  cand   decode   98.0379 tok/s  prefill  1104.2537 tok/s  ids 7da83f06ec9f001d
+round 1 ctx1024  base   decode   97.7798 tok/s  prefill  1104.2960 tok/s  ids 7da83f06ec9f001d
+round 2 short    base   decode  112.1695 tok/s  prefill   376.3641 tok/s  ids 7fd25a869ff21678
+round 2 short    cand   decode  113.8159 tok/s  prefill   380.4587 tok/s  ids 7fd25a869ff21678
+round 2 ctx1024  base   decode   98.2264 tok/s  prefill  1105.2223 tok/s  ids 7da83f06ec9f001d
+round 2 ctx1024  cand   decode   96.3434 tok/s  prefill  1108.1291 tok/s  ids 7da83f06ec9f001d
+round 3 short    cand   decode  119.4461 tok/s  prefill   383.8601 tok/s  ids 7fd25a869ff21678
+round 3 short    base   decode  112.2383 tok/s  prefill   379.0042 tok/s  ids 7fd25a869ff21678
+round 3 ctx1024  cand   decode  102.4706 tok/s  prefill  1108.8695 tok/s  ids 7da83f06ec9f001d
+round 3 ctx1024  base   decode   97.5089 tok/s  prefill  1109.5928 tok/s  ids 7da83f06ec9f001d
+round 4 short    base   decode  110.1451 tok/s  prefill   378.9158 tok/s  ids 7fd25a869ff21678
+round 4 short    cand   decode  119.4459 tok/s  prefill   380.0338 tok/s  ids 7fd25a869ff21678
+round 4 ctx1024  base   decode   97.7140 tok/s  prefill  1108.0087 tok/s  ids 7da83f06ec9f001d
+round 4 ctx1024  cand   decode  100.3600 tok/s  prefill  1107.3457 tok/s  ids 7da83f06ec9f001d
+short/base       decode median  112.2383 [112.2845, 113.8103, 112.1695, 112.2383, 110.1451]
+short/cand       decode median  114.2096 [114.2096, 113.9894, 113.8159, 119.4461, 119.4459]
+ctx1024/base     decode median   97.7798 [97.8998, 97.7798, 98.2264, 97.5089, 97.714]
+ctx1024/cand     decode median   98.0379 [97.9761, 98.0379, 96.3434, 102.4706, 100.36]

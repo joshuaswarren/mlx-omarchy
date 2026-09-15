@@ -1,0 +1,12 @@
+== base ==
+provenance: mlx-omarchy 0.32.2.dev202609152020+1deb70f1 mx=0.32.2.dev202609152020+1deb70f1 verified=match harness=7e64e41c core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:e272fb7e2c0e6188
+decode mean per-token 10.3 ms
+generated_ids sha256:7da83f06ec9f001d n=32 first=13060,498,369 last=3897,553,279
+== cand ==
+provenance: mlx-omarchy 0.32.2.dev202609152037+7e64e41c mx=0.32.2.dev202609152037+7e64e41c verified=match harness=7e64e41c core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:3245289c77bafa06
+decode mean per-token 10.1 ms
+generated_ids sha256:7da83f06ec9f001d n=32 first=13060,498,369 last=3897,553,279
+== cand-off ==
+provenance: mlx-omarchy 0.32.2.dev202609152037+7e64e41c mx=0.32.2.dev202609152037+7e64e41c verified=match harness=7e64e41c core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:3245289c77bafa06
+decode mean per-token 10.3 ms
+generated_ids sha256:7da83f06ec9f001d n=32 first=13060,498,369 last=3897,553,279
