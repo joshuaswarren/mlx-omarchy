@@ -1,0 +1,11 @@
+{
+  "golden": {
+    "next_cell": "640/640",
+    "next_hidden": "640/640"
+  },
+  "host": "omp-studio-local",
+  "numpy": "1.26.4",
+  "python": "3.11.2",
+  "schema": "mlx-omarchy.lstm-fused-host-proof/1",
+  "tables_sha256": "1ae1e59e186ef1932a54f749c8abf6a4688ffa1dfeab993174502bc7d13d01ae"
+}

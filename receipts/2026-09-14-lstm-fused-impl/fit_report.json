@@ -1,0 +1,46 @@
+{
+  "cell_refine": {
+    "exact": 640,
+    "of": 640,
+    "repaired_groups": 2,
+    "unresolved_sigma": 0,
+    "unresolved_tanh": 0
+  },
+  "decollide": {
+    "nudges": 0
+  },
+  "golden": {
+    "next_cell": 640,
+    "next_hidden": 640
+  },
+  "hidden_refine": {
+    "exact": 640,
+    "of": 640,
+    "repaired_groups": 0,
+    "unresolved_sigma": 0,
+    "unresolved_tanh": 0
+  },
+  "hill_climb": {
+    "fails_left": 0,
+    "rounds": 0
+  },
+  "host": "omp-studio-local",
+  "knot_h": 0.001953125,
+  "numpy": "1.26.4",
+  "output": "/home/joshuawarren/src/mlx-omarchy/receipts/2026-09-14-lstm-fused-impl/unary_tables.npz",
+  "python": "3.11.2",
+  "schema": "mlx-omarchy.lstm-fused-unary-tables/1",
+  "sigma_base": {
+    "exposure_exact": 2324,
+    "lanes": 2406
+  },
+  "splice_conflicts": 0,
+  "table_sizes": {
+    "sigmoid": 9138,
+    "tanh": 9312
+  },
+  "tanh_base": {
+    "dropped": 0,
+    "lanes": 1284
+  }
+}
