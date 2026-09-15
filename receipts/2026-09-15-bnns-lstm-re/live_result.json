@@ -1,0 +1,431 @@
+{
+  "decision_142": {
+    "actual_logit": -12.890625,
+    "actual_minus_native_logit": 0.0,
+    "actual_token_id": 7892,
+    "decision_index": 142,
+    "decoder_input_token": 8135,
+    "decoder_state_sha256": "2dafb88b1e9c2dc070d3967dbe67ed74111ca51a0d8a3620710995ba90e24d1c",
+    "duration_index_actual": 0,
+    "duration_index_native": 0,
+    "duration_logits": [
+      13.359375,
+      8.703125,
+      -10.0,
+      -45.90625,
+      -8.2734375
+    ],
+    "encoder_frame_sha256": "421387a213f3d218dfd55d08a0a22446b7252810711aceb31307b0e598c2d56d",
+    "joint_variants": {
+      "baseline_fp16_matmul_then_fp16_bias": {
+        "duration_index": 0,
+        "native_7892_logit": 154.5,
+        "token_id": 8037,
+        "winner_logit": 275.25,
+        "winner_minus_native": 120.75
+      },
+      "explicit_fp32_dot_then_fp16_bias": {
+        "duration_index": 0,
+        "native_7892_logit": 154.5,
+        "token_id": 8037,
+        "winner_logit": 275.25,
+        "winner_minus_native": 120.75
+      },
+      "fused_fp32_dot_and_bias_then_fp16": {
+        "duration_index": 0,
+        "native_7892_logit": 154.5,
+        "token_id": 8037,
+        "winner_logit": 275.25,
+        "winner_minus_native": 120.75
+      },
+      "mx_addmm_fp16": {
+        "duration_index": 0,
+        "native_7892_logit": 154.5,
+        "token_id": 8037,
+        "winner_logit": 275.25,
+        "winner_minus_native": 120.75
+      }
+    },
+    "native_token_id": 7892,
+    "native_token_logit": -12.890625
+  },
+  "decoder_on_native_inputs": [
+    {
+      "decoder_hidden": {
+        "bit_exact": false,
+        "max_abs": 0.01953125,
+        "mean_abs": 0.0005175590515136719
+      },
+      "index": 0,
+      "next_cell": {
+        "bit_exact": false,
+        "max_abs": 0.000244140625,
+        "mean_abs": 1.029437407851219e-06
+      },
+      "next_hidden": {
+        "bit_exact": false,
+        "max_abs": 0.0001220703125,
+        "mean_abs": 3.78582626581192e-07
+      },
+      "projector_on_native_lstm": {
+        "bit_exact": false,
+        "max_abs": 0.01953125,
+        "mean_abs": 0.0005147099494934082
+      }
+    },
+    {
+      "decoder_hidden": {
+        "bit_exact": false,
+        "max_abs": 0.0107421875,
+        "mean_abs": 0.00041077136993408205
+      },
+      "index": 2,
+      "next_cell": {
+        "bit_exact": true,
+        "max_abs": 0.0,
+        "mean_abs": 0.0
+      },
+      "next_hidden": {
+        "bit_exact": true,
+        "max_abs": 0.0,
+        "mean_abs": 0.0
+      },
+      "projector_on_native_lstm": {
+        "bit_exact": false,
+        "max_abs": 0.0107421875,
+        "mean_abs": 0.00041077136993408205
+      }
+    },
+    {
+      "decoder_hidden": {
+        "bit_exact": false,
+        "max_abs": 0.01953125,
+        "mean_abs": 0.000680851936340332
+      },
+      "index": 3,
+      "next_cell": {
+        "bit_exact": true,
+        "max_abs": 0.0,
+        "mean_abs": 0.0
+      },
+      "next_hidden": {
+        "bit_exact": true,
+        "max_abs": 0.0,
+        "mean_abs": 0.0
+      },
+      "projector_on_native_lstm": {
+        "bit_exact": false,
+        "max_abs": 0.01953125,
+        "mean_abs": 0.000680851936340332
+      }
+    },
+    {
+      "decoder_hidden": {
+        "bit_exact": false,
+        "max_abs": 0.01171875,
+        "mean_abs": 0.00052947998046875
+      },
+      "index": 4,
+      "next_cell": {
+        "bit_exact": true,
+        "max_abs": 0.0,
+        "mean_abs": 0.0
+      },
+      "next_hidden": {
+        "bit_exact": true,
+        "max_abs": 0.0,
+        "mean_abs": 0.0
+      },
+      "projector_on_native_lstm": {
+        "bit_exact": false,
+        "max_abs": 0.01171875,
+        "mean_abs": 0.00052947998046875
+      }
+    },
+    {
+      "decoder_hidden": {
+        "bit_exact": false,
+        "max_abs": 0.0078125,
+        "mean_abs": 0.00028868913650512693
+      },
+      "index": 5,
+      "next_cell": {
+        "bit_exact": true,
+        "max_abs": 0.0,
+        "mean_abs": 0.0
+      },
+      "next_hidden": {
+        "bit_exact": true,
+        "max_abs": 0.0,
+        "mean_abs": 0.0
+      },
+      "projector_on_native_lstm": {
+        "bit_exact": false,
+        "max_abs": 0.0078125,
+        "mean_abs": 0.00028868913650512693
+      }
+    },
+    {
+      "decoder_hidden": {
+        "bit_exact": false,
+        "max_abs": 0.009765625,
+        "mean_abs": 0.0002938151359558105
+      },
+      "index": 6,
+      "next_cell": {
+        "bit_exact": true,
+        "max_abs": 0.0,
+        "mean_abs": 0.0
+      },
+      "next_hidden": {
+        "bit_exact": false,
+        "max_abs": 0.0,
+        "mean_abs": 0.0
+      },
+      "projector_on_native_lstm": {
+        "bit_exact": false,
+        "max_abs": 0.009765625,
+        "mean_abs": 0.0002938151359558105
+      }
+    },
+    {
+      "decoder_hidden": {
+        "bit_exact": false,
+        "max_abs": 0.0068359375,
+        "mean_abs": 0.00037512779235839846
+      },
+      "index": 7,
+      "next_cell": {
+        "bit_exact": false,
+        "max_abs": 0.0001220703125,
+        "mean_abs": 9.541399776935578e-08
+      },
+      "next_hidden": {
+        "bit_exact": false,
+        "max_abs": 7.62939453125e-06,
+        "mean_abs": 5.960464477539063e-09
+      },
+      "projector_on_native_lstm": {
+        "bit_exact": false,
+        "max_abs": 0.0068359375,
+        "mean_abs": 0.0003754138946533203
+      }
+    },
+    {
+      "decoder_hidden": {
+        "bit_exact": false,
+        "max_abs": 0.00390625,
+        "mean_abs": 0.00026622116565704345
+      },
+      "index": 8,
+      "next_cell": {
+        "bit_exact": true,
+        "max_abs": 0.0,
+        "mean_abs": 0.0
+      },
+      "next_hidden": {
+        "bit_exact": true,
+        "max_abs": 0.0,
+        "mean_abs": 0.0
+      },
+      "projector_on_native_lstm": {
+        "bit_exact": false,
+        "max_abs": 0.00390625,
+        "mean_abs": 0.00026622116565704345
+      }
+    },
+    {
+      "decoder_hidden": {
+        "bit_exact": false,
+        "max_abs": 0.013671875,
+        "mean_abs": 0.00043987035751342775
+      },
+      "index": 9,
+      "next_cell": {
+        "bit_exact": true,
+        "max_abs": 0.0,
+        "mean_abs": 0.0
+      },
+      "next_hidden": {
+        "bit_exact": true,
+        "max_abs": 0.0,
+        "mean_abs": 0.0
+      },
+      "projector_on_native_lstm": {
+        "bit_exact": false,
+        "max_abs": 0.013671875,
+        "mean_abs": 0.00043987035751342775
+      }
+    },
+    {
+      "decoder_hidden": {
+        "bit_exact": false,
+        "max_abs": 0.0087890625,
+        "mean_abs": 0.00039093494415283204
+      },
+      "index": 10,
+      "next_cell": {
+        "bit_exact": true,
+        "max_abs": 0.0,
+        "mean_abs": 0.0
+      },
+      "next_hidden": {
+        "bit_exact": true,
+        "max_abs": 0.0,
+        "mean_abs": 0.0
+      },
+      "projector_on_native_lstm": {
+        "bit_exact": false,
+        "max_abs": 0.0087890625,
+        "mean_abs": 0.00039093494415283204
+      }
+    },
+    {
+      "decoder_hidden": {
+        "bit_exact": false,
+        "max_abs": 0.005859375,
+        "mean_abs": 0.00028228312730789186
+      },
+      "index": 11,
+      "next_cell": {
+        "bit_exact": true,
+        "max_abs": 0.0,
+        "mean_abs": 0.0
+      },
+      "next_hidden": {
+        "bit_exact": false,
+        "max_abs": 0.0,
+        "mean_abs": 0.0
+      },
+      "projector_on_native_lstm": {
+        "bit_exact": false,
+        "max_abs": 0.005859375,
+        "mean_abs": 0.00028228312730789186
+      }
+    },
+    {
+      "decoder_hidden": {
+        "bit_exact": false,
+        "max_abs": 0.015625,
+        "mean_abs": 0.0005438804626464843
+      },
+      "index": 12,
+      "next_cell": {
+        "bit_exact": true,
+        "max_abs": 0.0,
+        "mean_abs": 0.0
+      },
+      "next_hidden": {
+        "bit_exact": true,
+        "max_abs": 0.0,
+        "mean_abs": 0.0
+      },
+      "projector_on_native_lstm": {
+        "bit_exact": false,
+        "max_abs": 0.015625,
+        "mean_abs": 0.0005438804626464843
+      }
+    },
+    {
+      "decoder_hidden": {
+        "bit_exact": false,
+        "max_abs": 0.0068359375,
+        "mean_abs": 0.00025460124015808105
+      },
+      "index": 13,
+      "next_cell": {
+        "bit_exact": true,
+        "max_abs": 0.0,
+        "mean_abs": 0.0
+      },
+      "next_hidden": {
+        "bit_exact": true,
+        "max_abs": 0.0,
+        "mean_abs": 0.0
+      },
+      "projector_on_native_lstm": {
+        "bit_exact": false,
+        "max_abs": 0.0068359375,
+        "mean_abs": 0.00025460124015808105
+      }
+    },
+    {
+      "decoder_hidden": {
+        "bit_exact": false,
+        "max_abs": 0.009765625,
+        "mean_abs": 0.00030980110168457033
+      },
+      "index": 14,
+      "next_cell": {
+        "bit_exact": true,
+        "max_abs": 0.0,
+        "mean_abs": 0.0
+      },
+      "next_hidden": {
+        "bit_exact": false,
+        "max_abs": 0.0,
+        "mean_abs": 0.0
+      },
+      "projector_on_native_lstm": {
+        "bit_exact": false,
+        "max_abs": 0.009765625,
+        "mean_abs": 0.00030980110168457033
+      }
+    },
+    {
+      "decoder_hidden": {
+        "bit_exact": false,
+        "max_abs": 0.013671875,
+        "mean_abs": 0.0004939556121826172
+      },
+      "index": 15,
+      "next_cell": {
+        "bit_exact": true,
+        "max_abs": 0.0,
+        "mean_abs": 0.0
+      },
+      "next_hidden": {
+        "bit_exact": true,
+        "max_abs": 0.0,
+        "mean_abs": 0.0
+      },
+      "projector_on_native_lstm": {
+        "bit_exact": false,
+        "max_abs": 0.013671875,
+        "mean_abs": 0.0004939556121826172
+      }
+    }
+  ],
+  "device": {
+    "architecture": "honeykrisp",
+    "device_name": "Apple M1 (G13G B1)"
+  },
+  "elapsed_seconds": 6.019338918005815,
+  "free_decode": {
+    "decoder_calls": 145,
+    "first_divergence": null,
+    "joint_calls": 146
+  },
+  "gpu_trace_delta": {
+    "commit_calls_noop": 2152,
+    "commit_calls_with_work": 2143,
+    "gpu_primitive_dispatches": 21037,
+    "omarchy_finalize_calls": 2149,
+    "vk_buffer_copies": 1208,
+    "vk_buffer_fills": 6,
+    "vk_compute_dispatches": 9148,
+    "vk_submissions": 2143
+  },
+  "hostname": "jwm1-linux",
+  "joint_on_native_decoder_state": {
+    "duration_matches": 16,
+    "token_matches": 16,
+    "traces": 16
+  },
+  "kernel": "7.1.6-1-1-ARCH",
+  "mlx_version": "0.32.2.dev202609081722+a9f1bc8",
+  "source_sha256": {
+    "vulkan_decoder.py": "637f077ece00025e5be3c341db256c8933ae19655804d3439490709d9ebc60ef",
+    "vulkan_joint.py": "bf31537d504612c6d9873051c9ad5f7b84a978268e6d7ed4eaec173a18626115"
+  }
+}
