@@ -233,6 +233,9 @@ bool fused_gemv_swiglu_enabled();
 // prologue fold off (the MLX_OMARCHY_FUSED_GEMV gate also covers it);
 // on by default.
 bool fused_gemv_rmsnorm_enabled();
+// MLX_OMARCHY_FUSED_GEMV_RMSNORM_MLP=0 scopes the prologue fold to the
+// attention (non-SwiGLU) GEMV groups.
+bool gemv_rmsnorm_qkv_scope();
 
 // Decode trio: MLX_OMARCHY_FUSED_TRIO=0 keeps f16 RMSNorm rows, the
 // fused SwiGLU chain dispatch, and RoPE pairs on their standalone
