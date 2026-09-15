@@ -324,7 +324,7 @@ Mesa 26.1.7 - 1 passed, 240 subtests. With the driver BO cache disabled
 (every freed BO unmapped and GEM-closed at free) the identical bus error
 reproduced with no GPU fault in dmesg, so no device-side writer into
 recycled memory exists. Per-test isolation counts and the class-c receipts
-remain in `after2-classc-m1.txt` / `after2-classc-ct.txt` on jwm1-linux.
+remain in `after2-classc-m1.txt` / `after2-classc-ct.txt` on M1 Linux.
 Receipt:
 [`receipts/hk/2026-09-08-queue-lifetime.json`](../receipts/hk/2026-09-08-queue-lifetime.json).
 
@@ -549,7 +549,7 @@ The first M1 run of the v0.3.1 release candidate (tree at `959c7a0`) reported th
 
 `omarchy_primitive_tests` failed one assertion in three of three M1 runs: an ordered comparison against NaN returned true where the host reference said false, at `test_primitives.cpp:5548`. IEEE says every ordered comparison with NaN is false. The device returned the correct answer; the reference was wrong, because the reference was computed into a `std::vector<bool>`.
 
-`std::vector<bool>` is bit-packed, and every assignment goes through a read-modify-write proxy. That proxy is itself compiled code, and g++ 16.1.1 20260430 aarch64 miscompiles it. The isolated trigger, verified independently on jwm1: four interleaved `vector<bool>` writes in one loop, then `ne = {x != 1.0 ...}` over `{1, NaN, 3, NaN}` gives `ne[3] = false` for `NaN != 1.0` at `-O1` and `-O2` (`ne = {1,0,1,0}`, should be `{1,0,1,1}`), while `-O0` is correct. The same comparison written against plain bool arrays is correct at every optimisation level, and a single-comparison loop is correct too - which is what pins the bit-packed proxy, not the comparison, as the trigger.
+`std::vector<bool>` is bit-packed, and every assignment goes through a read-modify-write proxy. That proxy is itself compiled code, and g++ 16.1.1 20260430 aarch64 miscompiles it. The isolated trigger, verified independently on M1 hardware: four interleaved `vector<bool>` writes in one loop, then `ne = {x != 1.0 ...}` over `{1, NaN, 3, NaN}` gives `ne[3] = false` for `NaN != 1.0` at `-O1` and `-O2` (`ne = {1,0,1,0}`, should be `{1,0,1,1}`), while `-O0` is correct. The same comparison written against plain bool arrays is correct at every optimisation level, and a single-comparison loop is correct too - which is what pins the bit-packed proxy, not the comparison, as the trigger.
 
 The durable rule for anyone writing device-versus-host comparisons on aarch64: **a reference computed into `std::vector<bool>` is not a reference.** Keep references in plain arrays.
 
