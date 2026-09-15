@@ -105,7 +105,9 @@ silu16 reproduces the pin's 101/8029; LN-fp16 arms diverge immediately.
 
 ## Not claimed
 
-- No `overlay/` code landed; the fork lives on jwm1 only.
+- Receipt was written before the code landing: `5688f8bd` puts the same
+  16-wide fp16-chunk linear into `overlay/tools/coreml/vulkan_encoder.py`
+  (`974fc2a9…`), replacing the jwm1-only fork.
 - No perf claim: the fp16 chunk loop is slower (+4.4 s encoder wall).
 - No 450 ms hardware pass; mel stage here paid a cold `glslc`.
 - `conv` fp16 knob raises `EncoderRunError` on this MIL (stmt 46); unused.
