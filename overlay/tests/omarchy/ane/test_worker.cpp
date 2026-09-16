@@ -6,6 +6,7 @@
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "doctest/doctest.h"
+#include "mlx/backend/omarchy/ane/tile_layout.h"
 #include "mlx/backend/omarchy/ane/worker.h"
 
 #include <csignal>
@@ -489,4 +490,192 @@ TEST_CASE("an unclosed resident session does not outlive its worker") {
   }
   // The destructor killed and reaped it, so the pid is gone for good.
   CHECK(::kill(child, 0) != 0);
+}
+
+TEST_CASE("row pack and unpack match the per-element reference placement") {
+  // The reference placement is ane_packed_offset; the row engine must
+  // produce byte-identical tiles for every stride shape a bundle can
+  // carry: contiguous, row-padded, plane-padded, bool, and a truncated
+  // element count.
+  auto reference_pack = [](const AneProgramBinding& binding,
+                           const std::vector<uint8_t>& dense,
+                           size_t elements) {
+    std::vector<uint8_t> tile(binding.allocation_bytes, 0);
+    const size_t es = ane_element_size(binding);
+    for (size_t element = 0; element < elements; ++element) {
+      const size_t at = ane_packed_offset(binding, element);
+      std::memcpy(
+          tile.data() + at, dense.data() + element * es, es);
+    }
+    return tile;
+  };
+
+  auto make_binding = [](const std::string& dtype,
+                         const std::array<uint64_t, 6>& nchw) {
+    AneProgramBinding binding;
+    binding.tensor = "t";
+    binding.dtype = dtype;
+    binding.nchw = {nchw[0], nchw[1], nchw[2], nchw[3], nchw[4], nchw[5]};
+    const size_t es = dtype == "bool" ? 1 : 2;
+    const uint64_t rows = nchw[0] * nchw[1] * nchw[2];
+    binding.logical_bytes = static_cast<size_t>(rows * nchw[3]) * es;
+    binding.allocation_bytes =
+        static_cast<size_t>((rows - 1) * nchw[5] + nchw[3] * es +
+                            (nchw[0] * nchw[1] - 1) * nchw[4]);
+    return binding;
+  };
+
+  struct Shape {
+    std::array<uint64_t, 6> nchw;
+    const char* dtype;
+  };
+  const std::vector<Shape> shapes = {
+      // contiguous fp16 [2, 3, 4, 5]
+      {{2, 3, 4, 5, 4 * 5 * 2, 5 * 2}, "fp16"},
+      // row-padded fp16
+      {{2, 3, 4, 5, 4 * 10 * 2, 10 * 2}, "fp16"},
+      // plane-padded fp16 (rows still dense)
+      {{1, 2, 3, 4, 3 * 4 * 2 + 64, 4 * 2}, "fp16"},
+      // plane-padded fp16 (rows padded too)
+      {{2, 1, 3, 4, 3 * 9 * 2 + 32, 9 * 2}, "fp16"},
+      // contiguous bool
+      {{1, 2, 2, 3, 2 * 3, 3}, "bool"},
+  };
+
+  for (const auto& shape : shapes) {
+    AneProgramBinding binding = make_binding(shape.dtype, shape.nchw);
+    CAPTURE(binding.tensor);
+    CAPTURE(binding.allocation_bytes);
+
+    std::vector<uint8_t> dense(binding.logical_bytes);
+    for (size_t i = 0; i < dense.size(); ++i) {
+      dense[i] = static_cast<uint8_t>(i * 7 + 1);
+    }
+
+    const size_t es = ane_element_size(binding);
+    const size_t elements = binding.logical_bytes / es;
+
+    std::vector<uint8_t> tile(binding.allocation_bytes, 0);
+    ane_pack_rows(binding, dense.data(), tile.data(), elements);
+    auto expected = reference_pack(binding, dense, elements);
+    REQUIRE(tile == expected);
+
+    std::vector<uint8_t> round_trip(elements * es, 0xEE);
+    ane_unpack_rows(binding, tile.data(), round_trip.data(), elements);
+    CHECK(round_trip == dense);
+
+    // A truncated element count keeps the reference placement for the
+    // elements it does transfer.
+    if (elements > 5) {
+      std::vector<uint8_t> partial_tile(binding.allocation_bytes, 0);
+      ane_pack_rows(binding, dense.data(), partial_tile.data(), 5);
+      CHECK(partial_tile == reference_pack(binding, dense, 5));
+    }
+  }
+}
+
+TEST_CASE("a batch scope bounds N submits under one deadline") {
+  FakeDevice::behavior = FakeDevice::Behavior::ReportState;
+  AneWorkerOptions options;
+  options.deadline = std::chrono::milliseconds(4000);
+  AneWorker worker([] { return std::unique_ptr<AneDevice>(new FakeDevice); },
+                   options);
+
+  std::vector<AneBundle> bundles = {toy_bundle(), second_bundle()};
+  REQUIRE(worker.open(bundles).status == AneWorkerStatus::Completed);
+  CHECK(!worker.batching());
+
+  auto opened = worker.open_batch(std::chrono::milliseconds(4000));
+  REQUIRE(opened.status == AneWorkerStatus::Completed);
+  CHECK(worker.batching());
+  CHECK(worker.batch_rounds() == 0);
+
+  // The whole pass is one bounded unit: rounds alternate bundles and
+  // each payload still crosses, exactly like per-submit residency.
+  for (int round = 0; round < 6; ++round) {
+    const uint8_t marker = static_cast<uint8_t>(0x50 + round);
+    std::map<std::string, AneWorker::Buffer> inputs;
+    inputs["a"] = marked_input(marker);
+    inputs["b"] = marked_input(marker);
+    std::map<std::string, AneWorker::Buffer> outputs;
+    auto report = worker.submit(
+        static_cast<size_t>(round % 2), inputs, &outputs);
+    REQUIRE(report.status == AneWorkerStatus::Completed);
+    REQUIRE(outputs.count("y") == 1);
+    CHECK(outputs["y"][0] == 2);
+    CHECK(outputs["y"][1] == marker);
+    CHECK(worker.batch_rounds() == round + 1);
+  }
+
+  auto closed = worker.close_batch();
+  REQUIRE(closed.status == AneWorkerStatus::Completed);
+  CHECK(closed.iterations == 6);
+  CHECK(!worker.batching());
+
+  // Outside the scope the per-submit window applies again, and the
+  // session is still alive and releasable.
+  std::map<std::string, AneWorker::Buffer> inputs;
+  inputs["a"] = marked_input(0x60);
+  inputs["b"] = marked_input(0x60);
+  REQUIRE(worker.submit(0, inputs).status == AneWorkerStatus::Completed);
+  auto release = worker.close();
+  CHECK(release.status == AneWorkerStatus::Completed);
+  CHECK(release.released_programs == 2);
+}
+
+TEST_CASE("a batch deadline miss quarantines the worker") {
+  FakeDevice::behavior = FakeDevice::Behavior::ReportState;
+  AneWorkerOptions options;
+  options.deadline = std::chrono::milliseconds(4000);
+  AneWorker worker([] { return std::unique_ptr<AneDevice>(new FakeDevice); },
+                   options);
+
+  REQUIRE(worker.open({toy_bundle()}).status == AneWorkerStatus::Completed);
+  REQUIRE(worker.open_batch(std::chrono::milliseconds(300)).status ==
+          AneWorkerStatus::Completed);
+
+  std::map<std::string, AneWorker::Buffer> good;
+  good["a"] = marked_input(0x11);
+  good["b"] = marked_input(0x11);
+  // A quick successful round first: the deadline is the batch's, not the
+  // first round's, so this passing does not discharge it.
+  REQUIRE(worker.submit(0, good).status == AneWorkerStatus::Completed);
+
+  std::map<std::string, AneWorker::Buffer> hang;
+  hang["a"] = marked_input(FakeDevice::kHangMarker);
+  hang["b"] = marked_input(FakeDevice::kHangMarker);
+  auto report = worker.submit(0, hang);
+  REQUIRE(report.status == AneWorkerStatus::DeadlineExceeded);
+  CHECK(worker.quarantined());
+  CHECK(worker.quarantine_reason().find("deadline") != std::string::npos);
+  CHECK(!worker.resident());
+
+  auto refused = worker.submit(0, good);
+  CHECK(refused.status == AneWorkerStatus::QuarantinedRefused);
+  CHECK(!worker.batching());
+}
+
+TEST_CASE("batch scope misuse is rejected, not guessed at") {
+  FakeDevice::behavior = FakeDevice::Behavior::ReportState;
+  AneWorkerOptions options;
+  options.deadline = std::chrono::milliseconds(4000);
+  AneWorker worker([] { return std::unique_ptr<AneDevice>(new FakeDevice); },
+                   options);
+
+  CHECK_THROWS_AS(worker.open_batch(std::chrono::milliseconds(4000)),
+                  std::invalid_argument);
+  CHECK_THROWS_AS(worker.close_batch(), std::invalid_argument);
+  CHECK_THROWS_AS(worker.open_batch(std::chrono::milliseconds(0)),
+                  std::invalid_argument);
+
+  REQUIRE(worker.open({toy_bundle()}).status == AneWorkerStatus::Completed);
+  REQUIRE(worker.open_batch(std::chrono::milliseconds(4000)).status ==
+          AneWorkerStatus::Completed);
+  CHECK_THROWS_AS(worker.open_batch(std::chrono::milliseconds(4000)),
+                  std::invalid_argument);
+  auto closed = worker.close_batch();
+  CHECK(closed.status == AneWorkerStatus::Completed);
+  CHECK_THROWS_AS(worker.close_batch(), std::invalid_argument);
+  auto release = worker.close();
+  CHECK(release.status == AneWorkerStatus::Completed);
 }

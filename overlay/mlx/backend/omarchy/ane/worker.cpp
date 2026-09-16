@@ -581,6 +581,8 @@ void AneWorker::teardown() {
   inbox_.clear();
   inbox_cursor_ = 0;
   resident_programs_ = 0;
+  batch_until_ = std::chrono::milliseconds(0);
+  batch_rounds_ = 0;
 }
 
 AneWorkerReport AneWorker::end_session(const Wait& failure) {
@@ -904,7 +906,11 @@ AneWorkerReport AneWorker::submit(
   }
 
   const auto started = now_ms();
-  const auto until = started + options_.deadline;
+  const auto until =
+      batch_until_.count() != 0 ? batch_until_ : started + options_.deadline;
+  if (batch_until_.count() != 0) {
+    ++batch_rounds_;
+  }
 
   std::string header = "submit " + std::to_string(bundle) + "\n";
   auto wait = send_request(header.data(), header.size(), until);
@@ -987,6 +993,53 @@ AneWorkerReport AneWorker::submit(
   if (outputs != nullptr) {
     *outputs = std::move(produced);
   }
+  return out;
+}
+
+// Opens a batch scope: one absolute deadline bounds every submit until
+// close_batch(). The bounded unit is the batch, so the caller can turn
+// a whole island pass of per-layer submits into one deadline-bounded
+// unit without weakening anything else: the child stays private, a
+// deadline miss or a failed round still quarantines and ends the
+// session, and nothing is retried.
+AneWorkerReport AneWorker::open_batch(std::chrono::milliseconds deadline) {
+  if (deadline.count() <= 0) {
+    throw std::invalid_argument("ANE worker batch deadline must be positive");
+  }
+  if (!resident()) {
+    throw std::invalid_argument("no resident ANE session is open");
+  }
+  if (batching()) {
+    throw std::invalid_argument("ANE worker batch scope is already open");
+  }
+  AneWorkerReport out;
+  if (quarantined()) {
+    out.status = AneWorkerStatus::QuarantinedRefused;
+    out.detail = "quarantined: " + quarantine_reason_;
+    return out;
+  }
+  batch_until_ = now_ms() + deadline;
+  batch_rounds_ = 0;
+  out.status = AneWorkerStatus::Completed;
+  out.detail = "batch opened deadline_ms=" + std::to_string(deadline.count());
+  return out;
+}
+
+AneWorkerReport AneWorker::close_batch() {
+  if (!batching()) {
+    throw std::invalid_argument("no ANE worker batch scope is open");
+  }
+  AneWorkerReport out;
+  if (quarantined()) {
+    out.status = AneWorkerStatus::QuarantinedRefused;
+    out.detail = "quarantined: " + quarantine_reason_;
+    batch_until_ = std::chrono::milliseconds(0);
+    return out;
+  }
+  batch_until_ = std::chrono::milliseconds(0);
+  out.status = AneWorkerStatus::Completed;
+  out.iterations = batch_rounds_;
+  out.detail = "batch closed rounds=" + std::to_string(batch_rounds_);
   return out;
 }
 
