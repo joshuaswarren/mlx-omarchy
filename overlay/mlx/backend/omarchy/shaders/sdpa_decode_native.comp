@@ -304,30 +304,19 @@ void main() {
   if (blocks == 0u) {
     // Native sdpa_vector: each SIMD owns keys sgid, sgid+32, ... and keeps an
     // independent online-softmax state before the 32 states are merged.
-    // Each iteration pre-issues the next key's K and V pair loads before
-    // the online-softmax chain, so their latencies overlap the math
-    // instead of chaining into it. The prefetch index clamps instead of
-    // branching - the clamped tail load repeats the last key and its
-    // value is discarded when the loop exits - so the hot loop has no
-    // branches at all. The loads are pure reads of values the iteration
-    // never writes; the arithmetic consumes the same values in the same
-    // order as the unpipelined loop.
+    // Loop shape, load positions, and arithmetic order are exactly the
+    // unpipelined kernel; the only change is that a lane's K and V pairs
+    // ride one 32-bit word load each instead of two 16-bit loads.
     float max_score = FINITE_MIN;
     float sum_exp_score = 0.0;
     float o0 = 0.0;
     float o1 = 0.0;
-    uint first = min(sgid, params.matrix_k - 1u);
-    vec2 k_pair = key_pair(params.rhs_offset + kv_head * params.shape[1] +
-        first * params.shape[2] + q_dim * params.in_strides[0]);
-    vec2 v_pair = value_pair(params.aux_offset + kv_head * params.in_strides[1] +
-        first * params.in_strides[2] + q_dim * params.in_strides[3]);
     for (uint key = sgid; key < params.matrix_k; key += SIMD) {
-      uint next = min(key + SIMD, params.matrix_k - 1u);
-      vec2 next_k = key_pair(params.rhs_offset + kv_head * params.shape[1] +
-          next * params.shape[2] + q_dim * params.in_strides[0]);
-      vec2 next_v = value_pair(
+      vec2 k_pair = key_pair(params.rhs_offset + kv_head * params.shape[1] +
+          key * params.shape[2] + q_dim * params.in_strides[0]);
+      vec2 v_pair = value_pair(
           params.aux_offset + kv_head * params.in_strides[1] +
-          next * params.in_strides[2] + q_dim * params.in_strides[3]);
+          key * params.in_strides[2] + q_dim * params.in_strides[3]);
       float score = fma(q0, k_pair.x, 0.0);
       score = fma(q1, k_pair.y, score);
       score = subgroupAdd(score);
@@ -338,8 +327,6 @@ void main() {
       sum_exp_score = fma(sum_exp_score, factor, exp_score);
       o0 = fma(o0, factor, exp_score * v_pair.x);
       o1 = fma(o1, factor, exp_score * v_pair.y);
-      k_pair = next_k;
-      v_pair = next_v;
     }
 
     if (lane == 0u) {
@@ -366,26 +353,19 @@ void main() {
   // Native sdpa_vector_2pass_1. A physical subgroup computes four logical
   // native blocks sequentially; logical blocks remain independent and land
   // in the exact f16/f32 intermediate formats consumed by pass 2.
-  // Same pre-issued clamped next-key pair loads as the one-pass loop:
-  // latencies overlap the online-softmax chain, values and order
-  // unchanged, no branches in the hot loop.
+  // Same v3 discipline as the one-pass loop: base loop shape, one word
+  // load per lane pair.
   for (uint block = sgid; block < blocks; block += SIMD) {
     float max_score = FINITE_MIN;
     float sum_exp_score = 0.0;
     float o0 = 0.0;
     float o1 = 0.0;
-    uint first = min(block, params.matrix_k - 1u);
-    vec2 k_pair = key_pair(params.rhs_offset + kv_head * params.shape[1] +
-        first * params.shape[2] + q_dim * params.in_strides[0]);
-    vec2 v_pair = value_pair(params.aux_offset + kv_head * params.in_strides[1] +
-        first * params.in_strides[2] + q_dim * params.in_strides[3]);
     for (uint key = block; key < params.matrix_k; key += blocks) {
-      uint next = min(key + blocks, params.matrix_k - 1u);
-      vec2 next_k = key_pair(params.rhs_offset + kv_head * params.shape[1] +
-          next * params.shape[2] + q_dim * params.in_strides[0]);
-      vec2 next_v = value_pair(
+      vec2 k_pair = key_pair(params.rhs_offset + kv_head * params.shape[1] +
+          key * params.shape[2] + q_dim * params.in_strides[0]);
+      vec2 v_pair = value_pair(
           params.aux_offset + kv_head * params.in_strides[1] +
-          next * params.in_strides[2] + q_dim * params.in_strides[3]);
+          key * params.in_strides[2] + q_dim * params.in_strides[3]);
       float score = fma(q0, k_pair.x, 0.0);
       score = fma(q1, k_pair.y, score);
       score = subgroupAdd(score);
@@ -396,8 +376,6 @@ void main() {
       sum_exp_score = fma(sum_exp_score, factor, exp_score);
       o0 = fma(o0, factor, exp_score * v_pair.x);
       o1 = fma(o1, factor, exp_score * v_pair.y);
-      k_pair = next_k;
-      v_pair = next_v;
     }
     if (lane == 0u) {
       s_max[block] = max_score;
