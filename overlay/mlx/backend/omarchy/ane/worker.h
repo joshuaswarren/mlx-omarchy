@@ -80,7 +80,10 @@ struct AneWorkerOptions {
   int iterations{1};
 };
 
-class AneWorker {
+// MLX_API: the standalone fd-protocol worker exe links this class out
+// of the shared libmlx; without the annotation the hidden-visibility
+// preset keeps its symbols private and the exe fails to link.
+class MLX_API AneWorker {
  public:
   using DeviceFactory = std::function<std::unique_ptr<AneDevice>()>;
   using Buffer = std::vector<uint8_t>;
