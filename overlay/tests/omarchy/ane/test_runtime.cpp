@@ -283,11 +283,16 @@ TEST_CASE("ANE runtime validates every bundle directory entry before device work
         std::runtime_error);
   }
 
-  SUBCASE("valid bundle reaches pre-worker runtime initialization") {
+  SUBCASE("positional synthetic ANEC refused under STRICT_BIND before "
+          "device work") {
+    // The synthetic ANEC carries no task stream, so strict libane
+    // (LIBANE_CONFIG_STRICT_BIND) refuses its positional channel map
+    // before the diagnostic-path guard is reachable.
     CHECK_THROWS_WITH_AS(
         AneRuntime::load(bundle.path(), std::chrono::seconds(1), {}),
-        "ANE diagnostic path must not be empty",
-        std::invalid_argument);
+        "[omarchy-ane] bundle: program 0 task stream does not name every "
+        "surface; channel map is positional.",
+        std::runtime_error);
   }
 }
 
