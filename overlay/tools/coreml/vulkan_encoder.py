@@ -447,7 +447,10 @@ class Blobs:
 
 
 class Statement:
-    __slots__ = ("index", "names", "op", "kwargs", "attrs", "dtype", "shape", "done")
+    __slots__ = (
+        "index", "names", "op", "kwargs", "attrs", "dtype", "shape", "done",
+        "operands", "const_kwargs",
+    )
 
     def __init__(self, index, names, op, kwargs, attrs, dtype, shape):
         self.index = index
@@ -458,6 +461,8 @@ class Statement:
         self.dtype = dtype
         self.shape = shape
         self.done = False
+        self.operands: list[str] = []
+        self.const_kwargs: dict | None = None
 
 
 # The three island bundles the encoder handlers submit to. The resident
@@ -721,11 +726,15 @@ class EncoderRunner:
                     dtype, shape,
                 )
             self.statements.append(stmt)
+            if stmt.op == "const":
+                stmt.const_kwargs = parse_kwargs(stmt.attrs)
             for name in stmt.names:
                 self.producer[name] = stmt
                 if stmt.op == "const":
                     self.const_stmt[name] = stmt
             index += 1
+        if self.statements and self.statements[-1].index != len(self.statements) - 1:
+            raise EncoderRunError("statement index sequence is corrupt")
 
     def _index_islands(self) -> None:
         scores, content, attn_out, mask_select = [], [], [], []
@@ -805,16 +814,27 @@ class EncoderRunner:
         release device memory as it goes. The encoder's constants alone are
         1.2 GB of fp16; holding every intermediate would not fit."""
         self.last_use: dict[str, int] = {}
+        self.releases: dict[int, list[str]] = {}
         for stmt in self.statements:
+            operands = []
             for token in stmt.kwargs.values():
                 for name in self._operand_names(token):
-                    self.last_use[name] = max(self.last_use.get(name, -1), stmt.index)
+                    operands.append(name)
+                    self.last_use[name] = max(
+                        self.last_use.get(name, -1), stmt.index
+                    )
+            stmt.operands = operands
         # The fused mul reads the split sibling after the skipped sigmoid
         # statement, so that operand must live until the mul, not the sigmoid.
         for mul_index, (_a, b_name) in self.glu_fusions.items():
             self.last_use[b_name] = max(
                 self.last_use.get(b_name, -1), mul_index
             )
+        # Group names by their last-use index so run() retires each name at
+        # its own statement instead of rescanning every live name per
+        # statement -- identical deletions, O(released) instead of O(all).
+        for name, last in self.last_use.items():
+            self.releases.setdefault(last, []).append(name)
 
     def _operand_names(self, token: str) -> list[str]:
         token = token.strip()
@@ -838,9 +858,8 @@ class EncoderRunner:
             raise EncoderRunError(f"unresolved operand {name!r}")
         if stmt.done:
             return
-        for token in stmt.kwargs.values():
-            for operand in self._operand_names(token):
-                self.ensure(operand)
+        for operand in stmt.operands:
+            self.ensure(operand)
         self.execute(stmt)
 
     def tensor(self, token: str) -> mx.array:
@@ -883,8 +902,7 @@ class EncoderRunner:
     def eval_const(self, stmt: Statement) -> None:
         name = stmt.names[0]
         dtype_name, shape = stmt.dtype, stmt.shape
-        kwargs = parse_kwargs(stmt.attrs)
-        value_text = kwargs["val"]
+        value_text = stmt.const_kwargs["val"]
         if dtype_name == "string":
             self.meta[name] = re.search(r'"([^"]*)"', value_text).group(1)
             return
@@ -1400,11 +1418,12 @@ class EncoderRunner:
             for name in stmt.names:
                 if name in wanted and name in self.values:
                     keep[name] = self.values[name]
-            # Release anything whose final reader has run.
-            for name, last in list(self.last_use.items()):
-                if last <= stmt.index and name not in protected and name in self.values:
+            # Release anything whose final reader has run: names are grouped
+            # by last-use index at parse time, so each statement touches only
+            # the names it retires.
+            for name in self.releases.get(stmt.index, ()):
+                if name not in protected and name in self.values:
                     del self.values[name]
-                    del self.last_use[name]
             if stop_after in keep:
                 break
         else:
