@@ -11257,6 +11257,19 @@ void ScaledDotProductAttention::eval_gpu(
       decode_caps.max_compute_work_group_size[0] >= 1024u &&
       decode_caps.max_compute_shared_memory_size >= kDecodeBf16SharedBytes;
   const bool decode_bf16_probe = q.dtype() == bfloat16;
+  // The f16 arm reads K and V through 32-bit word views: one lane pair =
+  // one word. That contract needs every element base even - item offsets
+  // (element parity = byte offset % 4) and the kv-head/key strides of all
+  // three tensors. Decode caches are freshly allocated [kv, keys, 64]
+  // f16 arrays, so this holds for every real cache; anything else falls
+  // through to the composition below rather than misreading words.
+  const bool decode_word_view = q.dtype() == float16 &&
+      q.offset() % (2 * q.itemsize()) == 0 &&
+      k.offset() % (2 * k.itemsize()) == 0 &&
+      v.offset() % (2 * v.itemsize()) == 0 &&
+      q.strides()[1] % 2 == 0 && k.strides()[1] % 2 == 0 &&
+      k.strides()[2] % 2 == 0 && v.strides()[1] % 2 == 0 &&
+      v.strides()[2] % 2 == 0;
   const bool decode_route_ready =
       decode_bf16_probe ? decode_bf16_ready : decode_subgroup_ready;
   if ((decode_env == nullptr || std::strcmp(decode_env, "0") != 0) &&
@@ -11266,7 +11279,8 @@ void ScaledDotProductAttention::eval_gpu(
       head_dim == 64 && v_dim == 64 && k_len > 0 &&
       (q.dtype() != bfloat16 ||
           (k_len >= uint32_t{256} && k_len <= uint32_t{2048})) &&
-      q.strides()[3] == 1 && k.strides()[3] == 1 && v.strides()[3] == 1) {
+      q.strides()[3] == 1 && k.strides()[3] == 1 && v.strides()[3] == 1 &&
+      (decode_bf16_probe || decode_word_view)) {
     const bool decode_bf16 = decode_bf16_probe;
     out.set_data(allocate_omarchy(out.nbytes()));
     omarchy::ComputeParams params;
