@@ -130,7 +130,9 @@
       0
     ],
     "emissions": 104,
-    "encoder_hidden_sha256": "38c73261f29230276ed76f1fc017b76b024156d79218bd5f1347fdc7e7d43ec7",
+    "encoder_hidden_npy_file_sha256": "38c73261f29230276ed76f1fc017b76b024156d79218bd5f1347fdc7e7d43ec7",
+    "encoder_hidden_sha256": "f4dbfff3c91da384431b21bf53efae8c6c7f075bf27b19393fa310703644199f",
+    "encoder_hidden_sha256_basis": "sha256 of the float32 tensor bytes (C order), not the .npy file",
     "frame_indices": [
       3,
       6,
@@ -237,6 +239,7 @@
       373,
       373
     ],
+    "mel_npy_file_sha256": "5b54f4a9a2ba3434cd69b6e48e6780d3bcb6c635d9ce85cda3d85c60f2455bde",
     "mel_sha256": "bcbaa3ca159cd3ddf8463b83cb832d4badd369caf93a76464b31c9cf4ac34041",
     "mel_sha256_basis": "sha256 of the float32 tensor bytes (C order), not the .npy file",
     "token_ids": [
