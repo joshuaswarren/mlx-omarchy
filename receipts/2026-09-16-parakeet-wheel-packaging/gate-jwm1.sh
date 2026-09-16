@@ -35,11 +35,13 @@ env HOME="$CLEAN_HOME" python3 -m venv "$VENV"
 # none; the CLI refuses naming them when absent).
 env HOME="$CLEAN_HOME" "$VENV/bin/pip" install --quiet numpy protobuf soundfile
 env HOME="$CLEAN_HOME" "$VENV/bin/pip" install --quiet "$WHEEL"
-CLI="$VENV/bin/mlx-omarchy-parakeet"
-[[ -x "$CLI" ]] || { fail "mlx-omarchy-parakeet launcher not installed"; }
 
-SITE="$("$VENV/bin/python" -c 'import mlx, pathlib; print(pathlib.Path(mlx.__file__).parent)')"
+SITE="$("$VENV/bin/python" -c 'import mlx, pathlib; print(pathlib.Path(mlx.__path__[0]).resolve())')"
 log "installed package dir: $SITE"
+CLI="$SITE/bin/mlx-omarchy-parakeet"
+WORKER="$SITE/bin/mlx-omarchy-ane-worker"
+[[ -x "$CLI" ]] || { fail "mlx-omarchy-parakeet launcher not installed at $CLI"; }
+[[ -x "$WORKER" ]] || { fail "mlx-omarchy-ane-worker not installed at $WORKER"; }
 
 # --- installed surface -------------------------------------------------
 for rel in bin/mlx-omarchy-parakeet bin/mlx-omarchy-ane-worker \
