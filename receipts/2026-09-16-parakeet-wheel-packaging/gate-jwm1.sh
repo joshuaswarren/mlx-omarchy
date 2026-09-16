@@ -22,9 +22,10 @@ FAILURES=()
 log() { printf '%s\n' "$*" | tee -a "$OUT/gate.log"; }
 fail() { FAILURES+=("$1"); log "FAIL: $1"; }
 
-cd "$(dirname "$0")/../../.."  # repo root
+cd "$(dirname "$0")/../.."  # repo root
 mkdir -p "$OUT"
 : > "$OUT/gate.log"
+WHEEL="$(readlink -f "$WHEEL")"
 log "gate start $(date -Iseconds) wheel=$WHEEL"
 log "wheel sha256: $(sha256sum "$WHEEL" | cut -d' ' -f1)"
 
