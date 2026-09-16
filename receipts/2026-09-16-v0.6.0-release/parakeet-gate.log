@@ -1,0 +1,31 @@
+gate start 2026-09-16T13:58:24-05:00 wheel=/var/tmp/V060-rel/mlx_omarchy-0.32.2.dev202609161852+2e252962-cp314-cp314-linux_aarch64.whl
+wheel sha256: a7c8fc82ac221d34bc79a87ac542e72bfffa954f9c57142b0a91edc97509c60a
+installed package dir: /tmp/parakeet-gate.RFSvcF/venv/lib/python3.14/site-packages/mlx
+cache already verifies: /var/tmp/V060-rel/clean-home/.cache/mlx-omarchy/parakeet-reference/mweinbach1/parakeet-tdt-0.6b-v3-coreml/b650695c2322ee5281dff48d7345b2f3a58ff018
+emitting encoder source into /var/tmp/V060-rel/clean-home/.cache/mlx-omarchy/parakeet-reference/mweinbach1/parakeet-tdt-0.6b-v3-coreml/b650695c2322ee5281dff48d7345b2f3a58ff018/encoder-source/b650695c2322ee5281dff48d7345b2f3a58ff018 (one-time, CPU-bound)
+{
+  "status": "match",
+  "checks_failed": [],
+  "emissions": 104,
+  "total_pipeline_ms": 35828.938,
+  "out": "/var/tmp/V060-rel/gate-out/run-1",
+  "transcript": "He hoped there would be stew for dinner, turnips and carrots and bruised potatoes and fat mutton pieces to be ladled out in thick, peppered, flour-fattened sauce........................................... Юн Ю"
+}
+{
+  "status": "match",
+  "checks_failed": [],
+  "emissions": 104,
+  "total_pipeline_ms": 8231.237,
+  "out": "/var/tmp/V060-rel/gate-out/run-2",
+  "transcript": "He hoped there would be stew for dinner, turnips and carrots and bruised potatoes and fat mutton pieces to be ladled out in thick, peppered, flour-fattened sauce........................................... Юн Ю"
+}
+{
+  "status": "match",
+  "checks_failed": [],
+  "emissions": 104,
+  "total_pipeline_ms": 8215.337,
+  "out": "/var/tmp/V060-rel/gate-out/run-3",
+  "transcript": "He hoped there would be stew for dinner, turnips and carrots and bruised potatoes and fat mutton pieces to be ladled out in thick, peppered, flour-fattened sauce........................................... Юн Ю"
+}
+gate end 2026-09-16T13:59:57-05:00
+GATE PASS: clean install runs the pinned reference end to end
