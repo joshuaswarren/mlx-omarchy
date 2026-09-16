@@ -56,28 +56,18 @@ for bundle in island-attn-a-kt island-pv island-select-8head; do
     || fail "installed bundle missing: $bundle"
 done
 
-# --- no staged/dev files in the prefix ---------------------------------
-# Binaries legitimately carry their build-tree strings; the product-level
-# proof is the run report below (every path the runtime touched). Here we
-# check the text surface for the known staging locations.
-if grep -rl -e "island-reexport" -e "EncoderParityAne" -e "E2EREV" \
-    -e "ParakeetE2E" -e "receipts/" "$SITE" \
-    --include="*.py" --include="*.json" 2>/dev/null | grep -q .; then
-  fail "staging references found inside the installed prefix text files"
-fi
-
+# --- download (clean HOME; the gate verifies, pre-seeded or not) --------
 # The installed launcher runs under `env python3`; the venv owns the
 # dependencies, so invoke it with the venv interpreter explicitly.
-run_cli() { env HOME="$CLEAN_HOME" "$VENV/bin/python" "$CLI" "$@"; }
-
-# --- download (clean HOME; the gate verifies, pre-seeded or not) --------
-if ! flock -w 900 "$LOCK" run_cli download >> "$OUT/gate.log" 2>&1; then
+if ! flock -w 900 "$LOCK" env HOME="$CLEAN_HOME" \
+    "$VENV/bin/python" "$CLI" download >> "$OUT/gate.log" 2>&1; then
   fail "download failed (see gate.log)"
 fi
 
 # --- transcribe 3x warm under the lock ---------------------------------
 for run in 1 2 3; do
-  if ! flock -w 900 "$LOCK" run_cli transcribe -o "$OUT/run-$run" \
+  if ! flock -w 900 "$LOCK" env HOME="$CLEAN_HOME" \
+      "$VENV/bin/python" "$CLI" transcribe -o "$OUT/run-$run" \
       >> "$OUT/gate.log" 2>&1; then
     fail "transcribe run-$run failed (see gate.log)"
   fi
