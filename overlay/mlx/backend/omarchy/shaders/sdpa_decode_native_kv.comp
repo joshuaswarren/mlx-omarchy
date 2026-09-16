@@ -1,0 +1,316 @@
+// Copyright © 2026 Joshua Warren / mlx-omarchy contributors.
+// SPDX-License-Identifier: MIT
+//
+// KV-head-major twin of sdpa_decode_native.comp's f16 arm
+// (SdpaDecodeNativeF16). Native's decode geometry dispatches one
+// 1024-thread workgroup per query head, so every GQA repeat head
+// re-reads its kv head's whole K and V stream: at 14 q / 2 kv heads
+// each kv-head byte is fetched by 7 workgroups. This variant
+// dispatches one workgroup per KV head that computes all 7 repeat
+// heads at once - each K/V element is loaded once and feeds seven
+// online-softmax states held in registers.
+//
+// The arithmetic contract is bit-exactness with SdpaDecodeNativeF16,
+// per q head. Every head keeps the identical serial key walk and the
+// identical f32 operation sequence (including which operand each
+// subgroup reduction folds), so each head's stored words equal the
+// per-head route's; only the K/V loads are shared. The one-pass arm
+// below is sdpa_vector's 32 interleaved online streams and shared
+// transpose merge, and the two-pass arm is sdpa_vector_2pass_1/2's
+// exact block walk, f16 partial format, lane-indexed max/denominator
+// folds, and sgid-indexed output fold - with the 7 repeat heads
+// expanding the per-key chain and the per-block partials moving to a
+// global scratch binding (7 x 128 blocks x 32 lanes x 4 B exceeds the
+// 32 KB threadgroup store; the stored words are identical either way
+// and only the owning workgroup reads them back). The host gate
+// refuses every shape the base arm's gate would refuse plus any GQA
+// ratio other than 7, and falls through to the per-head route.
+
+#version 460
+
+#extension GL_KHR_shader_subgroup_basic : require
+#extension GL_KHR_shader_subgroup_arithmetic : require
+#extension GL_KHR_shader_subgroup_shuffle : require
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
+
+layout(local_size_x = 1024, local_size_y = 1, local_size_z = 1) in;
+layout(set = 0, binding = 0, std430) readonly buffer Query {
+  float16_t values[];
+} query_data;
+layout(set = 0, binding = 1, std430) readonly buffer Key {
+  float16_t values[];
+} key_data;
+layout(set = 0, binding = 2, std430) readonly buffer Value {
+  float16_t values[];
+} value_data;
+layout(set = 0, binding = 3, std430) writeonly buffer Output {
+  float16_t values[];
+} output_data;
+// Two-pass partials: one packed f16 output pair per (repeat head,
+// block, lane), workgroup-private by construction.
+layout(set = 0, binding = 4, std430) buffer Scratch {
+  uint values[];
+} scratch_data;
+
+layout(push_constant) uniform Params {
+  uint count;
+  uint operation;
+  uint lhs_size;
+  uint rhs_size;
+  uint reduce_size;
+  uint output_size;
+  uint lhs_offset;
+  uint rhs_offset;
+  uint output_offset;
+  uint aux_size;
+  uint aux_offset;
+  uint matrix_m;
+  uint matrix_n;
+  uint matrix_k;
+  uint flags;
+  float alpha;
+  float beta;
+  uint dims;
+  uint shape[4];
+  uint in_strides[4];
+  uint out_strides[4];
+} params;
+
+const uint SIMD = 32u;
+const uint DIM = 64u;
+const uint MAX_BLOCKS = 128u;
+const float FINITE_MIN = -3.4028234663852886e38;
+
+float native_exp(float x) {
+  return exp(x);
+}
+
+
+#if KV_REPEATS != 7
+#error "this specialization is the 7-repeat GQA decode shape"
+#endif
+const uint REPEATS = uint(KV_REPEATS);
+
+// Per-head merge state: one max/sum slot per (repeat head, subgroup)
+// in the one-pass arm and per (repeat head, block) in the two-pass
+// arm, plus two ping-pong transpose buffers so seven heads merge
+// without re-walking one shared buffer.
+shared float s_max[REPEATS * MAX_BLOCKS];
+shared float s_sum[REPEATS * MAX_BLOCKS];
+shared float s_outputs_a[SIMD * SIMD];
+shared float s_outputs_b[SIMD * SIMD];
+
+// Per-head state lives in individually named registers: every loop
+// over the repeat heads is macro-unrolled, so no array is ever
+// dynamically indexed and nothing spills for indexing.
+#define KV_Q(h)                                                              \
+  uint q_base_##h = params.lhs_offset +                                      \
+      (kv_head * REPEATS + h) * params.shape[0];                             \
+  float q0_##h = params.alpha *                                              \
+      float(query_data.values[q_base_##h + q_dim * params.shape[3]]);        \
+  float q1_##h = params.alpha *                                              \
+      float(query_data.values[q_base_##h + (q_dim + 1u) * params.shape[3]]);
+
+#define KV_STATE(h)                                                          \
+  float max_score_##h = FINITE_MIN;                                          \
+  float sum_exp_score_##h = 0.0;                                             \
+  float o0_##h = 0.0;                                                        \
+  float o1_##h = 0.0;
+
+// One key's online-softmax step for repeat head h: the identical f32
+// chain the per-head route runs, against the shared k0/k1/v0/v1.
+#define KV_KEY(h)                                                            \
+  {                                                                          \
+    float score = fma(q0_##h, k0, 0.0);                                      \
+    score = fma(q1_##h, k1, score);                                          \
+    score = subgroupAdd(score);                                              \
+    float new_max = max(max_score_##h, score);                               \
+    float factor = native_exp(max_score_##h - new_max);                      \
+    float exp_score = native_exp(score - new_max);                           \
+    max_score_##h = new_max;                                                 \
+    sum_exp_score_##h = fma(sum_exp_score_##h, factor, exp_score);           \
+    o0_##h = fma(o0_##h, factor, exp_score * v0);                            \
+    o1_##h = fma(o1_##h, factor, exp_score * v1);                            \
+  }
+
+// One-pass merge for repeat head h: the 32 subgroup states reduce
+// exactly as the per-head route does - subgroupMax over the per-lane
+// maxima, the lane's rescale factor, subgroupAdd over the rescaled
+// sums, then the shared transpose and SIMD reduction of the output
+// pair under the same factor.
+#define KV_MERGE(h)                                                          \
+  float lane_max_##h = s_max[h * SIMD + lane];                               \
+  float merged_max_##h = subgroupMax(lane_max_##h);                          \
+  float factor_##h = native_exp(lane_max_##h - merged_max_##h);              \
+  float denominator_##h = subgroupAdd(s_sum[h * SIMD + lane] * factor_##h);
+
+// Both output dims of one head stage into the ping-pong buffers
+// behind one barrier; the trailing barrier protects the next head's
+// stores. Each subgroupAdd folds the same 32 operands in the same
+// tree as the per-head route.
+#define KV_OUT(h)                                                            \
+  s_outputs_a[lane * SIMD + sgid] = o0_##h;                                  \
+  s_outputs_b[lane * SIMD + sgid] = o1_##h;                                  \
+  barrier();                                                                 \
+  float merged0_##h =                                                        \
+      subgroupAdd(s_outputs_a[sgid * SIMD + lane] * factor_##h);             \
+  float merged1_##h =                                                        \
+      subgroupAdd(s_outputs_b[sgid * SIMD + lane] * factor_##h);             \
+  barrier();                                                                 \
+  store_pair(kv_head * REPEATS + h, lane, merged0_##h, merged1_##h,          \
+             denominator_##h);
+
+// Two-pass merge for repeat head h: native sdpa_vector_2pass_2's
+// lane-indexed max and denominator folds, then the sgid-indexed f16
+// partial fold from scratch, then the transpose reduction.
+#define KV_PASS2(h)                                                          \
+  {                                                                          \
+    float merged_max = FINITE_MIN;                                           \
+    for (uint block = lane; block < blocks; block += SIMD) {                 \
+      merged_max = max(merged_max, s_max[h * MAX_BLOCKS + block]);           \
+    }                                                                        \
+    merged_max = subgroupMax(merged_max);                                    \
+    float denominator = 0.0;                                                 \
+    for (uint block = lane; block < blocks; block += SIMD) {                 \
+      float factor = native_exp(s_max[h * MAX_BLOCKS + block] - merged_max); \
+      denominator = fma(factor, s_sum[h * MAX_BLOCKS + block], denominator); \
+    }                                                                        \
+    denominator = subgroupAdd(denominator);                                  \
+    float o0 = 0.0;                                                          \
+    float o1 = 0.0;                                                          \
+    for (uint block = sgid; block < blocks; block += SIMD) {                 \
+      float factor =                                                         \
+          native_exp(s_max[h * MAX_BLOCKS + block] - merged_max);            \
+      vec2 partial = unpackHalf2x16(                                         \
+          scratch_data                                                       \
+              .values[scratch_base + (h * blocks + block) * SIMD + lane]);   \
+      o0 = fma(factor, partial.x, o0);                                       \
+      o1 = fma(factor, partial.y, o1);                                       \
+    }                                                                        \
+    s_outputs_a[lane * SIMD + sgid] = o0;                                    \
+    s_outputs_b[lane * SIMD + sgid] = o1;                                    \
+    barrier();                                                               \
+    float merged0 = subgroupAdd(s_outputs_a[sgid * SIMD + lane]);            \
+    float merged1 = subgroupAdd(s_outputs_b[sgid * SIMD + lane]);            \
+    barrier();                                                               \
+    store_pair(kv_head * REPEATS + h, lane, merged0, merged1, denominator);  \
+  }
+
+void store_pair(uint head, uint lane, float x, float y, float denominator) {
+  if (lane == 0u) {
+    uint out_base = params.output_offset + head * DIM + 2u * gl_SubgroupID;
+    output_data.values[out_base] = float16_t(x / denominator);
+    output_data.values[out_base + 1u] = float16_t(y / denominator);
+  }
+}
+
+void main() {
+  uint lane = gl_SubgroupInvocationID;
+  uint sgid = gl_SubgroupID;
+  uint kv_head = gl_WorkGroupID.x;
+  uint q_dim = 2u * lane;
+  uint k_len = params.matrix_k;
+  uint blocks = params.flags;
+  uint scratch_base = kv_head * REPEATS * blocks * SIMD;
+
+  KV_Q(0) KV_Q(1) KV_Q(2) KV_Q(3) KV_Q(4) KV_Q(5) KV_Q(6)
+
+  if (blocks == 0u) {
+    // Native sdpa_vector: each SIMD owns keys sgid, sgid+32, ... and keeps
+    // seven independent online-softmax states (one per repeat head) before
+    // the 32 states are merged. K and V are loaded once per key and feed
+    // all seven chains.
+    KV_STATE(0) KV_STATE(1) KV_STATE(2) KV_STATE(3) KV_STATE(4) KV_STATE(5)
+    KV_STATE(6)
+    for (uint key = sgid; key < k_len; key += SIMD) {
+      uint k_base = params.rhs_offset + kv_head * params.shape[1] +
+          key * params.shape[2] + q_dim * params.in_strides[0];
+      float k0 = float(key_data.values[k_base]);
+      float k1 = float(key_data.values[k_base + params.in_strides[0]]);
+      uint v_base = params.aux_offset + kv_head * params.in_strides[1] +
+          key * params.in_strides[2] + q_dim * params.in_strides[3];
+      float v0 = float(value_data.values[v_base]);
+      float v1 = float(value_data.values[v_base + params.in_strides[3]]);
+      KV_KEY(0) KV_KEY(1) KV_KEY(2) KV_KEY(3) KV_KEY(4) KV_KEY(5) KV_KEY(6)
+    }
+
+    if (lane == 0u) {
+      s_max[0 * SIMD + sgid] = max_score_0;
+      s_sum[0 * SIMD + sgid] = sum_exp_score_0;
+      s_max[1 * SIMD + sgid] = max_score_1;
+      s_sum[1 * SIMD + sgid] = sum_exp_score_1;
+      s_max[2 * SIMD + sgid] = max_score_2;
+      s_sum[2 * SIMD + sgid] = sum_exp_score_2;
+      s_max[3 * SIMD + sgid] = max_score_3;
+      s_sum[3 * SIMD + sgid] = sum_exp_score_3;
+      s_max[4 * SIMD + sgid] = max_score_4;
+      s_sum[4 * SIMD + sgid] = sum_exp_score_4;
+      s_max[5 * SIMD + sgid] = max_score_5;
+      s_sum[5 * SIMD + sgid] = sum_exp_score_5;
+      s_max[6 * SIMD + sgid] = max_score_6;
+      s_sum[6 * SIMD + sgid] = sum_exp_score_6;
+    }
+    barrier();
+    KV_MERGE(0) KV_MERGE(1) KV_MERGE(2) KV_MERGE(3) KV_MERGE(4) KV_MERGE(5)
+    KV_MERGE(6)
+    KV_OUT(0) KV_OUT(1) KV_OUT(2) KV_OUT(3) KV_OUT(4) KV_OUT(5) KV_OUT(6)
+    return;
+  }
+
+  // Native sdpa_vector_2pass_1. A physical subgroup computes its logical
+  // blocks sequentially; the seven repeat heads ride one K/V walk per
+  // block, and each (head, block) partial lands in the exact f16 format
+  // consumed by pass 2 - in global scratch, since seven heads of packed
+  // partials exceed the threadgroup store.
+  for (uint block = sgid; block < blocks; block += SIMD) {
+    KV_STATE(0) KV_STATE(1) KV_STATE(2) KV_STATE(3) KV_STATE(4) KV_STATE(5)
+    KV_STATE(6)
+    for (uint key = block; key < k_len; key += blocks) {
+      uint k_base = params.rhs_offset + kv_head * params.shape[1] +
+          key * params.shape[2] + q_dim * params.in_strides[0];
+      float k0 = float(key_data.values[k_base]);
+      float k1 = float(key_data.values[k_base + params.in_strides[0]]);
+      uint v_base = params.aux_offset + kv_head * params.in_strides[1] +
+          key * params.in_strides[2] + q_dim * params.in_strides[3];
+      float v0 = float(value_data.values[v_base]);
+      float v1 = float(value_data.values[v_base + params.in_strides[3]]);
+      KV_KEY(0) KV_KEY(1) KV_KEY(2) KV_KEY(3) KV_KEY(4) KV_KEY(5) KV_KEY(6)
+    }
+    if (lane == 0u) {
+      s_max[0 * MAX_BLOCKS + block] = max_score_0;
+      s_sum[0 * MAX_BLOCKS + block] = sum_exp_score_0;
+      s_max[1 * MAX_BLOCKS + block] = max_score_1;
+      s_sum[1 * MAX_BLOCKS + block] = sum_exp_score_1;
+      s_max[2 * MAX_BLOCKS + block] = max_score_2;
+      s_sum[2 * MAX_BLOCKS + block] = sum_exp_score_2;
+      s_max[3 * MAX_BLOCKS + block] = max_score_3;
+      s_sum[3 * MAX_BLOCKS + block] = sum_exp_score_3;
+      s_max[4 * MAX_BLOCKS + block] = max_score_4;
+      s_sum[4 * MAX_BLOCKS + block] = sum_exp_score_4;
+      s_max[5 * MAX_BLOCKS + block] = max_score_5;
+      s_sum[5 * MAX_BLOCKS + block] = sum_exp_score_5;
+      s_max[6 * MAX_BLOCKS + block] = max_score_6;
+      s_sum[6 * MAX_BLOCKS + block] = sum_exp_score_6;
+    }
+    scratch_data.values[scratch_base + (0 * blocks + block) * SIMD + lane] =
+        packHalf2x16(vec2(o0_0, o1_0));
+    scratch_data.values[scratch_base + (1 * blocks + block) * SIMD + lane] =
+        packHalf2x16(vec2(o0_1, o1_1));
+    scratch_data.values[scratch_base + (2 * blocks + block) * SIMD + lane] =
+        packHalf2x16(vec2(o0_2, o1_2));
+    scratch_data.values[scratch_base + (3 * blocks + block) * SIMD + lane] =
+        packHalf2x16(vec2(o0_3, o1_3));
+    scratch_data.values[scratch_base + (4 * blocks + block) * SIMD + lane] =
+        packHalf2x16(vec2(o0_4, o1_4));
+    scratch_data.values[scratch_base + (5 * blocks + block) * SIMD + lane] =
+        packHalf2x16(vec2(o0_5, o1_5));
+    scratch_data.values[scratch_base + (6 * blocks + block) * SIMD + lane] =
+        packHalf2x16(vec2(o0_6, o1_6));
+  }
+  memoryBarrierBuffer();
+  barrier();
+
+  KV_PASS2(0) KV_PASS2(1) KV_PASS2(2) KV_PASS2(3) KV_PASS2(4) KV_PASS2(5)
+  KV_PASS2(6)
+}

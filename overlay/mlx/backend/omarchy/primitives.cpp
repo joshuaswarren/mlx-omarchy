@@ -11293,6 +11293,67 @@ void ScaledDotProductAttention::eval_gpu(
     params.in_strides[1] = checked_u32(v.strides()[1], tag, out);
     params.in_strides[2] = checked_u32(v.strides()[2], tag, out);
     params.in_strides[3] = checked_u32(v.strides()[3], tag, out);
+    // KV-head-major twin for the 7-repeat GQA decode shape (opt-in via
+    // MLX_OMARCHY_SDPA_KV_MAJOR; the shipped default is off). One
+    // workgroup per kv head computes all 7 repeat heads over one shared
+    // K/V walk, so each kv-head byte is fetched once instead of by 7
+    // workgroups. Per-head arithmetic, key order, and two-pass partial
+    // format are identical to SdpaDecodeNativeF16 - the generated token
+    // stream cannot move (bit-exact by construction, tested bit-for-bit
+    // in omarchy_sdpa_decode_fused_tests). The kernel's two transpose
+    // buffers and per-(head, block) max/sum slots need 15,360 bytes of
+    // shared, and its two-pass arm writes per-(head, block) partials to
+    // one extra scratch binding (workgroup-private, f16 words in the
+    // native format). Anything uncovered keeps the per-head route.
+    //
+    // Measured NO-LAND on t6001-test-host (receipts/2026-09-16-q4-sdpa-kv-major.md):
+    // bit-exact everywhere, but the two-workgroup geometry collapses the
+    // decode walk's memory-level parallelism (64 in-flight key chains vs
+    // the 14-workgroup route's 448) while multiplying the per-key chain
+    // by seven subgroup reductions - batched-eval screens 1.6-2.7x base
+    // GPU time, battery -9.6% short / -21.3% ctx1024. The KV dedup was
+    // never the binding constraint; this route ships off and the
+    // per-head arm stays the decode route.
+    const char* kv_major_env = std::getenv("MLX_OMARCHY_SDPA_KV_MAJOR");
+    constexpr uint32_t kKvMajorSharedBytes =
+        (2u * 7u * 128u + 2u * 32u * 32u) * sizeof(float);
+    const bool kv_major = !decode_bf16 && repeats == 7 &&
+        (kv_major_env != nullptr && std::strcmp(kv_major_env, "0") != 0) &&
+        decode_caps.max_compute_shared_memory_size >= kKvMajorSharedBytes;
+    if (kv_major) {
+      const uint32_t kv_blocks = params.flags;
+      // The scratch binding only carries two-pass partials; the one-pass
+      // arm never touches it and dispatches with the four standard
+      // bindings.
+      std::array<omarchy::ComputeBinding, 5> kv_bindings{binding(q),
+          binding(k),
+          binding(v),
+          binding(out),
+          binding(out)};
+      if (kv_blocks != 0) {
+        const size_t scratch_words = std::max<size_t>(
+            static_cast<size_t>(kv_heads) * 7u * kv_blocks * 32u, size_t{1});
+        array scratch(Shape{static_cast<int>(scratch_words)}, uint32, nullptr,
+                      {});
+        scratch.set_data(allocate_omarchy(scratch.nbytes()));
+        encoder.add_temporary(scratch);
+        kv_bindings[4] = binding(scratch);
+      }
+      omarchy::capsim::require_backed(
+          encoder.device(),
+          decode_caps,
+          decode_subgroup_ready,
+          "SdpaDecodeNativeKvF16",
+          "cooperative_matrix_fp32_8x8x8+workgroup_limits+"
+          "shared_memory_limit_bytes",
+          encoder.device().hardware_capabilities().cooperative_matrix_f32_8);
+      encoder.dispatch_compute(
+          omarchy::ComputeKernel::SdpaDecodeNativeKvF16,
+          kv_bindings,
+          params,
+          params.matrix_n);
+      return;
+    }
     std::array<omarchy::ComputeBinding, 4> bindings{
         binding(q), binding(k), binding(v), binding(out)};
       omarchy::capsim::require_backed(
