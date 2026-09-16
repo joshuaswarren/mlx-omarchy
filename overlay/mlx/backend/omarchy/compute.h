@@ -633,6 +633,12 @@ enum class ComputeKernel : uint16_t {
   // -DTILE_ROWS=16) for a grid too small to fill a wide part.
   // Appended to keep profile kernel ids stable.
   QmmPrefillCoopmatM16F16,
+  // KV-head-major twin of SdpaDecodeNativeF16 (shaders/
+  // sdpa_decode_native_kv.comp, -DKV_REPEATS=7): one 1024-thread
+  // workgroup per kv head computes all 7 repeat heads so the K/V
+  // stream is fetched once instead of 7x. Bit-exact per head; appended
+  // to keep profile kernel ids stable.
+  SdpaDecodeNativeKvF16,
   Count,
 };
 

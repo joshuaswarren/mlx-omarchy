@@ -15,9 +15,10 @@
 #include "doctest/doctest.h"
 
 #include <cmath>
-#include <cstring>
 #include <cstdint>
 #include <cstdio>
+#include <cstdlib>
+#include <cstring>
 #include <functional>
 #include <string>
 #include <utility>
@@ -434,4 +435,69 @@ TEST_CASE("fused bf16 decode is bit-identical to the f32 composition") {
       sdpa_call(long_cache, stream),
       composition_reference_len(long_cache, 2100, stream),
       stream);
+}
+
+// The KV-head-major f16 twin (MLX_OMARCHY_SDPA_KV_MAJOR) must store the
+// same words as the per-head SdpaDecodeNativeF16 arm on every covered
+// key count - the shared K/V walk keeps each head's serial order and
+// f32 chain, so bit equality is the contract, not a tolerance. Any
+// uncovered GQA ratio must refuse the twin and keep the per-head
+// words through the base arm.
+TEST_CASE("kv-major f16 decode is bit-identical to the per-head route") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  bool fused_available = decode_route_ready(stream);
+  if (!fused_available) {
+    printf("Skipping kv-major assertions: decode route refuses on this "
+           "device\n");
+    return;
+  }
+
+  for (int keys : {1, 5, 30, 64, 263, 320, 1024, 1053}) {
+    CAPTURE(keys);
+    CacheInputs in =
+        make_cache_len(float16, keys, keys > 320 ? keys : 320, stream);
+    setenv("MLX_OMARCHY_SDPA_KV_MAJOR", "0", 1);
+    array base = sdpa_call(in, stream);
+    setenv("MLX_OMARCHY_SDPA_KV_MAJOR", "1", 1);
+    uint64_t dispatches =
+        dispatches_for([&] { return sdpa_call(in, stream); }, stream);
+    MESSAGE("keys ", keys, " dispatches ", dispatches);
+    CHECK_EQ(dispatches, 1);
+    require_bit_identical(sdpa_call(in, stream), base, stream);
+  }
+
+  // 14 q / 7 kv heads is a 2-repeat split: the twin refuses (it is
+  // specialized for 7 repeats) and the per-head arm answers with the
+  // same words either way.
+  auto q7_values = pattern(kHeads * kWidth, 66);
+  auto k7_values = pattern(7 * kKeys * kWidth, 77);
+  auto v7_values = pattern(7 * kKeys * kWidth, 88);
+  array q7 = astype(
+      array(q7_values.begin(), Shape{1, kHeads, 1, kWidth}, float32),
+      float16,
+      stream);
+  array k7 = astype(
+      array(k7_values.begin(), Shape{1, 7, kKeys, kWidth}, float32),
+      float16,
+      stream);
+  array v7 = astype(
+      array(v7_values.begin(), Shape{1, 7, kKeys, kWidth}, float32),
+      float16,
+      stream);
+  q7.eval();
+  k7.eval();
+  v7.eval();
+  omarchy::get_command_encoder(stream).synchronize();
+  CacheInputs split(q7, k7, v7);
+  setenv("MLX_OMARCHY_SDPA_KV_MAJOR", "0", 1);
+  array split_base = sdpa_call(split, stream);
+  setenv("MLX_OMARCHY_SDPA_KV_MAJOR", "1", 1);
+  uint64_t split_dispatches =
+      dispatches_for([&] { return sdpa_call(split, stream); }, stream);
+  CHECK_EQ(split_dispatches, 1);
+  require_bit_identical(sdpa_call(split, stream), split_base, stream);
+  unsetenv("MLX_OMARCHY_SDPA_KV_MAJOR");
 }
