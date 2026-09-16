@@ -1,15 +1,11 @@
-# Block-rounded coopmat linear accepted on jwm1: encoder-host-coopmat lands (2026-09-15)
+# Block-rounded coopmat linear — reverted, slower (2026-09-16)
 
-Verdict: the `encoder-host-coopmat` branch lands. The block-rounded fp16
-linear (`mx.fast.block_rounded_matmul`, backend coopmat kernel
-`matmul_block_rounded_f16_coopmat.comp`) holds the full correctness
-contract on jwm1 real-pipeline E2E across three consecutive runs:
-**encoder_hidden byte-identical to pin `38c73261…`, transcript sha
-`db501a8c…` identical, 104/104 emissions, mel bit-exact** — on the branch
-wheel `f2c985b7…` with provenance `verified: "match"`. The new bit-exact
-block-rounded battery test passes on device. Encoder stage wall is
-**13310–13488 ms vs the 12638.7 baseline (+5.3–6.7%, reproduced twice)** —
-recorded as an observed cost, not a gate; see Stage wall.
+**Reverted, slower.** Merge `679a643a` is off origin/main. The block-rounded
+fp16 linear was bit-identical (encoder_hidden pin `38c73261…`, 104/104,
+transcript `db501a8c…`) but encoder wall went 12638.7 → 13310–13488 ms
+(+5–7%, reproduced). The goal was faster with identical bytes; slower
+does not land. Encoder path is again the `f735a675` batched linear plus
+chain-reduce kernel (file bytes match `f20c634d`).
 
 ## Branch, wheel, provenance
 
