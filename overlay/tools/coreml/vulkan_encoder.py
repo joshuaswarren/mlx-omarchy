@@ -92,30 +92,6 @@ ISLAND_B_SHAPE = (1, 8, 375, 375)
 
 
 
-@cache
-def _leftover_chain_kernel():
-    """Reduces the batched matmul's fp32 block partials with the landed
-    leftover-linear rounding: every 16-wide block's partial rounds to fp16,
-    then accumulates in fp16 ascending. One thread per output element, so
-    the chain inside the kernel is the same strictly sequential fp16 sum
-    the 5688f8bd chunk loop performed dispatch by dispatch."""
-    return mx.fast.metal_kernel(
-        name="encoder_leftover_fp16_chain_f32",
-        input_names=["partials"],
-        output_names=["reduced"],
-        source="""
-            uint n = partials_shape[2];
-            uint mn = partials_shape[1] * n;
-            uint blocks = partials_shape[0];
-            uint index = thread_position_in_grid.x;
-            half acc = half(partials[index]);
-            for (uint block = 1u; block < blocks; ++block) {
-                acc = acc + half(partials[index + block * mn]);
-            }
-            reduced[index] = acc;
-        """,
-        compile_options={"math_mode": "safe"},
-    )
 
 
 
@@ -519,11 +495,14 @@ class AneIsland:
             "--iterations", "1",
         ]
         in_bytes = 0
+        # One join for the whole input set: the tensors share most of their
+        # upstream graph, so a single eval drains it once instead of once
+        # per input; the np reads afterwards are pure device-to-host copies.
+        mx.eval(list(inputs.values()))
         for name, value in inputs.items():
-            mx.eval(value)
             raw = np.ascontiguousarray(np.asarray(value))
             path = run_dir / f"in_{name}.bin"
-            path.write_bytes(raw.tobytes())
+            path.write_bytes(memoryview(raw))
             in_bytes += raw.nbytes
             argv += ["--input", f"{name}={path}"]
         saved = {}
@@ -531,7 +510,6 @@ class AneIsland:
             path = run_dir / f"out_{name}.bin"
             saved[name] = path
             argv += ["--save", f"{name}={path}"]
-
         self.worker_starts += 1
         started = time.monotonic_ns()
         proc = subprocess.run(argv, capture_output=True, text=True, timeout=None)
@@ -598,6 +576,10 @@ class EncoderRunner:
         self.ane_ops = 0
         self.cpu_tensor_events = 0
         self.cond_census: dict | None = None
+        # Layer-invariant island-B operands: the fill broadcast and the cond
+        # broadcast are byte-identical every layer (cond is one tensor shared
+        # by all 24 layers), so each is built once and reused by token.
+        self._island_b_shared: dict[str, mx.array] = {}
         self.glu_fusions: dict[int, tuple[str, str]] = {}
         self.glu_sigmoid_done: set[int] = set()
         self._parse()
@@ -974,9 +956,15 @@ class EncoderRunner:
         results = self.island.submit(
             "island-select-8head-scratch417", f"L{layer:02d}-B",
             {
-                "ninf_rt": mx.contiguous(mx.broadcast_to(fill, ISLAND_B_SHAPE)),
+                "ninf_rt": self._island_b_shared.setdefault(
+                    "ninf_rt:" + sel_stmt.kwargs["a"],
+                    mx.contiguous(mx.broadcast_to(fill, ISLAND_B_SHAPE)),
+                ),
                 "matrix_bd_5": matrix_bd,
-                "cond": mx.contiguous(mx.broadcast_to(cond, ISLAND_B_SHAPE)),
+                "cond": self._island_b_shared.setdefault(
+                    "cond:" + sel_stmt.kwargs["cond"],
+                    mx.contiguous(mx.broadcast_to(cond, ISLAND_B_SHAPE)),
+                ),
             },
             {"attention_mask_9": (sel_stmt.shape, "fp16")},
         )
@@ -1089,42 +1077,22 @@ class EncoderRunner:
                 ]
             return mx.concatenate([tensor(n) for n in names], axis=axis)
         if op == "linear":
-            # fp16 leftover datapath, batched: one fp32 matmul over the
-            # [K/16, 16]-blocked K axis yields every block's partial, and
-            # _leftover_chain_kernel applies the landed rounding — each
-            # block rounds to fp16, then accumulates in fp16 ascending —
-            # in one dispatch. Byte-identical to the 5688f8bd chunk loop;
-            # a stock single reduce cannot reproduce the ascending fp16
-            # chain on the omarchy Vulkan backend (probed 2026-09-15:
-            # mx.sum agrees on <=0.20 of elements in every layout, cumsum
-            # has no Vulkan kernel), and the explicit chain serialized
-            # ~21k dependent dispatches into the graph, costing more wall
-            # than the chunk loop it replaced.
+            # fp16 leftover datapath, fused into one dispatch by the
+            # backend's block-rounded matmul (MatmulBlockRoundedF16Coopmat):
+            # each 16-wide K block's fp32 partial is computed with the same
+            # staged 8x8x8 coopMatMulAdd sequence the stock MatmulF32Coopmat
+            # kernel issues, rounded to fp16, and accumulated in fp16
+            # ascending - the chain the 5688f8bd chunk loop performed
+            # dispatch by dispatch and the batched-matmul +
+            # _leftover_chain_kernel pair reproduced. Bit-identity is
+            # structural: the MMA sees the exact fp32 widenings of the same
+            # fp16 operands in the same k order, and the chain rounds and
+            # adds the same values in the same order. No fp32
+            # [K/16, M, N] partials tensor is materialized, so the encoder
+            # stops streaming ~95 GB of partials through DRAM.
             x = tensor(kwargs["x"])
-            weight = tensor(kwargs["weight"])
-            k = int(x.shape[-1])
-            if k % 16:
-                raise EncoderRunError(f"linear K {k} not a multiple of 16")
-            blocks = k // 16
-            rows = 1
-            for dim in x.shape[:-1]:
-                rows *= dim
-            xb = mx.transpose(mx.reshape(x, (rows, blocks, 16)), (1, 0, 2)).astype(
-                mx.float32
-            )  # [K/16, M, 16]
-            wb = mx.transpose(
-                mx.reshape(weight, (weight.shape[0], blocks, 16)), (1, 2, 0)
-            ).astype(mx.float32)  # [K/16, 16, N]
-            partials = xb @ wb  # [K/16, M, N] fp32
-            out = _leftover_chain_kernel()(
-                inputs=[partials],
-                output_shapes=[(rows, weight.shape[0])],
-                output_dtypes=[mx.float16],
-                grid=(rows * weight.shape[0], 1, 1),
-                threadgroup=(256, 1, 1),
-                stream=mx.gpu,
-            )[0]
-            out = mx.reshape(out, tuple(x.shape[:-1]) + (weight.shape[0],))
+            weight = mx.reshape(tensor(kwargs["weight"]), (-1,))
+            out = mx.fast.block_rounded_matmul(x, weight, stream=mx.gpu)
             if "bias" in kwargs:
                 out = out.astype(mx.float32) + tensor(kwargs["bias"]).astype(mx.float32)
             return out.astype(mx.float16)
