@@ -376,6 +376,53 @@ def _loop_kernel():
     )
 
 
+# Workgroup memory the loop kernel declares: s_hidden/s_cell (2x1280 f32),
+# s_h1 (640 f32), s_a/s_pj/s_relu (1280/640/640 f16), s_bval/s_bidx
+# (2x1024 u32/f32), s_dval (8 f32), s_ctl (16 i32).
+LOOP_WORKGROUP_MEMORY_BYTES = 28768
+
+
+def device_blockers() -> list[str]:
+    """Capabilities the loop kernel needs that this device lacks, named.
+
+    The kernel is one 1024-invocation workgroup with ~28 KB of workgroup
+    memory and fp16 threadgroup/storage access, so the device must report
+    the omarchy Vulkan limit axes at or above those requirements.  Software
+    rasterizers (llvmpipe/lavapipe) and capability-simulation profiles never
+    back the loop: the host control path decodes instead.
+    """
+
+    import mlx.core as mx
+
+    info = mx.device_info()
+    if not info:
+        return ["no GPU device reported by mx.device_info()"]
+    blockers: list[str] = []
+    device = str(info.get("device_name", "")).lower()
+    driver = str(info.get("driver", "")).lower()
+    if int(info.get("simulated", 0)) == 1:
+        blockers.append(
+            "capability simulation active "
+            f"(profile {info.get('simulation_profile')!r})"
+        )
+    if "llvmpipe" in device or "lavapipe" in device or "llvmpipe" in driver or "lavapipe" in driver:
+        blockers.append(f"software rasterizer {info.get('device_name')!r}")
+    for key, needed in (
+        ("max_compute_work_group_invocations", _LOOP_THREADS),
+        ("max_compute_work_group_size_x", _LOOP_THREADS),
+        ("max_compute_shared_memory_size", LOOP_WORKGROUP_MEMORY_BYTES),
+    ):
+        have = info.get(key)
+        if have is None:
+            blockers.append(f"device_info lacks {key} (omarchy Vulkan runtime required)")
+        elif int(have) < needed:
+            blockers.append(f"{key} {int(have)} < {needed}")
+    for key in ("shader_float16", "storage_buffer_16bit_access"):
+        if int(info.get(key, 0)) != 1:
+            blockers.append(f"{key} not reported by the device")
+    return blockers
+
+
 def run_tdt_loop(
     packed,
     encoder,

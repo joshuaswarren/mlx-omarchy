@@ -1,12 +1,18 @@
 # Copyright © 2026 Joshua Warren / mlx-omarchy contributors.
 # SPDX-License-Identifier: MIT
-"""Host control for the pinned Parakeet greedy TDT decoder.
+"""Control for the pinned Parakeet greedy TDT decoder.
 
 The state machine follows ``GreedyTDTDecoder.swift`` from
 ``mweinbach/parakeet-coreml-swift`` at
 ``75aec2a1c991319657ff4dec5f602c12da6c5012`` (Apache-2.0). Tensor work stays
 behind the decoder and joint callbacks; this module only threads opaque state
 handles and applies scalar token, duration, and frame decisions.
+
+``tdt_decode`` is the pipeline entry: the GPU-resident loop
+(``vulkan_tdt_loop.run_tdt_loop``, one dispatch, no per-emission host sync)
+runs by default, and the host control loop below stays available behind
+``--tdt-host`` / ``MLX_OMARCHY_TDT_HOST`` for A/B and software devices, and
+as the automatic fallback when the device lacks the loop's capabilities.
 """
 
 from __future__ import annotations
@@ -14,7 +20,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import io
-import json
+import os
 import platform
 import sys
 import time
@@ -58,6 +64,8 @@ class TdtOutput:
     durations: list[int]
     hidden: Any
     cell: Any
+    decode_path: str = "host"
+    fallback_reason: str | None = None
 
 
 def _fail(message: str) -> TdtControlError:
@@ -158,6 +166,94 @@ def greedy_tdt_decode(
             frame += 1
 
     return TdtOutput(token_ids, frame_indices, emitted_durations, hidden, cell)
+
+
+_TDT_HOST_ENV = "MLX_OMARCHY_TDT_HOST"
+_TDT_HOST_FALSE = {"", "0", "false", "no"}
+
+
+def tdt_loop_blockers() -> list[str]:
+    """Capabilities the GPU loop needs that this device lacks, named."""
+
+    from .vulkan_tdt_loop import device_blockers
+
+    return device_blockers()
+
+
+def tdt_decode(
+    *,
+    packed: Any,
+    encoder: Any,
+    valid_frames: int,
+    config: TdtConfig,
+    initial_hidden: Any,
+    initial_cell: Any,
+    run_decoder: Callable[[int, Any, Any], DecoderStep] | None = None,
+    run_joint: Callable[[int, Any], JointDecision] | None = None,
+    force_host: bool = False,
+) -> TdtOutput:
+    """Greedy TDT decode via the GPU-resident loop, host control on fallback.
+
+    The default path is ``vulkan_tdt_loop.run_tdt_loop``.  The host control
+    loop runs instead when ``force_host`` (``--tdt-host``) or
+    ``MLX_OMARCHY_TDT_HOST`` is set, when the device lacks the loop's
+    capabilities (see ``tdt_loop_blockers``), or when the loop kernel fails
+    to launch; the reason is recorded on the returned ``TdtOutput``.
+    """
+
+    _validate(valid_frames, config)
+    if force_host:
+        reason = "--tdt-host"
+    else:
+        raw = os.environ.get(_TDT_HOST_ENV, "").strip().lower()
+        if raw not in _TDT_HOST_FALSE:
+            reason = f"{_TDT_HOST_ENV}={os.environ.get(_TDT_HOST_ENV, '')}"
+        else:
+            blockers = tdt_loop_blockers()
+            if not blockers:
+                from .vulkan_tdt_loop import run_tdt_loop
+
+                try:
+                    looped = run_tdt_loop(
+                        packed=packed,
+                        encoder=encoder,
+                        valid_frames=valid_frames,
+                        config=config,
+                        initial_hidden=initial_hidden,
+                        initial_cell=initial_cell,
+                    )
+                except Exception as exc:  # launch-time capability failures
+                    reason = f"gpu loop launch failed: {exc}"
+                else:
+                    return TdtOutput(
+                        token_ids=looped.token_ids,
+                        frame_indices=looped.frame_indices,
+                        durations=looped.durations,
+                        hidden=looped.hidden,
+                        cell=looped.cell,
+                        decode_path="gpu-loop",
+                    )
+            else:
+                reason = "; ".join(blockers)
+    if run_decoder is None or run_joint is None:
+        raise _fail(f"host fallback needs decoder/joint callbacks: {reason}")
+    output = greedy_tdt_decode(
+        valid_frames=valid_frames,
+        config=config,
+        initial_hidden=initial_hidden,
+        initial_cell=initial_cell,
+        run_decoder=run_decoder,
+        run_joint=run_joint,
+    )
+    return TdtOutput(
+        token_ids=output.token_ids,
+        frame_indices=output.frame_indices,
+        durations=output.durations,
+        hidden=output.hidden,
+        cell=output.cell,
+        decode_path="host",
+        fallback_reason=reason,
+    )
 
 
 def _sha256(data: bytes) -> str:

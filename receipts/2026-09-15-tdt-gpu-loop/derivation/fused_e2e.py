@@ -12,7 +12,8 @@ section 40 layers 2, 5, 6 and 7. One process carries every stage:
                 (receipts/2026-09-14-encoder-parity-ane/derivation/vulkan_encoder.py)
   4. decoder    overlay/tools/coreml/vulkan_decoder.py on mx.gpu
      joint      overlay/tools/coreml/vulkan_joint.py on mx.gpu
-     control    overlay/tools/coreml/parakeet_tdt.py::greedy_tdt_decode on the host
+     control    overlay/tools/coreml/parakeet_tdt.py::tdt_decode (GPU-resident
+                loop by default, host control behind --tdt-host / env)
   5. tokenizer  overlay/tools/coreml/tokenizer.py, hash-pinned detokenization
 
 Stage 3 consumes stage 2's device tensors and stage 4 consumes stage 3's, so
@@ -171,7 +172,7 @@ def main() -> int:
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--deadline-ms", type=int, default=20000)
     parser.add_argument("--no-ane", action="store_true")
-    parser.add_argument("--tdt-loop", action="store_true")
+    parser.add_argument("--tdt-host", action="store_true")
     args = parser.parse_args()
 
     args.out.mkdir(parents=True, exist_ok=True)
@@ -181,7 +182,7 @@ def main() -> int:
     import mlx.core as mx
     from importlib.metadata import distribution
 
-    from coreml.parakeet_tdt import DecoderStep, JointDecision, greedy_tdt_decode
+    from coreml.parakeet_tdt import DecoderStep, JointDecision, tdt_decode
     from coreml.reference import ReferenceLock
     from coreml.tokenizer import ParakeetTokenizer
     from coreml.vulkan_decoder import load_decoder
@@ -326,24 +327,16 @@ def main() -> int:
             hidden = mx.zeros((2, 1, 640), dtype=mx.float32)
             cell = mx.zeros((2, 1, 640), dtype=mx.float32)
         mx.eval(hidden, cell)
-        if args.tdt_loop:
-            from coreml.vulkan_tdt_loop import run_tdt_loop
-
-            return run_tdt_loop(
-                packed=fused_packed,
-                encoder=encoder_hidden,
-                valid_frames=int(encoder_hidden.shape[1]),
-                config=lock.tdt,
-                initial_hidden=hidden,
-                initial_cell=cell,
-            )
-        return greedy_tdt_decode(
+        return tdt_decode(
+            packed=fused_packed,
+            encoder=encoder_hidden,
             valid_frames=int(encoder_hidden.shape[1]),
             config=lock.tdt,
             initial_hidden=hidden,
             initial_cell=cell,
             run_decoder=decoder_callback,
             run_joint=joint_callback,
+            force_host=args.tdt_host,
         )
 
     tdt = stages.run("tdt_decode", stage_tdt)
@@ -523,7 +516,8 @@ def main() -> int:
             "decoder_calls": counts["decoder_calls"],
             "joint_calls": counts["joint_calls"],
             "valid_encoder_frames": int(encoder_hidden.shape[1]),
-            "control": "greedy_tdt_decode",
+            "control": tdt.decode_path,
+            "tdt_fallback_reason": tdt.fallback_reason,
             "recorded_decisions_injected": False,
             "host_non_tensor_work": [
                 f"FLAC codec: {decoder_name}, {int(sample_count)} int16 samples; "

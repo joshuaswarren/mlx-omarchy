@@ -13,10 +13,9 @@ import time
 from pathlib import Path
 
 import numpy as np
-
+from coreml.parakeet_tdt import DecoderStep, JointDecision, tdt_decode
 import mlx.core as mx
 
-from coreml.parakeet_tdt import DecoderStep, JointDecision, greedy_tdt_decode
 from coreml.pinned_component import load_pinned_component
 from coreml.reference import ReferenceLock
 from coreml.vulkan_decoder import load_decoder
@@ -298,26 +297,17 @@ def main() -> int:
         )
         return JointDecision(token_id, duration_index)
 
-    if "--tdt-loop" in sys.argv:
-        from coreml.vulkan_tdt_loop import run_tdt_loop
-
-        output = run_tdt_loop(
-            packed,
-            encoder,
-            valid_frames=int(encoder.shape[1]),
-            config=lock.tdt,
-            initial_hidden=hidden,
-            initial_cell=cell,
-        )
-    else:
-        output = greedy_tdt_decode(
-            valid_frames=int(encoder.shape[1]),
-            config=lock.tdt,
-            initial_hidden=hidden,
-            initial_cell=cell,
-            run_decoder=decoder_callback,
-            run_joint=joint_callback,
-        )
+    output = tdt_decode(
+        packed=packed,
+        encoder=encoder,
+        valid_frames=int(encoder.shape[1]),
+        config=lock.tdt,
+        initial_hidden=hidden,
+        initial_cell=cell,
+        run_decoder=decoder_callback,
+        run_joint=joint_callback,
+        force_host="--tdt-host" in sys.argv,
+    )
     native_emissions = [
         {
             "token_id": item["token_id"],
@@ -347,6 +337,8 @@ def main() -> int:
         "elapsed_seconds": time.monotonic() - started,
         "gpu_trace_delta": {k: after[k] - before[k] for k in before},
         "free_decode": {
+            "decode_path": output.decode_path,
+            "fallback_reason": output.fallback_reason,
             "decoder_calls": decoder_calls,
             "joint_calls": joint_calls,
             "first_divergence": divergence,
