@@ -11,7 +11,8 @@ gates pass on both hosts: lincheck ALL-EXACT, `encoder_hidden` = pin
 6/6 no flags = 104/104, transcript `db501a8c…`. encoder_ane median r2–r6:
 jwm1 7215.3 → **7036.2 ms**, jw16 5083.0 → **4872.3 ms**. Kill-switch
 `MLX_OMARCHY_CHAIN_FUSION=0` reproduces the stock bytes (pin exact on
-jwm1). Landed as the fold commit `e2f5c0c7` (runner blob with this receipt at `9c849e0b`) fast-forwarded onto origin/main from 22c6b139.
+jwm1). Landed as the fold commit `e2f5c0c7` (this receipt at tip
+`516890e3`), fast-forwarded onto origin/main from 22c6b139.
 
 ## Why 296c4352 corrupted (and this port does not)
 
