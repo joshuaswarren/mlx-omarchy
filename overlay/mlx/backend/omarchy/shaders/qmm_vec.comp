@@ -130,7 +130,10 @@ layout(set = 0, binding = 0, std430) readonly buffer InputX {
 //     the int offset, alpha the scale, beta log(base) / half, and the
 //     rotated value lands in epilogue_i (windowed under bit 12+i)
 //     exactly as shaders/fast_rope.comp computes it from the stored
-//     Add sum (or the stored output when no Add rides).
+//     Add sum (or the stored output when no Add rides): all-float32
+//     rotation arithmetic with one final rounding at the epilogue
+//     store, the products routed through rope_scratch so the rotation
+//     cannot contract into an FMA.
 //   * SwiGLU (flags bit 20, weights 0 and 1 with equal N and no Add):
 //     the two weights share one workgroup range of ceil(N / 4);
 //     slots 0-3 are gate columns 4w..4w+3, slots 4-7 the matching up
@@ -454,6 +457,14 @@ const uint FLAG_SWIGLU = 1048576u;
 // the one rounding neither the AGX elision of in-register float16_t
 // round trips nor the Honeykrisp packHalf deviation can rewrite.
 shared STORAGE_TYPE epilogue_exchange[COLUMNS_PER_GROUP];
+// Scratch for the RoPE rotation products. The add/sub must consume
+// memory loads: on a bare fmul operand NIR contracts the rotation into
+// an FMA that keeps x1*cos exact, which flips boundary results by one
+// f16 ulp against the eager two-step form (probe-verified against
+// driver-exact trig bits, 2026-09-16). Same-invocation store/load of
+// its own slot needs no barrier, and the runtime indices keep the
+// store alive.
+shared float rope_scratch[COLUMNS_PER_GROUP * 4u];
 void main() {
   uint lane = gl_LocalInvocationID.x;
   uint column_slot = lane / LANES;
@@ -567,30 +578,38 @@ void main() {
   }
   // shaders/fast_rope.comp, forward half-split, one token (t = 0):
   // theta = scale * (float(t) + offset) * exp(-i * beta) for pair index
-  // i, x1 the low half, x2 the high half. Round every intermediate the
-  // way fast_rope.comp does (float(float16_t(x))), not the integer
-  // packHalf path the Add epilogue needs: packHalf was 1-2 f16 ulps
-  // off on Honeykrisp at nonzero offsets (t6001-test-host 2026-09-14).
-#ifdef USE_FP16
-#define ROPE_ROUND(f) float(float16_t(f))
-#else
-#define ROPE_ROUND(f) ROUND_STORAGE(f)
-#endif
+  // i, x1 the low half, x2 the high half. The compiled eager pipeline
+  // elides fast_rope.comp's in-register typed round trips entirely -
+  // cos/sin and all four rotation products stay float32, with a single
+  // storage rounding at the output store (probe-verified against
+  // driver-exact trig bits, 2026-09-16) - so the source-level ROPE_ROUND
+  // calls were dead in both pipelines and live nowhere here. The one
+  // real divergence was the FMA contraction, which the scratch routing
+  // above blocks.
   uint i = pair % params.output_size;
   uint t = 0u;
   float offset = float(int(params.rhs_offset));
   float position = params.alpha * (float(t) + offset);
   float inv_freq = exp(-float(i) * params.beta);
   float theta = position * inv_freq;
-  float cos_t = ROPE_ROUND(cos(theta));
-  float sin_t = ROPE_ROUND(sin(theta));
+  float cos_t = cos(theta);
+  float sin_t = sin(theta);
   float x1 = pair_slot ? partner : stored;
   float x2 = pair_slot ? stored : partner;
-  float xa = ROPE_ROUND(x1 * cos_t);
-  float xb = ROPE_ROUND(x2 * sin_t);
-  float xc = ROPE_ROUND(x1 * sin_t);
-  float xd = ROPE_ROUND(x2 * cos_t);
-  float rotated = pair_slot ? (xc + xd) : (xa - xb);
+  float xa = x1 * cos_t;
+  float xb = x2 * sin_t;
+  float xc = x1 * sin_t;
+  float xd = x2 * cos_t;
+  uint scratch_base = column_slot * 4u;
+  rope_scratch[scratch_base + 0u] = xa;
+  rope_scratch[scratch_base + 1u] = xb;
+  rope_scratch[scratch_base + 2u] = xc;
+  rope_scratch[scratch_base + 3u] = xd;
+  float ar = rope_scratch[scratch_base + 0u];
+  float br = rope_scratch[scratch_base + 1u];
+  float cr = rope_scratch[scratch_base + 2u];
+  float dr = rope_scratch[scratch_base + 3u];
+  float rotated = pair_slot ? (cr + dr) : (ar - br);
   if (which == 0u) {
     Q4_ROPE_STORE(0, rotated)
   } else if (which == 1u) {

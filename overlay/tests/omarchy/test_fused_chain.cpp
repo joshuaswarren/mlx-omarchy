@@ -1423,6 +1423,21 @@ TEST_CASE("eager q4 decode gemv group folds RoPE into the q/k store") {
   for (int o = 1000; o <= 1120; ++o) {
     offsets.push_back(o);
   }
+  // Driver-exact trig probe: rope of an impulse (x = 1,0) in float32
+  // stores cos/sin at full precision, and in float16 stores their f16
+  // rounding. RNG never advances (constant x), so the draw sequence is
+  // unchanged. With these bits every arm's rounding pattern is
+  // host-recomputable.
+  array probe32 = astype(
+      less(arange(head_dim, int32),
+           array(head_dim / 2, int32), stream),
+      float32, stream);
+  probe32 = reshape(probe32, {1, 1, 1, head_dim}, stream);
+  probe32.eval();
+  sync_stream(stream);
+  array probe16 = astype(probe32, float16, stream);
+  probe16.eval();
+  sync_stream(stream);
   for (int draw = 0; draw < 3; ++draw) {
     x = astype(
         random::normal(Shape{1, 1, k}, float32, std::nullopt, stream),
@@ -1490,6 +1505,36 @@ TEST_CASE("eager q4 decode gemv group folds RoPE into the q/k store") {
               (double)cp[e],
               (double)br,
               (double)cr);
+          {
+            array p32 = fast::rope(
+                probe32, head_dim, false, 1000000.0f, 1.0f, offset,
+                std::nullopt, stream);
+            array p16 = fast::rope(
+                probe16, head_dim, false, 1000000.0f, 1.0f, offset,
+                std::nullopt, stream);
+            p32.eval();
+            p16.eval();
+            sync_stream(stream);
+            const float* q = p32.data<float>();
+            const uint16_t* r = p16.data<uint16_t>();
+            float c32v = q[i];
+            float s32v = q[head_dim / 2 + i];
+            uint16_t c16v, s16v;
+            std::memcpy(&c16v, r + i, 2);
+            std::memcpy(&s16v, r + head_dim / 2 + i, 2);
+            uint32_t cb, sb;
+            std::memcpy(&cb, &c32v, 4);
+            std::memcpy(&sb, &s32v, 4);
+            std::printf(
+                "PROBE offset=%d i=%u cos32=%08x sin32=%08x "
+                "cos16=%04x sin16=%04x\n",
+                offset,
+                i,
+                cb,
+                sb,
+                c16v,
+                s16v);
+          }
         }
       }
     }
