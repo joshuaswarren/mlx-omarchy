@@ -92,140 +92,6 @@ ISLAND_B_SHAPE = (1, 8, 375, 375)
 
 
 
-@cache
-def _leftover_fused_kernel():
-    """Leftover linear in ONE dispatch: a 32x32 coopmat tile computes each
-    16-wide K block's fp32 partial with the same 8x8x8
-    coopMatMulAdd sequence the stock MatmulF32Coopmat kernel issues, then
-    applies the landed rounding inline - every block's partial rounds to
-    fp16 and accumulates in fp16 ascending, the same strictly sequential
-    chain the 5688f8bd chunk loop performed dispatch by dispatch and
-    _leftover_chain_kernel reproduced. Bit-identity is structural: the MMA
-    sees the exact fp32 casts of the same fp16 operands in the same k
-    order, and the chain rounds and adds the same values in the same
-    order - no fp32 [K/16, M, N] partials tensor is ever materialized
-    (95 GB of DRAM round-trip across the encoder disappears). The
-    omarchy-glsl fence keeps the cooperative-matrix GLSL verbatim; the
-    threadgroup scratch lines stay outside it so the normal MSL shared
-    hoist picks them up. Parameter names avoid x/y/z: the generated
-    guard's uvec3 swizzles would collide with those buffer macros."""
-    return mx.fast.metal_kernel(
-        name="encoder_leftover_coopmat_chain_f16",
-        input_names=["lhs", "rhs"],
-        output_names=["dst"],
-        source="""
-            threadgroup float tile_a[512];
-            threadgroup float tile_b[512];
-            threadgroup float drain_s[256];
-            // omarchy-glsl-begin
-            const uint TILE = 32u;
-            const uint MAT = 8u;
-            uint lane = gl_LocalInvocationID.x;
-            uint m_count = uint(lhs_shape[0]);
-            uint k_count = uint(lhs_shape[1]);
-            uint n_count = uint(rhs_shape[0]);
-            uint blocks = k_count / 16u;
-            uint col_base = gl_WorkGroupID.x * TILE;
-            uint row_base = gl_WorkGroupID.y * TILE;
-            uint column = col_base + lane;
-            float16_t chain[4u * MAT];
-            for (uint rb = 0u; rb < 4u; ++rb) {
-                for (uint r = 0u; r < MAT; ++r) {
-                    chain[rb * MAT + r] = float16_t(0.0);
-                }
-            }
-            for (uint block = 0u; block < blocks; ++block) {
-                uint k_base = block * 16u;
-                for (uint j = 0u; j < 16u; ++j) {
-                    uint i = lane + 32u * j;
-                    uint row_local = i / 16u;
-                    uint kk = i % 16u;
-                    uint row = row_base + row_local;
-                    float v = 0.0;
-                    if (row < m_count) {
-                        v = float(lhs[row * k_count + k_base + kk]);
-                    }
-                    tile_a[row_local * 16u + kk] = v;
-                }
-                for (uint j = 0u; j < 16u; ++j) {
-                    uint i = lane + 32u * j;
-                    uint kk = i / 32u;
-                    uint col_local = i % 32u;
-                    uint col = col_base + col_local;
-                    float v = 0.0;
-                    if (col < n_count) {
-                        v = float(rhs[col * k_count + k_base + kk]);
-                    }
-                    tile_b[kk * TILE + col_local] = v;
-                }
-                barrier();
-                coopmat<float, gl_ScopeSubgroup, MAT, MAT, gl_MatrixUseA> mat_a[4];
-                coopmat<float, gl_ScopeSubgroup, MAT, MAT, gl_MatrixUseB> mat_b[4];
-                for (uint rb = 0u; rb < 4u; ++rb) {
-                    coopMatLoad(mat_a[rb], tile_a, rb * MAT * 16u, 16u,
-                        gl_CooperativeMatrixLayoutRowMajor);
-                }
-                for (uint cb = 0u; cb < 4u; ++cb) {
-                    coopMatLoad(mat_b[cb], tile_b, cb * MAT, TILE,
-                        gl_CooperativeMatrixLayoutRowMajor);
-                }
-                coopmat<float, gl_ScopeSubgroup, MAT, MAT, gl_MatrixUseAccumulator> acc[4][4];
-                for (uint rb = 0u; rb < 4u; ++rb) {
-                    for (uint cb = 0u; cb < 4u; ++cb) {
-                        acc[rb][cb] = coopmat<float, gl_ScopeSubgroup, MAT, MAT,
-                            gl_MatrixUseAccumulator>(0.0);
-                    }
-                }
-                for (uint rb = 0u; rb < 4u; ++rb) {
-                    for (uint cb = 0u; cb < 4u; ++cb) {
-                        acc[rb][cb] = coopMatMulAdd(mat_a[rb], mat_b[cb], acc[rb][cb]);
-                    }
-                }
-                for (uint cb = 0u; cb < 4u; ++cb) {
-                    coopMatLoad(mat_b[cb], tile_b, 8u * TILE + cb * MAT, TILE,
-                        gl_CooperativeMatrixLayoutRowMajor);
-                }
-                for (uint rb = 0u; rb < 4u; ++rb) {
-                    for (uint cb = 0u; cb < 4u; ++cb) {
-                        acc[rb][cb] = coopMatMulAdd(mat_a[rb], mat_b[cb], acc[rb][cb]);
-                    }
-                }
-                barrier();
-                for (uint rb = 0u; rb < 4u; ++rb) {
-                    for (uint cb = 0u; cb < 4u; ++cb) {
-                        coopMatStore(acc[rb][cb], drain_s, cb * MAT * MAT, MAT,
-                            gl_CooperativeMatrixLayoutRowMajor);
-                        barrier();
-                        if (column < n_count) {
-                            uint quad = lane / MAT;
-                            for (uint r = 0u; r < MAT; ++r) {
-                                uint row = row_base + rb * MAT + r;
-                                if (row < m_count) {
-                                    float16_t h = float16_t(
-                                        drain_s[quad * MAT * MAT + r * MAT + (lane % MAT)]);
-                                    chain[rb * MAT + r] =
-                                        (block == 0u) ? h : (chain[rb * MAT + r] + h);
-                                }
-                            }
-                        }
-                        barrier();
-                    }
-                }
-            }
-            if (column < n_count) {
-                for (uint rb = 0u; rb < 4u; ++rb) {
-                    for (uint r = 0u; r < MAT; ++r) {
-                        uint row = row_base + rb * MAT + r;
-                        if (row < m_count) {
-                            dst[row * n_count + column] = chain[rb * MAT + r];
-                        }
-                    }
-                }
-            }
-            // omarchy-glsl-end
-        """,
-        compile_options={"math_mode": "safe"},
-    )
 
 
 
@@ -1211,34 +1077,22 @@ class EncoderRunner:
                 ]
             return mx.concatenate([tensor(n) for n in names], axis=axis)
         if op == "linear":
-            # fp16 leftover datapath, fused: one coopmat dispatch computes
-            # every 16-wide K block's fp32 partial with the stock kernel's
-            # MMA sequence and applies the landed rounding inline - each
-            # block rounds to fp16, then accumulates in fp16 ascending, the
-            # chain the 5688f8bd chunk loop performed dispatch by dispatch
-            # and the batched-matmul + _leftover_chain_kernel pair
-            # reproduced. No fp32 [K/16, M, N] partials tensor is
-            # materialized, so the encoder stops streaming ~95 GB of
-            # partials through DRAM. ensure_row_contiguous keeps both
-            # operands row-major for the kernel's raw indexing.
+            # fp16 leftover datapath, fused into one dispatch by the
+            # backend's block-rounded matmul (MatmulBlockRoundedF16Coopmat):
+            # each 16-wide K block's fp32 partial is computed with the same
+            # staged 8x8x8 coopMatMulAdd sequence the stock MatmulF32Coopmat
+            # kernel issues, rounded to fp16, and accumulated in fp16
+            # ascending - the chain the 5688f8bd chunk loop performed
+            # dispatch by dispatch and the batched-matmul +
+            # _leftover_chain_kernel pair reproduced. Bit-identity is
+            # structural: the MMA sees the exact fp32 widenings of the same
+            # fp16 operands in the same k order, and the chain rounds and
+            # adds the same values in the same order. No fp32
+            # [K/16, M, N] partials tensor is materialized, so the encoder
+            # stops streaming ~95 GB of partials through DRAM.
             x = tensor(kwargs["x"])
-            weight = tensor(kwargs["weight"])
-            k = int(x.shape[-1])
-            if k % 16:
-                raise EncoderRunError(f"linear K {k} not a multiple of 16")
-            rows = 1
-            for dim in x.shape[:-1]:
-                rows *= dim
-            n_out = int(weight.shape[0])
-            out = _leftover_fused_kernel()(
-                inputs=[x, weight],
-                output_shapes=[(rows, n_out)],
-                output_dtypes=[mx.float16],
-                grid=((n_out + 31) // 32 * 32, (rows + 31) // 32, 1),
-                threadgroup=(32, 1, 1),
-                stream=mx.gpu,
-            )[0]
-            out = mx.reshape(out, tuple(x.shape[:-1]) + (n_out,))
+            weight = mx.reshape(tensor(kwargs["weight"]), (-1,))
+            out = mx.fast.block_rounded_matmul(x, weight, stream=mx.gpu)
             if "bias" in kwargs:
                 out = out.astype(mx.float32) + tensor(kwargs["bias"]).astype(mx.float32)
             return out.astype(mx.float16)

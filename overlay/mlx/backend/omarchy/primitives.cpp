@@ -10423,6 +10423,83 @@ void RMSNorm::eval_gpu(
       std::min(params.output_size, omarchy::kMaxComputeGroupCountX));
 }
 
+bool BlockRoundedMatmul::use_fallback(Stream s) {
+  return false;
+}
+
+void BlockRoundedMatmul::eval_gpu(
+    const std::vector<array>& inputs,
+    std::vector<array>& outputs) {
+  const std::string tag = name();
+  array& out = outputs.at(0);
+  const array& in_x = inputs.at(0);
+  const array& in_w = inputs.at(1);
+  auto s = stream();
+  auto& encoder = omarchy::get_command_encoder(s);
+  std::optional<array> x_temp;
+  std::optional<array> w_temp;
+  const array& x =
+      ensure_dense(in_x, in_x.flags().row_contiguous, x_temp, encoder, s);
+  const array& w =
+      ensure_dense(in_w, in_w.flags().row_contiguous, w_temp, encoder, s);
+  if (x.dtype() != float16 || w.dtype() != float16 ||
+      out.dtype() != float16) {
+    omarchy::unsupported(tag + " fp16 dtype", out);
+  }
+  const auto& caps = encoder.device().capabilities();
+  // The block-rounded chain exists only on the staged 8x8x8 cooperative
+  // matrix; without it the rounding contract has no kernel, so refuse by
+  // name instead of silently returning unrounded bits.
+  if (!caps.cooperative_matrix_f32_8 || caps.subgroup_size != 32u) {
+    omarchy::unsupported(
+        tag + " (requires the 8x8x8 fp32 cooperative matrix)", out);
+  }
+  omarchy::capsim::require_backed(
+      encoder.device(),
+      caps,
+      true,
+      "MatmulBlockRoundedF16Coopmat",
+      "cooperative_matrix_fp32_8",
+      encoder.device().hardware_capabilities().cooperative_matrix_f32_8);
+  constexpr uint32_t kBlockRoundedSharedBytes =
+      (32u * 16u + 16u * 32u + 8u * 8u) * sizeof(float);
+  if (kBlockRoundedSharedBytes > caps.max_compute_shared_memory_size) {
+    omarchy::unsupported(tag + " shared memory footprint", out);
+  }
+  const uint32_t matrix_k = static_cast<uint32_t>(x.shape(-1));
+  if (matrix_k == 0u || (matrix_k % 16u) != 0u ||
+      w.size() % matrix_k != 0) {
+    omarchy::unsupported(
+        tag + " K a positive multiple of 16 and the weight size a multiple"
+              " of K",
+        out);
+  }
+  const uint32_t matrix_n = static_cast<uint32_t>(w.size() / matrix_k);
+  const uint32_t matrix_m = static_cast<uint32_t>(out.size() / matrix_n);
+  out.set_data(allocate_omarchy(out.nbytes()));
+  if (out.size() == 0) {
+    return;
+  }
+  omarchy::ComputeParams params;
+  params.matrix_m = matrix_m;
+  params.matrix_n = matrix_n;
+  params.matrix_k = matrix_k;
+  params.lhs_offset = checked_item_offset(x, x.size(), tag, out);
+  params.rhs_offset = checked_item_offset(w, w.size(), tag, out);
+  params.output_offset = checked_item_offset(out, out.size(), tag, out);
+  params.lhs_gap = matrix_k;
+  params.rhs_gap = matrix_k;
+  std::array<omarchy::ComputeBinding, 3> bindings{
+      binding(x), binding(w), binding(out)};
+  encoder.dispatch_compute(
+      omarchy::ComputeKernel::MatmulBlockRoundedF16Coopmat,
+      bindings,
+      params,
+      matrix_group_count(params.matrix_n, 32u),
+      matrix_group_count(params.matrix_m, 32u),
+      1u);
+}
+
 bool LayerNorm::use_fallback(Stream s) {
   return false;
 }

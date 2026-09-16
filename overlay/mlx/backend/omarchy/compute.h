@@ -633,6 +633,11 @@ enum class ComputeKernel : uint16_t {
   // -DTILE_ROWS=16) for a grid too small to fill a wide part.
   // Appended to keep profile kernel ids stable.
   QmmPrefillCoopmatM16F16,
+  // Block-rounded fp16 matmul (shaders/matmul_block_rounded_f16_coopmat
+  // .comp): fast::BlockRoundedMatmul's per-16-K-block fp16 round and
+  // ascending fp16 accumulate folded into the staged 8x8x8 cooperative
+  // matrix tile. Append-only profile id.
+  MatmulBlockRoundedF16Coopmat,
   Count,
 };
 
