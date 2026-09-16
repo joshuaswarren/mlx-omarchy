@@ -121,6 +121,109 @@ def _leftover_chain_kernel():
 
 
 @cache
+def _linear_f16_coopmat_kernel():
+    """Batched-blocked fp16 linear on the f32 8x8x8 matrix unit: one
+    custom dispatch computes every 16-wide block's fp32 partial (A/B read
+    as fp16, widened exactly when staged to shared, identical staging
+    layout, k-step order, and coopMatMulAdd sequence as the f32 batched
+    coopmat matmul it replaces) and rounds each partial once to fp16 at
+    the drain — the same single round-to-nearest-even the fp32 partials
+    path applies when the chain kernel reads them. fp16 partials halve
+    the dominant partials write+read traffic; bytes are identical by
+    construction."""
+    return mx.fast.metal_kernel(
+        name="encoder_linear_f16_coopmat",
+        input_names=["lhs", "rhs"],
+        output_names=["dst"],
+        header="""
+            #extension GL_KHR_cooperative_matrix : require
+            #extension GL_KHR_memory_scope_semantics : require
+        """,
+        source="""
+            uint rows = lhs_shape[0];
+            uint K = lhs_shape[1];
+            uint N = rhs_shape[0];
+            uint lane = gl_LocalInvocationID.x;
+            uint col_base = gl_WorkGroupID.x * 32u;
+            uint row_base = gl_WorkGroupID.y * 32u;
+            uint k_base = gl_WorkGroupID.z * 16u;
+            uint mn = rows * N;
+            uint out_base = gl_WorkGroupID.z * mn + row_base * N + col_base;
+            threadgroup float a_s[256];
+            threadgroup float b_s[256];
+            coopmat<float, gl_ScopeSubgroup, 8, 8, gl_MatrixUseAccumulator> acc[4][4];
+            for (uint rb = 0u; rb < 4u; ++rb) {
+              for (uint cb = 0u; cb < 4u; ++cb) {
+                acc[rb][cb] = coopmat<float, gl_ScopeSubgroup, 8, 8,
+                    gl_MatrixUseAccumulator>(0.0);
+              }
+            }
+            for (uint step = 0u; step < 2u; ++step) {
+              uint k8 = k_base + step * 8u;
+              for (uint j = 0u; j < 8u; ++j) {
+                uint i = lane + 32u * j;
+                uint row_local = i / 8u;
+                uint row = row_base + row_local;
+                uint k = k8 + (i % 8u);
+                float v = 0.0;
+                if (row < rows) {
+                  v = float(lhs[row * K + k]);
+                }
+                a_s[row_local * 8u + (i % 8u)] = v;
+              }
+              for (uint j = 0u; j < 8u; ++j) {
+                uint i = lane + 32u * j;
+                uint col_local = i / 8u;
+                uint col = col_base + col_local;
+                uint k = k8 + (i % 8u);
+                float v = 0.0;
+                if (col < N) {
+                  v = float(rhs[col * K + k]);
+                }
+                b_s[(i % 8u) * 32u + col_local] = v;
+              }
+              threadgroup_barrier(mem_flags::mem_threadgroup);
+              coopmat<float, gl_ScopeSubgroup, 8, 8, gl_MatrixUseA> mat_a[4];
+              coopmat<float, gl_ScopeSubgroup, 8, 8, gl_MatrixUseB> mat_b[4];
+              for (uint rb = 0u; rb < 4u; ++rb) {
+                coopMatLoad(mat_a[rb], a_s, rb * 64u, 8u,
+                    gl_CooperativeMatrixLayoutRowMajor);
+              }
+              for (uint cb = 0u; cb < 4u; ++cb) {
+                coopMatLoad(mat_b[cb], b_s, cb * 8u, 32u,
+                    gl_CooperativeMatrixLayoutRowMajor);
+              }
+              for (uint rb = 0u; rb < 4u; ++rb) {
+                for (uint cb = 0u; cb < 4u; ++cb) {
+                  acc[rb][cb] = coopMatMulAdd(mat_a[rb], mat_b[cb], acc[rb][cb]);
+                }
+              }
+              threadgroup_barrier(mem_flags::mem_threadgroup);
+            }
+            for (uint rb = 0u; rb < 4u; ++rb) {
+              for (uint cb = 0u; cb < 4u; ++cb) {
+                coopMatStore(acc[rb][cb], a_s, cb * 64u, 8u,
+                    gl_CooperativeMatrixLayoutRowMajor);
+              }
+              threadgroup_barrier(mem_flags::mem_threadgroup);
+              uint column = col_base + lane;
+              if (column < N) {
+                for (uint r = 0u; r < 8u; ++r) {
+                  uint row = row_base + rb * 8u + r;
+                  if (row < rows) {
+                    dst[out_base + (rb * 8u + r) * N + lane] =
+                        a_s[(lane / 8u) * 64u + r * 8u + (lane % 8u)];
+                  }
+                }
+              }
+              threadgroup_barrier(mem_flags::mem_threadgroup);
+            }
+        """,
+        compile_options={"math_mode": "safe"},
+    )
+
+
+@cache
 def _silu_kernel():
     """silu in one dispatch. The fp32 math and the single fp16 rounding at
     the end replicate the two-dispatch chain exactly: mx.sigmoid lowers to
@@ -1213,17 +1316,16 @@ class EncoderRunner:
                 ]
             return mx.concatenate([tensor(n) for n in names], axis=axis)
         if op == "linear":
-            # fp16 leftover datapath, batched: one fp32 matmul over the
-            # [K/16, 16]-blocked K axis yields every block's partial, and
-            # _leftover_chain_kernel applies the landed rounding — each
-            # block rounds to fp16, then accumulates in fp16 ascending —
-            # in one dispatch. Byte-identical to the 5688f8bd chunk loop;
-            # a stock single reduce cannot reproduce the ascending fp16
-            # chain on the omarchy Vulkan backend (probed 2026-09-15:
-            # mx.sum agrees on <=0.20 of elements in every layout, cumsum
-            # has no Vulkan kernel), and the explicit chain serialized
-            # ~21k dependent dispatches into the graph, costing more wall
-            # than the chunk loop it replaced.
+            # fp16 leftover datapath, batched. Default path: one custom
+            # coopmat dispatch (_linear_f16_coopmat_kernel) produces every
+            # 16-wide block's fp32 partial rounded once to fp16 — the same
+            # rounding the f32 batched matmul + fp16 partials chain
+            # applied — and _leftover_chain_kernel applies the landed
+            # rounding: each block's fp16 partial accumulates in fp16
+            # ascending, one dispatch. Byte-identical to the f32-partials
+            # batched path (exact fp16->fp32 widening, identical staging
+            # values, MMA sequence, and drain); the fp32 matmul route
+            # below stays as the guard fallback.
             x = tensor(kwargs["x"])
             weight = tensor(kwargs["weight"])
             k = int(x.shape[-1])
@@ -1233,6 +1335,38 @@ class EncoderRunner:
             rows = 1
             for dim in x.shape[:-1]:
                 rows *= dim
+            n_out = int(weight.shape[0])
+            if (
+                x.dtype == mx.float16
+                and weight.dtype == mx.float16
+                and 1 <= rows <= 65535 * 32
+                and blocks <= 65535
+                and n_out <= 65535 * 32
+            ):
+                lhs = mx.reshape(x, (rows, k))
+                rhs = mx.reshape(weight, (n_out, k))
+                partials = _linear_f16_coopmat_kernel()(
+                    inputs=[lhs, rhs],
+                    output_shapes=[(blocks, rows, n_out)],
+                    output_dtypes=[mx.float16],
+                    grid=((n_out + 31) // 32 * 32, (rows + 31) // 32, blocks),
+                    threadgroup=(32, 1, 1),
+                    stream=mx.gpu,
+                )[0]
+                out = _leftover_chain_kernel()(
+                    inputs=[partials],
+                    output_shapes=[(rows, n_out)],
+                    output_dtypes=[mx.float16],
+                    grid=(rows * n_out, 1, 1),
+                    threadgroup=(256, 1, 1),
+                    stream=mx.gpu,
+                )[0]
+                out = mx.reshape(out, tuple(x.shape[:-1]) + (n_out,))
+                if "bias" in kwargs:
+                    out = out.astype(mx.float32) + tensor(kwargs["bias"]).astype(
+                        mx.float32
+                    )
+                return out.astype(mx.float16)
             xb = mx.transpose(mx.reshape(x, (rows, blocks, 16)), (1, 0, 2)).astype(
                 mx.float32
             )  # [K/16, M, 16]
