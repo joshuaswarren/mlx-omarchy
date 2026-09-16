@@ -1,8 +1,12 @@
 # Parakeet runtime ships in the wheel: installed product packaging (2026-09-16)
 
-Branch `agent/parakeet-wheel-packaging` (base origin/main `03648747`), commit
-`cf546e78`. Verdict: **host phase complete; jwm1 window requested** for the
-aarch64 wheel build + clean-HOME E2E gate. Scope: Phase 10 / §36 §58 §64–§89.
+Branch `agent/parakeet-wheel-packaging` (base origin/main `03648747`), tip
+`33084356`. Verdict: **LAND.** The installed product runs the pinned public
+Parakeet reference end to end from a clean install: host packaging gates
+green on this host (llvmpipe), and the aarch64 wheel passed the clean-HOME
+hardware gate on jwm1 — 3x warm transcribe fully green and identical,
+transcript `db501a8c…`, `encoder_hidden` `38c73261…` (npy basis), ANE
+1 submit / 0 timeouts, `cpu_tensor_events` 0, kill-switch refusal explicit.
 
 ## What landed
 
@@ -89,18 +93,69 @@ aarch64 wheel build + clean-HOME E2E gate. Scope: Phase 10 / §36 §58 §64–§
   guard, bundle-name coupling, pin consistency, CLI refusals);
   `overlay/tests/omarchy/coreml/test_encoder_parity.py` 7/7 PASS.
 
-## Not yet claimed (needs the jwm1 window)
+## jwm1 hardware gate (Main-cleared window, 2026-09-16): **PASS**
 
-- The aarch64 wheel (worker compile, share assets present) and the
-  clean-HOME gate: `receipts/2026-09-16-parakeet-wheel-packaging/
-  gate-jwm1.sh WHEEL` — fresh venv + clean `HOME`, installed-surface
-  assertions, no staged paths in the prefix, `download`, `transcribe` 3x
-  warm identical under `flock -w 900 /tmp/m1-gpu.lock` (never stolen),
-  kill-switch refusal proof. Transcript/encoder pins and mel bit-exactness
-  on Honeykrisp are the gate's pass condition.
-- Worker binary identity on device (the wheel-built fd-protocol worker vs
-  the `f171a61e…` reference: source-identical, expected sha drift from
-  toolchain, recorded in the run report).
+Branch tip `33084356`; wheel
+`mlx_omarchy-0.32.2.dev202609161842+33084356-cp314-cp314-linux_aarch64.whl`
+(8 307 372 bytes, sha256
+`5e9b8696a578618704d9a13bd02dbcc05a70561ae7814410cf1e2ec7ea288d8e`), built
+on jwm1 with `scripts/build-wheel.sh` — **no omarchy-ane checkout needed**
+(vendored `ane.h`), no GPU lock held during the build.
+
+`gate-jwm1.sh` results (fresh venv, `CLEAN_HOME` pre-seeded with the model
+cache per Main's authorization and re-verified inside the gate):
+
+- Installed surface complete: CLI, worker, `coreml/` tree, pin manifest,
+  libane, all three bundles; runtime-path provenance — every path the run
+  touched (libmlx, core, audio, encoder source, worker, libane) lives under
+  the installed prefix or the clean HOME; no staging references.
+- `download` verified the pinned cache (offline path against the seeded
+  HOME; the seed itself was a cold network fetch of all 12 files +
+  fixture).
+- **3x warm transcribe, identical and fully green on every run:**
+  status `match`; mel, `encoder_hidden`, emissions, token ids, frame
+  indices, durations, transcript, `cpu_tensor_events` 0, decode control
+  `gpu-loop` with fallback `null`, NaN/Inf 0 — all pins pass. Totals
+  8225.6 / 8036.5 / 8191.8 ms (encoder_ane 7077.2 / 6876.7 / 7027.8 ms,
+  tdt_decode ~831 ms — same family as the fold-reland receipt's 8436 ms
+  median).
+- ANE per run: **1 batch submit, 1 worker start, 0 timeouts**; the
+  worker is the **wheel-built fd-protocol CLI**
+  (sha `5c657d6c14d949f07650e3e8e67bbed3615315c212e73edbea66316b38753f74`)
+  — the installed binary, not the dev-staged `f171a61e…`; libane
+  `56b46234…`; mil `ac8e9526…`.
+- Refusal arm: `MLX_OMARCHY_ANE_DEVICE=off` → exit 1, "ANE disabled by
+  MLX_OMARCHY_ANE_DEVICE=off; the installed product has no non-ANE
+  encoder path, so transcribe refuses instead of falling back".
+- Lock `/tmp/m1-gpu.lock`: `flock -w 900` on every gated invocation,
+  never stolen, never unlinked, free after the gate.
+
+### The divergence that wasn't (recorded for the next agent)
+
+The first gate arm reported `encoder_hidden_sha256` FAIL with actual
+`f4dbfff3…`. Diagnosis chain: kill-switch run diverged too (not the
+fold); the dev-staged `f171a61e…` worker swapped into the install still
+diverged (not the worker); the original `fused_e2e.py` harness driven
+entirely from the wheel's runtime reproduced **`38c73261…` exactly** (not
+the environment, not the runner, not libmlx). Root cause: the receipt pin
+`38c73261…` is the SHA-256 of the **`.npy` file** (header + payload),
+while the checker hashed the **float32 tensor bytes** — whose hash is
+`f4dbfff3…` for the very same tensor. The runtime was pin-exact from the
+first run; the pin record now carries both bases (tensor-byte hash as the
+checked value, `.npy` file hash for cross-receipt verification), and the
+mel pin was corrected to the tensor basis the same way (`bcbaa3ca…`;
+its llvmpipe reproduction on this host is bit-exact against the golden
+tensor).
+
+### jwm1 artifacts
+
+Gate run: `/var/tmp/parakeet-gate-out/` (gate.log, run-1..3, killswitch,
+refworker, harness + the collector `/var/tmp/jwm1-collect.py`); wheel
+worktree `/var/tmp/parakeet-wheel-gate` at `33084356`; seeded HOME
+`/var/tmp/parakeet-gate-home`. Scratch venvs `/var/tmp/parakeet-gate-venv2`
+(note: its installed worker was swapped to `f171a61e…` for the isolation
+arm — not the wheel binary) and the gate's own mktemp venvs were removed
+with their WORK dirs.
 
 ## Rules honored
 
