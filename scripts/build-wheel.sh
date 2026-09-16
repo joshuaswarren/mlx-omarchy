@@ -122,6 +122,17 @@ fi
 export CMAKE_BUILD_PARALLEL_LEVEL="${CMAKE_BUILD_PARALLEL_LEVEL:-$(nproc)}"
 export PATH="$VENV_DIR/bin:$PATH"
 
+# aarch64 wheels ship the Parakeet runtime surface: the standalone
+# fd-protocol ANE worker (mlx/bin/mlx-omarchy-ane-worker) beside the
+# pinned island bundles and strict libane under share/mlx-omarchy/. The
+# worker only compiles under MLX_OMARCHY_ANE_DEVICE, and that flag
+# builds nothing on other architectures (no libane surface).
+case "$(uname -m)" in
+  aarch64|arm64)
+    export CMAKE_ARGS="$CMAKE_ARGS -DMLX_OMARCHY_ANE_DEVICE=ON"
+    ;;
+esac
+
 "$venv_python" -m pip wheel --no-build-isolation --no-deps \
   --wheel-dir "$DIST_DIR" "$WORK_DIR/mlx"
 

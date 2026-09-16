@@ -127,6 +127,10 @@ for exact text, token counts, and duration/frame differences.
 
 ## Downloader
 
+The installed CLI wraps this tool: `mlx-omarchy-parakeet download` /
+`verify` (see [Installed product](#installed-product-wheel)) and also
+fetch-and-verify the pinned audio fixture. The dev tool:
+
 ```bash
 python3 overlay/tools/coreml/fetch_parakeet_reference.py download  # fetch + verify
 python3 overlay/tools/coreml/fetch_parakeet_reference.py verify    # re-hash cache
@@ -165,6 +169,58 @@ swift build -c release
 The harness verifies all `--expect` hashes before any inference and cross-
 checks its composed run against the reference end-to-end `ParakeetTranscriber`
 (tokens and transcript must match; they do).
+
+## Installed product (wheel)
+
+aarch64 wheels ship the pinned Parakeet runtime end to end: the CLI
+(`mlx/bin/mlx-omarchy-parakeet`), the runtime modules (`mlx/coreml/`), the
+standalone fd-protocol ANE worker (`mlx/bin/mlx-omarchy-ane-worker`), and
+under `mlx/share/mlx-omarchy/parakeet-1/` the pinned island bundles
+(mil-hwxc `b61de468`, the `receipts/2026-09-16-parakeet-e2e-both-hosts`
+set), the strict `libane-strict.so` the worker dlopens, and
+`parakeet-runtime-pin.json` — the SHA-256 pin of every shipped asset plus
+the frozen end-to-end expectations (transcript, token ids, `encoder_hidden`,
+mel, 104 emissions, `cpu_tensor_events` 0). Non-aarch64 wheels install the
+CLIs without the arm64 payloads.
+
+```bash
+mlx-omarchy-parakeet download              # fetch + verify the pinned reference (~475 MB) and fixture
+mlx-omarchy-parakeet verify                # re-hash the cache and the fixture
+mlx-omarchy-parakeet transcribe -o out/    # full pinned-reference E2E: mel -> ANE islands -> TDT -> text
+mlx-omarchy-parakeet transcribe --help
+```
+
+`transcribe` needs `numpy` and `protobuf` (and `soundfile`, or `ffmpeg`,
+for FLAC decode) on the host; the wheel itself declares no hard
+dependencies, so it refuses naming the missing ones instead of failing
+mid-run.
+
+`transcribe` refuses — names the reason and exits 1 — unless everything it
+needs is pinned and present. There is no CPU or GPU-only encoder fallback:
+
+* the runtime assets (bundles, libane, pin manifest, worker) are missing or
+  installed on a non-aarch64 host;
+* any shipped asset hash does not match the pin (unverified ANE programs
+  never execute);
+* `MLX_OMARCHY_ANE_DEVICE=off` is set (explicit kill switch), or the host
+  lacks the ANE: no `/dev/accel/accel0` character device (`MLX_OMARCHY_ACCEL_DEV`
+  relocates it), or the `ane` module is not loaded;
+* the reference cache does not verify against the lock (run `download`);
+* the audio is not the pinned fixture;
+* the emitted encoder source does not match its recorded SHA-256 — the
+  depalettized textual MIL is emitted once into the cache
+  (`encoder-source/<revision>/`) and then hash-pinned;
+* any output pin diverges: mel, `encoder_hidden`, transcript, token ids,
+  frame indices, durations, emission count, decode control (`gpu-loop`,
+  no fallback), or a nonzero `cpu_tensor_events` count.
+
+The run writes `transcript.txt`, `token_ids.json`, `encoder_hidden.npy`,
+`mel.npy`, and `transcribe-report.json` (schema
+`mlx-omarchy.parakeet-transcribe.v1`: stage walls, ANE counters, worker and
+libane identity, per-check verdicts) into the output directory and prints a
+summary. The pinned expectations are the `2026-09-16-parakeet-e2e-both-hosts`
+receipt: transcript `db501a8c…`, `encoder_hidden` `38c73261…` (identical on
+T8103 and T6001), 104/104 emissions.
 
 ## Licensing record
 
