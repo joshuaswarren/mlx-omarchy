@@ -55,6 +55,35 @@ namespace mlx::core {
 
 namespace {
 
+// MLX_OMARCHY_ROPE_BITS: dump the push-constant trig words (alpha, beta,
+// offset) of every eager FastRope and folded GEMV RoPE dispatch. The
+// 1-ulp cos_t divergence attribution needs the exact words both arms
+// receive; identical words on identical ISA mean the arms cannot differ.
+const bool rope_bits_debug = std::getenv("MLX_OMARCHY_ROPE_BITS") != nullptr;
+
+inline void dump_rope_bits(
+    const char* kind,
+    int kernel,
+    const omarchy::ComputeParams& params,
+    const char* note = "") {
+  if (!rope_bits_debug) {
+    return;
+  }
+  uint32_t alpha_bits, beta_bits;
+  std::memcpy(&alpha_bits, &params.alpha, sizeof(alpha_bits));
+  std::memcpy(&beta_bits, &params.beta, sizeof(beta_bits));
+  std::fprintf(
+      stderr,
+      "ROPEBITS kind=%s kernel=%d alpha=%08x beta=%08x off=%u flags=%u%s\n",
+      kind,
+      kernel,
+      alpha_bits,
+      beta_bits,
+      params.rhs_offset,
+      params.flags,
+      note);
+}
+
 // Keep in lockstep with the switch in shaders/elementwise.comp.
 enum ElementwiseOperation : uint32_t {
   AddOperation,
@@ -7347,6 +7376,11 @@ bool dispatch_quantized_gemv_group(
             ComputeKernel::QmmVecQ4MultiF32,
             ComputeKernel::QmmVecQ4MultiF16,
             ComputeKernel::QmmVecQ4MultiBF16);
+  dump_rope_bits(
+      "fold",
+      static_cast<int>(kernel),
+      params,
+      subgroup_ready ? " subgroup" : " nosubgroup");
   encoder.dispatch_compute(kernel, bindings, params, total_groups, 1u, 1u);
   for (const auto& member : members) {
     if (!member.window) {
@@ -10605,6 +10639,7 @@ void RoPE::eval_gpu(
         with_freqs ? omarchy::ComputeKernel::FastRopeFreqsBF16
                    : omarchy::ComputeKernel::FastRopeBF16);
   }
+  dump_rope_bits("eager", static_cast<int>(kernel), params);
   encoder.dispatch_compute(
       kernel,
       bindings,
