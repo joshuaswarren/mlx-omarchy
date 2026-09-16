@@ -30,3 +30,14 @@ Boundary-receipt correction: its "no source-level change in this
 repository" framing stands, but the residual is no longer unscheduled —
 the driver-side lever was found, landed, packaged, and verified on the
 pinned decode protocol.
+
+## Addendum: G13X (M1 Max) port measured, not shipped
+
+jw16 (t6001, G13C) = AGX_CHIP_G13X per agx_device.c (gen13 + multi-cluster).
+The sourced designed set {4,5,6,8} (upstream's own pre-sink G13X block) was
+packaged (hkd71c94e-2) and measured on jw16, 12-round interleaved: short
+190.66 -> 215.47 tok/s (+13.0%) but ctx1053 142.12 -> 137.62 (-3.17%), pins
+48/48, suite 41 cases / 22694 assertions green. Regressive on the Max's weak
+leg -> not shipped; mesa 5deac1c8068 restores the G13X sink (merged to
+honeykrisp-omarchy), jw16 rolled back to hk6f6afc8-1, llm-inference
+restarted. The trim ships G13G-only.
