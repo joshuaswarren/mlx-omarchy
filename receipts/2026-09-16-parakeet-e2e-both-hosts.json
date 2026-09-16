@@ -1,0 +1,199 @@
+{
+  "schema": "mlx-omarchy.parakeet-e2e-both-hosts/1",
+  "date": "2026-09-16",
+  "receipt": "receipts/2026-09-16-parakeet-e2e-both-hosts",
+  "supersedes": "receipt/2026-09-16-parakeet-e2e-baseline",
+  "source": {
+    "mlx_omarchy": "origin/main f43ab71c (616b5b89 reverts the 296c4352 fold rebase as corrupting; f43ab71c keeps the minus5 root-cause receipt)",
+    "runner": {
+      "path": "overlay/tools/coreml/vulkan_encoder.py",
+      "blob": "ccdbf12aa8c4765c7032d09ee4cf1de66337b34d",
+      "note": "byte-identical to the blob at 69fd5397; CHAIN_FUSION code gone at f43ab71c, no flags"
+    },
+    "omarchy_ane_libane_pin": "6fa243ac7241119a9eb229abbf8cb4dd8949f915 (canonical CMake check)",
+    "kernel_driver": "ane module live on both hosts (jwm1 at 96d5a88 = landed main 44dd9bf per AneTmRecoveryBisect verification)"
+  },
+  "wheels": {
+    "jwm1": {
+      "file": "mlx_omarchy-0.32.2.dev202609161313+f43ab71-cp314-cp314-linux_aarch64.whl",
+      "bytes": 7856626,
+      "sha256": "bfb6dc93dcc5a3de13af9a0a35a52ba8a03947d2686b4edd4469d08ed3eb4215",
+      "provenance": "verified match (mlx.core + libmlx.so member-for-member vs RECORD; dist_version == mx_version == 0.32.2.dev202609161313+f43ab71)",
+      "gpu_profile_literals_in_libmlx": 0,
+      "build": "scripts/build-wheel.sh non-diag, worktree /var/tmp/E2EREV, MLX_OMARCHY_ANE_SOURCE_DIR=/var/tmp/ane-6fa243a-wt (clean worktree at the pin)",
+      "installed_site": "/var/tmp/E2EREV/site"
+    },
+    "jw16": {
+      "file": "mlx_omarchy-0.32.2.dev202609161313+f43ab71-cp314-cp314-linux_aarch64.whl",
+      "bytes": 7856610,
+      "sha256": "54d520c738f6a36d3de54713cba9e3a0cc520d78f9a9857af47c779d6f4f044c",
+      "provenance": "verified match (same contract as jwm1)",
+      "gpu_profile_literals_in_libmlx": 0,
+      "build": "scripts/build-wheel.sh non-diag, worktree /var/tmp/E2EREV, MLX_OMARCHY_ANE_SOURCE_DIR=~/src/omarchy-ane-lifecycle-rebase (at 6fa243a)",
+      "installed_site": "/var/tmp/E2EREV/site"
+    },
+    "non_reproducibility_note": "minute-level timestamps make the two wheels differ in bytes; both carry the same f43ab71c sources"
+  },
+  "runtime": {
+    "worker": {
+      "path_jwm1": "/var/tmp/mlx-main-strict/.work/mlx/build-ane-device/tools/mlx-omarchy-ane-worker/mlx-omarchy-ane-worker",
+      "path_jw16": "/var/tmp/E2E296-battery/worker/mlx-omarchy-ane-worker",
+      "sha256": "f171a61ecfc89942b009dc379d6636b17b0dda6f583841470a1d789853f5952e",
+      "note": "same binary as the 69fd5397 battery and the baseline receipt; worker-relevant sources unchanged from 69fd5397 through 296c4352 and f43ab71c (span diff = runner + receipts only). The wheel-shipped workers (jwm1 85c24c6f, jw16 5e896572) speak a different spawn contract (require an inherited ANE hardware lock; answer expected STAGING_BYTES on this fd protocol) and were not used"
+    },
+    "libane": {
+      "file": "/var/tmp/island-reexport/libane-strict.so",
+      "sha256": "56b462346128b04139cb7c9397b06ca8d513c680c972d8914395ddd3aa978ba7",
+      "note": "omarchy-ane 6fa243a + LIBANE_CONFIG_STRICT_BIND; identical bytes deployed on both hosts"
+    },
+    "bundles": {
+      "dir": "/var/tmp/island-reexport/bundles",
+      "provenance": "mil-hwxc b61de468 re-export, byte-identical to receipts/2026-09-14-encoder-split-plan/bundles; same tree deployed on both hosts (tree digest 18e3b7eac87873d151a674e4a39d4846fc7f4c7423be2faebdf41791e20e3730)",
+      "jw16_note": "jw16's older T6001 island set (/var/tmp/jw16-encoder-islands/bundles) predates the strict worker surface-naming check and is rejected at load; the b61de468 programs are cross-SoC (see receipts/2026-09-14-t6001-export-family.json: the unit-op family runs byte-identical on T8103 and T6001), and the identical encoder_hidden pin below confirms it for the islands"
+    },
+    "harness": {
+      "file": "fused_e2e.py",
+      "sha256": "0e38e7b15a36d9a8244bd523ff6845f6b44cb7ad4a7444dc30e8177e97cabb97",
+      "note": "byte-identical on both hosts, same as the baseline receipt"
+    },
+    "mode_env": "ANE_ISLAND_MODE=resident-batch",
+    "decode_flags": "none (GPU-resident greedy TDT loop is the default path)",
+    "lock": "/tmp/m1-gpu.lock flock -w 900, never stolen, never unlinked (jwm1 inode 35, jw16 inode 12; free after each battery)"
+  },
+  "hosts": {
+    "jwm1": {
+      "hostname": "jwm1-linux",
+      "machine": "Apple MacBook Pro (13-inch, M1, 2020), T8103",
+      "kernel": "7.1.6-1-1-ARCH aarch64",
+      "python": "3.14.7",
+      "cores": 8
+    },
+    "jw16": {
+      "hostname": "jw16mbp1-linux",
+      "machine": "Apple MacBook Pro (16-inch, M1 Max, 2021), T6001",
+      "kernel": "7.1.6-1-1-ARCH aarch64",
+      "python": "3.14.7",
+      "cores": 10
+    }
+  },
+  "gates_every_run": {
+    "runs_total": 12,
+    "status": "match",
+    "emissions_actual": 104,
+    "emissions_native": 104,
+    "matching_prefix_length": 104,
+    "transcript_sha256": "db501a8c080380ea027ffa50a4b4956c39df77cb692c4fb78e556311a11a0790",
+    "encoder_hidden_sha256": "38c73261f29230276ed76f1fc017b76b024156d79218bd5f1347fdc7e7d43ec7",
+    "encoder_hidden_note": "identical on both SoCs; no T6001 pin divergence because the submitted island bytes are identical",
+    "mel": "bit-exact",
+    "encoder_bounds": "PASS",
+    "decode_control": "gpu-loop",
+    "tdt_fallback_reason": null,
+    "island_batch": "1 batch submission, 1 worker start, 0 timeouts per pass",
+    "cpu_tensor_events": 0
+  },
+  "medians_ms": {
+    "jwm1": {
+      "r2_r6": {
+        "audio_load": 177.829,
+        "mel_frontend": 247.389,
+        "encoder_ane": 7215.331,
+        "decoder_load": 84.529,
+        "tdt_decode": 830.789,
+        "detokenize": 40.076,
+        "ane_exec": 2650.941,
+        "total_pipeline": 8541.773
+      },
+      "r1_r6": {
+        "audio_load": 177.62,
+        "mel_frontend": 248.377,
+        "encoder_ane": 7219.067,
+        "decoder_load": 84.768,
+        "tdt_decode": 831.282,
+        "detokenize": 40.081,
+        "ane_exec": 2644.699,
+        "total_pipeline": 8564.994
+      }
+    },
+    "jw16": {
+      "r2_r6": {
+        "audio_load": 74.724,
+        "mel_frontend": 164.743,
+        "encoder_ane": 5083.034,
+        "decoder_load": 82.438,
+        "tdt_decode": 961.241,
+        "detokenize": 56.15,
+        "ane_exec": 2579.882,
+        "total_pipeline": 6418.543
+      },
+      "r1_r6": {
+        "audio_load": 76.115,
+        "mel_frontend": 163.954,
+        "encoder_ane": 5110.516,
+        "decoder_load": 82.709,
+        "tdt_decode": 961.604,
+        "detokenize": 56.043,
+        "ane_exec": 2601.012,
+        "total_pipeline": 6444.782
+      }
+    }
+  },
+  "per_run_totals_ms": {
+    "jwm1": [20716.103, 8475.99, 8588.215, 8532.367, 8541.773, 8642.054],
+    "jw16": [9553.814, 6471.02, 6418.543, 6503.915, 6075.863, 6309.973]
+  },
+  "r1_notes": "both r1 totals carry the cold-SPIR-V mel compile and (jwm1) the first gpu-loop decode pass on this boot; r2-r6 are warm and are the quoted baseline",
+  "comparison": {
+    "jwm1_vs_prior": {
+      "prior": "69fd5397 cut arm (receipts/2026-09-16-encoder-gpu-busy): total 8460.852 ms, encoder_ane 7135.603 ms median r1-r6",
+      "now": "8564.994 ms total, 7219.067 ms encoder_ane median r1-r6 (same runner blob, +~81 ms total, within day-to-day variance)",
+      "fold_note": "the 296c4352 fold's promised < 8000 ms never existed: the fold as pushed was corrupting and is reverted"
+    },
+    "jw16_vs_jwm1": "first Parakeet E2E on the M1 Max: total -2123 ms vs jwm1 (6418.5 vs 8541.8 median r2-r6); encoder_ane -2132 ms, mel -82.6 ms (10-core host); tdt_decode +130.5 ms slower on the Max"
+  },
+  "regression_found_and_reverted": {
+    "commit": "296c4352 (reverted by 616b5b89; tip f43ab71c)",
+    "symptom": "fold default-on ships NaN-free but wrong encoder_hidden: deterministic sha dadd090de44451f1bc43c582e401920fe7ab1252df794ef9e2961ded3e3875c3 on all 6 runs, 0/104 emissions, empty transcript, encoder_bounds fail, islands report healthy (72 rounds, 0 timeouts, 1 submit)",
+    "ab": [
+      "296c4352 runner, fold on: DIVERGE (dadd090d, totals 10551.7/7823.5/7782.7/6922.7/5629.7/5545.3 falling as decode bails early)",
+      "296c4352 runner, MLX_OMARCHY_CHAIN_FUSION=0: PASS (pin 38c73261, transcript db501a8c, 8512.2 ms)",
+      "7da42928 runner (fold on the pre-coopmat local base), fold on: PASS (pin 38c73261, transcript db501a8c, 10566.0 ms)"
+    ],
+    "attribution": "the fold validated locally (7da42928, runner blob c42ad3c2) was rebased onto the coopmat-leftover-linear + fused-pointwise lineage for main and the rebase broke it; the pushed commit message retained the pre-rebase validation claim",
+    "evidence_files": "fold-runner-diff.txt (runner blob diff c42ad3c2 -> d7dadeb1), diverged battery under jwm1:/var/tmp/E2E296-battery/out-1..6",
+    "main_decision": "Main directed: revert on main, rebuild from f43ab71c, run both hosts with NO flags; do not baseline a flagged-off configuration"
+  },
+  "jw16_first_e2e_staging": {
+    "new_on_jw16": "venv-agxgen (numpy 2.5.3, protobuf 7.36.1), fused_e2e.py, TdtLoopDefault pkg copy, golden capture, encoder-source (1461045259 bytes, relayed via workstation), MelFrontendPerf venv-cache, libane-strict.so, standalone worker, island-reexport/bundles",
+    "model": "~/.cache/mlx-omarchy/parakeet-reference/mweinbach1/parakeet-tdt-0.6b-v3-coreml/b650695c2322ee5281dff48d7345b2f3a58ff018 (decoder+joint trees hash-identical to jwm1: 82e1aeef42306383b12c7edc49efff55702688afadca0030d67d5179890f9731 over sorted file shas)",
+    "llama_server_windows": [
+      {
+        "stop": "2026-09-16T08:16:38-05:00",
+        "start": "2026-09-16T08:16:50-05:00",
+        "result": "aborted: stale jw16 island bundles rejected by the worker ('program 0 task stream does not name every surface; channel map is positional'); service restarted active"
+      },
+      {
+        "stop": "2026-09-16T08:18:59-05:00",
+        "start": "2026-09-16T08:19:00-05:00",
+        "result": "aborted at arg validation (deployed script was missing --libane); service restarted active"
+      },
+      {
+        "stop": "2026-09-16T08:19:47-05:00",
+        "start": "2026-09-16T08:20:31-05:00",
+        "result": "recorded battery, 44 s stopped; systemctl is-active = active after restart"
+      }
+    ],
+    "contention": "none on any recorded run (all runs inside the third window with llama-server stopped and the lock free)"
+  },
+  "wedge_surveillance": {
+    "jwm1": "no tm -110 and no 'preserving resources until reboot' during the battery; the only -110 lines on this boot are at uptime 4419-4519 s (AneTmRecoveryBisect's recovery testing, ~50 min before the battery) and each ended 'tm recovered: idle, accepting work again'; battery ran at uptime ~7540-7645 s",
+    "jw16": "no ane wedge lines on this boot at all"
+  },
+  "verdict": "12/12 runs match the full correctness contract on both hosts: 104/104 emissions, transcript db501a8c, encoder_hidden pin 38c73261, mel bit-exact, bounds PASS, island batch engaged, GPU TDT loop default with no flags. New Parakeet E2E baseline at f43ab71c: jwm1 8541.8 ms, jw16 6418.5 ms (median r2-r6). Supersedes receipt/2026-09-16-parakeet-e2e-baseline.",
+  "not_claimed": [
+    "no cold-SPIR-V mel numbers (r1 quoted separately); the cold-mel penalty is unchanged from prior receipts",
+    "no claim on macOS, other fixtures, other SoCs, or the reverted fold's performance",
+    "63c1d3cf not merged, not touched",
+    "llama-server redundancy: Main confirmed the router pool (192.168.10.15 + 100.74.23.64) does not depend on jw16's llm-inference.service; the 44 s stop is covered by that assessment"
+  ]
+}

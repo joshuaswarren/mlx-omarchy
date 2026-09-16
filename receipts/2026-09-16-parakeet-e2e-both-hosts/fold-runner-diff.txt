@@ -1,0 +1,415 @@
+diff --git a/c42ad3c24733e395b696d67f2bb691d7345d92ed b/d7dadeb11d7cf62a5e51a8ceaffd7200065c186a
+index c42ad3c2..d7dadeb1 100644
+--- a/c42ad3c24733e395b696d67f2bb691d7345d92ed
++++ b/d7dadeb11d7cf62a5e51a8ceaffd7200065c186a
+@@ -204,6 +204,109 @@ def _leftover_chain_bias_silu_kernel():
+ 
+ 
+ 
++@cache
++def _linear_f16_coopmat_kernel():
++    """Batched-blocked fp16 linear on the f32 8x8x8 matrix unit: one
++    custom dispatch computes every 16-wide block's fp32 partial (A/B read
++    as fp16, widened exactly when staged to shared, identical staging
++    layout, k-step order, and coopMatMulAdd sequence as the f32 batched
++    coopmat matmul it replaces) and rounds each partial once to fp16 at
++    the drain — the same single round-to-nearest-even the fp32 partials
++    path applies when the chain kernel reads them. fp16 partials halve
++    the dominant partials write+read traffic; bytes are identical by
++    construction."""
++    return mx.fast.metal_kernel(
++        name="encoder_linear_f16_coopmat",
++        input_names=["lhs", "rhs"],
++        output_names=["dst"],
++        header="""
++            #extension GL_KHR_cooperative_matrix : require
++            #extension GL_KHR_memory_scope_semantics : require
++        """,
++        source="""
++            uint rows = lhs_shape[0];
++            uint K = lhs_shape[1];
++            uint N = rhs_shape[0];
++            uint lane = gl_LocalInvocationID.x;
++            uint col_base = gl_WorkGroupID.x * 32u;
++            uint row_base = gl_WorkGroupID.y * 32u;
++            uint k_base = gl_WorkGroupID.z * 16u;
++            uint mn = rows * N;
++            uint out_base = gl_WorkGroupID.z * mn + row_base * N + col_base;
++            threadgroup float a_s[256];
++            threadgroup float b_s[256];
++            coopmat<float, gl_ScopeSubgroup, 8, 8, gl_MatrixUseAccumulator> acc[4][4];
++            for (uint rb = 0u; rb < 4u; ++rb) {
++              for (uint cb = 0u; cb < 4u; ++cb) {
++                acc[rb][cb] = coopmat<float, gl_ScopeSubgroup, 8, 8,
++                    gl_MatrixUseAccumulator>(0.0);
++              }
++            }
++            for (uint step = 0u; step < 2u; ++step) {
++              uint k8 = k_base + step * 8u;
++              for (uint j = 0u; j < 8u; ++j) {
++                uint i = lane + 32u * j;
++                uint row_local = i / 8u;
++                uint row = row_base + row_local;
++                uint k = k8 + (i % 8u);
++                float v = 0.0;
++                if (row < rows) {
++                  v = float(lhs[row * K + k]);
++                }
++                a_s[row_local * 8u + (i % 8u)] = v;
++              }
++              for (uint j = 0u; j < 8u; ++j) {
++                uint i = lane + 32u * j;
++                uint col_local = i / 8u;
++                uint col = col_base + col_local;
++                uint k = k8 + (i % 8u);
++                float v = 0.0;
++                if (col < N) {
++                  v = float(rhs[col * K + k]);
++                }
++                b_s[(i % 8u) * 32u + col_local] = v;
++              }
++              threadgroup_barrier(mem_flags::mem_threadgroup);
++              coopmat<float, gl_ScopeSubgroup, 8, 8, gl_MatrixUseA> mat_a[4];
++              coopmat<float, gl_ScopeSubgroup, 8, 8, gl_MatrixUseB> mat_b[4];
++              for (uint rb = 0u; rb < 4u; ++rb) {
++                coopMatLoad(mat_a[rb], a_s, rb * 64u, 8u,
++                    gl_CooperativeMatrixLayoutRowMajor);
++              }
++              for (uint cb = 0u; cb < 4u; ++cb) {
++                coopMatLoad(mat_b[cb], b_s, cb * 8u, 32u,
++                    gl_CooperativeMatrixLayoutRowMajor);
++              }
++              for (uint rb = 0u; rb < 4u; ++rb) {
++                for (uint cb = 0u; cb < 4u; ++cb) {
++                  acc[rb][cb] = coopMatMulAdd(mat_a[rb], mat_b[cb], acc[rb][cb]);
++                }
++              }
++              threadgroup_barrier(mem_flags::mem_threadgroup);
++            }
++            for (uint rb = 0u; rb < 4u; ++rb) {
++              for (uint cb = 0u; cb < 4u; ++cb) {
++                coopMatStore(acc[rb][cb], a_s, cb * 64u, 8u,
++                    gl_CooperativeMatrixLayoutRowMajor);
++              }
++              threadgroup_barrier(mem_flags::mem_threadgroup);
++              uint column = col_base + lane;
++              if (column < N) {
++                for (uint r = 0u; r < 8u; ++r) {
++                  uint row = row_base + rb * 8u + r;
++                  if (row < rows) {
++                    dst[out_base + (rb * 8u + r) * N + lane] =
++                        a_s[(lane / 8u) * 64u + r * 8u + (lane % 8u)];
++                  }
++                }
++              }
++              threadgroup_barrier(mem_flags::mem_threadgroup);
++            }
++        """,
++        compile_options={"math_mode": "safe"},
++    )
++
++
+ @cache
+ def _silu_kernel():
+     """silu in one dispatch. The fp32 math and the single fp16 rounding at
+@@ -336,6 +439,97 @@ def _sm_div_kernel():
+ 
+ 
+ 
++
++@cache
++def _pw_kernel(op: str, layout: str, n: int, width: int = 0, time: int = 0):
++    """fp16 pointwise `a <op> b` in one dispatch. The chain this replaces
++    is cast(fp16->f32) x2, one ElementwiseF32, cast(f32->fp16); the kernel
++    widens the identical fp16 operands to fp32, runs the identical fp32
++    op, and applies the same single round-to-nearest-even at the boundary,
++    so the result is bit-identical. `layout` selects how the rhs is
++    addressed: flat for same-shape pairs, bare (the macro of a 0-d
++    reference parameter already carries the [0]) for a broadcast scalar,
++    or the row-broadcast `(index / width) % time` of the conv-stem mask
++    muls, whose per-instance width/time bake into the source. The grid
++    convention is thread counts per axis, so oversized tensors spread the
++    flat element index across y around the 65535-workgroup x limit."""
++    rhs = {
++        "flat": "float(rhs[index])",
++        "scalar": "float(rhs)",
++        "row": f"float(rhs[(index / {width}u) % {time}u])",
++    }[layout]
++    symbol = {"add": "+", "sub": "-", "mul": "*"}[op]
++    stride = min(n, 65535 * 256)
++    source = f"""
++            uint index = thread_position_in_grid.x
++                       + thread_position_in_grid.y * {stride}u;
++            if (index >= {n}u) {{
++                return;
++            }}
++            dst[index] = half(float(lhs[index]) {symbol} {rhs});
++        """
++    return mx.fast.metal_kernel(
++        name=f"encoder_pw_{op}_{layout}",
++        input_names=["lhs", "rhs"],
++        output_names=["dst"],
++        source=source,
++        compile_options={"math_mode": "safe"},
++    )
++
++
++def _pw(op: str, x: mx.array, y: mx.array) -> mx.array | None:
++    """Run the fused pointwise kernel for `op` in (add, sub, mul), or
++    return None when the operand pair does not match one of the three
++    exact broadcast layouts the pinned program uses; the caller then
++    falls back to the dispatch chain the kernel replaces."""
++    if x.dtype != mx.float16 or y.dtype != mx.float16:
++        return None
++    if y.size == 1:
++        layout = "scalar"
++        y = mx.reshape(y, ())
++    elif x.shape == y.shape:
++        layout = "flat"
++    elif (
++        y.ndim == 4 and y.shape[0] == 1 and y.shape[1] == 1 and y.shape[3] == 1
++        and x.ndim == 4 and x.shape[0] == 1 and x.shape[2] == y.shape[2]
++    ):
++        layout = "row"
++    else:
++        return None
++    n = x.size
++    threads_x = min(n, 65535 * 256)
++    threads_y = (n + threads_x - 1) // threads_x
++    out = _pw_kernel(op, layout, n,
++                     x.shape[3] if layout == "row" else 0,
++                     y.shape[2] if layout == "row" else 0)(
++        inputs=[x, y],
++        output_shapes=[(n,)],
++        output_dtypes=[mx.float16],
++        grid=(threads_x, threads_y, 1),
++        threadgroup=(256, 1, 1),
++        stream=mx.gpu,
++    )[0]
++    return mx.reshape(out, x.shape)
++
++
++@cache
++def _sigmoid_kernel():
++    """sigmoid in one dispatch, the silu kernel without its multiply:
++    mx.sigmoid lowers to `1.0 / (1.0 + exp(-x))` in fp32 with one fp16
++    rounding at the op boundary, exactly as the dispatch chain ran it."""
++    return mx.fast.metal_kernel(
++        name="encoder_sigmoid_fused",
++        input_names=["src"],
++        output_names=["dst"],
++        source="""
++            uint index = thread_position_in_grid.x;
++            float v = float(src[index]);
++            dst[index] = half(1.0 / (1.0 + exp(-v)));
++        """,
++        compile_options={"math_mode": "safe"},
++    )
++
++
+ class EncoderRunError(RuntimeError):
+     """The run cannot continue; the reason is named."""
+ 
+@@ -440,7 +634,10 @@ class Blobs:
+ 
+ 
+ class Statement:
+-    __slots__ = ("index", "names", "op", "kwargs", "attrs", "dtype", "shape", "done")
++    __slots__ = (
++        "index", "names", "op", "kwargs", "attrs", "dtype", "shape", "done",
++        "operands", "const_kwargs",
++    )
+ 
+     def __init__(self, index, names, op, kwargs, attrs, dtype, shape):
+         self.index = index
+@@ -451,6 +648,8 @@ class Statement:
+         self.dtype = dtype
+         self.shape = shape
+         self.done = False
++        self.operands: list[str] = []
++        self.const_kwargs: dict | None = None
+ 
+ 
+ # The three island bundles the encoder handlers submit to. The resident
+@@ -716,11 +915,15 @@ class EncoderRunner:
+                     dtype, shape,
+                 )
+             self.statements.append(stmt)
++            if stmt.op == "const":
++                stmt.const_kwargs = parse_kwargs(stmt.attrs)
+             for name in stmt.names:
+                 self.producer[name] = stmt
+                 if stmt.op == "const":
+                     self.const_stmt[name] = stmt
+             index += 1
++        if self.statements and self.statements[-1].index != len(self.statements) - 1:
++            raise EncoderRunError("statement index sequence is corrupt")
+ 
+     def _index_islands(self) -> None:
+         scores, content, attn_out, mask_select = [], [], [], []
+@@ -818,16 +1021,27 @@ class EncoderRunner:
+         release device memory as it goes. The encoder's constants alone are
+         1.2 GB of fp16; holding every intermediate would not fit."""
+         self.last_use: dict[str, int] = {}
++        self.releases: dict[int, list[str]] = {}
+         for stmt in self.statements:
++            operands = []
+             for token in stmt.kwargs.values():
+                 for name in self._operand_names(token):
+-                    self.last_use[name] = max(self.last_use.get(name, -1), stmt.index)
++                    operands.append(name)
++                    self.last_use[name] = max(
++                        self.last_use.get(name, -1), stmt.index
++                    )
++            stmt.operands = operands
+         # The fused mul reads the split sibling after the skipped sigmoid
+         # statement, so that operand must live until the mul, not the sigmoid.
+         for mul_index, (_a, b_name) in self.glu_fusions.items():
+             self.last_use[b_name] = max(
+                 self.last_use.get(b_name, -1), mul_index
+             )
++        # Group names by their last-use index so run() retires each name at
++        # its own statement instead of rescanning every live name per
++        # statement -- identical deletions, O(released) instead of O(all).
++        for name, last in self.last_use.items():
++            self.releases.setdefault(last, []).append(name)
+ 
+     def _operand_names(self, token: str) -> list[str]:
+         token = token.strip()
+@@ -851,9 +1065,8 @@ class EncoderRunner:
+             raise EncoderRunError(f"unresolved operand {name!r}")
+         if stmt.done:
+             return
+-        for token in stmt.kwargs.values():
+-            for operand in self._operand_names(token):
+-                self.ensure(operand)
++        for operand in stmt.operands:
++            self.ensure(operand)
+         self.execute(stmt)
+ 
+     def tensor(self, token: str) -> mx.array:
+@@ -896,8 +1109,7 @@ class EncoderRunner:
+     def eval_const(self, stmt: Statement) -> None:
+         name = stmt.names[0]
+         dtype_name, shape = stmt.dtype, stmt.shape
+-        kwargs = parse_kwargs(stmt.attrs)
+-        value_text = kwargs["val"]
++        value_text = stmt.const_kwargs["val"]
+         if dtype_name == "string":
+             self.meta[name] = re.search(r'"([^"]*)"', value_text).group(1)
+             return
+@@ -1146,6 +1358,9 @@ class EncoderRunner:
+             if x.dtype == mx.int32 and y.dtype == mx.int32:
+                 raw = {"add": x + y, "sub": x - y, "mul": x * y}[op]
+                 return raw.astype(mx.int32)
++            fused = _pw(op, x, y)
++            if fused is not None:
++                return fused
+             fx, fy = x.astype(mx.float32), y.astype(mx.float32)
+             return {"add": fx + fy, "sub": fx - fy, "mul": fx * fy}[op].astype(mx.float16)
+         if op == "floor_div":
+@@ -1166,7 +1381,19 @@ class EncoderRunner:
+         if op == "relu":
+             return mx.maximum(tensor(kwargs["x"]).astype(mx.float32), 0.0).astype(mx.float16)
+         if op == "sigmoid":
+-            return mx.sigmoid(tensor(kwargs["x"]).astype(mx.float32)).astype(mx.float16)
++            x = tensor(kwargs["x"])
++            if x.dtype == mx.float16:
++                n = x.size
++                out = _sigmoid_kernel()(
++                    inputs=[x],
++                    output_shapes=[(n,)],
++                    output_dtypes=[mx.float16],
++                    grid=(n, 1, 1),
++                    threadgroup=(256, 1, 1),
++                    stream=mx.gpu,
++                )[0]
++                return mx.reshape(out, x.shape)
++            return mx.sigmoid(x.astype(mx.float32)).astype(mx.float16)
+         if op == "silu":
+             x = tensor(kwargs["x"])
+             n = x.size
+@@ -1201,17 +1428,16 @@ class EncoderRunner:
+                 ]
+             return mx.concatenate([tensor(n) for n in names], axis=axis)
+         if op == "linear":
+-            # fp16 leftover datapath, batched: one fp32 matmul over the
+-            # [K/16, 16]-blocked K axis yields every block's partial, and
+-            # _leftover_chain_kernel applies the landed rounding — each
+-            # block rounds to fp16, then accumulates in fp16 ascending —
+-            # in one dispatch. Byte-identical to the 5688f8bd chunk loop;
+-            # a stock single reduce cannot reproduce the ascending fp16
+-            # chain on the omarchy Vulkan backend (probed 2026-09-15:
+-            # mx.sum agrees on <=0.20 of elements in every layout, cumsum
+-            # has no Vulkan kernel), and the explicit chain serialized
+-            # ~21k dependent dispatches into the graph, costing more wall
+-            # than the chunk loop it replaced.
++            # fp16 leftover datapath, batched. Default path: one custom
++            # coopmat dispatch (_linear_f16_coopmat_kernel) produces every
++            # 16-wide block's fp32 partial rounded once to fp16 — the same
++            # rounding the f32 batched matmul + fp16 partials chain
++            # applied — and _leftover_chain_kernel applies the landed
++            # rounding: each block's fp16 partial accumulates in fp16
++            # ascending, one dispatch. Byte-identical to the f32-partials
++            # batched path (exact fp16->fp32 widening, identical staging
++            # values, MMA sequence, and drain); the fp32 matmul route
++            # below stays as the guard fallback.
+             x = tensor(kwargs["x"])
+             weight = tensor(kwargs["weight"])
+             k = int(x.shape[-1])
+@@ -1221,6 +1447,38 @@ class EncoderRunner:
+             rows = 1
+             for dim in x.shape[:-1]:
+                 rows *= dim
++            n_out = int(weight.shape[0])
++            if (
++                x.dtype == mx.float16
++                and weight.dtype == mx.float16
++                and 1 <= rows <= 65535 * 32
++                and blocks <= 65535
++                and n_out <= 65535 * 32
++            ):
++                lhs = mx.reshape(x, (rows, k))
++                rhs = mx.reshape(weight, (n_out, k))
++                partials = _linear_f16_coopmat_kernel()(
++                    inputs=[lhs, rhs],
++                    output_shapes=[(blocks, rows, n_out)],
++                    output_dtypes=[mx.float16],
++                    grid=((n_out + 31) // 32 * 32, (rows + 31) // 32, blocks),
++                    threadgroup=(32, 1, 1),
++                    stream=mx.gpu,
++                )[0]
++                out = _leftover_chain_kernel()(
++                    inputs=[partials],
++                    output_shapes=[(rows, n_out)],
++                    output_dtypes=[mx.float16],
++                    grid=(rows * n_out, 1, 1),
++                    threadgroup=(256, 1, 1),
++                    stream=mx.gpu,
++                )[0]
++                out = mx.reshape(out, tuple(x.shape[:-1]) + (n_out,))
++                if "bias" in kwargs:
++                    out = out.astype(mx.float32) + tensor(kwargs["bias"]).astype(
++                        mx.float32
++                    )
++                return out.astype(mx.float16)
+             xb = mx.transpose(mx.reshape(x, (rows, blocks, 16)), (1, 0, 2)).astype(
+                 mx.float32
+             )  # [K/16, M, 16]
+@@ -1441,11 +1699,12 @@ class EncoderRunner:
+             for name in stmt.names:
+                 if name in wanted and name in self.values:
+                     keep[name] = self.values[name]
+-            # Release anything whose final reader has run.
+-            for name, last in list(self.last_use.items()):
+-                if last <= stmt.index and name not in protected and name in self.values:
++            # Release anything whose final reader has run: names are grouped
++            # by last-use index at parse time, so each statement touches only
++            # the names it retires.
++            for name in self.releases.get(stmt.index, ()):
++                if name not in protected and name in self.values:
+                     del self.values[name]
+-                    del self.last_use[name]
+             if stop_after in keep:
+                 break
+         else:

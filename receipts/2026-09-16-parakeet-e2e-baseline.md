@@ -128,3 +128,16 @@ collect/verify scripts), wheel worktree `/var/tmp/BaselineE2E-7d82ec94`.
   resident-batch pass, or the reverted coopmat path (measured slower,
   reverted at `7d82ec94`).
 - `63c1d3cf` not merged, not touched.
+
+## Superseded (2026-09-16, evening)
+
+This baseline was measured at `7d82ec94` (10730.3 ms total median on jwm1).
+Later same-day work landed `83de2255`, `ecd3e81f`, `69fd5397` (total
+8460.9 ms) and then the `296c4352` fold — which, once measured end-to-end
+on a clean provenance-verified environment, turned out to corrupt the
+encoder silently (deterministic wrong `encoder_hidden`, 0/104 emissions)
+and was reverted on main (`616b5b89`, tip `f43ab71c`). The current Parakeet
+baseline is `receipts/2026-09-16-parakeet-e2e-both-hosts.md` / `.json`:
+f43ab71c, no flags, 12/12 runs green on jwm1 (8541.8 ms median r2-r6) AND
+jw16 (6418.5 ms, first E2E on the M1 Max), transcript `db501a8c…`,
+`encoder_hidden` pin `38c73261…` on both SoCs.
