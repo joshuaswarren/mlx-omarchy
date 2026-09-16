@@ -44,6 +44,7 @@ from __future__ import annotations
 
 import argparse
 import ctypes
+import hashlib
 import importlib.metadata
 import json
 import os
@@ -64,6 +65,18 @@ BLOB_MAGIC = 0xDEADBEEF
 # on, and off reproduces the stock dispatch stream exactly.
 CHAIN_FUSION_ENABLED = (
     os.environ.get("MLX_OMARCHY_CHAIN_FUSION", "1") not in ("0", "false", "no")
+)
+
+# Device-resident const cache: materialize every const once per runner, keep
+# the device buffers referenced, and re-reference them (dict insert, no
+# upload) on later passes. Opt-in (default off): holding ~1.15 GB resident
+# costs a fresh-process pass ~+236 ms (the allocator cannot recycle the held
+# buffers for intermediates), so single-pass pipelines -- including the E2E,
+# which calls run() exactly once per process -- run unchanged by default;
+# multi-pass consumers set MLX_OMARCHY_ENCODER_CONST_CACHE=1 and save
+# ~1.05-1.13 s per warm pass.
+CONST_CACHE_ENABLED = (
+    os.environ.get("MLX_OMARCHY_ENCODER_CONST_CACHE", "0") not in ("0", "false", "no")
 )
 
 STMT = re.compile(
@@ -566,6 +579,14 @@ def _trace_function():
     return function
 
 
+def vm_rss_kb() -> int:
+    """Resident set size in KiB from /proc, for leak-watch evidence."""
+    for line in Path("/proc/self/status").read_text().split("\n"):
+        if line.startswith("VmRSS:"):
+            return int(line.split()[1])
+    return 0
+
+
 def trace_snapshot() -> dict[str, int]:
     snapshot = _TraceSnapshot()
     _trace_function()(ctypes.byref(snapshot))
@@ -884,6 +905,8 @@ class EncoderRunner:
         self.statements: list[Statement] = []
         self.producer: dict[str, Statement] = {}
         self.const_stmt: dict[str, Statement] = {}
+        self.const_values: dict[str, mx.array] = {}
+        self.const_meta: dict[str, object] = {}
         self.executed = 0
         self.gpu_ops = 0
         self.ane_ops = 0
@@ -1115,6 +1138,16 @@ class EncoderRunner:
     # ------------------------------------------------------------------ const
 
     def eval_const(self, stmt: Statement) -> None:
+        self._eval_const(stmt)
+        if not CONST_CACHE_ENABLED:
+            return
+        name = stmt.names[0]
+        if name in self.values:
+            self.const_values[name] = self.values[name]
+        if name in self.meta:
+            self.const_meta[name] = self.meta[name]
+
+    def _eval_const(self, stmt: Statement) -> None:
         name = stmt.names[0]
         dtype_name, shape = stmt.dtype, stmt.shape
         value_text = stmt.const_kwargs["val"]
@@ -1731,6 +1764,23 @@ class EncoderRunner:
     # ------------------------------------------------------------------- run
 
     def run(self, inputs: dict, wanted: set[str], stop_after: str) -> dict:
+        if CONST_CACHE_ENABLED and self.const_values:
+            # Warm pass: every const is device-resident in the cache; the
+            # restore is a dict insert (buffer re-reference), never an
+            # upload. Const statements stay done, so eval_const does not
+            # re-run; everything else re-executes. The cache also keeps
+            # the buffers alive through this pass's release deletions.
+            self.values = dict(self.const_values)
+            for stmt in self.statements:
+                if stmt.op != "const":
+                    stmt.done = False
+        else:
+            if not CONST_CACHE_ENABLED:
+                # Knob off: re-run everything each pass, materialization
+                # cost included -- the pre-cache behavior per pass.
+                for stmt in self.statements:
+                    stmt.done = False
+            self.values = {}
         for name, value in inputs.items():
             self.values[name] = value
         keep: dict[str, mx.array] = {}
@@ -1776,6 +1826,14 @@ def main() -> int:
         help="which islands to place on the ANE, e.g. ABC or AC. Ignored with "
              "--no-ane. AC reproduces the two-island arm from this same script.",
     )
+    parser.add_argument(
+        "--repeat", type=int, default=1,
+        help="run the encoder this many times in one process (default 1 = "
+             "single pass). With MLX_OMARCHY_ENCODER_CONST_CACHE=1, pass 1 "
+             "materializes the consts and later passes re-reference the "
+             "device-resident cache; with the default (off) every pass "
+             "re-materializes.",
+    )
     args = parser.parse_args()
 
     mx.set_default_device(mx.gpu)
@@ -1794,31 +1852,56 @@ def main() -> int:
     runner = EncoderRunner(
         args.source / "model.mil", args.source / "model-root", island, placed
     )
-    before = trace_snapshot()
+    inputs = {
+        "input_features": mx.array(
+            features.astype(np.float32).reshape(1, 3000, 128)
+        ),
+        "attention_mask": mx.array(mask.astype(np.int32).reshape(1, 3000)),
+    }
+    passes: list[dict] = []
     started = time.monotonic_ns()
     try:
-        keep = runner.run(
-            inputs={
-                "input_features": mx.array(
-                    features.astype(np.float32).reshape(1, 3000, 128)
-                ),
-                "attention_mask": mx.array(mask.astype(np.int32).reshape(1, 3000)),
-            },
-            wanted={"encoder_hidden", "encoder_mask"},
-            stop_after="encoder_mask",
-        )
+        for repeat in range(args.repeat):
+            before = trace_snapshot()
+            mx.reset_peak_memory()
+            pass_started = time.monotonic_ns()
+            keep = runner.run(
+                inputs=inputs,
+                wanted={"encoder_hidden", "encoder_mask"},
+                stop_after="encoder_mask",
+            )
+            pass_ns = time.monotonic_ns() - pass_started
+            after = trace_snapshot()
+            hidden = np.asarray(keep["encoder_hidden"]).astype(np.float32)
+            got_mask = np.asarray(keep["encoder_mask"]).astype(np.int32)
+            out_dir = args.out / f"pass-{repeat + 1}" if args.repeat > 1 else args.out
+            out_dir.mkdir(parents=True, exist_ok=True)
+            np.save(out_dir / "encoder_hidden.npy", hidden)
+            np.save(out_dir / "encoder_mask.npy", got_mask)
+            passes.append({
+                "pass": repeat + 1,
+                "wall_ns": pass_ns,
+                "encoder_hidden_sha256": hashlib.sha256(
+                    (out_dir / "encoder_hidden.npy").read_bytes()
+                ).hexdigest(),
+                "gpu_counter_delta": {k: after[k] - before[k] for k in after},
+                "active_memory_mb": round(mx.get_active_memory() / 2**20, 1),
+                "peak_memory_mb": round(mx.get_peak_memory() / 2**20, 1),
+                "rss_mb": round(vm_rss_kb() / 1024, 1),
+            })
+            print(
+                f"pass {repeat + 1}/{args.repeat}: {pass_ns / 1e6:.1f} ms "
+                f"hidden={passes[-1]['encoder_hidden_sha256'][:16]} "
+                f"active={passes[-1]['active_memory_mb']}MB "
+                f"peak={passes[-1]['peak_memory_mb']}MB "
+                f"rss={passes[-1]['rss_mb']}MB",
+                flush=True,
+            )
     finally:
         if island is not None:
             island.close()
-    wall_ns = time.monotonic_ns() - started
-    after = trace_snapshot()
-
-    hidden = np.asarray(keep["encoder_hidden"]).astype(np.float32)
-    got_mask = np.asarray(keep["encoder_mask"]).astype(np.int32)
-    np.save(args.out / "encoder_hidden.npy", hidden)
-    np.save(args.out / "encoder_mask.npy", got_mask)
-
-    gpu_delta = {k: after[k] - before[k] for k in after}
+    wall_ns = passes[-1]["wall_ns"]
+    gpu_delta = passes[-1]["gpu_counter_delta"]
     report = {
         "layers": runner.layers,
         "ops_executed": runner.executed,
@@ -1831,6 +1914,9 @@ def main() -> int:
         "gpu_counters": gpu_delta,
         "island_b_cond_census": runner.cond_census,
         "encoder_hidden_shape": list(hidden.shape),
+        "repeat": args.repeat,
+        "passes": passes,
+        "total_wall_ns": time.monotonic_ns() - started,
     }
     if island is not None:
         report["ane"] = {
