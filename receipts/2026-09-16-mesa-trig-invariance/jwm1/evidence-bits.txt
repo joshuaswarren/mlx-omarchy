@@ -1,0 +1,37 @@
+== ROPEBITS (env MLX_OMARCHY_ROPE_BITS=1), first 8 lines ==
+ROPEBITS kind=fold kernel=412 alpha=3f800000 beta=3edd0c55 off=7 flags=197376 subgroup
+ROPEBITS kind=fold kernel=412 alpha=3f800000 beta=00000000 off=0 flags=256 subgroup
+ROPEBITS kind=eager kernel=245 alpha=3f800000 beta=3edd0c55 off=0 flags=1
+ROPEBITS kind=fold kernel=412 alpha=3f800000 beta=3edd0c55 off=0 flags=65792 subgroup
+ROPEBITS kind=eager kernel=245 alpha=3f800000 beta=3edd0c55 off=0 flags=1
+ROPEBITS kind=fold kernel=412 alpha=3f800000 beta=3edd0c55 off=1 flags=65792 subgroup
+ROPEBITS kind=eager kernel=245 alpha=3f800000 beta=3edd0c55 off=0 flags=1
+ROPEBITS kind=fold kernel=412 alpha=3f800000 beta=3edd0c55 off=2 flags=65792 subgroup
+
+== unique ROPEBITS word triples across the run ==
+kernel=245 alpha=3f800000 beta=3edd0c55 off=0
+kernel=412 alpha=3f800000 beta=00000000 off=0
+kernel=412 alpha=3f800000 beta=3edd0c55 off=0
+kernel=412 alpha=3f800000 beta=3edd0c55 off=1
+kernel=412 alpha=3f800000 beta=3edd0c55 off=10
+kernel=412 alpha=3f800000 beta=3edd0c55 off=1000
+kernel=412 alpha=3f800000 beta=3edd0c55 off=1001
+kernel=412 alpha=3f800000 beta=3edd0c55 off=1002
+kernel=412 alpha=3f800000 beta=3edd0c55 off=1003
+kernel=412 alpha=3f800000 beta=3edd0c55 off=1004
+kernel=412 alpha=3f800000 beta=3edd0c55 off=1005
+kernel=412 alpha=3f800000 beta=3edd0c55 off=1006
+
+== MISMATCH + PROBE pairs (driver-exact trig bits), first 6 ==
+MISMATCH draw=0 offset=4 row=3 head=1 dim=14 i=14 x1=0.111694336 x2=-1.20703125 base=0.12310791 cand=0.123168945 basep=-1.20605469 candp=-1.20605469
+PROBE offset=4 i=14 cos32=3f7ffd0d sin32=3c1b6872 cos16=3c00 sin16=20db
+MISMATCH draw=0 offset=46 row=3 head=11 dim=2 i=2 x1=-2.265625 x2=-0.556640625 base=-1.64257812 cand=-1.64355469 basep=-1.65625 candp=-1.65625
+PROBE offset=46 i=2 cos32=3f5a72f3 sin32=3f057a08 cos16=3ad4 sin16=382c
+MISMATCH draw=0 offset=1012 row=3 head=1 dim=8 i=8 x1=-0.921386719 x2=0.0129394531 base=-0.774902344 cand=-0.774414062 basep=-0.499023438 candp=-0.499023438
+PROBE offset=1012 i=8 cos32=3f553e54 sin32=3f0da50c cos16=3aaa sin16=386d
+MISMATCH draw=0 offset=1032 row=3 head=10 dim=4 i=4 x1=0.572265625 x2=0.155273438 base=-0.000127077103 cand=-0.000127196312 basep=0.592773438 candp=0.592773438
+PROBE offset=1032 i=4 cos32=3e85f7c8 sin32=3f7714ce cos16=3430 sin16=3bb9
+MISMATCH draw=0 offset=1087 row=3 head=0 dim=1 i=1 x1=1.45605469 x2=-0.975585938 base=0.000218629837 cand=0.000218749046 basep=1.75292969 candp=1.75292969
+PROBE offset=1087 i=1 cos32=bf0e7857 sin32=3f54b163 cos16=b874 sin16=3aa6
+MISMATCH draw=0 offset=1089 row=3 head=12 dim=25 i=25 x1=-1.14355469 x2=-1.14453125 base=-1.1171875 cand=-1.11816406 basep=-1.16992188 candp=-1.16992188
+PROBE offset=1089 i=25 cos32=3f7fef9d sin32=3cb72e76 cos16=3bff sin16=25b9
