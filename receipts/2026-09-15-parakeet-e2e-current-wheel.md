@@ -90,3 +90,15 @@ worker and libane as the prior receipts.
   long-standing 5.0 s attribution.
 - tdt_decode warmed the compiled cache from prior same-day runs; the
   3659.4 → 2880.3 ms delta mixes wheel and cache-warmth effects.
+
+## Superseded (2026-09-16)
+
+This baseline was measured on wheel `b5bf90e` with launch-mode islands
+(72 submits) and the host greedy TDT control loop. The full E2E has been
+re-run on a non-diag release wheel built from origin/main `7d82ec94` —
+island batch (`d8c9afce`), GPU-resident TDT loop default (`992feea9`),
+and the strict libane pin (`f20c634d`) all in the product wheel — with
+the correctness contract holding on six runs (104/104, transcript
+`db501a8c…`, `encoder_hidden` pin `38c73261…`): encoder_ane 9375.2 ms,
+tdt_decode 832.0 ms, whole pipeline 10730.3 ms (5-run medians). The new
+baseline is `receipts/2026-09-16-parakeet-e2e-baseline.md` / `.json`.

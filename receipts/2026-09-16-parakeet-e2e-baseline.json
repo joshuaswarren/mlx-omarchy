@@ -1,0 +1,269 @@
+{
+  "ane": {
+    "bundle_source": "/var/tmp/island-reexport/bundles (mil-hwxc b61de468, matches 7d82ec94 receipts/2026-09-14-encoder-split-plan/bundles byte-for-byte)",
+    "bundles": [
+      "island-attn-a-kt",
+      "island-pv",
+      "island-select-8head-scratch417"
+    ],
+    "encoder_runner": "/var/tmp/TdtLoopDefault/pkg/coreml/vulkan_encoder.py",
+    "encoder_runner_sha256": "240e3b63e1a3d190713e1fa5c05e092cfca2b4951004462ec43fdb06e17260ea",
+    "harness": "/var/tmp/ParakeetE2EBaseline7d82/fused_e2e.py",
+    "harness_sha256": "0e38e7b15a36d9a8244bd523ff6845f6b44cb7ad4a7444dc30e8177e97cabb97",
+    "libane": "/var/tmp/island-reexport/libane-strict.so",
+    "libane_sha256": "56b462346128b04139cb7c9397b06ca8d513c680c972d8914395ddd3aa978ba7",
+    "lock": "/tmp/m1-gpu.lock flock -w 900, never stolen, never unlinked",
+    "mode_env": "ANE_ISLAND_MODE=resident-batch",
+    "spirv_cache": "/var/tmp/MelFrontendPerf/spirv-ab.3KDGHZ (warm)",
+    "submissions": 1,
+    "timeouts": 0,
+    "worker": "/var/tmp/mlx-main-strict/.work/mlx/build-ane-device/tools/mlx-omarchy-ane-worker/mlx-omarchy-ane-worker",
+    "worker_sha256": "f171a61ecfc89942b009dc379d6636b17b0dda6f583841470a1d789853f5952e",
+    "worker_starts": 1
+  },
+  "comparison": {
+    "delta_encoder_vs_prior_run_ms": -3239.833,
+    "delta_total_ms": -5337.705,
+    "new_median_total_ms": 10730.336,
+    "prior": {
+      "encoder_ane_ms": 12638.745,
+      "tdt_decode_ms": 2880.339,
+      "total_pipeline_ms": 16068.041
+    },
+    "prior_receipt": "receipts/2026-09-15-parakeet-e2e-current-wheel (wheel b5bf90e, launch islands, host TDT control)"
+  },
+  "date": "2026-09-16",
+  "decode_path": {
+    "control": "gpu-loop",
+    "flags": "none",
+    "tdt_fallback_reason": null
+  },
+  "host": {
+    "hostname": "jwm1-linux",
+    "kernel": "7.1.6-1-1-ARCH",
+    "machine": "aarch64",
+    "python": "3.14.7"
+  },
+  "inputs": {
+    "audio_sha256": "30885601173f96b0d8ddd020dc959b055c6c1582b85a33e3fcab8c4b08ed94c2",
+    "encoder_source": "/var/tmp/EncoderParityAne/encoder-source",
+    "golden": "/var/tmp/EncoderParityAne/capture",
+    "model_pin": "b650695c2322ee5281dff48d7345b2f3a58ff018"
+  },
+  "medians": {
+    "all_six_runs_r1_r6": {
+      "ane_exec_ms": 2623.847,
+      "stages": {
+        "audio_load": 175.001,
+        "decoder_load": 97.742,
+        "detokenize": 45.556,
+        "encoder_ane": 9382.201,
+        "mel_frontend": 235.476,
+        "tdt_decode": 832.327
+      },
+      "total_pipeline_ms": 10751.385
+    },
+    "five_repeats_r2_r6": {
+      "ane_exec_ms": 2623.262,
+      "stages": {
+        "audio_load": 177.05,
+        "decoder_load": 97.273,
+        "detokenize": 45.475,
+        "encoder_ane": 9375.209,
+        "mel_frontend": 232.082,
+        "tdt_decode": 831.978
+      },
+      "total_pipeline_ms": 10730.336
+    }
+  },
+  "pins": {
+    "encoder_hidden_sha256": "38c73261f29230276ed76f1fc017b76b024156d79218bd5f1347fdc7e7d43ec7",
+    "mel_sha256": "5b54f4a9a2ba3434cd69b6e48e6780d3bcb6c635d9ce85cda3d85c60f2455bde",
+    "transcript_sha256": "db501a8c080380ea027ffa50a4b4956c39df77cb692c4fb78e556311a11a0790"
+  },
+  "receipt": "receipts/2026-09-16-parakeet-e2e-baseline",
+  "runs": {
+    "r1": {
+      "ane_exec_ms": 2624.432,
+      "ane_submissions": 1,
+      "ane_timeouts": 0,
+      "control": "gpu-loop",
+      "cpu_tensor_events": 0,
+      "durations_match": true,
+      "emissions": "104/104",
+      "encoder_bounds_pass": true,
+      "frame_indices_match": true,
+      "matching_prefix_length": 104,
+      "mel_bit_exact": true,
+      "out_dir": "out-rr1",
+      "stages": {
+        "audio_load": 172.952,
+        "decoder_load": 98.685,
+        "detokenize": 58.602,
+        "encoder_ane": 9398.912,
+        "mel_frontend": 238.871,
+        "tdt_decode": 949.095
+      },
+      "status": "match",
+      "tdt_fallback_reason": null,
+      "tokens_match": true,
+      "total_pipeline_ms": 10917.116,
+      "transcript_match": true,
+      "worker_starts": 1
+    },
+    "r2": {
+      "ane_exec_ms": 2585.85,
+      "ane_submissions": 1,
+      "ane_timeouts": 0,
+      "control": "gpu-loop",
+      "cpu_tensor_events": 0,
+      "durations_match": true,
+      "emissions": "104/104",
+      "encoder_bounds_pass": true,
+      "frame_indices_match": true,
+      "matching_prefix_length": 104,
+      "mel_bit_exact": true,
+      "out_dir": "out-r2",
+      "stages": {
+        "audio_load": 184.756,
+        "decoder_load": 98.21,
+        "detokenize": 45.638,
+        "encoder_ane": 9288.12,
+        "mel_frontend": 250.36,
+        "tdt_decode": 831.978
+      },
+      "status": "match",
+      "tdt_fallback_reason": null,
+      "tokens_match": true,
+      "total_pipeline_ms": 10699.062,
+      "transcript_match": true,
+      "worker_starts": 1
+    },
+    "r3": {
+      "ane_exec_ms": 2591.068,
+      "ane_submissions": 1,
+      "ane_timeouts": 0,
+      "control": "gpu-loop",
+      "cpu_tensor_events": 0,
+      "durations_match": true,
+      "emissions": "104/104",
+      "encoder_bounds_pass": true,
+      "frame_indices_match": true,
+      "matching_prefix_length": 104,
+      "mel_bit_exact": true,
+      "out_dir": "out-r3",
+      "stages": {
+        "audio_load": 140.179,
+        "decoder_load": 98.95,
+        "detokenize": 45.133,
+        "encoder_ane": 9294.8,
+        "mel_frontend": 230.774,
+        "tdt_decode": 832.677
+      },
+      "status": "match",
+      "tdt_fallback_reason": null,
+      "tokens_match": true,
+      "total_pipeline_ms": 10642.512,
+      "transcript_match": true,
+      "worker_starts": 1
+    },
+    "r4": {
+      "ane_exec_ms": 2623.262,
+      "ane_submissions": 1,
+      "ane_timeouts": 0,
+      "control": "gpu-loop",
+      "cpu_tensor_events": 0,
+      "durations_match": true,
+      "emissions": "104/104",
+      "encoder_bounds_pass": true,
+      "frame_indices_match": true,
+      "matching_prefix_length": 104,
+      "mel_bit_exact": true,
+      "out_dir": "out-r4",
+      "stages": {
+        "audio_load": 132.377,
+        "decoder_load": 97.273,
+        "detokenize": 45.352,
+        "encoder_ane": 9389.193,
+        "mel_frontend": 232.082,
+        "tdt_decode": 834.059
+      },
+      "status": "match",
+      "tdt_fallback_reason": null,
+      "tokens_match": true,
+      "total_pipeline_ms": 10730.336,
+      "transcript_match": true,
+      "worker_starts": 1
+    },
+    "r5": {
+      "ane_exec_ms": 2688.07,
+      "ane_submissions": 1,
+      "ane_timeouts": 0,
+      "control": "gpu-loop",
+      "cpu_tensor_events": 0,
+      "durations_match": true,
+      "emissions": "104/104",
+      "encoder_bounds_pass": true,
+      "frame_indices_match": true,
+      "matching_prefix_length": 104,
+      "mel_bit_exact": true,
+      "out_dir": "out-r5",
+      "stages": {
+        "audio_load": 181.806,
+        "decoder_load": 96.688,
+        "detokenize": 45.69,
+        "encoder_ane": 9401.538,
+        "mel_frontend": 228.584,
+        "tdt_decode": 831.098
+      },
+      "status": "match",
+      "tdt_fallback_reason": null,
+      "tokens_match": true,
+      "total_pipeline_ms": 10785.404,
+      "transcript_match": true,
+      "worker_starts": 1
+    },
+    "r6": {
+      "ane_exec_ms": 2627.36,
+      "ane_submissions": 1,
+      "ane_timeouts": 0,
+      "control": "gpu-loop",
+      "cpu_tensor_events": 0,
+      "durations_match": true,
+      "emissions": "104/104",
+      "encoder_bounds_pass": true,
+      "frame_indices_match": true,
+      "matching_prefix_length": 104,
+      "mel_bit_exact": true,
+      "out_dir": "out-r6",
+      "stages": {
+        "audio_load": 177.05,
+        "decoder_load": 95.95,
+        "detokenize": 45.475,
+        "encoder_ane": 9375.209,
+        "mel_frontend": 247.853,
+        "tdt_decode": 830.896
+      },
+      "status": "match",
+      "tdt_fallback_reason": null,
+      "tokens_match": true,
+      "total_pipeline_ms": 10772.433,
+      "transcript_match": true,
+      "worker_starts": 1
+    }
+  },
+  "schema": "mlx-omarchy.parakeet-e2e-baseline/1",
+  "verdict": "104/104 on every run; new Parakeet E2E baseline at 7d82ec94; supersedes 2026-09-15-parakeet-e2e-current-wheel",
+  "wheel": {
+    "build": "scripts/build-wheel.sh, non-diag (no --diagnostics), MLX_OMARCHY_ANE_SOURCE_DIR=omarchy-ane-lifecycle-rebase @ 6fa243a",
+    "bytes": 7856601,
+    "filename": "mlx_omarchy-0.32.2.dev202609160525+7d82ec94-cp314-cp314-linux_aarch64.whl",
+    "gpu_profile_literals_in_libmlx": 0,
+    "provenance": "match",
+    "sha256": "e54cb680db437377f65ad6bc65b051e1c5664fd30d482caf382d59283f4ab832",
+    "shipped_runtime_worker_sha256": "5a3b28c136ef7da7b9284a191e2e7bce378ac4dcac9fcf5f4dd5154f2fe94fb5",
+    "site": "/var/tmp/ParakeetE2EBaseline7d82/site",
+    "source_commit": "7d82ec94569d432f323f26116d159db4cdf1086a",
+    "version": "0.32.2.dev202609160525+7d82ec94"
+  }
+}
