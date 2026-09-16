@@ -163,7 +163,7 @@ refuses HWX packages, non-H13 packages, unknown schema fields, invalid mappings,
  verifies order preservation from a valid v2 manifest.
  
  The release pin in `ane-compiler.lock` names a v2 compiler archive
- (`ane-parity-417554c`); the v1 archive is superseded and this adapter
+ (`ane-parity-b61de46`); the v1 archive is superseded and this adapter
  rejects it. The compiler HWX-extraction regression remains a release gate.
 
 ## Runtime-generated cache policy
