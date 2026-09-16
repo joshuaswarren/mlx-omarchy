@@ -1,0 +1,57 @@
+llm-inference after stop: inactive
+2026-09-16T15:07:05Z
+2026-09-16T15:07:05Z
+jw16mbp1-linux
+12 -rw-r--r-- 1 joshuawarren joshuawarren 0 Sep 16 07:31 /tmp/m1-gpu.lock
+nested flock -n returned 1 (held)
+== C++ sdpa decode fused parity (cand build tree) ==
+
+/var/tmp/SdpaKvJw16/cand-tree/.work/mlx/tests/omarchy/test_sdpa_decode_fused.cpp:410: MESSAGE: keys 320 dispatches 1
+  logged: keys := 320
+
+===============================================================================
+[doctest] test cases:     3 |     3 passed | 0 failed | 0 skipped
+[doctest] assertions: 10774 | 10774 passed | 0 failed |
+[doctest] Status: SUCCESS!
+== kernel screens (median us per dispatch) ==
+-- base --
+k=   30 dispatches/call=1.00 median=  213.11 us p10=  173.17 p90=  237.59
+k= 1024 dispatches/call=1.00 median=  313.42 us p10=  281.17 p90=  395.50
+k= 1053 dispatches/call=1.00 median=  397.46 us p10=  388.92 p90=  414.25
+-- cand --
+k=   30 dispatches/call=1.00 median=  209.25 us p10=  175.29 p90=  237.96
+k= 1024 dispatches/call=1.00 median=  303.50 us p10=  275.67 p90=  376.50
+k= 1053 dispatches/call=1.00 median=  392.59 us p10=  380.92 p90=  415.96
+== per-token dispatch counters (cand wheel) ==
+provenance: mlx-omarchy 0.32.2.dev202609161501+3ea2d3c7 mx=0.32.2.dev202609161501+3ea2d3c7 verified=match harness=3ea2d3c7 core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:92bc21d5fb6c3290
+{"device": "Device(gpu, 0)", "per_token": {"gpu_primitive_dispatches": 858, "vk_compute_dispatches": 201, "vk_submissions": 1}, "prompt_tokens": 30, "rows": [{"gpu_primitive_dispatches": 2736, "prompt_tokens": 30, "token": 0, "vk_compute_dispatches": 967, "vk_submissions": 5}, {"gpu_primitive_dispatches": 858, "prompt_tokens": 30, "token": 1, "vk_compute_dispatches": 201, "vk_submissions": 1}, {"gpu_primitive_dispatches": 858, "prompt_tokens": 30, "token": 2, "vk_compute_dispatches": 201, "vk_submissions": 1}, {"gpu_primitive_dispatches": 858, "prompt_tokens": 30, "token": 3, "vk_compute_dispatches": 201, "vk_submissions": 1}, {"gpu_primitive_dispatches": 858, "prompt_tokens": 30, "token": 4, "vk_compute_dispatches": 201, "vk_submissions": 1}, {"gpu_primitive_dispatches": 858, "prompt_tokens": 30, "token": 5, "vk_compute_dispatches": 201, "vk_submissions": 1}, {"gpu_primitive_dispatches": 858, "prompt_tokens": 30, "token": 6, "vk_compute_dispatches": 201, "vk_submissions": 1}, {"gpu_primitive_dispatches": 858, "prompt_tokens": 30, "token": 7, "vk_compute_dispatches": 201, "vk_submissions": 1}]}
+== interleaved A/B, 5 rounds: base(0101d673) vs cand(3ea2d3c7) ==
+round 0 short    base   decode  190.5368 tok/s  prefill   457.6906 tok/s  ids 7fd25a869ff21678
+round 0 short    cand   decode  190.9055 tok/s  prefill   447.0438 tok/s  ids 7fd25a869ff21678
+round 0 ctx1024  base   decode  134.3880 tok/s  prefill  3880.3307 tok/s  ids 7da83f06ec9f001d
+round 0 ctx1024  cand   decode  150.3781 tok/s  prefill  3907.6890 tok/s  ids 7da83f06ec9f001d
+round 1 short    cand   decode  190.7433 tok/s  prefill   452.2462 tok/s  ids 7fd25a869ff21678
+round 1 short    base   decode  191.3453 tok/s  prefill   457.5778 tok/s  ids 7fd25a869ff21678
+round 1 ctx1024  cand   decode  136.7454 tok/s  prefill  3897.7253 tok/s  ids 7da83f06ec9f001d
+round 1 ctx1024  base   decode  135.1791 tok/s  prefill  3911.2173 tok/s  ids 7da83f06ec9f001d
+round 2 short    base   decode  190.8325 tok/s  prefill   457.9098 tok/s  ids 7fd25a869ff21678
+round 2 short    cand   decode  190.3715 tok/s  prefill   458.7039 tok/s  ids 7fd25a869ff21678
+round 2 ctx1024  base   decode  136.4277 tok/s  prefill  3896.3269 tok/s  ids 7da83f06ec9f001d
+round 2 ctx1024  cand   decode  147.9270 tok/s  prefill  3917.1312 tok/s  ids 7da83f06ec9f001d
+round 3 short    cand   decode  187.5961 tok/s  prefill   459.5591 tok/s  ids 7fd25a869ff21678
+round 3 short    base   decode  190.2150 tok/s  prefill   459.1281 tok/s  ids 7fd25a869ff21678
+round 3 ctx1024  cand   decode  117.2988 tok/s  prefill  3795.2641 tok/s  ids 7da83f06ec9f001d
+round 3 ctx1024  base   decode  141.5281 tok/s  prefill  3880.1746 tok/s  ids 7da83f06ec9f001d
+round 4 short    base   decode  190.5329 tok/s  prefill   458.5313 tok/s  ids 7fd25a869ff21678
+round 4 short    cand   decode  190.5403 tok/s  prefill   460.2118 tok/s  ids 7fd25a869ff21678
+round 4 ctx1024  base   decode  126.0780 tok/s  prefill  3893.7401 tok/s  ids 7da83f06ec9f001d
+round 4 ctx1024  cand   decode  135.5416 tok/s  prefill  3816.4833 tok/s  ids 7da83f06ec9f001d
+short/base       decode median  190.5368 [190.5368, 191.3453, 190.8325, 190.215, 190.5329]
+short/cand       decode median  190.5403 [190.9055, 190.7433, 190.3715, 187.5961, 190.5403]
+ctx1024/base     decode median  135.1791 [134.388, 135.1791, 136.4277, 141.5281, 126.078]
+ctx1024/cand     decode median  136.7454 [150.3781, 136.7454, 147.927, 117.2988, 135.5416]
+2026-09-16T15:07:49Z
+lock inode still 12
+llm-inference after window: active
+window rc=0
+2026-09-16T15:07:51Z

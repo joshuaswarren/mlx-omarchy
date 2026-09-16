@@ -1,0 +1,12 @@
+== cand identity ==
+3ea2d3c7 sdpa: drop the prefetch, keep the word loads (v3)
+== cand wheel ==
+  Created wheel for mlx-omarchy: filename=mlx_omarchy-0.32.2.dev202609161501+3ea2d3c7-cp314-cp314-linux_aarch64.whl size=7772872 sha256=43e779e5ba591557f0c00d43ce32993e5786f101df2198f8393eb168f7430b80
+  Stored in directory: /tmp/pip-ephem-wheel-cache-ouseazyt/wheels/4b/31/28/fcec956b8693162119dae85871b83ecf8e87abf7a2ddc2fa95
+Successfully built mlx-omarchy
+[receipt] cand wheel: /var/tmp/SdpaKvJw16/dist-cand/mlx_omarchy-0.32.2.dev202609161501+3ea2d3c7-cp314-cp314-linux_aarch64.whl
+43e779e5ba591557f0c00d43ce32993e5786f101df2198f8393eb168f7430b80  /var/tmp/SdpaKvJw16/dist-cand/mlx_omarchy-0.32.2.dev202609161501+3ea2d3c7-cp314-cp314-linux_aarch64.whl
+[receipt] cand stamp ok: +3ea2d3c7
+cand wheel: /var/tmp/SdpaKvJw16/venv-cand/lib/python3.14/site-packages/mlx
+ALL-DONE
+TESTBUILD3-DONE

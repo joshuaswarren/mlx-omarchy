@@ -1,0 +1,22 @@
+== base identity ==
+0101d673 receipt: correct the landed-sha reference in the fold-reland receipt
+== base wheel ==
+  Created wheel for mlx-omarchy: filename=mlx_omarchy-0.32.2.dev202609161430+0101d673-cp314-cp314-linux_aarch64.whl size=7772669 sha256=20231964611f4fd74cb2c400275c54d99977a5927ffcfc06a82c84e32081cd09
+  Stored in directory: /tmp/pip-ephem-wheel-cache-1lkaise8/wheels/f9/7c/90/e47d3fea600984cb546fbfa08fb1a2e33caaab922b26091e6e
+Successfully built mlx-omarchy
+[receipt] base wheel: /var/tmp/SdpaKvJw16/dist-base/mlx_omarchy-0.32.2.dev202609161430+0101d673-cp314-cp314-linux_aarch64.whl
+20231964611f4fd74cb2c400275c54d99977a5927ffcfc06a82c84e32081cd09  /var/tmp/SdpaKvJw16/dist-base/mlx_omarchy-0.32.2.dev202609161430+0101d673-cp314-cp314-linux_aarch64.whl
+[receipt] base stamp ok: +0101d673
+base wheel: /var/tmp/SdpaKvJw16/venv-base/lib/python3.14/site-packages/mlx
+== cand identity ==
+0101d673 receipt: correct the landed-sha reference in the fold-reland receipt
+ M overlay/mlx/backend/omarchy/shaders/sdpa_decode_native.comp
+== cand wheel ==
+  Created wheel for mlx-omarchy: filename=mlx_omarchy-0.32.2.dev202609161432+0101d673-cp314-cp314-linux_aarch64.whl size=7774120 sha256=3d5dc8e5ee5c51b3cea57bf2e97a77a45e47512f309478157c2336dd6f272d85
+  Stored in directory: /tmp/pip-ephem-wheel-cache-1mvtryua/wheels/4b/31/28/fcec956b8693162119dae85871b83ecf8e87abf7a2ddc2fa95
+Successfully built mlx-omarchy
+[receipt] cand wheel: /var/tmp/SdpaKvJw16/dist-cand/mlx_omarchy-0.32.2.dev202609161432+0101d673-cp314-cp314-linux_aarch64.whl
+3d5dc8e5ee5c51b3cea57bf2e97a77a45e47512f309478157c2336dd6f272d85  /var/tmp/SdpaKvJw16/dist-cand/mlx_omarchy-0.32.2.dev202609161432+0101d673-cp314-cp314-linux_aarch64.whl
+[receipt] cand stamp ok: +0101d673
+cand wheel: /var/tmp/SdpaKvJw16/venv-cand/lib/python3.14/site-packages/mlx
+ALL-DONE

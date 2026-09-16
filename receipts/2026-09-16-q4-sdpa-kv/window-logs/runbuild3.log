@@ -1,0 +1,12 @@
+== cand identity ==
+335d1840 sdpa: branchless word-view decode KV stream; host gate pins even bases
+== cand wheel ==
+  Created wheel for mlx-omarchy: filename=mlx_omarchy-0.32.2.dev202609161448+335d1840-cp314-cp314-linux_aarch64.whl size=7773138 sha256=60fed5ecaca8c4d3fcfdbe73323b6adc656a78b3a080c3a804b9bf8ce48f0ade
+  Stored in directory: /tmp/pip-ephem-wheel-cache-4egzodz6/wheels/4b/31/28/fcec956b8693162119dae85871b83ecf8e87abf7a2ddc2fa95
+Successfully built mlx-omarchy
+[receipt] cand wheel: /var/tmp/SdpaKvJw16/dist-cand/mlx_omarchy-0.32.2.dev202609161448+335d1840-cp314-cp314-linux_aarch64.whl
+60fed5ecaca8c4d3fcfdbe73323b6adc656a78b3a080c3a804b9bf8ce48f0ade  /var/tmp/SdpaKvJw16/dist-cand/mlx_omarchy-0.32.2.dev202609161448+335d1840-cp314-cp314-linux_aarch64.whl
+[receipt] cand stamp ok: +335d1840
+cand wheel: /var/tmp/SdpaKvJw16/venv-cand/lib/python3.14/site-packages/mlx
+ALL-DONE
+TESTBUILD2-DONE

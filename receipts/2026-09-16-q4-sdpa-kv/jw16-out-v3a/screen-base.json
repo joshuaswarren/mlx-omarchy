@@ -1,0 +1,23 @@
+[
+ {
+  "k_len": 30,
+  "dispatches_per_call": 1.0,
+  "us_median": 201.27,
+  "us_p10": 182.5,
+  "us_p90": 225.21
+ },
+ {
+  "k_len": 1024,
+  "dispatches_per_call": 1.0,
+  "us_median": 312.84,
+  "us_p10": 297.0,
+  "us_p90": 385.79
+ },
+ {
+  "k_len": 1053,
+  "dispatches_per_call": 1.0,
+  "us_median": 388.92,
+  "us_p10": 383.05,
+  "us_p90": 410.71
+ }
+]

@@ -1,0 +1,17 @@
+== cand identity ==
+4f473ca6 sdpa: word-view pair loads and pre-issued next-key loads in the decode KV stream
+== cand wheel ==
+  Created wheel for mlx-omarchy: filename=mlx_omarchy-0.32.2.dev202609161436+4f473ca6-cp314-cp314-linux_aarch64.whl size=7774121 sha256=04c5f4b461b920ecc39c1ed65cfe9ab76c1054f701c38c2dc0b61898976765e8
+  Stored in directory: /tmp/pip-ephem-wheel-cache-lm9eeusy/wheels/4b/31/28/fcec956b8693162119dae85871b83ecf8e87abf7a2ddc2fa95
+Successfully built mlx-omarchy
+[receipt] cand wheel: /var/tmp/SdpaKvJw16/dist-cand/mlx_omarchy-0.32.2.dev202609161436+4f473ca6-cp314-cp314-linux_aarch64.whl
+04c5f4b461b920ecc39c1ed65cfe9ab76c1054f701c38c2dc0b61898976765e8  /var/tmp/SdpaKvJw16/dist-cand/mlx_omarchy-0.32.2.dev202609161436+4f473ca6-cp314-cp314-linux_aarch64.whl
+[receipt] cand stamp ok: +4f473ca6
+cand wheel: /var/tmp/SdpaKvJw16/venv-cand/lib/python3.14/site-packages/mlx
+ALL-DONE
+4f473ca6 sdpa: word-view pair loads and pre-issued next-key loads in the decode KV stream
+-rwxr-xr-x 1 joshuawarren joshuawarren 20941208 Sep 16 09:40 /var/tmp/SdpaKvJw16/build-tests/tests/omarchy/omarchy_decode_dispatch_count
+-rwxr-xr-x 1 joshuawarren joshuawarren 20876680 Sep 16 09:40 /var/tmp/SdpaKvJw16/build-tests/tests/omarchy/omarchy_sdpa_decode_fused_tests
+005220fe61d321eb177235768cdaec3d302cf8b225072221e068212898f9ec01  /var/tmp/SdpaKvJw16/build-tests/tests/omarchy/omarchy_sdpa_decode_fused_tests
+936d07328f5848e64a80b203125b449ff5e2306a17ec06015e020f4e19174d04  /var/tmp/SdpaKvJw16/build-tests/tests/omarchy/omarchy_decode_dispatch_count
+TESTBUILD-DONE
