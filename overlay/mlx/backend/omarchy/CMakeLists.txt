@@ -29,15 +29,20 @@ if(MLX_OMARCHY_ANE_SOURCE_DIR)
      NOT MLX_OMARCHY_ANE_DIRTY_RESULT EQUAL 0 OR
      MLX_OMARCHY_ANE_SOURCE_DIRTY OR
      NOT MLX_OMARCHY_ANE_SOURCE_COMMIT STREQUAL
-         "f261a6cb537aca62f267ad3d01beda0d6877544c")
+         "6fa243ac7241119a9eb229abbf8cb4dd8949f915")
     message(FATAL_ERROR
             "MLX_OMARCHY_ANE_SOURCE_DIR must be canonical omarchy-ane "
-            "f261a6cb537aca62f267ad3d01beda0d6877544c")
+            "6fa243ac7241119a9eb229abbf8cb4dd8949f915")
   endif()
   find_package(PkgConfig REQUIRED)
   pkg_check_modules(OMARCHY_ANE_LIBDRM REQUIRED IMPORTED_TARGET libdrm)
   add_library(mlx_omarchy_libane STATIC
               "${MLX_OMARCHY_ANE_SOURCE_DIR}/libane/ane.c")
+  # STRICT_BIND: libane refuses a positional channel map at load, the
+  # same contract the bundle validator enforces (bundle.cpp strict
+  # schema-4 checks).
+  target_compile_definitions(mlx_omarchy_libane PRIVATE
+                             LIBANE_CONFIG_STRICT_BIND)
   target_include_directories(
     mlx_omarchy_libane
     PUBLIC "${MLX_OMARCHY_ANE_SOURCE_DIR}/libane"
