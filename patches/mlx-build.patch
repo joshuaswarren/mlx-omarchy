@@ -27,7 +27,7 @@ index feb7ce5e..3666f83f 100644
  if(MLX_BUILD_METAL)
    find_library(METAL_LIB Metal)
    find_library(FOUNDATION_LIB Foundation)
-@@ -418,6 +429,14 @@ endif()
+@@ -418,6 +429,16 @@ endif()
  # ----------------------------- Installation -----------------------------
  include(GNUInstallDirs)
  
@@ -37,6 +37,8 @@ index feb7ce5e..3666f83f 100644
 +  add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/tools/mlx-omarchy-info)
 +  add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/tools/mlx-omarchy-ane-worker)
 +  add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/tools/mlx-omarchy-coreml)
++  add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/tools/mlx-omarchy-parakeet)
++  add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/tools/coreml)
 +endif()
 +
  if(WIN32)

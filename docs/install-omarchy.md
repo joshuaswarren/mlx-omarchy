@@ -18,6 +18,16 @@ runs only when `/dev/accel/accel0` exists and refuses the install if that
 node is present without a matching FDT node and loaded module. The installer
 does not install `kmod-ane`.
 
+Every wheel also installs `mlx-omarchy-coreml` and `mlx-omarchy-parakeet`
+launchers beside it, with the Core ML runtime modules under
+`site-packages/mlx/coreml/`. aarch64 wheels additionally ship the Parakeet
+ANE runtime: the standalone `mlx-omarchy-ane-worker` (fd-protocol serve CLI)
+in `mlx/bin/`, and the pinned island bundles, strict `libane-strict.so`, and
+hash pin manifest under `mlx/share/mlx-omarchy/parakeet-1/`. Other
+architectures install the CLIs without the arm64 payloads. The Parakeet
+product surface — `download`, `verify`, `transcribe` — is documented in
+[docs/parakeet.md](parakeet.md#installed-product-wheel).
+
 ## Development override
 
 `MLX_OMARCHY_ALLOW_NON_APPLE=1` allows a desktop or software Vulkan driver,

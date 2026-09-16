@@ -686,7 +686,7 @@ class Statement:
 # path loads its bundle per submit.
 RESIDENT_BUNDLES = (
     "island-attn-a-kt",
-    "island-select-8head-scratch417",
+    "island-select-8head",
     "island-pv",
 )
 
@@ -1337,7 +1337,7 @@ class EncoderRunner:
                 "shared_across_layers": True,
             }
         results = self.island.submit(
-            "island-select-8head-scratch417", f"L{layer:02d}-B",
+            "island-select-8head", f"L{layer:02d}-B",
             {
                 "ninf_rt": mx.contiguous(mx.broadcast_to(fill, ISLAND_B_SHAPE)),
                 "matrix_bd_5": matrix_bd,
