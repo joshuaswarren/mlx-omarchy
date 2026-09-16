@@ -70,6 +70,8 @@ class ResidentAneWorker:
 
         # Counters in the shape the parity harness reports (section 42).
         self.submissions = 0
+        self.batch_opens = 0
+        self.batch_rounds = 0
         self.worker_starts = 0
         self.bundle_loads = 0
         self.device_program_loads = 0
@@ -86,6 +88,7 @@ class ResidentAneWorker:
         self._stderr = None
         self._banner: list[str] = []
         self._inbox = bytearray()
+        self._batch_until: float | None = None
 
     # ------------------------------------------------------------ lifecycle
     def start(self) -> None:
@@ -229,6 +232,44 @@ class ResidentAneWorker:
         self.output_bytes += out_bytes
         return results
 
+    def begin_batch(self, deadline_ms: int) -> None:
+        """Open a batch scope: one absolute deadline bounds N submits.
+
+        The bounded unit is the batch, not each submit inside it, so a
+        caller can turn a whole island pass of per-layer submits into
+        one deadline-bounded unit. Everything else about the safety
+        model is unchanged: a missed deadline or one failed submit ends
+        the session and is reported, never retried.
+        """
+        if self._process is None:
+            raise ResidentWorkerError("no resident session is open")
+        if deadline_ms <= 0:
+            raise ResidentWorkerError("a batch scope needs a positive deadline")
+        self._write(f"batch {deadline_ms}")
+        line = self._readline("batch open report")
+        if not line.startswith("batch opened "):
+            self._die(f"expected a batch open report, got {line!r}")
+        self._batch_until = time.monotonic() + deadline_ms / 1000
+        self.batch_opens += 1
+
+    def end_batch(self) -> int:
+        """Close the batch scope; returns the rounds the batch served."""
+        if self._process is None:
+            raise ResidentWorkerError("no resident session is open")
+        if self._batch_until is None:
+            raise ResidentWorkerError("no batch scope is open")
+        self._write("batch-end")
+        line = self._readline("batch close report")
+        if not line.startswith("batch closed "):
+            self._die(f"expected a batch close report, got {line!r}")
+        self._batch_until = None
+        try:
+            rounds = int(line.rsplit("=", 1)[-1])
+        except ValueError:
+            rounds = 0
+        self.batch_rounds += rounds
+        return rounds
+
     def counters(self) -> dict:
         """The submit-boundary counters this session measured."""
         return {
@@ -237,6 +278,8 @@ class ResidentAneWorker:
             "device_program_loads": self.device_program_loads,
             "submissions": self.submissions,
             "timeouts": self.timeouts,
+            "batch_opens": self.batch_opens,
+            "batch_rounds": self.batch_rounds,
             "input_bytes": self.input_bytes,
             "output_bytes": self.output_bytes,
             "exec_ns": self.exec_ns,
@@ -261,6 +304,8 @@ class ResidentAneWorker:
         assert self._process is not None and self._process.stdout is not None
         stream = self._process.stdout
         deadline = time.monotonic() + (self.deadline_ms + _CLIENT_GRACE_MS) / 1000
+        if self._batch_until is not None:
+            deadline = self._batch_until + _CLIENT_GRACE_MS / 1000
         while True:
             remaining = deadline - time.monotonic()
             if remaining <= 0:

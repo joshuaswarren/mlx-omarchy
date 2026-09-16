@@ -44,13 +44,15 @@ int usage() {
       "  mlx-omarchy-ane-worker --serve --libane PATH\n"
       "       --bundle NAME=DIR [--bundle NAME=DIR]...\n"
       "       [--deadline-ms N] [--iterations N]\n"
-      "  stdin: submit NAME [--input NAME=FILE]... [--save NAME=FILE]...\n"
+      "  stdin: batch DEADLINE_MS | batch-end | quit\n"
+      "         submit NAME [--input NAME=FILE]... [--save NAME=FILE]...\n"
       "         [--expect NAME=FILE]...\n"
       "         submit NAME [--inline NAME=BYTES]... [--emit NAME]...\n"
       "           followed by each inline payload's raw bytes, in order;\n"
       "           each emitted output comes back as 'out NAME BYTES'\n"
       "           plus its raw bytes, before the job status line\n"
-      "         quit\n");
+      "         submits between 'batch DEADLINE_MS' and 'batch-end' are\n"
+      "           one deadline-bounded unit; a miss ends the session\n");
   return 64;
 }
 
@@ -250,6 +252,55 @@ int serve_resident(
       std::fflush(stdout);
       return 0;
     }
+    if (line == "batch-end" || line.compare(0, 6, "batch ") == 0) {
+      if (line == "batch-end") {
+        AneWorkerReport closed;
+        try {
+          closed = worker.close_batch();
+        } catch (const std::invalid_argument& error) {
+          std::fprintf(stderr, "batch refused: %s\n", error.what());
+          return 64;
+        }
+        if (closed.status != AneWorkerStatus::Completed) {
+          std::fprintf(
+              stderr, "batch close failed: %s\n", closed.detail.c_str());
+          return 1;
+        }
+        std::printf("batch closed rounds=%d\n", closed.iterations);
+        std::fflush(stdout);
+        continue;
+      }
+      const std::string value = line.substr(6);
+      size_t consumed = 0;
+      long batch_deadline = 0;
+      try {
+        batch_deadline = std::stol(value, &consumed);
+      } catch (...) {
+        consumed = 0;
+      }
+      if (consumed == 0 || consumed != value.size() || batch_deadline <= 0) {
+        std::fprintf(
+            stderr,
+            "malformed batch: expected 'batch DEADLINE_MS', got '%s'\n",
+            line.c_str());
+        return 64;
+      }
+      AneWorkerReport opened;
+      try {
+        opened = worker.open_batch(std::chrono::milliseconds(batch_deadline));
+      } catch (const std::invalid_argument& error) {
+        std::fprintf(stderr, "batch refused: %s\n", error.what());
+        return 64;
+      }
+      if (opened.status != AneWorkerStatus::Completed) {
+        std::fprintf(stderr, "batch open failed: %s\n", opened.detail.c_str());
+        return 1;
+      }
+      std::printf("%s\n", opened.detail.c_str());
+      std::fflush(stdout);
+      continue;
+    }
+
 
     ResidentJob job;
     std::string error;

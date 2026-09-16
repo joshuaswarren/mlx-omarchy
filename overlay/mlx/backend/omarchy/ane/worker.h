@@ -121,10 +121,34 @@ class AneWorker {
   // its index in the open() vector. A deadline expiry or an abnormal
   // child death quarantines the worker exactly as in run(): the session
   // is torn down and every later call is refused.
+  //
+  // Inside an open batch scope (open_batch) the submit is bounded by the
+  // batch's absolute deadline instead of a fresh per-submit window: the
+  // batch is the deadline-bounded unit, and its rounds (this call, N
+  // times) are the encoder's per-island-per-layer work.
   AneWorkerReport submit(
       size_t bundle,
       const std::map<std::string, Buffer>& inputs,
       std::map<std::string, Buffer>* outputs = nullptr);
+
+  // Opens a batch scope: one absolute deadline, named here, bounds every
+  // submit() until close_batch(). The safety model is unchanged -- one
+  // private child, one bounded unit, failure ends the session, no retry
+  // -- the bounded unit just spans the caller's whole island pass, which
+  // is what lets 72 per-layer-per-island submits become one.
+  AneWorkerReport open_batch(std::chrono::milliseconds deadline);
+
+  // Closes the batch scope. The session stays open; later submits are
+  // bounded per submit again.
+  AneWorkerReport close_batch();
+
+  // Rounds served inside the current batch scope.
+  int batch_rounds() const {
+    return batch_rounds_;
+  }
+  bool batching() const {
+    return batch_until_.count() != 0;
+  }
 
   // Releases the resident programs and reaps the child.
   AneWorkerReport close();
@@ -147,11 +171,9 @@ class AneWorker {
     return quarantine_reason_;
   }
 
- private:
+private:
   AneWorkerReport supervise(pid_t child, int report_fd);
 
-  // Resident-session plumbing. Every wait carries an absolute deadline;
-  // a miss is a hard failure, never a longer wait.
   struct Wait {
     bool ok{false};
     AneWorkerStatus status{AneWorkerStatus::WorkerDied};
@@ -185,6 +207,11 @@ class AneWorker {
   std::string inbox_;
   size_t inbox_cursor_{0};
   size_t resident_programs_{0};
+
+  // Batch scope: absolute deadline (0 = no scope open) and the number
+  // of submits served inside it.
+  std::chrono::milliseconds batch_until_{0};
+  int batch_rounds_{0};
 };
 
 } // namespace mlx::core::omarchy::ane
