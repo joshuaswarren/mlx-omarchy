@@ -86,6 +86,7 @@ _FAKE_WORKER = textwrap.dedent(
     )
 
     submits = 0
+    batch_open = False
     stdin = sys.stdin.buffer
     stdout = sys.stdout.buffer
 
@@ -118,6 +119,24 @@ _FAKE_WORKER = textwrap.dedent(
         if line == "quit":
             print("resident released programs=%d" % len(bundles), flush=True)
             sys.exit(0)
+        if line.startswith("batch "):
+            if batch_open:
+                sys.stderr.write("fake refused double batch open\\n")
+                sys.exit(64)
+            batch_open = True
+            with ledger.open("a") as log:
+                log.write("batch open\\n")
+            print("batch opened deadline_ms=%s" % line.split()[1], flush=True)
+            continue
+        if line == "batch-end":
+            if not batch_open:
+                sys.stderr.write("fake refused batch close without open\\n")
+                sys.exit(64)
+            batch_open = False
+            with ledger.open("a") as log:
+                log.write("batch close\\n")
+            print("batch closed rounds=%d" % submits, flush=True)
+            continue
         tokens = line.split()
         assert tokens[0] == "submit", line
         bundle = tokens[1]
@@ -291,6 +310,47 @@ class ResidentAneWorkerTest(unittest.TestCase):
         # Bounded: the client waited the worker deadline plus its grace,
         # not the worker's 600-second sleep.
         self.assertLess(waited, 30)
+
+    def test_batch_scope_bounds_submits_under_one_deadline(self):
+        session = self._session()
+        with session:
+            session.begin_batch(8000)
+            for round_index in range(3):
+                marker = bytes([0x70 + round_index]) * 8
+                results = session.submit(
+                    bundle="A" if round_index % 2 == 0 else "C",
+                    tag=f"L{round_index:02d}",
+                    inputs={"q": marker, "k": marker},
+                    outputs=("y",),
+                )
+                self.assertEqual(results["y"], marker + marker)
+            rounds = session.end_batch()
+
+        self.assertEqual(rounds, 3)
+        counters = session.counters()
+        self.assertEqual(counters["batch_opens"], 1)
+        self.assertEqual(counters["batch_rounds"], 3)
+        self.assertEqual(counters["submissions"], 3)
+        ledger = self._ledger()
+        self.assertIn("open", ledger[ledger.index("batch"):])
+        self.assertIn("close", ledger[ledger.index("batch", 2):])
+
+    def test_batch_scope_refusals_are_named(self):
+        session = self._session()
+        with self.assertRaises(ResidentWorkerError):
+            session.begin_batch(4000)  # no session open
+        with session:
+            with self.assertRaises(ResidentWorkerError):
+                session.begin_batch(0)  # unbounded batches are a refusal
+            with self.assertRaises(ResidentWorkerError):
+                session.end_batch()  # no scope open
+            session.begin_batch(4000)
+            with self.assertRaises(ResidentWorkerError):
+                session.begin_batch(4000)  # one scope at a time; ends the session
+            with self.assertRaises(ResidentWorkerError):
+                session.end_batch()  # the refused open killed the worker
+        with self.assertRaises(ResidentWorkerError):
+            session.end_batch()  # session closed with the with-block
 
     def test_a_refused_open_is_named(self):
         session = self._session(mode="refuse-open")

@@ -46,6 +46,8 @@ import argparse
 import ctypes
 import importlib.metadata
 import json
+import os
+import sys
 import re
 import struct
 import subprocess
@@ -367,12 +369,31 @@ class Statement:
         self.done = False
 
 
+# The three island bundles the encoder handlers submit to. The resident
+# session loads every one of them once, up front, exactly like the launch
+# path loads its bundle per submit.
+RESIDENT_BUNDLES = (
+    "island-attn-a-kt",
+    "island-select-8head-scratch417",
+    "island-pv",
+)
+
+
 class AneIsland:
     """One bounded submit to the physical ANE through mlx-omarchy-ane-worker.
 
-    One process per submit: the worker CLI takes a single bundle and a single
-    input set, so a 24-layer encoder needs one launch per island per layer.
-    A failure is reported, never retried.
+    ANE_ISLAND_MODE picks the path:
+
+    launch (default) -- one process per submit: the worker CLI takes a
+    single bundle and a single input set, so a 24-layer encoder needs one
+    launch per island per layer.
+
+    resident-batch -- one private ``--serve`` worker for the whole pass and
+    ONE batch scope: every layer's island submit is a round inside a single
+    deadline-bounded batch (ANE_ISLAND_BATCH_DEADLINE_MS, default 120000).
+    One process, one bundle load, one bounded unit for all 72 submits; a
+    failed round or a deadline miss ends the session and is reported, never
+    retried.
     """
 
     def __init__(self, worker: Path, libane: Path, bundles: Path, scratch: Path,
@@ -385,14 +406,109 @@ class AneIsland:
         self.scratch.mkdir(parents=True, exist_ok=True)
         self.submissions = 0
         self.worker_starts = 0
+        self.rounds = 0
         self.input_bytes = 0
         self.output_bytes = 0
         self.exec_ns = 0
         self.timeouts = 0
+        self.batch_open_ns = 0
         self.log: list[dict] = []
+        self._mode = os.environ.get("ANE_ISLAND_MODE", "launch")
+        if self._mode not in ("launch", "resident-batch"):
+            raise EncoderRunError(
+                f"ANE_ISLAND_MODE {self._mode!r} is not launch or resident-batch"
+            )
+        self._batch_deadline_ms = int(
+            os.environ.get("ANE_ISLAND_BATCH_DEADLINE_MS", "120000")
+        )
+        self._session = None
+
+    def close(self) -> None:
+        """Release the resident session; a no-op on the launch path."""
+        if self._session is None:
+            return
+        session, self._session = self._session, None
+        try:
+            session.end_batch()
+        except Exception as error:
+            raise EncoderRunError(f"resident batch close failed: {error}") from error
+        try:
+            session.close()
+        except Exception as error:
+            raise EncoderRunError(f"resident session close failed: {error}") from error
+
+    def _ensure_session(self):
+        if self._session is not None:
+            return self._session
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from ane_resident import ResidentAneWorker
+        started = time.monotonic_ns()
+        session = ResidentAneWorker(
+            worker=Path(self.worker),
+            libane=Path(self.libane),
+            bundles={name: Path(self.bundles) / name for name in RESIDENT_BUNDLES},
+            scratch=Path(self.scratch),
+            deadline_ms=self.deadline_ms,
+        )
+        session.start()
+        session.begin_batch(self._batch_deadline_ms)
+        self.batch_open_ns = time.monotonic_ns() - started
+        self.worker_starts += 1
+        self.submissions += 1
+        self._session = session
+        return session
+
+    def _submit_resident(self, bundle: str, tag: str, inputs: dict, outputs: dict) -> dict:
+        """One round inside the open batch: same bytes, no files, one session."""
+        session = self._ensure_session()
+        payload = {}
+        in_bytes = 0
+        for name, value in inputs.items():
+            mx.eval(value)
+            raw = np.ascontiguousarray(np.asarray(value)).tobytes()
+            payload[name] = raw
+            in_bytes += len(raw)
+        out_names = list(outputs)
+        started = time.monotonic_ns()
+        try:
+            results = session.submit(bundle, tag, payload, out_names)
+        except Exception as error:
+            raise EncoderRunError(
+                f"ANE batch round {tag} ({bundle}) failed: {error}"
+            ) from error
+        elapsed = time.monotonic_ns() - started
+        self.rounds += 1
+        self.exec_ns += elapsed
+        self.input_bytes += in_bytes
+        record = {"tag": tag, "bundle": bundle, "elapsed_ns": elapsed, "round": True}
+        out_bytes = 0
+        packed = {}
+        for name, (shape, dtype_name) in outputs.items():
+            raw = results[name]
+            count = 1
+            for dim in shape:
+                count *= dim
+            expect = count * np.dtype(NP_DTYPES[dtype_name]).itemsize
+            if len(raw) != expect:
+                raise EncoderRunError(
+                    f"ANE output {name} for {tag} is {len(raw)} bytes, want {expect}"
+                )
+            out_bytes += len(raw)
+            host = np.frombuffer(raw, dtype=NP_DTYPES[dtype_name], count=count)
+            packed[name] = mx.array(host).reshape(shape)
+        record["input_bytes"] = in_bytes
+        record["output_bytes"] = out_bytes
+        self.output_bytes += out_bytes
+        self.log.append(record)
+        return packed
 
     def submit(self, bundle: str, tag: str, inputs: dict, outputs: dict) -> dict:
         """inputs: name -> mx array. outputs: name -> (shape, dtype name)."""
+        if self._mode == "resident-batch":
+            return self._submit_resident(bundle, tag, inputs, outputs)
+        return self._submit_launch(bundle, tag, inputs, outputs)
+
+    def _submit_launch(self, bundle: str, tag: str, inputs: dict, outputs: dict) -> dict:
         run_dir = self.scratch / tag
         run_dir.mkdir(parents=True, exist_ok=True)
         argv = [
@@ -1233,16 +1349,20 @@ def main() -> int:
     )
     before = trace_snapshot()
     started = time.monotonic_ns()
-    keep = runner.run(
-        inputs={
-            "input_features": mx.array(
-                features.astype(np.float32).reshape(1, 3000, 128)
-            ),
-            "attention_mask": mx.array(mask.astype(np.int32).reshape(1, 3000)),
-        },
-        wanted={"encoder_hidden", "encoder_mask"},
-        stop_after="encoder_mask",
-    )
+    try:
+        keep = runner.run(
+            inputs={
+                "input_features": mx.array(
+                    features.astype(np.float32).reshape(1, 3000, 128)
+                ),
+                "attention_mask": mx.array(mask.astype(np.int32).reshape(1, 3000)),
+            },
+            wanted={"encoder_hidden", "encoder_mask"},
+            stop_after="encoder_mask",
+        )
+    finally:
+        if island is not None:
+            island.close()
     wall_ns = time.monotonic_ns() - started
     after = trace_snapshot()
 
@@ -1267,9 +1387,12 @@ def main() -> int:
     }
     if island is not None:
         report["ane"] = {
+            "mode": island._mode,
             "submissions": island.submissions,
+            "rounds": island.rounds,
             "worker_starts": island.worker_starts,
             "timeouts": island.timeouts,
+            "batch_open_ns": island.batch_open_ns,
             "input_bytes": island.input_bytes,
             "output_bytes": island.output_bytes,
             "exec_ns": island.exec_ns,
@@ -1279,7 +1402,8 @@ def main() -> int:
     print(json.dumps({k: v for k, v in report.items() if k != "ane"}, indent=2))
     if island is not None:
         print(
-            f"ane submissions={island.submissions} worker_starts={island.worker_starts} "
+            f"ane mode={island._mode} submissions={island.submissions} "
+            f"rounds={island.rounds} worker_starts={island.worker_starts} "
             f"timeouts={island.timeouts} exec_ms={island.exec_ns / 1e6:.0f}"
         )
     return 0
