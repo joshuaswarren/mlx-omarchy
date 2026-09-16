@@ -421,6 +421,7 @@ Translation translate_msl(
   std::string body = source.substr(body_open + 1, body_close - body_open - 1);
   resolve_kernel_templates(source, marker, header, body);
   translate_header(header);
+
   const std::vector<std::string> forbidden = {
       "texture", "sampler", "imageblock", "raytracing", "simdgroup_matrix",
       "quadgroup", "visible_function", "intersection_function", "object_data"};
