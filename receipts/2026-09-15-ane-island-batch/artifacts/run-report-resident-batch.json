@@ -1,0 +1,630 @@
+{
+  "layers": 24,
+  "ops_executed": 3351,
+  "gpu_ops": 1254,
+  "ane_ops": 96,
+  "cpu_tensor_events": 0,
+  "wall_ns": 16393917631,
+  "ane_mode": true,
+  "islands_placed": "ABC",
+  "gpu_counters": {
+    "gpu_primitive_dispatches": 8347,
+    "vk_submissions": 293,
+    "vk_buffer_copies": 0,
+    "vk_buffer_fills": 101,
+    "vk_compute_dispatches": 5202,
+    "omarchy_finalize_calls": 218,
+    "commit_calls_with_work": 293,
+    "commit_calls_noop": 218
+  },
+  "island_b_cond_census": {
+    "cond_tensor": "var_373",
+    "shape": [
+      1,
+      1,
+      375,
+      375
+    ],
+    "elements": 140625,
+    "true_lanes": 0,
+    "broadcast_elements": 1125000,
+    "broadcast_true_lanes": 0,
+    "fill_value": "-inf",
+    "fill_bits": "0xFC00",
+    "shared_across_layers": true
+  },
+  "encoder_hidden_shape": [
+    1,
+    375,
+    640
+  ],
+  "ane": {
+    "mode": "resident-batch",
+    "submissions": 1,
+    "rounds": 72,
+    "worker_starts": 1,
+    "timeouts": 0,
+    "batch_open_ns": 23593983,
+    "input_bytes": 299542848,
+    "output_bytes": 234288000,
+    "exec_ns": 2653411478,
+    "log": [
+      {
+        "tag": "L00-A",
+        "bundle": "island-attn-a-kt",
+        "elapsed_ns": 53455759,
+        "round": true,
+        "input_bytes": 3837952,
+        "output_bytes": 6744000
+      },
+      {
+        "tag": "L00-B",
+        "bundle": "island-select-8head-scratch417",
+        "elapsed_ns": 40024269,
+        "round": true,
+        "input_bytes": 5625000,
+        "output_bytes": 2250000
+      },
+      {
+        "tag": "L00-C",
+        "bundle": "island-pv",
+        "elapsed_ns": 16329412,
+        "round": true,
+        "input_bytes": 3018000,
+        "output_bytes": 768000
+      },
+      {
+        "tag": "L01-A",
+        "bundle": "island-attn-a-kt",
+        "elapsed_ns": 53897587,
+        "round": true,
+        "input_bytes": 3837952,
+        "output_bytes": 6744000
+      },
+      {
+        "tag": "L01-B",
+        "bundle": "island-select-8head-scratch417",
+        "elapsed_ns": 40272890,
+        "round": true,
+        "input_bytes": 5625000,
+        "output_bytes": 2250000
+      },
+      {
+        "tag": "L01-C",
+        "bundle": "island-pv",
+        "elapsed_ns": 14930013,
+        "round": true,
+        "input_bytes": 3018000,
+        "output_bytes": 768000
+      },
+      {
+        "tag": "L02-A",
+        "bundle": "island-attn-a-kt",
+        "elapsed_ns": 52767185,
+        "round": true,
+        "input_bytes": 3837952,
+        "output_bytes": 6744000
+      },
+      {
+        "tag": "L02-B",
+        "bundle": "island-select-8head-scratch417",
+        "elapsed_ns": 39901895,
+        "round": true,
+        "input_bytes": 5625000,
+        "output_bytes": 2250000
+      },
+      {
+        "tag": "L02-C",
+        "bundle": "island-pv",
+        "elapsed_ns": 15012178,
+        "round": true,
+        "input_bytes": 3018000,
+        "output_bytes": 768000
+      },
+      {
+        "tag": "L03-A",
+        "bundle": "island-attn-a-kt",
+        "elapsed_ns": 51691741,
+        "round": true,
+        "input_bytes": 3837952,
+        "output_bytes": 6744000
+      },
+      {
+        "tag": "L03-B",
+        "bundle": "island-select-8head-scratch417",
+        "elapsed_ns": 40336890,
+        "round": true,
+        "input_bytes": 5625000,
+        "output_bytes": 2250000
+      },
+      {
+        "tag": "L03-C",
+        "bundle": "island-pv",
+        "elapsed_ns": 15278425,
+        "round": true,
+        "input_bytes": 3018000,
+        "output_bytes": 768000
+      },
+      {
+        "tag": "L04-A",
+        "bundle": "island-attn-a-kt",
+        "elapsed_ns": 48109663,
+        "round": true,
+        "input_bytes": 3837952,
+        "output_bytes": 6744000
+      },
+      {
+        "tag": "L04-B",
+        "bundle": "island-select-8head-scratch417",
+        "elapsed_ns": 40457763,
+        "round": true,
+        "input_bytes": 5625000,
+        "output_bytes": 2250000
+      },
+      {
+        "tag": "L04-C",
+        "bundle": "island-pv",
+        "elapsed_ns": 15183927,
+        "round": true,
+        "input_bytes": 3018000,
+        "output_bytes": 768000
+      },
+      {
+        "tag": "L05-A",
+        "bundle": "island-attn-a-kt",
+        "elapsed_ns": 52603312,
+        "round": true,
+        "input_bytes": 3837952,
+        "output_bytes": 6744000
+      },
+      {
+        "tag": "L05-B",
+        "bundle": "island-select-8head-scratch417",
+        "elapsed_ns": 39731314,
+        "round": true,
+        "input_bytes": 5625000,
+        "output_bytes": 2250000
+      },
+      {
+        "tag": "L05-C",
+        "bundle": "island-pv",
+        "elapsed_ns": 15185009,
+        "round": true,
+        "input_bytes": 3018000,
+        "output_bytes": 768000
+      },
+      {
+        "tag": "L06-A",
+        "bundle": "island-attn-a-kt",
+        "elapsed_ns": 52419315,
+        "round": true,
+        "input_bytes": 3837952,
+        "output_bytes": 6744000
+      },
+      {
+        "tag": "L06-B",
+        "bundle": "island-select-8head-scratch417",
+        "elapsed_ns": 40256682,
+        "round": true,
+        "input_bytes": 5625000,
+        "output_bytes": 2250000
+      },
+      {
+        "tag": "L06-C",
+        "bundle": "island-pv",
+        "elapsed_ns": 18203637,
+        "round": true,
+        "input_bytes": 3018000,
+        "output_bytes": 768000
+      },
+      {
+        "tag": "L07-A",
+        "bundle": "island-attn-a-kt",
+        "elapsed_ns": 52267984,
+        "round": true,
+        "input_bytes": 3837952,
+        "output_bytes": 6744000
+      },
+      {
+        "tag": "L07-B",
+        "bundle": "island-select-8head-scratch417",
+        "elapsed_ns": 40157183,
+        "round": true,
+        "input_bytes": 5625000,
+        "output_bytes": 2250000
+      },
+      {
+        "tag": "L07-C",
+        "bundle": "island-pv",
+        "elapsed_ns": 15239675,
+        "round": true,
+        "input_bytes": 3018000,
+        "output_bytes": 768000
+      },
+      {
+        "tag": "L08-A",
+        "bundle": "island-attn-a-kt",
+        "elapsed_ns": 51507285,
+        "round": true,
+        "input_bytes": 3837952,
+        "output_bytes": 6744000
+      },
+      {
+        "tag": "L08-B",
+        "bundle": "island-select-8head-scratch417",
+        "elapsed_ns": 40529553,
+        "round": true,
+        "input_bytes": 5625000,
+        "output_bytes": 2250000
+      },
+      {
+        "tag": "L08-C",
+        "bundle": "island-pv",
+        "elapsed_ns": 15180718,
+        "round": true,
+        "input_bytes": 3018000,
+        "output_bytes": 768000
+      },
+      {
+        "tag": "L09-A",
+        "bundle": "island-attn-a-kt",
+        "elapsed_ns": 54259749,
+        "round": true,
+        "input_bytes": 3837952,
+        "output_bytes": 6744000
+      },
+      {
+        "tag": "L09-B",
+        "bundle": "island-select-8head-scratch417",
+        "elapsed_ns": 40323348,
+        "round": true,
+        "input_bytes": 5625000,
+        "output_bytes": 2250000
+      },
+      {
+        "tag": "L09-C",
+        "bundle": "island-pv",
+        "elapsed_ns": 17051777,
+        "round": true,
+        "input_bytes": 3018000,
+        "output_bytes": 768000
+      },
+      {
+        "tag": "L10-A",
+        "bundle": "island-attn-a-kt",
+        "elapsed_ns": 53754881,
+        "round": true,
+        "input_bytes": 3837952,
+        "output_bytes": 6744000
+      },
+      {
+        "tag": "L10-B",
+        "bundle": "island-select-8head-scratch417",
+        "elapsed_ns": 40392889,
+        "round": true,
+        "input_bytes": 5625000,
+        "output_bytes": 2250000
+      },
+      {
+        "tag": "L10-C",
+        "bundle": "island-pv",
+        "elapsed_ns": 17333690,
+        "round": true,
+        "input_bytes": 3018000,
+        "output_bytes": 768000
+      },
+      {
+        "tag": "L11-A",
+        "bundle": "island-attn-a-kt",
+        "elapsed_ns": 54479038,
+        "round": true,
+        "input_bytes": 3837952,
+        "output_bytes": 6744000
+      },
+      {
+        "tag": "L11-B",
+        "bundle": "island-select-8head-scratch417",
+        "elapsed_ns": 40316973,
+        "round": true,
+        "input_bytes": 5625000,
+        "output_bytes": 2250000
+      },
+      {
+        "tag": "L11-C",
+        "bundle": "island-pv",
+        "elapsed_ns": 16950528,
+        "round": true,
+        "input_bytes": 3018000,
+        "output_bytes": 768000
+      },
+      {
+        "tag": "L12-A",
+        "bundle": "island-attn-a-kt",
+        "elapsed_ns": 54087501,
+        "round": true,
+        "input_bytes": 3837952,
+        "output_bytes": 6744000
+      },
+      {
+        "tag": "L12-B",
+        "bundle": "island-select-8head-scratch417",
+        "elapsed_ns": 41162129,
+        "round": true,
+        "input_bytes": 5625000,
+        "output_bytes": 2250000
+      },
+      {
+        "tag": "L12-C",
+        "bundle": "island-pv",
+        "elapsed_ns": 16861780,
+        "round": true,
+        "input_bytes": 3018000,
+        "output_bytes": 768000
+      },
+      {
+        "tag": "L13-A",
+        "bundle": "island-attn-a-kt",
+        "elapsed_ns": 53871254,
+        "round": true,
+        "input_bytes": 3837952,
+        "output_bytes": 6744000
+      },
+      {
+        "tag": "L13-B",
+        "bundle": "island-select-8head-scratch417",
+        "elapsed_ns": 40222932,
+        "round": true,
+        "input_bytes": 5625000,
+        "output_bytes": 2250000
+      },
+      {
+        "tag": "L13-C",
+        "bundle": "island-pv",
+        "elapsed_ns": 16999070,
+        "round": true,
+        "input_bytes": 3018000,
+        "output_bytes": 768000
+      },
+      {
+        "tag": "L14-A",
+        "bundle": "island-attn-a-kt",
+        "elapsed_ns": 54742618,
+        "round": true,
+        "input_bytes": 3837952,
+        "output_bytes": 6744000
+      },
+      {
+        "tag": "L14-B",
+        "bundle": "island-select-8head-scratch417",
+        "elapsed_ns": 41503874,
+        "round": true,
+        "input_bytes": 5625000,
+        "output_bytes": 2250000
+      },
+      {
+        "tag": "L14-C",
+        "bundle": "island-pv",
+        "elapsed_ns": 16894654,
+        "round": true,
+        "input_bytes": 3018000,
+        "output_bytes": 768000
+      },
+      {
+        "tag": "L15-A",
+        "bundle": "island-attn-a-kt",
+        "elapsed_ns": 54115834,
+        "round": true,
+        "input_bytes": 3837952,
+        "output_bytes": 6744000
+      },
+      {
+        "tag": "L15-B",
+        "bundle": "island-select-8head-scratch417",
+        "elapsed_ns": 40763175,
+        "round": true,
+        "input_bytes": 5625000,
+        "output_bytes": 2250000
+      },
+      {
+        "tag": "L15-C",
+        "bundle": "island-pv",
+        "elapsed_ns": 16886321,
+        "round": true,
+        "input_bytes": 3018000,
+        "output_bytes": 768000
+      },
+      {
+        "tag": "L16-A",
+        "bundle": "island-attn-a-kt",
+        "elapsed_ns": 54245707,
+        "round": true,
+        "input_bytes": 3837952,
+        "output_bytes": 6744000
+      },
+      {
+        "tag": "L16-B",
+        "bundle": "island-select-8head-scratch417",
+        "elapsed_ns": 39866854,
+        "round": true,
+        "input_bytes": 5625000,
+        "output_bytes": 2250000
+      },
+      {
+        "tag": "L16-C",
+        "bundle": "island-pv",
+        "elapsed_ns": 17029611,
+        "round": true,
+        "input_bytes": 3018000,
+        "output_bytes": 768000
+      },
+      {
+        "tag": "L17-A",
+        "bundle": "island-attn-a-kt",
+        "elapsed_ns": 54909365,
+        "round": true,
+        "input_bytes": 3837952,
+        "output_bytes": 6744000
+      },
+      {
+        "tag": "L17-B",
+        "bundle": "island-select-8head-scratch417",
+        "elapsed_ns": 40454013,
+        "round": true,
+        "input_bytes": 5625000,
+        "output_bytes": 2250000
+      },
+      {
+        "tag": "L17-C",
+        "bundle": "island-pv",
+        "elapsed_ns": 17057402,
+        "round": true,
+        "input_bytes": 3018000,
+        "output_bytes": 768000
+      },
+      {
+        "tag": "L18-A",
+        "bundle": "island-attn-a-kt",
+        "elapsed_ns": 53829255,
+        "round": true,
+        "input_bytes": 3837952,
+        "output_bytes": 6744000
+      },
+      {
+        "tag": "L18-B",
+        "bundle": "island-select-8head-scratch417",
+        "elapsed_ns": 40418764,
+        "round": true,
+        "input_bytes": 5625000,
+        "output_bytes": 2250000
+      },
+      {
+        "tag": "L18-C",
+        "bundle": "island-pv",
+        "elapsed_ns": 16947862,
+        "round": true,
+        "input_bytes": 3018000,
+        "output_bytes": 768000
+      },
+      {
+        "tag": "L19-A",
+        "bundle": "island-attn-a-kt",
+        "elapsed_ns": 55065780,
+        "round": true,
+        "input_bytes": 3837952,
+        "output_bytes": 6744000
+      },
+      {
+        "tag": "L19-B",
+        "bundle": "island-select-8head-scratch417",
+        "elapsed_ns": 40592261,
+        "round": true,
+        "input_bytes": 5625000,
+        "output_bytes": 2250000
+      },
+      {
+        "tag": "L19-C",
+        "bundle": "island-pv",
+        "elapsed_ns": 17189734,
+        "round": true,
+        "input_bytes": 3018000,
+        "output_bytes": 768000
+      },
+      {
+        "tag": "L20-A",
+        "bundle": "island-attn-a-kt",
+        "elapsed_ns": 54598953,
+        "round": true,
+        "input_bytes": 3837952,
+        "output_bytes": 6744000
+      },
+      {
+        "tag": "L20-B",
+        "bundle": "island-select-8head-scratch417",
+        "elapsed_ns": 40914507,
+        "round": true,
+        "input_bytes": 5625000,
+        "output_bytes": 2250000
+      },
+      {
+        "tag": "L20-C",
+        "bundle": "island-pv",
+        "elapsed_ns": 17197734,
+        "round": true,
+        "input_bytes": 3018000,
+        "output_bytes": 768000
+      },
+      {
+        "tag": "L21-A",
+        "bundle": "island-attn-a-kt",
+        "elapsed_ns": 56250347,
+        "round": true,
+        "input_bytes": 3837952,
+        "output_bytes": 6744000
+      },
+      {
+        "tag": "L21-B",
+        "bundle": "island-select-8head-scratch417",
+        "elapsed_ns": 40992339,
+        "round": true,
+        "input_bytes": 5625000,
+        "output_bytes": 2250000
+      },
+      {
+        "tag": "L21-C",
+        "bundle": "island-pv",
+        "elapsed_ns": 17020694,
+        "round": true,
+        "input_bytes": 3018000,
+        "output_bytes": 768000
+      },
+      {
+        "tag": "L22-A",
+        "bundle": "island-attn-a-kt",
+        "elapsed_ns": 54889782,
+        "round": true,
+        "input_bytes": 3837952,
+        "output_bytes": 6744000
+      },
+      {
+        "tag": "L22-B",
+        "bundle": "island-select-8head-scratch417",
+        "elapsed_ns": 40463513,
+        "round": true,
+        "input_bytes": 5625000,
+        "output_bytes": 2250000
+      },
+      {
+        "tag": "L22-C",
+        "bundle": "island-pv",
+        "elapsed_ns": 17202275,
+        "round": true,
+        "input_bytes": 3018000,
+        "output_bytes": 768000
+      },
+      {
+        "tag": "L23-A",
+        "bundle": "island-attn-a-kt",
+        "elapsed_ns": 54641744,
+        "round": true,
+        "input_bytes": 3837952,
+        "output_bytes": 6744000
+      },
+      {
+        "tag": "L23-B",
+        "bundle": "island-select-8head-scratch417",
+        "elapsed_ns": 40885173,
+        "round": true,
+        "input_bytes": 5625000,
+        "output_bytes": 2250000
+      },
+      {
+        "tag": "L23-C",
+        "bundle": "island-pv",
+        "elapsed_ns": 16842530,
+        "round": true,
+        "input_bytes": 3018000,
+        "output_bytes": 768000
+      }
+    ]
+  }
+}
