@@ -591,6 +591,16 @@ target_sources(
           ${CMAKE_CURRENT_SOURCE_DIR}/ane/worker_libane.cpp
           ${CMAKE_CURRENT_SOURCE_DIR}/vulkan.cpp)
 target_include_directories(mlx PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/shaders")
+# The standalone ANE worker exe links these symbols out of the shared
+# libmlx, but the mlx target compiles with hidden visibility (upstream
+# default). Re-export just the ANE worker surface; everything else in
+# libmlx stays hidden.
+set_source_files_properties(
+  ${CMAKE_CURRENT_SOURCE_DIR}/ane/manifest.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/ane/bundle.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/ane/worker.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/ane/worker_libane.cpp
+  PROPERTIES COMPILE_OPTIONS "-fvisibility=default")
 if(MLX_OMARCHY_ANE_SOURCE_DIR)
   target_sources(mlx PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/ane/runtime.cpp)
   add_executable(
