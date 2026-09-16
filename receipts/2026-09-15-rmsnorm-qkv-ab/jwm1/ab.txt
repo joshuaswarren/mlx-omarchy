@@ -1,0 +1,52 @@
+round 0 short    base   decode  114.3567 tok/s  prefill   386.4986 tok/s  ids 7fd25a869ff21678
+round 0 short    qkv    decode  108.5403 tok/s  prefill   373.0422 tok/s  ids 7fd25a869ff21678
+round 0 ctx1024  base   decode   96.9554 tok/s  prefill  1105.3667 tok/s  ids 7da83f06ec9f001d
+round 0 ctx1024  qkv    decode   93.3971 tok/s  prefill  1109.3356 tok/s  ids 7da83f06ec9f001d
+round 1 short    qkv    decode  108.5411 tok/s  prefill   373.4432 tok/s  ids 7fd25a869ff21678
+round 1 short    base   decode  119.8519 tok/s  prefill   380.5934 tok/s  ids 7fd25a869ff21678
+round 1 ctx1024  qkv    decode   93.8896 tok/s  prefill  1114.4067 tok/s  ids 7da83f06ec9f001d
+round 1 ctx1024  base   decode  102.7898 tok/s  prefill  1107.4114 tok/s  ids 7da83f06ec9f001d
+round 2 short    base   decode  114.3735 tok/s  prefill   383.4340 tok/s  ids 7fd25a869ff21678
+round 2 short    qkv    decode  108.6088 tok/s  prefill   373.7215 tok/s  ids 7fd25a869ff21678
+round 2 ctx1024  base   decode  103.6233 tok/s  prefill  1128.3779 tok/s  ids 7da83f06ec9f001d
+round 2 ctx1024  qkv    decode   93.7295 tok/s  prefill  1104.8924 tok/s  ids 7da83f06ec9f001d
+round 3 short    qkv    decode  108.5698 tok/s  prefill   375.8146 tok/s  ids 7fd25a869ff21678
+round 3 short    base   decode  113.8693 tok/s  prefill   383.0448 tok/s  ids 7fd25a869ff21678
+round 3 ctx1024  qkv    decode   94.1066 tok/s  prefill  1110.7331 tok/s  ids 7da83f06ec9f001d
+round 3 ctx1024  base   decode   99.3199 tok/s  prefill  1113.3789 tok/s  ids 7da83f06ec9f001d
+round 4 short    base   decode  113.4057 tok/s  prefill   382.0792 tok/s  ids 7fd25a869ff21678
+round 4 short    qkv    decode  105.1853 tok/s  prefill   373.1522 tok/s  ids 7fd25a869ff21678
+round 4 ctx1024  base   decode   98.2521 tok/s  prefill  1104.8899 tok/s  ids 7da83f06ec9f001d
+round 4 ctx1024  qkv    decode   91.7385 tok/s  prefill  1106.2510 tok/s  ids 7da83f06ec9f001d
+round 5 short    qkv    decode  108.6596 tok/s  prefill   373.2753 tok/s  ids 7fd25a869ff21678
+round 5 short    base   decode  119.7200 tok/s  prefill   383.4217 tok/s  ids 7fd25a869ff21678
+round 5 ctx1024  qkv    decode   89.5052 tok/s  prefill  1110.3386 tok/s  ids 7da83f06ec9f001d
+round 5 ctx1024  base   decode  102.3932 tok/s  prefill  1105.1548 tok/s  ids 7da83f06ec9f001d
+round 6 short    base   decode  115.6831 tok/s  prefill   382.9530 tok/s  ids 7fd25a869ff21678
+round 6 short    qkv    decode  108.1300 tok/s  prefill   376.2836 tok/s  ids 7fd25a869ff21678
+round 6 ctx1024  base   decode  102.5882 tok/s  prefill  1106.6861 tok/s  ids 7da83f06ec9f001d
+round 6 ctx1024  qkv    decode   91.1710 tok/s  prefill  1105.1320 tok/s  ids 7da83f06ec9f001d
+round 7 short    qkv    decode  108.4722 tok/s  prefill   373.3352 tok/s  ids 7fd25a869ff21678
+round 7 short    base   decode  119.9827 tok/s  prefill   383.0524 tok/s  ids 7fd25a869ff21678
+round 7 ctx1024  qkv    decode   93.9176 tok/s  prefill  1112.9335 tok/s  ids 7da83f06ec9f001d
+round 7 ctx1024  base   decode  102.3063 tok/s  prefill  1109.4935 tok/s  ids 7da83f06ec9f001d
+round 8 short    base   decode  119.5598 tok/s  prefill   383.6471 tok/s  ids 7fd25a869ff21678
+round 8 short    qkv    decode  108.3654 tok/s  prefill   376.2935 tok/s  ids 7fd25a869ff21678
+round 8 ctx1024  base   decode  102.7869 tok/s  prefill  1104.9921 tok/s  ids 7da83f06ec9f001d
+round 8 ctx1024  qkv    decode   91.7450 tok/s  prefill  1110.2536 tok/s  ids 7da83f06ec9f001d
+round 9 short    qkv    decode  108.3203 tok/s  prefill   373.2881 tok/s  ids 7fd25a869ff21678
+round 9 short    base   decode  114.3386 tok/s  prefill   383.3664 tok/s  ids 7fd25a869ff21678
+round 9 ctx1024  qkv    decode   94.2112 tok/s  prefill  1103.7676 tok/s  ids 7da83f06ec9f001d
+round 9 ctx1024  base   decode   99.7045 tok/s  prefill  1108.1019 tok/s  ids 7da83f06ec9f001d
+round 10 short    base   decode  117.0059 tok/s  prefill   385.4964 tok/s  ids 7fd25a869ff21678
+round 10 short    qkv    decode  108.2462 tok/s  prefill   375.6243 tok/s  ids 7fd25a869ff21678
+round 10 ctx1024  base   decode  103.0144 tok/s  prefill  1106.8953 tok/s  ids 7da83f06ec9f001d
+round 10 ctx1024  qkv    decode   94.3092 tok/s  prefill  1112.1860 tok/s  ids 7da83f06ec9f001d
+round 11 short    qkv    decode  108.6550 tok/s  prefill   373.5751 tok/s  ids 7fd25a869ff21678
+round 11 short    base   decode  119.8435 tok/s  prefill   381.0666 tok/s  ids 7fd25a869ff21678
+round 11 ctx1024  qkv    decode   93.8513 tok/s  prefill  1105.7492 tok/s  ids 7da83f06ec9f001d
+round 11 ctx1024  base   decode  102.1834 tok/s  prefill  1107.8184 tok/s  ids 7da83f06ec9f001d
+short/base       decode median  116.3445 [114.3567, 119.8519, 114.3735, 113.8693, 113.4057, 119.72, 115.6831, 119.9827, 119.5598, 114.3386, 117.0059, 119.8435]
+short/qkv        decode median  108.5062 [108.5403, 108.5411, 108.6088, 108.5698, 105.1853, 108.6596, 108.13, 108.4722, 108.3654, 108.3203, 108.2462, 108.655]
+ctx1024/base     decode median  102.3498 [96.9554, 102.7898, 103.6233, 99.3199, 98.2521, 102.3932, 102.5882, 102.3063, 102.7869, 99.7045, 103.0144, 102.1834]
+ctx1024/qkv      decode median   93.7904 [93.3971, 93.8896, 93.7295, 94.1066, 91.7385, 89.5052, 91.171, 93.9176, 91.745, 94.2112, 94.3092, 93.8513]
