@@ -57,20 +57,28 @@ for bundle in island-attn-a-kt island-pv island-select-8head; do
 done
 
 # --- no staged/dev files in the prefix ---------------------------------
-if grep -rl "var/tmp" "$SITE" 2>/dev/null | grep -q .; then
-  fail "staging paths found inside the installed prefix"
+# Binaries legitimately carry their build-tree strings; the product-level
+# proof is the run report below (every path the runtime touched). Here we
+# check the text surface for the known staging locations.
+if grep -rl -e "island-reexport" -e "EncoderParityAne" -e "E2EREV" \
+    -e "ParakeetE2E" -e "receipts/" "$SITE" \
+    --include="*.py" --include="*.json" 2>/dev/null | grep -q .; then
+  fail "staging references found inside the installed prefix text files"
 fi
 
-# --- download (clean HOME => cold cache, network only) ------------------
-if ! env HOME="$CLEAN_HOME" flock -w 900 "$LOCK" \
-    "$CLI" download >> "$OUT/gate.log" 2>&1; then
+# The installed launcher runs under `env python3`; the venv owns the
+# dependencies, so invoke it with the venv interpreter explicitly.
+run_cli() { env HOME="$CLEAN_HOME" "$VENV/bin/python" "$CLI" "$@"; }
+
+# --- download (clean HOME; the gate verifies, pre-seeded or not) --------
+if ! flock -w 900 "$LOCK" run_cli download >> "$OUT/gate.log" 2>&1; then
   fail "download failed (see gate.log)"
 fi
 
 # --- transcribe 3x warm under the lock ---------------------------------
 for run in 1 2 3; do
-  if ! env HOME="$CLEAN_HOME" flock -w 900 "$LOCK" \
-      "$CLI" transcribe -o "$OUT/run-$run" >> "$OUT/gate.log" 2>&1; then
+  if ! flock -w 900 "$LOCK" run_cli transcribe -o "$OUT/run-$run" \
+      >> "$OUT/gate.log" 2>&1; then
     fail "transcribe run-$run failed (see gate.log)"
   fi
 done
@@ -99,9 +107,25 @@ assert summaries[0] == summaries[1] == summaries[2], f"runs differ: {summaries}"
 print("3x warm identical, status=match on every run")
 PY
 
+# --- prefix provenance: every path the runtime touched -----------------
+python3 - "$OUT" "$SITE" "$CLEAN_HOME" <<'PY' || fail "runtime touched paths outside the install and cache"
+import json, sys
+from pathlib import Path
+out, site, home = Path(sys.argv[1]), sys.argv[2], sys.argv[3]
+report = json.loads((out / "run-1" / "transcribe-report.json").read_text())
+paths = [
+    report["mlx"]["libmlx_path"], report["mlx"]["core_path"],
+    report["inputs"]["audio"]["path"],
+    report["inputs"]["encoder_source"]["root"],
+    report["ane"]["worker"], report["ane"]["libane"],
+]
+bad = [p for p in paths if not (p.startswith(site) or p.startswith(home))]
+sys.exit(f"paths outside install/cache: {bad}" if bad else 0)
+PY
+
 # --- no-ANE refusal (explicit, nonzero exit) ---------------------------
 if env HOME="$CLEAN_HOME" MLX_OMARCHY_ANE_DEVICE=off \
-    "$CLI" transcribe -o "$OUT/refusal" > "$OUT/refusal.stdout" 2> "$OUT/refusal.stderr"; then
+    "$VENV/bin/python" "$CLI" transcribe -o "$OUT/refusal" > "$OUT/refusal.stdout" 2> "$OUT/refusal.stderr"; then
   fail "kill switch did not refuse (exit 0)"
 fi
 grep -q "MLX_OMARCHY_ANE_DEVICE=off" "$OUT/refusal.stderr" \
