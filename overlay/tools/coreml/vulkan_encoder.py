@@ -60,6 +60,12 @@ import numpy as np
 
 BLOB_MAGIC = 0xDEADBEEF
 
+# Kill-switch for the fused chain+bias(+silu) epilogue: byte-identical when
+# on, and off reproduces the stock dispatch stream exactly.
+CHAIN_FUSION_ENABLED = (
+    os.environ.get("MLX_OMARCHY_CHAIN_FUSION", "1") not in ("0", "false", "no")
+)
+
 STMT = re.compile(
     r"^\s*(?P<type>tensor<[^>]*>|string|int32|bool|fp16|fp32)\s+"
     r"(?P<name>[A-Za-z_][A-Za-z0-9_@]*)\s*=\s*"
@@ -113,6 +119,84 @@ def _leftover_chain_kernel():
                 acc = acc + half(partials[index + block * mn]);
             }
             reduced[index] = acc;
+        """,
+        compile_options={"math_mode": "safe"},
+    )
+
+
+@cache
+def _leftover_chain_bias_kernel():
+    """The leftover chain with the linear's bias folded into the final
+    store. The chain half is byte-identical to _leftover_chain_kernel:
+    each block's fp32 partial rounds to fp16 and accumulates in fp16
+    ascending. The epilogue reproduces the removed elementwise dispatch's
+    bytes: the stored fp16 chain output widened, added to the fp32 bias,
+    rounded once. One thread per output PAIR; the bias index is derived
+    from the in-row pair, never from the flattened word (an earlier
+    variant indexed bias with the flattened word and read out of bounds
+    past the bias buffer for every row past the first)."""
+    return mx.fast.metal_kernel(
+        name="encoder_leftover_fp16_chain_bias_f32",
+        input_names=["partials", "bias"],
+        output_names=["reduced"],
+        source="""
+            uint pairs = partials_shape[2] / 2u;
+            uint words_row = partials_shape[1] * pairs;
+            uint blocks = partials_shape[0];
+            uint index = thread_position_in_grid.x;
+            uint row = index / pairs;
+            uint pair = index - row * pairs;
+            uint word = row * pairs + pair;
+            uint col = word * 2u;
+            half a0 = half(partials[col]);
+            half a1 = half(partials[col + 1u]);
+            for (uint block = 1u; block < blocks; ++block) {
+                uint base = col + block * words_row * 2u;
+                a0 = a0 + half(partials[base]);
+                a1 = a1 + half(partials[base + 1u]);
+            }
+            float v0 = float(a0) + float(bias[pair * 2u]);
+            float v1 = float(a1) + float(bias[pair * 2u + 1u]);
+            reduced[col] = half(v0);
+            reduced[col + 1u] = half(v1);
+        """,
+        compile_options={"math_mode": "safe"},
+    )
+
+
+@cache
+def _leftover_chain_bias_silu_kernel():
+    """_leftover_chain_bias_kernel with the feed-forward silu folded in:
+    the bias sum rounds to fp16 first (the stored f16 linear output the
+    separate silu dispatch read), then the silu math runs in f32 and the
+    result rounds once to fp16 -- the same roundings as the removed
+    _silu_kernel dispatch."""
+    return mx.fast.metal_kernel(
+        name="encoder_leftover_fp16_chain_bias_silu_f32",
+        input_names=["partials", "bias"],
+        output_names=["reduced"],
+        source="""
+            uint pairs = partials_shape[2] / 2u;
+            uint words_row = partials_shape[1] * pairs;
+            uint blocks = partials_shape[0];
+            uint index = thread_position_in_grid.x;
+            uint row = index / pairs;
+            uint pair = index - row * pairs;
+            uint word = row * pairs + pair;
+            uint col = word * 2u;
+            half a0 = half(partials[col]);
+            half a1 = half(partials[col + 1u]);
+            for (uint block = 1u; block < blocks; ++block) {
+                uint base = col + block * words_row * 2u;
+                a0 = a0 + half(partials[base]);
+                a1 = a1 + half(partials[base + 1u]);
+            }
+            half w0 = half(float(a0) + float(bias[pair * 2u]));
+            half w1 = half(float(a1) + float(bias[pair * 2u + 1u]));
+            float s0 = float(w0) * (1.0 / (1.0 + exp(-float(w0))));
+            float s1 = float(w1) * (1.0 / (1.0 + exp(-float(w1))));
+            reduced[col] = half(s0);
+            reduced[col + 1u] = half(s1);
         """,
         compile_options={"math_mode": "safe"},
     )
@@ -799,6 +883,8 @@ class EncoderRunner:
         self.cond_census: dict | None = None
         self.glu_fusions: dict[int, tuple[str, str]] = {}
         self.glu_sigmoid_done: set[int] = set()
+        self.linear_silu: dict[int, int] = {}
+        self.silu_done: set[int] = set()
         self._parse()
         self._index_islands()
         self._index_fusions()
@@ -911,6 +997,24 @@ class EncoderRunner:
                 continue
             self.glu_fusions[mul.index] = (a_name, b_name)
             self.glu_sigmoid_done.add(stmt.index)
+        # The feed-forward silu: a biased linear whose single consumer is
+        # exactly one silu folds the silu into the chain kernel's final
+        # store. The linear's fused dispatch writes the silu result under
+        # both names; the silu statement becomes a no-op. If the linear
+        # cannot take the fused path at apply time it discards the
+        # mapping and the silu executes normally.
+        if CHAIN_FUSION_ENABLED:
+            for stmt in self.statements:
+                if stmt.op != "linear" or "bias" not in stmt.kwargs:
+                    continue
+                users = consumers.get(stmt.names[0], [])
+                if len(users) != 1 or users[0].op != "silu":
+                    continue
+                silu = users[0]
+                if silu.kwargs.get("x", "").strip() != stmt.names[0]:
+                    continue
+                self.linear_silu[stmt.index] = silu.index
+                self.silu_done.add(silu.index)
 
     def _last_use(self) -> None:
         """Index of the final statement that reads each name, so the runner can
@@ -1074,6 +1178,10 @@ class EncoderRunner:
             # Consumed only by the fused mul; its value is never read.
             self.executed += 1
             return
+        if stmt.op == "silu" and stmt.index in self.silu_done:
+            # Produced by the fused chain+bias(+silu) linear dispatch.
+            self.executed += 1
+            return
         if stmt.index in self.glu_fusions:
             a_name, b_name = self.glu_fusions[stmt.index]
             a = self.tensor(a_name)
@@ -1100,6 +1208,10 @@ class EncoderRunner:
             self.values.update(zip(stmt.names, parts))
         else:
             self.values[stmt.names[0]] = self.apply(stmt)
+            if stmt.index in self.linear_silu:
+                self.values[
+                    self.statements[self.linear_silu[stmt.index]].names[0]
+                ] = self.values[stmt.names[0]]
         self.executed += 1
         self.gpu_ops += 1
 
@@ -1383,6 +1495,41 @@ class EncoderRunner:
                 stream=mx.gpu,
             )[0]
             out = mx.reshape(out, tuple(x.shape[:-1]) + (weight.shape[0],))
+            silu_index = (
+                self.linear_silu.get(stmt.index) if CHAIN_FUSION_ENABLED else None
+            )
+            bias_arr = tensor(kwargs["bias"]) if "bias" in kwargs else None
+            if (
+                CHAIN_FUSION_ENABLED
+                and bias_arr is not None
+                and bias_arr.dtype == mx.float16
+                and weight.shape[0] % 2 == 0
+            ):
+                if silu_index is not None:
+                    out = _leftover_chain_bias_silu_kernel()(
+                        inputs=[partials, bias_arr],
+                        output_shapes=[(rows, weight.shape[0])],
+                        output_dtypes=[mx.float16],
+                        grid=(rows * (weight.shape[0] // 2), 1, 1),
+                        threadgroup=(256, 1, 1),
+                        stream=mx.gpu,
+                    )[0]
+                    out = mx.reshape(out, tuple(x.shape[:-1]) + (weight.shape[0],))
+                    return out
+                out = _leftover_chain_bias_kernel()(
+                    inputs=[partials, bias_arr],
+                    output_shapes=[(rows, weight.shape[0])],
+                    output_dtypes=[mx.float16],
+                    grid=(rows * (weight.shape[0] // 2), 1, 1),
+                    threadgroup=(256, 1, 1),
+                    stream=mx.gpu,
+                )[0]
+                out = mx.reshape(out, tuple(x.shape[:-1]) + (weight.shape[0],))
+                return out
+            if silu_index is not None:
+                # The fused silu will not happen; let the standalone
+                # silu statement execute.
+                self.silu_done.discard(silu_index)
             if "bias" in kwargs:
                 out = out.astype(mx.float32) + tensor(kwargs["bias"]).astype(mx.float32)
             return out.astype(mx.float16)
