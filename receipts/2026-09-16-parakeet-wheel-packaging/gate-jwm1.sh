@@ -12,7 +12,9 @@ OUT="${2:-$(cd "$(dirname "$0")" && pwd)/gate-run}"
 WORK="$(mktemp -d /tmp/parakeet-gate.XXXXXX)"
 LOCK=/tmp/m1-gpu.lock
 
-CLEAN_HOME="$WORK/home"
+# CLEAN_HOME may be pre-seeded (model cache) outside the lock; the gate
+# still verifies everything inside.
+CLEAN_HOME="${CLEAN_HOME:-$WORK/home}"
 VENV="$WORK/venv"
 mkdir -p "$CLEAN_HOME"
 FAILURES=()
@@ -28,6 +30,9 @@ log "wheel sha256: $(sha256sum "$WHEEL" | cut -d' ' -f1)"
 
 # --- clean install: fresh venv, clean HOME -----------------------------
 env HOME="$CLEAN_HOME" python3 -m venv "$VENV"
+# Host-provided transcribe dependencies (the wheel deliberately declares
+# none; the CLI refuses naming them when absent).
+env HOME="$CLEAN_HOME" "$VENV/bin/pip" install --quiet numpy protobuf soundfile
 env HOME="$CLEAN_HOME" "$VENV/bin/pip" install --quiet "$WHEEL"
 CLI="$VENV/bin/mlx-omarchy-parakeet"
 [[ -x "$CLI" ]] || { fail "mlx-omarchy-parakeet launcher not installed"; }
