@@ -90,6 +90,111 @@ class AdapterTest(unittest.TestCase):
             with self.assertRaisesRegex(ADAPTER.AdapterError, "channel mapping"):
                 ADAPTER.adapt(package, Path(directory) / "bundle", IDENTITY)
 
+    def _build_reverse_fixture(
+            self, directory, *,
+            manifest_input_index,
+            manifest_output_index=4):
+        """Build a self-contained package whose ANEC declares selectors
+        0x25864 with header src=1 dst=1. Derived map: dst=5, src=4. The
+        package manifest binds its single input at `manifest_input_index`
+        (5 for the formula layout, 4 for the derived layout) and its output
+        at 4 (formula) or 5 (derived). Mirrors fb4dfa86 test_bundle.cpp
+        """
+        struct = ADAPTER.struct
+        package = Path(directory) / "package"
+        package.mkdir()
+        nchw = [1, 64, 1, 1, 64, 64]
+        anec = bytearray(ADAPTER.ANEC_PAYLOAD_OFFSET + 0x4000)
+        struct.pack_into("<Q", anec, 0, 0x4000)
+        struct.pack_into("<I", anec, 8, 64)
+        struct.pack_into("<I", anec, 12, 1)
+        struct.pack_into("<Q", anec, 16, 0x1f8)
+        struct.pack_into("<Q", anec, 24, 0x400)
+        struct.pack_into("<I", anec, 32, 1)
+        struct.pack_into("<I", anec, 36, 1)
+        struct.pack_into("<I", anec, 40, 1)
+        for ch in (4, 5):
+            struct.pack_into("<I", anec, 40 + ch * 4, 1)
+            nchw_off = 40 + 32 * 4 + ch * len(nchw) * 8
+            for i, v in enumerate(nchw):
+                struct.pack_into("<Q", anec, nchw_off + i * 8, v)
+        struct.pack_into("<I", anec, ADAPTER.ANEC_PAYLOAD_OFFSET + 4,
+                         (16 - 1) << 16)
+        struct.pack_into("<I", anec, ADAPTER.ANEC_PAYLOAD_OFFSET + 32, 0x25864)
+        at = ADAPTER.ANEC_PAYLOAD_OFFSET + 40
+        for reg, cfg in ((0x13800, 0x00033881), (0x13804, 0x00033881),
+                         (0x17800, 0x040000c1)):
+            struct.pack_into("<I", anec, at, reg)
+            struct.pack_into("<I", anec, at + 4, cfg)
+            at += 8
+        assert at == ADAPTER.ANEC_PAYLOAD_OFFSET + 64
+        (package / "model.anec").write_bytes(bytes(anec))
+        manifest = {
+            "artifactFormat": "anec",
+            "dispatchPlan": [0],
+            "intermediates": [],
+            "logicalResults": [{
+                "name": "y", "dtype": "float16", "shape": [1, 64, 1, 1],
+                "physical": {"tensor": "y", "elementOffset": 0, "elementCount": 64},
+                "conversion": "identity",
+            }],
+            "physicalOutputs": [{
+                "tensor": "y", "dtype": "float16",
+                "shape": [1, 64, 1, 1], "logicalBytes": 128,
+            }],
+            "programs": [{
+                "bytes": len(anec),
+                "constantBytes": 0,
+                "constantInputs": [],
+                "constantOffset": 0,
+                "encoder": "h13-test",
+                "file": "model.anec",
+                "inputs": [{
+                    "allocationBytes": 0x4000, "dtype": "float16",
+                    "index": manifest_input_index,
+                    "logicalBytes": 128, "name": "a", "nchw": nchw,
+                    "shape": [1, 64, 1, 1],
+                }],
+                "operation": "add",
+                "outputs": [{
+                    "allocationBytes": 0x4000, "dtype": "float16",
+                    "index": manifest_output_index,
+                    "logicalBytes": 128, "name": "y", "nchw": nchw,
+                    "shape": [1, 64, 1, 1],
+                }],
+                "scratchBytes": 0,
+                "taskDescriptors": 1,
+            }],
+            "schema": "mil-hwxc.h13-anec-package.v2",
+            "target": "H13",
+            "tensors": {
+                "a": {"role": "input", "logicalBytes": 128,
+                       "shape": [1, 64, 1, 1]},
+                "y": {"role": "output", "logicalBytes": 128,
+                       "shape": [1, 64, 1, 1]},
+            },
+        }
+        (package / "manifest.json").write_text(json.dumps(manifest, indent=2))
+        return package
+
+    def test_derived_reverse_map_rejects_a_positional_declaration(self):
+        with tempfile.TemporaryDirectory() as directory:
+            package = self._build_reverse_fixture(
+                directory, manifest_input_index=5)
+            with self.assertRaisesRegex(ADAPTER.AdapterError,
+                                         "channel mapping disagrees"):
+                ADAPTER.adapt(package, Path(directory) / "bundle", IDENTITY)
+
+    def test_derived_reverse_map_accepts_the_task_stream_channels(self):
+        with tempfile.TemporaryDirectory() as directory:
+            package = self._build_reverse_fixture(
+                directory, manifest_input_index=4, manifest_output_index=5)
+            bundle = Path(directory) / "bundle"
+            ADAPTER.adapt(package, bundle, IDENTITY)
+            emitted = json.loads((bundle / "manifest.json").read_text())
+            self.assertEqual(emitted["programs"][0]["outputs"][0]["channel"], 5)
+            self.assertEqual(emitted["programs"][0]["inputs"][0]["channel"], 4)
+
     def test_non_anec_package_is_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
             package = Path(directory) / "package"
