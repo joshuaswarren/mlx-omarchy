@@ -2879,9 +2879,15 @@ TEST_CASE("block_rounded_matmul matches the per-block chain reference bit for bi
     auto w_parts = split(
         reshape(w_flat, Shape{n, k / 16, 16}, stream), k / 16, 1, stream);
     auto block_partial = [&](int block) {
-      array xb = astype(x_parts[block], float32, stream);
+      // split() keeps the split axis, so each part is {m, 1, 16} /
+      // {n, 1, 16}: drop the size-1 axis before the 2-d transpose.
+      array xb = astype(
+          reshape(x_parts[block], Shape{m, 16}, stream), float32, stream);
       array wb = astype(
-          transpose(w_parts[block], {1, 0}, stream), float32, stream);
+          transpose(
+              reshape(w_parts[block], Shape{n, 16}, stream), {1, 0}, stream),
+          float32,
+          stream);
       return astype(matmul(xb, wb, stream), float16, stream);
     };
     array ref = block_partial(0);
