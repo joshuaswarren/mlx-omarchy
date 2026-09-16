@@ -109,7 +109,8 @@ class LibaneDevice : public AneDevice {
     // channel order matches (ane.h: ane_send(nn, input, 0), (nn, input, 1)).
     (void)channel;
     std::vector<uint8_t> tile(binding.allocation_bytes, 0);
-    pack(data, binding.logical_bytes, binding, tile.data());
+    ane_pack_rows(
+        binding, data, tile.data(), binding.logical_bytes / ane_element_size(binding));
     api_.send(nn, tile.data(), channel);
   }
 
@@ -131,7 +132,8 @@ class LibaneDevice : public AneDevice {
     (void)channel;
     std::vector<uint8_t> tile(binding.allocation_bytes, 0);
     api_.read(nn, tile.data(), channel);
-    unpack(tile.data(), binding.logical_bytes, binding, out);
+    ane_unpack_rows(
+        binding, tile.data(), out, binding.logical_bytes / ane_element_size(binding));
     (void)size;
   }
 
@@ -153,29 +155,6 @@ class LibaneDevice : public AneDevice {
     return found->second;
   }
 
-  // Dense<->tile placement lives in tile_layout.h (shared with the
-  // host tests): plane * plane_stride + row * row_stride +
-  // column * element_size, element_size = 2 (fp16) or 1 (bool).
-  void pack(const uint8_t* dense, size_t logical, const AneProgramBinding& b,
-            uint8_t* tile) const {
-    std::memset(tile, 0, b.allocation_bytes);
-    const size_t width = ane_element_size(b);
-    for (size_t element = 0; element < logical / width; ++element) {
-      std::memcpy(
-          tile + ane_packed_offset(b, element), dense + element * width,
-          width);
-    }
-  }
-
-  void unpack(const uint8_t* tile, size_t logical, const AneProgramBinding& b,
-              uint8_t* dense) const {
-    const size_t width = ane_element_size(b);
-    for (size_t element = 0; element < logical / width; ++element) {
-      std::memcpy(
-          dense + element * width, tile + ane_packed_offset(b, element),
-          width);
-    }
-  }
 
   std::string library_;
   void* handle_{nullptr};
