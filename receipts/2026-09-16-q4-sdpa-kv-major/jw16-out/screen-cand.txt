@@ -1,0 +1,3 @@
+k=   30 dispatches/call=1.00 median=  425.33 us p10=  406.12 p90=  492.08
+k= 1024 dispatches/call=1.00 median=  803.89 us p10=  791.83 p90=  830.20
+k= 1053 dispatches/call=1.00 median=  898.64 us p10=  857.20 p90=  933.33

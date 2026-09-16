@@ -1,0 +1,29 @@
+[
+ {
+  "k_len": 30,
+  "dispatches_per_call": 1.0,
+  "chain": 50,
+  "host_us_median": 0.79,
+  "gpu_us_median": 30.25,
+  "gpu_us_p10": 29.22,
+  "gpu_us_p90": 34.1
+ },
+ {
+  "k_len": 1024,
+  "dispatches_per_call": 1.0,
+  "chain": 50,
+  "host_us_median": 2.71,
+  "gpu_us_median": 57.38,
+  "gpu_us_p10": 51.3,
+  "gpu_us_p90": 68.02
+ },
+ {
+  "k_len": 1053,
+  "dispatches_per_call": 1.0,
+  "chain": 50,
+  "host_us_median": 4.42,
+  "gpu_us_median": 84.78,
+  "gpu_us_p10": 75.46,
+  "gpu_us_p90": 104.35
+ }
+]

@@ -1,0 +1,594 @@
+{
+ "arms": [
+  {
+   "name": "base",
+   "python": "/var/tmp/SdpaKvMajorJw16/venv-base/bin/python",
+   "stamp": "d28aa303",
+   "wheel": "/var/tmp/SdpaKvMajorJw16/dist-base/mlx_omarchy-0.32.2.dev202609161544+d28aa303-cp314-cp314-linux_aarch64.whl"
+  },
+  {
+   "name": "cand",
+   "python": "/var/tmp/SdpaKvMajorJw16/venv-cand/bin/python",
+   "stamp": "7617f970",
+   "wheel": "/var/tmp/SdpaKvMajorJw16/dist-cand/mlx_omarchy-0.32.2.dev202609161611+7617f970-cp314-cp314-linux_aarch64.whl"
+  }
+ ],
+ "env": {},
+ "pinned": {
+  "ctx1024": "7da83f06ec9f001d",
+  "short": "7fd25a869ff21678"
+ },
+ "rounds": 5,
+ "runs": [
+  {
+   "arm": "base",
+   "decode_tps": 188.1068,
+   "device": "Apple M1 Max (G13C C0)",
+   "engine": "bench_decode",
+   "generated": 32,
+   "ids_first": [
+    9707,
+    0,
+    2585
+   ],
+   "ids_last": [
+    646,
+    387,
+    7881
+   ],
+   "ids_sha256_16": "7fd25a869ff21678",
+   "leg": "short",
+   "prefill_s": 0.065444,
+   "prefill_tps": 458.4061,
+   "prompt_tokens": 30,
+   "provenance": "provenance: mlx-omarchy 0.32.2.dev202609161544+d28aa303 mx=0.32.2.dev202609161544+d28aa303 verified=match harness=7617f970 core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:7b551e283fbc3c7c",
+   "round": 0,
+   "wall_s": 1.789
+  },
+  {
+   "arm": "cand",
+   "decode_tps": 172.1821,
+   "device": "Apple M1 Max (G13C C0)",
+   "engine": "bench_decode",
+   "generated": 32,
+   "ids_first": [
+    9707,
+    0,
+    2585
+   ],
+   "ids_last": [
+    646,
+    387,
+    7881
+   ],
+   "ids_sha256_16": "7fd25a869ff21678",
+   "leg": "short",
+   "prefill_s": 0.066858,
+   "prefill_tps": 448.7144,
+   "prompt_tokens": 30,
+   "provenance": "provenance: mlx-omarchy 0.32.2.dev202609161611+7617f970 mx=0.32.2.dev202609161611+7617f970 verified=match harness=7617f970 core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:30b52e24594ed3c3",
+   "round": 0,
+   "wall_s": 1.805
+  },
+  {
+   "arm": "base",
+   "decode_tps": 134.3654,
+   "device": "Apple M1 Max (G13C C0)",
+   "engine": "bench_decode",
+   "generated": 32,
+   "ids_first": [
+    13060,
+    498,
+    369
+   ],
+   "ids_last": [
+    3897,
+    553,
+    279
+   ],
+   "ids_sha256_16": "7da83f06ec9f001d",
+   "leg": "ctx1024",
+   "prefill_s": 0.274107,
+   "prefill_tps": 3841.5658,
+   "prompt_tokens": 1053,
+   "provenance": "provenance: mlx-omarchy 0.32.2.dev202609161544+d28aa303 mx=0.32.2.dev202609161544+d28aa303 verified=match harness=7617f970 core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:7b551e283fbc3c7c",
+   "round": 0,
+   "wall_s": 2.374
+  },
+  {
+   "arm": "cand",
+   "decode_tps": 112.1333,
+   "device": "Apple M1 Max (G13C C0)",
+   "engine": "bench_decode",
+   "generated": 32,
+   "ids_first": [
+    13060,
+    498,
+    369
+   ],
+   "ids_last": [
+    3897,
+    553,
+    279
+   ],
+   "ids_sha256_16": "7da83f06ec9f001d",
+   "leg": "ctx1024",
+   "prefill_s": 0.273935,
+   "prefill_tps": 3843.9756,
+   "prompt_tokens": 1053,
+   "provenance": "provenance: mlx-omarchy 0.32.2.dev202609161611+7617f970 mx=0.32.2.dev202609161611+7617f970 verified=match harness=7617f970 core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:30b52e24594ed3c3",
+   "round": 0,
+   "wall_s": 2.492
+  },
+  {
+   "arm": "cand",
+   "decode_tps": 172.5125,
+   "device": "Apple M1 Max (G13C C0)",
+   "engine": "bench_decode",
+   "generated": 32,
+   "ids_first": [
+    9707,
+    0,
+    2585
+   ],
+   "ids_last": [
+    646,
+    387,
+    7881
+   ],
+   "ids_sha256_16": "7fd25a869ff21678",
+   "leg": "short",
+   "prefill_s": 0.066315,
+   "prefill_tps": 452.3878,
+   "prompt_tokens": 30,
+   "provenance": "provenance: mlx-omarchy 0.32.2.dev202609161611+7617f970 mx=0.32.2.dev202609161611+7617f970 verified=match harness=7617f970 core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:30b52e24594ed3c3",
+   "round": 1,
+   "wall_s": 1.76
+  },
+  {
+   "arm": "base",
+   "decode_tps": 189.0666,
+   "device": "Apple M1 Max (G13C C0)",
+   "engine": "bench_decode",
+   "generated": 32,
+   "ids_first": [
+    9707,
+    0,
+    2585
+   ],
+   "ids_last": [
+    646,
+    387,
+    7881
+   ],
+   "ids_sha256_16": "7fd25a869ff21678",
+   "leg": "short",
+   "prefill_s": 0.065293,
+   "prefill_tps": 459.4639,
+   "prompt_tokens": 30,
+   "provenance": "provenance: mlx-omarchy 0.32.2.dev202609161544+d28aa303 mx=0.32.2.dev202609161544+d28aa303 verified=match harness=7617f970 core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:7b551e283fbc3c7c",
+   "round": 1,
+   "wall_s": 1.734
+  },
+  {
+   "arm": "cand",
+   "decode_tps": 105.6508,
+   "device": "Apple M1 Max (G13C C0)",
+   "engine": "bench_decode",
+   "generated": 32,
+   "ids_first": [
+    13060,
+    498,
+    369
+   ],
+   "ids_last": [
+    3897,
+    553,
+    279
+   ],
+   "ids_sha256_16": "7da83f06ec9f001d",
+   "leg": "ctx1024",
+   "prefill_s": 0.274964,
+   "prefill_tps": 3829.5874,
+   "prompt_tokens": 1053,
+   "provenance": "provenance: mlx-omarchy 0.32.2.dev202609161611+7617f970 mx=0.32.2.dev202609161611+7617f970 verified=match harness=7617f970 core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:30b52e24594ed3c3",
+   "round": 1,
+   "wall_s": 2.45
+  },
+  {
+   "arm": "base",
+   "decode_tps": 149.9948,
+   "device": "Apple M1 Max (G13C C0)",
+   "engine": "bench_decode",
+   "generated": 32,
+   "ids_first": [
+    13060,
+    498,
+    369
+   ],
+   "ids_last": [
+    3897,
+    553,
+    279
+   ],
+   "ids_sha256_16": "7da83f06ec9f001d",
+   "leg": "ctx1024",
+   "prefill_s": 0.270517,
+   "prefill_tps": 3892.5437,
+   "prompt_tokens": 1053,
+   "provenance": "provenance: mlx-omarchy 0.32.2.dev202609161544+d28aa303 mx=0.32.2.dev202609161544+d28aa303 verified=match harness=7617f970 core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:7b551e283fbc3c7c",
+   "round": 1,
+   "wall_s": 2.346
+  },
+  {
+   "arm": "base",
+   "decode_tps": 190.483,
+   "device": "Apple M1 Max (G13C C0)",
+   "engine": "bench_decode",
+   "generated": 32,
+   "ids_first": [
+    9707,
+    0,
+    2585
+   ],
+   "ids_last": [
+    646,
+    387,
+    7881
+   ],
+   "ids_sha256_16": "7fd25a869ff21678",
+   "leg": "short",
+   "prefill_s": 0.066097,
+   "prefill_tps": 453.8773,
+   "prompt_tokens": 30,
+   "provenance": "provenance: mlx-omarchy 0.32.2.dev202609161544+d28aa303 mx=0.32.2.dev202609161544+d28aa303 verified=match harness=7617f970 core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:7b551e283fbc3c7c",
+   "round": 2,
+   "wall_s": 1.77
+  },
+  {
+   "arm": "cand",
+   "decode_tps": 172.4342,
+   "device": "Apple M1 Max (G13C C0)",
+   "engine": "bench_decode",
+   "generated": 32,
+   "ids_first": [
+    9707,
+    0,
+    2585
+   ],
+   "ids_last": [
+    646,
+    387,
+    7881
+   ],
+   "ids_sha256_16": "7fd25a869ff21678",
+   "leg": "short",
+   "prefill_s": 0.066425,
+   "prefill_tps": 451.6338,
+   "prompt_tokens": 30,
+   "provenance": "provenance: mlx-omarchy 0.32.2.dev202609161611+7617f970 mx=0.32.2.dev202609161611+7617f970 verified=match harness=7617f970 core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:30b52e24594ed3c3",
+   "round": 2,
+   "wall_s": 1.753
+  },
+  {
+   "arm": "base",
+   "decode_tps": 134.0283,
+   "device": "Apple M1 Max (G13C C0)",
+   "engine": "bench_decode",
+   "generated": 32,
+   "ids_first": [
+    13060,
+    498,
+    369
+   ],
+   "ids_last": [
+    3897,
+    553,
+    279
+   ],
+   "ids_sha256_16": "7da83f06ec9f001d",
+   "leg": "ctx1024",
+   "prefill_s": 0.271238,
+   "prefill_tps": 3882.205,
+   "prompt_tokens": 1053,
+   "provenance": "provenance: mlx-omarchy 0.32.2.dev202609161544+d28aa303 mx=0.32.2.dev202609161544+d28aa303 verified=match harness=7617f970 core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:7b551e283fbc3c7c",
+   "round": 2,
+   "wall_s": 2.378
+  },
+  {
+   "arm": "cand",
+   "decode_tps": 107.8543,
+   "device": "Apple M1 Max (G13C C0)",
+   "engine": "bench_decode",
+   "generated": 32,
+   "ids_first": [
+    13060,
+    498,
+    369
+   ],
+   "ids_last": [
+    3897,
+    553,
+    279
+   ],
+   "ids_sha256_16": "7da83f06ec9f001d",
+   "leg": "ctx1024",
+   "prefill_s": 0.275748,
+   "prefill_tps": 3818.7093,
+   "prompt_tokens": 1053,
+   "provenance": "provenance: mlx-omarchy 0.32.2.dev202609161611+7617f970 mx=0.32.2.dev202609161611+7617f970 verified=match harness=7617f970 core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:30b52e24594ed3c3",
+   "round": 2,
+   "wall_s": 2.463
+  },
+  {
+   "arm": "cand",
+   "decode_tps": 171.3657,
+   "device": "Apple M1 Max (G13C C0)",
+   "engine": "bench_decode",
+   "generated": 32,
+   "ids_first": [
+    9707,
+    0,
+    2585
+   ],
+   "ids_last": [
+    646,
+    387,
+    7881
+   ],
+   "ids_sha256_16": "7fd25a869ff21678",
+   "leg": "short",
+   "prefill_s": 0.066683,
+   "prefill_tps": 449.8913,
+   "prompt_tokens": 30,
+   "provenance": "provenance: mlx-omarchy 0.32.2.dev202609161611+7617f970 mx=0.32.2.dev202609161611+7617f970 verified=match harness=7617f970 core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:30b52e24594ed3c3",
+   "round": 3,
+   "wall_s": 1.759
+  },
+  {
+   "arm": "base",
+   "decode_tps": 190.6328,
+   "device": "Apple M1 Max (G13C C0)",
+   "engine": "bench_decode",
+   "generated": 32,
+   "ids_first": [
+    9707,
+    0,
+    2585
+   ],
+   "ids_last": [
+    646,
+    387,
+    7881
+   ],
+   "ids_sha256_16": "7fd25a869ff21678",
+   "leg": "short",
+   "prefill_s": 0.065419,
+   "prefill_tps": 458.5842,
+   "prompt_tokens": 30,
+   "provenance": "provenance: mlx-omarchy 0.32.2.dev202609161544+d28aa303 mx=0.32.2.dev202609161544+d28aa303 verified=match harness=7617f970 core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:7b551e283fbc3c7c",
+   "round": 3,
+   "wall_s": 1.82
+  },
+  {
+   "arm": "cand",
+   "decode_tps": 112.4242,
+   "device": "Apple M1 Max (G13C C0)",
+   "engine": "bench_decode",
+   "generated": 32,
+   "ids_first": [
+    13060,
+    498,
+    369
+   ],
+   "ids_last": [
+    3897,
+    553,
+    279
+   ],
+   "ids_sha256_16": "7da83f06ec9f001d",
+   "leg": "ctx1024",
+   "prefill_s": 0.274863,
+   "prefill_tps": 3831.0049,
+   "prompt_tokens": 1053,
+   "provenance": "provenance: mlx-omarchy 0.32.2.dev202609161611+7617f970 mx=0.32.2.dev202609161611+7617f970 verified=match harness=7617f970 core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:30b52e24594ed3c3",
+   "round": 3,
+   "wall_s": 2.524
+  },
+  {
+   "arm": "base",
+   "decode_tps": 141.0789,
+   "device": "Apple M1 Max (G13C C0)",
+   "engine": "bench_decode",
+   "generated": 32,
+   "ids_first": [
+    13060,
+    498,
+    369
+   ],
+   "ids_last": [
+    3897,
+    553,
+    279
+   ],
+   "ids_sha256_16": "7da83f06ec9f001d",
+   "leg": "ctx1024",
+   "prefill_s": 0.266459,
+   "prefill_tps": 3951.8326,
+   "prompt_tokens": 1053,
+   "provenance": "provenance: mlx-omarchy 0.32.2.dev202609161544+d28aa303 mx=0.32.2.dev202609161544+d28aa303 verified=match harness=7617f970 core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:7b551e283fbc3c7c",
+   "round": 3,
+   "wall_s": 2.359
+  },
+  {
+   "arm": "base",
+   "decode_tps": 190.7104,
+   "device": "Apple M1 Max (G13C C0)",
+   "engine": "bench_decode",
+   "generated": 32,
+   "ids_first": [
+    9707,
+    0,
+    2585
+   ],
+   "ids_last": [
+    646,
+    387,
+    7881
+   ],
+   "ids_sha256_16": "7fd25a869ff21678",
+   "leg": "short",
+   "prefill_s": 0.06531,
+   "prefill_tps": 459.3452,
+   "prompt_tokens": 30,
+   "provenance": "provenance: mlx-omarchy 0.32.2.dev202609161544+d28aa303 mx=0.32.2.dev202609161544+d28aa303 verified=match harness=7617f970 core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:7b551e283fbc3c7c",
+   "round": 4,
+   "wall_s": 1.761
+  },
+  {
+   "arm": "cand",
+   "decode_tps": 167.6915,
+   "device": "Apple M1 Max (G13C C0)",
+   "engine": "bench_decode",
+   "generated": 32,
+   "ids_first": [
+    9707,
+    0,
+    2585
+   ],
+   "ids_last": [
+    646,
+    387,
+    7881
+   ],
+   "ids_sha256_16": "7fd25a869ff21678",
+   "leg": "short",
+   "prefill_s": 0.066287,
+   "prefill_tps": 452.5781,
+   "prompt_tokens": 30,
+   "provenance": "provenance: mlx-omarchy 0.32.2.dev202609161611+7617f970 mx=0.32.2.dev202609161611+7617f970 verified=match harness=7617f970 core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:30b52e24594ed3c3",
+   "round": 4,
+   "wall_s": 1.762
+  },
+  {
+   "arm": "base",
+   "decode_tps": 142.7255,
+   "device": "Apple M1 Max (G13C C0)",
+   "engine": "bench_decode",
+   "generated": 32,
+   "ids_first": [
+    13060,
+    498,
+    369
+   ],
+   "ids_last": [
+    3897,
+    553,
+    279
+   ],
+   "ids_sha256_16": "7da83f06ec9f001d",
+   "leg": "ctx1024",
+   "prefill_s": 0.274399,
+   "prefill_tps": 3837.478,
+   "prompt_tokens": 1053,
+   "provenance": "provenance: mlx-omarchy 0.32.2.dev202609161544+d28aa303 mx=0.32.2.dev202609161544+d28aa303 verified=match harness=7617f970 core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:7b551e283fbc3c7c",
+   "round": 4,
+   "wall_s": 2.443
+  },
+  {
+   "arm": "cand",
+   "decode_tps": 111.0007,
+   "device": "Apple M1 Max (G13C C0)",
+   "engine": "bench_decode",
+   "generated": 32,
+   "ids_first": [
+    13060,
+    498,
+    369
+   ],
+   "ids_last": [
+    3897,
+    553,
+    279
+   ],
+   "ids_sha256_16": "7da83f06ec9f001d",
+   "leg": "ctx1024",
+   "prefill_s": 0.275065,
+   "prefill_tps": 3828.1912,
+   "prompt_tokens": 1053,
+   "provenance": "provenance: mlx-omarchy 0.32.2.dev202609161611+7617f970 mx=0.32.2.dev202609161611+7617f970 verified=match harness=7617f970 core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:30b52e24594ed3c3",
+   "round": 4,
+   "wall_s": 2.463
+  }
+ ],
+ "summary": {
+  "ctx1024/base": {
+   "decode_tps_all": [
+    134.3654,
+    149.9948,
+    134.0283,
+    141.0789,
+    142.7255
+   ],
+   "decode_tps_median": 141.0789,
+   "ids_sha256_16": [
+    "7da83f06ec9f001d"
+   ],
+   "prefill_tps_median": 3882.205,
+   "provenance": [
+    "provenance: mlx-omarchy 0.32.2.dev202609161544+d28aa303 mx=0.32.2.dev202609161544+d28aa303 verified=match harness=7617f970 core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:7b551e283fbc3c7c"
+   ]
+  },
+  "ctx1024/cand": {
+   "decode_tps_all": [
+    112.1333,
+    105.6508,
+    107.8543,
+    112.4242,
+    111.0007
+   ],
+   "decode_tps_median": 111.0007,
+   "ids_sha256_16": [
+    "7da83f06ec9f001d"
+   ],
+   "prefill_tps_median": 3829.5874,
+   "provenance": [
+    "provenance: mlx-omarchy 0.32.2.dev202609161611+7617f970 mx=0.32.2.dev202609161611+7617f970 verified=match harness=7617f970 core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:30b52e24594ed3c3"
+   ]
+  },
+  "short/base": {
+   "decode_tps_all": [
+    188.1068,
+    189.0666,
+    190.483,
+    190.6328,
+    190.7104
+   ],
+   "decode_tps_median": 190.483,
+   "ids_sha256_16": [
+    "7fd25a869ff21678"
+   ],
+   "prefill_tps_median": 458.5842,
+   "provenance": [
+    "provenance: mlx-omarchy 0.32.2.dev202609161544+d28aa303 mx=0.32.2.dev202609161544+d28aa303 verified=match harness=7617f970 core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:7b551e283fbc3c7c"
+   ]
+  },
+  "short/cand": {
+   "decode_tps_all": [
+    172.1821,
+    172.5125,
+    172.4342,
+    171.3657,
+    167.6915
+   ],
+   "decode_tps_median": 172.1821,
+   "ids_sha256_16": [
+    "7fd25a869ff21678"
+   ],
+   "prefill_tps_median": 451.6338,
+   "provenance": [
+    "provenance: mlx-omarchy 0.32.2.dev202609161611+7617f970 mx=0.32.2.dev202609161611+7617f970 verified=match harness=7617f970 core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:30b52e24594ed3c3"
+   ]
+  }
+ }
+}

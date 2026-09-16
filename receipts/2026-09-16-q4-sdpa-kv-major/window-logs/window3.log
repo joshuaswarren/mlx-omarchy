@@ -1,0 +1,32 @@
+inactive
+2026-09-16T16:25:21Z
+2026-09-16T16:25:21Z
+jw16mbp1-linux
+12 -rw-r--r-- 1 joshuawarren joshuawarren 0 Sep 16 07:31 /tmp/m1-gpu.lock
+nested flock -n returned 1 (held)
+== C++ sdpa decode fused parity (default-off tree, 4 cases) ==
+
+/var/tmp/SdpaKvMajorJw16/cand-tree/.work/mlx/tests/omarchy/test_sdpa_decode_fused.cpp:467: MESSAGE: keys 1053 dispatches 1
+  logged: keys := 1053
+
+===============================================================================
+[doctest] test cases:     4 |     4 passed | 0 failed | 0 skipped
+[doctest] assertions: 18856 | 18856 passed | 0 failed |
+[doctest] Status: SUCCESS!
+== batched screens, env unset: base vs cand (must agree) ==
+-- base --
+k=   30 dispatches/call=1.00 host=   0.69 us gpu=  19.13 us p10=  17.73 p90=  31.15
+k= 1024 dispatches/call=1.00 host=   1.97 us gpu=  61.75 us p10=  52.01 p90=  68.26
+k= 1053 dispatches/call=1.00 host=   4.26 us gpu=  93.76 us p10=  88.31 p90= 103.16
+-- cand (env unset -> per-head route) --
+k=   30 dispatches/call=1.00 host=   0.62 us gpu=  19.68 us p10=  17.36 p90=  22.73
+k= 1024 dispatches/call=1.00 host=   1.79 us gpu=  53.04 us p10=  48.36 p90=  57.10
+k= 1053 dispatches/call=1.00 host=   4.37 us gpu=  73.35 us p10=  65.33 p90=  85.16
+== per-token dispatch counters (cand wheel, env unset) ==
+provenance: mlx-omarchy 0.32.2.dev202609161621+aba82b49 mx=0.32.2.dev202609161621+aba82b49 verified=match harness=3ea2d3c7 core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:f0bada5e71b41bf6
+{"device": "Device(gpu, 0)", "per_token": {"gpu_primitive_dispatches": 858, "vk_compute_dispatches": 201, "vk_submissions": 1}, "prompt_tokens": 30, "rows": [{"gpu_primitive_dispatches": 2736, "prompt_tokens": 30, "token": 0, "vk_compute_dispatches": 967, "vk_submissions": 5}, {"gpu_primitive_dispatches": 858, "prompt_tokens": 30, "token": 1, "vk_compute_dispatches": 201, "vk_submissions": 1}, {"gpu_primitive_dispatches": 858, "prompt_tokens": 30, "token": 2, "vk_compute_dispatches": 201, "vk_submissions": 1}, {"gpu_primitive_dispatches": 858, "prompt_tokens": 30, "token": 3, "vk_compute_dispatches": 201, "vk_submissions": 1}, {"gpu_primitive_dispatches": 858, "prompt_tokens": 30, "token": 4, "vk_compute_dispatches": 201, "vk_submissions": 1}, {"gpu_primitive_dispatches": 858, "prompt_tokens": 30, "token": 5, "vk_compute_dispatches": 201, "vk_submissions": 1}, {"gpu_primitive_dispatches": 858, "prompt_tokens": 30, "token": 6, "vk_compute_dispatches": 201, "vk_submissions": 1}, {"gpu_primitive_dispatches": 858, "prompt_tokens": 30, "token": 7, "vk_compute_dispatches": 201, "vk_submissions": 1}]}
+2026-09-16T16:25:23Z
+lock inode still 12
+llm-inference-after: active
+window-rc=0
+2026-09-16T16:25:25Z

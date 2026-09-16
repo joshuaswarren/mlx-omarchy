@@ -1,0 +1,21 @@
+== base identity ==
+d28aa303 encoder: device-resident const cache, opt-in; run() re-runnable via --repeat
+== base wheel ==
+  Created wheel for mlx-omarchy: filename=mlx_omarchy-0.32.2.dev202609161544+d28aa303-cp314-cp314-linux_aarch64.whl size=7772672 sha256=e4c5ed537cf1c7c6ed20d11b62b3df96181ca4ca30b1addb366ede143e821de1
+  Stored in directory: /tmp/pip-ephem-wheel-cache-prffvlzj/wheels/34/d5/ab/5176ea46a821c623f02d18f640efa7b0e21ea75de4bff57d68
+Successfully built mlx-omarchy
+[receipt] base wheel: /var/tmp/SdpaKvMajorJw16/dist-base/mlx_omarchy-0.32.2.dev202609161544+d28aa303-cp314-cp314-linux_aarch64.whl
+e4c5ed537cf1c7c6ed20d11b62b3df96181ca4ca30b1addb366ede143e821de1  /var/tmp/SdpaKvMajorJw16/dist-base/mlx_omarchy-0.32.2.dev202609161544+d28aa303-cp314-cp314-linux_aarch64.whl
+[receipt] base stamp ok: +d28aa303
+base wheel: /var/tmp/SdpaKvMajorJw16/venv-base/lib/python3.14/site-packages/mlx
+== cand identity ==
+d30c041e sdpa: kv-head-major decode twin — one workgroup per kv head streams KV once
+== cand wheel ==
+  Created wheel for mlx-omarchy: filename=mlx_omarchy-0.32.2.dev202609161546+d30c041e-cp314-cp314-linux_aarch64.whl size=7782515 sha256=74b53de7160c02dddffd4afa88f35b444c380669bd29ba8da9610a84a5932acb
+  Stored in directory: /tmp/pip-ephem-wheel-cache-kqkdqx7v/wheels/b2/03/4e/df2c84c33e4fdd4624e6d8db5615bb7c1d8c9358caad34695d
+Successfully built mlx-omarchy
+[receipt] cand wheel: /var/tmp/SdpaKvMajorJw16/dist-cand/mlx_omarchy-0.32.2.dev202609161546+d30c041e-cp314-cp314-linux_aarch64.whl
+74b53de7160c02dddffd4afa88f35b444c380669bd29ba8da9610a84a5932acb  /var/tmp/SdpaKvMajorJw16/dist-cand/mlx_omarchy-0.32.2.dev202609161546+d30c041e-cp314-cp314-linux_aarch64.whl
+[receipt] cand stamp ok: +d30c041e
+cand wheel: /var/tmp/SdpaKvMajorJw16/venv-cand/lib/python3.14/site-packages/mlx
+ALL-DONE

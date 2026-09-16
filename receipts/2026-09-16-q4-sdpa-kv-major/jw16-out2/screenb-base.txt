@@ -1,0 +1,3 @@
+k=   30 dispatches/call=1.00 host=   0.79 us gpu=  30.25 us p10=  29.22 p90=  34.10
+k= 1024 dispatches/call=1.00 host=   2.71 us gpu=  57.38 us p10=  51.30 p90=  68.02
+k= 1053 dispatches/call=1.00 host=   4.42 us gpu=  84.78 us p10=  75.46 p90= 104.35

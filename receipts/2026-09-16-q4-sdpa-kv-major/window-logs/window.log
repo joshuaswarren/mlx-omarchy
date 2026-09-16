@@ -1,0 +1,32 @@
+llm-inference after stop: inactive
+2026-09-16T15:56:14Z
+2026-09-16T15:56:14Z
+jw16mbp1-linux
+12 -rw-r--r-- 1 joshuawarren joshuawarren 0 Sep 16 07:31 /tmp/m1-gpu.lock
+nested flock -n returned 1 (held)
+== C++ sdpa decode fused parity (cand build tree) ==
+
+/var/tmp/SdpaKvMajorJw16/cand-tree/.work/mlx/tests/omarchy/test_sdpa_decode_fused.cpp:467: MESSAGE: keys 1053 dispatches 1
+  logged: keys := 1053
+
+===============================================================================
+[doctest] test cases:     4 |     4 passed | 0 failed | 0 skipped
+[doctest] assertions: 18856 | 18856 passed | 0 failed |
+[doctest] Status: SUCCESS!
+== kernel screens (median us per dispatch) ==
+-- base --
+k=   30 dispatches/call=1.00 median=  208.17 us p10=  173.17 p90=  236.25
+k= 1024 dispatches/call=1.00 median=  307.02 us p10=  279.17 p90=  383.87
+k= 1053 dispatches/call=1.00 median=  321.67 us p10=  259.12 p90=  405.46
+-- cand --
+k=   30 dispatches/call=1.00 median=  425.33 us p10=  406.12 p90=  492.08
+k= 1024 dispatches/call=1.00 median=  803.89 us p10=  791.83 p90=  830.20
+k= 1053 dispatches/call=1.00 median=  898.64 us p10=  857.20 p90=  933.33
+== per-token dispatch counters (cand wheel) ==
+provenance: mlx-omarchy 0.32.2.dev202609161551+6a5ebc43 mx=0.32.2.dev202609161551+6a5ebc43 verified=match harness=3ea2d3c7 core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:1b23fe3b8cd597c0
+{"device": "Device(gpu, 0)", "per_token": {"gpu_primitive_dispatches": 858, "vk_compute_dispatches": 201, "vk_submissions": 1}, "prompt_tokens": 30, "rows": [{"gpu_primitive_dispatches": 2736, "prompt_tokens": 30, "token": 0, "vk_compute_dispatches": 967, "vk_submissions": 5}, {"gpu_primitive_dispatches": 858, "prompt_tokens": 30, "token": 1, "vk_compute_dispatches": 201, "vk_submissions": 1}, {"gpu_primitive_dispatches": 858, "prompt_tokens": 30, "token": 2, "vk_compute_dispatches": 201, "vk_submissions": 1}, {"gpu_primitive_dispatches": 858, "prompt_tokens": 30, "token": 3, "vk_compute_dispatches": 201, "vk_submissions": 1}, {"gpu_primitive_dispatches": 858, "prompt_tokens": 30, "token": 4, "vk_compute_dispatches": 201, "vk_submissions": 1}, {"gpu_primitive_dispatches": 858, "prompt_tokens": 30, "token": 5, "vk_compute_dispatches": 201, "vk_submissions": 1}, {"gpu_primitive_dispatches": 858, "prompt_tokens": 30, "token": 6, "vk_compute_dispatches": 201, "vk_submissions": 1}, {"gpu_primitive_dispatches": 858, "prompt_tokens": 30, "token": 7, "vk_compute_dispatches": 201, "vk_submissions": 1}]}
+== interleaved A/B, 5 rounds: base(d28aa303) vs cand(d30c041e kv-major) ==
+arm base: missing python or wheel
+llm-inference after window: active
+window rc=1
+2026-09-16T15:56:19Z

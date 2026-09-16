@@ -1,0 +1,66 @@
+llm-inference after stop: inactive
+2026-09-16T16:17:19Z
+2026-09-16T16:17:19Z
+jw16mbp1-linux
+12 -rw-r--r-- 1 joshuawarren joshuawarren 0 Sep 16 07:31 /tmp/m1-gpu.lock
+nested flock -n returned 1 (held)
+== C++ sdpa decode fused parity (cand build tree, 4 cases incl kv-major bit-identity) ==
+
+/var/tmp/SdpaKvMajorJw16/cand-tree/.work/mlx/tests/omarchy/test_sdpa_decode_fused.cpp:467: MESSAGE: keys 1053 dispatches 1
+  logged: keys := 1053
+
+===============================================================================
+[doctest] test cases:     4 |     4 passed | 0 failed | 0 skipped
+[doctest] assertions: 18856 | 18856 passed | 0 failed |
+[doctest] Status: SUCCESS!
+== kernel screens, per-call sync (median us per dispatch) ==
+-- base --
+k=   30 dispatches/call=1.00 median=  206.92 us p10=  176.17 p90=  234.54
+k= 1024 dispatches/call=1.00 median=  304.00 us p10=  277.21 p90=  378.04
+k= 1053 dispatches/call=1.00 median=  394.92 us p10=  385.79 p90=  412.17
+-- cand --
+k=   30 dispatches/call=1.00 median=  433.92 us p10=  410.63 p90=  464.84
+k= 1024 dispatches/call=1.00 median=  801.19 us p10=  789.46 p90=  831.92
+k= 1053 dispatches/call=1.00 median=  843.32 us p10=  827.88 p90=  876.63
+== kernel screens, batched eval (GPU time isolated from host) ==
+-- base --
+k=   30 dispatches/call=1.00 host=   0.79 us gpu=  30.25 us p10=  29.22 p90=  34.10
+k= 1024 dispatches/call=1.00 host=   2.71 us gpu=  57.38 us p10=  51.30 p90=  68.02
+k= 1053 dispatches/call=1.00 host=   4.42 us gpu=  84.78 us p10=  75.46 p90= 104.35
+-- cand --
+k=   30 dispatches/call=1.00 host=   1.44 us gpu=  47.40 us p10=  45.42 p90=  90.91
+k= 1024 dispatches/call=1.00 host=   4.49 us gpu= 155.24 us p10= 153.18 p90= 206.44
+k= 1053 dispatches/call=1.00 host=   4.42 us gpu= 153.95 us p10= 153.42 p90= 289.61
+== per-token dispatch counters (cand wheel) ==
+provenance: mlx-omarchy 0.32.2.dev202609161611+7617f970 mx=0.32.2.dev202609161611+7617f970 verified=match harness=3ea2d3c7 core.cpython-314-aarch64-linux-gnu.so=sha256:4ad850da16c300ea libmlx.so=sha256:30b52e24594ed3c3
+{"device": "Device(gpu, 0)", "per_token": {"gpu_primitive_dispatches": 858, "vk_compute_dispatches": 201, "vk_submissions": 1}, "prompt_tokens": 30, "rows": [{"gpu_primitive_dispatches": 2736, "prompt_tokens": 30, "token": 0, "vk_compute_dispatches": 967, "vk_submissions": 5}, {"gpu_primitive_dispatches": 858, "prompt_tokens": 30, "token": 1, "vk_compute_dispatches": 201, "vk_submissions": 1}, {"gpu_primitive_dispatches": 858, "prompt_tokens": 30, "token": 2, "vk_compute_dispatches": 201, "vk_submissions": 1}, {"gpu_primitive_dispatches": 858, "prompt_tokens": 30, "token": 3, "vk_compute_dispatches": 201, "vk_submissions": 1}, {"gpu_primitive_dispatches": 858, "prompt_tokens": 30, "token": 4, "vk_compute_dispatches": 201, "vk_submissions": 1}, {"gpu_primitive_dispatches": 858, "prompt_tokens": 30, "token": 5, "vk_compute_dispatches": 201, "vk_submissions": 1}, {"gpu_primitive_dispatches": 858, "prompt_tokens": 30, "token": 6, "vk_compute_dispatches": 201, "vk_submissions": 1}, {"gpu_primitive_dispatches": 858, "prompt_tokens": 30, "token": 7, "vk_compute_dispatches": 201, "vk_submissions": 1}]}
+== interleaved A/B, 5 rounds: base(d28aa303) vs cand(7617f970 kv-major) ==
+round 0 short    base   decode  188.1068 tok/s  prefill   458.4061 tok/s  ids 7fd25a869ff21678
+round 0 short    cand   decode  172.1821 tok/s  prefill   448.7144 tok/s  ids 7fd25a869ff21678
+round 0 ctx1024  base   decode  134.3654 tok/s  prefill  3841.5658 tok/s  ids 7da83f06ec9f001d
+round 0 ctx1024  cand   decode  112.1333 tok/s  prefill  3843.9756 tok/s  ids 7da83f06ec9f001d
+round 1 short    cand   decode  172.5125 tok/s  prefill   452.3878 tok/s  ids 7fd25a869ff21678
+round 1 short    base   decode  189.0666 tok/s  prefill   459.4639 tok/s  ids 7fd25a869ff21678
+round 1 ctx1024  cand   decode  105.6508 tok/s  prefill  3829.5874 tok/s  ids 7da83f06ec9f001d
+round 1 ctx1024  base   decode  149.9948 tok/s  prefill  3892.5437 tok/s  ids 7da83f06ec9f001d
+round 2 short    base   decode  190.4830 tok/s  prefill   453.8773 tok/s  ids 7fd25a869ff21678
+round 2 short    cand   decode  172.4342 tok/s  prefill   451.6338 tok/s  ids 7fd25a869ff21678
+round 2 ctx1024  base   decode  134.0283 tok/s  prefill  3882.2050 tok/s  ids 7da83f06ec9f001d
+round 2 ctx1024  cand   decode  107.8543 tok/s  prefill  3818.7093 tok/s  ids 7da83f06ec9f001d
+round 3 short    cand   decode  171.3657 tok/s  prefill   449.8913 tok/s  ids 7fd25a869ff21678
+round 3 short    base   decode  190.6328 tok/s  prefill   458.5842 tok/s  ids 7fd25a869ff21678
+round 3 ctx1024  cand   decode  112.4242 tok/s  prefill  3831.0049 tok/s  ids 7da83f06ec9f001d
+round 3 ctx1024  base   decode  141.0789 tok/s  prefill  3951.8326 tok/s  ids 7da83f06ec9f001d
+round 4 short    base   decode  190.7104 tok/s  prefill   459.3452 tok/s  ids 7fd25a869ff21678
+round 4 short    cand   decode  167.6915 tok/s  prefill   452.5781 tok/s  ids 7fd25a869ff21678
+round 4 ctx1024  base   decode  142.7255 tok/s  prefill  3837.4780 tok/s  ids 7da83f06ec9f001d
+round 4 ctx1024  cand   decode  111.0007 tok/s  prefill  3828.1912 tok/s  ids 7da83f06ec9f001d
+short/base       decode median  190.4830 [188.1068, 189.0666, 190.483, 190.6328, 190.7104]
+short/cand       decode median  172.1821 [172.1821, 172.5125, 172.4342, 171.3657, 167.6915]
+ctx1024/base     decode median  141.0789 [134.3654, 149.9948, 134.0283, 141.0789, 142.7255]
+ctx1024/cand     decode median  111.0007 [112.1333, 105.6508, 107.8543, 112.4242, 111.0007]
+2026-09-16T16:18:05Z
+lock inode still 12
+llm-inference after window: active
+window rc=0
+2026-09-16T16:18:07Z
