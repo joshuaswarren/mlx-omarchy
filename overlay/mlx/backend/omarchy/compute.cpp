@@ -288,6 +288,7 @@
 #include "binary_vec_f16.h"
 #include "binary_vec_bf16.h"
 #include "matmul_rb_f16.h"
+#include "matmul_block_rounded_f16_coopmat.h"
 #include "swiglu_f16.h"
 #include "swiglu_bf16.h"
 #include "fast_trio_norm_f16.h"
@@ -1315,6 +1316,10 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {gather_qmm_nb_fp_hgs_f32, gather_qmm_nb_fp_hgs_f32_size};
     case ComputeKernel::GatherQmmNbFpHgsF16:
       return {gather_qmm_nb_fp_hgs_f16, gather_qmm_nb_fp_hgs_f16_size};
+    case ComputeKernel::MatmulBlockRoundedF16Coopmat:
+      return {
+          matmul_block_rounded_f16_coopmat,
+          matmul_block_rounded_f16_coopmat_size};
     case ComputeKernel::GatherQmmNbFpHgsBF16:
       return {gather_qmm_nb_fp_hgs_bf16, gather_qmm_nb_fp_hgs_bf16_size};
     case ComputeKernel::MatmulComplex64:

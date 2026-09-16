@@ -421,17 +421,6 @@ Translation translate_msl(
   std::string body = source.substr(body_open + 1, body_close - body_open - 1);
   resolve_kernel_templates(source, marker, header, body);
   translate_header(header);
-  // Raw-GLSL passthrough: a body section fenced by // omarchy-glsl-begin
-  // and // omarchy-glsl-end passes through every translation step as-is
-  // (the fence lines are comments; glslang ignores them) and only turns on
-  // the cooperative-matrix extensions. Buffer macros apply inside the
-  // fence, so parameter names must avoid x, y and z (generated uvec3
-  // swizzles would collide); threadgroup scratch is declared outside the
-  // fence so the shared hoist lifts it; the output-store cast rewrite is
-  // idempotent for plain GLSL.
-  const bool raw_glsl_passthrough =
-      body.find("// omarchy-glsl-begin") != std::string::npos ||
-      body.find("coopmat<") != std::string::npos;
   const std::vector<std::string> forbidden = {
       "texture", "sampler", "imageblock", "raytracing", "simdgroup_matrix",
       "quadgroup", "visible_function", "intersection_function", "object_data"};
@@ -631,10 +620,6 @@ Translation translate_msl(
   if (needs_int16) {
     glsl << "#extension GL_EXT_shader_explicit_arithmetic_types_int16 : require\n"
          << "#extension GL_EXT_shader_16bit_storage : require\n";
-  }
-  if (raw_glsl_passthrough) {
-    glsl << "#extension GL_KHR_cooperative_matrix : require\n"
-         << "#extension GL_KHR_memory_scope_semantics : require\n";
   }
   if (needs_int64) {
     glsl << "#extension GL_EXT_shader_explicit_arithmetic_types_int64 : require\n";

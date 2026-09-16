@@ -1,0 +1,160 @@
+--- a/mlx/fast.h
++++ b/mlx/fast.h
+@@ -107,4 +107,17 @@
+     bool ensure_row_contiguous = false,
+     StreamOrDevice s = {});
+ 
++// Block-rounded fp16 matmul: ``out[..., m, n]`` is the sum over 16-wide K
++// blocks of ``fp16(accumulate_fp32(x[..., block] * weight[n * K + block]))``
++// with each block's fp32 partial rounded to fp16 and the blocks
++// accumulated in fp16 ascending order. ``weight`` is a 1-D fp16 array of
++// ``N * K`` elements (the row-major ``[N, K]`` matrix flattened), K must be
++// a positive multiple of 16, and both operands must be fp16. On backends
++// without the fused kernel this falls back to a single fp32-accumulated
++// matmul rounded once, which is NOT the block-rounded contract.
++MLX_API array block_rounded_matmul(
++    const array& x,
++    const array& weight,
++    StreamOrDevice s = {});
++
+ } // namespace mlx::core::fast
+--- a/mlx/fast.cpp
++++ b/mlx/fast.cpp
+@@ -1065,4 +1065,53 @@
+   return to_fp8_ == a_other.to_fp8_;
+ }
+ 
++array block_rounded_matmul(
++    const array& x,
++    const array& weight,
++    StreamOrDevice s_ /* = {} */) {
++  auto s = to_stream(s_);
++  if (weight.ndim() != 1) {
++    std::ostringstream msg;
++    msg << "[block_rounded_matmul] weight must have 1 dimension but has "
++        << weight.ndim() << " dimensions.";
++    throw std::invalid_argument(msg.str());
++  }
++  if (x.dtype() != float16 || weight.dtype() != float16) {
++    std::ostringstream msg;
++    msg << "[block_rounded_matmul] received unsupported types " << x.dtype()
++        << " and " << weight.dtype() << "; both operands must be float16.";
++    throw std::invalid_argument(msg.str());
++  }
++  const int K = x.shape(-1);
++  if (K <= 0 || (K % 16) != 0 || weight.size() % K != 0) {
++    std::ostringstream msg;
++    msg << "[block_rounded_matmul] K must be a positive multiple of 16 and"
++           " the weight size a positive multiple of K, but got K = "
++        << K << " and weight size " << weight.size() << ".";
++    throw std::invalid_argument(msg.str());
++  }
++  const int N = static_cast<int>(weight.size()) / K;
++
++  auto fallback = [s, K, N](const std::vector<array>& inputs) {
++    // Composition fallback: one fp32-accumulated matmul rounded once.
++    // Correct math, but not the block-rounded contract.
++    auto wb = transpose(reshape(inputs[1], {N, K}, s), {1, 0}, s);
++    return std::vector<array>{astype(
++        matmul(astype(inputs[0], float32, s), astype(wb, float32, s), s),
++        float16,
++        s)};
++  };
++
++  if (!BlockRoundedMatmul::use_fallback(s)) {
++    Shape out_shape(x.shape().begin(), x.shape().end() - 1);
++    out_shape.push_back(N);
++    return array(
++        out_shape,
++        float16,
++        std::make_shared<BlockRoundedMatmul>(s, fallback),
++        {x, weight});
++  }
++  return fallback({x, weight})[0];
++}
++
+ } // namespace mlx::core::fast
+--- a/mlx/fast_primitives.h
++++ b/mlx/fast_primitives.h
+@@ -499,4 +499,32 @@
+   CompileOptions::Data compile_options_;
+ };
+ 
++class BlockRoundedMatmul : public Custom {
++ public:
++  BlockRoundedMatmul(
++      Stream stream,
++      std::function<std::vector<array>(std::vector<array>)> fallback)
++      : Custom(stream, std::move(fallback)) {}
++
++  static bool use_fallback(Stream stream);
++
++  void eval_cpu(const std::vector<array>& inputs, std::vector<array>& outputs)
++      override {
++    throw std::runtime_error("NYI");
++  }
++  void eval_gpu(const std::vector<array>& inputs, std::vector<array>& outputs)
++      override;
++
++  DEFINE_NAME(BlockRoundedMatmul)
++  DEFINE_DEFAULT_IS_EQUIVALENT()
++
++  std::vector<Shape> output_shapes(const std::vector<array>& inputs)
++      override {
++    Shape shape = inputs[0].shape();
++    shape.back() =
++        static_cast<int>(inputs[1].size()) / inputs[0].shape(-1);
++    return {shape};
++  }
++};
++
+ } // namespace mlx::core::fast
+--- a/mlx/backend/no_gpu/primitives.cpp
++++ b/mlx/backend/no_gpu/primitives.cpp
+@@ -182,6 +182,8 @@
+ NO_GPU_MULTI(ConvertFP8)
+ NO_GPU_MULTI(Quantize)
+ NO_GPU_MULTI(CustomKernel)
++NO_GPU_USE_FALLBACK(BlockRoundedMatmul)
++
+ } // namespace fast
+ 
+ namespace distributed {
+--- a/python/src/fast.cpp
++++ b/python/src/fast.cpp
+@@ -387,6 +387,35 @@
+       )pbdoc");
+ 
+   m.def(
++      "block_rounded_matmul",
++      &mx::fast::block_rounded_matmul,
++      "x"_a,
++      "weight"_a,
++      nb::kw_only(),
++      "stream"_a = nb::none(),
++      nb::sig(
++          "def block_rounded_matmul(x: array, weight: array, *, stream: StreamOrDevice = None) -> array"),
++      R"pbdoc(
++        Block-rounded fp16 matmul.
++
++        Computes ``x @ weight.T`` with fp16 operands: each 16-wide block of
++        the contraction axis accumulates in fp32 on the cooperative matrix,
++        the per-block partial is rounded to fp16, and the blocks are
++        accumulated in fp16 ascending order. The contraction axis must be a
++        positive multiple of 16.
++
++        Args:
++            x (array): Input array whose last dimension is the contraction
++              axis ``K``.
++            weight (array): One-dimensional fp16 weight of ``N * K``
++              elements: the row-major ``[N, K]`` matrix flattened.
++            stream (mx.stream, optional): Stream to run on. Default: ``None``.
++
++        Returns:
++            array: The fp16 result with shape ``x.shape[:-1] + (N,)``.
++      )pbdoc");
++
++  m.def(
+       "metal_kernel",
+       [](const std::string& name,
+          const std::vector<std::string>& input_names,

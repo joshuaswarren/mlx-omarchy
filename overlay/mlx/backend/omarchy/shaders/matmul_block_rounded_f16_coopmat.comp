@@ -1,0 +1,204 @@
+#version 460
+#extension GL_KHR_cooperative_matrix : require
+#extension GL_KHR_memory_scope_semantics : require
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
+
+// Block-rounded fp16 matmul: fp16 operands, fp32 accumulation through the
+// G13 hardware 8x8x8 matrix unit (subgroup-scope cooperative matrix), with
+// each 16-wide K block's fp32 partial rounded to fp16 and the blocks
+// accumulated in fp16 ascending order. This is the rounding contract of the
+// block-dispatch chain (per-block matmul, then a fp16 round and ascending
+// fp16 sum per block), folded into one dispatch: the [K/16, M, N] fp32
+// partials tensor is never materialized.
+//
+// Bit-identity with the two-dispatch path is structural, not sampled: per
+// 8-wide k half this kernel stages the same 32x8 A patch and 8x32 B patch
+// values matmul_coopmat.comp stages (fp16 widened to fp32 exactly, so the
+// MMA sees the same f32 operand bits), issues the same 16 coopMatMulAdd per
+// half in the same rb-then-cb order onto per-accumulator fp32 accumulators
+// initialized once per 16-block, and adds the halves in ascending k. The
+// drain then applies the chain inline: block 0 assigns the rounded partial,
+// every later block rounds its partial and adds it to the running fp16 sum,
+// the same strictly sequential order the chain kernel performed. K must be
+// a positive multiple of 16 (the op enforces this); M and N tails are
+// masked at staging and at the drain.
+//
+// One 32-lane workgroup owns one 32x32 output tile: 4x4 8x8 accumulators.
+// Shared usage is 4.25 KiB (the staged 32x16 A tile, the 16x32 B tile, and
+// one 8x8 drain slot). Push-constant layout matches matmul_coopmat.comp;
+// lhs_gap/rhs_gap are the stored row strides of the row-major operands.
+// The alpha/beta/flags/batch fields are unused here (alpha 1, no C, 2-D).
+
+const uint TILE = 32u;
+const uint MAT = 8u;
+
+layout(local_size_x = 32) in;
+
+layout(set = 0, binding = 0, std430) readonly buffer InputA {
+  float16_t values[];
+} input_a;
+layout(set = 0, binding = 1, std430) readonly buffer InputB {
+  float16_t values[];
+} input_b;
+layout(set = 0, binding = 2, std430) writeonly buffer Output {
+  float16_t values[];
+} output_data;
+
+layout(push_constant) uniform Params {
+  uint count;
+  uint operation;
+  uint lhs_size;
+  uint rhs_size;
+  uint reduce_size;
+  uint output_size;
+  uint lhs_offset;
+  uint rhs_offset;
+  uint output_offset;
+  uint aux_size;
+  uint aux_offset;
+  uint matrix_m;
+  uint matrix_n;
+  uint matrix_k;
+  uint flags;
+  float alpha;
+  float beta;
+  uint dims;
+  uint shape[4];
+  uint in_strides[4];
+  uint out_strides[4];
+  uint lhs_gap;
+  uint rhs_gap;
+} params;
+
+// 4.25 KiB per 32-lane workgroup: one 32x16 A tile, one 16x32 B tile, one
+// 8x8 drain slot.
+shared float tile_a[TILE * 16u];
+shared float tile_b[16u * TILE];
+shared float drain_s[MAT * MAT];
+
+void main() {
+  uint lane = gl_LocalInvocationID.x;
+  uint m_count = params.matrix_m;
+  uint k_count = params.matrix_k;
+  uint n_count = params.matrix_n;
+  uint blocks = k_count / 16u;
+  uint col_base = gl_WorkGroupID.x * TILE;
+  uint row_base = gl_WorkGroupID.y * TILE;
+  uint column = col_base + lane;
+
+  float16_t chain[4u * MAT];
+  for (uint i = 0u; i < 4u * MAT; ++i) {
+    chain[i] = float16_t(0.0);
+  }
+
+  for (uint block = 0u; block < blocks; ++block) {
+    uint k_base = block * 16u;
+    // Stage A (32 rows x 16 k): word i covers row i / 16, k offset i % 16.
+    for (uint j = 0u; j < 16u; ++j) {
+      uint i = lane + 32u * j;
+      uint row_local = i / 16u;
+      uint kk = i % 16u;
+      uint row = row_base + row_local;
+      float v = 0.0;
+      if (row < m_count) {
+        v = float(input_a.values[params.lhs_offset + row * params.lhs_gap +
+                                 k_base + kk]);
+      }
+      tile_a[row_local * 16u + kk] = v;
+    }
+    // Stage B (16 k x 32 columns): word i covers k offset i / 32.
+    for (uint j = 0u; j < 16u; ++j) {
+      uint i = lane + 32u * j;
+      uint kk = i / 32u;
+      uint col_local = i % 32u;
+      uint col = col_base + col_local;
+      float v = 0.0;
+      if (col < n_count) {
+        v = float(input_b.values[params.rhs_offset + col * params.rhs_gap +
+                                 k_base + kk]);
+      }
+      tile_b[kk * TILE + col_local] = v;
+    }
+    barrier();
+
+    // The two 8-wide k halves, ascending: per half, reload the staged
+    // patches into 4+4 matrices and issue the 16 coopMatMulAdd in
+    // rb-then-cb order, exactly matmul_coopmat.comp's per-step sequence.
+    coopmat<float, gl_ScopeSubgroup, MAT, MAT, gl_MatrixUseA> mat_a[4];
+    coopmat<float, gl_ScopeSubgroup, MAT, MAT, gl_MatrixUseB> mat_b[4];
+    coopmat<float, gl_ScopeSubgroup, MAT, MAT, gl_MatrixUseAccumulator>
+        acc[4][4];
+    for (uint rb = 0u; rb < 4u; ++rb) {
+      for (uint cb = 0u; cb < 4u; ++cb) {
+        acc[rb][cb] = coopmat<float, gl_ScopeSubgroup, MAT, MAT,
+            gl_MatrixUseAccumulator>(0.0);
+      }
+    }
+    for (uint kstep = 0u; kstep < 2u; ++kstep) {
+      for (uint rb = 0u; rb < 4u; ++rb) {
+        coopMatLoad(
+            mat_a[rb],
+            tile_a,
+            rb * MAT * 16u + kstep * MAT,
+            16u,
+            gl_CooperativeMatrixLayoutRowMajor);
+      }
+      for (uint cb = 0u; cb < 4u; ++cb) {
+        coopMatLoad(
+            mat_b[cb],
+            tile_b,
+            kstep * TILE * MAT + cb * MAT,
+            TILE,
+            gl_CooperativeMatrixLayoutRowMajor);
+      }
+      for (uint rb = 0u; rb < 4u; ++rb) {
+        for (uint cb = 0u; cb < 4u; ++cb) {
+          acc[rb][cb] =
+              coopMatMulAdd(mat_a[rb], mat_b[cb], acc[rb][cb]);
+        }
+      }
+    }
+    barrier();
+
+    // Drain with the chain applied inline. Lane `lane` owns output column
+    // col_base + lane, which lives in accumulator column block lane / MAT
+    // at in-block column lane % MAT, so exactly one cb per rb contributes:
+    // block 0 assigns the rounded partial, later blocks round and add.
+    for (uint rb = 0u; rb < 4u; ++rb) {
+      for (uint cb = 0u; cb < 4u; ++cb) {
+        coopMatStore(
+            acc[rb][cb],
+            drain_s,
+            0u,
+            MAT,
+            gl_CooperativeMatrixLayoutRowMajor);
+        barrier();
+        if (column < n_count && cb == lane / MAT) {
+          for (uint r = 0u; r < MAT; ++r) {
+            uint row = row_base + rb * MAT + r;
+            if (row < m_count) {
+              float16_t h =
+                  float16_t(drain_s[r * MAT + (lane % MAT)]);
+              chain[rb * MAT + r] =
+                  (block == 0u) ? h : (chain[rb * MAT + r] + h);
+            }
+          }
+        }
+        barrier();
+      }
+    }
+  }
+
+  if (column < n_count) {
+    for (uint rb = 0u; rb < 4u; ++rb) {
+      for (uint r = 0u; r < MAT; ++r) {
+        uint row = row_base + rb * MAT + r;
+        if (row < m_count) {
+          output_data.values[params.output_offset + row * n_count + column] =
+              chain[rb * MAT + r];
+        }
+      }
+    }
+  }
+}
