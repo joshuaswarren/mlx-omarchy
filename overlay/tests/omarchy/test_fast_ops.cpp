@@ -2878,13 +2878,15 @@ TEST_CASE("block_rounded_matmul matches the per-block chain reference bit for bi
         split(reshape(x, Shape{m, k / 16, 16}, stream), k / 16, 1, stream);
     auto w_parts = split(
         reshape(w_flat, Shape{n, k / 16, 16}, stream), k / 16, 1, stream);
-    array ref;
-    for (int block = 0; block < k / 16; ++block) {
+    auto block_partial = [&](int block) {
       array xb = astype(x_parts[block], float32, stream);
       array wb = astype(
           transpose(w_parts[block], {1, 0}, stream), float32, stream);
-      array rounded = astype(matmul(xb, wb, stream), float16, stream);
-      ref = block == 0 ? rounded : add(ref, rounded, stream);
+      return astype(matmul(xb, wb, stream), float16, stream);
+    };
+    array ref = block_partial(0);
+    for (int block = 1; block < k / 16; ++block) {
+      ref = add(ref, block_partial(block), stream);
     }
 
     auto got_host = flat(got, stream);
