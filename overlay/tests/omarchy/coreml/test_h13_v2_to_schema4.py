@@ -143,11 +143,11 @@ class ConvertTest(unittest.TestCase):
             for name, digest in (
                 (
                     "program-0.anec",
-                    "a3aa2fe1333a48eba3e7fcae5b848563e2bfa747a232dadf9ed2d568821c5627",
+                    "b801f6212f65da3f5ffdab3d6e21cd49e5ae0c16b709ff945de9aaee93fcb629",
                 ),
                 (
                     "program-1.anec",
-                    "860de06c53e3fdfed9452859042df59902fb733bef0a364b134dd9d9d6374cdd",
+                    "0879c6277cf3d89888735ea69ef96d29fb492d43eacfe42a0f154f8f0f91c8eb",
                 ),
             ):
                 payload = (Path(directory) / "bundle" / name).read_bytes()

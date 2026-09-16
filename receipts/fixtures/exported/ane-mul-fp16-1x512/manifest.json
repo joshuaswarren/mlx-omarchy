@@ -1,137 +1,141 @@
 {
-  "manifest_version": 4,
-  "name": "ane-mul-fp16-1x512",
-  "graph_hash": "fcd8aed34f664f6972866e46c49486a8ba70e92eccc61d9078f32f49261ce65d",
-  "task_descriptors": 1,
-  "inputs": [
-    {
-      "name": "t1",
-      "index": 0,
-      "dtype": "float16",
-      "shape": [
-        1,
-        512
-      ],
-      "byte_size": 1024,
-      "stride": 32768
-    }
-  ],
-  "outputs": [
-    {
-      "name": "t2",
-      "index": 1,
-      "dtype": "float16",
-      "shape": [
-        1,
-        512
-      ],
-      "byte_size": 1024,
-      "stride": 32768
-    }
-  ],
-  "state": [],
-  "payloads": [
-    {
-      "role": "anec",
-      "path": "model.anec",
-      "sha256": "01c61e430633d4d94b3ca9b8dc426cc03f650df49a3deca6ca6845de9712d8ec",
-      "byte_size": 20480
-    },
-    {
-      "role": "weights",
-      "path": "weights.bin",
-      "sha256": "9436a9563e7e7c17767424814e9d418774cad1a507715a75891a15c24c6c6143",
-      "byte_size": 1152
-    }
-  ],
   "compiler": {
-    "host_build": "25G83",
-    "toolchain": "ANECompiler 9.509.0 (macOS 26.6.2, coremlcompiler 3520.5.1)",
-    "target": "h13"
+    "host_build": "Linux 6.17.2-1-pve x86_64 unknown",
+    "target": "h13",
+    "toolchain": "mil-hwxc b61de468d1ca37b687d5fa371e489be16cd84ed1 sha256:42120c27ddfa2bf2c7c2582edcc311f385ec7328f29ddb0e2803685d5d6caaeb"
   },
-  "provenance": {
-    "source_repo": "joshuaswarren/mlx-omarchy",
-    "source_commit": "c17bb1b82490b661ef6a3acd1fa008265383802b",
-    "exported_at": "2026-09-01"
-  },
-  "release_asset": {
-    "model": "ane-mul-fp16-1x512",
-    "model_sha256": "a51edc356e1026ec15dacef9e4ed17e114ebaf26a7a465aa69b3e99b2acd279a"
-  },
-  "intermediates": [],
-  "programs": [
-    {
-      "payload": "model.anec",
-      "operation": "mul",
-      "encoder": "ANECompiler",
-      "task_descriptors": 1,
-      "scratch_bytes": 0,
-      "inputs": [
-        {
-          "tensor": "t1",
-          "channel": 5,
-          "dtype": "float16",
-          "shape": [
-            1,
-            512
-          ],
-          "nchw": [
-            1,
-            512,
-            1,
-            1,
-            64,
-            64
-          ],
-          "logical_bytes": 1024,
-          "allocation_bytes": 32768,
-          "element_offset": 0,
-          "element_count": 512,
-          "physical_elements": 512
-        }
-      ],
-      "outputs": [
-        {
-          "tensor": "t2",
-          "channel": 4,
-          "dtype": "float16",
-          "shape": [
-            1,
-            512
-          ],
-          "nchw": [
-            1,
-            512,
-            1,
-            1,
-            64,
-            64
-          ],
-          "logical_bytes": 1024,
-          "allocation_bytes": 32768,
-          "element_offset": 0,
-          "element_count": 512,
-          "physical_elements": 512
-        }
-      ]
-    }
-  ],
   "dispatch_plan": [
     0
   ],
   "driver_abi_major": 1,
-  "logical_results": [
+  "graph_hash": "9e00edc4fd4d482031fb701ce87890804dbf1e46b34a3b376302f270f3bf2dbe",
+  "inputs": [
     {
-      "name": "t2",
+      "byte_size": 1024,
       "dtype": "float16",
+      "index": 0,
+      "name": "t1",
       "shape": [
         1,
-        512
+        512,
+        1,
+        1
       ],
-      "tensor": "t2",
-      "element_offset": 0,
-      "element_count": 512,
-      "conversion": "identity"
+      "stride": 16384
     }
-  ]
+  ],
+  "intermediates": [],
+  "logical_results": [
+    {
+      "conversion": "identity",
+      "dtype": "float16",
+      "element_count": 512,
+      "element_offset": 0,
+      "name": "t2",
+      "shape": [
+        1,
+        512,
+        1,
+        1
+      ],
+      "tensor": "t2"
+    }
+  ],
+  "manifest_version": 4,
+  "name": "ane-mul-fp16-1x512",
+  "outputs": [
+    {
+      "byte_size": 1024,
+      "dtype": "float16",
+      "index": 0,
+      "name": "t2",
+      "shape": [
+        1,
+        512,
+        1,
+        1
+      ],
+      "stride": 16384
+    }
+  ],
+  "payloads": [
+    {
+      "byte_size": 5632,
+      "path": "program-0.anec",
+      "role": "anec",
+      "sha256": "955793688db2677162511271bd9f1095e3b38906d16bcf79c5f9f52308a900c2"
+    }
+  ],
+  "programs": [
+    {
+      "encoder": "h13-oracle-parity",
+      "inputs": [
+        {
+          "allocation_bytes": 16384,
+          "channel": 5,
+          "dtype": "float16",
+          "element_count": 512,
+          "element_offset": 0,
+          "logical_bytes": 1024,
+          "nchw": [
+            1,
+            1,
+            1,
+            512,
+            1024,
+            1024
+          ],
+          "physical_elements": 512,
+          "shape": [
+            1,
+            512,
+            1,
+            1
+          ],
+          "tensor": "t1"
+        }
+      ],
+      "operation": "mul",
+      "outputs": [
+        {
+          "allocation_bytes": 16384,
+          "channel": 4,
+          "dtype": "float16",
+          "element_count": 512,
+          "element_offset": 0,
+          "logical_bytes": 1024,
+          "nchw": [
+            1,
+            1,
+            1,
+            512,
+            1024,
+            1024
+          ],
+          "physical_elements": 512,
+          "shape": [
+            1,
+            512,
+            1,
+            1
+          ],
+          "tensor": "t2"
+        }
+      ],
+      "payload": "program-0.anec",
+      "scratch_bytes": 0,
+      "task_descriptors": 1
+    }
+  ],
+  "provenance": {
+    "exported_at": "2026-09-15",
+    "source_commit": "b61de467e16d7d86e5702fd2081391755651ef3d",
+    "source_repo": "mil-hwxc"
+  },
+  "release_asset": {
+    "model": "model.mil",
+    "model_sha256": "6d09c06c4a01175460401e3b76d28375077cc3b82be6f87504c04e0b4c42b37d"
+  },
+  "state": [],
+  "task_descriptors": 1
 }
