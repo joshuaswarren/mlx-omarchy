@@ -252,6 +252,97 @@ def _sm_div_kernel():
 
 
 
+
+@cache
+def _pw_kernel(op: str, layout: str, n: int, width: int = 0, time: int = 0):
+    """fp16 pointwise `a <op> b` in one dispatch. The chain this replaces
+    is cast(fp16->f32) x2, one ElementwiseF32, cast(f32->fp16); the kernel
+    widens the identical fp16 operands to fp32, runs the identical fp32
+    op, and applies the same single round-to-nearest-even at the boundary,
+    so the result is bit-identical. `layout` selects how the rhs is
+    addressed: flat for same-shape pairs, bare (the macro of a 0-d
+    reference parameter already carries the [0]) for a broadcast scalar,
+    or the row-broadcast `(index / width) % time` of the conv-stem mask
+    muls, whose per-instance width/time bake into the source. The grid
+    convention is thread counts per axis, so oversized tensors spread the
+    flat element index across y around the 65535-workgroup x limit."""
+    rhs = {
+        "flat": "float(rhs[index])",
+        "scalar": "float(rhs)",
+        "row": f"float(rhs[(index / {width}u) % {time}u])",
+    }[layout]
+    symbol = {"add": "+", "sub": "-", "mul": "*"}[op]
+    stride = min(n, 65535 * 256)
+    source = f"""
+            uint index = thread_position_in_grid.x
+                       + thread_position_in_grid.y * {stride}u;
+            if (index >= {n}u) {{
+                return;
+            }}
+            dst[index] = half(float(lhs[index]) {symbol} {rhs});
+        """
+    return mx.fast.metal_kernel(
+        name=f"encoder_pw_{op}_{layout}",
+        input_names=["lhs", "rhs"],
+        output_names=["dst"],
+        source=source,
+        compile_options={"math_mode": "safe"},
+    )
+
+
+def _pw(op: str, x: mx.array, y: mx.array) -> mx.array | None:
+    """Run the fused pointwise kernel for `op` in (add, sub, mul), or
+    return None when the operand pair does not match one of the three
+    exact broadcast layouts the pinned program uses; the caller then
+    falls back to the dispatch chain the kernel replaces."""
+    if x.dtype != mx.float16 or y.dtype != mx.float16:
+        return None
+    if y.size == 1:
+        layout = "scalar"
+        y = mx.reshape(y, ())
+    elif x.shape == y.shape:
+        layout = "flat"
+    elif (
+        y.ndim == 4 and y.shape[0] == 1 and y.shape[1] == 1 and y.shape[3] == 1
+        and x.ndim == 4 and x.shape[0] == 1 and x.shape[2] == y.shape[2]
+    ):
+        layout = "row"
+    else:
+        return None
+    n = x.size
+    threads_x = min(n, 65535 * 256)
+    threads_y = (n + threads_x - 1) // threads_x
+    out = _pw_kernel(op, layout, n,
+                     x.shape[3] if layout == "row" else 0,
+                     y.shape[2] if layout == "row" else 0)(
+        inputs=[x, y],
+        output_shapes=[(n,)],
+        output_dtypes=[mx.float16],
+        grid=(threads_x, threads_y, 1),
+        threadgroup=(256, 1, 1),
+        stream=mx.gpu,
+    )[0]
+    return mx.reshape(out, x.shape)
+
+
+@cache
+def _sigmoid_kernel():
+    """sigmoid in one dispatch, the silu kernel without its multiply:
+    mx.sigmoid lowers to `1.0 / (1.0 + exp(-x))` in fp32 with one fp16
+    rounding at the op boundary, exactly as the dispatch chain ran it."""
+    return mx.fast.metal_kernel(
+        name="encoder_sigmoid_fused",
+        input_names=["src"],
+        output_names=["dst"],
+        source="""
+            uint index = thread_position_in_grid.x;
+            float v = float(src[index]);
+            dst[index] = half(1.0 / (1.0 + exp(-v)));
+        """,
+        compile_options={"math_mode": "safe"},
+    )
+
+
 class EncoderRunError(RuntimeError):
     """The run cannot continue; the reason is named."""
 
@@ -1034,6 +1125,9 @@ class EncoderRunner:
             if x.dtype == mx.int32 and y.dtype == mx.int32:
                 raw = {"add": x + y, "sub": x - y, "mul": x * y}[op]
                 return raw.astype(mx.int32)
+            fused = _pw(op, x, y)
+            if fused is not None:
+                return fused
             fx, fy = x.astype(mx.float32), y.astype(mx.float32)
             return {"add": fx + fy, "sub": fx - fy, "mul": fx * fy}[op].astype(mx.float16)
         if op == "floor_div":
@@ -1054,7 +1148,19 @@ class EncoderRunner:
         if op == "relu":
             return mx.maximum(tensor(kwargs["x"]).astype(mx.float32), 0.0).astype(mx.float16)
         if op == "sigmoid":
-            return mx.sigmoid(tensor(kwargs["x"]).astype(mx.float32)).astype(mx.float16)
+            x = tensor(kwargs["x"])
+            if x.dtype == mx.float16:
+                n = x.size
+                out = _sigmoid_kernel()(
+                    inputs=[x],
+                    output_shapes=[(n,)],
+                    output_dtypes=[mx.float16],
+                    grid=(n, 1, 1),
+                    threadgroup=(256, 1, 1),
+                    stream=mx.gpu,
+                )[0]
+                return mx.reshape(out, x.shape)
+            return mx.sigmoid(x.astype(mx.float32)).astype(mx.float16)
         if op == "silu":
             x = tensor(kwargs["x"])
             n = x.size
