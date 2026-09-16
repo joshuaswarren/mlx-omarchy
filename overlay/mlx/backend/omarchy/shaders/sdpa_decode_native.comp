@@ -134,27 +134,16 @@ uint16_t bf16_store(float value) {
 #endif
 
 // A lane's two adjacent f16 elements of one key row, widened to floats.
-// One word load when the element base is even; a two-word stitch on the
-// odd-base fallback (this graph's caches never produce one - 64-element
-// contiguous rows with even row strides - but the kernel does not assume
-// it). The parity branch is subgroup-uniform: every lane's base differs
-// by an even stride.
+// The host gate only engages this kernel when every element base is even
+// (item offsets and the kv-head/key strides all even), so the pair is one
+// unconditional 32-bit load. unpackHalf2x16 widens exactly the bits
+// float(x) widens, so no value moves.
 vec2 key_pair(uint base) {
-  uint word = key_data.values[base >> 1u];
-  if ((base & 1u) == 0u) {
-    return unpackHalf2x16(word);
-  }
-  return unpackHalf2x16(
-      (word >> 16u) | (key_data.values[(base >> 1u) + 1u] << 16u));
+  return unpackHalf2x16(key_data.values[base >> 1u]);
 }
 
 vec2 value_pair(uint base) {
-  uint word = value_data.values[base >> 1u];
-  if ((base & 1u) == 0u) {
-    return unpackHalf2x16(word);
-  }
-  return unpackHalf2x16(
-      (word >> 16u) | (value_data.values[(base >> 1u) + 1u] << 16u));
+  return unpackHalf2x16(value_data.values[base >> 1u]);
 }
 
 void store_pair(uint head, uint lane, float x, float y, float denominator) {
@@ -317,33 +306,28 @@ void main() {
     // independent online-softmax state before the 32 states are merged.
     // Each iteration pre-issues the next key's K and V pair loads before
     // the online-softmax chain, so their latencies overlap the math
-    // instead of chaining into it. The loads are pure reads of values the
-    // iteration never writes; the arithmetic consumes the same values in
-    // the same order as the unpipelined loop.
+    // instead of chaining into it. The prefetch index clamps instead of
+    // branching - the clamped tail load repeats the last key and its
+    // value is discarded when the loop exits - so the hot loop has no
+    // branches at all. The loads are pure reads of values the iteration
+    // never writes; the arithmetic consumes the same values in the same
+    // order as the unpipelined loop.
     float max_score = FINITE_MIN;
     float sum_exp_score = 0.0;
     float o0 = 0.0;
     float o1 = 0.0;
-    uint key = sgid;
-    vec2 k_pair = vec2(0.0);
-    vec2 v_pair = vec2(0.0);
-    if (key < params.matrix_k) {
-      k_pair = key_pair(params.rhs_offset + kv_head * params.shape[1] +
-          key * params.shape[2] + q_dim * params.in_strides[0]);
-      v_pair = value_pair(params.aux_offset + kv_head * params.in_strides[1] +
-          key * params.in_strides[2] + q_dim * params.in_strides[3]);
-    }
-    for (; key < params.matrix_k; key += SIMD) {
-      uint next = key + SIMD;
-      vec2 next_k = k_pair;
-      vec2 next_v = v_pair;
-      if (next < params.matrix_k) {
-        next_k = key_pair(params.rhs_offset + kv_head * params.shape[1] +
-            next * params.shape[2] + q_dim * params.in_strides[0]);
-        next_v = value_pair(
-            params.aux_offset + kv_head * params.in_strides[1] +
-            next * params.in_strides[2] + q_dim * params.in_strides[3]);
-      }
+    uint first = min(sgid, params.matrix_k - 1u);
+    vec2 k_pair = key_pair(params.rhs_offset + kv_head * params.shape[1] +
+        first * params.shape[2] + q_dim * params.in_strides[0]);
+    vec2 v_pair = value_pair(params.aux_offset + kv_head * params.in_strides[1] +
+        first * params.in_strides[2] + q_dim * params.in_strides[3]);
+    for (uint key = sgid; key < params.matrix_k; key += SIMD) {
+      uint next = min(key + SIMD, params.matrix_k - 1u);
+      vec2 next_k = key_pair(params.rhs_offset + kv_head * params.shape[1] +
+          next * params.shape[2] + q_dim * params.in_strides[0]);
+      vec2 next_v = value_pair(
+          params.aux_offset + kv_head * params.in_strides[1] +
+          next * params.in_strides[2] + q_dim * params.in_strides[3]);
       float score = fma(q0, k_pair.x, 0.0);
       score = fma(q1, k_pair.y, score);
       score = subgroupAdd(score);
@@ -382,33 +366,26 @@ void main() {
   // Native sdpa_vector_2pass_1. A physical subgroup computes four logical
   // native blocks sequentially; logical blocks remain independent and land
   // in the exact f16/f32 intermediate formats consumed by pass 2.
-  // Same pre-issued next-key pair loads as the one-pass loop: latencies
-  // overlap the online-softmax chain, values and order unchanged.
+  // Same pre-issued clamped next-key pair loads as the one-pass loop:
+  // latencies overlap the online-softmax chain, values and order
+  // unchanged, no branches in the hot loop.
   for (uint block = sgid; block < blocks; block += SIMD) {
     float max_score = FINITE_MIN;
     float sum_exp_score = 0.0;
     float o0 = 0.0;
     float o1 = 0.0;
-    uint key = block;
-    vec2 k_pair = vec2(0.0);
-    vec2 v_pair = vec2(0.0);
-    if (key < params.matrix_k) {
-      k_pair = key_pair(params.rhs_offset + kv_head * params.shape[1] +
-          key * params.shape[2] + q_dim * params.in_strides[0]);
-      v_pair = value_pair(params.aux_offset + kv_head * params.in_strides[1] +
-          key * params.in_strides[2] + q_dim * params.in_strides[3]);
-    }
-    for (; key < params.matrix_k; key += blocks) {
-      uint next = key + blocks;
-      vec2 next_k = k_pair;
-      vec2 next_v = v_pair;
-      if (next < params.matrix_k) {
-        next_k = key_pair(params.rhs_offset + kv_head * params.shape[1] +
-            next * params.shape[2] + q_dim * params.in_strides[0]);
-        next_v = value_pair(
-            params.aux_offset + kv_head * params.in_strides[1] +
-            next * params.in_strides[2] + q_dim * params.in_strides[3]);
-      }
+    uint first = min(block, params.matrix_k - 1u);
+    vec2 k_pair = key_pair(params.rhs_offset + kv_head * params.shape[1] +
+        first * params.shape[2] + q_dim * params.in_strides[0]);
+    vec2 v_pair = value_pair(params.aux_offset + kv_head * params.in_strides[1] +
+        first * params.in_strides[2] + q_dim * params.in_strides[3]);
+    for (uint key = block; key < params.matrix_k; key += blocks) {
+      uint next = min(key + blocks, params.matrix_k - 1u);
+      vec2 next_k = key_pair(params.rhs_offset + kv_head * params.shape[1] +
+          next * params.shape[2] + q_dim * params.in_strides[0]);
+      vec2 next_v = value_pair(
+          params.aux_offset + kv_head * params.in_strides[1] +
+          next * params.in_strides[2] + q_dim * params.in_strides[3]);
       float score = fma(q0, k_pair.x, 0.0);
       score = fma(q1, k_pair.y, score);
       score = subgroupAdd(score);
