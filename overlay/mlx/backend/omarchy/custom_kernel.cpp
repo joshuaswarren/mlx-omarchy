@@ -422,31 +422,16 @@ Translation translate_msl(
   resolve_kernel_templates(source, marker, header, body);
   translate_header(header);
   // Raw-GLSL passthrough: a body section fenced by // omarchy-glsl-begin
-  // and // omarchy-glsl-end is emitted verbatim inside main(), after the
-  // buffer macros, with the cooperative-matrix extensions enabled. Every
-  // other translation pass skips the fenced text, so exactness-critical
-  // GLSL (coopMatMulAdd tiles) ships exactly as written. Parameter
-  // #defines (name -> _bN.data, name_shape -> shape buffer) still apply
-  // inside the fenced text; avoid parameter names x, y and z, which
-  // would collide with generated uvec3 swizzles.
-  std::string glsl_passthrough;
-  {
-    static const std::string pass_begin = "// omarchy-glsl-begin";
-    static const std::string pass_end = "// omarchy-glsl-end";
-    const auto pass_start = body.find(pass_begin);
-    if (pass_start != std::string::npos) {
-      const auto pass_stop = body.find(pass_end, pass_start);
-      if (pass_stop == std::string::npos) {
-        throw std::runtime_error("omarchy-glsl passthrough has no end marker");
-      }
-      glsl_passthrough = body.substr(
-          pass_start + pass_begin.size(), pass_stop - pass_start - pass_begin.size());
-      body.replace(
-          pass_start, pass_stop - pass_start + pass_end.size(),
-          "// omarchy_glsl_passthrough_restored_below");
-    }
-  }
-
+  // and // omarchy-glsl-end passes through every translation step as-is
+  // (the fence lines are comments; glslang ignores them) and only turns on
+  // the cooperative-matrix extensions. Buffer macros apply inside the
+  // fence, so parameter names must avoid x, y and z (generated uvec3
+  // swizzles would collide); threadgroup scratch is declared outside the
+  // fence so the shared hoist lifts it; the output-store cast rewrite is
+  // idempotent for plain GLSL.
+  const bool raw_glsl_passthrough =
+      body.find("// omarchy-glsl-begin") != std::string::npos ||
+      body.find("coopmat<") != std::string::npos;
   const std::vector<std::string> forbidden = {
       "texture", "sampler", "imageblock", "raytracing", "simdgroup_matrix",
       "quadgroup", "visible_function", "intersection_function", "object_data"};
@@ -647,7 +632,7 @@ Translation translate_msl(
     glsl << "#extension GL_EXT_shader_explicit_arithmetic_types_int16 : require\n"
          << "#extension GL_EXT_shader_16bit_storage : require\n";
   }
-  if (!glsl_passthrough.empty()) {
+  if (raw_glsl_passthrough) {
     glsl << "#extension GL_KHR_cooperative_matrix : require\n"
          << "#extension GL_KHR_memory_scope_semantics : require\n";
   }
@@ -672,10 +657,6 @@ Translation translate_msl(
          << "uint16_t _mlx_float_to_bf16(float value) { uint bits = floatBitsToUint(value); uint rounded = bits + 0x7fffu + ((bits >> 16) & 1u); return uint16_t(rounded >> 16); }\n";
   }
   glsl << header << "\n" << element_helpers << macros;
-  replace_all(
-      body,
-      "// omarchy_glsl_passthrough_restored_below",
-      glsl_passthrough);
   glsl << "void main() {\n"
        << "if (gl_GlobalInvocationID.x >= " << grid_x
        << "u || gl_GlobalInvocationID.y >= " << grid_y
