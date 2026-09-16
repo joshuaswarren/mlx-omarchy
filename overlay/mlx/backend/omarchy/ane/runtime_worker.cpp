@@ -28,7 +28,7 @@ namespace mlx::core::omarchy::ane::detail {
 namespace {
 
 constexpr const char* kQualifiedLibaneCommit =
-    "f261a6cb537aca62f267ad3d01beda0d6877544c";
+    "6fa243ac7241119a9eb229abbf8cb4dd8949f915";
 constexpr const char* kQualifiedDriverVersion = "f2a3e5e+lifecycle6";
 using Clock = std::chrono::steady_clock;
 
