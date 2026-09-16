@@ -2,7 +2,7 @@
   "compiler": {
     "host_build": "Linux 6.17.2-1-pve x86_64",
     "target": "h13",
-    "toolchain": "mil-hwxc 83d486b178e83e602ab894f1154004bb7f2600b9 sha256:77521fb36681f8ace6e4aff97ef7ca856b57137e3808680f85dfd4742248de61"
+    "toolchain": "mil-hwxc b61de468d1ca37b687d5fa371e489be16cd84ed1 sha256:42120c27ddfa2bf2c7c2582edcc311f385ec7328f29ddb0e2803685d5d6caaeb"
   },
   "dispatch_plan": [
     0
@@ -89,7 +89,7 @@
       "byte_size": 9216,
       "path": "program-0.anec",
       "role": "anec",
-      "sha256": "d40ec023cfd5b2c5d5cfeb95f4a4673024f495224acd4448e8498bf50114780f"
+      "sha256": "0879c6277cf3d89888735ea69ef96d29fb492d43eacfe42a0f154f8f0f91c8eb"
     }
   ],
   "programs": [
@@ -197,18 +197,18 @@
         }
       ],
       "payload": "program-0.anec",
-      "scratch_bytes": 2310144,
+      "scratch_bytes": 6832128,
       "task_descriptors": 5
     }
   ],
   "provenance": {
-    "exported_at": "2026-09-14",
-    "source_commit": "030bab6ff6c279a5d76770b9dfc4ab03aa7975d8",
-    "source_repo": "joshuaswarren/mlx-omarchy"
+    "exported_at": "2026-09-15",
+    "source_commit": "b61de468d1ca37b687d5fa371e489be16cd84ed1",
+    "source_repo": "mil-hwxc"
   },
   "release_asset": {
-    "model": "parakeet-tdt-0.6b-v3-encoder",
-    "model_sha256": "bd900ac693f2a5ed1e49ec46728a3a3206a75e8a33afe40e6eaade0adb88cae6"
+    "model": "/tmp/split-islands/mil/island-select-8head.mil",
+    "model_sha256": "737eb5e1bb6a3936f0f337838b5514f828a8f64e05c4dc64271fd00c47673221"
   },
   "state": [],
   "task_descriptors": 5

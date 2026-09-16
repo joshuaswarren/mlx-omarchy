@@ -2,7 +2,7 @@
   "compiler": {
     "host_build": "Linux 6.17.2-1-pve x86_64",
     "target": "h13",
-    "toolchain": "mil-hwxc 83d486b178e83e602ab894f1154004bb7f2600b9 sha256:77521fb36681f8ace6e4aff97ef7ca856b57137e3808680f85dfd4742248de61"
+    "toolchain": "mil-hwxc b61de468d1ca37b687d5fa371e489be16cd84ed1 sha256:42120c27ddfa2bf2c7c2582edcc311f385ec7328f29ddb0e2803685d5d6caaeb"
   },
   "dispatch_plan": [
     0,
@@ -130,13 +130,13 @@
       "byte_size": 182400,
       "path": "program-0.anec",
       "role": "anec",
-      "sha256": "d05e193a620d7edc25ee61f865c164182155f84e7fb925a38c303a9c0db1d8df"
+      "sha256": "cf0ecac223e6fc8e4ee49d31544ed878d12c7466ccd715cdf4b89eb30b92db45"
     },
     {
       "byte_size": 182400,
       "path": "program-1.anec",
       "role": "anec",
-      "sha256": "a3aa2fe1333a48eba3e7fcae5b848563e2bfa747a232dadf9ed2d568821c5627"
+      "sha256": "b801f6212f65da3f5ffdab3d6e21cd49e5ae0c16b709ff945de9aaee93fcb629"
     }
   ],
   "programs": [
@@ -308,13 +308,13 @@
     }
   ],
   "provenance": {
-    "exported_at": "2026-09-14",
-    "source_commit": "030bab6ff6c279a5d76770b9dfc4ab03aa7975d8",
-    "source_repo": "joshuaswarren/mlx-omarchy"
+    "exported_at": "2026-09-15",
+    "source_commit": "b61de468d1ca37b687d5fa371e489be16cd84ed1",
+    "source_repo": "mil-hwxc"
   },
   "release_asset": {
-    "model": "parakeet-tdt-0.6b-v3-encoder",
-    "model_sha256": "d741744e669e2913e5be0a20a62f6ed51522c54a7b1b933a552557a690b78f0d"
+    "model": "/tmp/split-islands/mil/island-attn-a-kt.mil",
+    "model_sha256": "e9362c1dff001a13a96aa2f2b64965d6a344e5142ed731293d6f7779b24e39a1"
   },
   "state": [],
   "task_descriptors": 416
