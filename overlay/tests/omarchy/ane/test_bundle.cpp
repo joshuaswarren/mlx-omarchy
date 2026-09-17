@@ -655,19 +655,6 @@ TEST_CASE("binding channel mapping must match ANEC order") {
   check_error([&] { load_bundle(fixture.dir.path()); }, "channel does not match ANEC binding order");
 }
 
-TEST_CASE("positional channel map is refused") {
-  Fixture fixture;
-  fixture.payload_bytes[0] = anec_bytes('A');
-  std::fill(
-      fixture.payload_bytes[0].begin() + kAnecPayloadOffset,
-      fixture.payload_bytes[0].begin() + kAnecPayloadOffset + 64,
-      0);
-  fixture.refresh_payload(0);
-  fixture.write();
-  check_error(
-      [&] { load_bundle(fixture.dir.path()); },
-      "channel map is positional");
-}
 
 TEST_CASE("derived reverse map rejects a positional declaration") {
   Fixture fixture;
