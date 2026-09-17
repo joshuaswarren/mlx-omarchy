@@ -1897,7 +1897,73 @@ class EncoderRunner:
         return keep
 
 
+def _loaded_libmlx() -> Path | None:
+    """Path of the libmlx.so actually mapped into THIS process.
+
+    The dynamic linker, not the import system, picks this file; a stray
+    LD_LIBRARY_PATH (or a wheel tree shadowing the venv) silently swaps
+    the GPU backend build under a measurement. 2026-09-17: the same
+    harness measured a ~2.8x per-statement GPU matmul difference purely
+    from which libmlx.so got picked up. Never quote a wall from a run
+    whose loaded binary was not verified.
+    """
+    with open("/proc/self/maps") as fh:
+        for line in fh:
+            path = line.rstrip("\n").rpartition("  ")[2]
+            if path.endswith("/libmlx.so"):
+                return Path(path)
+    return None
+
+
+def assert_mlx_binary_identity() -> dict:
+    """Record the loaded libmlx identity; fail loudly on mismatch.
+
+    Always returns the resolved {path, sha256, dist_version}; when
+    MLX_OMARCHY_EXPECTED_LIBMLX_SHA256 (or _PATH) is set, a mismatch is a
+    hard error, never a warning.
+    """
+    loaded = _loaded_libmlx()
+    if loaded is None:
+        raise RuntimeError(
+            "no libmlx.so is mapped into this process; the encoder runner "
+            "cannot attest which GPU backend it is measuring"
+        )
+    digest = hashlib.sha256(loaded.read_bytes()).hexdigest()
+    try:
+        dist_version = importlib.metadata.version("mlx-omarchy")
+    except importlib.metadata.PackageNotFoundError:
+        dist_version = None
+    identity = {
+        "loaded_libmlx_path": str(loaded),
+        "loaded_libmlx_sha256": digest,
+        "dist_version": dist_version,
+    }
+    want_sha = os.environ.get("MLX_OMARCHY_EXPECTED_LIBMLX_SHA256")
+    want_path = os.environ.get("MLX_OMARCHY_EXPECTED_LIBMLX_PATH")
+    if want_path and os.path.realpath(loaded) != os.path.realpath(want_path):
+        raise RuntimeError(
+            f"libmlx identity guard: loaded {loaded} but "
+            f"MLX_OMARCHY_EXPECTED_LIBMLX_PATH says {want_path}; refusing "
+            "to measure on the wrong binary"
+        )
+    if want_sha and digest != want_sha:
+        raise RuntimeError(
+            f"libmlx identity guard: loaded {loaded} sha256 {digest} but "
+            f"MLX_OMARCHY_EXPECTED_LIBMLX_SHA256 says {want_sha}; refusing "
+            "to measure on the wrong binary"
+        )
+    return identity
+
+
 def main() -> int:
+    mlx_identity = assert_mlx_binary_identity()
+    print(
+        "libmlx identity: "
+        f"{mlx_identity['loaded_libmlx_path']} "
+        f"sha256={mlx_identity['loaded_libmlx_sha256'][:16]} "
+        f"dist={mlx_identity['dist_version']}",
+        flush=True,
+    )
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source", type=Path, required=True)
     parser.add_argument("--capture", type=Path, required=True)
