@@ -1,0 +1,9 @@
+k=   30 base    med    37.65 us  min   29.49 max    40.99
+k=   30 blockb  med    49.66 us  min   41.20 max    52.40
+k=   30 win  -31.9%  (base range 30.6%, blockb range 22.6%)
+k= 1024 base    med    92.35 us  min   85.93 max    96.65
+k= 1024 blockb  med    95.52 us  min   85.94 max   100.42
+k= 1024 win   -3.4%  (base range 11.6%, blockb range 15.2%)
+k= 1053 base    med    91.93 us  min   88.09 max   101.99
+k= 1053 blockb  med   105.68 us  min   97.80 max   120.91
+k= 1053 win  -15.0%  (base range 15.1%, blockb range 21.9%)

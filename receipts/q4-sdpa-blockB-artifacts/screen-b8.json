@@ -1,0 +1,338 @@
+[
+ {
+  "k_len": 30,
+  "arm": "base",
+  "cycle": 0,
+  "dispatches_per_call": 1.0,
+  "gpu_us": 29.487159990821965
+ },
+ {
+  "k_len": 30,
+  "arm": "blockb",
+  "cycle": 0,
+  "dispatches_per_call": 1.0,
+  "gpu_us": 41.19887002161704
+ },
+ {
+  "k_len": 30,
+  "arm": "base",
+  "cycle": 1,
+  "dispatches_per_call": 1.0,
+  "gpu_us": 30.78425994317513
+ },
+ {
+  "k_len": 30,
+  "arm": "blockb",
+  "cycle": 1,
+  "dispatches_per_call": 1.0,
+  "gpu_us": 43.41927997302264
+ },
+ {
+  "k_len": 30,
+  "arm": "base",
+  "cycle": 2,
+  "dispatches_per_call": 1.0,
+  "gpu_us": 32.77218005678151
+ },
+ {
+  "k_len": 30,
+  "arm": "blockb",
+  "cycle": 2,
+  "dispatches_per_call": 1.0,
+  "gpu_us": 45.16180000791792
+ },
+ {
+  "k_len": 30,
+  "arm": "base",
+  "cycle": 3,
+  "dispatches_per_call": 1.0,
+  "gpu_us": 35.12467992550228
+ },
+ {
+  "k_len": 30,
+  "arm": "blockb",
+  "cycle": 3,
+  "dispatches_per_call": 1.0,
+  "gpu_us": 47.26345003291499
+ },
+ {
+  "k_len": 30,
+  "arm": "base",
+  "cycle": 4,
+  "dispatches_per_call": 1.0,
+  "gpu_us": 40.61886000272352
+ },
+ {
+  "k_len": 30,
+  "arm": "blockb",
+  "cycle": 4,
+  "dispatches_per_call": 1.0,
+  "gpu_us": 52.07681002502795
+ },
+ {
+  "k_len": 30,
+  "arm": "base",
+  "cycle": 5,
+  "dispatches_per_call": 1.0,
+  "gpu_us": 40.99428995687049
+ },
+ {
+  "k_len": 30,
+  "arm": "blockb",
+  "cycle": 5,
+  "dispatches_per_call": 1.0,
+  "gpu_us": 52.213890085113235
+ },
+ {
+  "k_len": 30,
+  "arm": "base",
+  "cycle": 6,
+  "dispatches_per_call": 1.0,
+  "gpu_us": 40.18343999632634
+ },
+ {
+  "k_len": 30,
+  "arm": "blockb",
+  "cycle": 6,
+  "dispatches_per_call": 1.0,
+  "gpu_us": 52.06263995205518
+ },
+ {
+  "k_len": 30,
+  "arm": "base",
+  "cycle": 7,
+  "dispatches_per_call": 1.0,
+  "gpu_us": 40.37636004795786
+ },
+ {
+  "k_len": 30,
+  "arm": "blockb",
+  "cycle": 7,
+  "dispatches_per_call": 1.0,
+  "gpu_us": 52.400969943846576
+ },
+ {
+  "k_len": 1024,
+  "arm": "base",
+  "cycle": 0,
+  "dispatches_per_call": 1.0,
+  "gpu_us": 96.47608996601775
+ },
+ {
+  "k_len": 1024,
+  "arm": "blockb",
+  "cycle": 0,
+  "dispatches_per_call": 1.0,
+  "gpu_us": 98.4215200151084
+ },
+ {
+  "k_len": 1024,
+  "arm": "base",
+  "cycle": 1,
+  "dispatches_per_call": 1.0,
+  "gpu_us": 91.77441999781877
+ },
+ {
+  "k_len": 1024,
+  "arm": "blockb",
+  "cycle": 1,
+  "dispatches_per_call": 1.0,
+  "gpu_us": 100.41652989457361
+ },
+ {
+  "k_len": 1024,
+  "arm": "base",
+  "cycle": 2,
+  "dispatches_per_call": 1.0,
+  "gpu_us": 96.64941993833054
+ },
+ {
+  "k_len": 1024,
+  "arm": "blockb",
+  "cycle": 2,
+  "dispatches_per_call": 1.0,
+  "gpu_us": 100.03028000937775
+ },
+ {
+  "k_len": 1024,
+  "arm": "base",
+  "cycle": 3,
+  "dispatches_per_call": 1.0,
+  "gpu_us": 91.81483001157176
+ },
+ {
+  "k_len": 1024,
+  "arm": "blockb",
+  "cycle": 3,
+  "dispatches_per_call": 1.0,
+  "gpu_us": 86.18440006102901
+ },
+ {
+  "k_len": 1024,
+  "arm": "base",
+  "cycle": 4,
+  "dispatches_per_call": 1.0,
+  "gpu_us": 85.93482001742814
+ },
+ {
+  "k_len": 1024,
+  "arm": "blockb",
+  "cycle": 4,
+  "dispatches_per_call": 1.0,
+  "gpu_us": 100.41650995844975
+ },
+ {
+  "k_len": 1024,
+  "arm": "base",
+  "cycle": 5,
+  "dispatches_per_call": 1.0,
+  "gpu_us": 91.89734002575278
+ },
+ {
+  "k_len": 1024,
+  "arm": "blockb",
+  "cycle": 5,
+  "dispatches_per_call": 1.0,
+  "gpu_us": 85.93564998591319
+ },
+ {
+  "k_len": 1024,
+  "arm": "base",
+  "cycle": 6,
+  "dispatches_per_call": 1.0,
+  "gpu_us": 92.80441998271272
+ },
+ {
+  "k_len": 1024,
+  "arm": "blockb",
+  "cycle": 6,
+  "dispatches_per_call": 1.0,
+  "gpu_us": 92.58317004423589
+ },
+ {
+  "k_len": 1024,
+  "arm": "base",
+  "cycle": 7,
+  "dispatches_per_call": 1.0,
+  "gpu_us": 96.63566990639083
+ },
+ {
+  "k_len": 1024,
+  "arm": "blockb",
+  "cycle": 7,
+  "dispatches_per_call": 1.0,
+  "gpu_us": 92.60857994377147
+ },
+ {
+  "k_len": 1053,
+  "arm": "base",
+  "cycle": 0,
+  "dispatches_per_call": 1.0,
+  "gpu_us": 101.99486001511104
+ },
+ {
+  "k_len": 1053,
+  "arm": "blockb",
+  "cycle": 0,
+  "dispatches_per_call": 1.0,
+  "gpu_us": 120.90741001884453
+ },
+ {
+  "k_len": 1053,
+  "arm": "base",
+  "cycle": 1,
+  "dispatches_per_call": 1.0,
+  "gpu_us": 93.16441006376408
+ },
+ {
+  "k_len": 1053,
+  "arm": "blockb",
+  "cycle": 1,
+  "dispatches_per_call": 1.0,
+  "gpu_us": 107.69863001769409
+ },
+ {
+  "k_len": 1053,
+  "arm": "base",
+  "cycle": 2,
+  "dispatches_per_call": 1.0,
+  "gpu_us": 92.93067007092759
+ },
+ {
+  "k_len": 1053,
+  "arm": "blockb",
+  "cycle": 2,
+  "dispatches_per_call": 1.0,
+  "gpu_us": 98.73942995909601
+ },
+ {
+  "k_len": 1053,
+  "arm": "base",
+  "cycle": 3,
+  "dispatches_per_call": 1.0,
+  "gpu_us": 89.4906600296963
+ },
+ {
+  "k_len": 1053,
+  "arm": "blockb",
+  "cycle": 3,
+  "dispatches_per_call": 1.0,
+  "gpu_us": 107.22571008955128
+ },
+ {
+  "k_len": 1053,
+  "arm": "base",
+  "cycle": 4,
+  "dispatches_per_call": 1.0,
+  "gpu_us": 88.70397999999113
+ },
+ {
+  "k_len": 1053,
+  "arm": "blockb",
+  "cycle": 4,
+  "dispatches_per_call": 1.0,
+  "gpu_us": 105.01153999939561
+ },
+ {
+  "k_len": 1053,
+  "arm": "base",
+  "cycle": 5,
+  "dispatches_per_call": 1.0,
+  "gpu_us": 98.29194001213182
+ },
+ {
+  "k_len": 1053,
+  "arm": "blockb",
+  "cycle": 5,
+  "dispatches_per_call": 1.0,
+  "gpu_us": 99.03276994009502
+ },
+ {
+  "k_len": 1053,
+  "arm": "base",
+  "cycle": 6,
+  "dispatches_per_call": 1.0,
+  "gpu_us": 88.08774007775355
+ },
+ {
+  "k_len": 1053,
+  "arm": "blockb",
+  "cycle": 6,
+  "dispatches_per_call": 1.0,
+  "gpu_us": 97.80483997019473
+ },
+ {
+  "k_len": 1053,
+  "arm": "base",
+  "cycle": 7,
+  "dispatches_per_call": 1.0,
+  "gpu_us": 90.9269099793164
+ },
+ {
+  "k_len": 1053,
+  "arm": "blockb",
+  "cycle": 7,
+  "dispatches_per_call": 1.0,
+  "gpu_us": 106.35528997227084
+ }
+]
