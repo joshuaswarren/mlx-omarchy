@@ -67,7 +67,7 @@
       "name": "shared_memory_limit_bytes",
       "type": "uint32",
       "source": "limits.maxComputeSharedMemorySize (device.cpp:223)",
-      "meaning": "Consumers: 4096 (qmm_coopmat.comp, matmul_coopmat_bf16.comp), 21504 (sdpa_decode_native.comp). fft_c2c.comp uses exactly 16384 = the Vulkan spec floor; linalg/sort/reduce shaders stay at or under it. The historical 'cliff above 4 KiB' is now queried, not assumed (primitives.cpp:570-579, 6577-6585).",
+      "meaning": "Consumers: 4096 (qmm_coopmat.comp, matmul_coopmat_bf16.comp, sdpa_decode_native_p2.comp), 5120 (sdpa_decode_native.comp f16 arm; the bf16 arm needs 9472). 21504 survives only as the decode route's shared-memory gate constant in primitives.cpp, kept as-is so routing never moves. fft_c2c.comp uses exactly 16384 = the Vulkan spec floor; linalg/sort/reduce shaders stay at or under it. The historical 'cliff above 4 KiB' is now queried, not assumed (primitives.cpp:570-579, 6577-6585).",
       "m1_g13_reference": ">= 21504 (gate-proven floor: SdpaDecodeNative enabled on the reference driver); exact limit not dumped in-repo",
       "m2_known": null,
       "m2_unknown": ["exact limit"],
