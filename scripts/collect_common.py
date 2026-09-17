@@ -426,6 +426,9 @@ def _cap_port_detail(port, redactor, max_bytes=64 * 1024):
             src_devicetree.get("pmgr_blocks"), truncated),
         "aic": _walk(src_devicetree.get("aic"))
             if src_devicetree.get("aic") else None,
+        "set_base_candidate": _walk(src_devicetree.get("set_base_candidate"))
+            if isinstance(src_devicetree.get("set_base_candidate"), dict)
+            else None,
         "phandles": _bounded_dict(src_devicetree.get("phandles") or {},
                                   MAX_NODES, "phandles"),
         "boot": _walk(src_devicetree.get("boot"))
@@ -460,7 +463,8 @@ def _cap_port_detail(port, redactor, max_bytes=64 * 1024):
     if _size(out) > max_bytes:
         trimmed = out
         for field, blank in (("phandles", {}), ("aic", None),
-                             ("boot", None), ("pmgr_domains", []),
+                             ("boot", None), ("set_base_candidate", None),
+                             ("pmgr_domains", []),
                              ("pmgr_blocks", []), ("darts", {}),
                              ("ane_nodes", {})):
             if _size(trimmed) <= max_bytes:
