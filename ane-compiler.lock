@@ -3,43 +3,26 @@
 # mlx-omarchy builds from. Release tooling never builds from a moving branch.
 # The archive is the immutable release asset for the tagged commit: GitHub's
 # codeload archive generation for this fork was unavailable at pin time.
-# Commit f122644 (encoder oproj 64-plane permutation + bias-immediate
-# stamp + device-execution gate). Three commits on top of b61de46:
-#   67dfcf1 h13: route m375 k1024 n1024 uniform linear through the engine's 64-plane permutation
-#   5bd7ad5 h13: stamp real bias halves into the uniform linear scalar-register immediate
-#   5bbebcf scripts: add device-execution gate for the encoder rank-3 linear
-#   f122644 scripts: dev_gate_oproj end-to-end on jwm1 (mint+execute+verify)
-# Decoder bug class 1: o-proj uniform linear shipped green at rel_l2=1.37
-# because the 874/874 byte-parity suite is blind to plane-permutation bugs
-# (the captured oracles are uniform-payload). The fold-constant (kernel-
-# DMA) section reads each 16-feature group at the permutation index
-# P(g) = ((g & 0xF) << 1) | ((g >> 4) & 1) | ((g >> 5) << 5); pre-fix the
-# emitter packed group g at half-offset g*16384 instead of at the engine's
-# group-inv(P) slot. With the fix, oproj-L00 device rel_l2 vs fp32 ref
-# drops from 1.373 to 0.012 (rng=11), 0.006 (rng=42 multi-lane scale=2.0).
-# Decoder bug class 2: the captured uniform-oracle templates carry 0x3401
-# (= +0.2502441) in the NE scalar-register word; encodeLinearParity now
-# takes uniformBiasHalves (default 0x3401, oracle-compatible) and stamps
-# the real bias. Verified: a real-weight compile with bias=0 lands zero
-# 0x3401 occurrences in the task section.
-# Byte-parity suite (test_h13_parity.py): 874/874 PASS both with and
-# without the fix. Uniform-payload captures bake 0x3400 everywhere;
-# permutation-invariant, so const.bin sha256s are unchanged.
-# Device-execution gate (scripts/dev_gate_oproj.py on jwm1): three
-# independent rngs (11, 33, 57), worst rel_l2 ≤ 0.05 budget. Gate PASSES
-# with this release (worst 0.000208, dominated by fp16 W noise) and
-# FAILS as-minted on the b61de46 bundle (worst 1.373) — provable change.
-# NOT FIXED in this release: FFN chain (d1024 s375) rel_l2 stays at
-# 0.9353 — different bug class (silu/bias-add task word fold), needs
-# separate CRT. FFN chain stays on Vulkan through deterministic refuse-
-# and-fallback until that gate passes too. Smaller linear geometries
-# (n128, n640, n4096, k4096-n1024) keep identity packing and stay on
-# the byte-parity gate until their own CRT measurements.
-# emits mil-hwxc.h13-anec-package.v2; prior archives are superseded and
-# must not be re-accepted by the package adapter.
+# Commit a8392e6 (FFN mm1/mm2 measured linear layouts + device gate).
+# Two commits on top of f122644, on branch ffn-mm2-plane:
+#   (a8392e6) h13: measured FFN linear layouts — 256-plane permutation
+#     (m375 k1024 n4096): P_half(g,c,L) = 16384*pi256(g) + c + 16L with
+#     pi256(g) = (g & ~31) | ((g&15)<<1) | ((g>>4)&1); and the 8/8
+#     column-split two-plane packing (m375 k4096 n1024): identity group
+#     order, c<8 -> plane 2g, c>=8 -> plane 2g+1, lane stride 8.
+#   (60e7c9c-era CRT measurement, receipt ane-linux-experiments
+#     receipts/2026-09-17-ffn-mm2-plane.md)
+#   scripts/dev_gate_ffn.py: device-execution gate on MINTED bundles for
+#     both geometries (rngs 11/33/57, budget 0.05).
+# Device-execution gate at pin (jw16): mm1 rel_l2 0.000208/0.000208/0.000208,
+# mm2 0.000208/0.000207/0.000207 across rngs 11/33/57; as-emitted controls
+# (pre-fix) 1.3704 / 1.4166. Byte-parity suite: 874/874 PASS.
+# The two new geometry gates are (reduction, columns)-keyed exactly like the
+# o-proj permutation; all other geometries keep identity packing, so the
+# captured byte-parity oracles and the o-proj fix from f122644 are intact.
 ANE_COMPILER_REPOSITORY=https://github.com/joshuaswarren/mil-hwx-compiler
-ANE_COMPILER_COMMIT=f122644f0a83b09d78c4f8d15ce614889b6d7bdf
-ANE_COMPILER_ARCHIVE_URL=https://github.com/joshuaswarren/mil-hwx-compiler/releases/download/f122644-ane-parity-encoder-fix/mil-hwx-compiler-f122644.tar.gz
-ANE_COMPILER_ARCHIVE_SHA256=e5658f9f0517b0fb8e18cc74a4b1c0a9dbb624be0c911b38512ef8a7f1558c2b
+ANE_COMPILER_COMMIT=a8392e6961522455e18c4869e9831bbda0353c12
+ANE_COMPILER_ARCHIVE_URL=https://github.com/joshuaswarren/mil-hwx-compiler/releases/download/a8392e6-ffn-mm2-plane/mil-hwx-compiler-a8392e6.tar.gz
+ANE_COMPILER_ARCHIVE_SHA256=21192f23c3f365ceb0a8fe7737b31b404ca9b1feda3ab59ef1f167428b28874d
 ANE_COMPILER_PACKAGE_SCHEMA=mil-hwxc.h13-anec-package.v2
 ANE_COMPILER_QUALIFIED_TARGET=H13
