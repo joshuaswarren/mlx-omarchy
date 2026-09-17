@@ -96,14 +96,14 @@ M1 versus native Metal (jwm1, packaged A/B from [receipts/2026-09-16-termA-cdm-b
 
 The worst M1 gap is long-context prefill, suspected `QmmPrefillCoopmatF16` shader throughput.
 
-M1 Max versus native Max (jw16, base arm of [receipts/2026-09-15-rmsnorm-qkv-ab/jw16/ab.txt](receipts/2026-09-15-rmsnorm-qkv-ab/jw16/ab.txt); native from [receipts/2026-09-10-native-macos-metal-baseline/native-baseline-16m1mbp/native-baseline-16M1MBP.json](receipts/2026-09-10-native-macos-metal-baseline/native-baseline-16m1mbp/native-baseline-16M1MBP.json)):
+M1 Max versus native Max (jw16, single same-protocol battery on the v0.6.1 wheel, `ane-linux-experiments` `receipts/2026-09-17-jw16-gpu-parity-refresh.md`; native from [receipts/2026-09-10-native-macos-metal-baseline/native-baseline-16m1mbp/native-baseline-16M1MBP.json](receipts/2026-09-10-native-macos-metal-baseline/native-baseline-16m1mbp/native-baseline-16M1MBP.json)):
 
 | Prompt / generated | Decode tok/s | vs native | Prefill tok/s | vs native |
 |---|---:|---:|---:|---:|
-| 30 / 32 | 190.7 / 287 | 66% | 456.6 / 1518 | 30% |
-| 1053 / 32 | 135.5 / 284 | 48% | 2039 / 8048 | 25% |
+| 30 / 32 | 190.6 / 287 | 66% | 459.7 / 1518 | 30% |
+| 1053 / 32 | 130.7 / 284 | 46% | 3845 / 8048 | 48% |
 
-Digests match native (`7fd25a869ff21678` short, `7da83f06ec9f001d` ctx1053, all rounds HOLD). The M1 Max short-prefill and ctx-decode numbers predate the Honeykrisp CDM-barrier trim land (TermA only packaged and measured on the M1; the M1 Max 456.6 short prefill reflects the untrimmed baseline).
+Digests match native (`7fd25a869ff21678` short, `7da83f06ec9f001d` ctx1053, every leg asserted). Against the same-protocol 2026-09-14 rerun that is +29% short decode, +49% ctx decode, +130% short prefill, and +86% ctx prefill, from the rope-pair trio, the SwiGLU store epilogue, the tile-M occupancy floor, and the SPIR-V disk cache. The M1 Max still runs the untrimmed CDM barrier: the Honeykrisp trim ships G13G-only because on G13X the designed bit set measured +13% short decode against −3.2% ctx1053, so it was not shipped.
 
 To reproduce a leg:
 
