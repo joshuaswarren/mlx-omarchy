@@ -1319,7 +1319,7 @@ AneWorkerReport AneWorker::submit_shm(
     std::string name;
     size_t offset = 0;
     size_t length = 0;
-    if (parse_shm_header(line, kTokenShmOut, name, offset, length) ||
+    if (parse_shm_header(line, "shmout", name, offset, length) ||
         parse_payload_header(line, "out", name, length)) {
       // "shmout" carries offset+length; a plain "out" on the shm path
       // would mean the child had no sink for the tensor -- that is a
