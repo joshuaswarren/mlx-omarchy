@@ -519,7 +519,7 @@ int resident_child_loop(
               size_t logical = 0;
               for (const auto& validated : bundle.programs) {
                 const auto& manifest_program =
-                    bundle.manifest.programs[validated.manifest_index];
+                    bundle.manifest.programs[validated.manifest_index_local];
                 for (const auto& binding : manifest_program.outputs) {
                   if (binding.tensor == tensor.name) {
                     logical = std::max(logical, binding.logical_bytes);
