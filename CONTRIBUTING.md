@@ -114,12 +114,23 @@ Runtime facts — `/proc/iomem` lines mentioning ane/dart, the loaded
 matching ane/dart/pmgr — ride along so the report also shows whether
 the driver bound on the reporting machine.
 
+The same data rides in `ane_port_detail`, with hard caps so the JSON
+stays under 64 KiB: up to 8 entries each for `ane_nodes`, `darts`, and
+`phandles`; up to 64 PMGR domains; the runtime block rides if it
+fits, otherwise it is dropped with `truncated: ["runtime:over_budget"]`
+and `devicetree` stays. The flat `ane_port` summary string is kept
+for back-compat with rows stored before the detail block existed.
+
 A stock t8103 dtb ships no `ane` node; the report says so
 (`ane_node_present: false`) and still dumps DART, PMGR, and AIC, which
 is exactly what authoring the overlay requires. Compare your report
 against the worked t6001 example DTS in omarchy-ane
 (`ane/t6001-j316c-set-domains.dts`), then send overlay and driver
 changes to the [omarchy-ane repo](https://github.com/joshuaswarren/omarchy-ane).
+
+The quick collector is enough for porting work. Run the full deep
+collector when you want the matmul/attention benchmark numbers and the
+correctness probes that go with them.
 
 ### Path 2: full report, needs an installed MLX package
 
