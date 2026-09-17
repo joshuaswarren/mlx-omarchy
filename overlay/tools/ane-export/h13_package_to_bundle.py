@@ -11,8 +11,6 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
-import struct
-
 from bundle_payload_identity import payload_collection_sha256
 
 SCHEMA = "mil-hwxc.h13-anec-package.v2"
@@ -24,16 +22,6 @@ DTYPE_BYTES = {
 }
 ANEC_DTYPES = {"float16", "bfloat16", "bool"}
 ROLES = ("input", "output", "state", "intermediate")
-TILE_SIZE_BYTES = 0x4000
-ANEC_HEADER_SIZE = 0x6A8
-ANEC_PAYLOAD_OFFSET = 0x1000
-ANEC_TILE_COUNT = 0x20
-BIND_FIRST_SURFACE = 4
-BIND_DMA_DISABLED = 0x00008880
-BIND_DST_REGISTER = 0x17800
-BIND_SELECTOR_MASK = 0x1F
-BIND_MIN_TASK_BYTES = 40
-BIND_SELECTORS = ((0x13800, 0), (0x13804, 6), (BIND_DST_REGISTER, 12))
 
 
 class AdapterError(ValueError):
@@ -82,125 +70,6 @@ def sha256(path: Path) -> str:
         for chunk in iter(lambda: stream.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
-
-
-# H13 role-to-channel derivation (mirrors omarchy-ane fb4dfa86
-# `bind_task_dma` / `bind_walk` / `derive_role_channels`).
-def _bind_word(buf: bytes, index: int) -> int:
-    return (buf[index * 4]
-            | (buf[index * 4 + 1] << 8)
-            | (buf[index * 4 + 2] << 16)
-            | (buf[index * 4 + 3] << 24))
-
-
-def _bind_task_dma(task: bytes, nbytes: int) -> list[int] | None:
-    words = nbytes // 4
-    dma = [BIND_DMA_DISABLED, BIND_DMA_DISABLED, BIND_DMA_DISABLED]
-    if nbytes < BIND_MIN_TASK_BYTES or nbytes % 4:
-        return None
-    index = 10 + (1 if (_bind_word(task, 9) & 3) == 3 else 0)
-    while index < words:
-        header = _bind_word(task, index)
-        count = (header >> 26) + 1
-        base = header & 0x03FFFFFF
-        if index + count >= words:
-            return None
-        for offset in range(count):
-            for slot in range(3):
-                if base + offset * 4 == BIND_SELECTORS[slot][0]:
-                    dma[slot] = _bind_word(task, index + 1 + offset)
-        index += 1 + count
-    return dma
-
-
-def _bind_walk(
-        payload: bytes,
-        task_descriptor_size: int,
-        task_descriptor_count: int,
-        tiles: list[int]) -> tuple[list[int], list[int]] | None:
-    """Returns (is_src, is_dst) per kAnecTileCount, or None on walk failure."""
-    if task_descriptor_count == 0:
-        return None
-    is_src = [0] * ANEC_TILE_COUNT
-    is_dst = [0] * ANEC_TILE_COUNT
-    offset = 0
-    nbytes = task_descriptor_size
-    for index in range(task_descriptor_count):
-        if (nbytes < BIND_MIN_TASK_BYTES or offset > len(payload)
-                or nbytes > len(payload) - offset):
-            return None
-        dma = _bind_task_dma(payload[offset:], nbytes)
-        if dma is None:
-            return None
-        selectors = _bind_word(payload[offset:], 8)
-        for slot in range(3):
-            channel = (selectors >> BIND_SELECTORS[slot][1]) & BIND_SELECTOR_MASK
-            if dma[slot] == BIND_DMA_DISABLED:
-                continue
-            if channel < BIND_FIRST_SURFACE or channel >= ANEC_TILE_COUNT:
-                continue
-            if tiles[channel] == 0:
-                continue
-            if BIND_SELECTORS[slot][0] == BIND_DST_REGISTER:
-                is_dst[channel] = 1
-            else:
-                is_src[channel] = 1
-        if index + 1 == task_descriptor_count:
-            break
-        next_offset = _bind_word(payload[offset:], 7)
-        nbytes = (((_bind_word(payload[offset:], 1) >> 16) & 0x1FF) + 1) * 4
-        if next_offset % 4 or next_offset > len(payload):
-            return None
-        offset = next_offset
-    return is_src, is_dst
-
-
-def derive_role_channels(anec_path: Path) -> tuple[list[int], list[int]] | None:
-    """Derive (src_channels, dst_channels) ascending from the ANEC bytes.
-
-    Returns None when the walk fails or the derived map does not account for
-    every surface the ANEC header declares (mirrors `derive_role_channels`
-    returning false in `validate_program_contract`). The caller is then
-    expected to mirror libane's positional fallback, which the strict
-    fb4dfa86 bundle gate refuses; the adapter does not fabricate a map here.
-    """
-    data = anec_path.read_bytes()
-    if len(data) < ANEC_PAYLOAD_OFFSET + ANEC_HEADER_SIZE:
-        # Older or smaller ANEC files may still be valid if the header fits.
-        pass
-    if len(data) < ANEC_HEADER_SIZE:
-        raise AdapterError(
-            f"ANEC file is smaller than the H13 header: {anec_path}")
-    payload_size = int.from_bytes(data[0:8], "little")
-    task_descriptor_size = int.from_bytes(data[8:12], "little")
-    task_descriptor_count = int.from_bytes(data[12:16], "little")
-    source_count = int.from_bytes(data[32:36], "little")
-    destination_count = int.from_bytes(data[36:40], "little")
-    tiles = list(struct.unpack(f"<{ANEC_TILE_COUNT}I", data[40:40 + 4 * ANEC_TILE_COUNT]))
-    if source_count > ANEC_TILE_COUNT or destination_count > ANEC_TILE_COUNT:
-        return None
-    if len(data) < ANEC_PAYLOAD_OFFSET + payload_size:
-        raise AdapterError(f"ANEC payload truncated: {anec_path}")
-    payload = data[ANEC_PAYLOAD_OFFSET:ANEC_PAYLOAD_OFFSET + payload_size]
-    walked = _bind_walk(payload, task_descriptor_size, task_descriptor_count, tiles)
-    if walked is None:
-        return None
-    is_src, is_dst = walked
-    derived_src: list[int] = []
-    derived_dst: list[int] = []
-    for channel in range(BIND_FIRST_SURFACE, ANEC_TILE_COUNT):
-        if is_dst[channel]:
-            if len(derived_dst) == ANEC_TILE_COUNT:
-                return None
-            derived_dst.append(channel)
-        elif is_src[channel]:
-            if len(derived_src) == ANEC_TILE_COUNT:
-                return None
-            derived_src.append(channel)
-    if len(derived_src) != source_count or len(derived_dst) != destination_count:
-        return None
-    return derived_src, derived_dst
-
 
 
 def require_fields(value: dict, required: set[str], allowed: set[str], where: str) -> None:
@@ -297,6 +166,116 @@ def convert_binding(binding: dict, where: str) -> tuple[dict, str]:
         "element_count": count,
         "physical_elements": physical,
     }, tensor)
+
+
+# Mirrors mlx/backend/omarchy/ane/bundle.cpp (kBind* constants and
+# bind_task_dma/bind_walk/derive_role_channels). Keep in lockstep: the
+# canonical check must reject exactly what the runtime worker rejects.
+_ANEC_PAYLOAD_OFFSET = 0x1000
+_ANEC_TILE_COUNT = 0x20
+_BIND_FIRST_SURFACE = 4
+_BIND_DMA_DISABLED = 0x00008880
+_BIND_DST_REGISTER = 0x17800
+_BIND_SELECTOR_MASK = 0x1F
+_BIND_MIN_TASK_BYTES = 40
+_BIND_SELECTORS = ((0x13800, 0), (0x13804, 6), (_BIND_DST_REGISTER, 12))
+
+
+def _word(buffer: bytes, byte_offset: int) -> int:
+    return int.from_bytes(buffer[byte_offset:byte_offset + 4], "little")
+
+
+def _bind_task_dma(task: bytes, size: int) -> list[int] | None:
+    dma = [_BIND_DMA_DISABLED] * 3
+    words = size // 4
+    if size < _BIND_MIN_TASK_BYTES or size % 4:
+        return None
+    index = 10 + (1 if (_word(task, 36) & 3) == 3 else 0)
+    while index < words:
+        header = _word(task, index * 4)
+        count = (header >> 26) + 1
+        base = header & 0x03FFFFFF
+        if index + count >= words:
+            return None
+        for offset in range(count):
+            for slot in range(3):
+                if base + offset * 4 == _BIND_SELECTORS[slot][0]:
+                    dma[slot] = _word(task, (index + 1 + offset) * 4)
+        index += 1 + count
+    return dma
+
+
+def anec_derive_channels(data: bytes) -> tuple[list[int], list[int]] | None:
+    """Derive the (src, dst) surface channels an ANEC payload's task
+    stream binds. Returns None when the stream cannot be walked or does
+    not name every surface — same contract as the runtime worker."""
+    payload_size = int.from_bytes(data[0:8], "little")
+    task_size = _word(data, 8)
+    task_count = _word(data, 12)
+    source_count = _word(data, 32)
+    destination_count = _word(data, 36)
+    tiles = [_word(data, 40 + 4 * i) for i in range(_ANEC_TILE_COUNT)]
+    if (task_count == 0 or task_size == 0
+            or source_count > _ANEC_TILE_COUNT
+            or destination_count > _ANEC_TILE_COUNT):
+        return None
+    stream = data[_ANEC_PAYLOAD_OFFSET:_ANEC_PAYLOAD_OFFSET + payload_size]
+    is_src = [0] * _ANEC_TILE_COUNT
+    is_dst = [0] * _ANEC_TILE_COUNT
+    offset = 0
+    size = task_size
+    for index in range(task_count):
+        if (size < _BIND_MIN_TASK_BYTES or offset > len(stream)
+                or size > len(stream) - offset):
+            return None
+        task = stream[offset:offset + size]
+        dma = _bind_task_dma(task, size)
+        if dma is None:
+            return None
+        selectors = _word(task, 32)
+        for slot, (address, shift) in enumerate(_BIND_SELECTORS):
+            channel = (selectors >> shift) & _BIND_SELECTOR_MASK
+            if dma[slot] == _BIND_DMA_DISABLED:
+                continue
+            if (channel < _BIND_FIRST_SURFACE or channel >= _ANEC_TILE_COUNT
+                    or tiles[channel] == 0):
+                continue
+            if address == _BIND_DST_REGISTER:
+                is_dst[channel] = 1
+            else:
+                is_src[channel] = 1
+        if index + 1 == task_count:
+            break
+        nxt = _word(task, 28)
+        size = (((_word(task, 4) >> 16) & 0x1FF) + 1) * 4
+        if nxt % 4 or nxt > len(stream):
+            return None
+        offset = nxt
+    derived_src = []
+    derived_dst = []
+    for channel in range(_BIND_FIRST_SURFACE, _ANEC_TILE_COUNT):
+        if is_dst[channel]:
+            derived_dst.append(channel)
+        elif is_src[channel]:
+            derived_src.append(channel)
+
+    # Surfaces the selector registers never name bind positionally:
+    # first unused allocated channel ascending, destinations first,
+    # then sources (island-pv's probs tile). Mirrors bundle.cpp.
+    def fill(derived: list[int], needed: int) -> None:
+        for channel in range(_BIND_FIRST_SURFACE, _ANEC_TILE_COUNT):
+            if len(derived) == needed:
+                return
+            if is_dst[channel] or is_src[channel] or tiles[channel] == 0:
+                continue
+            derived.append(channel)
+
+    fill(derived_dst, destination_count)
+    fill(derived_src, source_count)
+    if (len(derived_src) != source_count
+            or len(derived_dst) != destination_count):
+        return None
+    return derived_src, derived_dst
 
 
 def adapt(package: Path, output: Path, identity: dict) -> dict:
@@ -566,33 +545,47 @@ def adapt(package: Path, output: Path, identity: dict) -> dict:
     reads: set[str] = set()
     writes: set[str] = set()
     for program_index, program in enumerate(converted_programs):
-        anec_path = package / program["payload"]
-        derived = derive_role_channels(anec_path)
+        # Declared channels must equal the channels the task stream
+        # binds. anec_derive_channels mirrors the runtime worker's
+        # derive_role_channels, so a manifest that lies about a surface
+        # binding (declared but never bound by any task) is rejected at
+        # mint time — the manifest-layout defect class cannot ship.
+        declared_channels: list[int] = []
+        for binding in program["outputs"]:
+            if binding["channel"] in declared_channels:
+                fail(f"compiler manifest programs[{program_index}].outputs "
+                     f"declares channel {binding["channel"]} twice")
+            declared_channels.append(binding["channel"])
+        for binding in program["inputs"]:
+            if binding["channel"] in declared_channels:
+                fail(f"compiler manifest programs[{program_index}] declares "
+                     f"channel {binding["channel"]} in both inputs and outputs")
+            declared_channels.append(binding["channel"])
+        if len(set(declared_channels)) != len(declared_channels):
+            fail(f"compiler manifest programs[{program_index}] channels "
+                 f"are not distinct: {declared_channels}")
+        ANEC_CHANNEL_MIN = 4
+        ANEC_CHANNEL_MAX = 32
+        for channel in declared_channels:
+            if not (ANEC_CHANNEL_MIN <= channel < ANEC_CHANNEL_MAX):
+                fail(f"compiler manifest programs[{program_index}] channel "
+                     f"{channel} is out of range [{ANEC_CHANNEL_MIN}, "
+                     f"{ANEC_CHANNEL_MAX})")
+        derived = anec_derive_channels((package / program["payload"]).read_bytes())
         if derived is None:
-            fail(
-                f"compiler manifest programs[{program_index}] {anec_path.name} "
-                f"task stream does not name every surface; channel map is "
-                f"positional. The strict bundle gate refuses this program. "
-                f"Re-export from mil-hwxc so the ANEC descriptor records name "
-                f"every surface, or accept the positional layout under a "
-                f"pinned-bundle allowance by hand-editing the manifest with "
-                f"channels {list(range(4, 4 + len(program['outputs'])))} "
-                f"and {list(range(4 + len(program['outputs']), 4 + len(program['outputs']) + len(program['inputs'])))}.")
+            fail(f"compiler manifest programs[{program_index}] task stream "
+                 f"does not name every surface")
         derived_src, derived_dst = derived
         declared_outputs = [binding["channel"] for binding in program["outputs"]]
+        if derived_dst != declared_outputs:
+            fail(f"compiler manifest programs[{program_index}] declares output "
+                 f"channels {declared_outputs} but the task stream binds "
+                 f"outputs {derived_dst}")
         declared_inputs = [binding["channel"] for binding in program["inputs"]]
-        if declared_outputs != derived_dst or declared_inputs != derived_src:
-            fail(
-                f"compiler manifest programs[{program_index}] channel mapping "
-                f"disagrees with the ANEC task stream: manifest outputs={declared_outputs} "
-                f"inputs={declared_inputs}; derived outputs={derived_dst} "
-                f"inputs={derived_src}. The strict bundle gate refuses mismatched "
-                f"manifests. Re-export from mil-hwxc so the package index fields "
-                f"match the derived channels.")
-        for ordinal, binding in enumerate(program["outputs"]):
-            binding["channel"] = derived_dst[ordinal]
-        for ordinal, binding in enumerate(program["inputs"]):
-            binding["channel"] = derived_src[ordinal]
+        if derived_src != declared_inputs:
+            fail(f"compiler manifest programs[{program_index}] declares input "
+                 f"channels {declared_inputs} but the task stream binds "
+                 f"inputs {derived_src}")
         for direction, bindings in (("inputs", program["inputs"]),
                                     ("outputs", program["outputs"])):
             for binding in bindings:
