@@ -554,12 +554,12 @@ def adapt(package: Path, output: Path, identity: dict) -> dict:
         for binding in program["outputs"]:
             if binding["channel"] in declared_channels:
                 fail(f"compiler manifest programs[{program_index}].outputs "
-                     f"declares channel {binding["channel"]} twice")
+                     f"declares channel {binding['channel']} twice")
             declared_channels.append(binding["channel"])
         for binding in program["inputs"]:
             if binding["channel"] in declared_channels:
                 fail(f"compiler manifest programs[{program_index}] declares "
-                     f"channel {binding["channel"]} in both inputs and outputs")
+                     f"channel {binding['channel']} in both inputs and outputs")
             declared_channels.append(binding["channel"])
         if len(set(declared_channels)) != len(declared_channels):
             fail(f"compiler manifest programs[{program_index}] channels "
