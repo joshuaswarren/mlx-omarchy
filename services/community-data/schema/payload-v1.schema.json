@@ -16,7 +16,8 @@
     "kind": {
       "enum": [
         "quick",
-        "deep"
+        "deep",
+        "omarchy-mac-e2e"
       ]
     },
     "generated_at": {
@@ -641,6 +642,46 @@
           }
         }
       }
+    },
+    "test_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 512
+    },
+    "install_path": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 512
+    },
+    "asahi_image": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 512
+    },
+    "overall": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 16
+    },
+    "encryption": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "boot_separate": {
+      "type": [
+        "boolean",
+        "null"
+      ]
     }
   }
 }

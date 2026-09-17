@@ -22,9 +22,9 @@ const payloadSchema = payloadSchemaJson as SchemaNode;
 export const SCHEMA_IDENTITY = {
   schema_version: 1 as const,
   fields_sha256:
-    "ec75756510316be866eddecd36975cbf3a5514c4e6b74a5bb0ca35b5c654e74d",
+    "4484ecd954dfdff802ed6a66cccb7a8354d9a06788333ecbbd77927ccb28c3c8",
   schema_sha256:
-    "7b20568de1acc141c89688b85b53f69fce9ef8ed34989576c5107abaff56989e",
+    "5781ea64cb445f10c1f184c6b85bddc9c8ed804f4360d2d6352a840fa1527601",
 };
 
 const CACHEABLE = "public, max-age=60";

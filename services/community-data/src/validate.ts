@@ -17,7 +17,7 @@ export type InitiateArchive = {
 
 export type InitiateBody = {
   schema_version: number;
-  kind: "quick" | "deep";
+  kind: "quick" | "deep" | "omarchy-mac-e2e";
   content_sha256: string;
   payload: unknown;
   archive: InitiateArchive | null;
@@ -75,7 +75,7 @@ export function checkInitiate(body: unknown): Check<InitiateBody> {
   if (b.schema_version !== SCHEMA_VERSION) {
     return { ok: false, code: "schema_unsupported" };
   }
-  if (b.kind !== "quick" && b.kind !== "deep") {
+  if (b.kind !== "quick" && b.kind !== "deep" && b.kind !== "omarchy-mac-e2e") {
     return { ok: false, code: "kind_invalid" };
   }
   if (!isSha256(b.content_sha256)) {
