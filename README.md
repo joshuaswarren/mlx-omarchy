@@ -85,16 +85,16 @@ python -m mlx_lm generate \
 
 ## Performance
 
-Qwen2.5-0.5B-Instruct-4bit, greedy decode, 32 generated tokens. Linux tok/s versus the pinned native Metal result on the same chip class. All numbers measured against the v0.6.0 wheel (`2e252962`) and the Honeykrisp fork packaging recorded in [receipts/2026-09-16-termA-cdm-barrier-trim.md](receipts/2026-09-16-termA-cdm-barrier-trim.md) (m1-test-host, mesa `mesa-honeykrisp-omarchy 26.3.0.devel.hkf96e090-2`, 6 interleaved rounds) and [receipts/2026-09-15-rmsnorm-qkv-ab/t6001-test-host/ab.txt](receipts/2026-09-15-rmsnorm-qkv-ab/t6001-test-host/ab.txt) (t6001-test-host base arm, identical fork).
+Qwen2.5-0.5B-Instruct-4bit, greedy decode, 32 generated tokens. Linux tok/s versus the pinned native Metal result on the same chip class, one same-protocol battery per host.
 
-M1 versus native Metal (m1-test-host, packaged A/B from [receipts/2026-09-16-termA-cdm-barrier-trim.md](receipts/2026-09-16-termA-cdm-barrier-trim.md); native from [receipts/2026-09-10-native-macos-metal-baseline/committed-base-m1/native-baseline-baseM1.json](receipts/2026-09-10-native-macos-metal-baseline/committed-base-m1/native-baseline-baseM1.json)):
+M1 versus native Metal (m1-test-host, single same-protocol battery on the v0.6.3 wheel, `ane-linux-experiments` `receipts/2026-09-17-m1-test-host-gpu-parity-refresh.md`; native from [receipts/2026-09-10-native-macos-metal-baseline/committed-base-m1/native-baseline-baseM1.json](receipts/2026-09-10-native-macos-metal-baseline/committed-base-m1/native-baseline-baseM1.json)):
 
 | Prompt / generated | Decode tok/s | vs native | Prefill tok/s | vs native |
 |---|---:|---:|---:|---:|
-| 30 / 32 | 117.0 / 150.6 | 78% | 323 / 294 | +10% |
-| 1053 / 32 | 105.8 / 140.4 | 75% | 1112 / 1841 | 60% |
+| 30 / 32 | 117.3 / 150.6 | 78% | 390.8 / 294 | +33% |
+| 1053 / 32 | 105.7 / 140.4 | 75% | 1106 / 1841 | 60% |
 
-The worst M1 gap is long-context prefill, suspected `QmmPrefillCoopmatF16` shader throughput.
+Against the same-protocol 2026-09-14 rerun that is +9.4% short decode, +11.2% ctx decode, +18.1% short prefill, and flat (−0.5%) ctx prefill — the CDM barrier trim, the rope-pair trio, the SwiGLU store epilogue, and `map_mode=3` move decode and short prefill; the long-context prefill gap stays pinned on `QmmPrefillCoopmatF16` shader throughput.
 
 M1 Max versus native Max (t6001-test-host, single same-protocol battery on the v0.6.1 wheel, `ane-linux-experiments` `receipts/2026-09-17-t6001-test-host-gpu-parity-refresh.md`; native from [receipts/2026-09-10-native-macos-metal-baseline/native-baseline-t6001-test-host/native-baseline-t6001-test-host.json](receipts/2026-09-10-native-macos-metal-baseline/native-baseline-t6001-test-host/native-baseline-t6001-test-host.json)):
 
