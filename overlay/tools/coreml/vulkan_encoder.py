@@ -732,6 +732,10 @@ class AneIsland:
         self.timeouts = 0
         self.batch_open_ns = 0
         self.log: list[dict] = []
+        # Summed worker-side phase timers (see ane_resident._PHASE_KEYS) and
+        # the transport the resident session actually used.
+        self.phase_us: dict[str, int] = {}
+        self.transport: str | None = None
         self._mode = os.environ.get("ANE_ISLAND_MODE", "launch")
         if self._mode not in ("launch", "resident-batch"):
             raise EncoderRunError(
@@ -806,9 +810,14 @@ class AneIsland:
         record = {"tag": tag, "bundle": bundle, "elapsed_ns": elapsed, "round": True}
         child = getattr(session, "log", [None])[-1] if session.log else None
         if child:
-            for key in ("write_ns", "read_ns", "stage_ms", "save_ms", "elapsed_ms"):
+            for key in ("write_ns", "read_ns", "stage_ms", "save_ms", "elapsed_ms",
+                        "recv_us", "submit_us", "emit_us", "pack_us", "exec_us",
+                        "read_us", "crecv_us"):
                 if key in child:
                     record[key] = child[key]
+                    if key.endswith("_us"):
+                        self.phase_us[key] = self.phase_us.get(key, 0) + int(child[key])
+            self.transport = session.transport
         out_bytes = 0
         packed = {}
         for name, (shape, dtype_name) in outputs.items():
@@ -2077,6 +2086,7 @@ def main() -> int:
     if island is not None:
         report["ane"] = {
             "mode": island._mode,
+            "transport": island.transport,
             "submissions": island.submissions,
             "rounds": island.rounds,
             "worker_starts": island.worker_starts,
@@ -2084,6 +2094,7 @@ def main() -> int:
             "batch_open_ns": island.batch_open_ns,
             "marshal_ns": island.marshal_ns,
             "back_ns": island.back_ns,
+            "phase_us": dict(island.phase_us),
             "op_wall_ms": {
                 op: round(ns / 1e6, 1)
                 for op, ns in sorted(
@@ -2103,6 +2114,13 @@ def main() -> int:
             f"rounds={island.rounds} worker_starts={island.worker_starts} "
             f"timeouts={island.timeouts} exec_ms={island.exec_ns / 1e6:.0f}"
         )
+        if island.phase_us:
+            phases = " ".join(
+                f"{key}={value / 1e6:.1f}ms"
+                for key, value in sorted(island.phase_us.items())
+            )
+            print(f"ane attribution transport={island.transport} {phases}",
+                  flush=True)
     return 0
 
 

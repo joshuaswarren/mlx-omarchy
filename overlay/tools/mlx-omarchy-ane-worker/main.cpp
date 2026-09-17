@@ -327,6 +327,8 @@ int serve_resident(
       inputs[entry.first] = read_file(entry.second);
       input_bytes += inputs[entry.first].size();
     }
+    long long recv_us = 0;
+    const auto recv_started = std::chrono::steady_clock::now();
     for (const auto& entry : job.inline_inputs) {
       AneWorker::Buffer payload(entry.second);
       if (entry.second > 0 &&
@@ -341,6 +343,9 @@ int serve_resident(
       input_bytes += payload.size();
       inputs[entry.first] = std::move(payload);
     }
+    recv_us = std::chrono::duration_cast<std::chrono::microseconds>(
+                  std::chrono::steady_clock::now() - recv_started)
+                  .count();
     const auto stage_ended = std::chrono::steady_clock::now();
     for (const auto& tensor : bundle.manifest.inputs) {
       if (!inputs.count(tensor.name)) {
@@ -352,7 +357,12 @@ int serve_resident(
     }
 
     std::map<std::string, AneWorker::Buffer> outputs;
+    const auto submit_started = std::chrono::steady_clock::now();
     AneWorkerReport report = worker.submit(found->second, inputs, &outputs);
+    const long long submit_us =
+        std::chrono::duration_cast<std::chrono::microseconds>(
+            std::chrono::steady_clock::now() - submit_started)
+            .count();
     if (report.status != AneWorkerStatus::Completed) {
       std::printf(
           "job status=1 bundle=%s elapsed_ms=%lld detail=%s\n",
@@ -398,25 +408,35 @@ int serve_resident(
         return 1;
       }
     }
-    for (const auto& name : job.emits) {
-      auto produced = outputs.find(name);
-      if (produced == outputs.end()) {
-        std::fprintf(
-            stderr, "cannot emit missing output '%s'\n", name.c_str());
-        return 1;
+    long long emit_us = 0;
+    if (!job.emits.empty()) {
+      const auto emit_started = std::chrono::steady_clock::now();
+      for (const auto& name : job.emits) {
+        auto produced = outputs.find(name);
+        if (produced == outputs.end()) {
+          std::fprintf(
+              stderr, "cannot emit missing output '%s'\n", name.c_str());
+          return 1;
+        }
+        std::printf("out %s %zu\n", name.c_str(), produced->second.size());
+        std::fflush(stdout);
+        if (std::fwrite(
+                produced->second.data(), 1, produced->second.size(),
+                stdout) != produced->second.size()) {
+          std::fprintf(stderr, "cannot emit output '%s'\n", name.c_str());
+          return 1;
+        }
+        std::fflush(stdout);
+        output_bytes += produced->second.size();
       }
-      std::printf("out %s %zu\n", name.c_str(), produced->second.size());
-      std::fflush(stdout);
-      if (std::fwrite(
-              produced->second.data(), 1, produced->second.size(), stdout) !=
-          produced->second.size()) {
-        std::fprintf(stderr, "cannot emit output '%s'\n", name.c_str());
-        return 1;
-      }
-      std::fflush(stdout);
-      output_bytes += produced->second.size();
+      emit_us = std::chrono::duration_cast<std::chrono::microseconds>(
+                    std::chrono::steady_clock::now() - emit_started)
+                    .count();
     }
     const auto save_ended = std::chrono::steady_clock::now();
+    const auto emit_us = std::chrono::duration_cast<std::chrono::microseconds>(
+                             std::chrono::steady_clock::now() - save_ended)
+                             .count();
     const auto milliseconds = [](auto from, auto to) {
       return static_cast<long long>(
           std::chrono::duration_cast<std::chrono::milliseconds>(to - from)
@@ -424,12 +444,14 @@ int serve_resident(
     };
     std::printf(
         "job status=0 bundle=%s elapsed_ms=%lld iterations=%d "
-        "input_bytes=%zu output_bytes=%zu stage_ms=%lld save_ms=%lld\n",
+        "input_bytes=%zu output_bytes=%zu stage_ms=%lld save_ms=%lld "
+        "recv_us=%lld submit_us=%lld emit_us=%lld %s\n",
         job.bundle.c_str(),
         static_cast<long long>(report.elapsed.count()), report.iterations,
         input_bytes, output_bytes,
         milliseconds(stage_started, stage_ended),
-        milliseconds(stage_ended, save_ended) - report.elapsed.count());
+        milliseconds(stage_ended, save_ended) - report.elapsed.count(),
+        recv_us, submit_us, emit_us, report.perf.c_str());
     std::fflush(stdout);
   }
 

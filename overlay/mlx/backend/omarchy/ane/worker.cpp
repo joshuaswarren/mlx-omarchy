@@ -91,13 +91,36 @@ std::map<std::string, AneWorker::Buffer> parse_outputs(
   return outputs;
 }
 
+// Device-phase wall split for one dispatch-plan execution: what the
+// host spent copying payloads into the device (pack), waiting on
+// execute ioctls (exec), and copying results back (read). The resident
+// loop reports it per submit; the one-shot path ignores it.
+struct DevicePhaseStats {
+  long long pack_ns{0};
+  long long exec_ns{0};
+  long long read_ns{0};
+};
+
+std::chrono::steady_clock::time_point device_phase_mark() {
+  return std::chrono::steady_clock::now();
+}
+
+void device_phase_add(
+    long long* bucket,
+    const std::chrono::steady_clock::time_point& started) {
+  *bucket += std::chrono::duration_cast<std::chrono::nanoseconds>(
+                 std::chrono::steady_clock::now() - started)
+                 .count();
+}
+
 // Executes the dispatch plan once. Intermediates route through child
 // memory; the worker owns every byte between programs.
 void execute_plan(
     AneDevice& device,
     const AneBundle& bundle,
     const std::map<std::string, AneWorker::Buffer>& inputs,
-    std::map<std::string, AneWorker::Buffer>& outputs) {
+    std::map<std::string, AneWorker::Buffer>& outputs,
+    DevicePhaseStats* stats = nullptr) {
   std::map<std::string, AneWorker::Buffer> values(inputs);
   for (auto index : bundle.manifest.dispatch_plan) {
     if (index >= bundle.programs.size() ||
@@ -117,18 +140,26 @@ void execute_plan(
       if (found->second.size() < binding.logical_bytes) {
         throw AneDeviceError(
             "tensor '" + binding.tensor + "' payload is " +
-            std::to_string(found->second.size()) + " bytes, manifest "
-            "requires " + std::to_string(binding.logical_bytes));
+            std::to_string(found->second.size()) + " bytes, manifest " +
+            std::to_string(binding.logical_bytes));
       }
+      auto mark = device_phase_mark();
       device.send(validated.manifest_index, static_cast<uint32_t>(position),
                   binding, found->second.data(), found->second.size());
+      if (stats) device_phase_add(&stats->pack_ns, mark);
     }
-    device.exec(validated.manifest_index);
+    {
+      auto mark = device_phase_mark();
+      device.exec(validated.manifest_index);
+      if (stats) device_phase_add(&stats->exec_ns, mark);
+    }
     for (size_t position = 0; position < program.outputs.size(); ++position) {
       const auto& binding = program.outputs[position];
       AneWorker::Buffer buffer(binding.logical_bytes);
+      auto mark = device_phase_mark();
       device.read(validated.manifest_index, static_cast<uint32_t>(position),
                   binding, buffer.data(), buffer.size());
+      if (stats) device_phase_add(&stats->read_ns, mark);
       values[binding.tensor] = std::move(buffer);
     }
   }
@@ -296,7 +327,9 @@ int resident_child_loop(
       return 1;
     }
 
+    auto loop_mark = device_phase_mark();
     std::map<std::string, AneWorker::Buffer> inputs;
+    long long crecv_ns = 0;
     bool request_complete = false;
     while (child_read_line(fd, carry, line)) {
       if (line == kRequestRun) {
@@ -313,19 +346,23 @@ int resident_child_loop(
         return 1;
       }
       AneWorker::Buffer payload;
+      auto mark = device_phase_mark();
       if (!child_read_bytes(fd, carry, length, payload)) {
         return 0;
       }
+      device_phase_add(&crecv_ns, mark);
       inputs[name] = std::move(payload);
     }
     if (!request_complete) {
       return 0;
     }
+    device_phase_add(&crecv_ns, loop_mark);
 
     try {
+      DevicePhaseStats stats;
       for (int iteration = 0; iteration < iterations; ++iteration) {
         std::map<std::string, AneWorker::Buffer> produced;
-        execute_plan(device, bundles[index], inputs, produced);
+        execute_plan(device, bundles[index], inputs, produced, &stats);
         if (!send_frame(fd, kTokenIteration, std::strlen(kTokenIteration))) {
           return 0;
         }
@@ -340,7 +377,13 @@ int resident_child_loop(
           }
         }
       }
-      if (!send_frame(fd, kTokenDone, std::strlen(kTokenDone))) {
+      std::string perf =
+          "perf pack_us=" + std::to_string(stats.pack_ns / 1000) +
+          " exec_us=" + std::to_string(stats.exec_ns / 1000) +
+          " read_us=" + std::to_string(stats.read_ns / 1000) +
+          " crecv_us=" + std::to_string(crecv_ns / 1000) + "\n";
+      if (!send_frame(fd, perf) ||
+          !send_frame(fd, kTokenDone, std::strlen(kTokenDone))) {
         return 0;
       }
     } catch (const std::exception& error) {
@@ -948,6 +991,10 @@ AneWorkerReport AneWorker::submit(
     }
     if (line == "iter") {
       ++out.iterations;
+      continue;
+    }
+    if (line.compare(0, 5, "perf ") == 0) {
+      out.perf = line.substr(5);
       continue;
     }
     if (line + "\n" == kTokenDone) {
