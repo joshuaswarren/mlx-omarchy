@@ -681,9 +681,10 @@ class Statement:
         self.const_kwargs: dict | None = None
 
 
-# The three island bundles the encoder handlers submit to. The resident
-# session loads every one of them once, up front, exactly like the launch
-# path loads its bundle per submit.
+# The island bundles the attention handlers submit to. The resident session
+# loads every one of them once, up front, exactly like the launch path loads
+# its bundle per submit. Placed chain family (G) extends this set in
+# EncoderRunner._index_islands so resident-batch arms load what they submit.
 RESIDENT_BUNDLES = (
     "island-attn-a-kt",
     "island-select-8head",
@@ -740,6 +741,7 @@ class AneIsland:
         self._batch_deadline_ms = int(
             os.environ.get("ANE_ISLAND_BATCH_DEADLINE_MS", "120000")
         )
+        self.resident_bundles = set(RESIDENT_BUNDLES)
         self._session = None
 
     def close(self) -> None:
@@ -765,7 +767,9 @@ class AneIsland:
         session = ResidentAneWorker(
             worker=Path(self.worker),
             libane=Path(self.libane),
-            bundles={name: Path(self.bundles) / name for name in RESIDENT_BUNDLES},
+            bundles={
+                name: Path(self.bundles) / name for name in self.resident_bundles
+            },
             scratch=Path(self.scratch),
             deadline_ms=self.deadline_ms,
         )
@@ -952,6 +956,7 @@ class EncoderRunner:
         self._parse()
         self._index_islands()
         self._index_fusions()
+        self._index_ffnchain()
         self._last_use()
 
     # ---------------------------------------------------------------- parsing
@@ -1099,6 +1104,75 @@ class EncoderRunner:
                     continue
                 self.linear_silu[stmt.index] = silu.index
                 self.silu_done.add(silu.index)
+
+    def _index_ffnchain(self) -> None:
+        """Fused FFN chains (family G): one bundle per feed-forward module
+        covering linear1 (m375 k1024 n4096) -> silu -> linear2
+        (m375 k4096 n1024). Keyed on the linear1 statement; the paired
+        linear2 statement is skipped because the island already produced
+        the module output, and the silu statement stays fold-skipped (or
+        executes standalone when the fold is off) with its result unused."""
+        ffnchain_w = re.compile(
+            r"encoder_layers_(\d+)_feed_forward(\d)_linear1"
+            r"_weight_to_fp16_palettized"
+        )
+        consumers: dict[str, list[Statement]] = {}
+        for stmt in self.statements:
+            for token in stmt.kwargs.values():
+                for name in self._operand_names(token):
+                    consumers.setdefault(name, []).append(stmt)
+        ffnchain = {}
+        for stmt in self.statements:
+            if stmt.op != "linear" or stmt.shape is None:
+                continue
+            m = ffnchain_w.fullmatch(
+                str(stmt.kwargs.get("weight", "")).strip().strip("'\"")
+            )
+            if m is None:
+                continue
+            layer, module = (int(g) for g in m.groups())
+            if tuple(stmt.shape) != (1, 375, 4096):
+                raise EncoderRunError(
+                    f"feed_forward{module} linear1 for L{layer:02d}-G is "
+                    f"{tuple(stmt.shape)}"
+                )
+            users = consumers.get(stmt.names[0], [])
+            silu = users[0] if len(users) == 1 and users[0].op == "silu" else None
+            l2 = None
+            if silu is not None:
+                l2_users = consumers.get(silu.names[0], [])
+                if (
+                    len(l2_users) == 1
+                    and l2_users[0].op == "linear"
+                    and re.fullmatch(
+                        rf"encoder_layers_{layer}_feed_forward{module}_linear2"
+                        r"_weight_to_fp16_palettized",
+                        str(l2_users[0].kwargs.get("weight", "")).strip().strip("'\""),
+                    )
+                ):
+                    if tuple(l2_users[0].shape) != (1, 375, 1024):
+                        raise EncoderRunError(
+                            f"feed_forward{module} linear2 for L{layer:02d}-G "
+                            f"is {tuple(l2_users[0].shape)}"
+                        )
+                    l2 = l2_users[0]
+            if l2 is None:
+                raise EncoderRunError(
+                    f"feed_forward{module} silu->linear2 pair for "
+                    f"L{layer:02d}-G not found in the plan"
+                )
+            name = f"island-ffn-L{layer:02d}-f{module}"
+            if self.island is None or not (self.island.bundles / name).is_dir():
+                continue
+            ffnchain[stmt.index] = (layer, module, name, l2)
+        self.island_ffnchain = ffnchain
+        self.island_ffnchain_l2 = {
+            l2.index: name for _l, _m, name, l2 in ffnchain.values()
+        }
+        if self.island is not None and "G" in self.placed:
+            self.island.resident_bundles.update(
+                name for _l, _m, name, _l2 in ffnchain.values()
+            )
 
     def _last_use(self) -> None:
         """Index of the final statement that reads each name, so the runner can
@@ -1273,6 +1347,14 @@ class EncoderRunner:
         if "O" in self.placed and stmt.index in self.island_oproj:
             self._run_island_oproj(stmt)
             return
+        if "G" in self.placed and stmt.index in self.island_ffnchain:
+            self._run_island_ffnchain(stmt)
+            return
+        if "G" in self.placed and stmt.index in self.island_ffnchain_l2:
+            # Produced by the ffn chain island at the linear1 statement;
+            # nothing left to execute on the GPU.
+            self.executed += 1
+            return
         if (
             "A" in self.placed
             and stmt.index in self.island_a_partner
@@ -1446,6 +1528,22 @@ class EncoderRunner:
             )
         results = self.island.submit(
             f"island-oproj-L{layer:02d}", f"L{layer:02d}-O",
+            {"x": x}, {"y": (l2.shape, "fp16")},
+        )
+        self.values[l2.names[0]] = results["y"]
+        self.executed += 1
+        self.ane_ops += 1
+
+    def _run_island_ffnchain(self, stmt: Statement) -> None:
+        layer, module, name, l2 = self.island_ffnchain[stmt.index]
+        x = self.tensor(stmt.kwargs["x"])
+        if tuple(x.shape) != (1, 375, 1024):
+            raise EncoderRunError(
+                f"feed_forward{module} chain input for L{layer:02d}-G is "
+                f"{tuple(x.shape)}"
+            )
+        results = self.island.submit(
+            name, f"L{layer:02d}-G{module}",
             {"x": x}, {"y": (l2.shape, "fp16")},
         )
         self.values[l2.names[0]] = results["y"]
@@ -1979,8 +2077,9 @@ def main() -> int:
     )
     parser.add_argument(
         "--islands", default="ABC",
-        help="which islands to place on the ANE, e.g. ABC or AC. Ignored with "
-             "--no-ane. AC reproduces the two-island arm from this same script.",
+        help="which islands to place on the ANE, e.g. ABC, ABCG (fused FFN "
+             "chains) or AG. Ignored with --no-ane. AC reproduces the "
+             "two-island arm from this same script.",
     )
     parser.add_argument(
         "--repeat", type=int, default=1,
@@ -2003,7 +2102,7 @@ def main() -> int:
         )
 
     placed = frozenset(args.islands.upper())
-    if placed - frozenset("ABC"):
+    if placed - frozenset("ABCG"):
         raise SystemExit(f"--islands {args.islands!r}: unknown island(s)")
     runner = EncoderRunner(
         args.source / "model.mil", args.source / "model-root", island, placed
