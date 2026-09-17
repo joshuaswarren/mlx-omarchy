@@ -681,9 +681,10 @@ class Statement:
         self.const_kwargs: dict | None = None
 
 
-# The three island bundles the encoder handlers submit to. The resident
-# session loads every one of them once, up front, exactly like the launch
-# path loads its bundle per submit.
+# The island bundles the attention handlers submit to. The resident session
+# loads every one of them once, up front, exactly like the launch path loads
+# its bundle per submit. Placed linear families (O, F) extend this set in
+# EncoderRunner.__init__ so resident-batch arms load what they submit.
 RESIDENT_BUNDLES = (
     "island-attn-a-kt",
     "island-select-8head",
@@ -733,6 +734,7 @@ class AneIsland:
         self._batch_deadline_ms = int(
             os.environ.get("ANE_ISLAND_BATCH_DEADLINE_MS", "120000")
         )
+        self.resident_bundles = set(RESIDENT_BUNDLES)
         self._session = None
 
     def close(self) -> None:
@@ -758,7 +760,9 @@ class AneIsland:
         session = ResidentAneWorker(
             worker=Path(self.worker),
             libane=Path(self.libane),
-            bundles={name: Path(self.bundles) / name for name in RESIDENT_BUNDLES},
+            bundles={
+                name: Path(self.bundles) / name for name in self.resident_bundles
+            },
             scratch=Path(self.scratch),
             deadline_ms=self.deadline_ms,
         )
@@ -1007,6 +1011,43 @@ class EncoderRunner:
             oproj[stmt.index] = (layer, stmt)
         self.island_oproj = oproj
 
+        # FFN feed-forward linears: two modules per layer, each a 4096-wide
+        # linear1 (m375 k1024 n4096, the measured mm1 256-plane permutation)
+        # and linear2 (m375 k4096 n1024, the measured mm2 column split).
+        ffn_w = re.compile(
+            r"encoder_layers_(\d+)_feed_forward(\d)_linear(\d)"
+            r"_weight_to_fp16_palettized"
+        )
+        ffn = {}
+        for stmt in self.statements:
+            if stmt.op != "linear" or stmt.shape is None:
+                continue
+            m = ffn_w.fullmatch(
+                str(stmt.kwargs.get("weight", "")).strip().strip("'\"")
+            )
+            if m is None:
+                continue
+            layer, module, half = (int(g) for g in m.groups())
+            if stmt.shape and tuple(stmt.shape) != (
+                (1, 375, 4096) if half == 1 else (1, 375, 1024)
+            ):
+                raise EncoderRunError(
+                    f"feed_forward{module} linear{half} for L{layer:02d}-F is "
+                    f"{tuple(stmt.shape)}"
+                )
+            name = f"island-ffn{module}{half}-L{layer:02d}"
+            if self.island is None or not (self.island.bundles / name).is_dir():
+                continue
+            ffn[stmt.index] = (layer, module, half, name, stmt)
+        self.island_ffn = ffn
+        if self.island is not None:
+            if "O" in self.placed:
+                self.island.resident_bundles.update(
+                    f"island-oproj-L{layer:02d}" for layer, _ in oproj.values()
+                )
+            if "F" in self.placed:
+                self.island.resident_bundles.update(name for *_, name, _s in ffn.values())
+
     def _index_fusions(self) -> None:
         """Find the conv-module GLU: sigmoid(split_1) consumed by exactly one
         mul whose other operand is the sibling split half. That mul becomes
@@ -1227,6 +1268,9 @@ class EncoderRunner:
         if "O" in self.placed and stmt.index in self.island_oproj:
             self._run_island_oproj(stmt)
             return
+        if "F" in self.placed and stmt.index in self.island_ffn:
+            self._run_island_ffn(stmt)
+            return
         if (
             "A" in self.placed
             and stmt.index in self.island_a_partner
@@ -1400,6 +1444,23 @@ class EncoderRunner:
             )
         results = self.island.submit(
             f"island-oproj-L{layer:02d}", f"L{layer:02d}-O",
+            {"x": x}, {"y": (l2.shape, "fp16")},
+        )
+        self.values[l2.names[0]] = results["y"]
+        self.executed += 1
+        self.ane_ops += 1
+
+    def _run_island_ffn(self, stmt: Statement) -> None:
+        layer, module, half, name, l2 = self.island_ffn[stmt.index]
+        x = self.tensor(stmt.kwargs["x"])
+        want_k = 1024 if half == 1 else 4096
+        if tuple(x.shape) != (1, 375, want_k):
+            raise EncoderRunError(
+                f"feed_forward{module} linear{half} input for "
+                f"L{layer:02d}-F is {tuple(x.shape)}"
+            )
+        results = self.island.submit(
+            name, f"L{layer:02d}-F{module}{half}",
             {"x": x}, {"y": (l2.shape, "fp16")},
         )
         self.values[l2.names[0]] = results["y"]
@@ -1862,8 +1923,9 @@ def main() -> int:
     )
     parser.add_argument(
         "--islands", default="ABC",
-        help="which islands to place on the ANE, e.g. ABC or AC. Ignored with "
-             "--no-ane. AC reproduces the two-island arm from this same script.",
+        help="which islands to place on the ANE, e.g. ABC, ABCO, ABCF or "
+             "ABCFO. Ignored with --no-ane. AC reproduces the two-island arm "
+             "from this same script.",
     )
     parser.add_argument(
         "--repeat", type=int, default=1,
@@ -1886,7 +1948,7 @@ def main() -> int:
         )
 
     placed = frozenset(args.islands.upper())
-    if placed - frozenset("ABC"):
+    if placed - frozenset("ABCOF"):
         raise SystemExit(f"--islands {args.islands!r}: unknown island(s)")
     runner = EncoderRunner(
         args.source / "model.mil", args.source / "model-root", island, placed
