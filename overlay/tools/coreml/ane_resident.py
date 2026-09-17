@@ -200,12 +200,20 @@ class ResidentAneWorker:
         self._banner.append(line)
         self.device_program_loads = _loaded_programs(line)
         # A worker with mapped regions answers right after the load
-        # report. An old worker that ignored the flags sends nothing:
-        # a short bounded wait decides the transport, then never again.
+        # report -- usually already buffered in _inbox, so check the
+        # buffer before waiting on select. An old worker that ignored
+        # the flags sends nothing: a short bounded wait decides the
+        # transport, then never again.
         if self._shm_in is not None:
             deadline = time.monotonic() + 2.0
             stream = self._process.stdout
             while time.monotonic() < deadline:
+                if b"\n" in self._inbox:
+                    line = self._readline("shm handshake")
+                    if line.startswith("shm ok "):
+                        self._shm_ok = True
+                        self.transport = "shm"
+                    break
                 ready, _, _ = select.select(
                     [stream], [], [], deadline - time.monotonic()
                 )
@@ -218,12 +226,6 @@ class ResidentAneWorker:
                         "shm handshake"
                     )
                 self._inbox += chunk
-                if b"\n" in self._inbox:
-                    line = self._readline("shm handshake")
-                    if line.startswith("shm ok "):
-                        self._shm_ok = True
-                        self.transport = "shm"
-                    break
         self.start_ns = time.monotonic_ns() - started
 
     def close(self) -> dict:
