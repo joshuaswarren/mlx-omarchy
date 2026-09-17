@@ -37,6 +37,9 @@ class RedactionStripsPII(unittest.TestCase):
         "uuid 01234567-89ab-cdef-0123-456789abcdef\n"
         "serial-number: C02XYZ123456\n"
         '  "serial_number": "FVFXC02X"\n'
+        'ioreg "IOPlatformSerialNumber" = "C02XY9876543"\n'
+        'ioreg "IOPlatformUUID" = "AAAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE"\n'
+        'ioreg "board-id" = "Mac-1234567890ABCDEF"\n'
         "API_KEY=sk-live-abcdef0123456789abcdef\n"
         "token ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ123456\n"
         "Authorization: Bearer eyJhbGciOiJI.eyJzY29wZSIsInN1YiI.sIGN4TuR3\n"
@@ -51,7 +54,9 @@ class RedactionStripsPII(unittest.TestCase):
         out = self.redactor().apply(self.SAMPLE)
         for secret in ("joshuawarren", "m1-test-host", "/home/", "198.51.100.7",
                        "fe80::", "f0:18:98", "01234567-89ab",
-                       "C02XYZ123456", "FVFXC02X", "sk-live-", "ghp_ABCDEF",
+                       "C02XYZ123456", "FVFXC02X", "C02XY9876543",
+                       "AAAAAAAA-BBBB", "Mac-1234567890ABCDEF",
+                       "sk-live-", "ghp_ABCDEF",
                        "eyJhbGciOiJI"):
             self.assertNotIn(secret, out, f"{secret!r} leaked: {out!r}")
 
@@ -751,6 +756,52 @@ def _build_port_tree(tmp, with_ane):
         _write_dt(tmp, "pmgr/ps-ane-plain", {"phandle": _u32_be(0x5)})
 
 
+def _build_t600x_tree(tmp):
+    """Real t6000/t6020 shape: DARTs named `iommu@<addr>` tagged
+    `apple,<soc>-dart` with no `apple,dart` fallback, and an AIC2
+    interrupt controller. No `dart*` node names anywhere."""
+    _write_dt(tmp, "", {
+        "compatible": b"apple,t6000\x00apple,arm-platform\x00",
+    })
+    _write_dt(tmp, "soc/iommu@285800000", {
+        "compatible": b"apple,t6000-dart\x00",
+        "reg": _u32_be(0x2, 0x85800000, 0, 0x4000),
+        "#iommu-cells": _u32_be(1),
+        "phandle": _u32_be(0x11),
+    })
+    _write_dt(tmp, "soc/iommu@285810000", {
+        "compatible": b"apple,t6000-dart\x00",
+        "reg": _u32_be(0x2, 0x85810000, 0, 0x4000),
+        "#iommu-cells": _u32_be(1),
+        "phandle": _u32_be(0x12),
+    })
+    _write_dt(tmp, "soc/interrupt-controller@28e100000", {
+        "compatible": b"apple,t6000-aic\x00apple,aic2\x00",
+        "phandle": _u32_be(0x13),
+    })
+    _write_dt(tmp, "soc/power-management@28e200000", {
+        "compatible": b"apple,t6000-pmgr\x00apple,pmgr\x00",
+    })
+    _write_dt(tmp, "soc/power-management@28e200000/ane-sys", {
+        "compatible": b"apple,t6000-pmgr-pwrstate\x00",
+        "label": b"ane_sys\x00",
+        "phandle": _u32_be(0x14),
+    })
+    # An unreferenced phandle: must NOT ride in the shipped phandle map.
+    _write_dt(tmp, "soc/cpufreq@2110e0000", {
+        "compatible": b"apple,t6000-cpufreq\x00",
+        "phandle": _u32_be(0x99),
+    })
+    _write_dt(tmp, "soc/ane@284000000", {
+        "compatible": b"apple,t6000-ane\x00",
+        "reg": _u32_be(0x2, 0x85c04000, 0, 0x24000),
+        "interrupts": _u32_be(770, 0),
+        "iommus": _u32_be(0x11, 0, 0x12, 0),
+        "power-domains": _u32_be(0x14, 0),
+        "status": b"disabled\x00",
+    })
+
+
 class AnePortDevicetreeProbe(unittest.TestCase):
     """The t6001-style tree carries the ane node; t8103 stock does not.
 
@@ -866,6 +917,49 @@ class AnePortDevicetreeProbe(unittest.TestCase):
             "pmgr_domains=1 aic=apple,t6000-aic")
         self.assertIsNone(cc.build_payload("quick", {}, {})["ane_port"])
 
+    def test_t600x_tree_with_iommu_named_darts_is_captured(self):
+        """The real t6000/t6020 shape: DARTs are `iommu@<addr>` with
+        `apple,<soc>-dart` compatible and no `apple,dart` fallback; the
+        AIC is `apple,aic2`. All of it must still be captured, and the
+        shipped phandle map must carry only referenced entries."""
+        with tempfile.TemporaryDirectory() as tmp:
+            _build_t600x_tree(tmp)
+            out = cq._ane_port_devicetree(cc.Redactor(), base=tmp)
+        self.assertTrue(out["ane_node_present"])
+        ane = out["ane_nodes"]["soc/ane@284000000"]
+        self.assertEqual(ane["iommus_resolved"],
+                         ["soc/iommu@285800000", "soc/iommu@285810000"])
+        self.assertEqual(len(out["darts"]), 2)
+        dart = out["darts"]["soc/iommu@285800000"]
+        self.assertEqual(dart["compatible"], "apple,t6000-dart")
+        self.assertEqual(out["aic"]["compatible"],
+                         ["apple,t6000-aic", "apple,aic2"])
+        self.assertEqual(out["phandles"], {
+            "17": "soc/iommu@285800000",
+            "18": "soc/iommu@285810000",
+            "20": "soc/power-management@28e200000/ane-sys",
+        })
+        self.assertNotIn("153", out["phandles"])
+
+    def test_t602x_dart_fallback_compatible_is_matched(self):
+        """t602x DARTs tag `apple,t6020-dart`, `apple,t8110-dart`."""
+        with tempfile.TemporaryDirectory() as tmp:
+            _write_dt(tmp, "", {
+                "compatible": b"apple,t6020\x00apple,arm-platform\x00",
+            })
+            _write_dt(tmp, "soc/iommu@2a6808000", {
+                "compatible": b"apple,t6020-dart\x00apple,t8110-dart\x00",
+                "#iommu-cells": _u32_be(1),
+                "phandle": _u32_be(0x21),
+            })
+            _write_dt(tmp, "soc/interrupt-controller@2a6800000", {
+                "compatible": b"apple,t6020-aic\x00apple,aic2\x00",
+            })
+            out = cq._ane_port_devicetree(cc.Redactor(), base=tmp)
+        self.assertIn("soc/iommu@2a6808000", out["darts"])
+        self.assertEqual(out["aic"]["compatible"],
+                         ["apple,t6020-aic", "apple,aic2"])
+
     def test_absent_devicetree_is_clean(self):
         out = cq._ane_port_devicetree(cc.Redactor(), base="/no/such/tree")
         self.assertFalse(out["ane_node_present"])
@@ -972,6 +1066,82 @@ class AnePortPayloadDetail(unittest.TestCase):
                         truncated)
         self.assertTrue(any(t.startswith("pmgr_domains:") for t in truncated),
                         truncated)
+
+    def test_detail_drops_phandles_before_darts_and_ane_nodes(self):
+        """Byte-budget overflow must sacrifice the phandle map first:
+        DARTs and ane nodes are what authoring the overlay needs."""
+        quick = json.loads(json.dumps(BuildPayload.QUICK))
+        fat = {str(i): "y" * 9000 for i in range(8)}
+        quick["ane_port"] = {
+            "available": True,
+            "devicetree": {
+                "ane_node_present": True,
+                "ane_nodes": {"ane@26a000000":
+                              {"reg": ["0x26a000000/0x100000"]}},
+                "darts": {f"iommu@{i:x}": {"compatible":
+                                           "apple,t6000-dart"}
+                          for i in range(8)},
+                "pmgr_domains": [],
+                "aic": {"path": "aic",
+                        "compatible": ["apple,t6000-aic", "apple,aic2"]},
+                "phandles": fat,
+            },
+            "runtime": {"iomem": None, "module_version": None,
+                        "srcversion": None, "loaded": None, "dmesg": None},
+        }
+        payload = cc.build_payload("quick", quick, {},
+                                   redactor=cc.Redactor())
+        d = payload["ane_port_detail"]
+        self.assertIsNotNone(d)
+        self.assertIn("phandles:over_budget", d["truncated"])
+        self.assertEqual(d["devicetree"]["phandles"], {})
+        self.assertEqual(len(d["devicetree"]["darts"]), 8)
+        self.assertIn("ane@26a000000", d["devicetree"]["ane_nodes"])
+        self.assertIsNotNone(d["devicetree"]["aic"])
+
+    def test_detail_carries_macos_block(self):
+        quick = json.loads(json.dumps(BuildPayload.QUICK))
+        quick["host"]["system"] = "Darwin"
+        quick["ane_port"] = {
+            "available": True,
+            "macos": {
+                "available": True,
+                "instances": [{"name": "ane,t8020",
+                               "matched": "ane,t8020",
+                               "firmware_loaded": True,
+                               "cores": 16, "version": 96,
+                               "hw_board_type": 96, "arch": "h13g"}],
+                "ane_nodes": [{"name": "ane0",
+                               "compatible": ["ane,t8020"],
+                               "reg": "0200" * 8,
+                               "IOInterruptControllers": "aic",
+                               "IOInterruptSpecifiers": "02000000",
+                               "IOClass": None,
+                               "phandle": 4097}],
+                "dart_nodes": [{"name": "dart-ane0",
+                                "compatible": ["dart,t6000"],
+                                "reg": "0200" * 8,
+                                "IOInterruptControllers": "aic",
+                                "IOInterruptSpecifiers": "03000000",
+                                "IOClass": "AppleT6000DART",
+                                "phandle": 4113}],
+                "coreml": {"available": False, "compute_units": None,
+                           "error": "ModuleNotFoundError"},
+                "powermetrics": {"available": False, "power_mw": None,
+                                 "error": "requires root"},
+                "truncated": [],
+            },
+        }
+        payload = cc.build_payload("quick", quick, {},
+                                   redactor=cc.Redactor())
+        self.assertEqual(payload["ane_port"],
+                         "native_macos=1 instances=1 cores=16 dart_ane=1 "
+                         "firmware=loaded")
+        detail = payload["ane_port_detail"]
+        self.assertIn("macos", detail)
+        self.assertNotIn("devicetree", detail)
+        self.assertEqual(detail["macos"]["instances"][0]["cores"], 16)
+        self.assertEqual(len(detail["macos"]["dart_nodes"]), 1)
 
     def test_detail_drops_runtime_when_it_overflows_byte_budget(self):
         quick = json.loads(json.dumps(BuildPayload.QUICK))

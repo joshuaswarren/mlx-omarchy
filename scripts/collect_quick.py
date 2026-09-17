@@ -345,7 +345,11 @@ def _ane_port_devicetree(redactor, base=DT_BASE):
         hit = [t for t in compat if t == "apple,ane" or t.endswith("-ane")]
         if named or hit:
             ane_nodes[rel] = _dt_props(dirpath, redactor)
-        if any(t.startswith("apple,dart") for t in compat) \
+        # Real trees name DART nodes `iommu@<addr>` and tag them
+        # `apple,<soc>-dart` (t600x drops the legacy `apple,dart`
+        # fallback entirely), so match on the compatible suffix, not the
+        # node name alone.
+        if any(t == "apple,dart" or t.endswith("-dart") for t in compat) \
                 or re.search(r"(?:^|/)dart[0-9a-f@-]", rel):
             darts[rel] = _dt_props(dirpath, redactor)
         if any(t == "apple,pmgr" for t in compat):
@@ -361,7 +365,10 @@ def _ane_port_devicetree(redactor, base=DT_BASE):
                     "label": (label or [None])[0],
                     "compatible": ccompat[:8],
                 })
-        if "apple,aic" in compat and aic is None:
+        # t8103 uses "apple,aic"; t600x/t602x use "apple,<soc>-aic",
+        # "apple,aic2".
+        if aic is None and any(t in ("apple,aic", "apple,aic2")
+                               or t.endswith("-aic") for t in compat):
             aic = {"path": rel, "compatible": compat[:8]}
     # Resolve iommu phandles to DART paths so the contributor does not
     # have to do phandle arithmetic by hand. Each entry is one phandle
@@ -385,13 +392,24 @@ def _ane_port_devicetree(redactor, base=DT_BASE):
                     isinstance(ncells[0], int):
                 i += ncells[0]
         props["iommus_resolved"] = resolved
+    # Ship only the phandles the porting data actually resolves: the
+    # iommus / power-domains cells of the ane nodes and DARTs. The full
+    # map runs to hundreds of entries on t600x and blew the 64 KiB
+    # payload budget before the DARTs it exists to explain did.
+    referenced = set()
+    for props in list(ane_nodes.values()) + list(darts.values()):
+        for key in ("iommus", "power-domains"):
+            cells = props.get(key)
+            if isinstance(cells, list):
+                referenced.update(c for c in cells
+                                  if isinstance(c, int) and c in phandles)
     return {
         "ane_node_present": bool(ane_nodes),
         "ane_nodes": ane_nodes,
         "darts": darts,
         "pmgr_domains": pmgr_domains[:64],
         "aic": aic,
-        "phandles": {str(k): phandles[k] for k in sorted(phandles)},
+        "phandles": {str(k): phandles[k] for k in sorted(referenced)},
     }
 
 
@@ -437,7 +455,7 @@ def _ane_port_runtime(redactor):
 def probe_ane_port(redactor):
     """Driver-port capture: devicetree plus live ane driver facts."""
     if platform.system() == "Darwin":
-        return collect_macos.not_applicable()
+        return collect_macos.probe_ane_port(redactor)
     out = {"available": True}
     out["devicetree"] = _ane_port_devicetree(redactor)
     out["runtime"] = _ane_port_runtime(redactor)
