@@ -477,6 +477,28 @@ def _ane_port_devicetree(redactor, base=DT_BASE,
             if isinstance(cells, list):
                 referenced.update(c for c in cells
                                   if isinstance(c, int) and c in phandles)
+    # SET-candidate labeling (Linux side): the ane_set* power-controller
+    # children are 4-byte pwrstate CELLS (t602x cluster at pmgr+0x4000),
+    # never the SET MMIO window. The device tree cannot source the SET
+    # base: it needs the macOS driver-window capture (macos.
+    # set_base_candidate with driver_window_confirms=true) or an m1n1
+    # ANE.ps_map probe. Same field name as the macOS side so a generator
+    # can never conflate the pwrstate cluster with the SET candidate.
+    ane_pwrstate_cells = [
+        {"label": e["label"],
+         "offset": int(e["path"].rsplit("@", 1)[-1], 16)}
+        for e in pmgr_domains
+        if e.get("label") and "@" in (e.get("path") or "")
+        and e["path"].rsplit("@", 1)[-1].isalnum()
+    ][:16]
+    set_base_candidate = {
+        "status": "not_available_from_device_tree",
+        "ane_pwrstate_cells": ane_pwrstate_cells,
+        "note": "ane_set* entries are 4-byte power-controller pwrstate "
+                "cells, not the SET MMIO window; the SET base must come "
+                "from a macOS set_base_candidate (driver_window_confirms) "
+                "or m1n1 ANE.ps_map, never from these offsets",
+    }
     return {
         "ane_node_present": bool(ane_nodes),
         "ane_nodes": ane_nodes,
@@ -485,6 +507,7 @@ def _ane_port_devicetree(redactor, base=DT_BASE,
         "pmgr_domains": pmgr_domains[:64],
         "pmgr_blocks": pmgr_blocks[:8],
         "aic": aic,
+        "set_base_candidate": set_base_candidate,
         "phandles": {str(k): phandles[k] for k in sorted(referenced)},
         "boot": boot,
         "dtb_sha256": dtb_sha256,
