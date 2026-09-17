@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cstdlib>
 #include <cstring>
 #include <filesystem>
 #include <fstream>
@@ -17,6 +18,8 @@
 #include <string>
 #include <system_error>
 #include <type_traits>
+#include <fcntl.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 using namespace mlx::core::omarchy::ane;
@@ -839,4 +842,58 @@ TEST_CASE("missing bundle is a normal not-found outcome") {
   } catch (const AneBundleNotFound& error) {
     CHECK(std::string(error.what()).find("stays on Vulkan") != std::string::npos);
   }
+}
+
+TEST_CASE("digest cache skips re-hash on unchanged file identity") {
+  // Default state: MLX_OMARCHY_ANE_DIGEST_CACHE unset in the test process.
+  unsetenv("MLX_OMARCHY_ANE_DIGEST_CACHE");
+  Fixture fixture;
+  fixture.write();
+  REQUIRE(load_bundle(fixture.dir.path()).programs.size() == 2);
+
+  // Same size, same mtime, different content: the documented identity-keyed
+  // trade — a cache hit serves the previously verified digest.
+  const auto payload = fixture.dir.path() / "program-0.anec";
+  struct ::stat st {};
+  REQUIRE(::stat(payload.c_str(), &st) == 0);
+  struct timespec times[2]{{st.st_atim.tv_sec, st.st_atim.tv_nsec},
+                           {st.st_mtim.tv_sec, st.st_mtim.tv_nsec}};
+  write_file(payload, anec_bytes('Z'));
+  REQUIRE(::utimensat(AT_FDCWD, payload.c_str(), times, 0) == 0);
+  CHECK(load_bundle(fixture.dir.path()).programs.size() == 2);
+
+  // Same content change with a NEW mtime: cache miss, full re-verify, the
+  // mismatch against the manifest is caught.
+  write_file(payload, anec_bytes('Q'));
+  check_error(
+      [&] { load_bundle(fixture.dir.path()); }, "program-0.anec sha256 mismatch");
+}
+
+TEST_CASE("digest cache kill-switch forces full verification") {
+  Fixture fixture;
+  fixture.write();
+  unsetenv("MLX_OMARCHY_ANE_DIGEST_CACHE");
+  REQUIRE(load_bundle(fixture.dir.path()).programs.size() == 2);
+
+  const auto payload = fixture.dir.path() / "program-0.anec";
+  struct ::stat st0 {};
+  REQUIRE(::stat(payload.c_str(), &st0) == 0);
+  struct timespec keep[2]{{st0.st_atim.tv_sec, st0.st_atim.tv_nsec},
+                          {st0.st_mtim.tv_sec, st0.st_mtim.tv_nsec}};
+  write_file(payload, anec_bytes('Z'));
+  REQUIRE(::utimensat(AT_FDCWD, payload.c_str(), keep, 0) == 0);
+
+  // Every accepted off-value forces the re-hash the cache would have skipped;
+  // the content change is caught even though the identity is unchanged.
+  for (const char* value : {"0", "false", "no", "off", ""}) {
+    setenv("MLX_OMARCHY_ANE_DIGEST_CACHE", value, 1);
+    INFO("value=", value);
+    check_error(
+        [&] { load_bundle(fixture.dir.path()); }, "program-0.anec sha256 mismatch");
+  }
+
+  // Any other value keeps the cache enabled: stale identity is served.
+  setenv("MLX_OMARCHY_ANE_DIGEST_CACHE", "1", 1);
+  CHECK(load_bundle(fixture.dir.path()).programs.size() == 2);
+  unsetenv("MLX_OMARCHY_ANE_DIGEST_CACHE");
 }

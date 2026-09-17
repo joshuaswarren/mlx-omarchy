@@ -5,13 +5,19 @@
 
 #include <json.hpp>
 
+#include <sys/stat.h>
+
 #include <algorithm>
 #include <array>
+#include <cctype>
+#include <cstdlib>
 #include <fstream>
 #include <limits>
+#include <mutex>
 #include <stdexcept>
 #include <string>
 #include <system_error>
+#include <tuple>
 #include <type_traits>
 #include <vector>
 
@@ -815,6 +821,89 @@ AneAnecHeader parse_anec_header(const std::filesystem::path& path) {
   return header;
 }
 
+// Digest cache: verified payload digests keyed on cheap file identity
+// (resolved path + device + inode + size + mtime_ns). A cache hit skips the
+// re-hash on session open; any identity change forces a full re-hash.
+//
+// Security/consistency story (stated for the receipt): the manifest declaring
+// the expected digest sits in the same directory as the payload, so an
+// attacker able to swap the payload can also swap the manifest — the digest
+// check was never an anti-tamper boundary, only a mismatch detector for
+// accidental corruption or stale deploy. The cache preserves that exactly:
+// any content change that alters (size, mtime_ns, inode) re-verifies. The
+// deliberate trade: a content change that restores the identical
+// (dev, inode, size, mtime_ns) tuple is served from cache without re-hash.
+// That is not reachable by accident on any filesystem here (nanosecond
+// mtime granularity) and is irrelevant adversarially (see above — same
+// attacker rewrites the manifest anyway). MLX_OMARCHY_ANE_DIGEST_CACHE
+// forces full verification every open when set to 0/false/no/off/empty
+// (case-insensitive); unset or any other value keeps the cache enabled.
+bool digest_cache_enabled() {
+  const char* value = std::getenv("MLX_OMARCHY_ANE_DIGEST_CACHE");
+  if (value == nullptr) {
+    return true;
+  }
+  std::string lowered(value);
+  for (char& c : lowered) {
+    c = char(std::tolower(static_cast<unsigned char>(c)));
+  }
+  return lowered != "0" && lowered != "false" && lowered != "no" &&
+      lowered != "off" && !lowered.empty();
+}
+
+struct DigestCacheKey {
+  std::string path;
+  uint64_t dev;
+  uint64_t ino;
+  uint64_t size;
+  uint64_t mtime_ns;
+
+  bool operator<(const DigestCacheKey& rhs) const {
+    return std::tie(path, dev, ino, size, mtime_ns) <
+        std::tie(rhs.path, rhs.dev, rhs.ino, rhs.size, rhs.mtime_ns);
+  }
+};
+
+std::mutex g_digest_cache_mutex;
+std::map<DigestCacheKey, std::string> g_digest_cache;
+
+// Returns the payload digest, re-hashing only when the kill-switch forces it
+// or the file identity has no cached digest. The returned digest is always
+// compared against the manifest expectation by the caller; the cache only
+// removes the re-hash, never the comparison.
+std::string sha256_file_cached(const std::filesystem::path& path) {
+  struct ::stat st {};
+  if (::stat(path.c_str(), &st) != 0) {
+    throw bundle_error("cannot stat file " + path.string());
+  }
+#if defined(__APPLE__)
+  const uint64_t mtime_ns = uint64_t(st.st_mtimespec.tv_sec) * 1000000000ull +
+      uint64_t(st.st_mtimespec.tv_nsec);
+#else
+  const uint64_t mtime_ns = uint64_t(st.st_mtim.tv_sec) * 1000000000ull +
+      uint64_t(st.st_mtim.tv_nsec);
+#endif
+  DigestCacheKey key{
+      path.string(),
+      uint64_t(st.st_dev),
+      uint64_t(st.st_ino),
+      uint64_t(st.st_size),
+      mtime_ns};
+  if (digest_cache_enabled()) {
+    std::lock_guard<std::mutex> lock(g_digest_cache_mutex);
+    auto it = g_digest_cache.find(key);
+    if (it != g_digest_cache.end()) {
+      return it->second;
+    }
+  }
+  std::string digest = sha256_file(path);
+  if (digest_cache_enabled()) {
+    std::lock_guard<std::mutex> lock(g_digest_cache_mutex);
+    g_digest_cache.emplace(std::move(key), digest);
+  }
+  return digest;
+}
+
 AneBundle load_bundle_snapshot(
     const std::filesystem::path& manifest_path,
     const std::map<std::string, std::filesystem::path>& payload_paths) {
@@ -855,7 +944,7 @@ AneBundle load_bundle_snapshot(
           "payload " + payload.path + " byte size " + std::to_string(actual) +
           " does not match manifest " + std::to_string(payload.byte_size));
     }
-    std::string digest = sha256_file(resolved[i]);
+    std::string digest = sha256_file_cached(resolved[i]);
     if (digest != payload.sha256) {
       throw bundle_error(
           "payload " + payload.path + " sha256 mismatch: manifest " +
