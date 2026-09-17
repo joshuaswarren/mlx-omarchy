@@ -434,9 +434,6 @@ int serve_resident(
                     .count();
     }
     const auto save_ended = std::chrono::steady_clock::now();
-    const auto emit_us = std::chrono::duration_cast<std::chrono::microseconds>(
-                             std::chrono::steady_clock::now() - save_ended)
-                             .count();
     const auto milliseconds = [](auto from, auto to) {
       return static_cast<long long>(
           std::chrono::duration_cast<std::chrono::milliseconds>(to - from)
