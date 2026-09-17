@@ -469,7 +469,7 @@ int resident_child_loop(
         bool known = false;
         for (const auto& validated : bundle.programs) {
           const auto& manifest_program =
-              bundle.manifest.programs[validated.manifest_index];
+              bundle.manifest.programs[validated.manifest_index_local];
           for (const auto& binding : manifest_program.outputs) {
             if (binding.tensor == name) {
               logical = std::max(logical, binding.logical_bytes);
@@ -1010,6 +1010,7 @@ AneWorkerReport AneWorker::open(const std::vector<AneBundle>& bundles) {
   for (const auto& bundle : bundles) {
     AneBundle copy = bundle;
     for (auto& program : copy.programs) {
+      program.manifest_index_local = program.manifest_index;
       program.manifest_index += base;
     }
     base += copy.programs.size();
