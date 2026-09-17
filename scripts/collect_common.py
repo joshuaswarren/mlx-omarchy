@@ -308,6 +308,31 @@ def is_native_macos(host, manifest):
     return (host.get("system") or manifest.get("system")) == "Darwin"
 
 
+def _bounded_pmgr_blocks(blocks, truncated, max_blocks=8, max_children=256):
+    """Cap the pmgr offset topology: 4 blocks, 256 children each.
+
+    `children_total` from the collector records the true child count;
+    the `truncated` marker says explicitly when the cap clipped (t600x
+    pmgr blocks run past 256 children).
+    """
+    if not isinstance(blocks, list):
+        return []
+    kept = []
+    for block in blocks[:max_blocks]:
+        if not isinstance(block, dict):
+            continue
+        entry = dict(block)
+        children = block.get("children")
+        if isinstance(children, list) and len(children) > max_children:
+            truncated.append(
+                f"pmgr_blocks.children:{len(children) - max_children}")
+            entry["children"] = children[:max_children]
+        kept.append(entry)
+    if len(blocks) > max_blocks:
+        truncated.append(f"pmgr_blocks:{len(blocks) - max_blocks}")
+    return kept
+
+
 def _cap_port_detail(port, redactor, max_bytes=64 * 1024):
     """Bounded `ane_port_detail` blob for the quick PAYLOAD.
 
@@ -320,13 +345,18 @@ def _cap_port_detail(port, redactor, max_bytes=64 * 1024):
     reason so a reader knows the shape of what was dropped:
 
       * ane_nodes / darts / phandles: hard cap of MAX_PORT_DETAIL_NODES
-        each; a node beyond the cap is dropped, not truncated in place.
+        (darts: MAX_PORT_DART_NODES) each; a node beyond the cap is
+        dropped, not truncated in place.
       * pmgr_domains: hard cap of 64 (matches the source collector).
+      * pmgr_blocks: hard cap of 4 blocks, 256 children each (matches
+        the source collector; `children_total` records the true count).
       * total serialized bytes: hard cap of `max_bytes`. Drop order is
         by porting value: the runtime block first, then the phandle map
         (`iommus_resolved` already did that arithmetic for the reader),
-        then the AIC block, then DARTs; the ane nodes — the whole point
-        of the capture — are dropped last.
+        then the AIC block, then the structured boot provenance, then
+        the ANE pmgr subset, then the full pmgr offset topology, then
+        DARTs; the ane nodes — the whole point of the capture, plus the
+        pmgr map a SET-base derivation needs — are protected last.
       * a macOS report carries `macos` instead of `devicetree` and is
         bounded at the source; if it somehow exceeds the budget the
         whole block is dropped.
@@ -339,7 +369,8 @@ def _cap_port_detail(port, redactor, max_bytes=64 * 1024):
     if not isinstance(port, dict):
         return None
 
-    MAX_NODES = 8  # hard cap on ane_nodes / darts / phandles entries
+    MAX_NODES = 8  # hard cap on ane_nodes / phandles entries
+    MAX_DARTS = 32  # real trees carry up to ~30 DARTs (t600x/t602x)
     truncated = []
 
     src_devicetree = port.get("devicetree")
@@ -384,15 +415,25 @@ def _cap_port_detail(port, redactor, max_bytes=64 * 1024):
         "ane_node_present": bool(src_devicetree.get("ane_node_present")),
         "ane_nodes": _bounded_dict(src_devicetree.get("ane_nodes") or {},
                                    MAX_NODES, "ane_nodes"),
+        "ane_reg": _walk(src_devicetree.get("ane_reg"))
+            if isinstance(src_devicetree.get("ane_reg"), list) else None,
         "darts": _bounded_dict(src_devicetree.get("darts") or {},
-                               MAX_NODES, "darts"),
+                               MAX_DARTS, "darts"),
         "pmgr_domains": _walk(src_devicetree.get("pmgr_domains") or [])[:64]
             if len(src_devicetree.get("pmgr_domains") or []) > 64
             else _walk(src_devicetree.get("pmgr_domains") or []),
+        "pmgr_blocks": _bounded_pmgr_blocks(
+            src_devicetree.get("pmgr_blocks"), truncated),
         "aic": _walk(src_devicetree.get("aic"))
             if src_devicetree.get("aic") else None,
         "phandles": _bounded_dict(src_devicetree.get("phandles") or {},
                                   MAX_NODES, "phandles"),
+        "boot": _walk(src_devicetree.get("boot"))
+            if isinstance(src_devicetree.get("boot"), dict) else None,
+        "dtb_sha256": src_devicetree.get("dtb_sha256")
+            if re.fullmatch(r"[0-9a-f]{64}",
+                            str(src_devicetree.get("dtb_sha256") or ""))
+            else None,
     }
     if len(src_devicetree.get("pmgr_domains") or []) > 64:
         truncated.append(f"pmgr_domains:"
@@ -413,11 +454,15 @@ def _cap_port_detail(port, redactor, max_bytes=64 * 1024):
 
     # Still over budget: drop by porting value. The phandle map goes
     # first (iommus_resolved already did that arithmetic for the
-    # reader), then the AIC block, then DARTs; the ane nodes go last.
+    # reader), then the AIC block, the structured boot provenance, the
+    # ANE pmgr subset and the full pmgr topology, then DARTs; the ane
+    # nodes go last.
     if _size(out) > max_bytes:
         trimmed = out
         for field, blank in (("phandles", {}), ("aic", None),
-                             ("darts", {}), ("ane_nodes", {})):
+                             ("boot", None), ("pmgr_domains", []),
+                             ("pmgr_blocks", []), ("darts", {}),
+                             ("ane_nodes", {})):
             if _size(trimmed) <= max_bytes:
                 break
             dt = dict(trimmed["devicetree"])

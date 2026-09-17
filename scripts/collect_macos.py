@@ -19,7 +19,7 @@ ANE_PROBE_CODE = r"""
 import json, plistlib, re, subprocess
 
 out = {"available": False, "instances": [], "ane_nodes": [],
-       "dart_nodes": [],
+       "dart_nodes": [], "pmgr_nodes": [],
        "coreml": {"available": False, "compute_units": None, "error": None},
        "powermetrics": {"available": False, "power_mw": None,
                         "error": None},
@@ -107,12 +107,24 @@ try:
             entry["phandle"] = ph
             (out["dart_nodes"] if name.startswith(
                 ("dart-", "mapper-")) else out["ane_nodes"]).append(entry)
+        elif name == "pmgr":
+            # The IORegistry exposes the pmgr BLOCK base (reg first range
+            # / IORegistryEntryLocation) but not the power-controller
+            # children, so macOS can cross-check a derived SET base's
+            # block but never supply the pwrstate offset itself.
+            out["pmgr_nodes"].append({
+                "name": name,
+                "location": _text(node.get("IORegistryEntryLocation")),
+                "reg": _reg(node),
+            })
         children = node.get("IORegistryEntryChildren")
         if isinstance(children, list):
             stack.extend(children)
     out["ane_nodes"] = out["ane_nodes"][:8]
     out["dart_nodes"] = out["dart_nodes"][:8]
-    if len(out["ane_nodes"]) == 8 or len(out["dart_nodes"]) == 8:
+    out["pmgr_nodes"] = out["pmgr_nodes"][:8]
+    if len(out["ane_nodes"]) == 8 or len(out["dart_nodes"]) == 8 \
+            or len(out["pmgr_nodes"]) == 8:
         out["truncated"].append("devicetree:node_cap")
 except Exception as exc:
     out["truncated"].append("ioreg_tree:%s" % type(exc).__name__)
@@ -182,7 +194,7 @@ def probe_ane_port(redactor):
         return {"available": False, "macos": None, "error": "bad-probe-json"}
     detail = {key: detail[key] for key in
               ("available", "instances", "ane_nodes", "dart_nodes",
-               "coreml", "powermetrics", "truncated")
+               "pmgr_nodes", "coreml", "powermetrics", "truncated")
               if key in detail}
     return {"available": bool(detail.get("available")),
             "macos": redactor.apply_value(detail)}
