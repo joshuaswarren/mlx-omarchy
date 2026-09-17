@@ -21,6 +21,9 @@
 #include <string>
 #include <vector>
 
+#include <sys/mman.h>
+#include <cerrno>
+
 using namespace mlx::core::omarchy::ane;
 
 #ifdef MLX_OMARCHY_ANE_DEVICE
@@ -117,6 +120,9 @@ struct ResidentJob {
   // process launch a resident worker saves.
   std::vector<std::pair<std::string, size_t>> inline_inputs;
   std::vector<std::string> emits;
+  // Shared-memory payload routing (worker started with --shm-in/--shm-out).
+  std::map<std::string, AneShmSpan> shm_inputs;
+  std::vector<std::string> shm_outputs;
 };
 
 // "submit NAME [--input n=FILE]... [--inline n=BYTES]... [--save n=FILE]...
@@ -141,6 +147,37 @@ bool parse_job(const std::string& line, ResidentJob& job, std::string& error) {
     }
     if (token == "--emit") {
       job.emits.push_back(argument);
+      continue;
+    }
+    if (token == "--shout") {
+      job.shm_outputs.push_back(argument);
+      continue;
+    }
+    if (token == "--shmin") {
+      // NAME=OFF:LEN places the payload inside the shm-in region.
+      auto colon = argument.rfind(':');
+      auto equals = argument.find('=');
+      if (equals == std::string::npos || colon == std::string::npos ||
+          colon < equals) {
+        error = "--shmin expects NAME=OFF:LEN, got '" + argument + "'";
+        return false;
+      }
+      std::string name = argument.substr(0, equals);
+      size_t consumed = 0;
+      size_t offset = 0;
+      size_t length = 0;
+      try {
+        offset = static_cast<size_t>(std::stoull(
+            argument.substr(equals + 1, colon - equals - 1), &consumed));
+        if (consumed == 0) throw std::exception();
+        length = static_cast<size_t>(
+            std::stoull(argument.substr(colon + 1), &consumed));
+        if (consumed == 0) throw std::exception();
+      } catch (...) {
+        error = "--shmin expects NAME=OFF:LEN, got '" + argument + "'";
+        return false;
+      }
+      job.shm_inputs[name] = AneShmSpan{offset, length};
       continue;
     }
     std::string name;
@@ -185,12 +222,16 @@ int serve_resident(
     const std::vector<std::pair<std::string, std::string>>& bundle_args,
     const std::string& libane_path,
     long deadline_ms,
-    long iterations) {
+    long iterations,
+    const AneWorkerOptions::ShmRegion& shm_in,
+    const AneWorkerOptions::ShmRegion& shm_out) {
 #ifndef MLX_OMARCHY_ANE_DEVICE
   (void)bundle_args;
   (void)libane_path;
   (void)deadline_ms;
   (void)iterations;
+  (void)shm_in;
+  (void)shm_out;
   std::fprintf(
       stderr,
       "this binary was built without MLX_OMARCHY_ANE_DEVICE; no device "
@@ -222,6 +263,8 @@ int serve_resident(
   AneWorkerOptions options;
   options.deadline = std::chrono::milliseconds(deadline_ms);
   options.iterations = static_cast<int>(iterations);
+  options.shm_in = shm_in;
+  options.shm_out = shm_out;
   AneWorker worker(
       [libane_path] { return make_libane_device(libane_path); }, options);
 
@@ -235,6 +278,9 @@ int serve_resident(
       "resident loaded pid=%lld deadline_ms=%ld iterations=%ld detail=%s\n",
       static_cast<long long>(worker.resident_pid()), deadline_ms, iterations,
       opened.detail.c_str());
+  if (shm_in.base != nullptr && shm_out.base != nullptr) {
+    std::printf("shm ok in=%zu out=%zu\n", shm_in.size, shm_out.size);
+  }
   std::fflush(stdout);
 
   std::string line;
@@ -316,6 +362,20 @@ int serve_resident(
       return 64;
     }
     const AneBundle& bundle = bundles[found->second];
+    // Output slot size for the shared-memory path: the manifest output
+    // logical byte count, taken as the max across programs binding it.
+    auto manifest_output_bytes = [&](const std::string& name) -> size_t {
+      size_t logical = 0;
+      for (const auto& validated : bundle.programs) {
+        for (const auto& binding :
+             bundle.manifest.programs[validated.manifest_index].outputs) {
+          if (binding.tensor == name) {
+            logical = std::max(logical, binding.logical_bytes);
+          }
+        }
+      }
+      return logical;
+    };
 
     // Three phases, reported per job: an operator who sees a slow
     // submit needs to know whether the time went to host staging or to
@@ -348,7 +408,7 @@ int serve_resident(
                   .count();
     const auto stage_ended = std::chrono::steady_clock::now();
     for (const auto& tensor : bundle.manifest.inputs) {
-      if (!inputs.count(tensor.name)) {
+      if (!inputs.count(tensor.name) && !job.shm_inputs.count(tensor.name)) {
         std::fprintf(
             stderr, "missing --input for manifest input '%s'\n",
             tensor.name.c_str());
@@ -357,8 +417,31 @@ int serve_resident(
     }
 
     std::map<std::string, AneWorker::Buffer> outputs;
+    std::map<std::string, AneShmSpan> shm_produced;
+    size_t output_bytes = 0;
+    for (const auto& entry : job.shm_inputs) {
+      input_bytes += entry.second.size;
+    }
     const auto submit_started = std::chrono::steady_clock::now();
-    AneWorkerReport report = worker.submit(found->second, inputs, &outputs);
+    AneWorkerReport report;
+    if (!job.shm_inputs.empty() || !job.shm_outputs.empty()) {
+      std::map<std::string, size_t> output_offsets;
+      size_t running = 0;
+      for (const auto& name : job.shm_outputs) {
+        const size_t slot = manifest_output_bytes(name);
+        if (slot == 0) {
+          std::fprintf(
+              stderr, "cannot place unknown output '%s'\n", name.c_str());
+          return 64;
+        }
+        output_offsets[name] = running;
+        running += slot;
+      }
+      report = worker.submit_shm(
+          found->second, job.shm_inputs, output_offsets, &shm_produced);
+    } else {
+      report = worker.submit(found->second, inputs, &outputs);
+    }
     const long long submit_us =
         std::chrono::duration_cast<std::chrono::microseconds>(
             std::chrono::steady_clock::now() - submit_started)
@@ -378,7 +461,6 @@ int serve_resident(
       return 1;
     }
 
-    size_t output_bytes = 0;
     for (const auto& entry : job.saves) {
       auto produced = outputs.find(entry.first);
       if (produced == outputs.end()) {
@@ -433,6 +515,25 @@ int serve_resident(
                     std::chrono::steady_clock::now() - emit_started)
                     .count();
     }
+    if (!job.shm_outputs.empty()) {
+      const auto emit_started = std::chrono::steady_clock::now();
+      for (const auto& name : job.shm_outputs) {
+        auto produced = shm_produced.find(name);
+        if (produced == shm_produced.end()) {
+          std::fprintf(stderr, "cannot emit missing output '%s'\n",
+                       name.c_str());
+          return 1;
+        }
+        std::printf(
+            "shmout %s %zu %zu\n", name.c_str(), produced->second.offset,
+            produced->second.size);
+        output_bytes += produced->second.size;
+      }
+      std::fflush(stdout);
+      emit_us = std::chrono::duration_cast<std::chrono::microseconds>(
+                    std::chrono::steady_clock::now() - emit_started)
+                    .count();
+    }
     const auto save_ended = std::chrono::steady_clock::now();
     const auto milliseconds = [](auto from, auto to) {
       return static_cast<long long>(
@@ -478,6 +579,8 @@ int main(int argc, char** argv) {
   std::map<std::string, std::string> input_files;
   std::map<std::string, std::string> expect_files;
   std::map<std::string, std::string> save_files;
+  AneWorkerOptions::ShmRegion shm_in;
+  AneWorkerOptions::ShmRegion shm_out;
 
   for (int i = 1; i < argc; ++i) {
     std::string flag = argv[i];
@@ -490,6 +593,41 @@ int main(int argc, char** argv) {
     };
     if (flag == "--serve") {
       serve = true;
+    } else if (flag == "--shm-in" || flag == "--shm-out") {
+      // FD=SIZE: a memfd (or shmem) fd inherited from the caller.
+      auto assignment = value();
+      auto equals = assignment.find('=');
+      if (equals == std::string::npos) {
+        std::fprintf(stderr, "%s expects FD=SIZE\n", flag.c_str());
+        return usage();
+      }
+      size_t consumed = 0;
+      int fd = 0;
+      size_t size = 0;
+      try {
+        fd = std::stoi(assignment.substr(0, equals), &consumed);
+        if (consumed == 0) throw std::exception();
+        size = std::stoull(assignment.substr(equals + 1), &consumed);
+        if (consumed == 0) throw std::exception();
+      } catch (...) {
+        std::fprintf(stderr, "%s expects FD=SIZE\n", flag.c_str());
+        return usage();
+      }
+      const int protection =
+          flag == "--shm-in" ? PROT_READ : PROT_READ | PROT_WRITE;
+      void* base = ::mmap(
+          nullptr, size, protection, MAP_SHARED, fd, 0);
+      if (base == MAP_FAILED) {
+        std::fprintf(
+            stderr, "cannot map %s (fd %d, %zu bytes): %s\n",
+            flag.c_str(), fd, size, std::strerror(errno));
+        return 64;
+      }
+      if (flag == "--shm-in") {
+        shm_in = {static_cast<uint8_t*>(base), size};
+      } else {
+        shm_out = {static_cast<uint8_t*>(base), size};
+      }
     } else if (flag == "--bundle") {
       auto assignment = value();
       std::string name;
@@ -544,7 +682,8 @@ int main(int argc, char** argv) {
     }
     try {
       return serve_resident(
-          resident_bundles, libane_path, deadline_ms, iterations);
+          resident_bundles, libane_path, deadline_ms, iterations, shm_in,
+          shm_out);
     } catch (const std::exception& error) {
       std::fprintf(stderr, "error: %s\n", error.what());
       return 1;

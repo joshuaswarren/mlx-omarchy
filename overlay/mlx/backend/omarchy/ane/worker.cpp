@@ -113,15 +113,69 @@ void device_phase_add(
                  .count();
 }
 
-// Executes the dispatch plan once. Intermediates route through child
-// memory; the worker owns every byte between programs.
+// A non-owning payload: points at an owning Buffer or at a span of a
+// shared-memory region. data()/size() match AneWorker::Buffer so
+// execute_plan can consume both interchangeably.
+struct PayloadView {
+  const uint8_t* ptr{nullptr};
+  size_t len{0};
+  const uint8_t* data() const { return ptr; }
+  size_t size() const { return len; }
+};
+
+void execute_plan_views(
+    AneDevice& device,
+    const AneBundle& bundle,
+    const std::map<std::string, PayloadView>& inputs,
+    std::map<std::string, AneWorker::Buffer>& outputs,
+    DevicePhaseStats* stats,
+    const std::map<std::string, uint8_t*>* sinks);
+
+// Executes the dispatch plan once. Inputs may be owning buffers or
+// views (shared-memory spans); intermediates route through child
+// memory; the worker owns every byte between programs. `sinks`, when
+// provided, routes matching manifest outputs straight into caller
+// memory (the device read unpacks into the sink) instead of an
+// intermediate buffer; sunk outputs are not copied into `outputs`.
 void execute_plan(
     AneDevice& device,
     const AneBundle& bundle,
-    const std::map<std::string, AneWorker::Buffer>& inputs,
+    const std::map<std::string, AneWorker::Buffer>& buffer_inputs,
     std::map<std::string, AneWorker::Buffer>& outputs,
-    DevicePhaseStats* stats = nullptr) {
-  std::map<std::string, AneWorker::Buffer> values(inputs);
+    DevicePhaseStats* stats = nullptr,
+    const std::map<std::string, uint8_t*>* sinks = nullptr) {
+  std::map<std::string, PayloadView> view_inputs;
+  for (const auto& entry : buffer_inputs) {
+    view_inputs[entry.first] =
+        PayloadView{entry.second.data(), entry.second.size()};
+  }
+  execute_plan_views(device, bundle, view_inputs, outputs, stats, sinks);
+}
+
+void execute_plan_views(
+    AneDevice& device,
+    const AneBundle& bundle,
+    const std::map<std::string, PayloadView>& inputs,
+    std::map<std::string, AneWorker::Buffer>& outputs,
+    DevicePhaseStats* stats,
+    const std::map<std::string, uint8_t*>* sinks) {
+  std::map<std::string, AneWorker::Buffer> values;
+  auto resolve = [&](const std::string& name, const uint8_t** data,
+                     size_t* size) -> bool {
+    auto value = values.find(name);
+    if (value != values.end()) {
+      *data = value->second.data();
+      *size = value->second.size();
+      return true;
+    }
+    auto input = inputs.find(name);
+    if (input != inputs.end()) {
+      *data = input->second.data();
+      *size = input->second.size();
+      return true;
+    }
+    return false;
+  };
   for (auto index : bundle.manifest.dispatch_plan) {
     if (index >= bundle.programs.size() ||
         index >= bundle.manifest.programs.size()) {
@@ -131,21 +185,22 @@ void execute_plan(
     const auto& program = bundle.manifest.programs[index];
     for (size_t position = 0; position < program.inputs.size(); ++position) {
       const auto& binding = program.inputs[position];
-      auto found = values.find(binding.tensor);
-      if (found == values.end()) {
+      const uint8_t* data = nullptr;
+      size_t size = 0;
+      if (!resolve(binding.tensor, &data, &size)) {
         throw AneDeviceError(
             "program '" + program.payload + "' input tensor '" +
             binding.tensor + "' has no staged value");
       }
-      if (found->second.size() < binding.logical_bytes) {
+      if (size < binding.logical_bytes) {
         throw AneDeviceError(
             "tensor '" + binding.tensor + "' payload is " +
-            std::to_string(found->second.size()) + " bytes, manifest " +
+            std::to_string(size) + " bytes, manifest " +
             std::to_string(binding.logical_bytes));
       }
       auto mark = device_phase_mark();
       device.send(validated.manifest_index, static_cast<uint32_t>(position),
-                  binding, found->second.data(), found->second.size());
+                  binding, data, size);
       if (stats) device_phase_add(&stats->pack_ns, mark);
     }
     {
@@ -155,15 +210,26 @@ void execute_plan(
     }
     for (size_t position = 0; position < program.outputs.size(); ++position) {
       const auto& binding = program.outputs[position];
-      AneWorker::Buffer buffer(binding.logical_bytes);
+      const bool have_sink =
+          sinks != nullptr && sinks->count(binding.tensor) != 0;
       auto mark = device_phase_mark();
-      device.read(validated.manifest_index, static_cast<uint32_t>(position),
-                  binding, buffer.data(), buffer.size());
+      if (have_sink) {
+        device.read(validated.manifest_index, static_cast<uint32_t>(position),
+                    binding, sinks->at(binding.tensor),
+                    binding.logical_bytes);
+      } else {
+        AneWorker::Buffer buffer(binding.logical_bytes);
+        device.read(validated.manifest_index, static_cast<uint32_t>(position),
+                    binding, buffer.data(), buffer.size());
+        values[binding.tensor] = std::move(buffer);
+      }
       if (stats) device_phase_add(&stats->read_ns, mark);
-      values[binding.tensor] = std::move(buffer);
     }
   }
   for (const auto& tensor : bundle.manifest.outputs) {
+    if (sinks != nullptr && sinks->count(tensor.name) != 0) {
+      continue; // landed directly in the sink memory
+    }
     auto found = values.find(tensor.name);
     if (found == values.end()) {
       throw AneDeviceError(
@@ -191,6 +257,7 @@ void execute_plan(
 constexpr char kTokenDone[] = "done\n";
 constexpr char kRequestRun[] = "run";
 constexpr char kRequestClose[] = "close";
+constexpr char kTokenShmOut[] = "shmout ";
 
 // MSG_NOSIGNAL keeps a dead peer from raising SIGPIPE in either
 // direction: the library never changes the process signal disposition.
@@ -283,6 +350,34 @@ bool parse_payload_header(
   }
 }
 
+// "<kw> <name> <offset> <length>" shared-memory payload headers.
+bool parse_shm_header(
+    const std::string& line,
+    const char* keyword,
+    std::string& name,
+    size_t& offset,
+    size_t& length) {
+  const std::string prefix = std::string(keyword) + " ";
+  if (line.compare(0, prefix.size(), prefix) != 0) return false;
+  auto first = line.find(' ', prefix.size());
+  if (first == std::string::npos) return false;
+  name = line.substr(prefix.size(), first - prefix.size());
+  if (name.empty()) return false;
+  auto second = line.find(' ', first + 1);
+  if (second == std::string::npos) return false;
+  try {
+    size_t consumed = 0;
+    offset = static_cast<size_t>(
+        std::stoull(line.substr(first + 1, second - first - 1), &consumed));
+    if (consumed == 0) return false;
+    length = static_cast<size_t>(
+        std::stoull(line.substr(second + 1), &consumed));
+    return consumed > 0;
+  } catch (...) {
+    return false;
+  }
+}
+
 std::string one_line(const std::string& text) {
   std::string flat = text;
   for (char& c : flat) {
@@ -293,11 +388,17 @@ std::string one_line(const std::string& text) {
 
 // One resident child: serves bounded submits against already-loaded
 // programs until the supervisor closes the session or a submit fails.
+// With shm regions configured, "inshm"/"shout" request frames move
+// payloads through shared memory instead of inline socket bytes: the
+// device side reads inputs straight from shm_in and unpacks outputs
+// straight into shm_out, answering with "shmout <name> <off> <len>".
 int resident_child_loop(
     int fd,
     AneDevice& device,
     const std::vector<AneBundle>& bundles,
-    int iterations) {
+    int iterations,
+    const AneWorkerOptions::ShmRegion& shm_in,
+    const AneWorkerOptions::ShmRegion& shm_out) {
   std::string carry;
   for (;;) {
     std::string line;
@@ -326,9 +427,13 @@ int resident_child_loop(
               "'\n");
       return 1;
     }
+    const AneBundle& bundle = bundles[index];
 
     auto loop_mark = device_phase_mark();
-    std::map<std::string, AneWorker::Buffer> inputs;
+    std::map<std::string, AneWorker::Buffer> owned_inputs;
+    std::map<std::string, PayloadView> input_views;
+    std::map<std::string, uint8_t*> sinks;
+    std::map<std::string, size_t> sink_offsets;
     long long crecv_ns = 0;
     bool request_complete = false;
     while (child_read_line(fd, carry, line)) {
@@ -338,40 +443,109 @@ int resident_child_loop(
       }
       std::string name;
       size_t length = 0;
-      if (!parse_payload_header(line, "in", name, length)) {
+      size_t offset = 0;
+      if (parse_payload_header(line, "in", name, length)) {
+        AneWorker::Buffer payload;
+        auto mark = device_phase_mark();
+        if (!child_read_bytes(fd, carry, length, payload)) {
+          return 0;
+        }
+        device_phase_add(&crecv_ns, mark);
+        owned_inputs[name] = std::move(payload);
+      } else if (parse_shm_header(line, "inshm", name, offset, length)) {
+        if (shm_in.base == nullptr || offset > shm_in.size ||
+            length > shm_in.size - offset) {
+          send_frame(
+              fd,
+              std::string(kTokenFailed) + "input span for '" + name +
+                  "' is outside the shm region\n");
+          return 1;
+        }
+        input_views[name] = PayloadView{shm_in.base + offset, length};
+      } else if (parse_payload_header(line, "shout", name, offset)) {
+        // Reserve an output sink: the logical size comes from the
+        // bundle's output bindings so the span check is exact.
+        size_t logical = 0;
+        bool known = false;
+        for (const auto& validated : bundle.programs) {
+          const auto& manifest_program =
+              bundle.manifest.programs[validated.manifest_index];
+          for (const auto& binding : manifest_program.outputs) {
+            if (binding.tensor == name) {
+              logical = std::max(logical, binding.logical_bytes);
+              known = true;
+            }
+          }
+        }
+        if (!known || shm_out.base == nullptr || offset > shm_out.size ||
+            logical > shm_out.size - offset) {
+          send_frame(
+              fd,
+              std::string(kTokenFailed) + "output span for '" + name +
+                  "' is outside the shm region\n");
+          return 1;
+        }
+        sinks[name] = shm_out.base + offset;
+        sink_offsets[name] = offset;
+      } else {
         send_frame(
             fd,
             std::string(kTokenFailed) + "malformed input frame '" +
                 one_line(line) + "'\n");
         return 1;
       }
-      AneWorker::Buffer payload;
-      auto mark = device_phase_mark();
-      if (!child_read_bytes(fd, carry, length, payload)) {
-        return 0;
-      }
-      device_phase_add(&crecv_ns, mark);
-      inputs[name] = std::move(payload);
     }
     if (!request_complete) {
       return 0;
     }
     device_phase_add(&crecv_ns, loop_mark);
+    for (const auto& entry : owned_inputs) {
+      input_views[entry.first] =
+          PayloadView{entry.second.data(), entry.second.size()};
+    }
 
     try {
       DevicePhaseStats stats;
       for (int iteration = 0; iteration < iterations; ++iteration) {
         std::map<std::string, AneWorker::Buffer> produced;
-        execute_plan(device, bundles[index], inputs, produced, &stats);
+        execute_plan_views(device, bundle, input_views, produced, &stats, &sinks);
         if (!send_frame(fd, kTokenIteration, std::strlen(kTokenIteration))) {
           return 0;
         }
         if (iteration + 1 == iterations) {
-          for (const auto& entry : produced) {
-            std::string header = std::string(kTokenOut) + entry.first + " " +
-                                 std::to_string(entry.second.size()) + "\n";
+          for (const auto& tensor : bundle.manifest.outputs) {
+            auto sink = sinks.find(tensor.name);
+            if (sink != sinks.end()) {
+              size_t logical = 0;
+              for (const auto& validated : bundle.programs) {
+                const auto& manifest_program =
+                    bundle.manifest.programs[validated.manifest_index];
+                for (const auto& binding : manifest_program.outputs) {
+                  if (binding.tensor == tensor.name) {
+                    logical = std::max(logical, binding.logical_bytes);
+                  }
+                }
+              }
+              std::string header = std::string(kTokenShmOut) + tensor.name +
+                                   " " + std::to_string(sink_offsets[tensor.name]) +
+                                   " " + std::to_string(logical) + "\n";
+              if (!send_frame(fd, header)) {
+                return 0;
+              }
+              continue;
+            }
+            auto produced_entry = produced.find(tensor.name);
+            if (produced_entry == produced.end()) {
+              throw AneDeviceError(
+                  "manifest output '" + tensor.name + "' was never produced");
+            }
+            std::string header = std::string(kTokenOut) + tensor.name + " " +
+                                 std::to_string(produced_entry->second.size()) +
+                                 "\n";
             if (!send_frame(fd, header) ||
-                !send_frame(fd, entry.second.data(), entry.second.size())) {
+                !send_frame(
+                    fd, produced_entry->second.data(),
+                    produced_entry->second.size())) {
               return 0;
             }
           }
@@ -884,7 +1058,8 @@ AneWorkerReport AneWorker::open(const std::vector<AneBundle>& bundles) {
       }
       send_frame(fds[1], "loaded " + std::to_string(loaded) + "\n");
       code = resident_child_loop(
-          fds[1], *device, resident, options_.iterations);
+          fds[1], *device, resident, options_.iterations, options_.shm_in,
+          options_.shm_out);
     } catch (const std::exception& error) {
       send_frame(
           fds[1], std::string(kTokenFailed) + one_line(error.what()) + "\n");
@@ -1037,6 +1212,155 @@ AneWorkerReport AneWorker::submit(
   out.elapsed = now_ms() - started;
   out.detail = "resident worker completed " + std::to_string(out.iterations) +
                " iteration(s) on resident programs";
+  if (outputs != nullptr) {
+    *outputs = std::move(produced);
+  }
+  return out;
+}
+
+// Shared-memory submit: control framing on the socketpair, payload
+// bytes in the regions. Same safety model as submit(): one bounded
+// request/response pair, deadline or failure ends the session.
+AneWorkerReport AneWorker::submit_shm(
+    size_t bundle,
+    const std::map<std::string, AneShmSpan>& inputs,
+    const std::map<std::string, size_t>& output_offsets,
+    std::map<std::string, AneShmSpan>* outputs) {
+  if (quarantined()) {
+    return AneWorkerReport{
+        AneWorkerStatus::QuarantinedRefused, 0, 0,
+        std::chrono::milliseconds(0), "quarantined: " + quarantine_reason_,
+        std::string()};
+  }
+  if (!resident()) {
+    throw std::invalid_argument("no resident ANE session is open");
+  }
+  if (options_.shm_in.base == nullptr || options_.shm_out.base == nullptr) {
+    throw std::invalid_argument(
+        "submit_shm requires configured shm regions");
+  }
+
+  const auto started = now_ms();
+  const auto until =
+      batch_until_.count() != 0 ? batch_until_ : started + options_.deadline;
+  if (batch_until_.count() != 0) {
+    ++batch_rounds_;
+  }
+
+  std::string header = "submit " + std::to_string(bundle) + "\n";
+  auto wait = send_request(header.data(), header.size(), until);
+  for (const auto& entry : inputs) {
+    if (entry.second.offset > options_.shm_in.size ||
+        entry.second.size > options_.shm_in.size - entry.second.offset) {
+      throw std::invalid_argument(
+          "input span for '" + entry.first + "' is outside shm_in");
+    }
+    std::string frame = "inshm " + entry.first + " " +
+                        std::to_string(entry.second.offset) + " " +
+                        std::to_string(entry.second.size) + "\n";
+    wait = send_request(frame.data(), frame.size(), until);
+    if (!wait.ok) break;
+  }
+  if (wait.ok) {
+    for (const auto& entry : output_offsets) {
+      if (entry.second > options_.shm_out.size) {
+        throw std::invalid_argument(
+            "output offset for '" + entry.first + "' is outside shm_out");
+      }
+      std::string frame = "shout " + entry.first + " " +
+                          std::to_string(entry.second) + "\n";
+      wait = send_request(frame.data(), frame.size(), until);
+      if (!wait.ok) break;
+    }
+  }
+  if (wait.ok) {
+    wait = send_request(kRequestRun, std::strlen(kRequestRun), until);
+  }
+  if (wait.ok) {
+    wait = send_request("\n", 1, until);
+  }
+  if (!wait.ok) {
+    auto out = end_session(wait);
+    out.elapsed = now_ms() - started;
+    return out;
+  }
+
+  AneWorkerReport out;
+  std::map<std::string, AneShmSpan> produced;
+  for (;;) {
+    std::string line;
+    wait = recv_line(line, until);
+    if (!wait.ok) {
+      auto failed = end_session(wait);
+      failed.iterations = out.iterations;
+      failed.elapsed = now_ms() - started;
+      return failed;
+    }
+    if (line == "iter") {
+      ++out.iterations;
+      continue;
+    }
+    if (line.compare(0, 5, "perf ") == 0) {
+      out.perf = line.substr(5);
+      continue;
+    }
+    if (line + "\n" == kTokenDone) {
+      break;
+    }
+    if (line.compare(0, std::strlen(kTokenFailed), kTokenFailed) == 0) {
+      Wait failure{
+          false, AneWorkerStatus::DeviceFailed,
+          line.substr(std::strlen(kTokenFailed))};
+      auto failed = end_session(failure);
+      failed.iterations = out.iterations;
+      failed.elapsed = now_ms() - started;
+      return failed;
+    }
+    std::string name;
+    size_t offset = 0;
+    size_t length = 0;
+    if (parse_shm_header(line, kTokenShmOut, name, offset, length) ||
+        parse_payload_header(line, "out", name, length)) {
+      // "shmout" carries offset+length; a plain "out" on the shm path
+      // would mean the child had no sink for the tensor -- that is a
+      // slot-layout bug, not a payload, so refuse it.
+      if (line.compare(0, std::strlen(kTokenShmOut), kTokenShmOut) != 0) {
+        Wait failure{
+            false, AneWorkerStatus::WorkerDied,
+            "resident worker sent inline output '" + name +
+                "' on the shm path; device completion state uncertain"};
+        auto failed = end_session(failure);
+        failed.iterations = out.iterations;
+        failed.elapsed = now_ms() - started;
+        return failed;
+      }
+      if (offset > options_.shm_out.size ||
+          length > options_.shm_out.size - offset) {
+        Wait failure{
+            false, AneWorkerStatus::WorkerDied,
+            "resident worker reported an output span outside shm_out"};
+        auto failed = end_session(failure);
+        failed.iterations = out.iterations;
+        failed.elapsed = now_ms() - started;
+        return failed;
+      }
+      produced[name] = AneShmSpan{offset, length};
+      continue;
+    }
+    Wait failure{
+        false, AneWorkerStatus::WorkerDied,
+        "resident worker sent unknown frame '" + one_line(line) +
+            "'; device completion state uncertain"};
+    auto failed = end_session(failure);
+    failed.iterations = out.iterations;
+    failed.elapsed = now_ms() - started;
+    return failed;
+  }
+
+  out.status = AneWorkerStatus::Completed;
+  out.elapsed = now_ms() - started;
+  out.detail = "resident worker completed " + std::to_string(out.iterations) +
+               " iteration(s) on resident programs over shm";
   if (outputs != nullptr) {
     *outputs = std::move(produced);
   }

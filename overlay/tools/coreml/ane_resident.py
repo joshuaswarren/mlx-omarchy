@@ -20,6 +20,7 @@ go through host files.
 
 from __future__ import annotations
 
+import mmap
 import os
 import select
 import subprocess
@@ -100,7 +101,6 @@ class ResidentAneWorker:
         self.start_ns = 0
         self.close_ns = 0
         self.phase_us = {key: 0 for key in _PHASE_KEYS}
-        self.transport = "inline"
         self.log: list[dict] = []
 
         self._process: subprocess.Popen | None = None
@@ -109,12 +109,46 @@ class ResidentAneWorker:
         self._banner: list[str] = []
         self._inbox = bytearray()
         self._batch_until: float | None = None
+        # Shared-memory payload transport. The client creates two memfd
+        # regions and passes them to the worker at start; the worker's
+        # "shm ok" acknowledgement switches the session onto the shm
+        # path. Anything that fails (old kernel, old worker, oversize
+        # payload) falls back to the inline pipe protocol.
+        self._shm_in = None
+        self._shm_out = None
+        self._shm_in_fd = None
+        self._shm_out_fd = None
+        self._shm_bytes = 0
+        self._shm_ok = False
+        self.transport = "inline"
 
     # ------------------------------------------------------------ lifecycle
     def start(self) -> None:
         if self._process is not None:
             raise ResidentWorkerError("resident session is already started")
         self.scratch.mkdir(parents=True, exist_ok=True)
+        shm_bytes = int(os.environ.get("ANE_WORKER_SHM_BYTES", 64 * 1024 * 1024))
+        pass_fds: tuple[int, ...] = ()
+        if os.environ.get("ANE_WORKER_SHM", "1") != "0":
+            try:
+                in_fd = os.memfd_create("ane-worker-shm-in")
+                out_fd = os.memfd_create("ane-worker-shm-out")
+                os.ftruncate(in_fd, shm_bytes)
+                os.ftruncate(out_fd, shm_bytes)
+                self._shm_in = mmap.mmap(in_fd, shm_bytes)
+                self._shm_out = mmap.mmap(out_fd, shm_bytes)
+                self._shm_in_fd = in_fd
+                self._shm_out_fd = out_fd
+                self._shm_bytes = shm_bytes
+                pass_fds = (in_fd, out_fd)
+            except (OSError, ValueError):
+                for fd in (self._shm_in_fd, self._shm_out_fd):
+                    if fd is not None:
+                        os.close(fd)
+                self._shm_in = self._shm_out = None
+                self._shm_in_fd = self._shm_out_fd = None
+                self._shm_bytes = 0
+                pass_fds = ()
         argv = [
             str(self.worker),
             "--serve",
@@ -122,6 +156,11 @@ class ResidentAneWorker:
             "--deadline-ms", str(self.deadline_ms),
             "--iterations", str(self.iterations),
         ]
+        if self._shm_in is not None:
+            argv += [
+                "--shm-in", f"{self._shm_in_fd}={self._shm_bytes}",
+                "--shm-out", f"{self._shm_out_fd}={self._shm_bytes}",
+            ]
         for name, path in self.bundles.items():
             argv += ["--bundle", f"{name}={path}"]
 
@@ -132,6 +171,7 @@ class ResidentAneWorker:
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=self._stderr,
+            pass_fds=pass_fds,
         )
         self.worker_starts += 1
         # One "resident bundle=..." line per bundle, then the load report.
@@ -146,6 +186,31 @@ class ResidentAneWorker:
             self._die(f"expected the resident load report, got {line!r}")
         self._banner.append(line)
         self.device_program_loads = _loaded_programs(line)
+        # A worker with mapped regions answers right after the load
+        # report. An old worker that ignored the flags sends nothing:
+        # a short bounded wait decides the transport, then never again.
+        if self._shm_in is not None:
+            deadline = time.monotonic() + 2.0
+            stream = self._process.stdout
+            while time.monotonic() < deadline:
+                ready, _, _ = select.select(
+                    [stream], [], [], deadline - time.monotonic()
+                )
+                if not ready:
+                    break
+                chunk = os.read(stream.fileno(), 1 << 16)
+                if not chunk:
+                    self._die(
+                        "resident worker closed its output during the "
+                        "shm handshake"
+                    )
+                self._inbox += chunk
+                if b"\n" in self._inbox:
+                    line = self._readline("shm handshake")
+                    if line.startswith("shm ok "):
+                        self._shm_ok = True
+                        self.transport = "shm"
+                    break
         self.start_ns = time.monotonic_ns() - started
 
     def close(self) -> dict:
@@ -201,15 +266,35 @@ class ResidentAneWorker:
         job = ["submit", bundle]
         in_bytes = 0
         ordered = list(inputs.items())
-        for name, payload in ordered:
-            job += ["--inline", f"{name}={len(payload)}"]
-            in_bytes += len(payload)
-        for name in outputs:
-            job += ["--emit", name]
+        # ponytail: single-slot in-ring, offset restarts per submit. Safe
+        # because the protocol is strictly synchronous (the runner writes
+        # round N+1 only after reading round N's outputs). Double-buffer
+        # the ring if a caller ever pipelines submits.
+        shm_fits = (
+            self._shm_ok
+            and self._shm_in is not None
+            and sum(len(payload) for _, payload in ordered) <= self._shm_bytes
+        )
+        if shm_fits:
+            offset = 0
+            for name, payload in ordered:
+                self._shm_in[offset : offset + len(payload)] = payload
+                job += ["--shmin", f"{name}={offset}:{len(payload)}"]
+                offset += len(payload)
+                in_bytes += len(payload)
+            for name in outputs:
+                job += ["--shout", name]
+        else:
+            for name, payload in ordered:
+                job += ["--inline", f"{name}={len(payload)}"]
+                in_bytes += len(payload)
+            for name in outputs:
+                job += ["--emit", name]
 
         request = bytearray(" ".join(job).encode() + b"\n")
-        for _, payload in ordered:
-            request += payload
+        if not shm_fits:
+            for _, payload in ordered:
+                request += payload
 
         started = time.monotonic_ns()
         self._write_bytes(bytes(request))
@@ -223,6 +308,12 @@ class ResidentAneWorker:
                 payload = self._read_exact(int(length), f"output {name}")
                 results[name] = payload
                 out_bytes += len(payload)
+                continue
+            if line.startswith("shmout "):
+                _, name, offset, length = line.split(" ", 3)
+                span = self._shm_out[int(offset) : int(offset) + int(length)]
+                results[name] = bytes(span)
+                out_bytes += int(length)
                 continue
             break
         elapsed = time.monotonic_ns() - started
@@ -413,6 +504,20 @@ class ResidentAneWorker:
         if self._stderr is not None:
             self._stderr.close()
             self._stderr = None
+        for region in (self._shm_in, self._shm_out):
+            if region is not None:
+                try:
+                    region.close()
+                except OSError:
+                    pass
+        for fd in (self._shm_in_fd, self._shm_out_fd):
+            if fd is not None:
+                try:
+                    os.close(fd)
+                except OSError:
+                    pass
+        self._shm_in = self._shm_out = None
+        self._shm_in_fd = self._shm_out_fd = None
         self._process = None
 
     def _die(self, message: str) -> None:

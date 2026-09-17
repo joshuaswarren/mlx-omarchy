@@ -82,6 +82,25 @@ struct AneWorkerReport {
 struct AneWorkerOptions {
   std::chrono::milliseconds deadline{std::chrono::milliseconds(2000)};
   int iterations{1};
+  // Optional memfd-backed payload regions for the resident path. When
+  // both are mapped, submit_shm() moves payload bytes through them
+  // instead of inline socket frames: the caller writes inputs into
+  // shm_in, the device side reads them directly and writes outputs
+  // into shm_out. The regions are plain shared memory -- control
+  // framing stays on the socketpair, so a submit is still one bounded
+  // request/response pair.
+  struct ShmRegion {
+    uint8_t* base{nullptr};
+    size_t size{0};
+  };
+  ShmRegion shm_in;
+  ShmRegion shm_out;
+};
+
+// One payload placed inside an AneWorkerOptions::ShmRegion.
+struct AneShmSpan {
+  size_t offset{0};
+  size_t size{0};
 };
 
 // MLX_API: the standalone fd-protocol worker exe links this class out
@@ -137,6 +156,20 @@ class MLX_API AneWorker {
       size_t bundle,
       const std::map<std::string, Buffer>& inputs,
       std::map<std::string, Buffer>* outputs = nullptr);
+
+  // One bounded submit with payloads exchanged through the shm regions
+  // configured in the options. `inputs` places every manifest input of
+  // the bundle inside shm_in; `output_offsets` reserves a slot in
+  // shm_out per requested output name (the caller owns slot layout).
+  // On Completed, `outputs` reports where each requested output landed
+  // (offset + logical byte count in shm_out). The safety model is the
+  // submit() one: same deadline, same quarantine, no retry. Throws
+  // std::invalid_argument when the regions are not configured.
+  AneWorkerReport submit_shm(
+      size_t bundle,
+      const std::map<std::string, AneShmSpan>& inputs,
+      const std::map<std::string, size_t>& output_offsets,
+      std::map<std::string, AneShmSpan>* outputs = nullptr);
 
   // Opens a batch scope: one absolute deadline, named here, bounds every
   // submit() until close_batch(). The safety model is unchanged -- one
