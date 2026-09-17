@@ -28,7 +28,7 @@ out = {"available": False, "instances": [], "ane_nodes": [],
 
 def _text(value):
     if isinstance(value, bytes):
-        value = value.split(b"\x00")[0]
+        value = value.split(b"\x00")[0].decode("utf-8", "replace")
     return str(value)[:128] if value is not None else None
 
 
@@ -97,7 +97,8 @@ try:
             entry["compatible"] = _compatible(node)
             entry["reg"] = _reg(node)
             for key in ("IOInterruptControllers",
-                        "IOInterruptSpecifiers", "IOClass"):
+                        "IOInterruptSpecifiers", "IOClass",
+                        "IONameMatched"):
                 if key in entry:
                     entry[key] = _text(entry[key])
             entry["phandle"] = node.get("AAPL,phandle")
@@ -142,7 +143,17 @@ try:
 except Exception as exc:
     out["powermetrics"]["error"] = type(exc).__name__[:64]
 
-print(json.dumps(out)[:120000])
+def _plain(value):
+    if isinstance(value, bytes):
+        return _text(value)
+    if isinstance(value, list):
+        return [_plain(v) for v in value]
+    if isinstance(value, dict):
+        return {k: _plain(v) for k, v in value.items()}
+    return value
+
+
+print(json.dumps(_plain(out))[:120000])
 """
 
 
