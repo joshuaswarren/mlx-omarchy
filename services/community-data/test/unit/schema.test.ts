@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import payloadSchemaJson from "../../schema/payload-v1.schema.json";
 import { SchemaNode, validateSchemaRoot } from "../../src/schema";
 import fixture from "./fixtures/payload-v1.json";
+import e2eFixture from "./fixtures/payload-v1-e2e.json";
 
 const schema = payloadSchemaJson as SchemaNode;
 
@@ -12,6 +13,16 @@ function mutate(overrides: Record<string, unknown>): Record<string, unknown> {
 describe("payload schema v1", () => {
   test("collector-generated fixture validates", () => {
     expect(validateSchemaRoot(fixture, schema)).toEqual([]);
+  });
+
+  test("e2e fixture validates with the extended kind", () => {
+    expect(validateSchemaRoot(e2eFixture, schema)).toEqual([]);
+  });
+
+  test("e2e kind but missing e2e fields still validates (fields optional)", () => {
+    const { test_id, install_path, asahi_image, encryption, boot_separate, overall, ...rest } =
+      e2eFixture as Record<string, unknown>;
+    expect(validateSchemaRoot(rest, schema)).toEqual([]);
   });
 
   test("schema_version is pinned to 1", () => {
