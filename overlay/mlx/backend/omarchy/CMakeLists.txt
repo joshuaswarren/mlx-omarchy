@@ -325,6 +325,23 @@ omarchy_shader(qmm_coopmat_m16_f16 shaders/qmm_coopmat.comp -DTILE_ROWS=16)
 omarchy_shader(qmm_fma_f16 shaders/qmm_fma.comp)
 omarchy_shader(qmm_fma_precise_f16 shaders/qmm_fma.comp -DPRECISE_ACCUM=1)
 omarchy_shader(matmul_fma_bf16 shaders/matmul_fma_bf16.comp)
+# QmmCoopBench arms: shaders/qmm_coopmat_bench.comp compiled four ways
+# (chunk staging, chunk staging with padded strides, shared-load+MMA
+# ceiling, pure-MulAdd ceiling). Dispatched only when
+# MLX_OMARCHY_QMM_COOP_BENCH selects the arm; default dispatches are
+# unchanged. See primitives.cpp for the per-arm shared-memory gate.
+omarchy_shader(qmm_coop_bench_chunk_f16 shaders/qmm_coopmat_bench.comp -DQMM_COOP_BENCH_PATH=1)
+omarchy_shader(qmm_coop_bench_chunk_pad_f16 shaders/qmm_coopmat_bench.comp -DQMM_COOP_BENCH_PATH=2)
+omarchy_shader(qmm_coop_bench_load_ceil_f16 shaders/qmm_coopmat_bench.comp -DQMM_COOP_BENCH_PATH=3)
+omarchy_shader(qmm_coop_bench_muladd_ceil_f16 shaders/qmm_coopmat_bench.comp -DQMM_COOP_BENCH_PATH=4)
+# QmmCoopCeiling arms (same env, values 5/6): 5 = the shipped shader
+# with a 64-wide output tile (QMM_TILE_N=64; halves workgroups and
+# x-restaging, doubles per-lane accumulator fragments); 6 = the
+# software-pipelined twin (loads for step s+1 issued before the matrix
+# work of step s, one barrier per step). Both digest-preserving by
+# construction; default dispatch unchanged.
+omarchy_shader(qmm_coopmat_widen_f16 shaders/qmm_coopmat.comp -DQMM_TILE_N=64)
+omarchy_shader(qmm_coopmat_pipe_f16 shaders/qmm_coopmat_pipe.comp)
 omarchy_shader(binary_vec_f16 shaders/binary_vec.comp -DUSE_FP16=1)
 omarchy_shader(binary_vec_bf16 shaders/binary_vec.comp -DUSE_BF16=1)
 omarchy_shader(matmul_rb_f16 shaders/matmul_rb.comp)
