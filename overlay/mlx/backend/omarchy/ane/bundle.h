@@ -41,7 +41,12 @@ struct AneBundleNotFound : std::runtime_error {
 };
 
 struct AneValidatedProgram {
+  // Index into THIS bundle's manifest.programs. In the resident-session
+  // copies open() rewrites manifest_index into a device-wide key (the
+  // sum of programs across preceding bundles), so every reader that
+  // walks bundle.manifest.programs must use manifest_index_local.
   size_t manifest_index{0};
+  size_t manifest_index_local{0};
   AneAnecHeader anec_header;
   std::filesystem::path anec;
 };
