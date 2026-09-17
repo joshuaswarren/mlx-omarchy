@@ -64,4 +64,46 @@ describe("payload schema v1", () => {
     ).toBeGreaterThan(0);
     expect(validateSchemaRoot(mutate({ cpu_present: -1 }), schema).length).toBeGreaterThan(0);
   });
+
+  test("ane_port is bounded to 1024 chars and accepts null", () => {
+    expect(validateSchemaRoot(mutate({ ane_port: null }), schema)).toEqual([]);
+    expect(
+      validateSchemaRoot(mutate({ ane_port: "x".repeat(1024) }), schema),
+    ).toEqual([]);
+    expect(
+      validateSchemaRoot(mutate({ ane_port: "x".repeat(1025) }), schema).length,
+    ).toBeGreaterThan(0);
+  });
+
+  test("ane_port_detail rejects unknown nested properties", () => {
+    const bad = {
+      devicetree: { ane_node_present: true },
+      runtime: { unknown_field: "x" },
+    };
+    expect(validateSchemaRoot(mutate({ ane_port_detail: bad }), schema).length)
+      .toBeGreaterThan(0);
+  });
+
+  test("ane_port_detail accepts the bounded shape with truncation flag", () => {
+    const good = {
+      devicetree: {
+        ane_node_present: true,
+        ane_nodes: { "ane@0": { compatible: ["apple,t6001-ane"] } },
+        darts: {},
+        pmgr_domains: [{ path: "pmgr/p", label: "p", compatible: ["x"] }],
+        aic: { path: "aic", compatible: ["apple,aic"] },
+        phandles: { "1": "dart@0" },
+      },
+      runtime: {
+        iomem: ["ane: 0x0-0x1000"],
+        module_version: "0.1",
+        srcversion: "DEAD",
+        loaded: "ane 32768 0 - Live",
+        dmesg: ["ane: ok"],
+      },
+      truncated: ["ane_nodes:12"],
+    };
+    expect(validateSchemaRoot(mutate({ ane_port_detail: good }), schema))
+      .toEqual([]);
+  });
 });

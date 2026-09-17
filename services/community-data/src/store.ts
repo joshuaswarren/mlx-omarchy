@@ -323,6 +323,104 @@ async function saveCache(
 }
 
 /**
+ * Strip a single top-level JSON object field from a JSON text, preserving
+ * the trailing brace. Brace-aware: walks the value (object or array)
+ * using depth counting so nested braces inside the field's value do
+ * not break the splice. Returns the input unchanged when the field is
+ * absent, which is the common case for older rows.
+ *
+ * Per-row detail (`ane_port_detail`) is large and bounded only by the
+ * per-payload byte cap. Keeping it in every cached index row would
+ * balloon /v1/results and /v1/dataset/latest.jsonl; the per-row record
+ * at /v1/results/<sha> still serves it verbatim from the DB column.
+ */
+function stripJsonField(text: string, field: string): string {
+  const needle = `"${field}"`;
+  let i = text.indexOf(needle);
+  if (i < 0) return text;
+  // Walk back to the preceding comma or opening brace; the field must
+  // be at the top level so the character right before is one of those.
+  let j = i - 1;
+  while (j >= 0 && /\s/.test(text[j])) j--;
+  if (j < 0 || (text[j] !== "," && text[j] !== "{")) return text;
+  // Find the colon after the field name, then the value start.
+  let k = i + needle.length;
+  while (k < text.length && /\s/.test(text[k])) k++;
+  if (text[k] !== ":") return text;
+  k++;
+  while (k < text.length && /\s/.test(text[k])) k++;
+  if (k >= text.length) return text;
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  let valueEnd = -1;
+  if (text[k] === "{") {
+    depth = 1;
+    let m = k + 1;
+    while (m < text.length && depth > 0) {
+      const ch = text[m];
+      if (inString) {
+        if (escape) escape = false;
+        else if (ch === "\\") escape = true;
+        else if (ch === '"') inString = false;
+      } else if (ch === '"') {
+        inString = true;
+      } else if (ch === "{") {
+        depth++;
+      } else if (ch === "}") {
+        depth--;
+      }
+      m++;
+    }
+    valueEnd = m;
+  } else if (text[k] === "[") {
+    depth = 1;
+    let m = k + 1;
+    while (m < text.length && depth > 0) {
+      const ch = text[m];
+      if (inString) {
+        if (escape) escape = false;
+        else if (ch === "\\") escape = true;
+        else if (ch === '"') inString = false;
+      } else if (ch === '"') {
+        inString = true;
+      } else if (ch === "[") {
+        depth++;
+      } else if (ch === "]") {
+        depth--;
+      }
+      m++;
+    }
+    valueEnd = m;
+  } else {
+    // Scalar (string/number/bool/null): read until comma or closing brace.
+    let m = k;
+    if (text[k] === '"') {
+      inString = true;
+      m = k + 1;
+      while (m < text.length) {
+        const ch = text[m];
+        if (escape) escape = false;
+        else if (ch === "\\") escape = true;
+        else if (ch === '"') {
+          inString = false;
+          m++;
+          break;
+        }
+        m++;
+      }
+    } else {
+      while (m < text.length && text[m] !== "," && text[m] !== "}") m++;
+    }
+    valueEnd = m;
+  }
+  if (valueEnd < 0) return text;
+  // Splice out [j+1, valueEnd) inclusive of leading whitespace so the
+  // surrounding commas collapse correctly.
+  return text.slice(0, j) + text.slice(valueEnd);
+}
+
+/**
  * Rebuild both cached responses from stored summaries. Summaries are
  * already normalized JSON text, so this is string concatenation: no
  * JSON parsing, safe for the cron CPU budget even with many rows.
@@ -336,10 +434,15 @@ export async function rebuildCaches(db: D1Database, now: number): Promise<number
     .all<{ content_sha256: string; summary: string }>();
   // Each cached entry is the stored summary with the content hash
   // prepended, so bulk consumers can address /v1/results/<sha> and
-  // fetch the archive. String splice only: no JSON re-parsing.
-  const lines = results.map(
-    (r) => `{"content_sha256":"${r.content_sha256}",${r.summary.slice(1)}`,
-  );
+  // fetch the archive. String splice only: no JSON re-parsing. The
+  // per-row detail (`ane_port_detail`) is stripped from the cached
+  // index/dataset so /v1/results and /v1/dataset/latest.jsonl stay
+  // small; the per-row route at /v1/results/<sha> serves it directly
+  // from the DB column.
+  const lines = results.map((r) => {
+    const stripped = stripJsonField(r.summary, "ane_port_detail");
+    return `{"content_sha256":"${r.content_sha256}",${stripped.slice(1)}`;
+  });
   const generatedAt = new Date(now * 1000).toISOString();
   await saveCache(
     db,

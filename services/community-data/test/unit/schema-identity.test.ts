@@ -30,4 +30,8 @@ describe("SCHEMA_IDENTITY", () => {
   test("ane_port is declared in the bundled schema (the 2026-09-17 incident)", () => {
     expect(payloadSchemaJson.properties).toHaveProperty("ane_port");
   });
+
+  test("ane_port_detail is declared in the bundled schema (v0.6.1)", () => {
+    expect(payloadSchemaJson.properties).toHaveProperty("ane_port_detail");
+  });
 });
