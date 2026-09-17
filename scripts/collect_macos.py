@@ -53,9 +53,10 @@ def _reg(node):
 
 
 def _keep(node):
+    # Keys the payload schema whitelists; AAPL,phandle is carried as
+    # `phandle` below.
     keys = ("name", "compatible", "reg", "IODeviceMemory",
-            "IOInterruptControllers", "IOInterruptSpecifiers",
-            "AAPL,phandle", "IOClass", "IONameMatched")
+            "IOInterruptControllers", "IOInterruptSpecifiers", "IOClass")
     return {k: node[k] for k in keys
             if node.get(k) is not None and k != "IODeviceMemory"}
 
@@ -97,11 +98,13 @@ try:
             entry["compatible"] = _compatible(node)
             entry["reg"] = _reg(node)
             for key in ("IOInterruptControllers",
-                        "IOInterruptSpecifiers", "IOClass",
-                        "IONameMatched"):
+                        "IOInterruptSpecifiers", "IOClass"):
                 if key in entry:
                     entry[key] = _text(entry[key])
-            entry["phandle"] = node.get("AAPL,phandle")
+            ph = node.get("AAPL,phandle")
+            if isinstance(ph, bytes) and len(ph) == 4:
+                ph = int.from_bytes(ph, "big")
+            entry["phandle"] = ph
             (out["dart_nodes"] if name.startswith(
                 ("dart-", "mapper-")) else out["ane_nodes"]).append(entry)
         children = node.get("IORegistryEntryChildren")
