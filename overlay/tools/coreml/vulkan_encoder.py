@@ -895,7 +895,8 @@ class AneIsland:
 
 class EncoderRunner:
     def __init__(self, mil_path: Path, model_root: Path, island: AneIsland | None,
-                 placed: frozenset[str] = frozenset("ABC")):
+                 placed: frozenset[str] = frozenset(
+                     os.environ.get("MLX_OMARCHY_PLACED", "ABC"))):
         self.text = mil_path.read_text()
         self.blobs = Blobs(model_root)
         self.island = island
@@ -985,6 +986,26 @@ class EncoderRunner:
         self.island_a_partner = {c.index: s.index for s, c in zip(scores, content)}
         self.island_b = {s.index: (i, s) for i, s in enumerate(mask_select)}
         self.island_c = {o.index: (i, o) for i, o in enumerate(attn_out)}
+
+        oproj_w = re.compile(
+            r"encoder_layers_(\d+)_self_attn_o_proj_weight_to_fp16_palettized"
+        )
+        oproj = {}
+        for stmt in self.statements:
+            if stmt.op != "linear" or stmt.shape is None:
+                continue
+            m = oproj_w.fullmatch(
+                str(stmt.kwargs.get("weight", "")).strip().strip("'\"")
+            )
+            if m is None:
+                continue
+            layer = int(m.group(1))
+            if self.island is None or not (
+                self.island.bundles / f"island-oproj-L{layer:02d}"
+            ).is_dir():
+                continue
+            oproj[stmt.index] = (layer, stmt)
+        self.island_oproj = oproj
 
     def _index_fusions(self) -> None:
         """Find the conv-module GLU: sigmoid(split_1) consumed by exactly one
@@ -1203,6 +1224,9 @@ class EncoderRunner:
         if "C" in self.placed and stmt.index in self.island_c:
             self._run_island_c(stmt)
             return
+        if "O" in self.placed and stmt.index in self.island_oproj:
+            self._run_island_oproj(stmt)
+            return
         if (
             "A" in self.placed
             and stmt.index in self.island_a_partner
@@ -1364,6 +1388,21 @@ class EncoderRunner:
             {"attn_output_1": (out_stmt.shape, "fp16")},
         )
         self.values[out_stmt.names[0]] = results["attn_output_1"]
+        self.executed += 1
+        self.ane_ops += 1
+
+    def _run_island_oproj(self, stmt: Statement) -> None:
+        layer, l2 = self.island_oproj[stmt.index]
+        x = self.tensor(stmt.kwargs["x"])
+        if tuple(x.shape) != (1, 375, 1024):
+            raise EncoderRunError(
+                f"o-projection input for L{layer:02d}-O is {tuple(x.shape)}"
+            )
+        results = self.island.submit(
+            f"island-oproj-L{layer:02d}", f"L{layer:02d}-O",
+            {"x": x}, {"y": (l2.shape, "fp16")},
+        )
+        self.values[l2.names[0]] = results["y"]
         self.executed += 1
         self.ane_ops += 1
 
