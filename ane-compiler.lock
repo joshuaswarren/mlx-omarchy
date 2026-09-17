@@ -3,14 +3,43 @@
 # mlx-omarchy builds from. Release tooling never builds from a moving branch.
 # The archive is the immutable release asset for the tagged commit: GitHub's
 # codeload archive generation for this fork was unavailable at pin time.
-# Commit b61de46 (main with feature/strict-bind-surface-naming merged: every
-# declared surface named in the task stream, and BinaryConstant surfaces
-# staged contiguously across the decoded TD span) emits
-# mil-hwxc.h13-anec-package.v2; prior archives are superseded and must not
-# be re-accepted by the package adapter.
+# Commit f122644 (encoder oproj 64-plane permutation + bias-immediate
+# stamp + device-execution gate). Three commits on top of b61de46:
+#   67dfcf1 h13: route m375 k1024 n1024 uniform linear through the engine's 64-plane permutation
+#   5bd7ad5 h13: stamp real bias halves into the uniform linear scalar-register immediate
+#   5bbebcf scripts: add device-execution gate for the encoder rank-3 linear
+#   f122644 scripts: dev_gate_oproj end-to-end on m1-test-host (mint+execute+verify)
+# Decoder bug class 1: o-proj uniform linear shipped green at rel_l2=1.37
+# because the 874/874 byte-parity suite is blind to plane-permutation bugs
+# (the captured oracles are uniform-payload). The fold-constant (kernel-
+# DMA) section reads each 16-feature group at the permutation index
+# P(g) = ((g & 0xF) << 1) | ((g >> 4) & 1) | ((g >> 5) << 5); pre-fix the
+# emitter packed group g at half-offset g*16384 instead of at the engine's
+# group-inv(P) slot. With the fix, oproj-L00 device rel_l2 vs fp32 ref
+# drops from 1.373 to 0.012 (rng=11), 0.006 (rng=42 multi-lane scale=2.0).
+# Decoder bug class 2: the captured uniform-oracle templates carry 0x3401
+# (= +0.2502441) in the NE scalar-register word; encodeLinearParity now
+# takes uniformBiasHalves (default 0x3401, oracle-compatible) and stamps
+# the real bias. Verified: a real-weight compile with bias=0 lands zero
+# 0x3401 occurrences in the task section.
+# Byte-parity suite (test_h13_parity.py): 874/874 PASS both with and
+# without the fix. Uniform-payload captures bake 0x3400 everywhere;
+# permutation-invariant, so const.bin sha256s are unchanged.
+# Device-execution gate (scripts/dev_gate_oproj.py on m1-test-host): three
+# independent rngs (11, 33, 57), worst rel_l2 ≤ 0.05 budget. Gate PASSES
+# with this release (worst 0.000208, dominated by fp16 W noise) and
+# FAILS as-minted on the b61de46 bundle (worst 1.373) — provable change.
+# NOT FIXED in this release: FFN chain (d1024 s375) rel_l2 stays at
+# 0.9353 — different bug class (silu/bias-add task word fold), needs
+# separate CRT. FFN chain stays on Vulkan through deterministic refuse-
+# and-fallback until that gate passes too. Smaller linear geometries
+# (n128, n640, n4096, k4096-n1024) keep identity packing and stay on
+# the byte-parity gate until their own CRT measurements.
+# emits mil-hwxc.h13-anec-package.v2; prior archives are superseded and
+# must not be re-accepted by the package adapter.
 ANE_COMPILER_REPOSITORY=https://github.com/joshuaswarren/mil-hwx-compiler
-ANE_COMPILER_COMMIT=b61de468d1ca37b687d5fa371e489be16cd84ed1
-ANE_COMPILER_ARCHIVE_URL=https://github.com/joshuaswarren/mil-hwx-compiler/releases/download/ane-parity-b61de46/mil-hwx-compiler-b61de46.tar.gz
-ANE_COMPILER_ARCHIVE_SHA256=3e2b27350f48810b2aa2749129ed8e5a6eae62568772adca3fd1585b67bc3271
+ANE_COMPILER_COMMIT=f122644f0a83b09d78c4f8d15ce614889b6d7bdf
+ANE_COMPILER_ARCHIVE_URL=https://github.com/joshuaswarren/mil-hwx-compiler/releases/download/f122644-ane-parity-encoder-fix/mil-hwx-compiler-f122644.tar.gz
+ANE_COMPILER_ARCHIVE_SHA256=e5658f9f0517b0fb8e18cc74a4b1c0a9dbb624be0c911b38512ef8a7f1558c2b
 ANE_COMPILER_PACKAGE_SCHEMA=mil-hwxc.h13-anec-package.v2
 ANE_COMPILER_QUALIFIED_TARGET=H13
