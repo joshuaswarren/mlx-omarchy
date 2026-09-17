@@ -193,6 +193,7 @@ class ResidentAneWorker:
 
         started = time.monotonic_ns()
         self._write_bytes(bytes(request))
+        write_ns = time.monotonic_ns() - started
         results: dict[str, bytes] = {}
         out_bytes = 0
         while True:
@@ -205,17 +206,29 @@ class ResidentAneWorker:
                 continue
             break
         elapsed = time.monotonic_ns() - started
+        read_ns = elapsed - write_ns
 
         self.submissions += 1
         self.exec_ns += elapsed
         self.input_bytes += in_bytes
+        # The worker's own job report carries its internal split: elapsed_ms
+        # covers recv+stage+exec+read+send-back inside the child; stage_ms is
+        # its input staging share and save_ms its output retrieval share.
+        report_fields = {}
+        for token in line.replace("\n", " ").split():
+            key, sep, value = token.partition("=")
+            if sep and key in ("status", "elapsed_ms", "stage_ms", "save_ms"):
+                report_fields[key] = value
         record = {
             "tag": tag,
             "bundle": bundle,
             "elapsed_ns": elapsed,
+            "write_ns": write_ns,
+            "read_ns": read_ns,
             "report": line,
             "input_bytes": in_bytes,
             "output_bytes": out_bytes,
+            **report_fields,
         }
         self.log.append(record)
 

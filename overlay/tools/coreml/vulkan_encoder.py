@@ -722,6 +722,13 @@ class AneIsland:
         self.input_bytes = 0
         self.output_bytes = 0
         self.exec_ns = 0
+        # Host-side split around the timed submit: marshal_ns covers turning
+        # input mx tensors into wire bytes (mx.eval + ascontiguous + tobytes),
+        # back_ns covers turning output bytes into mx tensors (frombuffer +
+        # mx.array). Everything ane_exec does not explain between the island
+        # statement and its result lives in these two or in session open.
+        self.marshal_ns = 0
+        self.back_ns = 0
         self.timeouts = 0
         self.batch_open_ns = 0
         self.log: list[dict] = []
@@ -775,11 +782,14 @@ class AneIsland:
         session = self._ensure_session()
         payload = {}
         in_bytes = 0
+        marshal_started = time.monotonic_ns()
         for name, value in inputs.items():
             mx.eval(value)
             raw = np.ascontiguousarray(np.asarray(value)).tobytes()
             payload[name] = raw
             in_bytes += len(raw)
+        round_marshal_ns = time.monotonic_ns() - marshal_started
+        self.marshal_ns += round_marshal_ns
         out_names = list(outputs)
         started = time.monotonic_ns()
         try:
@@ -789,10 +799,16 @@ class AneIsland:
                 f"ANE batch round {tag} ({bundle}) failed: {error}"
             ) from error
         elapsed = time.monotonic_ns() - started
+        back_started = time.monotonic_ns()
         self.rounds += 1
         self.exec_ns += elapsed
         self.input_bytes += in_bytes
         record = {"tag": tag, "bundle": bundle, "elapsed_ns": elapsed, "round": True}
+        child = getattr(session, "log", [None])[-1] if session.log else None
+        if child:
+            for key in ("write_ns", "read_ns", "stage_ms", "save_ms", "elapsed_ms"):
+                if key in child:
+                    record[key] = child[key]
         out_bytes = 0
         packed = {}
         for name, (shape, dtype_name) in outputs.items():
@@ -808,6 +824,10 @@ class AneIsland:
             out_bytes += len(raw)
             host = np.frombuffer(raw, dtype=NP_DTYPES[dtype_name], count=count)
             packed[name] = mx.array(host).reshape(shape)
+        round_back_ns = time.monotonic_ns() - back_started
+        self.back_ns += round_back_ns
+        record["back_ns"] = round_back_ns
+        record["marshal_ns"] = round_marshal_ns
         record["input_bytes"] = in_bytes
         record["output_bytes"] = out_bytes
         self.output_bytes += out_bytes
@@ -831,6 +851,7 @@ class AneIsland:
             "--iterations", "1",
         ]
         in_bytes = 0
+        marshal_started = time.monotonic_ns()
         for name, value in inputs.items():
             mx.eval(value)
             raw = np.ascontiguousarray(np.asarray(value))
@@ -838,6 +859,8 @@ class AneIsland:
             path.write_bytes(raw.tobytes())
             in_bytes += raw.nbytes
             argv += ["--input", f"{name}={path}"]
+        round_marshal_ns = time.monotonic_ns() - marshal_started
+        self.marshal_ns += round_marshal_ns
         saved = {}
         for name in outputs:
             path = run_dir / f"out_{name}.bin"
@@ -871,6 +894,7 @@ class AneIsland:
 
         results = {}
         out_bytes = 0
+        back_started = time.monotonic_ns()
         for name, (shape, dtype_name) in outputs.items():
             raw = saved[name].read_bytes()
             count = 1
@@ -885,6 +909,10 @@ class AneIsland:
             host = np.frombuffer(raw, dtype=NP_DTYPES[dtype_name], count=count)
             results[name] = mx.array(host).reshape(shape)
             saved[name].unlink()
+        round_back_ns = time.monotonic_ns() - back_started
+        self.back_ns += round_back_ns
+        record["marshal_ns"] = round_marshal_ns
+        record["back_ns"] = round_back_ns
         self.output_bytes += out_bytes
         record["input_bytes"] = in_bytes
         record["output_bytes"] = out_bytes
@@ -911,6 +939,10 @@ class EncoderRunner:
         self.executed = 0
         self.gpu_ops = 0
         self.ane_ops = 0
+        # Wall-clock sum per statement op across the pass. Anything the island
+        # timers (marshal/back/exec) do not explain shows up here, bucketed by
+        # op name, so the encoder wall decomposes without a second run.
+        self.op_wall_ns: dict[str, int] = {}
         self.cpu_tensor_events = 0
         self.cond_census: dict | None = None
         self.glu_fusions: dict[int, tuple[str, str]] = {}
@@ -1207,6 +1239,20 @@ class EncoderRunner:
     # --------------------------------------------------------------- dispatch
 
     def execute(self, stmt: Statement) -> None:
+        op_started = time.monotonic_ns()
+        try:
+            self._execute(stmt)
+        finally:
+            wall = time.monotonic_ns() - op_started
+            self.op_wall_ns[stmt.op] = self.op_wall_ns.get(stmt.op, 0) + wall
+            if os.environ.get("ANE_STMT_WALL") and wall > 50_000_000:
+                print(
+                    f"stmt_wall_ms {stmt.index} {stmt.op} {wall / 1e6:.1f} "
+                    f"names={stmt.names[:1]}",
+                    flush=True,
+                )
+
+    def _execute(self, stmt: Statement) -> None:
         if stmt.done:
             return
         stmt.done = True
@@ -1843,6 +1889,11 @@ class EncoderRunner:
         if missing:
             raise EncoderRunError(f"never produced {sorted(missing)}")
         mx.eval(list(keep.values()))
+        if os.environ.get("ANE_OP_WALL"):
+            total = sum(self.op_wall_ns.values()) / 1e6
+            print(f"op_wall_ms total={total:.0f}", flush=True)
+            for op, ns in sorted(self.op_wall_ns.items(), key=lambda kv: -kv[1]):
+                print(f"op_wall_ms {op}={ns / 1e6:.1f}", flush=True)
         return keep
 
 
@@ -1965,6 +2016,14 @@ def main() -> int:
             "worker_starts": island.worker_starts,
             "timeouts": island.timeouts,
             "batch_open_ns": island.batch_open_ns,
+            "marshal_ns": island.marshal_ns,
+            "back_ns": island.back_ns,
+            "op_wall_ms": {
+                op: round(ns / 1e6, 1)
+                for op, ns in sorted(
+                    runner.op_wall_ns.items(), key=lambda kv: -kv[1]
+                )
+            },
             "input_bytes": island.input_bytes,
             "output_bytes": island.output_bytes,
             "exec_ns": island.exec_ns,
