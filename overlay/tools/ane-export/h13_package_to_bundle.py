@@ -168,6 +168,116 @@ def convert_binding(binding: dict, where: str) -> tuple[dict, str]:
     }, tensor)
 
 
+# Mirrors mlx/backend/omarchy/ane/bundle.cpp (kBind* constants and
+# bind_task_dma/bind_walk/derive_role_channels). Keep in lockstep: the
+# canonical check must reject exactly what the runtime worker rejects.
+_ANEC_PAYLOAD_OFFSET = 0x1000
+_ANEC_TILE_COUNT = 0x20
+_BIND_FIRST_SURFACE = 4
+_BIND_DMA_DISABLED = 0x00008880
+_BIND_DST_REGISTER = 0x17800
+_BIND_SELECTOR_MASK = 0x1F
+_BIND_MIN_TASK_BYTES = 40
+_BIND_SELECTORS = ((0x13800, 0), (0x13804, 6), (_BIND_DST_REGISTER, 12))
+
+
+def _word(buffer: bytes, byte_offset: int) -> int:
+    return int.from_bytes(buffer[byte_offset:byte_offset + 4], "little")
+
+
+def _bind_task_dma(task: bytes, size: int) -> list[int] | None:
+    dma = [_BIND_DMA_DISABLED] * 3
+    words = size // 4
+    if size < _BIND_MIN_TASK_BYTES or size % 4:
+        return None
+    index = 10 + (1 if (_word(task, 36) & 3) == 3 else 0)
+    while index < words:
+        header = _word(task, index * 4)
+        count = (header >> 26) + 1
+        base = header & 0x03FFFFFF
+        if index + count >= words:
+            return None
+        for offset in range(count):
+            for slot in range(3):
+                if base + offset * 4 == _BIND_SELECTORS[slot][0]:
+                    dma[slot] = _word(task, (index + 1 + offset) * 4)
+        index += 1 + count
+    return dma
+
+
+def anec_derive_channels(data: bytes) -> tuple[list[int], list[int]] | None:
+    """Derive the (src, dst) surface channels an ANEC payload's task
+    stream binds. Returns None when the stream cannot be walked or does
+    not name every surface — same contract as the runtime worker."""
+    payload_size = int.from_bytes(data[0:8], "little")
+    task_size = _word(data, 8)
+    task_count = _word(data, 12)
+    source_count = _word(data, 32)
+    destination_count = _word(data, 36)
+    tiles = [_word(data, 40 + 4 * i) for i in range(_ANEC_TILE_COUNT)]
+    if (task_count == 0 or task_size == 0
+            or source_count > _ANEC_TILE_COUNT
+            or destination_count > _ANEC_TILE_COUNT):
+        return None
+    stream = data[_ANEC_PAYLOAD_OFFSET:_ANEC_PAYLOAD_OFFSET + payload_size]
+    is_src = [0] * _ANEC_TILE_COUNT
+    is_dst = [0] * _ANEC_TILE_COUNT
+    offset = 0
+    size = task_size
+    for index in range(task_count):
+        if (size < _BIND_MIN_TASK_BYTES or offset > len(stream)
+                or size > len(stream) - offset):
+            return None
+        task = stream[offset:offset + size]
+        dma = _bind_task_dma(task, size)
+        if dma is None:
+            return None
+        selectors = _word(task, 32)
+        for slot, (address, shift) in enumerate(_BIND_SELECTORS):
+            channel = (selectors >> shift) & _BIND_SELECTOR_MASK
+            if dma[slot] == _BIND_DMA_DISABLED:
+                continue
+            if (channel < _BIND_FIRST_SURFACE or channel >= _ANEC_TILE_COUNT
+                    or tiles[channel] == 0):
+                continue
+            if address == _BIND_DST_REGISTER:
+                is_dst[channel] = 1
+            else:
+                is_src[channel] = 1
+        if index + 1 == task_count:
+            break
+        nxt = _word(task, 28)
+        size = (((_word(task, 4) >> 16) & 0x1FF) + 1) * 4
+        if nxt % 4 or nxt > len(stream):
+            return None
+        offset = nxt
+    derived_src = []
+    derived_dst = []
+    for channel in range(_BIND_FIRST_SURFACE, _ANEC_TILE_COUNT):
+        if is_dst[channel]:
+            derived_dst.append(channel)
+        elif is_src[channel]:
+            derived_src.append(channel)
+
+    # Surfaces the selector registers never name bind positionally:
+    # first unused allocated channel ascending, destinations first,
+    # then sources (island-pv's probs tile). Mirrors bundle.cpp.
+    def fill(derived: list[int], needed: int) -> None:
+        for channel in range(_BIND_FIRST_SURFACE, _ANEC_TILE_COUNT):
+            if len(derived) == needed:
+                return
+            if is_dst[channel] or is_src[channel] or tiles[channel] == 0:
+                continue
+            derived.append(channel)
+
+    fill(derived_dst, destination_count)
+    fill(derived_src, source_count)
+    if (len(derived_src) != source_count
+            or len(derived_dst) != destination_count):
+        return None
+    return derived_src, derived_dst
+
+
 def adapt(package: Path, output: Path, identity: dict) -> dict:
     source = load_object(package / "manifest.json")
     if source.get("schema") != SCHEMA:
@@ -435,11 +545,11 @@ def adapt(package: Path, output: Path, identity: dict) -> dict:
     reads: set[str] = set()
     writes: set[str] = set()
     for program_index, program in enumerate(converted_programs):
-        # Trust the declared channels. The runtime worker's
-        # derive_role_channels walks the task stream and is
-        # authoritative — a manifest that misdeclares is caught at
-        # load time. The adapter enforces only integrity:
-        # distinct, in-range, no input/output collision.
+        # Declared channels must equal the channels the task stream
+        # binds. anec_derive_channels mirrors the runtime worker's
+        # derive_role_channels, so a manifest that lies about a surface
+        # binding (declared but never bound by any task) is rejected at
+        # mint time — the manifest-layout defect class cannot ship.
         declared_channels: list[int] = []
         for binding in program["outputs"]:
             if binding["channel"] in declared_channels:
@@ -461,6 +571,21 @@ def adapt(package: Path, output: Path, identity: dict) -> dict:
                 fail(f"compiler manifest programs[{program_index}] channel "
                      f"{channel} is out of range [{ANEC_CHANNEL_MIN}, "
                      f"{ANEC_CHANNEL_MAX})")
+        derived = anec_derive_channels((package / program["payload"]).read_bytes())
+        if derived is None:
+            fail(f"compiler manifest programs[{program_index}] task stream "
+                 f"does not name every surface")
+        derived_src, derived_dst = derived
+        declared_outputs = [binding["channel"] for binding in program["outputs"]]
+        if derived_dst != declared_outputs:
+            fail(f"compiler manifest programs[{program_index}] declares output "
+                 f"channels {declared_outputs} but the task stream binds "
+                 f"outputs {derived_dst}")
+        declared_inputs = [binding["channel"] for binding in program["inputs"]]
+        if derived_src != declared_inputs:
+            fail(f"compiler manifest programs[{program_index}] declares input "
+                 f"channels {declared_inputs} but the task stream binds "
+                 f"inputs {derived_src}")
         for direction, bindings in (("inputs", program["inputs"]),
                                     ("outputs", program["outputs"])):
             for binding in bindings:
