@@ -633,6 +633,13 @@ enum class ComputeKernel : uint16_t {
   // -DTILE_ROWS=16) for a grid too small to fill a wide part.
   // Appended to keep profile kernel ids stable.
   QmmPrefillCoopmatM16F16,
+  // Native-shape two-pass long-context decode SDPA (f16): pass 1 runs one
+  // 32-thread workgroup per (head, block) - native Metal's
+  // sdpa_vector_2pass_1 grid - and writes the fused kernel's exact f16/f32
+  // block partials to a scratch binding; pass 2 folds them with the fused
+  // kernel's pass-2 code unchanged. Append-only profile ids.
+  SdpaDecodeNativeTwoPassP1F16,
+  SdpaDecodeNativeTwoPassP2F16,
   Count,
 };
 
