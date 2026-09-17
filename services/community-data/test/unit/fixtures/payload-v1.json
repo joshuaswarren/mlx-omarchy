@@ -1,6 +1,8 @@
 {
   "ane_dt_compatible": null,
   "ane_dt_node": false,
+  "ane_port": "present=false darts=0 pmgr_domains=0",
+  "ane_port_detail": null,
   "arch": "aarch64",
   "boot_chain": "iboot2=iBoot-8422.141.2 m1n1_stage2=v1.5.2",
   "chip": "apple,t8103",

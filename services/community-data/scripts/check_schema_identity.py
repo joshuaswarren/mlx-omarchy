@@ -2,7 +2,7 @@
 """Compare the live worker's schema identity to the repo file.
 
 Usage:
-  scripts/check_schema_identity.py [URL]
+  scripts/check_schema_identity.py [--url URL]
 
 URL defaults to https://mlx-omarchy-community-data.joshua-s-warren.workers.dev.
 
