@@ -287,35 +287,57 @@ void main() {
   if (blocks == 0u) {
     // Native sdpa_vector: each SIMD owns keys sgid, sgid+32, ... and keeps an
     // independent online-softmax state before the 32 states are merged.
+    //
+    // Keys are walked in groups of PIPE_B: a group's K/V loads are staged
+    // before its per-key state updates, so up to PIPE_B rows are in flight
+    // instead of one load sunk to each step's consumer. Per-key arithmetic
+    // is untouched - same loads, same ops, ascending key order, one
+    // online-softmax state - so the merged state is bit-identical to the
+    // single-key walk.
+    const uint PIPE_B = 4u;
     float max_score = FINITE_MIN;
     float sum_exp_score = 0.0;
     float o0 = 0.0;
     float o1 = 0.0;
-    for (uint key = sgid; key < params.matrix_k; key += SIMD) {
-      uint k_base = params.rhs_offset + kv_head * params.shape[1] +
-          key * params.shape[2] + q_dim * params.in_strides[0];
-      float score = fma(q0, LD16(key_data.values[k_base]), 0.0);
-      score = fma(
-          q1,
-          LD16(key_data.values[k_base + params.in_strides[0]]),
-          score);
-      score = subgroupAdd(score);
-      float new_max = max(max_score, score);
-      float factor = native_exp(max_score - new_max);
-      float exp_score = native_exp(score - new_max);
-      max_score = new_max;
-      sum_exp_score = fma(sum_exp_score, factor, exp_score);
-      uint v_base = params.aux_offset + kv_head * params.in_strides[1] +
-          key * params.in_strides[2] + q_dim * params.in_strides[3];
-      o0 = fma(
-          o0,
-          factor,
-          exp_score * LD16(value_data.values[v_base]));
-      o1 = fma(
-          o1,
-          factor,
-          exp_score *
-              LD16(value_data.values[v_base + params.in_strides[3]]));
+    for (uint g = sgid; g < params.matrix_k; g += SIMD * PIPE_B) {
+      float k0[PIPE_B];
+      float k1[PIPE_B];
+      float v0[PIPE_B];
+      float v1[PIPE_B];
+      bool live[PIPE_B];
+      for (uint b = 0u; b < PIPE_B; ++b) {
+        uint key = g + b * SIMD;
+        live[b] = key < params.matrix_k;
+        if (live[b]) {
+          uint k_base = params.rhs_offset + kv_head * params.shape[1] +
+              key * params.shape[2] + q_dim * params.in_strides[0];
+          k0[b] = LD16(key_data.values[k_base]);
+          k1[b] = LD16(key_data.values[k_base + params.in_strides[0]]);
+        }
+      }
+      for (uint b = 0u; b < PIPE_B; ++b) {
+        if (live[b]) {
+          uint key = g + b * SIMD;
+          uint v_base = params.aux_offset + kv_head * params.in_strides[1] +
+              key * params.in_strides[2] + q_dim * params.in_strides[3];
+          v0[b] = LD16(value_data.values[v_base]);
+          v1[b] = LD16(value_data.values[v_base + params.in_strides[3]]);
+        }
+      }
+      for (uint b = 0u; b < PIPE_B; ++b) {
+        if (live[b]) {
+          float score = fma(q0, k0[b], 0.0);
+          score = fma(q1, k1[b], score);
+          score = subgroupAdd(score);
+          float new_max = max(max_score, score);
+          float factor = native_exp(max_score - new_max);
+          float exp_score = native_exp(score - new_max);
+          max_score = new_max;
+          sum_exp_score = fma(sum_exp_score, factor, exp_score);
+          o0 = fma(o0, factor, exp_score * v0[b]);
+          o1 = fma(o1, factor, exp_score * v1[b]);
+        }
+      }
     }
 
     if (lane == 0u) {
@@ -340,44 +362,82 @@ void main() {
   }
 
   // Native sdpa_vector_2pass_1. A physical subgroup computes four logical
-  // native blocks sequentially; logical blocks remain independent and land
-  // in the exact f16/f32 intermediate formats consumed by pass 2.
-  for (uint block = sgid; block < blocks; block += SIMD) {
-    float max_score = FINITE_MIN;
-    float sum_exp_score = 0.0;
-    float o0 = 0.0;
-    float o1 = 0.0;
-    for (uint key = block; key < params.matrix_k; key += blocks) {
-      uint k_base = params.rhs_offset + kv_head * params.shape[1] +
-          key * params.shape[2] + q_dim * params.in_strides[0];
-      float score = fma(q0, LD16(key_data.values[k_base]), 0.0);
-      score = fma(
-          q1,
-          LD16(key_data.values[k_base + params.in_strides[0]]),
-          score);
-      score = subgroupAdd(score);
-      float new_max = max(max_score, score);
-      float factor = native_exp(max_score - new_max);
-      float exp_score = native_exp(score - new_max);
-      max_score = new_max;
-      sum_exp_score = fma(sum_exp_score, factor, exp_score);
-      uint v_base = params.aux_offset + kv_head * params.in_strides[1] +
-          key * params.in_strides[2] + q_dim * params.in_strides[3];
-      o0 = fma(
-          o0,
-          factor,
-          exp_score * LD16(value_data.values[v_base]));
-      o1 = fma(
-          o1,
-          factor,
-          exp_score *
-              LD16(value_data.values[v_base + params.in_strides[3]]));
+  // native blocks (blocks/SIMD <= 4 by the host gate: flags are only ever
+  // 64 or 128); logical blocks remain independent and land in the exact
+  // f16/f32 intermediate formats consumed by pass 2.
+  //
+  // The blocks of one subgroup are walked j-major (step j of every owned
+  // block, then step j+1) instead of block-sequentially: each block is an
+  // independent latency chain, so interleaving keeps MAXB K/V loads in
+  // flight instead of serializing one chain behind another. Per-block
+  // arithmetic is untouched - same loads, same ops, keys in ascending
+  // order, one online-softmax state per block - so every stored partial
+  // is bit-identical to the block-sequential walk.
+  const uint MAXB = 4u;
+  uint owned = 0u;
+  uint jmax = 0u;
+  if (sgid < blocks && sgid < params.matrix_k) {
+    owned = (blocks - sgid + SIMD - 1u) / SIMD;
+    jmax = (params.matrix_k - sgid + blocks - 1u) / blocks;
+  }
+  float b_max[MAXB];
+  float b_sum[MAXB];
+  float b_o0[MAXB];
+  float b_o1[MAXB];
+  for (uint b = 0u; b < owned; ++b) {
+    b_max[b] = FINITE_MIN;
+    b_sum[b] = 0.0;
+    b_o0[b] = 0.0;
+    b_o1[b] = 0.0;
+  }
+  for (uint j = 0u; j < jmax; ++j) {
+    uint k_base[MAXB];
+    float k0[MAXB];
+    float k1[MAXB];
+    float v0[MAXB];
+    float v1[MAXB];
+    bool live[MAXB];
+    for (uint b = 0u; b < owned; ++b) {
+      uint key = sgid + b * SIMD + j * blocks;
+      live[b] = key < params.matrix_k;
+      if (live[b]) {
+        k_base[b] = params.rhs_offset + kv_head * params.shape[1] +
+            key * params.shape[2] + q_dim * params.in_strides[0];
+        k0[b] = LD16(key_data.values[k_base[b]]);
+        k1[b] = LD16(key_data.values[k_base[b] + params.in_strides[0]]);
+      }
     }
+    for (uint b = 0u; b < owned; ++b) {
+      if (live[b]) {
+        uint key = sgid + b * SIMD + j * blocks;
+        uint v_base = params.aux_offset + kv_head * params.in_strides[1] +
+            key * params.in_strides[2] + q_dim * params.in_strides[3];
+        v0[b] = LD16(value_data.values[v_base]);
+        v1[b] = LD16(value_data.values[v_base + params.in_strides[3]]);
+      }
+    }
+    for (uint b = 0u; b < owned; ++b) {
+      if (live[b]) {
+        float score = fma(q0, k0[b], 0.0);
+        score = fma(q1, k1[b], score);
+        score = subgroupAdd(score);
+        float new_max = max(b_max[b], score);
+        float factor = native_exp(b_max[b] - new_max);
+        float exp_score = native_exp(score - new_max);
+        b_max[b] = new_max;
+        b_sum[b] = fma(b_sum[b], factor, exp_score);
+        b_o0[b] = fma(b_o0[b], factor, exp_score * v0[b]);
+        b_o1[b] = fma(b_o1[b], factor, exp_score * v1[b]);
+      }
+    }
+  }
+  for (uint b = 0u; b < owned; ++b) {
+    uint block = sgid + b * SIMD;
     if (lane == 0u) {
-      s_max[block] = max_score;
-      s_sum[block] = sum_exp_score;
+      s_max[block] = b_max[b];
+      s_sum[block] = b_sum[b];
     }
-    s_partial_words[block * SIMD + lane] = packHalf2x16(vec2(o0, o1));
+    s_partial_words[block * SIMD + lane] = packHalf2x16(vec2(b_o0[b], b_o1[b]));
   }
   barrier();
 
