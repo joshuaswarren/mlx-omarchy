@@ -621,6 +621,9 @@ enum class ComputeKernel : uint16_t {
   MatmulBf16FmaL16C4,
   Custom,
   MatmulVecMultiBF16,
+  // B-key register-blocked twin of SdpaDecodeNativeF16 (same shader,
+  // -DSDPA_BLOCK_B=8); appended to keep profile kernel ids stable.
+  SdpaDecodeNativeF16B8,
   Count,
 };
 

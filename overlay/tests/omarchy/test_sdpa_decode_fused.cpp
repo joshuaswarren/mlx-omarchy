@@ -435,3 +435,53 @@ TEST_CASE("fused bf16 decode is bit-identical to the f32 composition") {
       composition_reference_len(long_cache, 2100, stream),
       stream);
 }
+
+// The B-key register-blocked f16 twin (MLX_OMARCHY_SDPA_BLOCK_B) must store
+// the same words as the per-head SdpaDecodeNativeF16 arm on every covered
+// key count: the block walk keeps each lane's serial key order and the
+// identical per-key f32 chain (8 ordered online-softmax merges per group),
+// so bit equality is the contract, not a tolerance. The set spans the
+// one-pass arm's partial groups (1, 5, 30, 263, 320) and both two-pass
+// regimes - 64 blocks at 1024 keys (two exactly-full 8-key groups per
+// block) and 128 blocks at 1053 (an 8+1 tail group per block).
+TEST_CASE("block-B f16 decode is bit-identical to the per-head route") {
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  bool fused_available = decode_route_ready(stream);
+  if (!fused_available) {
+    printf("Skipping block-B assertions: decode route refuses on this "
+           "device\n");
+    return;
+  }
+
+  for (int keys : {1, 5, 30, 64, 263, 320, 1024, 1053}) {
+    CAPTURE(keys);
+    CacheInputs in =
+        make_cache_len(float16, keys, keys > 320 ? keys : 320, stream);
+    setenv("MLX_OMARCHY_SDPA_BLOCK_B", "0", 1);
+    array base = sdpa_call(in, stream);
+    setenv("MLX_OMARCHY_SDPA_BLOCK_B", "1", 1);
+    uint64_t dispatches =
+        dispatches_for([&] { return sdpa_call(in, stream); }, stream);
+    MESSAGE("keys ", keys, " dispatches ", dispatches);
+    CHECK_EQ(dispatches, 1);
+    require_bit_identical(sdpa_call(in, stream), base, stream);
+  }
+  unsetenv("MLX_OMARCHY_SDPA_BLOCK_B");
+
+  // The blocked twin is f16-only: with the env on, bf16 inputs must keep
+  // riding the composition-exact bf16 arm, one dispatch, same words.
+  CacheInputs bf16 = make_cache_len(bfloat16, 263, 320, stream);
+  setenv("MLX_OMARCHY_SDPA_BLOCK_B", "1", 1);
+  uint64_t bf16_dispatches =
+      dispatches_for([&] { return sdpa_call(bf16, stream); }, stream);
+  MESSAGE("bf16 with BLOCK_B env dispatches ", bf16_dispatches);
+  CHECK_EQ(bf16_dispatches, 1);
+  require_bit_identical(
+      sdpa_call(bf16, stream),
+      composition_reference_len(bf16, 263, stream),
+      stream);
+  unsetenv("MLX_OMARCHY_SDPA_BLOCK_B");
+}
