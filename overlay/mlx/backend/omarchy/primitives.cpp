@@ -11303,6 +11303,45 @@ void ScaledDotProductAttention::eval_gpu(
           "cooperative_matrix_fp32_8x8x8+workgroup_limits+"
           "shared_memory_limit_bytes",
           encoder.device().hardware_capabilities().cooperative_matrix_f32_8);
+    if (params.flags != 0u) {
+      // Native-shape per-block two-pass (f16 only; bf16 always one-pass).
+      // The fused kernel keeps one workgroup per head, so its walk runs
+      // k/32 sequential key-steps per subgroup no matter how the blocks
+      // split; native Metal instead grids heads x blocks with one 32-thread
+      // simdgroup per block, dropping the serial depth to ~k/blocks with
+      // heads*blocks concurrent chains. Pass 1 reproduces the fused
+      // kernel's per-block loop exactly and stores the same f16/f32 block
+      // partials; pass 2 folds them with the fused kernel's pass-2 code
+      // unchanged, so the pair is bit-identical to the fused two-pass.
+      const uint32_t blocks = params.flags;
+      // Scratch words per head: blocks max + blocks sum + blocks*32 packed
+      // f16 output-pair words (uint32 each), matching the shaders'
+      // SCRATCH_STRIDE_FACTOR layout.
+      const uint64_t scratch_words =
+          static_cast<uint64_t>(heads) * blocks * 34u;
+      array scratch(
+          Shape{static_cast<int>(scratch_words)}, uint32, nullptr, {});
+      scratch.set_data(allocate_omarchy(scratch.nbytes()));
+      encoder.add_temporary(scratch);
+      std::array<omarchy::ComputeBinding, 4> pass1_bindings{
+          binding(q), binding(k), binding(v), binding(scratch)};
+      omarchy::ComputeParams pass1_params = params;
+      pass1_params.count = checked_u32(scratch_words, tag, out);
+      encoder.dispatch_compute(
+          omarchy::ComputeKernel::SdpaDecodeNativeTwoPassP1F16,
+          pass1_bindings,
+          pass1_params,
+          params.matrix_m,
+          blocks);
+      std::array<omarchy::ComputeBinding, 2> pass2_bindings{
+          binding(scratch), binding(out)};
+      encoder.dispatch_compute(
+          omarchy::ComputeKernel::SdpaDecodeNativeTwoPassP2F16,
+          pass2_bindings,
+          params,
+          params.matrix_m);
+      return;
+    }
     encoder.dispatch_compute(
         decode_bf16 ? omarchy::ComputeKernel::SdpaDecodeNativeBF16
                     : omarchy::ComputeKernel::SdpaDecodeNativeF16,
