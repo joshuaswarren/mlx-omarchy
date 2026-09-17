@@ -14,6 +14,19 @@ import { checkInitiate, isSha256 } from "./validate";
 
 const payloadSchema = payloadSchemaJson as SchemaNode;
 
+// Stable identity for the bundled schema: recomputed by
+// scripts/compute_schema_identity.py when the JSON schema changes. Surfaced
+// via GET /v1/schema so stale deploys are caught at the wire instead of
+// silently 422-ing every submission that carries a field the live worker
+// does not know about.
+export const SCHEMA_IDENTITY = {
+  schema_version: 1 as const,
+  fields_sha256:
+    "ff51f59b033d8fc3e0e477ca45e147026f401d33f09eb36b6bfe88e4a2977aac",
+  schema_sha256:
+    "28b4906241b0f7a29fea12370f38c067899502965517275bf3e4010147e383b0",
+};
+
 const CACHEABLE = "public, max-age=60";
 const IMMUTABLE = "public, max-age=31536000, immutable";
 
@@ -325,8 +338,21 @@ async function serveCache(env: Env, key: string, contentType: string): Promise<R
   });
 }
 
+function handleSchema(): Response {
+  return jsonResponse(200, {
+    schema_version: SCHEMA_IDENTITY.schema_version,
+    fields_sha256: SCHEMA_IDENTITY.fields_sha256,
+    schema_sha256: SCHEMA_IDENTITY.schema_sha256,
+  }, { "cache-control": "public, max-age=300" });
+}
+
 export async function handleFetch(request: Request, env: Env): Promise<Response> {
   const { pathname } = new URL(request.url);
+
+  if (pathname === "/v1/schema") {
+    if (request.method !== "GET") return notAllowed();
+    return handleSchema();
+  }
 
   if (pathname === "/v1/submit") {
     if (request.method !== "POST") return notAllowed();
