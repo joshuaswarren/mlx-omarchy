@@ -402,6 +402,25 @@ bool derive_role_channels(
       derived_src.push_back(channel);
     }
   }
+  // Apple's streams leave some surfaces unnamed by the selector
+  // registers (island-pv never enables the second source selector, yet
+  // binds probs on the next allocated channel). Such surfaces bind
+  // positionally: first unused allocated channel ascending,
+  // destinations first, then sources. A manifest that declares a
+  // channel outside this map still fails the declared-vs-derived
+  // comparison in validate_binding.
+  const auto fill = [&](std::vector<uint32_t>& derived, uint32_t needed) {
+    for (uint32_t channel = kBindFirstSurface;
+         channel < kAnecTileCount && derived.size() < needed; ++channel) {
+      if (is_dst[channel] || is_src[channel] ||
+          header.tiles[channel] == 0) {
+        continue;
+      }
+      derived.push_back(channel);
+    }
+  };
+  fill(derived_dst, header.destination_count);
+  fill(derived_src, header.source_count);
   if (derived_src.size() != header.source_count ||
       derived_dst.size() != header.destination_count) {
     return false;
