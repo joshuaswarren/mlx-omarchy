@@ -44,6 +44,7 @@ from __future__ import annotations
 
 import argparse
 import ctypes
+import hashlib
 import importlib.metadata
 import json
 import os
@@ -59,6 +60,24 @@ import mlx.core as mx
 import numpy as np
 
 BLOB_MAGIC = 0xDEADBEEF
+
+# Kill-switch for the fused chain+bias(+silu) epilogue: byte-identical when
+# on, and off reproduces the stock dispatch stream exactly.
+CHAIN_FUSION_ENABLED = (
+    os.environ.get("MLX_OMARCHY_CHAIN_FUSION", "1") not in ("0", "false", "no")
+)
+
+# Device-resident const cache: materialize every const once per runner, keep
+# the device buffers referenced, and re-reference them (dict insert, no
+# upload) on later passes. Opt-in (default off): holding ~1.15 GB resident
+# costs a fresh-process pass ~+236 ms (the allocator cannot recycle the held
+# buffers for intermediates), so single-pass pipelines -- including the E2E,
+# which calls run() exactly once per process -- run unchanged by default;
+# multi-pass consumers set MLX_OMARCHY_ENCODER_CONST_CACHE=1 and save
+# ~1.05-1.13 s per warm pass.
+CONST_CACHE_ENABLED = (
+    os.environ.get("MLX_OMARCHY_ENCODER_CONST_CACHE", "0") not in ("0", "false", "no")
+)
 
 STMT = re.compile(
     r"^\s*(?P<type>tensor<[^>]*>|string|int32|bool|fp16|fp32)\s+"
@@ -118,7 +137,93 @@ def _leftover_chain_kernel():
     )
 
 
+@cache
+def _leftover_chain_bias_kernel():
+    """The leftover chain with the linear's bias folded into the final
+    store. The chain half is byte-identical to _leftover_chain_kernel:
+    each block's partial rounds to fp16 (the coopmat path's fp16 partials
+    pass through exactly; the f32 fallback path's fp32 partials round
+    here, the same single RNE the stock chain applies on read) and
+    accumulates in fp16 ascending. The epilogue reproduces the removed
+    elementwise dispatch's bytes: the stored fp16 chain output widened,
+    added to the fp32 bias, rounded once. One thread per output PAIR; the
+    bias index is derived from the in-row pair, never from the flattened
+    word (an earlier variant indexed bias with the flattened word and
+    read out of bounds past the bias buffer for every row past the
+    first)."""
+    return mx.fast.metal_kernel(
+        name="encoder_leftover_fp16_chain_bias_f32",
+        input_names=["partials", "bias"],
+        output_names=["reduced"],
+        source="""
+            uint pairs = partials_shape[2] / 2u;
+            uint words_row = partials_shape[1] * pairs;
+            uint blocks = partials_shape[0];
+            uint index = thread_position_in_grid.x;
+            uint row = index / pairs;
+            uint pair = index - row * pairs;
+            uint word = row * pairs + pair;
+            uint col = word * 2u;
+            half a0 = half(partials[col]);
+            half a1 = half(partials[col + 1u]);
+            for (uint block = 1u; block < blocks; ++block) {
+                uint base = col + block * words_row * 2u;
+                a0 = a0 + half(partials[base]);
+                a1 = a1 + half(partials[base + 1u]);
+            }
+            float v0 = float(a0) + float(bias[pair * 2u]);
+            float v1 = float(a1) + float(bias[pair * 2u + 1u]);
+            reduced[col] = half(v0);
+            reduced[col + 1u] = half(v1);
+        """,
+        compile_options={"math_mode": "safe"},
+    )
 
+
+@cache
+def _leftover_chain_bias_silu_kernel():
+    """_leftover_chain_bias_kernel with the feed-forward silu folded in:
+    the bias sum rounds to fp16 first (the stored f16 linear output the
+    separate silu dispatch read), then the silu math runs in f32 and the
+    result rounds once to fp16 -- the same roundings as the removed
+    _silu_kernel dispatch. The rounded bias sum goes through the output
+    buffer before the silu math: in-register, this compiler elides the
+    half() round when the value only feeds float() reads (lincheck
+    mismatched 14% of elements; the memory round-trip pins the rounding),
+    while the chain half above rounds correctly in both kernels. Each
+    thread owns its two columns, so the write-back has no cross-thread
+    hazard."""
+    return mx.fast.metal_kernel(
+        name="encoder_leftover_fp16_chain_bias_silu_f32",
+        input_names=["partials", "bias"],
+        output_names=["reduced"],
+        source="""
+            uint pairs = partials_shape[2] / 2u;
+            uint words_row = partials_shape[1] * pairs;
+            uint blocks = partials_shape[0];
+            uint index = thread_position_in_grid.x;
+            uint row = index / pairs;
+            uint pair = index - row * pairs;
+            uint word = row * pairs + pair;
+            uint col = word * 2u;
+            half a0 = half(partials[col]);
+            half a1 = half(partials[col + 1u]);
+            for (uint block = 1u; block < blocks; ++block) {
+                uint base = col + block * words_row * 2u;
+                a0 = a0 + half(partials[base]);
+                a1 = a1 + half(partials[base + 1u]);
+            }
+            reduced[col] = half(float(a0) + float(bias[pair * 2u]));
+            reduced[col + 1u] = half(float(a1) + float(bias[pair * 2u + 1u]));
+            half w0 = reduced[col];
+            half w1 = reduced[col + 1u];
+            float s0 = float(w0) * (1.0 / (1.0 + exp(-float(w0))));
+            float s1 = float(w1) * (1.0 / (1.0 + exp(-float(w1))));
+            reduced[col] = half(s0);
+            reduced[col + 1u] = half(s1);
+        """,
+        compile_options={"math_mode": "safe"},
+    )
 
 @cache
 def _linear_f16_coopmat_kernel():
@@ -474,6 +579,14 @@ def _trace_function():
     return function
 
 
+def vm_rss_kb() -> int:
+    """Resident set size in KiB from /proc, for leak-watch evidence."""
+    for line in Path("/proc/self/status").read_text().split("\n"):
+        if line.startswith("VmRSS:"):
+            return int(line.split()[1])
+    return 0
+
+
 def trace_snapshot() -> dict[str, int]:
     snapshot = _TraceSnapshot()
     _trace_function()(ctypes.byref(snapshot))
@@ -573,7 +686,7 @@ class Statement:
 # path loads its bundle per submit.
 RESIDENT_BUNDLES = (
     "island-attn-a-kt",
-    "island-select-8head-scratch417",
+    "island-select-8head",
     "island-pv",
 )
 
@@ -793,6 +906,8 @@ class EncoderRunner:
         self.statements: list[Statement] = []
         self.producer: dict[str, Statement] = {}
         self.const_stmt: dict[str, Statement] = {}
+        self.const_values: dict[str, mx.array] = {}
+        self.const_meta: dict[str, object] = {}
         self.executed = 0
         self.gpu_ops = 0
         self.ane_ops = 0
@@ -800,6 +915,8 @@ class EncoderRunner:
         self.cond_census: dict | None = None
         self.glu_fusions: dict[int, tuple[str, str]] = {}
         self.glu_sigmoid_done: set[int] = set()
+        self.linear_silu: dict[int, int] = {}
+        self.silu_done: set[int] = set()
         self._parse()
         self._index_islands()
         self._index_fusions()
@@ -932,6 +1049,24 @@ class EncoderRunner:
                 continue
             self.glu_fusions[mul.index] = (a_name, b_name)
             self.glu_sigmoid_done.add(stmt.index)
+        # The feed-forward silu: a biased linear whose single consumer is
+        # exactly one silu folds the silu into the chain kernel's final
+        # store. The linear's fused dispatch writes the silu result under
+        # both names; the silu statement becomes a no-op. If the linear
+        # cannot take the fused path at apply time it discards the
+        # mapping and the silu executes normally.
+        if CHAIN_FUSION_ENABLED:
+            for stmt in self.statements:
+                if stmt.op != "linear" or "bias" not in stmt.kwargs:
+                    continue
+                users = consumers.get(stmt.names[0], [])
+                if len(users) != 1 or users[0].op != "silu":
+                    continue
+                silu = users[0]
+                if silu.kwargs.get("x", "").strip() != stmt.names[0]:
+                    continue
+                self.linear_silu[stmt.index] = silu.index
+                self.silu_done.add(silu.index)
 
     def _last_use(self) -> None:
         """Index of the final statement that reads each name, so the runner can
@@ -1024,6 +1159,16 @@ class EncoderRunner:
     # ------------------------------------------------------------------ const
 
     def eval_const(self, stmt: Statement) -> None:
+        self._eval_const(stmt)
+        if not CONST_CACHE_ENABLED:
+            return
+        name = stmt.names[0]
+        if name in self.values:
+            self.const_values[name] = self.values[name]
+        if name in self.meta:
+            self.const_meta[name] = self.meta[name]
+
+    def _eval_const(self, stmt: Statement) -> None:
         name = stmt.names[0]
         dtype_name, shape = stmt.dtype, stmt.shape
         value_text = stmt.const_kwargs["val"]
@@ -1098,6 +1243,10 @@ class EncoderRunner:
             # Consumed only by the fused mul; its value is never read.
             self.executed += 1
             return
+        if stmt.op == "silu" and stmt.index in self.silu_done:
+            # Produced by the fused chain+bias(+silu) linear dispatch.
+            self.executed += 1
+            return
         if stmt.index in self.glu_fusions:
             a_name, b_name = self.glu_fusions[stmt.index]
             a = self.tensor(a_name)
@@ -1124,6 +1273,10 @@ class EncoderRunner:
             self.values.update(zip(stmt.names, parts))
         else:
             self.values[stmt.names[0]] = self.apply(stmt)
+            if stmt.index in self.linear_silu:
+                self.values[
+                    self.statements[self.linear_silu[stmt.index]].names[0]
+                ] = self.values[stmt.names[0]]
         self.executed += 1
         self.gpu_ops += 1
 
@@ -1208,7 +1361,7 @@ class EncoderRunner:
                 "shared_across_layers": True,
             }
         results = self.island.submit(
-            "island-select-8head-scratch417", f"L{layer:02d}-B",
+            "island-select-8head", f"L{layer:02d}-B",
             {
                 "ninf_rt": mx.contiguous(mx.broadcast_to(fill, ISLAND_B_SHAPE)),
                 "matrix_bd_5": matrix_bd,
@@ -1392,6 +1545,39 @@ class EncoderRunner:
                     threadgroup=(32, 1, 1),
                     stream=mx.gpu,
                 )[0]
+                silu_index = (
+                    self.linear_silu.get(stmt.index) if CHAIN_FUSION_ENABLED else None
+                )
+                bias_arr = tensor(kwargs["bias"]) if "bias" in kwargs else None
+                if (
+                    CHAIN_FUSION_ENABLED
+                    and bias_arr is not None
+                    and bias_arr.dtype == mx.float16
+                    and n_out % 2 == 0
+                ):
+                    if silu_index is not None:
+                        out = _leftover_chain_bias_silu_kernel()(
+                            inputs=[partials, bias_arr],
+                            output_shapes=[(rows, n_out)],
+                            output_dtypes=[mx.float16],
+                            grid=(rows * (n_out // 2), 1, 1),
+                            threadgroup=(256, 1, 1),
+                            stream=mx.gpu,
+                        )[0]
+                        return mx.reshape(out, tuple(x.shape[:-1]) + (n_out,))
+                    out = _leftover_chain_bias_kernel()(
+                        inputs=[partials, bias_arr],
+                        output_shapes=[(rows, n_out)],
+                        output_dtypes=[mx.float16],
+                        grid=(rows * (n_out // 2), 1, 1),
+                        threadgroup=(256, 1, 1),
+                        stream=mx.gpu,
+                    )[0]
+                    return mx.reshape(out, tuple(x.shape[:-1]) + (n_out,))
+                if silu_index is not None:
+                    # The fused silu will not happen; let the standalone
+                    # silu statement execute.
+                    self.silu_done.discard(silu_index)
                 out = _leftover_chain_kernel()(
                     inputs=[partials],
                     output_shapes=[(rows, n_out)],
@@ -1422,6 +1608,41 @@ class EncoderRunner:
                 stream=mx.gpu,
             )[0]
             out = mx.reshape(out, tuple(x.shape[:-1]) + (weight.shape[0],))
+            silu_index = (
+                self.linear_silu.get(stmt.index) if CHAIN_FUSION_ENABLED else None
+            )
+            bias_arr = tensor(kwargs["bias"]) if "bias" in kwargs else None
+            if (
+                CHAIN_FUSION_ENABLED
+                and bias_arr is not None
+                and bias_arr.dtype == mx.float16
+                and weight.shape[0] % 2 == 0
+            ):
+                if silu_index is not None:
+                    out = _leftover_chain_bias_silu_kernel()(
+                        inputs=[partials, bias_arr],
+                        output_shapes=[(rows, weight.shape[0])],
+                        output_dtypes=[mx.float16],
+                        grid=(rows * (weight.shape[0] // 2), 1, 1),
+                        threadgroup=(256, 1, 1),
+                        stream=mx.gpu,
+                    )[0]
+                    out = mx.reshape(out, tuple(x.shape[:-1]) + (weight.shape[0],))
+                    return out
+                out = _leftover_chain_bias_kernel()(
+                    inputs=[partials, bias_arr],
+                    output_shapes=[(rows, weight.shape[0])],
+                    output_dtypes=[mx.float16],
+                    grid=(rows * (weight.shape[0] // 2), 1, 1),
+                    threadgroup=(256, 1, 1),
+                    stream=mx.gpu,
+                )[0]
+                out = mx.reshape(out, tuple(x.shape[:-1]) + (weight.shape[0],))
+                return out
+            if silu_index is not None:
+                # The fused silu will not happen; let the standalone
+                # silu statement execute.
+                self.silu_done.discard(silu_index)
             if "bias" in kwargs:
                 out = out.astype(mx.float32) + tensor(kwargs["bias"]).astype(mx.float32)
             return out.astype(mx.float16)
@@ -1582,6 +1803,23 @@ class EncoderRunner:
     # ------------------------------------------------------------------- run
 
     def run(self, inputs: dict, wanted: set[str], stop_after: str) -> dict:
+        if CONST_CACHE_ENABLED and self.const_values:
+            # Warm pass: every const is device-resident in the cache; the
+            # restore is a dict insert (buffer re-reference), never an
+            # upload. Const statements stay done, so eval_const does not
+            # re-run; everything else re-executes. The cache also keeps
+            # the buffers alive through this pass's release deletions.
+            self.values = dict(self.const_values)
+            for stmt in self.statements:
+                if stmt.op != "const":
+                    stmt.done = False
+        else:
+            if not CONST_CACHE_ENABLED:
+                # Knob off: re-run everything each pass, materialization
+                # cost included -- the pre-cache behavior per pass.
+                for stmt in self.statements:
+                    stmt.done = False
+            self.values = {}
         for name, value in inputs.items():
             self.values[name] = value
         keep: dict[str, mx.array] = {}
@@ -1627,6 +1865,14 @@ def main() -> int:
         help="which islands to place on the ANE, e.g. ABC or AC. Ignored with "
              "--no-ane. AC reproduces the two-island arm from this same script.",
     )
+    parser.add_argument(
+        "--repeat", type=int, default=1,
+        help="run the encoder this many times in one process (default 1 = "
+             "single pass). With MLX_OMARCHY_ENCODER_CONST_CACHE=1, pass 1 "
+             "materializes the consts and later passes re-reference the "
+             "device-resident cache; with the default (off) every pass "
+             "re-materializes.",
+    )
     args = parser.parse_args()
 
     mx.set_default_device(mx.gpu)
@@ -1645,31 +1891,56 @@ def main() -> int:
     runner = EncoderRunner(
         args.source / "model.mil", args.source / "model-root", island, placed
     )
-    before = trace_snapshot()
+    inputs = {
+        "input_features": mx.array(
+            features.astype(np.float32).reshape(1, 3000, 128)
+        ),
+        "attention_mask": mx.array(mask.astype(np.int32).reshape(1, 3000)),
+    }
+    passes: list[dict] = []
     started = time.monotonic_ns()
     try:
-        keep = runner.run(
-            inputs={
-                "input_features": mx.array(
-                    features.astype(np.float32).reshape(1, 3000, 128)
-                ),
-                "attention_mask": mx.array(mask.astype(np.int32).reshape(1, 3000)),
-            },
-            wanted={"encoder_hidden", "encoder_mask"},
-            stop_after="encoder_mask",
-        )
+        for repeat in range(args.repeat):
+            before = trace_snapshot()
+            mx.reset_peak_memory()
+            pass_started = time.monotonic_ns()
+            keep = runner.run(
+                inputs=inputs,
+                wanted={"encoder_hidden", "encoder_mask"},
+                stop_after="encoder_mask",
+            )
+            pass_ns = time.monotonic_ns() - pass_started
+            after = trace_snapshot()
+            hidden = np.asarray(keep["encoder_hidden"]).astype(np.float32)
+            got_mask = np.asarray(keep["encoder_mask"]).astype(np.int32)
+            out_dir = args.out / f"pass-{repeat + 1}" if args.repeat > 1 else args.out
+            out_dir.mkdir(parents=True, exist_ok=True)
+            np.save(out_dir / "encoder_hidden.npy", hidden)
+            np.save(out_dir / "encoder_mask.npy", got_mask)
+            passes.append({
+                "pass": repeat + 1,
+                "wall_ns": pass_ns,
+                "encoder_hidden_sha256": hashlib.sha256(
+                    (out_dir / "encoder_hidden.npy").read_bytes()
+                ).hexdigest(),
+                "gpu_counter_delta": {k: after[k] - before[k] for k in after},
+                "active_memory_mb": round(mx.get_active_memory() / 2**20, 1),
+                "peak_memory_mb": round(mx.get_peak_memory() / 2**20, 1),
+                "rss_mb": round(vm_rss_kb() / 1024, 1),
+            })
+            print(
+                f"pass {repeat + 1}/{args.repeat}: {pass_ns / 1e6:.1f} ms "
+                f"hidden={passes[-1]['encoder_hidden_sha256'][:16]} "
+                f"active={passes[-1]['active_memory_mb']}MB "
+                f"peak={passes[-1]['peak_memory_mb']}MB "
+                f"rss={passes[-1]['rss_mb']}MB",
+                flush=True,
+            )
     finally:
         if island is not None:
             island.close()
-    wall_ns = time.monotonic_ns() - started
-    after = trace_snapshot()
-
-    hidden = np.asarray(keep["encoder_hidden"]).astype(np.float32)
-    got_mask = np.asarray(keep["encoder_mask"]).astype(np.int32)
-    np.save(args.out / "encoder_hidden.npy", hidden)
-    np.save(args.out / "encoder_mask.npy", got_mask)
-
-    gpu_delta = {k: after[k] - before[k] for k in after}
+    wall_ns = passes[-1]["wall_ns"]
+    gpu_delta = passes[-1]["gpu_counter_delta"]
     report = {
         "layers": runner.layers,
         "ops_executed": runner.executed,
@@ -1682,6 +1953,9 @@ def main() -> int:
         "gpu_counters": gpu_delta,
         "island_b_cond_census": runner.cond_census,
         "encoder_hidden_shape": list(hidden.shape),
+        "repeat": args.repeat,
+        "passes": passes,
+        "total_wall_ns": time.monotonic_ns() - started,
     }
     if island is not None:
         report["ane"] = {
