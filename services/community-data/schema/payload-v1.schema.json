@@ -160,6 +160,82 @@
                 "type": "object"
               }
             },
+            "ane_reg": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "type": "string",
+                "maxLength": 128
+              },
+              "maxItems": 8
+            },
+            "pmgr_blocks": {
+              "type": "array",
+              "maxItems": 8,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "path",
+                  "children"
+                ],
+                "properties": {
+                  "path": {
+                    "type": "string",
+                    "maxLength": 256
+                  },
+                  "reg": {
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "items": {
+                      "type": "string",
+                      "maxLength": 128
+                    },
+                    "maxItems": 8
+                  },
+                  "children": {
+                    "type": "array",
+                    "maxItems": 256,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "name"
+                      ],
+                      "properties": {
+                        "name": {
+                          "type": "string",
+                          "maxLength": 128
+                        },
+                        "label": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "maxLength": 128
+                        },
+                        "compatible": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "maxLength": 128
+                          },
+                          "maxItems": 8
+                        }
+                      }
+                    }
+                  },
+                  "children_total": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                }
+              }
+            },
             "pmgr_domains": {
               "type": "array",
               "items": {
@@ -218,6 +294,50 @@
               "additionalProperties": {
                 "type": "string"
               }
+            },
+            "boot": {
+              "type": [
+                "object",
+                "null"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "model": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 256
+                },
+                "compatible": {
+                  "type": [
+                    "array",
+                    "null"
+                  ],
+                  "items": {
+                    "type": "string",
+                    "maxLength": 128
+                  },
+                  "maxItems": 8
+                },
+                "chosen": {
+                  "type": [
+                    "object",
+                    "null"
+                  ],
+                  "additionalProperties": {
+                    "type": "string",
+                    "maxLength": 256
+                  }
+                }
+              }
+            },
+            "dtb_sha256": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "pattern": "^[0-9a-f]{64}$"
             }
           }
         },
@@ -476,6 +596,40 @@
                       "integer",
                       "null"
                     ]
+                  }
+                }
+              }
+            },
+            "pmgr_nodes": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "maxItems": 8,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "name"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "maxLength": 128
+                  },
+                  "location": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 64
+                  },
+                  "reg": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 256
                   }
                 }
               }
