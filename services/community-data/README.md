@@ -32,6 +32,7 @@ always `{"error": <machine code>, "detail": ...}`.
 | `GET /v1/results/<sha>` | One full published record (live, not cached). |
 | `GET /v1/results/<sha>/archive` | The reassembled archive bytes, streamed in chunk order. Immutable, content-addressed. |
 | `GET /v1/dataset/latest.jsonl` | One JSON object per line, for bulk agent consumption. Cached. |
+| `GET /v1/schema` | Schema identity (`schema_version`, `fields_sha256`, `schema_sha256`) baked at deploy time. Use `scripts/check_schema_identity.py` to catch a stale deploy before submitters start 422-ing. |
 
 Unpublished (incomplete) submissions never appear on any read route.
 
