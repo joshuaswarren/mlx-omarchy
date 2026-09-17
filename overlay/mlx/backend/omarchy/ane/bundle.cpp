@@ -26,7 +26,208 @@ std::runtime_error bundle_error(const std::string& reason) {
 // SHA-256 (FIPS 180-4). Descriptor digests ground in the receipts: the export
 // receipt hashes model.hwx with `shasum -a 256`, and every validation JSON
 // records hwx_sha256 / anec_sha256 digests.
+//
+// The compress step dispatches to the ARMv8 crypto extension when the CPU
+// reports it (getauxval at first use, one binary, portable path otherwise).
+// The scalar path here is ~100 MB/s, which made payload re-verification the
+// dominant cost of loading the 96 8.4 MB FFN islands each pass (measured
+// 2026-09-17: 6.8 s of a 7.1 s resident session open); the hardware path
+// removes that share without changing a single digest.
 // ---------------------------------------------------------------------------
+
+#include <cstdint>
+#include <cstring>
+
+#if defined(__aarch64__) && defined(__linux__)
+#include <arm_neon.h>
+#include <sys/auxv.h>
+#define ANE_SHA256_AARCH64 1
+#ifndef HWCAP_SHA256
+#define HWCAP_SHA256 (1 << 6)
+#endif
+#endif
+
+bool sha256_crypto_available() {
+#if defined(ANE_SHA256_AARCH64)
+  static const bool kCrypto = (getauxval(AT_HWCAP) & HWCAP_SHA256) != 0;
+  return kCrypto;
+#else
+  return false;
+#endif
+}
+
+#if defined(ANE_SHA256_AARCH64)
+// One block through the ARMv8 SHA-256 instructions. The round sequence is
+// the canonical public-domain one (Jeffrey Walton's sha256-arm.c, after
+// ARM's mbedTLS work): hq updates state0 (a-d), h2 updates state1 (e-h)
+// from the saved pre-round state0, and the message schedule stays one group
+// ahead of the rounds that consume it. K is renamed to this file's kK.
+__attribute__((target("+crypto")))
+void sha256_compress_crypto(uint32_t state[8], const uint8_t block[64]) {
+  static constexpr uint32_t kK[64] = {
+      0x428a2f98u, 0x71374491u, 0xb5c0fbcfu, 0xe9b5dba5u, 0x3956c25bu,
+      0x59f111f1u, 0x923f82a4u, 0xab1c5ed5u, 0xd807aa98u, 0x12835b01u,
+      0x243185beu, 0x550c7dc3u, 0x72be5d74u, 0x80deb1feu, 0x9bdc06a7u,
+      0xc19bf174u, 0xe49b69c1u, 0xefbe4786u, 0x0fc19dc6u, 0x240ca1ccu,
+      0x2de92c6fu, 0x4a7484aau, 0x5cb0a9dcu, 0x76f988dau, 0x983e5152u,
+      0xa831c66du, 0xb00327c8u, 0xbf597fc7u, 0xc6e00bf3u, 0xd5a79147u,
+      0x06ca6351u, 0x14292967u, 0x27b70a85u, 0x2e1b2138u, 0x4d2c6dfcu,
+      0x53380d13u, 0x650a7354u, 0x766a0abbu, 0x81c2c92eu, 0x92722c85u,
+      0xa2bfe8a1u, 0xa81a664bu, 0xc24b8b70u, 0xc76c51a3u, 0xd192e819u,
+      0xd6990624u, 0xf40e3585u, 0x106aa070u, 0x19a4c116u, 0x1e376c08u,
+      0x2748774cu, 0x34b0bcb5u, 0x391c0cb3u, 0x4ed8aa4au, 0x5b9cca4fu,
+      0x682e6ff3u, 0x748f82eeu, 0x78a5636fu, 0x84c87814u, 0x8cc70208u,
+      0x90befffau, 0xa4506cebu, 0xbef9a3f7u, 0xc67178f2u};
+  uint32x4_t STATE0, STATE1, ABEF_SAVE, CDGH_SAVE;
+  uint32x4_t MSG0, MSG1, MSG2, MSG3;
+  uint32x4_t TMP0, TMP1, TMP2;
+
+  STATE0 = vld1q_u32(&state[0]);
+  STATE1 = vld1q_u32(&state[4]);
+
+  ABEF_SAVE = STATE0;
+  CDGH_SAVE = STATE1;
+
+  MSG0 = vld1q_u32((const uint32_t *)(block +  0));
+  MSG1 = vld1q_u32((const uint32_t *)(block + 16));
+  MSG2 = vld1q_u32((const uint32_t *)(block + 32));
+  MSG3 = vld1q_u32((const uint32_t *)(block + 48));
+
+  /* Reverse for little endian */
+  MSG0 = vreinterpretq_u32_u8(vrev32q_u8(vreinterpretq_u8_u32(MSG0)));
+  MSG1 = vreinterpretq_u32_u8(vrev32q_u8(vreinterpretq_u8_u32(MSG1)));
+  MSG2 = vreinterpretq_u32_u8(vrev32q_u8(vreinterpretq_u8_u32(MSG2)));
+  MSG3 = vreinterpretq_u32_u8(vrev32q_u8(vreinterpretq_u8_u32(MSG3)));
+
+  TMP0 = vaddq_u32(MSG0, vld1q_u32(&kK[0x00]));
+
+  /* Rounds 0-3 */
+  MSG0 = vsha256su0q_u32(MSG0, MSG1);
+  TMP2 = STATE0;
+  TMP1 = vaddq_u32(MSG1, vld1q_u32(&kK[0x04]));
+  STATE0 = vsha256hq_u32(STATE0, STATE1, TMP0);
+  STATE1 = vsha256h2q_u32(STATE1, TMP2, TMP0);
+  MSG0 = vsha256su1q_u32(MSG0, MSG2, MSG3);
+
+  /* Rounds 4-7 */
+  MSG1 = vsha256su0q_u32(MSG1, MSG2);
+  TMP2 = STATE0;
+  TMP0 = vaddq_u32(MSG2, vld1q_u32(&kK[0x08]));
+  STATE0 = vsha256hq_u32(STATE0, STATE1, TMP1);
+  STATE1 = vsha256h2q_u32(STATE1, TMP2, TMP1);
+  MSG1 = vsha256su1q_u32(MSG1, MSG3, MSG0);
+
+  /* Rounds 8-11 */
+  MSG2 = vsha256su0q_u32(MSG2, MSG3);
+  TMP2 = STATE0;
+  TMP1 = vaddq_u32(MSG3, vld1q_u32(&kK[0x0c]));
+  STATE0 = vsha256hq_u32(STATE0, STATE1, TMP0);
+  STATE1 = vsha256h2q_u32(STATE1, TMP2, TMP0);
+  MSG2 = vsha256su1q_u32(MSG2, MSG0, MSG1);
+
+  /* Rounds 12-15 */
+  MSG3 = vsha256su0q_u32(MSG3, MSG0);
+  TMP2 = STATE0;
+  TMP0 = vaddq_u32(MSG0, vld1q_u32(&kK[0x10]));
+  STATE0 = vsha256hq_u32(STATE0, STATE1, TMP1);
+  STATE1 = vsha256h2q_u32(STATE1, TMP2, TMP1);
+  MSG3 = vsha256su1q_u32(MSG3, MSG1, MSG2);
+
+  /* Rounds 16-19 */
+  MSG0 = vsha256su0q_u32(MSG0, MSG1);
+  TMP2 = STATE0;
+  TMP1 = vaddq_u32(MSG1, vld1q_u32(&kK[0x14]));
+  STATE0 = vsha256hq_u32(STATE0, STATE1, TMP0);
+  STATE1 = vsha256h2q_u32(STATE1, TMP2, TMP0);
+  MSG0 = vsha256su1q_u32(MSG0, MSG2, MSG3);
+
+  /* Rounds 20-23 */
+  MSG1 = vsha256su0q_u32(MSG1, MSG2);
+  TMP2 = STATE0;
+  TMP0 = vaddq_u32(MSG2, vld1q_u32(&kK[0x18]));
+  STATE0 = vsha256hq_u32(STATE0, STATE1, TMP1);
+  STATE1 = vsha256h2q_u32(STATE1, TMP2, TMP1);
+  MSG1 = vsha256su1q_u32(MSG1, MSG3, MSG0);
+
+  /* Rounds 24-27 */
+  MSG2 = vsha256su0q_u32(MSG2, MSG3);
+  TMP2 = STATE0;
+  TMP1 = vaddq_u32(MSG3, vld1q_u32(&kK[0x1c]));
+  STATE0 = vsha256hq_u32(STATE0, STATE1, TMP0);
+  STATE1 = vsha256h2q_u32(STATE1, TMP2, TMP0);
+  MSG2 = vsha256su1q_u32(MSG2, MSG0, MSG1);
+
+  /* Rounds 28-31 */
+  MSG3 = vsha256su0q_u32(MSG3, MSG0);
+  TMP2 = STATE0;
+  TMP0 = vaddq_u32(MSG0, vld1q_u32(&kK[0x20]));
+  STATE0 = vsha256hq_u32(STATE0, STATE1, TMP1);
+  STATE1 = vsha256h2q_u32(STATE1, TMP2, TMP1);
+  MSG3 = vsha256su1q_u32(MSG3, MSG1, MSG2);
+
+  /* Rounds 32-35 */
+  MSG0 = vsha256su0q_u32(MSG0, MSG1);
+  TMP2 = STATE0;
+  TMP1 = vaddq_u32(MSG1, vld1q_u32(&kK[0x24]));
+  STATE0 = vsha256hq_u32(STATE0, STATE1, TMP0);
+  STATE1 = vsha256h2q_u32(STATE1, TMP2, TMP0);
+  MSG0 = vsha256su1q_u32(MSG0, MSG2, MSG3);
+
+  /* Rounds 36-39 */
+  MSG1 = vsha256su0q_u32(MSG1, MSG2);
+  TMP2 = STATE0;
+  TMP0 = vaddq_u32(MSG2, vld1q_u32(&kK[0x28]));
+  STATE0 = vsha256hq_u32(STATE0, STATE1, TMP1);
+  STATE1 = vsha256h2q_u32(STATE1, TMP2, TMP1);
+  MSG1 = vsha256su1q_u32(MSG1, MSG3, MSG0);
+
+  /* Rounds 40-43 */
+  MSG2 = vsha256su0q_u32(MSG2, MSG3);
+  TMP2 = STATE0;
+  TMP1 = vaddq_u32(MSG3, vld1q_u32(&kK[0x2c]));
+  STATE0 = vsha256hq_u32(STATE0, STATE1, TMP0);
+  STATE1 = vsha256h2q_u32(STATE1, TMP2, TMP0);
+  MSG2 = vsha256su1q_u32(MSG2, MSG0, MSG1);
+
+  /* Rounds 44-47 */
+  MSG3 = vsha256su0q_u32(MSG3, MSG0);
+  TMP2 = STATE0;
+  TMP0 = vaddq_u32(MSG0, vld1q_u32(&kK[0x30]));
+  STATE0 = vsha256hq_u32(STATE0, STATE1, TMP1);
+  STATE1 = vsha256h2q_u32(STATE1, TMP2, TMP1);
+  MSG3 = vsha256su1q_u32(MSG3, MSG1, MSG2);
+
+  /* Rounds 48-51 */
+  TMP2 = STATE0;
+  TMP1 = vaddq_u32(MSG1, vld1q_u32(&kK[0x34]));
+  STATE0 = vsha256hq_u32(STATE0, STATE1, TMP0);
+  STATE1 = vsha256h2q_u32(STATE1, TMP2, TMP0);
+
+  /* Rounds 52-55 */
+  TMP2 = STATE0;
+  TMP0 = vaddq_u32(MSG2, vld1q_u32(&kK[0x38]));
+  STATE0 = vsha256hq_u32(STATE0, STATE1, TMP1);
+  STATE1 = vsha256h2q_u32(STATE1, TMP2, TMP1);
+
+  /* Rounds 56-59 */
+  TMP2 = STATE0;
+  TMP1 = vaddq_u32(MSG3, vld1q_u32(&kK[0x3c]));
+  STATE0 = vsha256hq_u32(STATE0, STATE1, TMP0);
+  STATE1 = vsha256h2q_u32(STATE1, TMP2, TMP0);
+
+  /* Rounds 60-63 */
+  TMP2 = STATE0;
+  STATE0 = vsha256hq_u32(STATE0, STATE1, TMP1);
+  STATE1 = vsha256h2q_u32(STATE1, TMP2, TMP1);
+
+  /* Combine state */
+  STATE0 = vaddq_u32(STATE0, ABEF_SAVE);
+  STATE1 = vaddq_u32(STATE1, CDGH_SAVE);
+
+  vst1q_u32(&state[0], STATE0);
+  vst1q_u32(&state[4], STATE1);
+}
+#endif
 
 struct Sha256Context {
   uint32_t state[8];
@@ -39,7 +240,7 @@ uint32_t rotate_right(uint32_t value, uint32_t bits) {
   return (value >> bits) | (value << (32 - bits));
 }
 
-void sha256_compress(uint32_t state[8], const uint8_t block[64]) {
+void sha256_compress_scalar(uint32_t state[8], const uint8_t block[64]) {
   static constexpr uint32_t kK[64] = {
       0x428a2f98u, 0x71374491u, 0xb5c0fbcfu, 0xe9b5dba5u, 0x3956c25bu,
       0x59f111f1u, 0x923f82a4u, 0xab1c5ed5u, 0xd807aa98u, 0x12835b01u,
@@ -92,6 +293,16 @@ void sha256_compress(uint32_t state[8], const uint8_t block[64]) {
   state[5] += f;
   state[6] += g;
   state[7] += h;
+}
+
+void sha256_compress(uint32_t state[8], const uint8_t block[64]) {
+  if (sha256_crypto_available()) {
+#if defined(ANE_SHA256_AARCH64)
+    sha256_compress_crypto(state, block);
+    return;
+#endif
+  }
+  sha256_compress_scalar(state, block);
 }
 
 // Appends bytes and compresses full blocks. Does not touch the message
