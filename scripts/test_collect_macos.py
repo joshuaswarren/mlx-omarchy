@@ -7,6 +7,7 @@ import hashlib
 from importlib.metadata import FileHash, PackagePath
 import io
 import json
+import plistlib
 from pathlib import Path
 import sys
 import tempfile
@@ -416,6 +417,290 @@ class AnePortProbeTests(unittest.TestCase):
                     "error": "not-found", "stderr": "", "stdout": ""}):
             result = cq.probe_ane_port(cc.Redactor())
         self.assertFalse(result["available"])
+
+
+class AneProbeCodeTests(unittest.TestCase):
+    """Executes the real ANE_PROBE_CODE string against a fixture rebuilt
+    from the jw14m2 T6021 capture (ane-linux-experiments
+    receipts/2026-09-17-jw14m2-t6021-macos-capture/), whose raw ioreg
+    bytes are the oracle for the byte-order fix and every new field.
+    """
+
+    @staticmethod
+    def _fake_run_factory(service, h11, platform):
+        import subprocess as _sp
+
+        def fake_run(argv, capture_output=None, timeout=None):
+            class P:
+                returncode = 0
+                stderr = b""
+                stdout = b""
+            p = P()
+            a = list(argv)
+            if a[:2] == ["ioreg", "-a"] and a[2] == "-rc":
+                if a[3] in ("AppleH13ANEInterface",
+                            "AppleH16ANEInterface"):
+                    # Real zero-match shape: ioreg -a exits 0 and prints
+                    # nothing at all (not an empty plist).
+                    p.stdout = b""
+                    return p
+                data = {"H11ANEIn": h11,
+                        "IOPlatformExpertDevice": platform}.get(a[3])
+                assert data is not None, a
+                p.stdout = plistlib.dumps(data)
+            elif a[:3] == ["ioreg", "-a", "-p"]:
+                p.stdout = plistlib.dumps(service)
+            elif a[:2] == ["plutil", "-convert"]:
+                p.stdout = json.dumps({"CFBundleVersion": "9.512.0",
+                    "CFBundleShortVersionString": "9.509.0"}).encode()
+            elif a[0] == "test":
+                ok = a[1] == "-f" and a[2] in (
+                    "/usr/libexec/aned", "/usr/libexec/aneuserd")
+                p.returncode = 0 if ok else 1
+            elif a[0] == "powermetrics":
+                p.returncode = 1
+                p.stderr = b"powermetrics must be invoked as root"
+            else:
+                raise AssertionError(a)
+            return p
+        return fake_run
+
+    @classmethod
+    def _run_probe(cls):
+        service = {
+            "IORegistryEntryChildren": [{
+                "name": b"soc",
+                "IORegistryEntryChildren": [
+                    {  # ane0 - oracle: node-ane0.txt
+                        "name": b"ane0",
+                        "AAPL,phandle": bytes.fromhex("69010000"),
+                        "reg": bytes.fromhex(
+                "000000840000000000000002000000000000088e00000000344000000000000000c0088e000000000040000000000000",
+                        ),
+                        "compatible": b"ane,t8020\x00",
+                        "IOInterruptControllers": [
+                            "IOInterruptController000000A4"],
+                        "IOInterruptSpecifiers": [b"t\x03\x00\x00"],
+                        "IOClass": "AppleARMIODevice",
+                    },
+                    {  # dart-ane0 - oracle: node-dart-ane0.txt
+                        "name": b"dart-ane0",
+                        "AAPL,phandle": bytes.fromhex("6a010000"),
+                        "reg": bytes.fromhex(
+                "000080850000000000400000000000000000818500000000004000000000000000008285000000000040000000000000"
+                "00408085000000000040000000000000",
+                        ),
+                        "dart-id": bytes.fromhex("25000000"),
+                        "compatible": b"dart,t8110\x00",
+                    },
+                    {  # mapper-ane0: 4-byte reg, the u32 straggler
+                        "name": b"mapper-ane0",
+                        "AAPL,phandle": bytes.fromhex("6b010000"),
+                        "reg": bytes.fromhex("00000000"),
+                        "compatible": b"iommu-mapper\x00",
+                    },
+                    {  # pmgr - 1168 bytes / 73 ranges, real blob
+                        "name": b"pmgr",
+                        "IORegistryEntryLocation": "8E080000",
+                        "reg": bytes.fromhex(
+                "0000088e0000000000000800000000000000289e00000000000010000000000000002890000000000000100000000000"
+                "0000688e0000000000c00200000000000000008e0000000000000800000000000000209e000000000000080000000000"
+                "0000608e0000000000800700000000000040009e0000000000100000000000000000e210000000000050010000000000"
+                "0000f0100000000000000500000000000000e4100000000000000100000000000000e510000000000010000000000000"
+                "0000e7100000000000000900000000000000051000000000000001000000000000001510000000000000010000000000"
+                "00002510000000000000010000000000000035100000000000000100000000000000e211000000000050010000000000"
+                "0000f0110000000000000500000000000000e4110000000000000100000000000000e511000000000010000000000000"
+                "0000e7110000000000000900000000000000051100000000000001000000000000001511000000000000010000000000"
+                "00002511000000000000010000000000000035110000000000000100000000000000e212000000000050010000000000"
+                "0000f0120000000000000500000000000000e4120000000000000100000000000000e512000000000010000000000000"
+                "0000e7120000000000000900000000000000051200000000000001000000000000001512000000000000010000000000"
+                "000025120000000000000100000000000000351200000000000001000000000000c0c28e000000000000040000000000"
+                "0000408e0000000000000900000000000000509e00000000008009000000000000005c9e000000000040010000000000"
+                "0000218e0000000000c000000000000000c0208e00000000004000000000000000808685000000000040000000000000"
+                "0080ea040200000000400000000000000000208e0000000000800000000000000000e804020000000080020000000000"
+                "00003c8e0000000000000200000000000040228e0000000000400000000000000090078e000000000040000000000000"
+                "0000000a0200000000000001000000000000008c0100000000000001000000000000000c020000000000000100000000"
+                "000000860000000000000001000000000000008400000000000000010000000000000084010000000000000100000000"
+                "0000008a0100000000000001000000000000009c0300000000000001000000000000008a000000000000000100000000"
+                "000000160100000000000001000000000000001001000000000000010000000000000000070000000000000100000000"
+                "000000000b0000000000000100000000000000000f000000000000010000000000000000130000000000000100000000"
+                "000000490100000000000001000000000000009a01000000000000010000000000000090020000000000000100000000"
+                "000000060300000000000001000000000000008e0200000000000001000000000000000e030000000000000100000000"
+                "0000029b0100000000400000000000000040029b01000000004000000000000000000097010000000000000100000000"
+                "000000080200000000c0ff0100000000",
+                        ),
+                        "IORegistryEntryChildren": [],
+                    },
+                ],
+            }],
+        }
+        h11 = [{"IOClass": "H11ANEIn",
+                "IONameMatched": "ane,t8020",
+                "CFBundleIdentifier":
+                    "com.apple.driver.AppleH11ANEInterface",
+                "FirmwareLoaded": True,
+                "DeviceProperties": {
+                    "ANEDevicePropertyNumANECores": 16,
+                    "ANEDevicePropertyANEVersion": 128,
+                    "ANEDevicePropertyANEMinorVersion": 17,
+                    "ANEDevicePropertyANEHWBoardType": 160,
+                    "ANEDevicePropertyTypeANEArchitectureTypeStr":
+                        "h14g"}}]
+        platform = [{"target-type": b"J414c",
+                     "platform-name": b"t6021" + b"\x00" * 59,
+                     "compatible": [b"Mac14,5\x00"],
+                     "model": b"Mac14,5\x00"}]
+        ns = {}
+        with patch("subprocess.run", side_effect=cls._fake_run_factory(
+                service, h11, platform)):
+            exec(compile(cm.ANE_PROBE_CODE, "<probe>", "exec"), ns)
+        return ns["out"]
+
+    def test_phandles_are_host_endian_not_swapped(self):
+        out = self._run_probe()
+        ph = {n["name"]: n["phandle"]
+              for g in ("ane_nodes", "dart_nodes") for n in out[g]}
+        # v0.6.4 shipped 0x69010000 / 0x6a010000 / 0x6b010000 here.
+        self.assertEqual(ph["ane0"], 0x169)
+        self.assertEqual(ph["dart-ane0"], 0x16a)
+        self.assertEqual(ph["mapper-ane0"], 0x16b)
+
+    def test_ane_reg_decodes_all_three_ranges_with_kinds(self):
+        out = self._run_probe()
+        ane = out["ane_nodes"][0]
+        self.assertEqual(ane["reg_ranges"],
+                         ["0x84000000/0x2000000", "0x8e080000/0x4034",
+                          "0x8e08c000/0x4000"])
+        self.assertEqual(ane["range_kinds"],
+                         ["ane_mmio", "pmgr_block", "pmgr_plus_c000"])
+        self.assertEqual(len(ane["reg"]), 96)
+
+    def test_set_base_candidate_is_confirmed_by_driver_window(self):
+        out = self._run_probe()
+        self.assertEqual(out["set_base_candidate"], {
+            "pmgr_block": "0x8e080000", "offset": "0xc000",
+            "base": "0x8e08c000", "driver_window_confirms": True})
+
+    def test_dart_topology_dart_id_and_explicit_iommu_miss(self):
+        out = self._run_probe()
+        dart = [n for n in out["dart_nodes"]
+                if n["name"] == "dart-ane0"][0]
+        self.assertEqual(dart["reg_ranges"],
+                         ["0x85800000/0x4000", "0x85810000/0x4000",
+                          "0x85820000/0x4000", "0x85804000/0x4000"])
+        self.assertEqual(dart["dart_id"], 0x25)
+        self.assertIsNone(dart["iommu_cells"])
+        self.assertIn("iommu_cells:unavailable_on_macos",
+                      out["truncated"])
+
+    def test_mapper_u32_straggler_is_marked_not_misparsed(self):
+        out = self._run_probe()
+        mapper = [n for n in out["dart_nodes"]
+                  if n["name"] == "mapper-ane0"][0]
+        self.assertIsNone(mapper["reg_ranges"])
+        self.assertIn("reg_ranges:mapper-ane0", out["truncated"])
+
+    def test_pmgr_reg_carries_all_73_ranges(self):
+        out = self._run_probe()
+        pmgr = out["pmgr_nodes"][0]
+        self.assertEqual(pmgr["reg_ranges_total"], 73)
+        self.assertEqual(len(pmgr["reg_ranges"]), 73)
+        self.assertEqual(pmgr["reg_ranges"][0], "0x8e080000/0x80000")
+        self.assertEqual(pmgr["reg_ranges"][-1], "0x208000000/0x1ffc000")
+        self.assertNotIn("reg_bytes:pmgr", out["truncated"])
+
+    def test_driver_identity_records_h14g_and_empty_classes(self):
+        out = self._run_probe()
+        d = out["driver"]
+        self.assertEqual(d["matched_class"], "H11ANEIn")
+        self.assertEqual(d["arch"], "h14g")
+        self.assertEqual(d["cores"], 16)
+        self.assertEqual(d["ane_version"], 128)
+        self.assertEqual(d["ane_minor_version"], 17)
+        self.assertEqual(d["kext_version"], "9.512.0")
+        self.assertEqual(d["instance_count"], 1)
+        self.assertEqual(d["classes_empty"],
+                         ["AppleH13ANEInterface",
+                          "AppleH16ANEInterface"])
+
+    def test_platform_identity_decodes_soc_id(self):
+        out = self._run_probe()
+        self.assertEqual(out["platform"], {
+            "target_type": "J414c", "soc_id": "t6021",
+            "compatible": ["Mac14,5"], "model": "Mac14,5"})
+
+    def test_compiler_provenance_records_versions_and_conditions(self):
+        out = self._run_probe()
+        c = out["compiler"]
+        self.assertEqual(c["framework_version"], "9.509.0")
+        self.assertEqual(c["kext_version"], "9.512.0")
+        self.assertEqual(c["daemons"],
+                         ["/usr/libexec/aned", "/usr/libexec/aneuserd"])
+        self.assertFalse(c["compiler_service_present"])
+        self.assertTrue(c["binaries_cache_resident"])
+
+    def test_oversized_reg_and_range_cap_stay_bounded_and_honest(self):
+        # Synthetic: a 2049-byte reg and a 129-range reg must be capped
+        # with explicit markers, never silently dropped or unbounded.
+        pmgr = {"name": b"pmgr",
+                "reg": bytes(range(256)) * 16 + b"\x00",  # 4097 bytes
+                "IORegistryEntryChildren": []}
+        ane = {"name": b"ane0", "reg": b"".join(
+                   (i & 0xffffffff).to_bytes(4, "little")
+                   for i in range(257 * 4)),  # 257 ranges x 16 bytes
+               "IORegistryEntryChildren": []}
+        service = {"IORegistryEntryChildren": [pmgr, ane]}
+
+        def fake_run(argv, capture_output=None, timeout=None):
+            class P:
+                returncode = 0
+                stderr = b""
+                stdout = b""
+            p = P()
+            a = list(argv)
+            if a[:3] == ["ioreg", "-a", "-p"]:
+                p.stdout = plistlib.dumps(service)
+            elif a[:2] == ["ioreg", "-a"] and a[2] == "-rc":
+                p.stdout = plistlib.dumps([])
+            else:
+                raise AssertionError(a)
+            return p
+
+        ns = {}
+        with patch("subprocess.run", side_effect=fake_run):
+            exec(compile(cm.ANE_PROBE_CODE, "<probe>", "exec"), ns)
+        out = ns["out"]
+        self.assertEqual(len(out["pmgr_nodes"][0]["reg"]), 8192)
+        self.assertIn("reg_bytes:pmgr", out["truncated"])
+        self.assertIsNone(out["pmgr_nodes"][0]["reg_ranges_total"])
+        self.assertEqual(len(out["ane_nodes"][0]["reg_ranges"]), 256)
+        self.assertIn("reg_ranges:ane0:257", out["truncated"])
+
+    def test_probe_ane_port_passes_new_blocks_through(self):
+        payload = json.dumps({
+            "available": True, "instances": [], "ane_nodes": [],
+            "dart_nodes": [], "pmgr_nodes": [],
+            "coreml": {"available": False, "compute_units": None,
+                       "error": None},
+            "powermetrics": {"available": False, "power_mw": None,
+                              "error": None},
+            "driver": {"matched_class": "H11ANEIn"},
+            "platform": {"soc_id": "t6021"},
+            "compiler": {"framework_version": "9.509.0"},
+            "set_base_candidate": {"base": "0x8e08c000"},
+            "truncated": [],
+        })
+        with patch.object(cm, "run_python_probe", return_value={
+                "available": True, "exit_code": 0, "error": None,
+                "stderr": "", "stdout": payload}):
+            result = cm.probe_ane_port(cc.Redactor())
+        macos = result["macos"]
+        self.assertEqual(macos["driver"]["matched_class"], "H11ANEIn")
+        self.assertEqual(macos["platform"]["soc_id"], "t6021")
+        self.assertEqual(macos["compiler"]["framework_version"],
+                         "9.509.0")
+        self.assertEqual(macos["set_base_candidate"]["base"],
+                         "0x8e08c000")
 
 
 if __name__ == "__main__":
