@@ -472,6 +472,13 @@
                       "null"
                     ],
                     "maxLength": 128
+                  },
+                  "minor_version": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "description": "ANEDevicePropertyANEMinorVersion; version.minor forms e.g. 128.17."
                   }
                 }
               }
@@ -506,7 +513,7 @@
                       "string",
                       "null"
                     ],
-                    "maxLength": 256
+                    "maxLength": 8192
                   },
                   "IOInterruptControllers": {
                     "type": [
@@ -534,6 +541,32 @@
                       "integer",
                       "null"
                     ]
+                  },
+                  "reg_ranges": {
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "items": {
+                      "type": "string",
+                      "maxLength": 128
+                    },
+                    "maxItems": 256
+                  },
+                  "range_kinds": {
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "ane_mmio",
+                        "pmgr_block",
+                        "pmgr_plus_c000"
+                      ]
+                    },
+                    "maxItems": 256
                   }
                 }
               }
@@ -568,7 +601,7 @@
                       "string",
                       "null"
                     ],
-                    "maxLength": 256
+                    "maxLength": 8192
                   },
                   "IOInterruptControllers": {
                     "type": [
@@ -596,6 +629,31 @@
                       "integer",
                       "null"
                     ]
+                  },
+                  "reg_ranges": {
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "items": {
+                      "type": "string",
+                      "maxLength": 128
+                    },
+                    "maxItems": 256
+                  },
+                  "dart_id": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "minimum": 0
+                  },
+                  "iommu_cells": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "description": "Devicetree-only property; always null on macOS (see truncated marker iommu_cells:unavailable_on_macos)."
                   }
                 }
               }
@@ -629,7 +687,26 @@
                       "string",
                       "null"
                     ],
-                    "maxLength": 256
+                    "maxLength": 8192
+                  },
+                  "reg_ranges": {
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "items": {
+                      "type": "string",
+                      "maxLength": 128
+                    },
+                    "maxItems": 256
+                  },
+                  "reg_ranges_total": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "minimum": 0,
+                    "description": "True range count; null when the range cap dropped any (truncated marker reg_ranges:<name>:<total>)."
                   }
                 }
               }
@@ -702,6 +779,219 @@
                 "maxLength": 64
               },
               "maxItems": 16
+            },
+            "driver": {
+              "type": [
+                "object",
+                "null"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "matched_class": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 128
+                },
+                "bundle_identifier": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 128
+                },
+                "matched_compatible": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 128
+                },
+                "kext_version": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 64
+                },
+                "arch": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 32
+                },
+                "cores": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "ane_version": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "ane_minor_version": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "firmware_loaded": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ]
+                },
+                "instance_count": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0
+                },
+                "classes_empty": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "maxLength": 128
+                  },
+                  "maxItems": 8
+                }
+              }
+            },
+            "platform": {
+              "type": [
+                "object",
+                "null"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "target_type": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 64
+                },
+                "soc_id": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 64,
+                  "description": "platform-name OSData decoded to ASCII, e.g. t6021."
+                },
+                "compatible": {
+                  "type": [
+                    "array",
+                    "null"
+                  ],
+                  "items": {
+                    "type": "string",
+                    "maxLength": 128
+                  },
+                  "maxItems": 8
+                },
+                "model": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 128
+                }
+              }
+            },
+            "compiler": {
+              "type": [
+                "object",
+                "null"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "framework_version": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 64
+                },
+                "kext_version": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 64
+                },
+                "daemons": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "maxLength": 256
+                  },
+                  "maxItems": 8
+                },
+                "compiler_service_present": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ]
+                },
+                "binaries_cache_resident": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ],
+                  "description": "Framework/kext binaries live in the dyld shared cache / boot kernel collection; on-disk bundles are plist-only stubs. Known condition, not a failure."
+                },
+                "error": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 128
+                }
+              }
+            },
+            "set_base_candidate": {
+              "type": [
+                "object",
+                "null"
+              ],
+              "additionalProperties": false,
+              "description": "HYPOTHESIS, never a derived fact: ANE SET region candidate = pmgr block base + 0xc000 (where the T8103/T6001 ane_* pwrstate cluster lives and where m1n1 ps_map points). driver_window_confirms records whether Apple's own ane device reg grants a window at exactly that address, which corroborates the hypothesis (t6021: ane0 reg range 3). Linux/m1n1 enumerates the cluster itself.",
+              "properties": {
+                "pmgr_block": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 32
+                },
+                "offset": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 16
+                },
+                "base": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 32
+                },
+                "driver_window_confirms": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ]
+                }
+              }
             }
           }
         }

@@ -393,6 +393,61 @@ def load_dataset(args, repo_root):
 
 
 # ---------------------------------------------------------------------------
+# read-side correction: macOS phandle byte-swap (pre-v0.6.5 rows)
+# ---------------------------------------------------------------------------
+
+# The v0.6.4 collector decoded the macOS ioreg `AAPL,phandle` OSData
+# big-endian; ioreg presents cells in HOST byte order (little-endian on
+# arm64), so these rows store every phandle 32-bit byte-reversed (true
+# 0x169 stored as 0x69010000). Fixed in v0.6.5 (commit 7b05e936). The
+# stored rows are immutable (no delete route) and carry no
+# collector-version field that could identify them (`mlx_version` is the
+# MLX build, `source_commit` is null), so the affected rows are pinned
+# here by their content sha256: an enumerated, auditable allow-list,
+# NOT a value-shape heuristic (a magnitude test would silently corrupt
+# a legitimately large phandle). Identified by the 2026-09-17 audit of
+# every macOS row in the live dataset, node by node.
+_PHANDLE_BYTESWAP_ROWS = frozenset({
+    "14fbcbe675891e66dbd852a51c3fef594a0b71232568403d697cdf7f51d98850",  # M1 Ultra t6002
+    "5e75a04c972708447fa80c7ba989d4c2861103328b6bab43cb10a37a63a6aa71",  # M1 Ultra t6002
+    "857e1e6c61b07e57cc05bc5c46e0cb6535a6d3dd460e0eae256cb7e581fa7dd8",  # M2 Pro t6020
+    "869e1c8ba779b973a60cf0f801174070381d370e8cc71196aeff0e8543ed167c",  # M1 Ultra t6002
+    "a3e974f8e6f98febee4635fc8c381114d8ad0ecd979b0a29371e7e4bc3b07a0c",  # M2 Max t6021
+})
+
+
+def _correct_swapped_phandle(record):
+    """Deterministic read-side repair for the 5 known-affected rows.
+
+    Byte-reverses `macos.ane_nodes[*].phandle` and
+    `macos.dart_nodes[*].phandle` in place and returns a consumer-visible
+    note; None (no touch) for every other row. 0x69010000 -> 0x169.
+    """
+    sha = record_sha(record)
+    if sha not in _PHANDLE_BYTESWAP_ROWS:
+        return None
+    detail = _walk(record, "summary", "ane_port_detail") \
+        or _walk(record, "ane_port_detail")
+    macos = detail.get("macos") if isinstance(detail, dict) else None
+    if not isinstance(macos, dict):
+        return None
+    fixed = 0
+    for group in ("ane_nodes", "dart_nodes"):
+        for node in macos.get(group) or []:
+            ph = node.get("phandle") if isinstance(node, dict) else None
+            if not isinstance(ph, int) or ph < 0 or ph > 0xFFFFFFFF:
+                continue
+            node["phandle"] = int.from_bytes(ph.to_bytes(4, "big"),
+                                             "little")
+            fixed += 1
+    if not fixed:
+        return None
+    return (f"read-side correction: {fixed} phandle value(s) byte-reversed "
+            f"(pre-v0.6.5 macOS byte-swap, row {sha[:12]}); stored values "
+            f"were 32-bit reversed")
+
+
+# ---------------------------------------------------------------------------
 # filtering and commands
 # ---------------------------------------------------------------------------
 
@@ -497,10 +552,15 @@ def cmd_show(records, prefix, args):
     if args.source == "remote":
         base = args.base_url.rstrip("/")
         body = fetch_url(f"{base}/v1/results/{prefix}")
-        print(json.dumps(json.loads(body.decode("utf-8")),
-                         indent=2, sort_keys=True))
-        return 0
-    record = find_record(records, prefix)
+        record = json.loads(body.decode("utf-8"))
+    else:
+        record = find_record(records, prefix)
+    note = _correct_swapped_phandle(record)
+    if note:
+        # Visible in both worlds: a parsed key for JSON consumers, a
+        # stderr line for humans - the values below are adjusted.
+        record["_read_side_correction"] = note
+        print(note, file=sys.stderr)
     print(json.dumps(record, indent=2, sort_keys=True))
     return 0
 
