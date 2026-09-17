@@ -95,6 +95,28 @@ Passing `--submit` publishes exactly this JSON and nothing else: the
 request is marked `archive: null`, so no archive exists on this path
 and one request carries the whole submission.
 
+Quick mode now also captures the full ANE devicetree porting data:
+the `ane_port` section walks `/sys/firmware/devicetree/base`, dumps the
+ANE node(s) in full (`reg` MMIO with address/size decoding, `reg-names`,
+IRQs, `interrupt-parent`, `iommus` with phandles resolved to DART
+paths, `power-domains`, `status`, `compatible`), every DART node, the
+PMGR power-domain children with their labels, the AIC compatible, and a
+runtime block (`/proc/iomem` ane/dart lines, the loaded `ane` module
+identity, capped `dmesg` lines for `ane|dart|pmgr`). A tree without an
+ANE node (stock t8103 dtb) still dumps the DART/PMGR/AIC fields so the
+overlay can be authored off-machine. Every string is redacted and the
+block is hard-bounded (8 entries per node collection, 64 PMGR domains,
+64 KiB total) with explicit `truncated` notes when a corner clips. The
+old `ane_port` one-line summary rides in the schema for back-compat
+with stored rows.
+
+The wheel installs fine on an unsupported SoC: the GPU evaluator still
+runs (Honeykrisp is the gating dependency), and the collector simply
+records `ane_dt_node: false` and an empty `ane_port.devicetree`. New-SoC
+owners are not blocked — running the quick collector from a clean
+install is enough to give the omarchy-ane porting effort the fields it
+needs.
+
 ### Path 2: full report, needs the released wheel
 
 `scripts/collect_deep.py` runs five sections: `quick`, `environment`,

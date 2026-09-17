@@ -61,6 +61,17 @@ function payload(overrides: Record<string, unknown> = {}) {
     repo_dirty: false,
     redaction_summary: { mac: 2 },
     files: [],
+    ane_dt_node: false,
+    ane_dt_compatible: null,
+    ane_port: null,
+    ane_port_detail: null,
+    boot_chain: null,
+    cmdline: null,
+    core_shortfall: false,
+    cpu_online: 8,
+    cpu_present: 8,
+    hotplug_control: true,
+    benchmark: [],
     ...overrides,
   };
 }
@@ -334,6 +345,22 @@ scenario("archive round-trips byte-identical", async () => {
   return `${back.length} bytes identical`;
 });
 
+scenario("/v1/schema reports the worker's schema identity", async () => {
+  const res = await fetch(`${BASE}/v1/schema`);
+  expect(res.status === 200, `schema ${res.status}`);
+  const body = await res.json();
+  expect(typeof body.schema_version === "number", "schema_version missing");
+  expect(typeof body.fields_sha256 === "string", "fields_sha256 missing");
+  expect(typeof body.schema_sha256 === "string", "schema_sha256 missing");
+  expect(body.fields_sha256.length === 64, `fields_sha256 length ${body.fields_sha256.length}`);
+  expect(body.schema_sha256.length === 64, `schema_sha256 length ${body.schema_sha256.length}`);
+  // The smoke fixture payload now carries the fields the schema expects;
+  // the live worker reports the same identity. POST 405 on the route too.
+  const bad = await fetch(`${BASE}/v1/schema`, { method: "POST" });
+  expect(bad.status === 405, `schema POST ${bad.status}`);
+  return `fields_sha256=${body.fields_sha256.slice(0, 12)}…`;
+});
+
 scenario("cron rebuilds dataset; unpublished rows never appear", async () => {
   const cron = await fetch(`${BASE}/cdn-cgi/local/scheduled`);
   expect(cron.status === 200, `scheduled ${cron.status}`);
@@ -341,11 +368,22 @@ scenario("cron rebuilds dataset; unpublished rows never appear", async () => {
   expect(list.status === 200, `results ${list.status}`);
   const doc = (await list.json()) as { count: number; results: unknown[] };
   expect(doc.count >= 3, `count ${doc.count}`);
+  function isIndexedEntry(r: unknown): r is { content_sha256: string } {
+    return typeof r === "object" && r !== null &&
+      "content_sha256" in r &&
+      typeof (r as { content_sha256: unknown }).content_sha256 === "string";
+  }
   expect(
-    doc.results.every((r) =>
-      typeof r === "object" && r !== null &&
-      typeof (r as Record<string, unknown>).content_sha256 === "string"),
+    doc.results.every(isIndexedEntry),
     "entries missing content_sha256",
+  );
+  // The cached bulk index must NOT carry the per-row detail; readers
+  // pull /v1/results/<sha> for the full summary. Stripping at cache
+  // rebuild time keeps the JSONL index small as submissions grow.
+  expect(
+    doc.results.every((r) => isIndexedEntry(r) &&
+      !("ane_port_detail" in r)),
+    "ane_port_detail leaked into the bulk index",
   );
   const jsonl = await fetch(`${BASE}/v1/dataset/latest.jsonl`);
   expect(jsonl.status === 200, `jsonl ${jsonl.status}`);
@@ -353,7 +391,24 @@ scenario("cron rebuilds dataset; unpublished rows never appear", async () => {
   const lines = text.trim().split("\n");
   expect(lines.length === doc.count, `lines ${lines.length} != count ${doc.count}`);
   for (const line of lines) JSON.parse(line);
+  expect(!text.includes("ane_port_detail"),
+    "ane_port_detail leaked into /v1/dataset/latest.jsonl");
   expect(!text.includes(makeArchive(3) && "incomplete-never"), "sanity");
+  // Per-row record still carries the full payload (ane_port_detail may
+  // be null for smoke submissions; the route must serve the field).
+  const lastEntry = doc.results[doc.results.length - 1];
+  if (!isIndexedEntry(lastEntry)) {
+    throw new Error("last entry missing content_sha256");
+  }
+  const lastSha = lastEntry.content_sha256;
+  const one = await fetch(`${BASE}/v1/results/${lastSha}`);
+  expect(one.status === 200, `per-row ${one.status}`);
+  const oneDoc = await one.json() as { summary: unknown };
+  if (!oneDoc.summary || typeof oneDoc.summary !== "object") {
+    throw new Error("per-row summary missing");
+  }
+  expect("ane_port_detail" in oneDoc.summary,
+    "per-row summary missing ane_port_detail key");
   return `count=${doc.count}, lines=${lines.length}`;
 });
 
