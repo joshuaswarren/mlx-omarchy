@@ -127,9 +127,22 @@ class ResidentAneWorker:
         if self._process is not None:
             raise ResidentWorkerError("resident session is already started")
         self.scratch.mkdir(parents=True, exist_ok=True)
+        try:
+            self._start_once(use_shm=True)
+            return
+        except ResidentWorkerError as error:
+            if self._shm_in is None or "closed its output" not in str(error):
+                raise
+        # A worker older than the shm protocol exits on the unknown
+        # --shm-* flags before any handshake. Retry once inline.
+        self._shm_ok = False
+        self._start_once(use_shm=False)
+
+    def _start_once(self, use_shm: bool) -> None:
+        self.scratch.mkdir(parents=True, exist_ok=True)
         shm_bytes = int(os.environ.get("ANE_WORKER_SHM_BYTES", 64 * 1024 * 1024))
         pass_fds: tuple[int, ...] = ()
-        if os.environ.get("ANE_WORKER_SHM", "1") != "0":
+        if use_shm and self._shm_in is None:
             try:
                 in_fd = os.memfd_create("ane-worker-shm-in")
                 out_fd = os.memfd_create("ane-worker-shm-out")
@@ -140,7 +153,6 @@ class ResidentAneWorker:
                 self._shm_in_fd = in_fd
                 self._shm_out_fd = out_fd
                 self._shm_bytes = shm_bytes
-                pass_fds = (in_fd, out_fd)
             except (OSError, ValueError):
                 for fd in (self._shm_in_fd, self._shm_out_fd):
                     if fd is not None:
@@ -148,7 +160,8 @@ class ResidentAneWorker:
                 self._shm_in = self._shm_out = None
                 self._shm_in_fd = self._shm_out_fd = None
                 self._shm_bytes = 0
-                pass_fds = ()
+        if use_shm and self._shm_in is not None:
+            pass_fds = (self._shm_in_fd, self._shm_out_fd)
         argv = [
             str(self.worker),
             "--serve",
@@ -156,7 +169,7 @@ class ResidentAneWorker:
             "--deadline-ms", str(self.deadline_ms),
             "--iterations", str(self.iterations),
         ]
-        if self._shm_in is not None:
+        if use_shm and self._shm_in is not None:
             argv += [
                 "--shm-in", f"{self._shm_in_fd}={self._shm_bytes}",
                 "--shm-out", f"{self._shm_out_fd}={self._shm_bytes}",
