@@ -65,9 +65,10 @@ measure)
   PY="$ROOT/venv/bin/python"
   export HF_HUB_OFFLINE=1 MLX_DISABLE_COMPILE=1
   export MLX_OMARCHY_WORK_DIR="$ROOT/work"
-  # Exact manifest prompts (short = 30 tokens, ctx1024 = 1053 tokens).
-  SHORT=$("$PY" -c "import sys; sys.path.insert(0,'$SRC/scripts'); import bench_matrix, json; print(bench_matrix.prompt_text(json.load(open('$SRC/scripts/bench_matrix.json')),'short'))")
-  CTX=$("$PY" -c "import sys; sys.path.insert(0,'$SRC/scripts'); import bench_matrix, json; print(bench_matrix.prompt_text(json.load(open('$SRC/scripts/bench_matrix.json')),'ctx1024'))")
+  # Exact manifest prompts (short = 30 tokens, ctx1024 = 1053 tokens);
+  # end='' so no trailing newline changes the chat-template token count.
+  SHORT=$("$PY" -c "import sys; sys.path.insert(0,'$SRC/scripts'); import bench_matrix, json; print(bench_matrix.prompt_text(json.load(open('$SRC/scripts/bench_matrix.json')),'short'), end='')")
+  CTX=$("$PY" -c "import sys; sys.path.insert(0,'$SRC/scripts'); import bench_matrix, json; print(bench_matrix.prompt_text(json.load(open('$SRC/scripts/bench_matrix.json')),'ctx1024'), end='')")
   # libmlx identity for this stage
   libmlx_identity "$PY" > "$OUT/identity-measure.txt"
   # Phase profiles: prefill + 2 decode tokens, GPU profile stream.
@@ -95,12 +96,12 @@ pins)
   PY="$ROOT/venv/bin/python"
   ARM="${QMMCEIL_PIN_ARM:?QMMCEIL_PIN_ARM required}"
   export HF_HUB_OFFLINE=1 MLX_DISABLE_COMPILE=1
-  for leg in short ctx1024; do
-    "$PY" scripts/bench_decode.py --model "$MODEL" --prompt-id "$leg" \
-      --tokens 32 --temp 0.0 --seed 0 --warmup-tokens 4 \
-      > "$OUT/pin-$leg-arm$arm.json" 2>&1 || true
-    tail -2 "$OUT/pin-$leg-arm$arm.json"
-  done
+  P=$("$PY" -c "import sys; sys.path.insert(0,'$SRC/scripts'); import bench_matrix, json; print(bench_matrix.prompt_text(json.load(open('$SRC/scripts/bench_matrix.json')),'${QMMCEIL_PIN_PROMPT:?QMMCEIL_PIN_PROMPT required}'), end='')")
+  MLX_OMARCHY_QMM_COOP_BENCH=$ARM \
+    "$PY" scripts/bench_decode.py --model "$MODEL" --prompt "$P" \
+    --tokens 32 --temp 0.0 --seed 0 --warmup-tokens 4 \
+    > "$OUT/pin-$QMMCEIL_PIN_PROMPT-arm$ARM.json" 2>&1 || true
+  tail -2 "$OUT/pin-$QMMCEIL_PIN_PROMPT-arm$ARM.json"
   echo PINS-DONE
   ;;
 esac
