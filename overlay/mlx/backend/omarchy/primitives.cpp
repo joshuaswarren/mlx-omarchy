@@ -10714,6 +10714,34 @@ void ScaledDotProductAttention::eval_gpu(
     params.in_strides[3] = checked_u32(v.strides()[3], tag, out);
     std::array<omarchy::ComputeBinding, 4> bindings{
         binding(q), binding(k), binding(v), binding(out)};
+    // B-key register-blocked twin of the per-head f16 arm (opt-in via
+    // MLX_OMARCHY_SDPA_BLOCK_B; shipped default off). Same per-head
+    // geometry, regime thresholds, serial key order, and f32 chain:
+    // 8 keys' K/V rows load into registers per iteration and feed one
+    // ordered merge sequence per group, so the per-key serial-chain
+    // cost amortizes over 8 keys (term-B decode lever,
+    // receipts/2026-09-16-termB-kv-mechanism.md). Bit-exact by
+    // construction; omarchy_sdpa_decode_fused_tests gates it bit for
+    // bit against the per-head arm on every covered key count and both
+    // two-pass regimes.
+    const char* block_b_env = std::getenv("MLX_OMARCHY_SDPA_BLOCK_B");
+    if (!decode_bf16 && block_b_env != nullptr &&
+        std::strcmp(block_b_env, "0") != 0) {
+      omarchy::capsim::require_backed(
+          encoder.device(),
+          decode_caps,
+          decode_subgroup_ready,
+          "SdpaDecodeNativeF16B8",
+          "cooperative_matrix_fp32_8x8x8+workgroup_limits+"
+          "shared_memory_limit_bytes",
+          encoder.device().hardware_capabilities().cooperative_matrix_f32_8);
+      encoder.dispatch_compute(
+          omarchy::ComputeKernel::SdpaDecodeNativeF16B8,
+          bindings,
+          params,
+          params.matrix_m);
+      return;
+    }
       omarchy::capsim::require_backed(
           encoder.device(),
           decode_caps,

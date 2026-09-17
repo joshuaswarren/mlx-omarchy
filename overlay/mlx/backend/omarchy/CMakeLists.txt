@@ -296,6 +296,10 @@ omarchy_shader(qmm_vec_q4_multi_subgroup_f16 shaders/qmm_vec.comp -DUSE_FP16=1 -
 omarchy_shader(qmm_vec_q4_multi_subgroup_bf16 shaders/qmm_vec.comp -DUSE_BF16=1 -DUSE_SUBGROUP=1 -DQMM_VEC_Q4_WORD=1 -DQMM_VEC_MULTI=1)
 omarchy_shader(sdpa_decode_native_f16 shaders/sdpa_decode_native.comp)
 omarchy_shader(sdpa_decode_native_bf16 shaders/sdpa_decode_native.comp -DBF16_IO=1)
+# B-key register-blocked f16 decode twin (MLX_OMARCHY_SDPA_BLOCK_B, default
+# off): the same serial key order and f32 chain, BLOCK_B keys' loads and
+# dots per iteration feeding one ordered merge sequence.
+omarchy_shader(sdpa_decode_native_f16_b8 shaders/sdpa_decode_native.comp -DSDPA_BLOCK_B=8)
 # PrefillQmmTile: m-tiled quantized matmul for prefill (matrix_m > 1);
 # one workgroup dequantizes each 16 x 16 weight block into shared f32
 # once and applies it to a 16-row tile of x, amortizing the inline

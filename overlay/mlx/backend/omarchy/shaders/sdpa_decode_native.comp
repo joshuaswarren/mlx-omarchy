@@ -129,6 +129,45 @@ uint16_t bf16_store(float value) {
 #define LD16(x) float(x)
 #endif
 
+#ifdef SDPA_BLOCK_B
+// B-key register blocking of the f16 arm's serial key walk (the term-B
+// decode lever, receipts/2026-09-16-termB-kv-mechanism.md). The walk is
+// latency-bound: each key's online-softmax chain cannot start until the
+// previous key's state update lands, so every K/V load rides the chain.
+// Loading BLOCK_B keys' rows up front and computing BLOCK_B independent
+// dots changes only the dependency structure. The merges consume the same
+// scores in the same key order through the identical f32 op sequence, so
+// every stored word matches the per-key route bit for bit (tested in
+// omarchy_sdpa_decode_fused_tests). Out-of-range slots load the last
+// key's row and are predicated off before their values reach any state;
+// only a lane's final group can be partial.
+#define BLOCK_B uint(SDPA_BLOCK_B)
+#define B8_LOAD(j, stride)                                                   \
+  uint idx_##j = min(key + uint(j) * (stride), params.matrix_k - 1u);         \
+  uint k_base_##j = params.rhs_offset + kv_head * params.shape[1] +          \
+      idx_##j * params.shape[2] + q_dim * params.in_strides[0];              \
+  float k0_##j = LD16(key_data.values[k_base_##j]);                          \
+  float k1_##j = LD16(key_data.values[k_base_##j + params.in_strides[0]]);   \
+  uint v_base_##j = params.aux_offset + kv_head * params.in_strides[1] +     \
+      idx_##j * params.in_strides[2] + q_dim * params.in_strides[3];         \
+  float v0_##j = LD16(value_data.values[v_base_##j]);                        \
+  float v1_##j = LD16(value_data.values[v_base_##j + params.in_strides[3]]);
+#define B8_DOT(j)                                                            \
+  float score_##j = fma(q0, k0_##j, 0.0);                                    \
+  score_##j = fma(q1, k1_##j, score_##j);                                    \
+  score_##j = subgroupAdd(score_##j);
+#define B8_MERGE(j, stride)                                                  \
+  if (key + uint(j) * (stride) < params.matrix_k) {                           \
+    float new_max = max(max_score, score_##j);                               \
+    float factor = native_exp(max_score - new_max);                          \
+    float exp_score = native_exp(score_##j - new_max);                       \
+    max_score = new_max;                                                     \
+    sum_exp_score = fma(sum_exp_score, factor, exp_score);                   \
+    o0 = fma(o0, factor, exp_score * v0_##j);                                \
+    o1 = fma(o1, factor, exp_score * v1_##j);                                \
+  }
+#endif
+
 void store_pair(uint head, uint lane, float x, float y, float denominator) {
   if (lane == 0u) {
     uint out_base = params.output_offset + head * DIM +
@@ -291,6 +330,16 @@ void main() {
     float sum_exp_score = 0.0;
     float o0 = 0.0;
     float o1 = 0.0;
+#ifdef SDPA_BLOCK_B
+    for (uint key = sgid; key < params.matrix_k; key += SIMD * BLOCK_B) {
+      B8_LOAD(0, SIMD) B8_LOAD(1, SIMD) B8_LOAD(2, SIMD) B8_LOAD(3, SIMD)
+      B8_LOAD(4, SIMD) B8_LOAD(5, SIMD) B8_LOAD(6, SIMD) B8_LOAD(7, SIMD)
+      B8_DOT(0) B8_DOT(1) B8_DOT(2) B8_DOT(3)
+      B8_DOT(4) B8_DOT(5) B8_DOT(6) B8_DOT(7)
+      B8_MERGE(0, SIMD) B8_MERGE(1, SIMD) B8_MERGE(2, SIMD) B8_MERGE(3, SIMD)
+      B8_MERGE(4, SIMD) B8_MERGE(5, SIMD) B8_MERGE(6, SIMD) B8_MERGE(7, SIMD)
+    }
+#else
     for (uint key = sgid; key < params.matrix_k; key += SIMD) {
       uint k_base = params.rhs_offset + kv_head * params.shape[1] +
           key * params.shape[2] + q_dim * params.in_strides[0];
@@ -317,6 +366,7 @@ void main() {
           exp_score *
               LD16(value_data.values[v_base + params.in_strides[3]]));
     }
+#endif
 
     if (lane == 0u) {
       s_max[sgid] = max_score;
@@ -347,6 +397,18 @@ void main() {
     float sum_exp_score = 0.0;
     float o0 = 0.0;
     float o1 = 0.0;
+#ifdef SDPA_BLOCK_B
+    for (uint key = block; key < params.matrix_k; key += blocks * BLOCK_B) {
+      B8_LOAD(0, blocks) B8_LOAD(1, blocks) B8_LOAD(2, blocks)
+      B8_LOAD(3, blocks) B8_LOAD(4, blocks) B8_LOAD(5, blocks)
+      B8_LOAD(6, blocks) B8_LOAD(7, blocks)
+      B8_DOT(0) B8_DOT(1) B8_DOT(2) B8_DOT(3)
+      B8_DOT(4) B8_DOT(5) B8_DOT(6) B8_DOT(7)
+      B8_MERGE(0, blocks) B8_MERGE(1, blocks) B8_MERGE(2, blocks)
+      B8_MERGE(3, blocks) B8_MERGE(4, blocks) B8_MERGE(5, blocks)
+      B8_MERGE(6, blocks) B8_MERGE(7, blocks)
+    }
+#else
     for (uint key = block; key < params.matrix_k; key += blocks) {
       uint k_base = params.rhs_offset + kv_head * params.shape[1] +
           key * params.shape[2] + q_dim * params.in_strides[0];
@@ -373,6 +435,7 @@ void main() {
           exp_score *
               LD16(value_data.values[v_base + params.in_strides[3]]));
     }
+#endif
     if (lane == 0u) {
       s_max[block] = max_score;
       s_sum[block] = sum_exp_score;
