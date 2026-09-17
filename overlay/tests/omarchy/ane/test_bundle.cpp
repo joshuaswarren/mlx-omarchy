@@ -292,6 +292,38 @@ void check_error(Function&& function, const std::string& expected) {
 
 } // namespace
 
+TEST_CASE("sha256 digests survive the active compress path") {
+  // The compress step dispatches at runtime (ARMv8 crypto when the CPU
+  // reports it, the scalar path otherwise). These FIPS 180-4 answers pin
+  // whichever path the host took, across the padding boundaries where a
+  // block-compression rewrite breaks first.
+  CHECK(sha256_hex(nullptr, 0) ==
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+  CHECK(sha256_hex(reinterpret_cast<const uint8_t*>("abc"), 3) ==
+        "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
+  std::string big(1000, 'a');
+  CHECK(sha256_hex(reinterpret_cast<const uint8_t*>(big.data()), big.size()) ==
+        "41edece42d63e8d9bf515a9ba6932e1c20cbc9f5a5d134645adb5db1b9737ea3");
+  for (const auto& [size, want] : std::array<std::pair<size_t, const char*>, 9>{
+           {{1, "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb"},
+            {3, "9834876dcfb05cb167a5c24953eba58c4ac89b1adf57f28f2f9d09af107ee8f0"},
+            {55, "9f4390f8d30c2dd92ec9f095b65e2b9ae9b0a925a5258e241c9f1e910f734318"},
+            {56, "b35439a4ac6f0948b6d6f9e3c6af0f5f590ce20f1bde7090ef7970686ec6738a"},
+            {63, "7d3e74a05d7db15bce4ad9ec0658ea98e3f06eeecf16b4c6fff2da457ddc2f34"},
+            {64, "ffe054fe7ae0cb6dc65c3af9b61d5209f439851db43d0ba5997337df154668eb"},
+            {65, "635361c48bb9eab14198e76ea8ab7f1a41685d6ad62aa9146d301d4f17eb0ae0"},
+            {119, "31eba51c313a5c08226adf18d4a359cfdfd8d2e816b13f4af952f7ea6584dcfb"},
+            {120, "2f3d335432c70b580af0e8e1b3674a7c020d683aa5f73aaaedfdc55af904c21c"}}}) {
+    std::string block(size, 'a');
+    INFO("size=", size);
+    CHECK(sha256_hex(reinterpret_cast<const uint8_t*>(block.data()),
+                     block.size()) == want);
+  }
+  std::string tail(1024 * 1024, '\x5a');
+  CHECK(sha256_hex(reinterpret_cast<const uint8_t*>(tail.data()), tail.size()) ==
+        "bf63d8a95fcc2e64619813aae35fdcbe871fdd9264caa3f365eb3aed0f679129");
+}
+
 TEST_CASE("valid multi-program bundle preserves dispatch and bindings") {
   Fixture fixture;
   fixture.write();
