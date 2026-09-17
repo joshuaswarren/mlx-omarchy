@@ -343,5 +343,80 @@ class NativeProvenanceTests(unittest.TestCase):
         self.mx.set_default_device.assert_not_called()
 
 
+class AnePortProbeTests(unittest.TestCase):
+    """The macOS ANE port capture: identity, DT-shaped nodes, CoreML,
+    powermetrics, and mandatory identity redaction."""
+
+    @staticmethod
+    def _probe_output():
+        return json.dumps({
+            "available": True,
+            "instances": [{"name": "ane,t8020", "matched": "ane,t8020",
+                           "firmware_loaded": True, "cores": 16,
+                           "version": 96, "hw_board_type": 96,
+                           "arch": "h13g"}],
+            "ane_nodes": [{"name": "ane0",
+                           "compatible": ["ane,t8020"],
+                           "reg": "0200" * 8,
+                           "IOInterruptControllers": "aic",
+                           "IOInterruptSpecifiers": "02000000",
+                           "IOClass": None, "phandle": 4097}],
+            "dart_nodes": [{"name": "dart-ane0",
+                            "compatible": ["dart,t6000"],
+                            "reg": "0300" * 8,
+                            "IOInterruptControllers": "aic",
+                            "IOInterruptSpecifiers": "03000000",
+                            "IOClass": "AppleT6000DART",
+                            "phandle": 4113}],
+            "coreml": {"available": False, "compute_units": None,
+                       "error": "ModuleNotFoundError"},
+            "powermetrics": {"available": False, "power_mw": None,
+                             "error": "powermetrics must be invoked as "
+                                      "the superuser"},
+            "truncated": [],
+        })
+
+    def probe(self, red):
+        with patch.object(cm, "run_python_probe", return_value={
+                "available": True, "exit_code": 0, "error": None,
+                "stderr": "", "stdout": self._probe_output()}) as run:
+            result = cm.probe_ane_port(red)
+        return result, run
+
+    def test_capture_is_structured_and_bounded(self):
+        result, _ = self.probe(cc.Redactor())
+        self.assertTrue(result["available"])
+        macos = result["macos"]
+        self.assertEqual(macos["instances"][0]["cores"], 16)
+        self.assertEqual(macos["dart_nodes"][0]["IOClass"],
+                         "AppleT6000DART")
+        self.assertFalse(macos["powermetrics"]["available"])
+        self.assertEqual(macos["coreml"]["error"], "ModuleNotFoundError")
+
+    def test_probe_failure_is_recorded_not_raised(self):
+        with patch.object(cm, "run_python_probe", return_value={
+                "available": False, "exit_code": None, "error": "not-found",
+                "stderr": "", "stdout": ""}):
+            result = cm.probe_ane_port(cc.Redactor())
+        self.assertFalse(result["available"])
+        self.assertEqual(result["error"], "not-found")
+
+    def test_synthetic_serial_and_uuid_do_not_survive(self):
+        out = self._probe_output().replace("h13g", "C02XY9876543")
+        with patch.object(cm, "run_python_probe", return_value={
+                "available": True, "exit_code": 0, "error": None,
+                "stderr": "", "stdout": out}):
+            blob = json.dumps(cm.probe_ane_port(cc.Redactor()))
+        self.assertNotIn("C02XY9876543", blob)
+
+    def test_quick_dispatch_uses_macos_probe_on_darwin(self):
+        with patch("platform.system", return_value="Darwin"), \
+                patch.object(cm, "run_python_probe", return_value={
+                    "available": False, "exit_code": None,
+                    "error": "not-found", "stderr": "", "stdout": ""}):
+            result = cq.probe_ane_port(cc.Redactor())
+        self.assertFalse(result["available"])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

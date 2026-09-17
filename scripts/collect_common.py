@@ -110,6 +110,15 @@ class Redactor:
            "serial", r"\1[redacted]\2")
         rx(r"(?i)\b(serial[-_]?number)\s*([=:])\s*(\S+)",
            "serial", r"\1\2 [redacted]")
+        # ioreg/macOS hardware identity: "IOPlatformSerialNumber" = "C02…"
+        rx(r"(?i)\"?(IOPlatformSerialNumber|IOPlatformUUID|BoardID|"
+           r"board-id|serial-number)\"?\s*=\s*\"[^\"]*\"",
+           "serial", r"\1 = [redacted]")
+        # Bare Apple platform serial shape (e.g. C02XY9876543): a value
+        # that lost its key must still not survive. Requires letter +
+        # two digits + at least eight more alphanumerics, so model and
+        # version tokens like H11ANEIn or t6000 never match.
+        rx(r"\b[A-Z][0-9]{2}[A-Z0-9]{8,10}\b", "serial", "[redacted]")
         # Network identity. IPv6 before IPv4 so embedded v4-in-v6 is gone.
         rx(r"\b(?:fe80|fd[0-9a-f]{2}|fc[0-9a-f]{2})(?::[0-9a-fA-F]{0,4}){1,7}"
            r"(?:%\w+)?\b", "ipv6", "[redacted-ip6]", re.IGNORECASE)
@@ -313,9 +322,14 @@ def _cap_port_detail(port, redactor, max_bytes=64 * 1024):
       * ane_nodes / darts / phandles: hard cap of MAX_PORT_DETAIL_NODES
         each; a node beyond the cap is dropped, not truncated in place.
       * pmgr_domains: hard cap of 64 (matches the source collector).
-      * total serialized bytes: hard cap of `max_bytes`; if the bounded
-        shape still exceeds the byte budget the runtime block is dropped
-        first, then phandles, then darts, then the aic block.
+      * total serialized bytes: hard cap of `max_bytes`. Drop order is
+        by porting value: the runtime block first, then the phandle map
+        (`iommus_resolved` already did that arithmetic for the reader),
+        then the AIC block, then DARTs; the ane nodes — the whole point
+        of the capture — are dropped last.
+      * a macOS report carries `macos` instead of `devicetree` and is
+        bounded at the source; if it somehow exceeds the budget the
+        whole block is dropped.
 
     `redactor` is the shared one from the collector: every string value
     already passed it once during probe_ane_port; passing it again here
@@ -328,8 +342,9 @@ def _cap_port_detail(port, redactor, max_bytes=64 * 1024):
     MAX_NODES = 8  # hard cap on ane_nodes / darts / phandles entries
     truncated = []
 
-    src_devicetree = port.get("devicetree") or {}
+    src_devicetree = port.get("devicetree")
     src_runtime = port.get("runtime")
+    src_macos = port.get("macos")
 
     def _walk(node):
         """Re-redact every string leaf; keep numeric/bool/list shape."""
@@ -341,6 +356,21 @@ def _cap_port_detail(port, redactor, max_bytes=64 * 1024):
             return redactor.apply(node) if redactor else node
         return node
 
+    def _size(node):
+        return len(json.dumps(node, separators=(",", ":")))
+
+    # macOS: the probe bounds its own output; carry it through and
+    # re-redact. The legacy Linux devicetree keys do not apply.
+    if src_macos is not None:
+        out = {"macos": _walk(src_macos)}
+        if truncated or _size(out) > max_bytes:
+            out["truncated"] = (truncated or [])[:15] + \
+                ["macos:over_budget"]
+            if _size(out) > max_bytes:
+                return None
+        return out
+
+    src_devicetree = src_devicetree or {}
     def _bounded_dict(d, cap, name):
         if not isinstance(d, dict):
             return {}
@@ -370,9 +400,6 @@ def _cap_port_detail(port, redactor, max_bytes=64 * 1024):
 
     out = {"devicetree": bounded}
 
-    def _size(node):
-        return len(json.dumps(node, separators=(",", ":")))
-
     if isinstance(src_runtime, dict):
         bounded_runtime = _walk(src_runtime)
         # Total budget check: include runtime only if it fits. We try
@@ -384,15 +411,28 @@ def _cap_port_detail(port, redactor, max_bytes=64 * 1024):
         else:
             truncated.append("runtime:over_budget")
 
-    # Final size check: if even the devicetree-only payload is too big,
-    # the ane_port_detail block as a whole is dropped — the bounded
-    # `ane_port` summary still rides in the summary either way.
+    # Still over budget: drop by porting value. The phandle map goes
+    # first (iommus_resolved already did that arithmetic for the
+    # reader), then the AIC block, then DARTs; the ane nodes go last.
     if _size(out) > max_bytes:
-        truncated.append("devicetree:over_budget")
-        return None
+        trimmed = out
+        for field, blank in (("phandles", {}), ("aic", None),
+                             ("darts", {}), ("ane_nodes", {})):
+            if _size(trimmed) <= max_bytes:
+                break
+            dt = dict(trimmed["devicetree"])
+            dt[field] = blank
+            trimmed = {"devicetree": dt}
+            if "runtime" in out:
+                trimmed["runtime"] = out["runtime"]
+            truncated.append(f"{field}:over_budget")
+        if _size(trimmed) > max_bytes:
+            truncated.append("devicetree:over_budget")
+            return None
+        out = trimmed
 
     if truncated:
-        out["truncated"] = truncated
+        out["truncated"] = truncated[:16]
     return out
 
 
@@ -457,20 +497,36 @@ def build_payload(kind, quick, manifest, generated_at=None, benchmark=None,
     # Bounded driver-port summary: enough for fleet queries (does this
     # SoC expose the ane node, how many DARTs and PMGR domains, which
     # AIC) without shipping the full devicetree dump in every payload.
-    port = (quick.get("ane_port") or {}).get("devicetree") or {}
-    port_parts = [
-        "present=" + str(bool(port.get("ane_node_present"))).lower()]
-    for name, props in sorted((port.get("ane_nodes") or {}).items()):
-        regs = props.get("reg") if isinstance(props, dict) else None
-        port_parts.append(f"{name}={regs[0] if regs else 'no-reg'}")
-    port_parts.append(f"darts={len(port.get('darts') or {})}")
-    port_parts.append(
-        f"pmgr_domains={len(port.get('pmgr_domains') or [])}")
-    aic_compat = (port.get("aic") or {}).get("compatible") or []
-    if aic_compat:
-        port_parts.append(f"aic={aic_compat[0]}")
-    ane_port = (" ".join(port_parts)[:1024]
-                if quick.get("ane_port") else None)
+    src_port = quick.get("ane_port") or {}
+    macos_port = src_port.get("macos")
+    if isinstance(macos_port, dict):
+        cores = sorted({i.get("cores") for i in
+                        (macos_port.get("instances") or [])
+                        if isinstance(i.get("cores"), int)})
+        ane_port = (
+            "native_macos=1 instances=%d cores=%s dart_ane=%d "
+            "firmware=%s" % (
+                len(macos_port.get("instances") or []),
+                "+".join(str(c) for c in cores) or "?",
+                len(macos_port.get("dart_nodes") or []),
+                "loaded" if any(i.get("firmware_loaded")
+                                for i in macos_port.get("instances") or [])
+                else "unknown"))[:1024]
+    else:
+        port = src_port.get("devicetree") or {}
+        port_parts = [
+            "present=" + str(bool(port.get("ane_node_present"))).lower()]
+        for name, props in sorted((port.get("ane_nodes") or {}).items()):
+            regs = props.get("reg") if isinstance(props, dict) else None
+            port_parts.append(f"{name}={regs[0] if regs else 'no-reg'}")
+        port_parts.append(f"darts={len(port.get('darts') or {})}")
+        port_parts.append(
+            f"pmgr_domains={len(port.get('pmgr_domains') or [])}")
+        aic_compat = (port.get("aic") or {}).get("compatible") or []
+        if aic_compat:
+            port_parts.append(f"aic={aic_compat[0]}")
+        ane_port = (" ".join(port_parts)[:1024]
+                    if quick.get("ane_port") else None)
     # Bounded full-structure port detail. Capped per-section, total
     # bytes hard-bounded; truncation is recorded explicitly so a reader
     # can tell which corner the cap clipped. Re-redacts every string

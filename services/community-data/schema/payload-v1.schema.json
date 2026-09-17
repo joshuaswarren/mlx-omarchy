@@ -4,63 +4,188 @@
   "description": "The JSON summary the collector sends alongside the chunked archive. The Worker validates this strictly; unknown fields are rejected.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "kind", "generated_at"],
+  "required": [
+    "schema_version",
+    "kind",
+    "generated_at"
+  ],
   "properties": {
-    "schema_version": { "const": 1 },
-    "kind": { "enum": ["quick", "deep"] },
+    "schema_version": {
+      "const": 1
+    },
+    "kind": {
+      "enum": [
+        "quick",
+        "deep"
+      ]
+    },
     "generated_at": {
       "type": "string",
       "maxLength": 20,
       "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
     },
-    "arch": { "type": ["string", "null"], "maxLength": 512 },
-    "model": { "type": ["string", "null"], "maxLength": 512 },
-    "chip": { "type": ["string", "null"], "maxLength": 512 },
-    "kernel": { "type": ["string", "null"], "maxLength": 512 },
-    "mesa_driver": { "type": ["string", "null"], "maxLength": 512 },
-    "mesa_device": { "type": ["string", "null"], "maxLength": 512 },
-    "mlx_version": { "type": ["string", "null"], "maxLength": 512 },
-    "mlx_device": { "type": ["string", "null"], "maxLength": 512 },
-    "source_commit": { "type": ["string", "null"], "maxLength": 64 },
-    "repo_dirty": { "type": ["boolean", "null"] },
-    "cpu_online": { "type": ["integer", "null"], "minimum": 0 },
-    "cpu_present": { "type": ["integer", "null"], "minimum": 0,
-                     "maximum": 65536 },
-    "hotplug_control": { "type": ["boolean", "null"] },
-    "ane_dt_node": { "type": ["boolean", "null"] },
-    "ane_port": { "type": ["string", "null"], "maxLength": 1024 },
+    "arch": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 512
+    },
+    "model": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 512
+    },
+    "chip": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 512
+    },
+    "kernel": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 512
+    },
+    "mesa_driver": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 512
+    },
+    "mesa_device": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 512
+    },
+    "mlx_version": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 512
+    },
+    "mlx_device": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 512
+    },
+    "source_commit": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 64
+    },
+    "repo_dirty": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "cpu_online": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "cpu_present": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 65536
+    },
+    "hotplug_control": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "ane_dt_node": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "ane_port": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 1024
+    },
     "ane_port_detail": {
-      "type": ["object", "null"],
+      "type": [
+        "object",
+        "null"
+      ],
       "additionalProperties": false,
       "properties": {
         "devicetree": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["ane_node_present", "ane_nodes", "darts",
-                       "pmgr_domains", "phandles"],
+          "required": [
+            "ane_node_present",
+            "ane_nodes",
+            "darts",
+            "pmgr_domains",
+            "phandles"
+          ],
           "properties": {
-            "ane_node_present": { "type": "boolean" },
+            "ane_node_present": {
+              "type": "boolean"
+            },
             "ane_nodes": {
               "type": "object",
-              "additionalProperties": { "type": "object" }
+              "additionalProperties": {
+                "type": "object"
+              }
             },
             "darts": {
               "type": "object",
-              "additionalProperties": { "type": "object" }
+              "additionalProperties": {
+                "type": "object"
+              }
             },
             "pmgr_domains": {
               "type": "array",
               "items": {
                 "type": "object",
                 "additionalProperties": false,
-                "required": ["path"],
+                "required": [
+                  "path"
+                ],
                 "properties": {
-                  "path": { "type": "string", "maxLength": 256 },
-                  "label": { "type": ["string", "null"],
-                             "maxLength": 128 },
+                  "path": {
+                    "type": "string",
+                    "maxLength": 256
+                  },
+                  "label": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 128
+                  },
                   "compatible": {
                     "type": "array",
-                    "items": { "type": "string", "maxLength": 128 },
+                    "items": {
+                      "type": "string",
+                      "maxLength": 128
+                    },
                     "maxItems": 8
                   }
                 }
@@ -68,72 +193,427 @@
               "maxItems": 64
             },
             "aic": {
-              "type": ["object", "null"],
+              "type": [
+                "object",
+                "null"
+              ],
               "additionalProperties": false,
               "properties": {
-                "path": { "type": "string", "maxLength": 256 },
+                "path": {
+                  "type": "string",
+                  "maxLength": 256
+                },
                 "compatible": {
                   "type": "array",
-                  "items": { "type": "string", "maxLength": 128 },
+                  "items": {
+                    "type": "string",
+                    "maxLength": 128
+                  },
                   "maxItems": 8
                 }
               }
             },
             "phandles": {
               "type": "object",
-              "additionalProperties": { "type": "string" }
+              "additionalProperties": {
+                "type": "string"
+              }
             }
           }
         },
         "runtime": {
-          "type": ["object", "null"],
+          "type": [
+            "object",
+            "null"
+          ],
           "additionalProperties": false,
           "properties": {
             "iomem": {
-              "type": ["array", "null"],
-              "items": { "type": "string", "maxLength": 512 },
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "type": "string",
+                "maxLength": 512
+              },
               "maxItems": 32
             },
-            "module_version": { "type": ["string", "null"],
-                                "maxLength": 128 },
-            "srcversion": { "type": ["string", "null"],
-                            "maxLength": 128 },
-            "loaded": { "type": ["string", "null"], "maxLength": 256 },
+            "module_version": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "maxLength": 128
+            },
+            "srcversion": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "maxLength": 128
+            },
+            "loaded": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "maxLength": 256
+            },
             "dmesg": {
-              "type": ["array", "null"],
-              "items": { "type": "string", "maxLength": 512 },
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "type": "string",
+                "maxLength": 512
+              },
               "maxItems": 64
             }
           }
         },
         "truncated": {
           "type": "array",
-          "items": { "type": "string", "maxLength": 64 },
+          "items": {
+            "type": "string",
+            "maxLength": 64
+          },
           "maxItems": 16
+        },
+        "macos": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": false,
+          "required": [
+            "available",
+            "instances",
+            "ane_nodes",
+            "dart_nodes",
+            "coreml",
+            "powermetrics"
+          ],
+          "properties": {
+            "available": {
+              "type": "boolean"
+            },
+            "instances": {
+              "type": "array",
+              "maxItems": 8,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "name",
+                  "matched",
+                  "firmware_loaded"
+                ],
+                "properties": {
+                  "name": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 128
+                  },
+                  "matched": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 128
+                  },
+                  "firmware_loaded": {
+                    "type": "boolean"
+                  },
+                  "cores": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "version": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "hw_board_type": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "arch": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 128
+                  }
+                }
+              }
+            },
+            "ane_nodes": {
+              "type": "array",
+              "maxItems": 8,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "name"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "maxLength": 128
+                  },
+                  "compatible": {
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "items": {
+                      "type": "string",
+                      "maxLength": 128
+                    },
+                    "maxItems": 8
+                  },
+                  "reg": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 256
+                  },
+                  "IOInterruptControllers": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 256
+                  },
+                  "IOInterruptSpecifiers": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 256
+                  },
+                  "IOClass": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 128
+                  },
+                  "phandle": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  }
+                }
+              }
+            },
+            "dart_nodes": {
+              "type": "array",
+              "maxItems": 8,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "name"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "maxLength": 128
+                  },
+                  "compatible": {
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "items": {
+                      "type": "string",
+                      "maxLength": 128
+                    },
+                    "maxItems": 8
+                  },
+                  "reg": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 256
+                  },
+                  "IOInterruptControllers": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 256
+                  },
+                  "IOInterruptSpecifiers": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 256
+                  },
+                  "IOClass": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 128
+                  },
+                  "phandle": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  }
+                }
+              }
+            },
+            "coreml": {
+              "type": [
+                "object",
+                "null"
+              ],
+              "additionalProperties": false,
+              "required": [
+                "available",
+                "compute_units",
+                "error"
+              ],
+              "properties": {
+                "available": {
+                  "type": "boolean"
+                },
+                "compute_units": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 128
+                },
+                "error": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 128
+                }
+              }
+            },
+            "powermetrics": {
+              "type": [
+                "object",
+                "null"
+              ],
+              "additionalProperties": false,
+              "required": [
+                "available",
+                "power_mw",
+                "error"
+              ],
+              "properties": {
+                "available": {
+                  "type": "boolean"
+                },
+                "power_mw": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "error": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 128
+                }
+              }
+            },
+            "truncated": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "maxLength": 64
+              },
+              "maxItems": 16
+            }
+          }
         }
       }
     },
-    "ane_dt_compatible": { "type": ["string", "null"], "maxLength": 512 },
-    "boot_chain": { "type": ["string", "null"], "maxLength": 512 },
-    "cmdline": { "type": ["string", "null"], "maxLength": 1024 },
-    "core_shortfall": { "type": ["boolean", "null"] },
+    "ane_dt_compatible": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 512
+    },
+    "boot_chain": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 512
+    },
+    "cmdline": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 1024
+    },
+    "core_shortfall": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
     "benchmark": {
       "type": "array",
       "maxItems": 16,
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["n"],
+        "required": [
+          "n"
+        ],
         "properties": {
-          "n": { "type": "integer", "minimum": 1 },
-          "tflops": { "type": ["number", "null"] },
-          "median_ms": { "type": ["number", "null"] }
+          "n": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "tflops": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "median_ms": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
         }
       }
     },
     "redaction_summary": {
       "type": "object",
-      "additionalProperties": { "type": "integer" }
+      "additionalProperties": {
+        "type": "integer"
+      }
     },
     "files": {
       "type": "array",
@@ -141,11 +621,24 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["path", "bytes", "sha256"],
+        "required": [
+          "path",
+          "bytes",
+          "sha256"
+        ],
         "properties": {
-          "path": { "type": "string", "maxLength": 256 },
-          "bytes": { "type": "integer", "minimum": 0 },
-          "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+          "path": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "bytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
         }
       }
     }
