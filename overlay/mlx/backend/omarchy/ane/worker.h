@@ -70,6 +70,10 @@ struct AneWorkerReport {
   int released_programs{0};
   std::chrono::milliseconds elapsed{0};
   std::string detail;
+  // Resident submits only: the device-phase split the device-side loop
+  // measured for this submit, as "k=v k=v" microseconds. Empty on the
+  // one-shot path and on any report that never reached the device loop.
+  std::string perf;
   // Internal: raw child report bytes carried out of supervise() so run()
   // can extract output payloads. Empty in every report handed to callers.
   std::string detail_extra;

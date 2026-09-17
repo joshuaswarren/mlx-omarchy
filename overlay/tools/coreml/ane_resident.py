@@ -37,6 +37,24 @@ class ResidentWorkerError(RuntimeError):
 # forever either.
 _CLIENT_GRACE_MS = 5000
 
+# Worker-side phase timers reported on the job line (microseconds).
+# serve-side: recv_us = reading inline payloads from stdin, submit_us =
+# the whole AneWorker::submit call (frames + device loop + output
+# frames), emit_us = writing output payloads to stdout. Device-side
+# (inside submit_us): pack_us = copying inputs into the device,
+# exec_us = execute ioctls, read_us = copying results back, crecv_us =
+# reading the request frames themselves. Everything the elapsed wall
+# does not explain at a layer is waiting/serialization at that layer.
+_PHASE_KEYS = (
+    "recv_us",
+    "submit_us",
+    "emit_us",
+    "pack_us",
+    "exec_us",
+    "read_us",
+    "crecv_us",
+)
+
 
 class ResidentAneWorker:
     """A resident worker session over a fixed set of named bundles.
@@ -81,6 +99,8 @@ class ResidentAneWorker:
         self.exec_ns = 0
         self.start_ns = 0
         self.close_ns = 0
+        self.phase_us = {key: 0 for key in _PHASE_KEYS}
+        self.transport = "inline"
         self.log: list[dict] = []
 
         self._process: subprocess.Popen | None = None
@@ -213,12 +233,19 @@ class ResidentAneWorker:
         self.input_bytes += in_bytes
         # The worker's own job report carries its internal split: elapsed_ms
         # covers recv+stage+exec+read+send-back inside the child; stage_ms is
-        # its input staging share and save_ms its output retrieval share.
+        # its input staging share and save_ms its output retrieval share;
+        # the _PHASE_KEYS are the fine-grained serve/device split.
         report_fields = {}
         for token in line.replace("\n", " ").split():
             key, sep, value = token.partition("=")
-            if sep and key in ("status", "elapsed_ms", "stage_ms", "save_ms"):
+            if sep and key in ("status", "elapsed_ms", "stage_ms", "save_ms", *_PHASE_KEYS):
                 report_fields[key] = value
+        for key in _PHASE_KEYS:
+            if key in report_fields:
+                try:
+                    self.phase_us[key] += int(report_fields[key])
+                except ValueError:
+                    pass
         record = {
             "tag": tag,
             "bundle": bundle,
@@ -298,6 +325,8 @@ class ResidentAneWorker:
             "exec_ns": self.exec_ns,
             "start_ns": self.start_ns,
             "close_ns": self.close_ns,
+            "transport": self.transport,
+            "phase_us": dict(self.phase_us),
         }
 
     # --------------------------------------------------------------- plumbing
