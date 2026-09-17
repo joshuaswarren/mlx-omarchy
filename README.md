@@ -189,7 +189,7 @@ python3 -m venv ~/.venvs/mlx-collect
   --submit https://mlx-omarchy-community-data.joshua-s-warren.workers.dev
 ```
 
-`scripts/collect_quick.py` is the no-install version: hardware and driver identity only, a few seconds, no network. Details of what is collected and how it is redacted are in [CONTRIBUTING.md](CONTRIBUTING.md). Query the dataset with `python3 scripts/query_community_data.py list`.
+`scripts/collect_quick.py` is the no-install version: hardware and driver identity only, a few seconds, no network. As of v0.6.1 quick mode also carries the full ANE devicetree porting data (ANE node with MMIO/IRQs/iommus/power-domains, DART nodes, PMGR domains, AIC compatible) so a new-SoC owner does not need to run the deep collector or have an mlx-omarchy wheel installed to contribute the porting fields. The deep path remains the right choice when you want benchmark numbers and the correctness sweep. Details of what is collected and how it is redacted are in [CONTRIBUTING.md](CONTRIBUTING.md). Query the dataset with `python3 scripts/query_community_data.py list`.
 
 ### Code
 

@@ -81,6 +81,11 @@ class QuickReportStructure(unittest.TestCase):
         "mesa": lambda red: {"available": True, "gpu": {
             "deviceName": "Apple M1 (G13G B1)",
             "driverName": "Mesa Honeykrisp", "apiVersion": "1.4.354"}},
+        "ane_port": lambda red: {"available": True, "devicetree": {
+            "ane_node_present": False, "ane_nodes": {}, "darts": {},
+            "pmgr_domains": [], "aic": None, "phandles": {}},
+            "runtime": {"iomem": None, "module_version": None,
+                        "srcversion": None, "loaded": None, "dmesg": None}},
         "broken": lambda red: (_ for _ in ()).throw(RuntimeError("boom")),
     }
 
@@ -91,7 +96,8 @@ class QuickReportStructure(unittest.TestCase):
         self.assertEqual(cc.dump_json(one), cc.dump_json(two))
         self.assertEqual(one["schema_version"], cc.SCHEMA_VERSION)
         self.assertEqual(one["report"], "mlx-omarchy-quick")
-        for section in ("host", "mesa", "mesa_package", "ane", "mlx"):
+        for section in ("host", "mesa", "mesa_package", "ane", "ane_port",
+                        "mlx"):
             self.assertIn(section, one)
         self.assertEqual(one["host"]["gpu"] if "gpu" in one["host"]
                          else one["mesa"]["gpu"]["driverName"],
@@ -431,9 +437,9 @@ class BuildPayload(unittest.TestCase):
             "schema_version", "kind", "generated_at", "arch", "model",
             "chip", "kernel", "mesa_driver", "mesa_device", "mlx_version",
             "mlx_device", "source_commit", "repo_dirty", "cpu_online",
-            "cpu_present", "hotplug_control", "ane_dt_node",
-            "ane_dt_compatible", "boot_chain", "cmdline", "core_shortfall",
-            "benchmark", "redaction_summary", "files",
+            "cpu_present", "hotplug_control", "ane_dt_node", "ane_port",
+            "ane_port_detail", "ane_dt_compatible", "boot_chain", "cmdline",
+            "core_shortfall", "benchmark", "redaction_summary", "files",
         ]))
 
     def test_benchmark_rows_ride_in_the_summary(self):
@@ -683,6 +689,275 @@ class AneDevicetreeProbe(unittest.TestCase):
         out = cq._ane_devicetree("/no/such/tree")
         self.assertFalse(out["node"])
         self.assertIsNone(out["compatible"])
+
+
+def _write_dt(base, relpath, props):
+    """Create one fake devicetree node: {name: bytes} props."""
+    path = os.path.join(base, relpath)
+    os.makedirs(path, exist_ok=True)
+    for name, raw in props.items():
+        with open(os.path.join(path, name), "wb") as fh:
+            fh.write(raw)
+
+
+def _u32_be(*vals):
+    """Big-endian DT cells: 4 bytes per value, concatenated."""
+    return b"".join(v.to_bytes(4, "big") for v in vals)
+
+
+def _build_port_tree(tmp, with_ane):
+    """Build a t6001-style tree (ane present) or t8103 stock (absent)."""
+    _write_dt(tmp, "", {
+        "compatible": b"apple,t6001\x00apple,arm-platform\x00",
+    })
+    _write_dt(tmp, "dart@681004000", {
+        "compatible": b"apple,t6000-dart\x00",
+        "reg": _u32_be(0x6, 0x81004000, 0, 0x4000),
+        "reg-names": b"dart\x00",
+        "#address-cells": _u32_be(2),
+        "#size-cells": _u32_be(0),
+        "#iommu-cells": _u32_be(1),
+        "phandle": _u32_be(0x1),
+    })
+    _write_dt(tmp, "aic", {
+        "compatible": b"apple,t6000-aic\x00apple,aic\x00",
+    })
+    _write_dt(tmp, "pmgr", {
+        "compatible": b"apple,t6000-pmgr\x00apple,pmgr\x00",
+    })
+    _write_dt(tmp, "pmgr/ane-sys", {
+        "compatible": b"apple,t6000-pmgr-pwrstate\x00",
+        "label": b"ane_sys\x00",
+    })
+    _write_dt(tmp, "pmgr/ane-sys-cpu", {
+        "compatible": b"apple,t6000-pmgr-pwrstate\x00",
+        "label": b"ane_sys_cpu\x00",
+    })
+    if with_ane:
+        _write_dt(tmp, "ane@26a000000", {
+            "compatible": b"apple,t6001-ane\x00apple,ane\x00",
+            "reg": _u32_be(0x2, 0x6a000000, 0, 0x100000),
+            "reg-names": b"ane\x00",
+            "#address-cells": _u32_be(2),
+            "#size-cells": _u32_be(2),
+            "interrupts": _u32_be(592, 0),
+            "interrupt-parent": _u32_be(0x2),
+            "iommus": _u32_be(0x1, 0),
+            "power-domains": _u32_be(0x3, 0x4, 0x5),
+            "status": b"okay\x00",
+            "phandle": _u32_be(0x6),
+        })
+        _write_dt(tmp, "aic", {"phandle": _u32_be(0x2)})
+        _write_dt(tmp, "pmgr/ane-sys", {"phandle": _u32_be(0x3)})
+        _write_dt(tmp, "pmgr/ane-sys-cpu", {"phandle": _u32_be(0x4)})
+        _write_dt(tmp, "pmgr/ps-ane-plain", {"phandle": _u32_be(0x5)})
+
+
+class AnePortDevicetreeProbe(unittest.TestCase):
+    """t6001 carries the ane node; t8103 stock does not. Either way the
+    DART/PMGR/AIC dump lands so a contributor can author the overlay."""
+
+    def test_t6001_tree_captures_full_port_fields(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            _build_port_tree(tmp, with_ane=True)
+            out = cq._ane_port_devicetree(cc.Redactor(), base=tmp)
+        self.assertTrue(out["ane_node_present"])
+        ane = out["ane_nodes"]["ane@26a000000"]
+        self.assertEqual(ane["compatible"],
+                         ["apple,t6001-ane", "apple,ane"])
+        self.assertEqual(ane["reg"], ["0x26a000000/0x100000"])
+        self.assertEqual(ane["reg-names"], "ane")
+        self.assertEqual(ane["interrupts"], [592, 0])
+        self.assertEqual(ane["interrupt-parent"], [2])
+        self.assertEqual(ane["iommus"], [1, 0])
+        self.assertEqual(ane["iommus_resolved"], ["dart@681004000"])
+        self.assertEqual(ane["power-domains"], [3, 4, 5])
+        self.assertEqual(ane["status"], "okay")
+        self.assertIn("dart@681004000", out["darts"])
+        dart = out["darts"]["dart@681004000"]
+        self.assertEqual(dart["compatible"], "apple,t6000-dart")
+        self.assertEqual(dart["#iommu-cells"], [1])
+        self.assertEqual(out["aic"]["compatible"],
+                         ["apple,t6000-aic", "apple,aic"])
+        labels = [d["label"] for d in out["pmgr_domains"]]
+        self.assertEqual(labels, ["ane_sys", "ane_sys_cpu", None])
+        self.assertEqual(out["phandles"]["3"], "pmgr/ane-sys")
+
+    def test_t8103_stock_tree_still_dumps_dart_pmgr_aic(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            _build_port_tree(tmp, with_ane=False)
+            out = cq._ane_port_devicetree(cc.Redactor(), base=tmp)
+        self.assertFalse(out["ane_node_present"])
+        self.assertEqual(out["ane_nodes"], {})
+        self.assertIn("dart@681004000", out["darts"])
+        self.assertEqual(out["aic"]["compatible"],
+                         ["apple,t6000-aic", "apple,aic"])
+        self.assertEqual(len(out["pmgr_domains"]), 2)
+
+    def test_absent_devicetree_is_clean(self):
+        out = cq._ane_port_devicetree(cc.Redactor(), base="/no/such/tree")
+        self.assertFalse(out["ane_node_present"])
+        self.assertEqual(out["ane_nodes"], {})
+        self.assertEqual(out["darts"], {})
+        self.assertEqual(out["pmgr_domains"], [])
+        self.assertIsNone(out["aic"])
+
+
+class AnePortPayloadDetail(unittest.TestCase):
+    """The bounded `ane_port_detail` block rides in the payload alongside
+    the bounded `ane_port` summary string."""
+
+    @staticmethod
+    def _ane_port_quick_fixture():
+        return {
+            "available": True,
+            "devicetree": {
+                "ane_node_present": True,
+                "ane_nodes": {
+                    "ane@26a000000": {"reg": ["0x26a000000/0x100000"],
+                                      "compatible":
+                                          ["apple,t6001-ane", "apple,ane"]},
+                },
+                "darts": {
+                    "dart@681004000": {"compatible": "apple,t6000-dart"},
+                },
+                "pmgr_domains": [{"path": "pmgr/ane-sys",
+                                  "label": "ane_sys",
+                                  "compatible": ["apple,t6000-pmgr-pwrstate"]}],
+                "aic": {"path": "aic",
+                        "compatible": ["apple,t6000-aic", "apple,aic"]},
+                "phandles": {"1": "dart@681004000"},
+            },
+            "runtime": {"iomem": ["ane: 0x26a000000-0x26a100000"],
+                        "module_version": "0.1",
+                        "srcversion": "DEADBEEF",
+                        "loaded": "ane 32768 0 - Live 0xffffffc0abcdef00",
+                        "dmesg": ["ane: probe ok"]},
+        }
+
+    def test_payload_carries_both_summary_and_detail(self):
+        quick = json.loads(json.dumps(BuildPayload.QUICK))
+        quick["ane_port"] = self._ane_port_quick_fixture()
+        payload = cc.build_payload("quick", quick, {},
+                                   redactor=cc.Redactor())
+        # The bounded summary string rides for back-compat.
+        self.assertEqual(
+            payload["ane_port"],
+            "present=true ane@26a000000=0x26a000000/0x100000 darts=1 "
+            "pmgr_domains=1 aic=apple,t6000-aic")
+        # And the full structure rides in ane_port_detail.
+        detail = payload["ane_port_detail"]
+        self.assertIsNotNone(detail)
+        self.assertIn("devicetree", detail)
+        self.assertTrue(detail["devicetree"]["ane_node_present"])
+        self.assertIn("ane@26a000000", detail["devicetree"]["ane_nodes"])
+        self.assertIn("dart@681004000", detail["devicetree"]["darts"])
+        self.assertIn("runtime", detail)
+        self.assertEqual(detail["runtime"]["module_version"], "0.1")
+
+    def test_payload_omits_port_fields_when_section_absent(self):
+        payload = cc.build_payload("quick", {}, {})
+        self.assertIsNone(payload["ane_port"])
+        self.assertIsNone(payload["ane_port_detail"])
+
+    def test_detail_caps_node_counts_and_records_truncation(self):
+        quick = json.loads(json.dumps(BuildPayload.QUICK))
+        # Build more ane_nodes than MAX_NODES=8 to trigger the cap.
+        ane_nodes = {f"ane@{i:x}": {"reg": [f"0x{i:x}/0x1000"]}
+                     for i in range(20)}
+        darts = {f"dart@{i:x}": {"compatible": "apple,t6000-dart"}
+                 for i in range(20)}
+        phandles = {str(i): f"node@{i:x}" for i in range(20)}
+        quick["ane_port"] = {
+            "available": True,
+            "devicetree": {
+                "ane_node_present": True,
+                "ane_nodes": ane_nodes,
+                "darts": darts,
+                "pmgr_domains": [{"path": f"pmgr/p{i}",
+                                  "label": f"p{i}",
+                                  "compatible": ["x"]} for i in range(80)],
+                "aic": {"path": "aic", "compatible": ["apple,aic"]},
+                "phandles": phandles,
+            },
+            "runtime": {"iomem": None, "module_version": None,
+                        "srcversion": None, "loaded": None, "dmesg": None},
+        }
+        payload = cc.build_payload("quick", quick, {},
+                                   redactor=cc.Redactor())
+        d = payload["ane_port_detail"]
+        self.assertEqual(len(d["devicetree"]["ane_nodes"]), 8)
+        self.assertEqual(len(d["devicetree"]["darts"]), 8)
+        self.assertEqual(len(d["devicetree"]["phandles"]), 8)
+        self.assertEqual(len(d["devicetree"]["pmgr_domains"]), 64)
+        self.assertIn("truncated", d)
+        truncated = d["truncated"]
+        self.assertTrue(any(t.startswith("ane_nodes:") for t in truncated),
+                        truncated)
+        self.assertTrue(any(t.startswith("darts:") for t in truncated),
+                        truncated)
+        self.assertTrue(any(t.startswith("phandles:") for t in truncated),
+                        truncated)
+        self.assertTrue(any(t.startswith("pmgr_domains:") for t in truncated),
+                        truncated)
+
+    def test_detail_drops_runtime_when_it_overflows_byte_budget(self):
+        quick = json.loads(json.dumps(BuildPayload.QUICK))
+        # Stuff enough junk into dmesg that the runtime block exceeds
+        # the per-payload budget on its own; the devicetree alone fits.
+        fat_lines = ["x" * 600 for _ in range(120)]
+        quick["ane_port"] = {
+            "available": True,
+            "devicetree": {
+                "ane_node_present": True,
+                "ane_nodes": {"ane@26a000000": {"reg":
+                                                ["0x26a000000/0x100000"]}},
+                "darts": {},
+                "pmgr_domains": [],
+                "aic": None,
+                "phandles": {},
+            },
+            "runtime": {"iomem": None, "module_version": None,
+                        "srcversion": None, "loaded": None,
+                        "dmesg": fat_lines},
+        }
+        payload = cc.build_payload("quick", quick, {},
+                                   redactor=cc.Redactor())
+        d = payload["ane_port_detail"]
+        self.assertIsNotNone(d, "detail should still ride even with fat runtime")
+        self.assertNotIn("runtime", d,
+                         "runtime should have been dropped for budget")
+        self.assertIn("truncated", d)
+        self.assertIn("runtime:over_budget", d["truncated"])
+
+    def test_detail_re_redacts_string_leaves(self):
+        # The probe already redacts, but the helper is belt-and-braces:
+        # a string that somehow leaked through must still come out redacted.
+        quick = json.loads(json.dumps(BuildPayload.QUICK))
+        red = cc.Redactor(hostname="leakyhost",
+                          username="leakyuser",
+                          home="/home/leakyuser")
+        quick["ane_port"] = {
+            "available": True,
+            "devicetree": {
+                "ane_node_present": True,
+                "ane_nodes": {"ane@0": {
+                    "label": "leakyhost leaked",
+                    "compatible": ["apple,t6001-ane"],
+                    "reg": ["0x0/0x1000"]}},
+                "darts": {},
+                "pmgr_domains": [],
+                "aic": None,
+                "phandles": {},
+            },
+            "runtime": {"iomem": None, "module_version": None,
+                        "srcversion": None, "loaded": None, "dmesg": None},
+        }
+        payload = cc.build_payload("quick", quick, {}, redactor=red)
+        blob = json.dumps(payload["ane_port_detail"])
+        self.assertNotIn("leakyhost", blob)
+        self.assertNotIn("leakyuser", blob)
+        self.assertIn("[host]", blob)
 
 
 class PayloadSchemaContract(unittest.TestCase):

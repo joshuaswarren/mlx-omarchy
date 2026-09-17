@@ -277,12 +277,114 @@ def build_manifest(archive_name, files, extra=None):
     return manifest
 
 
-def build_payload(kind, quick, manifest, generated_at=None, benchmark=None):
+def _cap_port_detail(port, redactor, max_bytes=64 * 1024):
+    """Bounded `ane_port_detail` blob for the quick PAYLOAD.
+
+    Carries the devicetree (and the runtime block if it fits) at enough
+    fidelity to author the omarchy-ane overlay off-machine. The flat
+    `ane_port` summary string is kept for back-compat with rows that
+    were already stored before the detail object existed.
+
+    Bounding rules, in order — each one marks `truncated` with the
+    reason so a reader knows the shape of what was dropped:
+
+      * ane_nodes / darts / phandles: hard cap of MAX_PORT_DETAIL_NODES
+        each; a node beyond the cap is dropped, not truncated in place.
+      * pmgr_domains: hard cap of 64 (matches the source collector).
+      * total serialized bytes: hard cap of `max_bytes`; if the bounded
+        shape still exceeds the byte budget the runtime block is dropped
+        first, then phandles, then darts, then the aic block.
+
+    `redactor` is the shared one from the collector: every string value
+    already passed it once during probe_ane_port; passing it again here
+    is a belt-and-braces pass in case a probe missed a string-shaped
+    value. Numeric and bool fields stay numeric and bool.
+    """
+    if not isinstance(port, dict):
+        return None
+
+    MAX_NODES = 8  # hard cap on ane_nodes / darts / phandles entries
+    truncated = []
+
+    src_devicetree = port.get("devicetree") or {}
+    src_runtime = port.get("runtime")
+
+    def _walk(node):
+        """Re-redact every string leaf; keep numeric/bool/list shape."""
+        if isinstance(node, dict):
+            return {k: _walk(v) for k, v in node.items()}
+        if isinstance(node, list):
+            return [_walk(v) for v in node]
+        if isinstance(node, str):
+            return redactor.apply(node) if redactor else node
+        return node
+
+    def _bounded_dict(d, cap, name):
+        if not isinstance(d, dict):
+            return {}
+        keys = sorted(d.keys())
+        kept = {k: _walk(d[k]) for k in keys[:cap]}
+        if len(keys) > cap:
+            truncated.append(f"{name}:{len(keys) - cap}")
+        return kept
+
+    bounded = {
+        "ane_node_present": bool(src_devicetree.get("ane_node_present")),
+        "ane_nodes": _bounded_dict(src_devicetree.get("ane_nodes") or {},
+                                   MAX_NODES, "ane_nodes"),
+        "darts": _bounded_dict(src_devicetree.get("darts") or {},
+                               MAX_NODES, "darts"),
+        "pmgr_domains": _walk(src_devicetree.get("pmgr_domains") or [])[:64]
+            if len(src_devicetree.get("pmgr_domains") or []) > 64
+            else _walk(src_devicetree.get("pmgr_domains") or []),
+        "aic": _walk(src_devicetree.get("aic"))
+            if src_devicetree.get("aic") else None,
+        "phandles": _bounded_dict(src_devicetree.get("phandles") or {},
+                                  MAX_NODES, "phandles"),
+    }
+    if len(src_devicetree.get("pmgr_domains") or []) > 64:
+        truncated.append(f"pmgr_domains:"
+                         f"{len(src_devicetree['pmgr_domains']) - 64}")
+
+    out = {"devicetree": bounded}
+
+    def _size(node):
+        return len(json.dumps(node, separators=(",", ":")))
+
+    if isinstance(src_runtime, dict):
+        bounded_runtime = _walk(src_runtime)
+        # Total budget check: include runtime only if it fits. We try
+        # with runtime first, then drop it if it pushes us over the cap.
+        candidate = dict(out)
+        candidate["runtime"] = bounded_runtime
+        if _size(candidate) <= max_bytes:
+            out = candidate
+        else:
+            truncated.append("runtime:over_budget")
+
+    # Final size check: if even the devicetree-only payload is too big,
+    # the ane_port_detail block as a whole is dropped — the bounded
+    # `ane_port` summary still rides in the summary either way.
+    if _size(out) > max_bytes:
+        truncated.append("devicetree:over_budget")
+        return None
+
+    if truncated:
+        out["truncated"] = truncated
+    return out
+
+
+def build_payload(kind, quick, manifest, generated_at=None, benchmark=None,
+                  redactor=None):
     """Build the strict-schema JSON summary sent with the upload.
 
     Must match schema/payload-v1.schema.json in services/community-data:
     fixed key set, schema_version pinned, every identity field nullable.
-    All values come from already-redacted data.
+    All values come from already-redacted data. `redactor` is the
+    collector's shared Redactor; it is used to belt-and-braces re-redact
+    the ane_port_detail blob in case a probe missed a string-shaped
+    value. New callers should pass it; existing tests that do not are
+    tolerated (re-redaction becomes a no-op).
     """
     host = quick.get("host") or {}
     dt = host.get("devicetree") or {}
@@ -308,6 +410,31 @@ def build_payload(kind, quick, manifest, generated_at=None, benchmark=None):
         if isinstance(boot.get(key), str) and boot[key])
     present = cpu.get("present")
     shortfall = host.get("core_shortfall")
+    # Bounded driver-port summary: enough for fleet queries (does this
+    # SoC expose the ane node, how many DARTs and PMGR domains, which
+    # AIC) without shipping the full devicetree dump in every payload.
+    # The full structure rides in `ane_port_detail` below; this string
+    # is kept for back-compat with rows stored before v0.6.1.
+    port = (quick.get("ane_port") or {}).get("devicetree") or {}
+    port_parts = [
+        "present=" + str(bool(port.get("ane_node_present"))).lower()]
+    for name, props in sorted((port.get("ane_nodes") or {}).items()):
+        regs = props.get("reg") if isinstance(props, dict) else None
+        port_parts.append(f"{name}={regs[0] if regs else 'no-reg'}")
+    port_parts.append(f"darts={len(port.get('darts') or {})}")
+    port_parts.append(
+        f"pmgr_domains={len(port.get('pmgr_domains') or [])}")
+    aic_compat = (port.get("aic") or {}).get("compatible") or []
+    if aic_compat:
+        port_parts.append(f"aic={aic_compat[0]}")
+    ane_port_summary = (" ".join(port_parts)[:1024]
+                        if quick.get("ane_port") else None)
+    # Bounded full-structure port detail. Capped per-section, total
+    # bytes hard-bounded; truncation is recorded explicitly so a reader
+    # can tell which corner the cap clipped. Re-redacts every string
+    # leaf against the shared Redactor in case a probe missed one.
+    ane_port_detail = _cap_port_detail(quick.get("ane_port"), redactor) \
+        if quick.get("ane_port") else None
     # Plain wire fact: true when the report recorded an unexplained
     # shortfall, false when present/online are known and equal enough,
     # null when the counts needed to judge are missing.
@@ -350,6 +477,8 @@ def build_payload(kind, quick, manifest, generated_at=None, benchmark=None):
             if isinstance(cpu.get("hotplug_control"), bool) else None,
         "ane_dt_node": ane_dt.get("node")
             if isinstance(ane_dt.get("node"), bool) else None,
+        "ane_port": ane_port_summary,
+        "ane_port_detail": ane_port_detail,
         "ane_dt_compatible": ane_compat_blob[:512] if ane_compat_blob
         else None,
         "boot_chain": boot_chain[:512] or None,
