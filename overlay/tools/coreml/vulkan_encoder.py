@@ -1452,6 +1452,13 @@ class EncoderRunner:
 
     def _run_island_ffn(self, stmt: Statement) -> None:
         layer, module, half, name, l2 = self.island_ffn[stmt.index]
+        # The default-ON chain fusion plans "linear+bias emits silu(x)" for
+        # exactly this linear (single silu consumer). That fold lives in the
+        # GPU kernel; the ANE island emits the pre-silu linear result, so the
+        # silu statement must execute on the GPU instead of being skipped.
+        silu_idx = self.linear_silu.get(stmt.index)
+        if silu_idx is not None:
+            self.silu_done.discard(silu_idx)
         x = self.tensor(stmt.kwargs["x"])
         want_k = 1024 if half == 1 else 4096
         if tuple(x.shape) != (1, 375, want_k):
