@@ -666,7 +666,7 @@ def maybe_submit(args, report):
     endpoint = collect_submit.endpoint_from_args(args)
     if endpoint is None:
         return 0
-    payload = build_payload("quick", report, {})
+    payload = build_payload("quick", report, {}, redactor=Redactor())
     digest = collect_submit.sha256_hex(
         json.dumps(payload, sort_keys=True, separators=(",", ":")).encode())
     if not args.submit and not collect_submit.confirm_interactive(

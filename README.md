@@ -160,6 +160,13 @@ python3 scripts/collect_quick.py \
   --submit https://mlx-omarchy-community-data.joshua-s-warren.workers.dev
 ```
 
+Quick mode is sufficient to capture the ANE devicetree (ane node, DARTs, PMGR
+domains, AIC, phandles) at enough fidelity to author the omarchy-ane overlay
+off-machine. Run the full report below when you want benchmark numbers or the
+correctness sweep. On a non-Apple box the wheel installs and the quick
+collector runs without complaint; the GPU path runs in software Vulkan and the
+ANE section is simply absent.
+
 **Linux — full report (needs the v0.6.0 aarch64 wheel on an Apple Silicon host; x86_64 dev box installs the cp311 wheel and runs the same script):**
 
 ```bash
