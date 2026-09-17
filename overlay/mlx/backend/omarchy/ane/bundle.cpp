@@ -947,7 +947,7 @@ std::map<DigestCacheKey, std::string> load_digest_cache_disk() {
 
 void store_digest_cache_disk(
     const std::filesystem::path& sidecar,
-    const DigestCacheKey& key,
+    const std::string& serialized_key,
     const std::string& digest) {
   std::error_code ec;
   std::filesystem::create_directories(sidecar.parent_path(), ec);
@@ -958,7 +958,7 @@ void store_digest_cache_disk(
   if (!output) {
     return;
   }
-  output << key.serialize() << ' ' << digest << '\n';
+  output << serialized_key << ' ' << digest << '\n';
 }
 
 // Returns the payload digest, re-hashing only when the kill-switch forces it,
@@ -1001,10 +1001,11 @@ std::string sha256_file_cached(const std::filesystem::path& path) {
   }
   std::string digest = sha256_file(path);
   if (digest_cache_enabled()) {
+    const std::string serialized = key.serialize();
     std::lock_guard<std::mutex> lock(g_digest_cache_mutex);
     g_digest_cache.emplace(std::move(key), digest);
     if (auto sidecar = digest_cache_path(); !sidecar.empty()) {
-      store_digest_cache_disk(sidecar, key, digest);
+      store_digest_cache_disk(sidecar, serialized, digest);
     }
   }
   return digest;

@@ -891,7 +891,14 @@ TEST_CASE("digest cache skips re-hash on unchanged file identity") {
   for (std::string line; std::getline(input, line);) {
     lines.push_back(line);
   }
-  CHECK(lines.size() == 3);
+  REQUIRE(lines.size() == 3);
+  // Every line must carry the full identity key — a moved-from key would
+  // serialize an empty path and silently never hit across processes.
+  for (const auto& line : lines) {
+    INFO("line=", line);
+    CHECK(line.rfind(fixture.dir.path().string(), 0) == 0);
+    CHECK(line.find("|0|0|") == std::string::npos);
+  }
 }
 
 TEST_CASE("digest cache kill-switch forces full verification") {
