@@ -913,6 +913,13 @@ class EncoderRunner:
         self.ane_ops = 0
         self.cpu_tensor_events = 0
         self.cond_census: dict | None = None
+        # MLX_OMARCHY_PIPE: issue-only async_eval per GPU statement so the
+        # Vulkan queue stays saturated between island-boundary drains.
+        # Scheduling only - same graph, same values, no host sync.
+        # Default on (measured jw16: AC launch -1185ms, resident -813ms,
+        # ACO launch -1547ms, resident -1099ms, all pins EXACT);
+        # set MLX_OMARCHY_PIPE=0 to opt out.
+        self.pipe = os.environ.get("MLX_OMARCHY_PIPE", "1") == "1"
         self.glu_fusions: dict[int, tuple[str, str]] = {}
         self.glu_sigmoid_done: set[int] = set()
         self.linear_silu: dict[int, int] = {}
@@ -1206,6 +1213,10 @@ class EncoderRunner:
 
     # --------------------------------------------------------------- dispatch
 
+    def _pipe(self, *values) -> None:
+        if self.pipe:
+            mx.async_eval(*[v for v in values if isinstance(v, mx.array)])
+
     def execute(self, stmt: Statement) -> None:
         if stmt.done:
             return
@@ -1261,6 +1272,7 @@ class EncoderRunner:
                 stream=mx.gpu,
             )[0]
             self.values[stmt.names[0]] = mx.reshape(out, a.shape)
+            self._pipe(self.values[stmt.names[0]])
             self.executed += 1
             self.gpu_ops += 1
             return
@@ -1271,12 +1283,14 @@ class EncoderRunner:
                     f"split produced {len(parts)} of {len(stmt.names)}"
                 )
             self.values.update(zip(stmt.names, parts))
+            self._pipe(*parts)
         else:
             self.values[stmt.names[0]] = self.apply(stmt)
             if stmt.index in self.linear_silu:
                 self.values[
                     self.statements[self.linear_silu[stmt.index]].names[0]
                 ] = self.values[stmt.names[0]]
+            self._pipe(self.values[stmt.names[0]])
         self.executed += 1
         self.gpu_ops += 1
 
