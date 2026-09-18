@@ -44,6 +44,41 @@ Current-generation text IDs on Hugging Face (same day search,
 The 16 GiB default above is Qwen2.5-7B because that is what the
 **installed** `mlx-lm` 0.31.3 is known to serve.
 
+### What is actually SOTA in September 2026 (and what loads here)
+
+The table above lists IDs **verified to load** on the installed
+`mlx-lm` 0.31.3. It is a compatibility list, not a freshness list.
+As of 2026-09-18 the open-weight leaders in these size tiers are
+Qwen3.6-27B, Gemma 4 31B, and the 8B/14B Ministral 3 / Qwen3 dense
+models. MLX quants exist for the two big ones —
+`mlx-community/Qwen3.6-27B-mxfp4` (arch `qwen3_5`) and
+`mlx-community/gemma-4-31b-it-4bit` (arch `gemma4`) — but both need a
+newer `mlx-lm` than 0.31.3 (that pin lacks the `qwen3_5`/`gemma4`
+model code). Neither has been run on this stack; treat them as
+experimental until verified.
+
+**Ternary Bonsai 2 27B** (PrismML, Apache-2.0): there is **no Q4 of
+it, and a Q4 would defeat the point** — Bonsai 2 *is* the quant, a
+ternary {-1, 0, +1} packing of Qwen3.8-27B at a true ~1.72 bits per
+weight (5.9 GB language model) reporting 98.2% of the FP16 benchmark
+average. The published packings are:
+
+- `prism-ml/Ternary-Bonsai-2-27B-mlx-2bit` — MLX 2-bit container,
+  8.60 GB including the FP16 vision tower. It declares
+  `model_type: prism_hadamard_qwen35` and **requires the loader
+  bundled in the repo's `runtime/`** (Hadamard activation transform +
+  inverse embedding lookup; ordinary MLX loaders produce wrong output
+  silently rather than erroring), plus `mlx_vlm`. Full-speed ternary
+  kernels live in PrismML's MLX fork.
+- `prism-ml/Ternary-Bonsai-2-27B-gguf` — PTQ1_0 (5.95 GB) / PQ2_0
+  (7.21 GB), **requires the PrismML llama.cpp fork**; stock llama.cpp
+  rejects or garbles them.
+
+None of these load paths exist in this stack's pinned runtime, and
+the model is untested on MLX-over-Vulkan. If 27B-class on a 16 GiB
+machine is the goal, Bonsai 2 is the interesting artifact — as an
+upstream-mlx-lm upgrade + loader-port task, not a drop-in.
+
 First download goes to `~/.cache/huggingface`.
 
 ## 3. Start the server
