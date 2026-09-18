@@ -347,3 +347,56 @@ references through Vulkan compute"`):
   (~/src/mlx-omarchy-rtmod2 overlay, stash + /tmp/rtmod2-local-edsave.diff
   hold the pre-existing instrumentation); this branch's copies are the
   authoritative ones committed here.
+
+## 14. F1 root-cause round 5 (2026-09-18, F1ForeignWaiter lane): real root
+cause found and fixed - nested blocking eval in host-read gates; proofs green
+
+- FOREIGN-WAITER FIX LANDED (8e6b299f): wait_for_timeline_progress now
+  refuse-and-continues when the waited target exceeds last_reserved()
+  (owner has not submitted yet) - STALL-FOREIGN trace - and
+  recover_stalled_submissions returns a three-state RecoveryResult
+  (kRecovered / kNotRecoverable / kExhausted): empty-batch refusal keeps
+  the wait alive instead of throwing; only budget exhaustion throws.
+- THE PROOFS EXPOSED THE REAL ROOT CAUSE. With the false-kill gone, the
+  eager sin probe hung instead of erroring, and gdb on the parked process
+  showed the main thread inside Event::wait UNDER magnitude.eval() inside
+  Sin::eval_gpu. On the bumped 0.32.3-main framework, a nested eval()'s
+  epilogue skips the signal+finalize at eval_nest_depth > 1 (settle
+  semantics, added for the rope-pair pre-settle), so the gate's nested
+  synchronizer wait could never be satisfied: every eager sin/cos gate
+  parked until the watchdog fired. The "environmental submission
+  swallow" burst signature was this deadlock + watchdog throw, not a
+  driver bug. Rung 1/2 of the recovery ladder remain correct for the
+  deterministic TEST_DROP_SUBMIT swallow class (proofs below).
+- GATE FIX (8029946a): the four host-read gates (trig gate magnitude,
+  rope offset bound, rope freqs bound, rope fallback handoff) now use
+  settle() - record into the open batch - and rely on their existing
+  synchronize() to submit and order the mapped read. No nested wait, no
+  deadlock.
+- DRAIN FIX (6d3893b3): the recovery ladder reserved fresh completion
+  values without enqueueing a completion for them, so drained_value_
+  could never catch up past the original completion and the next join
+  timed out ("dispatcher drain did not catch up ... after the timeline
+  counter reached 2"). Both rungs now enqueue an empty-payload
+  completion for each fresh value; the original completion still owns
+  handlers/temporaries.
+- PROOFS (build18 = 0.32.3.dev202609181845+6d3893b3, /tmp/venv-proof,
+  idle jw16, MLX_OMARCHY_HANG_NO_PROGRESS_NS=2s, /tmp/f1-round5.log):
+  - S0 sanity (no sim env): SIN-OK rc=0.
+  - S1 TEST_DROP_SUBMIT=1 (never-began swallow): TEST-DROP cv=1 ->
+    SUBMIT-RECOVER round 1 fresh signals -> SIN-OK rc=0 (rung 1
+    end-to-end, values correct).
+  - S2 TEST_DROP_SUBMIT=1,2 (consecutive swallows): TEST-DROP cv=1 ->
+    recover; TEST-DROP cv=3 -> recover; TWOOP-OK rc=0.
+  - S3 TEST_DROP_SIGNAL=1 (all signals stripped): Mesa treats the
+    signal-less batch as never-began too (started event never sets), so
+    rung 1 recovered it; SIN-OK rc=0. Rung 2 (host-signal) stays a
+    field-only defensive path: a batch Mesa actually executes always
+    publishes its completion, so started-SET + completion-lost is not
+    deterministically simulatable at submit time on this driver.
+- OPERATIONAL NOTES: a leaked pre-fix probe (PID 256748) held the GPU
+  device across several runs and was killed; venv-trace was overwritten
+  with build14+ by an earlier misdirected pip (cloned venv shebang still
+  pointed at venv-trace) - /tmp/venv-proof is the proof venv (build18);
+  llm-inference was stopped/restarted around each run and confirmed
+  healthy (HTTP 200) after the last one.
