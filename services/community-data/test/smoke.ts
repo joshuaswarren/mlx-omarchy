@@ -194,6 +194,23 @@ scenario("full multi-chunk submission publishes and serves", async () => {
   return `receipt ${init.body.receipt_url}`;
 });
 
+scenario("e2e kind initiates and publishes (regression: kind CHECK dropped the row)", async () => {
+  const archive = makeArchive(1, 2);
+  const e2ePayload = { ...payload(), kind: "omarchy-mac-e2e", test_id: "smoke", install_path: "encrypted", asahi_image: "Minimal BTRFS", encryption: true, boot_separate: true, overall: "PASS" };
+  const init = await initiate(archive, { kind: "omarchy-mac-e2e", payload: e2ePayload });
+  expect(init.res.status === 200, `initiate ${init.res.status}: ${JSON.stringify(init.body)}`);
+  expect(init.body.status === "awaiting_chunks", JSON.stringify(init.body));
+  const up = await uploadChunk(init.sha, 0, archive);
+  expect(up.res.status === 200, `chunk ${up.res.status}`);
+  const fin = await complete(init.sha);
+  expect(fin.res.status === 200 && fin.body.status === "stored", JSON.stringify(fin.body));
+  const record = await fetch(`${BASE}/v1/results/${init.sha}`);
+  expect(record.status === 200, `record ${record.status}`);
+  const doc = await record.json();
+  expect(doc.summary.kind === "omarchy-mac-e2e", "kind not stored");
+  return `receipt ${init.body.receipt_url}`;
+});
+
 scenario("resumed upload sends only missing chunks", async () => {
   const archive = makeArchive(3, 1);
   const first = await initiate(archive);
