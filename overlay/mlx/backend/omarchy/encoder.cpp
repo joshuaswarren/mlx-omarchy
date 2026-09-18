@@ -401,6 +401,13 @@ void CommandEncoder::dispatch_compute_pipeline(
     uint32_t group_count_x,
     uint32_t group_count_y,
     uint32_t group_count_z) {
+  if (std::getenv("MLX_OMARCHY_TRACE_DISPATCH") != nullptr) {
+    fprintf(stderr,
+            "[rtmod] DISPATCH kernel=%d count=%u gx=%u gy=%u gz=%u\n",
+            static_cast<int>(profile_kernel), params.count, group_count_x,
+            group_count_y, group_count_z);
+    fflush(stderr);
+  }
   auto& compute = device_.compute();
   uint32_t binding_limit = compute.binding_limit();
   if (bindings.empty() || bindings.size() > binding_limit) {
@@ -578,6 +585,7 @@ void CommandEncoder::commit() {
   if (!recording_ && wait_semaphores_.empty() && signal_semaphores_.empty() &&
       completed_handlers_.empty()) {
     trace::counters().commit_calls_noop++;
+    fprintf(stderr, "[rtmod] COMMIT-NOOP\n");
     return;
   }
   trace::counters().commit_calls_with_work++;
@@ -755,6 +763,10 @@ void CommandEncoder::submit() {
       slots_[current_slot_].in_flight = completion_value;
     }
     trace::counters().vk_submissions++;
+    fprintf(stderr, "[rtmod] SUBMIT cv=%lu waits=%lu sigs=%lu cmds=%u\n",
+            (unsigned long)completion_value, (unsigned long)wait_sems.size(),
+            (unsigned long)signal_values.size(),
+            (unsigned)si.commandBufferCount);
   }
 
   recording_ = false;
