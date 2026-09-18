@@ -681,9 +681,10 @@ class Statement:
         self.const_kwargs: dict | None = None
 
 
-# The three island bundles the encoder handlers submit to. The resident
-# session loads every one of them once, up front, exactly like the launch
-# path loads its bundle per submit.
+# Island bundles the encoder handlers may submit to. The resident session
+# preloads exactly the registered sites: the static defaults below, extended
+# at index time with every bundle the placed set can submit (the oproj
+# family registers island-oproj-L* per layer).
 RESIDENT_BUNDLES = (
     "island-attn-a-kt",
     "island-select-8head",
@@ -745,6 +746,7 @@ class AneIsland:
         self._batch_deadline_ms = int(
             os.environ.get("ANE_ISLAND_BATCH_DEADLINE_MS", "120000")
         )
+        self.resident_bundles = set(RESIDENT_BUNDLES)
         self._session = None
 
     def close(self) -> None:
@@ -770,7 +772,10 @@ class AneIsland:
         session = ResidentAneWorker(
             worker=Path(self.worker),
             libane=Path(self.libane),
-            bundles={name: Path(self.bundles) / name for name in RESIDENT_BUNDLES},
+            bundles={
+                name: Path(self.bundles) / name
+                for name in sorted(self.resident_bundles)
+            },
             scratch=Path(self.scratch),
             deadline_ms=self.deadline_ms,
         )
@@ -1056,6 +1061,10 @@ class EncoderRunner:
                 continue
             oproj[stmt.index] = (layer, stmt)
         self.island_oproj = oproj
+        if self.island is not None and "O" in self.placed:
+            self.island.resident_bundles.update(
+                f"island-oproj-L{layer:02d}" for layer, _ in oproj.values()
+            )
 
     def _index_fusions(self) -> None:
         """Find the conv-module GLU: sigmoid(split_1) consumed by exactly one
