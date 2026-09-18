@@ -289,9 +289,23 @@ class Device {
   // batch through |target_value| - legal because the single queue is
   // in-order, so no later completion can have signaled while an earlier
   // one is still stalled, and the started event proves the batch never
-  // began executing. Returns false (leaving the wait to throw) when the
-  // batches show execution evidence or the attempt budget is spent.
-  bool recover_stalled_submissions(uint64_t target_value, uint32_t round);
+  // began executing.
+  enum class RecoveryResult : int {
+    // Ladder ran (rung 1 resubmit or rung 2 host-signal); the wait
+    // should restart its no-progress clock and keep waiting.
+    kRecovered = 1,
+    // Nothing to recover right now: no retained batch exists at or
+    // below last_reserved (another waiter's recovery already took the
+    // batches, or the producing stream has not submitted yet). The wait
+    // must NOT throw - it should keep waiting for the owner's recovery
+    // or the wall deadline.
+    kNotRecoverable = 0,
+    // Attempt budget spent: a genuinely wedged device. The wait throws.
+    kExhausted = -1,
+  };
+  RecoveryResult recover_stalled_submissions(
+      uint64_t target_value,
+      uint32_t round);
 
   void join_completed_handlers();
 
