@@ -14,6 +14,11 @@ https://github.com/user-attachments/assets/7b2326f0-4679-4784-9622-e403b99be853
 
 One-command install on an M1 running Omarchy, the first model download, the streamed answer with its measured tokens per second, and the launcher entry; 2:47, unedited, no narration. Also at [joshuaswarren.github.io/mlx-omarchy](https://joshuaswarren.github.io/mlx-omarchy/).
 
+## Serve a local model
+
+OpenAI-compatible server for Codex, omp, pi, Hermes, OpenClaw, and Claude Code:
+[docs/serve.md](docs/serve.md). RAM-tier model IDs and exact commands are there.
+
 ## Hardware
 
 Apple M1 is verified on [Omarchy](https://github.com/omarchy-mac/omarchy-mac) with Mesa Honeykrisp. Apple M1 Max GPU is measured; T6001 `/dev/accel/accel0` is live. Later SoCs follow.
