@@ -400,3 +400,13 @@ cause found and fixed - nested blocking eval in host-read gates; proofs green
   pointed at venv-trace) - /tmp/venv-proof is the proof venv (build18);
   llm-inference was stopped/restarted around each run and confirmed
   healthy (HTTP 200) after the last one.
+
+- STORM ARM (in flight at yield, /tmp/f1-round6-storm.log): primitive
+  suite completed 2,700,949 assertions with exactly 1 failure and NO
+  watchdog/timeline kill: the cholesky error-string check
+  (test_primitives.cpp:1225, 'float64' substring) - an error-copy
+  assertion, not F1 class; remaining 11 suites still running under the
+  8-hog storm at yield time. Lane handoff: triage that string vs the
+  0.32.3 dtype-name change, then finish the storm arm and continue the
+  chain (Bonsai-2 stock + abliterated tok/s, land to main vs 63c1d3cf,
+  4 certified E2E arms, oMLX A/B).
