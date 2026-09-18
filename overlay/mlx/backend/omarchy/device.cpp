@@ -1181,6 +1181,14 @@ void wait_for_timeline_progress(
   uint64_t last_observed = 0;
   auto last_advance = start;
   uint32_t recovery_round = 0;
+  // Refused recoveries (empty retained-batch set) are bounded by the same
+  // budget as resubmission rounds: a stall whose target is already
+  // reserved but whose signalling batch does not exist will never be
+  // satisfied, and waiting for "the owner" only defers the typed error
+  // to the wall deadline (minutes) with the wrong message. Real
+  // foreign/stale waiters never get here - their target exceeds
+  // last_reserved and the branch above refuses them without counting.
+  uint32_t refused_rounds = 0;
   bool foreign_traced = false;
 
   VkSemaphoreWaitInfo info{VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO};
@@ -1276,11 +1284,16 @@ void wait_for_timeline_progress(
             last_advance = clock::now();
             continue;
           case Device::RecoveryResult::kNotRecoverable:
-            // Someone else owns the recovery (or owns the submission
-            // that has not happened yet). Throwing here killed healthy
-            // processes ahead of the real recovery (build13 decision
-            // trace); wait for the owner instead. The wall deadline
-            // below still bounds a producer that never delivers.
+            // Someone else may own the recovery (or own the submission
+            // that has not happened yet). Throwing on the FIRST refusal
+            // killed healthy processes ahead of the real recovery
+            // (build13 decision trace), so refuse once per round - but
+            // only for a bounded number of rounds. An unbounded wait is
+            // wrong for a stall the retained set can never satisfy: the
+            // bounded typed watchdog error is the contract.
+            if (++refused_rounds >= 2) {
+              break;
+            }
             last_advance = clock::now();
             continue;
           case Device::RecoveryResult::kExhausted:
