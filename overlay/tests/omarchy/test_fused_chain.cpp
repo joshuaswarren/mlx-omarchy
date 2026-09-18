@@ -264,6 +264,33 @@ TEST_CASE("chain with row-broadcast leaf (div-last) matches eager") {
       0.0);
 }
 
+TEST_CASE("strided (B,1,L) broadcast leaf refuses fusion and matches eager") {
+  // F7 regression: a leaf shaped (B, 1, L) has data_size == count / last_dim
+  // and used to select DivLast from the size alone. DivLast addressing reads
+  // leaf_flat[index / last_dim], which indexes the leaf by the OUTPUT's
+  // second-to-last axis instead of the leaf's last axis - every product in
+  // the GDN state update (state * k[..., None, :]) misindexed, the state
+  // grew ~100x per step, and Bonsai-2-27B logits went NaN from step 4.
+  // The matcher must refuse the leaf and run per-node; compiled and eager
+  // must agree exactly.
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  enable_fusion();
+  check_compiled_matches_eager(
+      [](const std::vector<array>& in) {
+        array s = in[0];
+        array k = expand_dims(in[1], -2);
+        return std::vector<array>{sum(s * k, -1, true)};
+      },
+      std::vector<array>{random::normal(Shape{1, 48, 128, 128}, float32),
+                         random::normal(Shape{1, 48, 1, 128}, float32)},
+      float32,
+      stream,
+      0.0);
+}
+
 TEST_CASE("chain with scalar leaf matches eager") {
   if (!compute_available()) {
     return;
