@@ -115,6 +115,21 @@ def _decode(body):
         return {}
 
 
+def _error_text(decoded):
+    """One-line error; names the offending field when the server does
+    (422 schema_invalid carries detail.errors — 2026-09-18: a contributor
+    could not see which field was rejected because this was swallowed)."""
+    parts = [str(decoded.get("error") or "unknown error")]
+    detail = decoded.get("detail")
+    if isinstance(detail, dict):
+        errors = detail.get("errors")
+        if isinstance(errors, list) and errors:
+            parts.append("; ".join(str(e) for e in errors[:5]))
+        elif detail:
+            parts.append(str(detail))
+    return ": ".join(parts)
+
+
 def _headers(token, extra=None):
     headers = {
         "User-Agent": USER_AGENT,
@@ -189,7 +204,7 @@ def submit(endpoint, data, payload, timeout=DEFAULT_TIMEOUT, urlopen=None,
 
     if status != 200:
         raise SubmitError(
-            f"initiate failed with HTTP {status}: {decoded.get('error')}")
+            f"initiate failed with HTTP {status}: {_error_text(decoded)}")
 
     if decoded.get("status") == "duplicate":
         return _receipt(decoded, deduplicated=True, status=status)
@@ -295,7 +310,7 @@ def submit_payload(endpoint, payload, timeout=DEFAULT_TIMEOUT, urlopen=None,
 
     if status != 200:
         raise SubmitError(
-            f"submit failed with HTTP {status}: {decoded.get('error')}")
+            f"submit failed with HTTP {status}: {_error_text(decoded)}")
     return _receipt(decoded,
                     deduplicated=decoded.get("status") == "duplicate",
                     status=status)
