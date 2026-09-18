@@ -576,6 +576,11 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {select_bool, select_bool_size};
     case ComputeKernel::SelectComplex64:
       return {select_complex64, select_complex64_size};
+    case ComputeKernel::SelectI64:
+      // int64/uint64 select rides the same two-raw-words u2 variant as
+      // complex64: a select copies bits per element and both dtypes are
+      // exactly two 32-bit words, so no separate SPIR-V is needed.
+      return {select_complex64, select_complex64_size};
     case ComputeKernel::CompareF32:
       return {compare_f32, compare_f32_size};
     case ComputeKernel::CompareF16:

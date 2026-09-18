@@ -112,7 +112,20 @@ The certified encoder pipeline is intact on the 0.32.3 vintage.
 
 ## 8. Round 3 results
 
-- **Bonsai-2-27B (headline)**: canonical loader works on the candidate wheel —
+- HEADLINE UPDATE (rounds 4/4b, `0.32.3.dev202609181349+71d73a41` with
+  Select-I64): the Select-int64 implementation WORKS — the GDN path advanced
+  past the previous failure point through hadamard/quantized ops and the
+  chunked-state machinery, and now stops at the F1 timeline watchdog INSIDE
+  `gated_delta_chunked`'s first `mx.async_eval(Y, S)` submission
+  ("last observed=0, target=1"). tok/s is still not obtainable; the headline
+  blocker is now singular and tightly scoped: the first multi-output
+  async_eval submission of the GDN composite never signals the timeline.
+  Repro lead for the fix lane: `mx.async_eval` with two outputs sharing a
+  dependency, first submission on a fresh stream.
+
+## 8a. Round 3 results (original)
+
+- **Bonsai-2-27B (round 3, pre-Select-I64)**: canonical loader works on the candidate wheel —
   `vision_artifact.load_vl_model` loaded the pack in 10 s (manifest-verified
   loader, 27B ternary + vision tower resident). Generation then stopped at the
   FIRST GDN layer with the exact op error Joshua asked to capture:
@@ -126,6 +139,12 @@ The certified encoder pipeline is intact on the 0.32.3 vintage.
   Select already has a dtype-agnostic two-word (uvec2) compiled variant, so
   Select-I64 is a small follow-up kernel-mapping task, not new machinery.
   Becomes backend work item F6.
+- **Round-4 section C**: Qwen3.6 on the Select-I64 wheel still fails at F4
+  Take-uint8, unchanged (Select fix does not touch the Gather path). Gemma4
+  E4B device window (peer lane): F3 shim makes the 126-param load PASS; gen
+  stays blocked by F2/F1. Gather/Take byte tables have no 8-bit storage on
+  Honeykrisp (capabilities expose 16-bit only), so F4 needs a word-packing
+  gather variant — dedicated item, not a dispatch mapping.
 - **E2B** (`lmstudio-community/gemma-4-E2B-it-MLX-4bit`): NOT-LOADED — same
   upstream KV-shared-layer loader bug as E4B ("Received 140 parameters not in
   model: layers.15.self_attn.k_norm..."), so no 8 GB-tier gemma4 pick exists

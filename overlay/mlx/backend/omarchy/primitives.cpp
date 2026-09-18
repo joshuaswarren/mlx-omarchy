@@ -9394,7 +9394,9 @@ void SearchSorted::eval_gpu(const std::vector<array>& inputs, array& out) {
 
 // Select serves tril/triu (the where() pair behind composed lu), the
 // sampler chain's scalar selects, and the composed causal mask. Value
-// dtypes are float32, float16, bfloat16, int32, uint32, and bool, and
+// dtypes are float32, float16, bfloat16, int32, uint32, bool, complex64,
+// int64, and uint64 (the last three ride two-raw-words or word-identity
+// variants), and
 // every operand layout routes through one of two transports in
 // select.comp. The flat transport keeps the modulo fast path for dense
 // operands. The general transport unravels the output coordinate over
@@ -9439,6 +9441,13 @@ void Select::eval_gpu(const std::vector<array>& inputs, array& out) {
       // count math is unchanged because the per-thread lane loop
       // already counts condition elements, not value words.
       kernel = omarchy::ComputeKernel::SelectComplex64;
+      break;
+    case int64:
+    case uint64:
+      // Same two-raw-words bit-copy variant as complex64; a select
+      // does not interpret the payload, and int64 elements are exactly
+      // a uvec2. Serves the gated-delta chunked path (qwen3_5 GDN).
+      kernel = omarchy::ComputeKernel::SelectI64;
       break;
     default:
       omarchy::unsupported("Select dtype", out);
