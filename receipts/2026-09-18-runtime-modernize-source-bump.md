@@ -418,3 +418,65 @@ cause found and fixed - nested blocking eval in host-read gates; proofs green
   observed=8) after two successful rounds - the designed backstop, not
   a kill-less hang. Triage item: rerun that suite at default 10 s
   timing to separate storm-load slowness from a real defect.
+
+## 14. Storm final + triage (rounds 7/8, jw16)
+- STORM TALLY (12 suites under 8-hog storm): primitive rc=1 (the cholesky
+  string), runtime rc=1, copy_offset / matmul_family / take_fill /
+  select_layout / fast_ops / fast_regression / error_contract / compiled_tape /
+  wrong_value_sweep all rc=0, capability_sim rc=2 = the designed usage exit
+  after its PASSING unit leg (GPU legs take a profile arg - not a failure).
+  SUBMIT-RECOVER fired 7x under load incl. round-2 firings and multi-batch
+  takes; STALL-FOREIGN 0. No watchdog kills.
+- CORRECTION to the mid-run receipt: the runtime storm failure was NOT
+  reused_slot (its named post-budget throw at 200 ms is the DESIGNED pass
+  path; it passed). The two real runtime failures, identical in the storm and
+  at default timing: (a) unrelated_work_event_wait - a stall with an EMPTY
+  retained-batch set reset the no-progress clock forever (kNotRecoverable
+  livelock) until the wall deadline fired the WRONG error; (b) bounded_submit
+  - typed error correctly thrown after the 2-round budget (~30 s) but the
+  child pre-ladder 30 s elapsed bound + destructor re-wait hang turned it into
+  a parent timeout.
+- FIXES (b744f4dd): 0.32.3 moved cholesky/svd/inv onto the new
+  check_cpu_or_cuda_stream which mlx-linalg-gpu.patch did not stub - the patch
+  now stubs both, restoring the named float64 gate (probe:
+  cholesky(float64, gpu) -> "float64 is not supported on the GPU");
+  recovery refusals bounded by the same 2-round budget (foreign/stale waiters
+  keep their separate unbounded refuse-and-return path); bounded_submit bounds
+  updated to the ladder budget (child 60 s, parent 90 s).
+- ROUND 8 GREEN: runtime 41/41 (22694 asserts), primitive 103/103 (2700949
+  asserts), capability_sim m1-honeykrisp-fork 6/6. llm-inference
+  stop/restart+CONFIRMED per session (note: restart must happen AFTER flock
+  release - the service ExecStart takes /tmp/m1-gpu.lock flock -n).
+## 15. Bonsai-2-27B tok/s (rounds 9/12/13/14) - RUNS, but output corrupt (new item F7)
+- Wheel 0.32.3.dev202609181953+b744f4dd, canonical loader (vision_artifact,
+  manifest-verified), stock pack snapshot 3f926b41 exact. F1 never fired
+  during generation (zero SUBMIT-RECOVER across 3 arms, thousands of submits).
+- tok/s (throughput only): stock warm 48 tok / 19.6 s = 2.45 tok/s; cold 24
+  tok / 27.2 s wall (4 s load). Abliterated 48 tok / 12.7 s = 3.78 tok/s.
+- NOT a usable headline: output text is garbage at temp 0 AND temp 1, on
+  mlx_vlm 0.6.3 AND 0.7.1. Round-14 stepwise isolate: finite plausible logits
+  for steps 0-3, NaN from step 4, then tail-vocab indices (temp-1 sampling
+  then raises tokenmap IndexError - id >= 248320). Repro:
+  /tmp/round14_probe.py + /tmp/f1-round14.log. Scope: value corruption
+  accumulating across GDN chunked-state steps on the Vulkan backend
+  (F7). Select-I64 kernel value check MATCHES GPU-vs-reference (round 11);
+  Qwen2.5-0.5B generation coherent (backend + mlx_lm stack sane). The pack
+  has never produced verified text on any prior wheel either (F1 masked this
+  path before) - correctness work is the next lane before tok/s means anything.
+## 16. Abliterated pack (rariruluis/ternary-bonsai-2-27b-mlx-runtime-abliterated)
+- LOADER CONTRACT VERIFIED vs canonical: base_revision 3f926b41... equals the
+  local snapshot exactly; adapter.json alpha=1.5, 128 linear writers + embed
+  (129 sites, all present in the pack incl. full-attn o_proj every 4th layer
+  matching layer_types); refusal_dir f32 unit-norm 5120 matches hidden_size;
+  all 128 lora_b EXACTLY colinear with the direction (cos = 1.0); packed
+  weight shapes consistent (6144/17408 logical dims). The edit is an OUTPUT
+  projection y -= 1.5*(y.d)d in float32 on the 129 writers - no weight merge,
+  ternary weights untouched (variant: /tmp/Bonsai-demo/scripts/
+  mlx_generate_bonsai2_ablit.py).
+- Same-generation arm rc=0, 3.78 tok/s; sanity line: output remains corrupt
+  exactly like stock (F7 dominates; ablation delta unmeasurable until F7).
+## 17. Lane state
+- rtmod/source-bump tip b744f4dd = fixes + receipts; suites green; ancestry
+  vs 63c1d3cf re-checked at land time. Landed to main + E2E arms (x4, main
+  bytes) + oMLX A/B table remain; F7 is the new standing blocker for any
+  Bonsai-2 tok/s headline.
