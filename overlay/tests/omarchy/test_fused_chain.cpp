@@ -716,7 +716,7 @@ TEST_CASE("bf16 compiled tape fuses and matches eager exactly") {
   enable_fusion();
   set_compile_mode(CompileMode::enabled);
   // The model fragment: mlx_lm compiles swiglu with shapeless=True.
-  // bf16 chains are fenced from fusion (FusedChain::can_start; the
+  // bf16 chains are fenced from tape fusion (compiled.cpp; the
   // fused bf16 chain corrupts in-model, see docs/known-defects.md), so
   // the fragment falls back to per-node eval_gpu dispatch and must
   // still match eager bit for bit. Compiled calls are lazy: values are
