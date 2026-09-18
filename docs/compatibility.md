@@ -23,42 +23,30 @@ Vulkan, ANE, and install gates are not qualified on those systems.
 
 ## MLX core
 
-### Compiled tape bfloat16
+### Compiled tape bfloat16 - fixed and re-enabled
 
-Compiled bfloat16 tapes are refused with the named
-`[omarchy] Compiled tape bfloat16` error.
-The M1 mlx-lm greedy run of `Qwen2.5-0.5B-Instruct-bf16` returned garbage
-tokens through the compiled `swiglu` fragment at commit `fbdd5ed` (2026-09-01)
-and again at dev HEAD `5f8ba16` with the gate lifted (2026-09-02, receipt
-`receipts/2026-09-02-m1-bf16-compiled-tape.md`).
-The 4-bit run through f16 tapes was correct at the 2026-09-02 bisect;
-the 2026-09-03 ff4b05a measurement below supersedes that claim.
-The 2026-09-02 on-device bisect pinned the failing surface tighter:
-15 of 15 identical-seed mlx-lm runs returned garbage, no two outputs
-alike, at `nproc=1`; a differential trace matched all 24 layer outputs
-and 4.5M logits bit-for-bit at prefill; the token sequence diverges at
-decode step 2; and the fragment is clean in isolation - silu*mul 30/30,
-per-op probes 30/30, a single-layer MLP with real bf16 Linears 5/5,
-and tape-reuse matrices (same arrays, fresh arrays, interleaved eager
-work, interleaved compiled functions) 120/120 all match eager exactly.
-`MLX_DISABLE_COMPILE=1` returns the correct text.
-The 4-bit run through f16 tapes is correct.
-The defect therefore requires the real model path: the cached tape
-invoked across layers and decode steps with the KV cache present.
-Reuse alone and every single-invocation fragment are clean, so the
-mechanism is not kernel arithmetic and not tape caching by itself.
-The remaining candidates are a state interaction unique to the full
-model path and a Honeykrisp-specific hazard that llvmpipe
-serialization hides; the no-cache decode fork is blocked by the
-separate eager broadcast-Sigmoid bf16 gate.
-The gate keeps the silent wrong-result path closed until the
-mechanism is pinned.
-Re-run bf16 workloads with `MLX_DISABLE_COMPILE=1`.
-Every 2026-09-02 observation was made at `nproc=1` after a bootloader
-mismatch left seven of eight cores offline; a single-core green run
-does not exercise the concurrency a memory hazard needs, so the gate
-lifts only on repeated green mlx-lm bf16 runs on fully populated
-hardware.
+Compiled bfloat16 tapes run by default. The 2026-09-02 refusal fenced the
+wrong defect: the M1 mlx-lm garbage it was installed against
+(`fbdd5ed`, `5f8ba16`; `receipts/2026-09-02-m1-bf16-compiled-tape.md`)
+carried every signature of the stale-shape corruption root-caused the
+next day - prefill bit-identical through all 24 layers, divergence at
+decode step 2, unique garbage per run from recycled allocator pages,
+llvmpipe clean, every fixed-shape probe clean, and the "broadcast
+Sigmoid bf16" crash that was that defect's stale-shape fence. The dtype
+was never at fault; the gate simply was never retested after `13d83f7`.
+The lift was verified on T6001: the original corruption model
+(`Qwen2.5-0.5B-Instruct-bf16`) generates coherently with compile on,
+digest-stable across runs and identical to the eager generated-id
+digest, and the upstream `test_compile.py` bf16 refusals are gone.
+
+bf16 compiled-tape nodes dispatch per node through the same bf16
+`eval_gpu` kernels the eager path uses, which makes them bit-exact
+against eager by construction; the C++ compiled-tape battery pins this
+with raw-uint16 comparisons, including a bf16 shapeless
+trace-then-reuse case (the exact mlx-lm trigger).
+
+Fused bf16 chains remain fenced - see the fused-chain defect entry in
+[known-defects.md](known-defects.md).
 
 ### Compiled tapes on Apple GPUs - fixed and re-enabled
 
@@ -70,8 +58,10 @@ time (commit `13d83f7`), pinned by a shapeless-reuse regression case,
 with a recycled-storage detector (`MLX_OMARCHY_POISON_FREED`). The
 fail-closed device gate, the discovery-time `disable_compile()` hook,
 and the `MLX_OMARCHY_ALLOW_UNSAFE_COMPILE` override were retired with
-the fix. The bf16 tape gate above and the trigonometric domain gate are
-unchanged. Full record:
+the fix. bf16 tapes run per-node (the 2026-09-02 bf16 gate above was
+the same stale-shape defect, lifted 2026-09-18), fused bf16 chains are
+fenced separately, and the trigonometric domain gate is unchanged.
+Full record:
 [known-defects.md](known-defects.md) and
 `receipts/2026-09-03-stale-shape-tape-corruption.md`. Compiled-versus-
 eager speed is not measured yet (TCF-2).
@@ -92,14 +82,12 @@ Wave 11 audited the four suspect hazard classes in the interpreter
    and the allocator frees a buffer only after the last reference drops,
    which is after completion releases the temporaries.
 
-The machinery is dtype-blind, so a defect in it cannot explain why f16
-tapes are correct while bf16 tapes corrupt. The 2026-09-02 M1 bisect
-(`receipts/2026-09-02-m1-bf16-compiled-tape.md`) moved the suspicion
-to what only the full model path exercises: the KV-cache interaction
-and any Honeykrisp hazard that needs real concurrency, since isolated
-fragments, single-layer chains, and tape reuse all match eager on the
-device. The gate stays until the mechanism is pinned on fully
-populated hardware.
+The machinery is dtype-blind, and that is the answer to the question
+this section's audit left open: the f16-versus-bf16 contrast was an
+artifact of comparing different test surfaces, not a dtype property.
+The bf16 model ran the same shapeless decode reuse that corrupted the
+4-bit model at `ff4b05a`, through the same stale-shape mechanism root
+caused the next day.
 
 Arrays and memory are runtime verified.
 The tests cover allocation, copies, views, aliases, and lifetime.
