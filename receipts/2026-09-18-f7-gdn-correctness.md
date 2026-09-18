@@ -62,13 +62,21 @@ Refuse fusion for leaves the two packed addressing modes cannot express:
 
 ## Fix verification (wheel d268daaf+fix, 8b2ac9380d775a3cb2d9e2ea9d3d8505d03d3b68a77310f5ad03dc921dcaeaa6)
 
-- T6021 (jw14m2, /tmp/f7-venv-cv, libmlx md5 e10898ba30c7): Bonsai-2-27B cache-bearing
-  greedy 8 steps finite=1.0 throughout; full generation 96 steps:
-  **`'The capital of France is **Paris**.<|im_end|>...'` — coherent, zero NaN,
-  1.87 tok/s** (venv-cv, custom mlx_vlm, stock-plausible trajectory).
-- jw16/T6001 leg + cross-run of Bf16CompiledTape's corrupt matrix
-  (`/tmp/bf16tape_gen.py`: Qwen3.5-9B, gemma-4-31b-it-4bit, Ministral-3-8B —
-  their bf16 fused-chain fence may be the same mechanism): see addendum.
+- **T6001 (jw16, /tmp/venv-f7fix, libmlx md5 e10898ba30c7)**: Bonsai-2-27B cache-bearing
+  greedy 8 steps finite=1.0 throughout — token trajectory identical to T6021's fixed run
+  (top5 760/6511/314/9338/369...; absmax 19.23827 vs 19.23826, fp16-noise level). The
+  pre-fix cross-silicon step-0 divergence is explained by chip-dependent fused-chain
+  misindexing and disappears with the fix. Full generation 96 steps:
+  **`'The capital of France is **Paris**.<|im_end|>'` — coherent, zero NaN,
+  1.45 tok/s** (raw greedy decode incl. post-EOS turn padding; pre-fix 2.45-3.8 tok/s
+  figures were NaN-terminated early stops, not comparable). Service
+  stop/restart+CONFIRM discipline held (llm-inference active, health=200).
+- **T6021 (jw14m2, /tmp/f7-venv-cv)**: Bonsai-2-27B greedy 96 steps:
+  **`'The capital of France is **Paris**.<|im_end|>'` — coherent, zero NaN,
+  1.87 tok/s**.
+- Cross-run of Bf16CompiledTape's corrupt matrix (Qwen3.5-9B, gemma-4-31b-it-4bit,
+  Ministral-3-8B) with fusion ON on the fixed wheel: queued with that lane — their
+  bf16 fence is expected to lift if digests hold (same mechanism family).
 - Wheel identity: sha256 8b2ac938... (d268daaf base + fix), pre-built to
   avoid colliding with the bf16 lane's in-tree build; /tmp/f7-build (jw16).
 
