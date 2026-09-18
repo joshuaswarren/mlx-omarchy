@@ -19,7 +19,7 @@ ANE_PROBE_CODE = r"""
 import json, plistlib, re, subprocess
 
 out = {"available": False, "instances": [], "ane_nodes": [],
-       "dart_nodes": [], "pmgr_nodes": [],
+       "dart_nodes": [], "pmgr_nodes": [], "interrupt_controllers": [],
        "coreml": {"available": False, "compute_units": None, "error": None},
        "powermetrics": {"available": False, "power_mw": None,
                         "error": None},
@@ -311,8 +311,22 @@ try:
                 # never surfaces it. null here is a platform miss, not a
                 # dropped value (marker added below).
                 entry["iommu_cells"] = None
+                # dart-options is a dart-internal ID (t6021: 0x25-class),
+                # NOT a stream map; recorded for completeness.
+                entry["dart_options"] = _text(node.get("dart-options"))
                 out["dart_nodes"].append(entry)
             else:
+                # Engine sub-window hunt: record IORegistry children
+                # (name + reg) when the registry exposes any. t6021
+                # mining showed macOS exposes NO ane0 engine sub-window;
+                # an empty/null capture is a platform fact.
+                kids = node.get("IORegistryEntryChildren")
+                if isinstance(kids, list):
+                    entry["children"] = [
+                        {"name": _text(ch.get("name")), "reg": _reg(ch)}
+                        for ch in kids[:16] if isinstance(ch, dict)]
+                    if len(kids) > 16:
+                        out["truncated"].append("ane_children:cap")
                 out["ane_nodes"].append(entry)
         elif name == "pmgr":
             # The IORegistry exposes the pmgr BLOCK base (reg first range
@@ -324,6 +338,20 @@ try:
                 "location": _text(node.get("IORegistryEntryLocation")),
                 "reg": _reg(node),
                 "reg_ranges": _reg_ranges(node),
+            })
+        elif name and name.startswith("aic"):
+            # Interrupt-controller table row: device IOInterruptSpecifiers
+            # decode against this phandle. IORegistry rarely surfaces
+            # #interrupt-cells; null is a platform miss, not a failure.
+            ph = node.get("AAPL,phandle")
+            if isinstance(ph, bytes) and len(ph) == 4:
+                ph = int.from_bytes(ph, "little")
+            cells = node.get("#interrupt-cells")
+            out["interrupt_controllers"].append({
+                "name": name,
+                "compatible": _compatible(node),
+                "phandle": ph,
+                "interrupt_cells": cells if isinstance(cells, int) else None,
             })
         children = node.get("IORegistryEntryChildren")
         if isinstance(children, list):
@@ -340,6 +368,7 @@ try:
     out["ane_nodes"] = out["ane_nodes"][:8]
     out["dart_nodes"] = out["dart_nodes"][:8]
     out["pmgr_nodes"] = out["pmgr_nodes"][:8]
+    out["interrupt_controllers"] = out["interrupt_controllers"][:8]
     if len(out["ane_nodes"]) == 8 or len(out["dart_nodes"]) == 8 \
             or len(out["pmgr_nodes"]) == 8:
         out["truncated"].append("devicetree:node_cap")

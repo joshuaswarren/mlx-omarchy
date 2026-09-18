@@ -429,6 +429,10 @@ def _cap_port_detail(port, redactor, max_bytes=64 * 1024):
         "set_base_candidate": _walk(src_devicetree.get("set_base_candidate"))
             if isinstance(src_devicetree.get("set_base_candidate"), dict)
             else None,
+        "adt": _walk(src_devicetree.get("adt"))
+            if isinstance(src_devicetree.get("adt"), dict) else None,
+        "adt_nodes": _walk(src_devicetree.get("adt_nodes"))
+            if isinstance(src_devicetree.get("adt_nodes"), dict) else None,
         "phandles": _bounded_dict(src_devicetree.get("phandles") or {},
                                   MAX_NODES, "phandles"),
         "boot": _walk(src_devicetree.get("boot"))
