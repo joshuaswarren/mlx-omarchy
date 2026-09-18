@@ -6944,7 +6944,7 @@ TEST_CASE("mx.compile evaluates a four-op elementwise chain") {
   set_compile_mode(CompileMode::enabled);
 }
 
-TEST_CASE("mx.compile pins the named bfloat16 tape gate") {
+TEST_CASE("mx.compile runs the bf16 tape bit-exact against eager") {
   if (!compute_available()) {
     return;
   }
@@ -6955,18 +6955,36 @@ TEST_CASE("mx.compile pins the named bfloat16 tape gate") {
   array y(yv.begin(), Shape{4}, bfloat16);
   using VectorFn = std::function<std::vector<array>(const std::vector<array>&)>;
 
-  // bf16 fragments corrupt nondeterministically on Honeykrisp, so the tape
-  // refuses the dtype by name instead of returning wrong values.
+  // The bf16 tape dispatches the same bf16 eval_gpu kernels eager uses
+  // (bf16 chains are fenced from tape fusion), so
+  // compiled output must equal eager's bf16 bits exactly.
   set_compile_mode(CompileMode::enabled);
   VectorFn fused_fun = [&](const std::vector<array>& inputs) {
     return std::vector<array>{
         multiply(add(inputs[0], inputs[1], stream), inputs[0], stream)};
   };
   auto fused = compile(fused_fun);
-  std::string fused_error = evaluation_error(fused({x, y})[0]);
-  CHECK(
-      fused_error.find("[omarchy] Compiled tape bfloat16") !=
-      std::string::npos);
+
+  set_compile_mode(CompileMode::disabled);
+  std::vector<array> eager_bf16 = fused_fun({x, y});
+  for (auto& out : eager_bf16) {
+    out.eval();
+  }
+  omarchy::get_command_encoder(stream).synchronize();
+
+  std::vector<array> compiled_bf16 = fused({x, y});
+  for (auto& out : compiled_bf16) {
+    out.eval();
+  }
+  omarchy::get_command_encoder(stream).synchronize();
+  set_compile_mode(CompileMode::disabled);
+  const uint16_t* eager_data = eager_bf16[0].data<uint16_t>();
+  const uint16_t* compiled_data = compiled_bf16[0].data<uint16_t>();
+  for (size_t index = 0; index < x.size(); ++index) {
+    INFO("bf16 bits mismatch at ", index, " eager=0x", std::hex,
+         eager_data[index], " compiled=0x", compiled_data[index], std::dec);
+    CHECK_EQ(eager_data[index], compiled_data[index]);
+  }
 
   // f16 and f32 tapes keep running.
   std::vector<float> expected(4);

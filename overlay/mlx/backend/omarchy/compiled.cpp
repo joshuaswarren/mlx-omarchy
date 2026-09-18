@@ -35,29 +35,6 @@ namespace {
       " evaluate this tape. No silent CPU fallback occurs.");
 }
 
-// bf16 compiled tapes corrupt nondeterministically on Honeykrisp: the M1
-// mlx-lm bf16 greedy run returns garbage through the compiled swiglu
-// fragment (2026-09-01 probe; inputs matched, garbage differed across
-// runs), while no_fuse is correct, f16/4-bit tapes are correct, and
-// llvmpipe matches eager exactly. No root cause in the interpreter is
-// pinned yet, so the failing configuration is refused by name instead of
-// silently returning wrong values. See docs/compatibility.md.
-bool tape_has_bfloat16(const std::vector<array>& arrays) {
-  for (const auto& a : arrays) {
-    if (a.dtype() == bfloat16) {
-      return true;
-    }
-  }
-  return false;
-}
-
-[[noreturn]] void unsupported_tape_bfloat16() {
-  throw std::runtime_error(
-      "[omarchy] Compiled tape bfloat16 is refused: bf16 fragments corrupt"
-      " nondeterministically on Honeykrisp. Re-run with MLX_DISABLE_COMPILE=1."
-      " No GPU kernel exists for it; no silent CPU fallback occurs.");
-}
-
 } // namespace
 
 void eval_compiled_tape(
@@ -67,10 +44,6 @@ void eval_compiled_tape(
     const std::vector<array>& inputs,
     std::vector<array>& outputs,
     const Stream& stream) {
-  if (tape_has_bfloat16(tape) || tape_has_bfloat16(tape_inputs) ||
-      tape_has_bfloat16(tape_outputs)) {
-    unsupported_tape_bfloat16();
-  }
   // Tape arrays refer to the tracing graph. Substitute the eval-time inputs
   // positionally and key every tape node to its computed temporary.
   std::unordered_map<std::uintptr_t, array> resolved;
@@ -297,10 +270,15 @@ void eval_compiled_tape(
   // float unary/binary tape nodes collapse into ONE dispatch when the
   // gate is on, and every EXTENSION must consume the open chain's tail
   // so interior members are never consumable from outside. A node the
-  // chain cannot carry closes it; the closed chain either fuses (one
+  // cannot carry closes it; the closed chain either fuses (one
   // dispatch) or falls back to the per-node path below, so refusal
-  // semantics are unchanged. bf16 tapes are refused above before any
-  // chain runs.
+  // semantics are unchanged. bf16 chains are fenced from TAPE fusion
+  // only (this interpreter; the eager SwiGLU planner keeps its bf16
+  // support): in-model mlx-lm corruption on Qwen3.5-9B / gemma-4-31B /
+  // Ministral-3-8B through fused bf16 chains, not recycled storage,
+  // not reproducible in isolated fragments - see docs/known-defects.md.
+  // bf16 tape nodes run through the same per-node eval_gpu dispatch
+  // eager uses, which is bit-exact end to end on every model tested.
   std::optional<FusedChain> chain;
   if (fusion_enabled) {
     chain.emplace(true);
@@ -379,7 +357,10 @@ void eval_compiled_tape(
 
       // Fast path: the node joins the open fused chain. A tape output
       // may only sit at the tail, so the chain closes right after one.
-      if (chain->try_add(
+      // bf16 nodes are fenced from tape fusion (see the comment above)
+      // and take the per-node fallback.
+      if (node.dtype() != bfloat16 &&
+          chain->try_add(
               node,
               node_inputs,
               must_materialize.find(node.id()) !=

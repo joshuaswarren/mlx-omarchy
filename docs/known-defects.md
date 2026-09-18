@@ -404,6 +404,35 @@ Evidence: [original full-token comparison](../receipts/2026-09-04-native-output-
 
 Open in the current release.
 
+### Fused bf16 compiled-tape chains return wrong values inside the full mlx-lm forward
+
+Observed 2026-09-18 on jw16 (M1 Max T6001, Honeykrisp), wheel
+`0.32.3.dev202609182143+cb8c0638` with the tape-level bf16 refusal
+lifted. With fusion enabled (the default) three models - `Qwen3.5-9B-MLX-4bit`,
+`gemma-4-31b-it-4bit`, `Ministral-3-8B-Instruct-2512-4bit` - generate
+deterministic wrong tokens (one unique garbage sequence per model, stable
+across reps; `Ministral` emits EOS immediately). The identical runs with
+`MLX_OMARCHY_FUSED_CHAIN=0` match the eager generated-id digest exactly,
+and the small models (`Qwen2.5-0.5B-Instruct-bf16`, `-4bit`,
+`Ternary-Bonsai-8B-mlx-2bit`) are bit-clean through the fused path.
+
+Eliminated: recycled storage (the `MLX_OMARCHY_POISON_FREED` poison
+detector armed through a full wrong-output run fires nothing); isolated
+fragments (pure-bf16 swiglu, cast-mixed f32/bf16 chains, shapeless
+trace-then-reuse across decode/prefill shapes, offset-view leaves, and
+3-D model shapes all match eager bit for bit, on device and in the C++
+battery); the eager SwiGLU/GEMV planners (`MLX_OMARCHY_FUSED_GEMV_SWIGLU=0`
+changes nothing). The corruption needs the full-model context around a
+fused bf16 chain; the mechanism is not pinned.
+
+Fence: `FusedChain::can_start` refuses bfloat16, so bf16 tape nodes fall
+back to per-node `eval_gpu` dispatch - the same kernels eager runs, which
+is bit-exact end to end on every model tested (compiled generated-id
+digests equal eager digests across the matrix). f16/f32 chains keep
+fusing. The lift bar is a clean full-model mlx-lm sweep on the corrupt
+matrix plus a pinned root cause; until then fusion stays a
+float32/float16 path.
+
 ### Historical BF16 RoPE scalar corruption and queue-drain workaround
 
 The September 4 experiment without the BF16 queue drain observed overwritten
@@ -491,7 +520,9 @@ Compilation runs by default again on every device class.
 the `MLX_OMARCHY_ALLOW_UNSAFE_COMPILE` override all existed to fence an
 unpinned defect; the fix pins it, so they are removed rather than left
 as switches that no longer switch anything. The protections that remain,
-unchanged: the bf16 tape gate (a separate, still-live bf16 defect), the
+unchanged: the bf16 tape gate (lifted 2026-09-18 - it was this same
+stale-shape defect, one day before the root cause reached the tree;
+fused bf16 chains are fenced separately, see Live in v0.3.5), the
 trigonometric accuracy gate (tape nodes dispatch through their own
 `eval_gpu`, which carries it), and the named-error contract for
 unsupported tape ops. Compiled-versus-eager speed is not measured yet
