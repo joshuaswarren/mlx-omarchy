@@ -1019,6 +1019,10 @@ Device::RecoveryResult Device::recover_stalled_submissions(
         (unsigned long)syscall(SYS_gettid),
         (unsigned long long)fresh,
         round + 1);
+    // Every reserved value needs a pending completion entry: join paths
+    // wait drained_value_ >= counter, and the fresh value's drain is what
+    // lets drained_value_ catch up past the original completion.
+    completions.enqueue(fresh, {}, {});
     return RecoveryResult::kRecovered;
   }
 
@@ -1087,6 +1091,11 @@ Device::RecoveryResult Device::recover_stalled_submissions(
     // The batch is pending again at its fresh value; retain it for a
     // further round.
     completions.retain_for_resubmit(fresh_completion, std::move(batch));
+    // Every reserved value needs a pending completion entry: join paths
+    // wait drained_value_ >= counter, and the fresh value's drain is what
+    // lets drained_value_ catch up past the original completion. Empty
+    // payload - the original completion still owns handlers/temporaries.
+    completions.enqueue(fresh_completion, {}, {});
   }
   fprintf(
       stderr,
