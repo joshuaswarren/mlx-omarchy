@@ -725,7 +725,12 @@ class AneIsland:
         self.timeouts = 0
         self.batch_open_ns = 0
         self.log: list[dict] = []
-        self._mode = os.environ.get("ANE_ISLAND_MODE", "launch")
+        # Default transport is the serve worker (spawn paid once): jw16
+        # measured resident-batch beating launch by ~730-830 ms with all
+        # pins EXACT - the per-submit spawn+init+bundle cost is not
+        # hideable behind GPU feeder compute (data-dependent serial chain,
+        # no independent GPU work during spawn windows).
+        self._mode = os.environ.get("ANE_ISLAND_MODE", "resident-batch")
         if self._mode not in ("launch", "resident-batch"):
             raise EncoderRunError(
                 f"ANE_ISLAND_MODE {self._mode!r} is not launch or resident-batch"
