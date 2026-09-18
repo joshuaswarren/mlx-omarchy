@@ -1,7 +1,8 @@
 diff --git a/mlx/linalg.cpp b/mlx/linalg.cpp
+index c4213c9..6dd4570 100644
 --- a/mlx/linalg.cpp
 +++ b/mlx/linalg.cpp
-@@ -11,12 +11,11 @@
+@@ -12,12 +12,11 @@
  namespace mlx::core::linalg {
  
  void check_cpu_stream(const StreamOrDevice& s, const std::string& prefix) {
@@ -17,5 +18,5 @@ diff --git a/mlx/linalg.cpp b/mlx/linalg.cpp
 +  (void)s;
 +  (void)prefix;
  }
- void check_float(Dtype dtype, const std::string& prefix) {
-   if (dtype != float32 && dtype != float64) {
+ 
+ // For ops that have a CUDA implementation but no Metal one yet.

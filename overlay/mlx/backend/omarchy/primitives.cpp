@@ -10266,6 +10266,20 @@ bool ScaledDotProductAttention::supports_bool_mask() {
   return false;
 }
 
+// Gated delta nets (upstream 0.32.3): no fused Vulkan kernel yet. The
+// fallback flag keeps every Qwen3.6-style GDN layer on the composite
+// primitive path, which runs entirely on implemented Vulkan ops.
+bool GatedDeltaUpdate::use_fallback(
+    const int Hk,
+    const int Dk,
+    const int Hv,
+    const int Dv,
+    const bool has_mask,
+    Stream s) {
+  return true;
+}
+OMARCHY_UNSUPPORTED_MULTI(GatedDeltaUpdate)
+
 
 namespace {
 
