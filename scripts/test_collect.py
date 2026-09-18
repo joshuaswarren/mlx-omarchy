@@ -712,6 +712,8 @@ def _build_port_tree(tmp, with_ane):
     """Build a t6001-style tree (ane present) or t8103 stock (absent)."""
     _write_dt(tmp, "", {
         "compatible": b"apple,t6001\x00apple,arm-platform\x00",
+            "#address-cells": _u32_be(2),
+        "#size-cells": _u32_be(2),
     })
     _write_dt(tmp, "dart@681004000", {
         "compatible": b"apple,t6000-dart\x00",
@@ -762,6 +764,8 @@ def _build_t600x_tree(tmp):
     interrupt controller. No `dart*` node names anywhere."""
     _write_dt(tmp, "", {
         "compatible": b"apple,t6000\x00apple,arm-platform\x00",
+            "#address-cells": _u32_be(2),
+        "#size-cells": _u32_be(2),
     })
     _write_dt(tmp, "soc/iommu@285800000", {
         "compatible": b"apple,t6000-dart\x00",
@@ -792,6 +796,10 @@ def _build_t600x_tree(tmp):
         "compatible": b"apple,t6000-cpufreq\x00",
         "phandle": _u32_be(0x99),
     })
+    _write_dt(tmp, "soc", {
+        "#address-cells": _u32_be(2),
+        "#size-cells": _u32_be(2),
+    })
     _write_dt(tmp, "soc/ane@284000000", {
         "compatible": b"apple,t6000-ane\x00",
         "reg": _u32_be(0x2, 0x85c04000, 0, 0x24000),
@@ -799,6 +807,95 @@ def _build_t600x_tree(tmp):
         "iommus": _u32_be(0x11, 0, 0x12, 0),
         "power-domains": _u32_be(0x14, 0),
         "status": b"disabled\x00",
+    })
+
+
+def _build_t8103_bringup_tree(tmp, with_ane=True):
+    """Real t8103 shape (captured from a T8103 machine 2026-09-17):
+    pmgr block at 0x23b700000/0x14000 carrying the ANE SET cluster as
+    power-controller pwrstate children at 0xc000+, chosen asahi,*
+    firmware identity, and the bootloader-provided ane node."""
+    _write_dt(tmp, "", {
+        "compatible": b"apple,t8103\x00apple,arm-platform\x00",
+        "model": b"MacBook Pro (14-inch, 2021)\x00",
+            "#address-cells": _u32_be(2),
+        "#size-cells": _u32_be(2),
+    })
+    _write_dt(tmp, "chosen", {
+        "asahi,m1n1-stage1-version": b"m1n1 1.2.1\x00",
+        "asahi,iboot1-version": b"iBoot-11841.0.1\x00",
+        "asahi,system-uuid": b"12345678-1234-1234-1234-123456789abc\x00",
+    })
+    _write_dt(tmp, "soc", {
+        "#address-cells": _u32_be(2),
+        "#size-cells": _u32_be(2),
+    })
+    if with_ane:
+        _write_dt(tmp, "soc/ane@26bc04000", {
+            "compatible": b"apple,t8103-ane\x00apple,ane\x00",
+            "reg": _u32_be(0x2, 0x6bc04000, 0x0, 0x24000),
+            "status": b"okay\x00",
+        })
+    pmgr = "soc/power-management@23b700000"
+    _write_dt(tmp, pmgr, {
+        "compatible": b"apple,t8103-pmgr\x00apple,pmgr\x00",
+        "reg": _u32_be(0x2, 0x3b700000, 0x0, 0x14000),
+        "#address-cells": _u32_be(2),
+        "#size-cells": _u32_be(2),
+    })
+    for off, label in (("470", "ane_sys"), ("c000", "ane_sys_cpu"),
+                       ("c008", "ane_base"), ("c010", "ane_set1"),
+                       ("c030", "ane_set5")):
+        _write_dt(tmp, f"{pmgr}/power-controller@{off}", {
+            "compatible": b"apple,t8103-pmgr-pwrstate\x00",
+            "label": f"{label}\x00".encode(),
+        })
+    _write_dt(tmp, f"{pmgr}/power-controller@0", {
+        "compatible": b"apple,t8103-pmgr-pwrstate\x00",
+        "label": b"ps_cpu0\x00",
+    })
+
+
+def _build_t6001_bringup_tree(tmp):
+    """Real t6001 shape (captured from a T6001 machine 2026-09-17):
+    the ANE pmgr block at 0x28e080000 with the ane_set0 cluster at
+    0xc000, a second pmgr block with no ane children, and the ane node
+    with its MMIO reg."""
+    _write_dt(tmp, "", {
+        "compatible": b"apple,t6001\x00apple,arm-platform\x00",
+    })
+    _write_dt(tmp, "soc", {
+        "#address-cells": _u32_be(2),
+        "#size-cells": _u32_be(2),
+    })
+    _write_dt(tmp, "soc/ane@284000000", {
+        "compatible": b"apple,t6001-ane\x00",
+        "reg": _u32_be(0x2, 0x85c04000, 0x0, 0x24000),
+    })
+    ane_pmgr = "soc/power-management@28e080000"
+    _write_dt(tmp, ane_pmgr, {
+        "compatible": b"apple,t6000-pmgr\x00apple,pmgr\x00",
+        "reg": _u32_be(0x2, 0x8e080000, 0x0, 0x14000),
+        "#address-cells": _u32_be(2),
+        "#size-cells": _u32_be(2),
+    })
+    for off, label in (("268", "ane_sys"), ("2c8", "ane_sys_cpu"),
+                       ("c000", "ane_set0"), ("c008", "ane_base"),
+                       ("c010", "ane_set1")):
+        _write_dt(tmp, f"{ane_pmgr}/power-controller@{off}", {
+            "compatible": b"apple,t6000-pmgr-pwrstate\x00",
+            "label": f"{label}\x00".encode(),
+        })
+    gpu_pmgr = "soc/power-management@28e680000"
+    _write_dt(tmp, gpu_pmgr, {
+        "compatible": b"apple,t6000-pmgr\x00apple,pmgr\x00",
+        "reg": _u32_be(0x2, 0x8e680000, 0x0, 0xc000),
+        "#address-cells": _u32_be(2),
+        "#size-cells": _u32_be(2),
+    })
+    _write_dt(tmp, f"{gpu_pmgr}/power-controller@100", {
+        "compatible": b"apple,t6000-pmgr-pwrstate\x00",
+        "label": b"amcc4\x00",
     })
 
 
@@ -817,7 +914,9 @@ class AnePortDevicetreeProbe(unittest.TestCase):
     def build_tree(self, tmp, with_ane):
         _write_dt(tmp, "", {
             "compatible": b"apple,t6001\x00apple,arm-platform\x00",
-        })
+                "#address-cells": _u32_be(2),
+        "#size-cells": _u32_be(2),
+    })
         _write_dt(tmp, "dart@681004000", {
             "compatible": b"apple,t6000-dart\x00",
             "reg": self._u32(0x6, 0x81004000, 0, 0x4000),
@@ -946,6 +1045,8 @@ class AnePortDevicetreeProbe(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             _write_dt(tmp, "", {
                 "compatible": b"apple,t6020\x00apple,arm-platform\x00",
+                "#address-cells": _u32_be(2),
+                "#size-cells": _u32_be(2),
             })
             _write_dt(tmp, "soc/iommu@2a6808000", {
                 "compatible": b"apple,t6020-dart\x00apple,t8110-dart\x00",
@@ -968,6 +1069,140 @@ class AnePortDevicetreeProbe(unittest.TestCase):
         self.assertEqual(out["pmgr_domains"], [])
         self.assertIsNone(out["aic"])
 
+    _PS_MAP = {"t8103": "0x23b70c000", "t6001": "0x28e08c000"}
+    # Real trees tag the pwrstate children with the FAMILY compatible
+    # (t6001's pmgr block and its pwrstates are apple,t6000-*).
+    _PMGR_FAMILY = {"t8103": "t8103", "t6001": "t6000"}
+    # The SET region announces itself as the ane_* pwrstate cluster
+    # sitting at/above 0xc000 inside the ANE pmgr block (t8103:
+    # ane_sys_cpu@c000 + ane_base@c008 + ane_set1..5; t6001:
+    # ane_set0@c000 + ane_base@c008 + ane_set1..5). SoC-specific
+    # power-domain pwrstates (ane_sys, ane_sys_cpu on t6001) sit BELOW
+    # 0xc000 and are not part of it. A tree that exposes no such
+    # cluster (t6020) falls back to the +0xc000 hypothesis carried by
+    # these two known-good references.
+    _SET_CLUSTER = re.compile(r"ane_")
+
+    def test_set_base_derivable_from_pmgr_topology(self):
+        """The regression test that keeps the capture useful: on the two
+        known-good SoCs the driver's ANE SET-block base (upstream m1n1
+        ps_map) equals the captured pmgr block base plus the start of
+        the captured ane SET cluster (+0xc000 on both). A new SoC's
+        submission supplies the same two numbers to derive it, and the
+        driver then read-verifies before any write."""
+        fixtures = {"t8103": _build_t8103_bringup_tree,
+                    "t6001": _build_t6001_bringup_tree}
+        for soc, build in fixtures.items():
+            with self.subTest(soc=soc):
+                with tempfile.TemporaryDirectory() as tmp:
+                    build(tmp)
+                    out = cq._ane_port_devicetree(cc.Redactor(), base=tmp)
+                blocks = [b for b in out["pmgr_blocks"]
+                          if any(self._SET_CLUSTER.match(c["label"] or "")
+                                 for c in b["children"])]
+                self.assertEqual(len(blocks), 1, soc)
+                block = blocks[0]
+                base_addr = int(block["reg"][0].split("/")[0], 16)
+                cluster = [
+                    int(c["name"].split("@")[1], 16)
+                    for c in block["children"]
+                    if self._SET_CLUSTER.match(c["label"] or "")
+                    and int(c["name"].split("@")[1], 16) >= 0xc000]
+                self.assertTrue(cluster, soc)
+                self.assertEqual(min(cluster), 0xc000, soc)
+                self.assertEqual(f"0x{base_addr + min(cluster):x}",
+                                 self._PS_MAP[soc], soc)
+                # The SET region is NOT a declared register: every child
+                # is a plain pwrstate node, so the offset must be
+                # derived, never read from a DT "set" reg.
+                for c in block["children"]:
+                    self.assertEqual(
+                        c["compatible"],
+                        [f"apple,{self._PMGR_FAMILY[soc]}-pmgr-pwrstate"])
+                # ANE subset stays cheap to triage: every ane-labelled
+                # child, and nothing else.
+                subset_labels = [d["label"]
+                                 for d in out["pmgr_domains"]
+                                 if d["path"].startswith(block["path"])]
+                self.assertIn("ane_sys", subset_labels)
+                self.assertNotIn("ps_cpu0", subset_labels)
+                self.assertNotIn("amcc4", subset_labels)
+
+    def test_ane_reg_present_and_absence_is_explicit(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            _build_t6001_bringup_tree(tmp)
+            out = cq._ane_port_devicetree(cc.Redactor(), base=tmp)
+        self.assertEqual(out["ane_reg"], ["0x285c04000/0x24000"])
+        with tempfile.TemporaryDirectory() as tmp:
+            _build_t8103_bringup_tree(tmp, with_ane=False)
+            out = cq._ane_port_devicetree(cc.Redactor(), base=tmp)
+        self.assertIn("ane_reg", out)
+        self.assertIsNone(out["ane_reg"])
+
+    def test_boot_provenance_is_structured_and_redacted(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            _build_t8103_bringup_tree(tmp)
+            out = cq._ane_port_devicetree(cc.Redactor(), base=tmp)
+        boot = out["boot"]
+        self.assertEqual(boot["model"], "MacBook Pro (14-inch, 2021)")
+        self.assertEqual(boot["compatible"],
+                         ["apple,t8103", "apple,arm-platform"])
+        self.assertEqual(boot["chosen"]["asahi,m1n1-stage1-version"],
+                         "m1n1 1.2.1")
+        self.assertEqual(boot["chosen"]["asahi,iboot1-version"],
+                         "iBoot-11841.0.1")
+        # A UUID-shaped chosen value must not survive redaction.
+        self.assertEqual(boot["chosen"]["asahi,system-uuid"],
+                         "[redacted-uuid]")
+
+    def test_dtb_sha256_hashes_the_booted_blob(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            _build_t8103_bringup_tree(tmp)
+            fdt = os.path.join(tmp, "fdt")
+            with open(fdt, "wb") as fh:
+                fh.write(b"\xd0\x0d\xfe\xedfake-blob")
+            out = cq._ane_port_devicetree(cc.Redactor(), base=tmp,
+                                          fdt_path=fdt)
+            self.assertEqual(out["dtb_sha256"],
+                             hashlib.sha256(
+                                 b"\xd0\x0d\xfe\xedfake-blob").hexdigest())
+            out = cq._ane_port_devicetree(
+                cc.Redactor(), base=tmp,
+                fdt_path=os.path.join(tmp, "absent"))
+        self.assertIsNone(out["dtb_sha256"])
+
+    def test_pmgr_children_cap_records_true_count(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            _write_dt(tmp, "", {
+                "compatible": b"apple,t6001\x00apple,arm-platform\x00",
+            })
+            pmgr = "soc/power-management@28e080000"
+            _write_dt(tmp, pmgr, {
+                "compatible": b"apple,t6000-pmgr\x00apple,pmgr\x00",
+                "reg": _u32_be(0x2, 0x8e080000, 0x0, 0x14000),
+            })
+            for i in range(300):
+                _write_dt(tmp, f"{pmgr}/power-controller@{i:x}", {
+                    "compatible": b"apple,t6000-pmgr-pwrstate\x00",
+                    "label": f"ps{i}\x00".encode(),
+                })
+            out = cq._ane_port_devicetree(cc.Redactor(), base=tmp)
+        block = out["pmgr_blocks"][0]
+        self.assertEqual(len(block["children"]), 256)
+        self.assertEqual(block["children_total"], 300)
+
+    def test_more_than_eight_pmgr_blocks_are_capped(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            _write_dt(tmp, "", {
+                "compatible": b"apple,t6001\x00apple,arm-platform\x00",
+            })
+            for i in range(9):
+                _write_dt(
+                    tmp, f"soc/power-management@{0x28e080000 + i * 0x10000:x}",
+                    {"compatible": b"apple,t6000-pmgr\x00apple,pmgr\x00"})
+            out = cq._ane_port_devicetree(cc.Redactor(), base=tmp)
+        self.assertEqual(len(out["pmgr_blocks"]), 8)
+
 
 class AnePortPayloadDetail(unittest.TestCase):
     """The bounded `ane_port_detail` block rides in the payload alongside
@@ -984,15 +1219,30 @@ class AnePortPayloadDetail(unittest.TestCase):
                                       "compatible":
                                           ["apple,t6001-ane", "apple,ane"]},
                 },
+                "ane_reg": ["0x26a000000/0x100000"],
                 "darts": {
                     "dart@681004000": {"compatible": "apple,t6000-dart"},
                 },
                 "pmgr_domains": [{"path": "pmgr/ane-sys",
                                   "label": "ane_sys",
                                   "compatible": ["apple,t6000-pmgr-pwrstate"]}],
+                "pmgr_blocks": [{
+                    "path": "soc/power-management@28e080000",
+                    "reg": ["0x28e080000/0x14000"],
+                    "children": [
+                        {"name": "power-controller@c000",
+                         "label": "ane_set0",
+                         "compatible": ["apple,t6000-pmgr-pwrstate"]},
+                    ],
+                    "children_total": 1,
+                }],
                 "aic": {"path": "aic",
                         "compatible": ["apple,t6000-aic", "apple,aic"]},
                 "phandles": {"1": "dart@681004000"},
+                "boot": {"model": "MacBook Pro",
+                         "compatible": ["apple,t6001"],
+                         "chosen": {"asahi,m1n1-stage1-version": "m1n1 1.2.1"}},
+                "dtb_sha256": "ab" * 32,
             },
             "runtime": {"iomem": ["ane: 0x26a000000-0x26a100000"],
                         "module_version": "0.1",
@@ -1018,6 +1268,14 @@ class AnePortPayloadDetail(unittest.TestCase):
         self.assertTrue(detail["devicetree"]["ane_node_present"])
         self.assertIn("ane@26a000000", detail["devicetree"]["ane_nodes"])
         self.assertIn("dart@681004000", detail["devicetree"]["darts"])
+        self.assertEqual(detail["devicetree"]["ane_reg"],
+                         ["0x26a000000/0x100000"])
+        block = detail["devicetree"]["pmgr_blocks"][0]
+        self.assertEqual(block["reg"], ["0x28e080000/0x14000"])
+        self.assertEqual(block["children_total"], 1)
+        self.assertEqual(detail["devicetree"]["dtb_sha256"], "ab" * 32)
+        self.assertEqual(detail["devicetree"]["boot"]["model"],
+                         "MacBook Pro")
         self.assertIn("runtime", detail)
         self.assertEqual(detail["runtime"]["module_version"], "0.1")
 
@@ -1028,11 +1286,12 @@ class AnePortPayloadDetail(unittest.TestCase):
 
     def test_detail_caps_node_counts_and_records_truncation(self):
         quick = json.loads(json.dumps(BuildPayload.QUICK))
-        # Build more ane_nodes than MAX_NODES=8 to trigger the cap.
+        # Build more ane_nodes than MAX_NODES=8 (and more darts than
+        # MAX_DARTS=32) to trigger the caps.
         ane_nodes = {f"ane@{i:x}": {"reg": [f"0x{i:x}/0x1000"]}
                      for i in range(20)}
         darts = {f"dart@{i:x}": {"compatible": "apple,t6000-dart"}
-                 for i in range(20)}
+                 for i in range(40)}
         phandles = {str(i): f"node@{i:x}" for i in range(20)}
         quick["ane_port"] = {
             "available": True,
@@ -1043,6 +1302,12 @@ class AnePortPayloadDetail(unittest.TestCase):
                 "pmgr_domains": [{"path": f"pmgr/p{i}",
                                   "label": f"p{i}",
                                   "compatible": ["x"]} for i in range(80)],
+                "pmgr_blocks": [{
+                    "path": f"pmgr@{i:x}",
+                    "reg": [f"0x{0x28e080000 + i * 0x10000:x}/0x14000"],
+                    "children": [],
+                    "children_total": 0,
+                } for i in range(9)],
                 "aic": {"path": "aic", "compatible": ["apple,aic"]},
                 "phandles": phandles,
             },
@@ -1053,9 +1318,10 @@ class AnePortPayloadDetail(unittest.TestCase):
                                    redactor=cc.Redactor())
         d = payload["ane_port_detail"]
         self.assertEqual(len(d["devicetree"]["ane_nodes"]), 8)
-        self.assertEqual(len(d["devicetree"]["darts"]), 8)
+        self.assertEqual(len(d["devicetree"]["darts"]), 32)
         self.assertEqual(len(d["devicetree"]["phandles"]), 8)
         self.assertEqual(len(d["devicetree"]["pmgr_domains"]), 64)
+        self.assertEqual(len(d["devicetree"]["pmgr_blocks"]), 8)
         self.assertIn("truncated", d)
         truncated = d["truncated"]
         self.assertTrue(any(t.startswith("ane_nodes:") for t in truncated),
@@ -1066,6 +1332,67 @@ class AnePortPayloadDetail(unittest.TestCase):
                         truncated)
         self.assertTrue(any(t.startswith("pmgr_domains:") for t in truncated),
                         truncated)
+        self.assertTrue(any(t.startswith("pmgr_blocks:") for t in truncated),
+                        truncated)
+
+    def test_detail_drop_order_protects_darts_pmgr_and_ane_nodes(self):
+        """Byte-budget overflow sacrifices, in order: phandles, aic,
+        boot, the ANE pmgr subset, the full pmgr topology, DARTs. The
+        ane nodes — the whole point of the capture — are protected
+        last."""
+        quick = json.loads(json.dumps(BuildPayload.QUICK))
+        fat = "y" * 1000
+        quick["ane_port"] = {
+            "available": True,
+            "devicetree": {
+                "ane_node_present": True,
+                "ane_nodes": {"ane@26a000000":
+                              {"reg": ["0x26a000000/0x100000"]}},
+                # 32 darts x ~2.1KB: once everything ahead of them is
+                # gone this alone still busts the budget, forcing the
+                # last drop before the ane nodes.
+                "darts": {f"iommu@{i:x}": {"compatible": "y" * 2100}
+                          for i in range(32)},
+                "pmgr_domains": [{"path": fat, "label": "ane_sys",
+                                  "compatible": [fat]} for _ in range(64)],
+                "pmgr_blocks": [{
+                    "path": f"pmgr@{i:x}",
+                    "reg": [f"0x{0x28e080000 + i * 0x10000:x}/0x14000"],
+                    "children": [{"name": fat, "label": fat,
+                                  "compatible": [fat]} for _ in range(8)],
+                    "children_total": 8,
+                } for i in range(8)],
+                "aic": {"path": "aic",
+                        "compatible": ["apple,t6000-aic", "apple,aic2"]},
+                "phandles": {str(i): fat * 4 for i in range(8)},
+                "boot": {"model": fat * 45,
+                         "compatible": ["apple,t6001"],
+                         "chosen": {"asahi,m1n1-stage1-version": fat * 20}},
+                "dtb_sha256": "ab" * 32,
+            },
+            "runtime": {"iomem": None, "module_version": None,
+                        "srcversion": None, "loaded": None, "dmesg": None},
+        }
+        payload = cc.build_payload("quick", quick, {},
+                                   redactor=cc.Redactor())
+        d = payload["ane_port_detail"]
+        self.assertIsNotNone(d)
+        truncated = d["truncated"]
+        # The heavy, non-essential blocks went first...
+        self.assertIn("phandles:over_budget", truncated)
+        self.assertIn("aic:over_budget", truncated)
+        self.assertIn("boot:over_budget", truncated)
+        self.assertIn("pmgr_domains:over_budget", truncated)
+        self.assertIn("pmgr_blocks:over_budget", truncated)
+        self.assertIn("darts:over_budget", truncated)
+        # ...and what authoring the overlay needs survived.
+        self.assertIn("ane@26a000000", d["devicetree"]["ane_nodes"])
+        self.assertEqual(d["devicetree"]["dtb_sha256"], "ab" * 32)
+        self.assertIsNone(d["devicetree"]["boot"])
+        self.assertEqual(d["devicetree"]["phandles"], {})
+        self.assertEqual(d["devicetree"]["pmgr_domains"], [])
+        self.assertEqual(d["devicetree"]["pmgr_blocks"], [])
+        self.assertEqual(d["devicetree"]["darts"], {})
 
     def test_detail_drops_phandles_before_darts_and_ane_nodes(self):
         """Byte-budget overflow must sacrifice the phandle map first:

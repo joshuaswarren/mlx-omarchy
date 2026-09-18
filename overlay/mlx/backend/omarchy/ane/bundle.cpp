@@ -5,13 +5,20 @@
 
 #include <json.hpp>
 
+#include <sys/stat.h>
+
 #include <algorithm>
 #include <array>
+#include <cctype>
+#include <cstdio>
+#include <cstdlib>
 #include <fstream>
 #include <limits>
+#include <mutex>
 #include <stdexcept>
 #include <string>
 #include <system_error>
+#include <tuple>
 #include <type_traits>
 #include <vector>
 
@@ -815,6 +822,195 @@ AneAnecHeader parse_anec_header(const std::filesystem::path& path) {
   return header;
 }
 
+// Digest cache: verified payload digests keyed on cheap file identity
+// (resolved path + device + inode + size + mtime_ns), persisted across
+// processes in a sidecar file so a fresh worker process per utterance does
+// not re-read + re-hash an unchanged payload. A hit skips the payload read
+// and hash; the digest is still compared against the manifest expectation
+// on every open, and any identity change forces a full re-verify.
+//
+// Security/consistency story (stated for the receipt): the manifest declaring
+// the expected digest sits in the same directory as the payload, so an
+// attacker able to swap the payload can also swap the manifest — the digest
+// check was never an anti-tamper boundary, only a mismatch detector for
+// accidental corruption or stale deploy. The sidecar lives under the user's
+// cache dir, which requires the same write privilege as the bundle itself,
+// so the cache adds no attack capability a same-user adversary lacked; it
+// does keep the mismatch detector for accidental corruption (any content
+// change that alters dev/inode/size/mtime_ns re-verifies). The deliberate
+// trade: a content change that restores the identical identity tuple AND a
+// matching forged sidecar entry is served from cache without re-hash —
+// reachable only by the same-user adversary who could have rewritten the
+// manifest instead. MLX_OMARCHY_ANE_DIGEST_CACHE forces full verification
+// every open (no sidecar reads or writes) when set to 0/false/no/off/empty
+// (case-insensitive); unset or any other value keeps the cache enabled.
+// MLX_OMARCHY_ANE_DIGEST_CACHE_PATH overrides the sidecar location.
+bool digest_cache_enabled() {
+  const char* value = std::getenv("MLX_OMARCHY_ANE_DIGEST_CACHE");
+  if (value == nullptr) {
+    return true;
+  }
+  std::string lowered(value);
+  for (char& c : lowered) {
+    c = char(std::tolower(static_cast<unsigned char>(c)));
+  }
+  return lowered != "0" && lowered != "false" && lowered != "no" &&
+      lowered != "off" && !lowered.empty();
+}
+
+std::filesystem::path digest_cache_path() {
+  if (const char* override_path = std::getenv("MLX_OMARCHY_ANE_DIGEST_CACHE_PATH")) {
+    return std::filesystem::path(override_path);
+  }
+  std::filesystem::path base;
+  if (const char* xdg = std::getenv("XDG_CACHE_HOME"); xdg && *xdg) {
+    base = xdg;
+  } else if (const char* home = std::getenv("HOME"); home && *home) {
+    base = std::filesystem::path(home) / ".cache";
+  } else {
+    return {};
+  }
+  return base / "mlx-omarchy" / "ane-digest-cache.txt";
+}
+
+struct DigestCacheKey {
+  std::string path;
+  uint64_t dev;
+  uint64_t ino;
+  uint64_t size;
+  uint64_t mtime_ns;
+
+  std::string serialize() const {
+    char hex[64];
+    std::snprintf(
+        hex,
+        sizeof(hex),
+        "|%llx|%llx|%llx|%llx",
+        static_cast<unsigned long long>(dev),
+        static_cast<unsigned long long>(ino),
+        static_cast<unsigned long long>(size),
+        static_cast<unsigned long long>(mtime_ns));
+    return path + hex;
+  }
+
+  bool operator<(const DigestCacheKey& rhs) const {
+    return serialize() < rhs.serialize();
+  }
+};
+
+std::mutex g_digest_cache_mutex;
+std::map<DigestCacheKey, std::string> g_digest_cache;
+
+std::map<DigestCacheKey, std::string> load_digest_cache_disk() {
+  std::map<DigestCacheKey, std::string> entries;
+  std::ifstream input(digest_cache_path());
+  if (!input) {
+    return entries;
+  }
+  std::string line;
+  while (std::getline(input, line)) {
+    const size_t sep = line.rfind(' ');
+    if (sep == std::string::npos || sep == 0 ||
+        sep + 1 + 64 != line.size()) {
+      continue; // skip malformed or truncated lines
+    }
+    std::string key = line.substr(0, sep);
+    std::string digest = line.substr(sep + 1);
+    // Key layout: <path>|<dev>|<ino>|<size>|<mtime_ns> — split at the LAST
+    // four pipes; the path itself may contain anything but the digest tail
+    // and pipe count are validated structurally.
+    std::vector<size_t> pipes;
+    for (size_t i = key.size(); i-- > 0;) {
+      if (key[i] == '|') {
+        pipes.push_back(i);
+        if (pipes.size() == 4) {
+          break;
+        }
+      }
+    }
+    if (pipes.size() != 4) {
+      continue;
+    }
+    DigestCacheKey parsed;
+    parsed.path = key.substr(0, pipes[3]);
+    const auto field = [&](size_t n) -> uint64_t {
+      return std::strtoull(key.c_str() + pipes[n] + 1, nullptr, 16);
+    };
+    parsed.dev = field(3);
+    parsed.ino = field(2);
+    parsed.size = field(1);
+    parsed.mtime_ns = field(0);
+    entries.emplace(std::move(parsed), std::move(digest));
+  }
+  return entries;
+}
+
+void store_digest_cache_disk(
+    const std::filesystem::path& sidecar,
+    const std::string& serialized_key,
+    const std::string& digest) {
+  std::error_code ec;
+  std::filesystem::create_directories(sidecar.parent_path(), ec);
+  if (ec) {
+    return;
+  }
+  std::ofstream output(sidecar, std::ios::binary | std::ios::app);
+  if (!output) {
+    return;
+  }
+  output << serialized_key << ' ' << digest << '\n';
+}
+
+// Returns the payload digest, re-hashing only when the kill-switch forces it,
+// the file identity has no cached digest, or the sidecar has no entry. The
+// returned digest is always compared against the manifest expectation by the
+// caller; the cache only removes the read+hash, never the comparison.
+std::string sha256_file_cached(const std::filesystem::path& path) {
+  struct ::stat st {};
+  if (::stat(path.c_str(), &st) != 0) {
+    throw bundle_error("cannot stat file " + path.string());
+  }
+#if defined(__APPLE__)
+  const uint64_t mtime_ns = uint64_t(st.st_mtimespec.tv_sec) * 1000000000ull +
+      uint64_t(st.st_mtimespec.tv_nsec);
+#else
+  const uint64_t mtime_ns = uint64_t(st.st_mtim.tv_sec) * 1000000000ull +
+      uint64_t(st.st_mtim.tv_nsec);
+#endif
+  DigestCacheKey key{
+      path.string(),
+      uint64_t(st.st_dev),
+      uint64_t(st.st_ino),
+      uint64_t(st.st_size),
+      mtime_ns};
+  if (digest_cache_enabled()) {
+    std::lock_guard<std::mutex> lock(g_digest_cache_mutex);
+    auto it = g_digest_cache.find(key);
+    if (it != g_digest_cache.end()) {
+      return it->second;
+    }
+    // Not in this process: consult the sidecar (small file, only on a
+    // process's first use of a bundle). Stale entries are harmless — the
+    // digest is verified against the manifest below.
+    auto disk = load_digest_cache_disk();
+    auto dit = disk.find(key);
+    if (dit != disk.end()) {
+      g_digest_cache.emplace(key, dit->second);
+      return dit->second;
+    }
+  }
+  std::string digest = sha256_file(path);
+  if (digest_cache_enabled()) {
+    const std::string serialized = key.serialize();
+    std::lock_guard<std::mutex> lock(g_digest_cache_mutex);
+    g_digest_cache.emplace(std::move(key), digest);
+    if (auto sidecar = digest_cache_path(); !sidecar.empty()) {
+      store_digest_cache_disk(sidecar, serialized, digest);
+    }
+  }
+  return digest;
+}
+
 AneBundle load_bundle_snapshot(
     const std::filesystem::path& manifest_path,
     const std::map<std::string, std::filesystem::path>& payload_paths) {
@@ -855,7 +1051,7 @@ AneBundle load_bundle_snapshot(
           "payload " + payload.path + " byte size " + std::to_string(actual) +
           " does not match manifest " + std::to_string(payload.byte_size));
     }
-    std::string digest = sha256_file(resolved[i]);
+    std::string digest = sha256_file_cached(resolved[i]);
     if (digest != payload.sha256) {
       throw bundle_error(
           "payload " + payload.path + " sha256 mismatch: manifest " +
