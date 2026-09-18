@@ -4316,7 +4316,15 @@ void trig_argument_gate(
   if (trace_gate) {
     fprintf(stderr, "[rtmod] GATE tid=%lu %s enter\n", (unsigned long)syscall(SYS_gettid), name.c_str());
   }
-  magnitude.eval();
+  // Record the magnitude graph into the open batch without the nested
+  // blocking eval: a nested eval()'s epilogue skips the signal+commit at
+  // eval_nest_depth > 1 (settle semantics), so its synchronizer wait
+  // could never be satisfied and parked the dispatching thread until the
+  // watchdog fired - the F1 burst signature. settle() schedules the nodes
+  // into the open command buffer; the synchronize() below submits that
+  // batch and orders the mapped read, which is the ordering this gate
+  // actually needs.
+  settle({magnitude});
   if (trace_gate) {
     fprintf(stderr, "[rtmod] GATE tid=%lu %s post-eval\n", (unsigned long)syscall(SYS_gettid), name.c_str());
   }
@@ -10834,14 +10842,17 @@ void rope_trig_gate(
   } else {
     array offset_worst =
         astype(max(abs(offset, stream), stream), float32, stream);
-    offset_worst.eval();
+    // settle, not eval(): a nested blocking eval cannot complete here
+    // (its epilogue skips signal+commit at nest depth > 1) - same class
+    // as the trig gate; the synchronize below orders the read.
+    settle({offset_worst});
     omarchy::get_command_encoder(stream).synchronize("rope_offset_vector");
     worst_offset = offset_worst.item<float>();
   }
   float inv_freq_bound;
   if (freqs != nullptr) {
     array freqs_min = min(abs(*freqs, stream), stream);
-    freqs_min.eval();
+    settle({freqs_min});
     omarchy::get_command_encoder(stream).synchronize("rope_freqs_bound");
     inv_freq_bound = 1.0f / freqs_min.item<float>();
   } else {
@@ -10883,7 +10894,10 @@ void RoPE::eval_gpu(
   // defect, with the equivalence test green.
   if (!forward_ || offset.size() > 1) {
     auto result = fallback_(inputs);
-    result[0].eval();
+    // Record-only settle: fallback nodes join the open batch, and the
+    // synchronize below submits and orders the buffer handoff. A nested
+    // blocking eval() here deadlocks on the skipped nested epilogue.
+    settle({result[0]});
     encoder.synchronize("rope_fallback");
     out.copy_shared_buffer(result[0]);
     return;
