@@ -272,9 +272,13 @@ void eval_compiled_tape(
   // so interior members are never consumable from outside. A node the
   // cannot carry closes it; the closed chain either fuses (one
   // dispatch) or falls back to the per-node path below, so refusal
-  // semantics are unchanged. bf16 chains are fenced from fusion
-  // (FusedChain::can_start): bf16 nodes run through the same
-  // per-node eval_gpu dispatch eager uses.
+  // semantics are unchanged. bf16 chains are fenced from TAPE fusion
+  // only (this interpreter; the eager SwiGLU planner keeps its bf16
+  // support): in-model mlx-lm corruption on Qwen3.5-9B / gemma-4-31B /
+  // Ministral-3-8B through fused bf16 chains, not recycled storage,
+  // not reproducible in isolated fragments - see docs/known-defects.md.
+  // bf16 tape nodes run through the same per-node eval_gpu dispatch
+  // eager uses, which is bit-exact end to end on every model tested.
   std::optional<FusedChain> chain;
   if (fusion_enabled) {
     chain.emplace(true);
@@ -353,7 +357,10 @@ void eval_compiled_tape(
 
       // Fast path: the node joins the open fused chain. A tape output
       // may only sit at the tail, so the chain closes right after one.
-      if (chain->try_add(
+      // bf16 nodes are fenced from tape fusion (see the comment above)
+      // and take the per-node fallback.
+      if (node.dtype() != bfloat16 &&
+          chain->try_add(
               node,
               node_inputs,
               must_materialize.find(node.id()) !=
