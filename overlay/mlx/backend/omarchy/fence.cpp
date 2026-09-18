@@ -27,6 +27,9 @@ void Fence::wait(Stream s, const array&) {
 
 void Fence::update(Stream s, const array&, bool) {
   auto& f = cast<FenceImpl>();
+  if (std::getenv("MLX_OMARCHY_TRACE_DISPATCH") != nullptr) {
+    fprintf(stderr, "[rtmod] FENCE-UPDATE count=%u st=%d\n", f.count, s.index);
+  }
   f.count++;
   f.event.set_value(f.count);
   f.event.signal(s);
