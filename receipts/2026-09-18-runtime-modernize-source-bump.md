@@ -228,3 +228,26 @@ references through Vulkan compute"`):
   fast_ops hang, compiled_tape fail — all F1-class; copy_offset, matmul
   family, take_fill, select_layout, fast_regression, error_contract,
   wrong_value_sweep all PASS on the same wheel.
+
+## 12. F1 bisect round 2 (final state of this run)
+
+- Scalar-reduce reroute experiment: with ReduceF32 suppressed for
+  out.size()==1 (falls to the general reduce kernel, kernel=113), the
+  isolated cos/sin case STILL hangs at the same submit — so the stall is
+  NOT the ReduceF32 suffix kernel. Control case: "suffix Sum and Max
+  reductions" dispatches ReduceF32 twice and completes instantly in
+  isolation.
+- The cos/sin graph records FEW name=Abs count=6 + a reduce, submits
+  (cv=1, sigs=2, cmds=1), and the GPU never completes THAT buffer; the
+  actual Cos dispatch is never even recorded (host blocked at the first
+  join). Graph shape, not trig math and not one kernel: the trigger is
+  the (Abs -> reduce) prefix submission of the 0.32.3 f32 cos lowering.
+- Next steps for the fix lane (continue with MLX_OMARCHY_TRACE_DISPATCH=1):
+  (1) dump the cos(x) graph on 0.32.3 (mx.eval tape / export) to see why a
+  0.32.3 f32 cos lowers to Abs+reduce+... and whether an eager fallback or
+  fusion-boundary change avoids the prefix submission; (2) if the prefix
+  shape is confirmed as the trigger, test the same dispatch pair in a
+  standalone buffer outside cos to build the Asahi reproducer.
+- Instrumentation remains available: MLX_OMARCHY_TRACE_DISPATCH=1 prints
+  every elementwise dispatch (kernel id, count, groups); submit prints
+  cv/waits/sigs/cmds (encoder.cpp).

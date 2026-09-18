@@ -8213,7 +8213,9 @@ void Reduce::eval_gpu(const std::vector<array>& inputs, array& out) {
     }
   }
 
-  if (suffix_fast_path) {
+  // RTMOD-BISECT: scalar-output reduces (out.size()==1) suspected in the
+  // F1 first-submit stall; route them to the general reduce kernel.
+  if (suffix_fast_path && out.size() > 1) {
     out.set_data(allocate_omarchy(out.nbytes()));
     if (out.size() == 0) {
       return;
