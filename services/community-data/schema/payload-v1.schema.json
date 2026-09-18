@@ -346,7 +346,7 @@
                 "null"
               ],
               "additionalProperties": false,
-              "description": "HYPOTHESIS, never a derived fact: ANE SET region candidate = pmgr block base + 0xc000 (where the T8103/T6001 ane_* pwrstate cluster lives and where m1n1 ps_map points). driver_window_confirms records whether Apple's own ane device reg grants a window at exactly that address, which corroborates the hypothesis (t6021: ane0 reg range 3). Linux/m1n1 enumerates the cluster itself.",
+              "description": "HYPOTHESIS, never a derived fact: ANE SET region candidate = pmgr block base + 0xc000 (where the T8103/T6001 ane_* pwrstate cluster lives and where m1n1 ps_map points). driver_window_confirms records whether Apple's own ane device reg grants a window at exactly that address, which corroborates the hypothesis (t6021: ane0 reg range 3). Linux/m1n1 enumerates the cluster itself. Linux emits the ane_pwrstate_cells shape instead: the ane_set* pwrstate offsets it can source from the DTB (labels ane_cpu/ane_td/ane_base/ane_setN), never a SET MMIO window.",
               "properties": {
                 "pmgr_block": {
                   "type": [
@@ -374,6 +374,47 @@
                     "boolean",
                     "null"
                   ]
+                },
+                "status": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 64
+                },
+                "ane_pwrstate_cells": {
+                  "type": [
+                    "array",
+                    "null"
+                  ],
+                  "maxItems": 16,
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "label": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "maxLength": 128
+                      },
+                      "offset": {
+                        "type": [
+                          "integer",
+                          "null"
+                        ],
+                        "minimum": 0
+                      }
+                    }
+                  }
+                },
+                "note": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 512
                 }
               }
             },

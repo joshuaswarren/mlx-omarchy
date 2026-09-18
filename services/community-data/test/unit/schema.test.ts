@@ -222,6 +222,34 @@ describe("payload schema v1", () => {
         schema,
       ).length,
     ).toBeGreaterThan(0);
+    // 2026-09-18 follow-up: the Linux collector emits the ane_pwrstate_cells
+    // shape (status/ane_pwrstate_cells/note), not the macOS 4-prop shape —
+    // it must validate too or every ANE Linux submit 422s for real.
+    expect(
+      validateSchemaRoot(
+        mutate({ ane_port_detail: { ...base,
+          devicetree: { ...base.devicetree, set_base_candidate: {
+            status: "not_available_from_device_tree",
+            ane_pwrstate_cells: [
+              { label: "ane_cpu", offset: 0x2e0 },
+              { label: "ane_set1", offset: 0x4018 },
+            ],
+            note: "ane_set* entries are 4-byte power-controller pwrstate "
+                + "cells, not the SET MMIO window",
+          } } } }),
+        schema,
+      ),
+    ).toEqual([]);
+    expect(
+      validateSchemaRoot(
+        mutate({ ane_port_detail: { ...base,
+          devicetree: { ...base.devicetree, set_base_candidate: {
+            status: "not_available_from_device_tree",
+            ane_pwrstate_cells: [{ label: "ane_cpu", offset: "0x2e0" }],
+          } } } }),
+        schema,
+      ).length,
+    ).toBeGreaterThan(0);
   });
 
   test("t6021 bring-up fields: macos children, dart_options, interrupt_controllers", () => {
