@@ -683,9 +683,10 @@ class Statement:
 
 # The three island bundles the encoder handlers submit to. The resident
 # session loads every one of them once, up front, exactly like the launch
-# path loads its bundle per submit. Placed families (O, V, P, T) extend
-# this set in EncoderRunner._index_islands so resident-batch arms load
-# what they submit.
+# path loads its bundle per submit. Placed families (O, V, P, T and the
+# per-form sub-letters H/I/J/K) extend this set in
+# EncoderRunner._index_islands so resident-batch arms load what they
+# submit.
 RESIDENT_BUNDLES = (
     "island-attn-a-kt",
     "island-select-8head",
@@ -1066,6 +1067,12 @@ class EncoderRunner:
                     kind, layer = "dw", conv_modules_seen
             if kind is None:
                 continue
+            # Per-form sub-letters (H=pw1, I=dw, J=pw2) compose with the
+            # family letter V: a site registers when any of its letters
+            # is placed.
+            if not (set({"pw1": "HV", "dw": "IV", "pw2": "JV"}[kind])
+                    & self.placed):
+                continue
             name = f"island-conv-{kind}-L{layer:02d}"
             if self.island is None or not (
                 self.island.bundles / name
@@ -1100,6 +1107,9 @@ class EncoderRunner:
                     kind, ordinal = "slice", slice_ordinal
                     slice_ordinal += 1
             if kind is None:
+                continue
+            # K places the padconv alone; P is the padconv + slice pair.
+            if not (set({"pad": "KP", "slice": "P"}[kind]) & self.placed):
                 continue
             bundle = f"island-relpos-{kind}"
             if self.island is None or not (
@@ -1140,6 +1150,10 @@ class EncoderRunner:
             if form is None:
                 continue
             kind, bundle = form
+            # Only the T letter places transposes; the dict feeds a
+            # membership-only dispatch.
+            if "T" not in self.placed:
+                continue
             if self.island is None or not (
                 self.island.bundles / bundle
             ).is_dir():
@@ -1154,18 +1168,17 @@ class EncoderRunner:
                 self.island.resident_bundles.update(
                     f"island-oproj-L{layer:02d}" for layer, _ in oproj.values()
                 )
-            if "V" in self.placed:
-                self.island.resident_bundles.update(
-                    name for _k, _l, name, _s in conv.values()
-                )
-            if "P" in self.placed:
-                self.island.resident_bundles.update(
-                    name for _k, _o, name, _s in relpos.values()
-                )
-            if "T" in self.placed:
-                self.island.resident_bundles.update(
-                    name for _k, _o, name, _s in trans.values()
-                )
+            # Registered sites are exactly the placed-letter sites, so the
+            # resident preload follows the dicts, not the letters.
+            self.island.resident_bundles.update(
+                name for _k, _l, name, _s in conv.values()
+            )
+            self.island.resident_bundles.update(
+                name for _k, _o, name, _s in relpos.values()
+            )
+            self.island.resident_bundles.update(
+                name for _k, _o, name, _s in trans.values()
+            )
 
     def _index_fusions(self) -> None:
         """Find the conv-module GLU: sigmoid(split_1) consumed by exactly one
@@ -1387,13 +1400,15 @@ class EncoderRunner:
         if "O" in self.placed and stmt.index in self.island_oproj:
             self._run_island_oproj(stmt)
             return
-        if "V" in self.placed and stmt.index in self.island_conv:
+        # Registration is letter-gated (family letters V/P/T and per-form
+        # sub-letters H/I/J/K), so dict membership is the whole test.
+        if stmt.index in self.island_conv:
             self._run_island_conv(stmt)
             return
-        if "P" in self.placed and stmt.index in self.island_relpos:
+        if stmt.index in self.island_relpos:
             self._run_island_relpos(stmt)
             return
-        if "T" in self.placed and stmt.index in self.island_transpose:
+        if stmt.index in self.island_transpose:
             self._run_island_transpose(stmt)
             return
         if (
@@ -2115,7 +2130,7 @@ def main() -> int:
         )
 
     placed = frozenset(args.islands.upper())
-    if placed - frozenset("ABCOFVPT"):
+    if placed - frozenset("ABCOFVPTHIJK"):
         raise SystemExit(f"--islands {args.islands!r}: unknown island(s)")
     runner = EncoderRunner(
         args.source / "model.mil", args.source / "model-root", island, placed
