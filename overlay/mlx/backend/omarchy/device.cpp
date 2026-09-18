@@ -11,6 +11,8 @@
 #include <cstdlib>
 #include <cstring>
 #include <atomic>
+#include <unistd.h>
+#include <sys/syscall.h>
 #include <memory>
 #include <mutex>
 #include <stdexcept>
@@ -958,7 +960,8 @@ Device::RecoveryResult Device::recover_stalled_submissions(
   bool executing = completions.has_active_submission(reserved_through);
   if (std::getenv("MLX_OMARCHY_TRACE_DISPATCH") != nullptr) {
     fprintf(stderr,
-            "[rtmod] RECOVER-ENTER target=%llu through=%llu active=%d\n",
+            "[rtmod] RECOVER-ENTER tid=%lu target=%llu through=%llu active=%d\n",
+            (unsigned long)syscall(SYS_gettid),
             (unsigned long long)target_value,
             (unsigned long long)reserved_through,
             executing ? 1 : 0);
@@ -1011,8 +1014,9 @@ Device::RecoveryResult Device::recover_stalled_submissions(
     }
     fprintf(
         stderr,
-        "[rtmod] SUBMIT-RECOVER host-signaled completion cv=%llu after "
+        "[rtmod] SUBMIT-RECOVER tid=%lu host-signaled completion cv=%llu after "
         "executed-but-unsignaled batch (round %u)\n",
+        (unsigned long)syscall(SYS_gettid),
         (unsigned long long)fresh,
         round + 1);
     return RecoveryResult::kRecovered;
@@ -1028,7 +1032,7 @@ Device::RecoveryResult Device::recover_stalled_submissions(
       completions.take_resubmit_batches(reserved_through);
   if (batches.empty()) {
     if (std::getenv("MLX_OMARCHY_TRACE_DISPATCH") != nullptr) {
-      fprintf(stderr, "[rtmod] RECOVER-FALSE empty-batches\n");
+      fprintf(stderr, "[rtmod] RECOVER-FALSE tid=%lu empty-batches\n", (unsigned long)syscall(SYS_gettid));
     }
     // Another waiter's recovery already took the batches (or the
     // producing stream has not submitted yet): not ours to recover, and
@@ -1086,8 +1090,9 @@ Device::RecoveryResult Device::recover_stalled_submissions(
   }
   fprintf(
       stderr,
-      "[rtmod] SUBMIT-RECOVER resubmitted %zu stalled batch(es) through "
+      "[rtmod] SUBMIT-RECOVER tid=%lu resubmitted %zu stalled batch(es) through "
       "cv>=%llu (round %u, fresh signals)\n",
+      (unsigned long)syscall(SYS_gettid),
       count,
       (unsigned long long)target_value,
       round + 1);
@@ -1228,8 +1233,9 @@ void wait_for_timeline_progress(
             std::getenv("MLX_OMARCHY_TRACE_DISPATCH") != nullptr) {
           foreign_traced = true;
           fprintf(stderr,
-                  "[rtmod] STALL-FOREIGN target=%llu through=%llu (owner"
+                  "[rtmod] STALL-FOREIGN tid=%lu target=%llu through=%llu (owner"
                   " has not submitted; continuing wait)\n",
+                  (unsigned long)syscall(SYS_gettid),
                   (unsigned long long)target_value,
                   (unsigned long long)progress->last_reserved());
         }
@@ -1245,8 +1251,9 @@ void wait_for_timeline_progress(
       // throws exactly as before.
       if (std::getenv("MLX_OMARCHY_TRACE_DISPATCH") != nullptr) {
         fprintf(stderr,
-                "[rtmod] STALL target=%llu observed=%llu round=%u "
+                "[rtmod] STALL tid=%lu target=%llu observed=%llu round=%u "
                 "recovery=%d\n",
+                (unsigned long)syscall(SYS_gettid),
                 (unsigned long long)target_value,
                 (unsigned long long)last_observed,
                 recovery_round,

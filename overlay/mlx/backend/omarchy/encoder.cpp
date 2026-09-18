@@ -3,6 +3,8 @@
 
 #include "mlx/backend/omarchy/encoder.h"
 #include <stdexcept>
+#include <unistd.h>
+#include <sys/syscall.h>
 
 #include "mlx/backend/omarchy/allocator.h"
 #include "mlx/backend/omarchy/device.h"
@@ -154,7 +156,7 @@ CommandEncoder::~CommandEncoder() {
 // submissions' final bytes.
 void CommandEncoder::join_last_completion(const char* reason) {
   if (std::getenv("MLX_OMARCHY_TRACE_DISPATCH") != nullptr) {
-    fprintf(stderr, "[rtmod] JOIN reason=%s last=%lu\n", reason,
+    fprintf(stderr, "[rtmod] JOIN tid=%lu reason=%s last=%lu\n", (unsigned long)syscall(SYS_gettid), reason,
             (unsigned long)last_completion_);
   }
   if (last_completion_ == 0) {
@@ -619,6 +621,9 @@ void CommandEncoder::wait_outstanding_submissions() {
 
 void CommandEncoder::submit() {
   auto& dt = vk::device_table();
+  if (std::getenv("MLX_OMARCHY_TRACE_DISPATCH")) {
+    fprintf(stderr, "[rtmod] SUBMIT-ENTER tid=%lu\n", (unsigned long)syscall(SYS_gettid));
+  }
   bool was_recording = recording_;
   uint64_t submit_t0 = prof::get().profiling() ? prof::host_ns() : 0;
   uint64_t close_t = 0;
@@ -784,11 +789,11 @@ void CommandEncoder::submit() {
         timeline.pSignalSemaphoreValues = nullptr;
       }
       if (simulate_drop) {
-        fprintf(stderr, "[rtmod] TEST-DROP cv=%lu\n",
-                (unsigned long)completion_value);
+        fprintf(stderr, "[rtmod] TEST-DROP tid=%lu cv=%lu\n",
+                (unsigned long)syscall(SYS_gettid), (unsigned long)completion_value);
       } else if (simulate_strip) {
-        fprintf(stderr, "[rtmod] TEST-STRIP cv=%lu\n",
-                (unsigned long)completion_value);
+        fprintf(stderr, "[rtmod] TEST-STRIP tid=%lu cv=%lu\n",
+                (unsigned long)syscall(SYS_gettid), (unsigned long)completion_value);
       } else {
         VKX_CHECK(dt.QueueSubmit(device_.queue(), 1, &si, VK_NULL_HANDLE));
       }
@@ -837,8 +842,8 @@ void CommandEncoder::submit() {
       slots_[current_slot_].in_flight = completion_value;
     }
     trace::counters().vk_submissions++;
-    fprintf(stderr, "[rtmod] SUBMIT cv=%lu waits=%lu sigs=%lu cmds=%u\n",
-            (unsigned long)completion_value, (unsigned long)wait_sems.size(),
+    fprintf(stderr, "[rtmod] SUBMIT tid=%lu cv=%lu waits=%lu sigs=%lu cmds=%u\n",
+            (unsigned long)syscall(SYS_gettid), (unsigned long)completion_value, (unsigned long)wait_sems.size(),
             (unsigned long)signal_values.size(),
             (unsigned)si.commandBufferCount);
   }
