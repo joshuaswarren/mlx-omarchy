@@ -90,3 +90,22 @@ with a stale payload must 422 naming the first unknown field.
   (non-Apple dev box), not a volunteer submission.
 - Local `wrangler dev` esbuild watcher crash on this CT is a tooling flake
   (same wrangler passed 13/13 earlier today); migration proven in sqlite.
+
+## Merge and processing pipeline (2026-09-18)
+
+- Merged to mlx-omarchy main: dashboard Kind column added; merged
+  origin/main's schema growth with the e2e fields (recomputed identity
+  4484ecd9…/5199ea0f… — fields hash unchanged, so the merged property set
+  equals the e2e-kind set; main's lane fields were already a subset).
+  Local main was diverged (stale /tmp/mlxmerge worktree + active encoder
+  lane); resolved by taking origin/main's side for the encoder file and
+  recomputing the schema identity. Deployed version 0ae54766.
+- Live pipeline verification: dataset serves quick=34 / deep=30 /
+  omarchy-mac-e2e=1 (caches rebuild immediately on publish, no cron wait);
+  e2e initiate passes the kind gate (reaches PoW enforcement); dashboard
+  serves the Kind column; old quick/deep rows unchanged.
+- Omarchy Mac side: PR opened — omacom/omarchy-mac#464
+  (joshuaswarren:e2e-collector → quattro) with docs/e2e-collector.md,
+  the no-clone bootstrap bin/omarchy-mac-e2e-collect, and the checklist.
+  The bootstrap defaults to omacom@quattro, so it goes live for
+  volunteers on merge.
