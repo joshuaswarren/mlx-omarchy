@@ -114,6 +114,7 @@ enum class ComputeKernel : uint16_t {
   SelectI32,
   SelectBool,
   SelectComplex64,
+  SelectI64,
   CompareF32,
   CompareF16,
   CompareBF16,
