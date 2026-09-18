@@ -301,6 +301,22 @@ references through Vulkan compute"`):
   dropped or probed for its own swallow risk. Then: full gate matrix,
   Bonsai-2-27B tok/s (the historical F1 workload), ancestry check vs
   63c1d3cf, certified E2E arms, oMLX A/B per the lane contract.
+- LADDER v2 + take-bound fix (cbc99cc9+): three rungs (never-began ->
+  kick+resubmit at FRESH values; executed-but-unsignaled -> host
+  vkSignalSemaphore of completion AND stranded user semaphores at bumped
+  fresh values; budget 2 rounds/wait). Take/judge bounds use
+  last_reserved() because round-1 re-retains at values ABOVE the original
+  target. Verified on-device: round-1 resubmit fires and kernels execute
+  (TEST_DROP_SUBMIT=1). REMAINING DEFECT, precisely: round 2 never fires
+  or never prints - after round-1 resubmission executes, the next stall
+  returns false silently (host-signal rung absent from logs); the normal
+  burst case likewise shows zero recovery attempts (first throw pre-empts
+  the ladder). Suspects, in order: (a) the throwing wait is the nested
+  eval's Event::wait whose recovery takes a DIFFERENT branch than
+  traced, (b) dispatcher-thread drain erasing resubmitable_ mid-stall,
+  (c) has_active_submission semantics for signal-only ride-alongs.
+  Next debug step: stderr-trace inside recover_stalled_submissions
+  entry/return with round + has_active + batch count, one build.
 - Instrumentation on this wheel (env-gated, keep): [rtmod] FEW/DISPATCH/
   SUBMIT/JOIN/EV-SIGNAL/FENCE-UPDATE/GATE prints; all behind
   MLX_OMARCHY_TRACE_DISPATCH. Debug edits live uncommitted on jw16
