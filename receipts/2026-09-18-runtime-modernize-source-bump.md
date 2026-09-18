@@ -410,3 +410,11 @@ cause found and fixed - nested blocking eval in host-read gates; proofs green
   0.32.3 dtype-name change, then finish the storm arm and continue the
   chain (Bonsai-2 stock + abliterated tok/s, land to main vs 63c1d3cf,
   4 certified E2E arms, oMLX A/B).
+- STORM UPDATE (mid-run): RECOVERY ENGAGES UNDER STORM - multiple
+  SUBMIT-RECOVER lines across test processes including round-2 firings
+  and multi-batch takes ("resubmitted 2 stalled batch(es)"). runtime
+  suite rc=1: its 200 ms no-progress window exhausted the 2-round
+  budget on one case (child/reused_slot_blocked_dependency, target=9
+  observed=8) after two successful rounds - the designed backstop, not
+  a kill-less hang. Triage item: rerun that suite at default 10 s
+  timing to separate storm-load slowness from a real defect.
