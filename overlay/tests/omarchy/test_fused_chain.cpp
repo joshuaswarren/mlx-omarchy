@@ -715,10 +715,12 @@ TEST_CASE("bf16 compiled tape fuses and matches eager exactly") {
   Stream stream = gpu_stream();
   enable_fusion();
   set_compile_mode(CompileMode::enabled);
-  // The model fragment: mlx_lm compiles swiglu with shapeless=True. The
-  // fused bf16 chain rounds every instruction to the storage dtype, so
-  // it matches the per-node eager sequence bit for bit. Compiled calls
-  // are lazy: values are compared at eval time.
+  // The model fragment: mlx_lm compiles swiglu with shapeless=True.
+  // bf16 chains are fenced from fusion (FusedChain::can_start; the
+  // fused bf16 chain corrupts in-model, see docs/known-defects.md), so
+  // the fragment falls back to per-node eval_gpu dispatch and must
+  // still match eager bit for bit. Compiled calls are lazy: values are
+  // compared at eval time.
   auto fn = compile([](const std::vector<array>& in) {
     return std::vector<array>{in[0] * sigmoid(in[0]) * in[1]};
   });
@@ -742,16 +744,11 @@ TEST_CASE("bf16 compiled tape fuses and matches eager exactly") {
   sync_stream(stream);
   set_compile_mode(CompileMode::disabled);
 
-  array eager_wide = astype(eager[0], float32, stream);
-  array fused_wide = astype(fused_out[0], float32, stream);
-  eager_wide.eval();
-  fused_wide.eval();
-  sync_stream(stream);
-  const float* eager_data = eager_wide.data<float>();
-  const float* fused_data = fused_wide.data<float>();
+  const uint16_t* eager_data = eager[0].data<uint16_t>();
+  const uint16_t* fused_data = fused_out[0].data<uint16_t>();
   for (size_t index = 0; index < eager[0].size(); ++index) {
-    INFO("element ", index, " eager=", eager_data[index],
-         " fused=", fused_data[index]);
+    INFO("element ", index, " eager=0x", std::hex, eager_data[index],
+         " fused=0x", fused_data[index], std::dec);
     CHECK_EQ(eager_data[index], fused_data[index]);
   }
 }
