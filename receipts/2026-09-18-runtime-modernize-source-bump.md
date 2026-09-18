@@ -178,3 +178,28 @@ The certified encoder pipeline is intact on the 0.32.3 vintage.
   (F1 watchdog, F2 bf16 tape, F4 Take uint8, F6 Select int64) — all
   reproduced/qualified on device with exact errors, none introduced by the
   bump (F1 A/B-verified on the certified 0.32.2 wheel).
+
+## 10. Gate suite status (post-bump, jw16 device)
+
+All omarchy gate targets now COMPILE (test_matmul_family fixed for the new
+gather_qmm global_scale param). First device run of the core set
+(/tmp/rtmod-gates.log):
+
+- PASS: omarchy_copy_offset_tests (7/7)
+- FAIL (F1 timeline watchdog, "last observed=0, target=1", thrown at FIRST
+  submission of specific sequences): omarchy_primitive_tests 100/103 (cholesky
+  error-code check + cos/sin + grad-sin-cos), omarchy_runtime_tests (case at
+  test_runtime.cpp:1797). The device RECOVERS between processes (later suites
+  pass after an F1 failure), so this is a per-submission-sequence scheduler /
+  fence bug, not a wedged device.
+- omarchy_matmul_family_tests / take_fill / fast_ops / fast_regression /
+  error_contract / compiled_tape / wrong_value_sweep / select_layout /
+  capability_sim: results in /tmp/rtmod-gates.log (same run).
+- omarchy_ane_runtime_tests: link failure (undefined AneRuntime::load 3-arg +
+  dtor) - ane runtime definition not compiled into that target on this
+  vintage; recorded, target excluded from the run pending fix.
+
+VERDICT: gates NOT green -> branch must NOT land/push yet. The remaining work
+is exactly one bug class (F1) plus the ane_runtime link item; everything else
+in the bump is verified on device (Parakeet pins EXACT, Qwen2.5 regression,
+Select-I64 advancement, no vintage-attributable regressions).

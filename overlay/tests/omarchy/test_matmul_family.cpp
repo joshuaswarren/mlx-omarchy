@@ -1995,6 +1995,7 @@ TEST_CASE("gather qmm gathers experts with scales and biases") {
           group_size,
           bits,
           "affine",
+          std::nullopt,
           false,
           stream);
     }
@@ -2061,6 +2062,7 @@ TEST_CASE("gather qmm gathers experts with scales and biases") {
         std::nullopt,
         std::nullopt,
         "mxfp4",
+        std::nullopt,
         false,
         stream));
     // mxfp4 gather computes now: zero codes decode to 0.0 under any e8m0
