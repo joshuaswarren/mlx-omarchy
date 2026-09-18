@@ -912,17 +912,27 @@ Device::~Device() {
 uint64_t Device::signal_timeline(VkSemaphore semaphore, uint64_t value) {
   std::lock_guard<std::mutex> lk(queue_mutex_);
   uint64_t completion_value = completions().reserve();
-  VkSemaphore semaphores[]{semaphore, completions().semaphore()};
-  uint64_t values[]{value, completion_value};
-  VkTimelineSemaphoreSubmitInfo timeline{
-      VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO};
-  timeline.signalSemaphoreValueCount = 2;
-  timeline.pSignalSemaphoreValues = values;
-  VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
-  si.pNext = &timeline;
-  si.signalSemaphoreCount = 2;
-  si.pSignalSemaphores = semaphores;
-  VKX_CHECK(vk::device_table().QueueSubmit(queue_, 1, &si, VK_NULL_HANDLE));
+  // Host-signal both timelines. This used to be an empty signal-only
+  // QueueSubmit (no command buffer, no waits); Honeykrisp swallows that
+  // shape - the semaphores are never signaled and the reserved
+  // completion value never publishes, so the next host wait deadlocks
+  // at target=1 with the counter stuck at 0 (cos/sin, GDN chunked
+  // async_eval, Ministral/Bonsai-8B first submissions). vkSignalSemaphore
+  // from the host needs no queue involvement and cannot be dropped.
+  static PFN_vkSignalSemaphore signal_fn = nullptr;
+  if (!signal_fn) {
+    signal_fn = reinterpret_cast<PFN_vkSignalSemaphore>(
+        vk::device_table().GetDeviceProcAddr(
+            handle(), "vkSignalSemaphore"));
+  }
+  VkSemaphoreSignalInfo ev{VK_STRUCTURE_TYPE_SEMAPHORE_SIGNAL_INFO};
+  ev.semaphore = semaphore;
+  ev.value = value;
+  VKX_CHECK(signal_fn(handle(), &ev));
+  VkSemaphoreSignalInfo cc{VK_STRUCTURE_TYPE_SEMAPHORE_SIGNAL_INFO};
+  cc.semaphore = completions().semaphore();
+  cc.value = completion_value;
+  VKX_CHECK(signal_fn(handle(), &cc));
   completions().enqueue(completion_value, {}, {});
   return completion_value;
 }

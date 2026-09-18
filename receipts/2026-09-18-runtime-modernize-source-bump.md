@@ -203,3 +203,28 @@ VERDICT: gates NOT green -> branch must NOT land/push yet. The remaining work
 is exactly one bug class (F1) plus the ane_runtime link item; everything else
 in the bump is verified on device (Parakeet pins EXACT, Qwen2.5 regression,
 Select-I64 advancement, no vintage-attributable regressions).
+
+## 11. F1 bisect (continuation): the hang is a GPU-side stall of the first submit, not a lost scheduler signal
+
+Instrumentation added behind `MLX_OMARCHY_TRACE_DISPATCH=1`
+(encoder.cpp dispatch trace) plus a submit print. Findings on the isolated
+repro (`omarchy_primitive_tests --test-case="Cos and Sin match host
+references through Vulkan compute"`):
+
+- The case dispatches exactly two kernels — `FEW name=Abs count=6` ->
+  kernel=0 (ElementwiseF32, count=6) and kernel=20 (ReduceF32, count=1) —
+  then SUBMIT cv=1 fires (waits=0, sigs=2, cmds=1) and the GPU never
+  completes it: counter stays 0 for the full window even at
+  MLX_OMARCHY_HANG_NO_PROGRESS_NS=120 s (not slow work — lost completion).
+- A pure Payne-Hanek stub (naive reduction, no dynamic local-array stores,
+  no umulExtended) STILL hangs — the trig math is NOT the hanging construct.
+- Bare `mx.sin(f32)` reproduces outside any model (probe /tmp/trig-probe.py).
+- Theory narrowed: the ReduceF32(count=1) dispatch shape (single-element
+  reduce) is the prime suspect for the driver stall — next bisect step is to
+  run the case with the ReduceF32 dispatch suppressed/replaced (copy-based
+  fallback) to confirm, then decide: driver workaround (pad single-element
+  reduces to 2), or Asahi bug report with the reproducer.
+- Gate matrix with F1 active: primitive 100/103, runtime 1 hang (case 1797),
+  fast_ops hang, compiled_tape fail — all F1-class; copy_offset, matmul
+  family, take_fill, select_layout, fast_regression, error_contract,
+  wrong_value_sweep all PASS on the same wheel.

@@ -253,81 +253,12 @@ const float LOG10_SNAP_K[21] = float[21](
 // the high bits correctly even when the exact fraction is near +/- 0.5
 // and the quadrant boundary matters.
 void payne_hanek(float ax, out float n_out, out float r_out) {
-  uint bits = floatBitsToUint(ax);
-  int e = int((bits >> 23u) & 0xffu) - 150;
-  uint m = (bits & 0x7fffffu) | 0x800000u;
-  // Accumulator for the 256-bit product tail: word 0 is the least
-  // significant. Declared as an array because the carry loop below
-  // indexes it dynamically; the quadrant extraction reads w[2..4].
-  uint w[8] = uint[8](0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u);
-  uint hi; uint lo;
-  for (int i = 0; i < 10; ++i) {
-    int s = e + 104 - 24 * i;
-    if (s < 0) break;
-    umulExtended(m, PIO2_TABLE[i], hi, lo);
-    int k = s >> 5;
-    int sub = s & 31;
-    uint a0; uint a1; uint a2; uint a3;
-    if (sub == 0) {
-      a0 = lo; a1 = hi; a2 = 0u; a3 = 0u;
-    } else {
-      a0 = lo << sub;
-      a1 = (lo >> (32 - sub)) | (hi << sub);
-      a2 = hi >> (32 - sub);
-      a3 = 0u;
-    }
-    // Multi-word add (a0,a1,a2,a3) into w[k..k+3] with carry chain.
-    // Words above 7 are silently dropped: the quadrant sits at bits
-    // 128-129, comfortably inside the kept range, and the table tail
-    // contributes at most 2^-80 to P so its overflow is irrelevant.
-    uint idx = uint(k);
-    uint t; uint c; uint c1;
-    t = w[idx] + a0; w[idx] = t; c = (t < a0) ? 1u : 0u;
-    idx = idx + 1u;
-    t = w[idx] + a1; c1 = (t < a1) ? 1u : 0u;
-    t = t + c; w[idx] = t; c = ((c1 == 1u) || (t < c)) ? 1u : 0u;
-    idx = idx + 1u;
-    t = w[idx] + a2; c1 = (t < a2) ? 1u : 0u;
-    t = t + c; w[idx] = t; c = ((c1 == 1u) || (t < c)) ? 1u : 0u;
-    idx = idx + 1u;
-    t = w[idx] + a3; c1 = (t < a3) ? 1u : 0u;
-    t = t + c; w[idx] = t; c = ((c1 == 1u) || (t < c)) ? 1u : 0u;
-    if (idx + 1u <= 7u) {
-      idx = idx + 1u;
-      t = w[idx] + c; w[idx] = t; c = (t < c) ? 1u : 0u;
-    }
-    if (idx + 1u <= 7u) {
-      idx = idx + 1u;
-      t = w[idx] + c; w[idx] = t; c = (t < c) ? 1u : 0u;
-    }
-    if (idx + 1u <= 7u) {
-      idx = idx + 1u;
-      t = w[idx] + c; w[idx] = t; c = (t < c) ? 1u : 0u;
-    }
-    if (idx + 1u <= 7u) {
-      idx = idx + 1u;
-      w[idx] = w[idx] + c;
-    }
-  }
-  // Quadrant bits at positions 128 (w4 bit 0) and 129 (w4 bit 1);
-  // fraction round bit at position 127 (w3 bit 31).
-  uint qb_lo = (w[4] >> 0u) & 1u;
-  uint qb_hi = (w[4] >> 1u) & 1u;
-  uint fbit = (w[3] >> 31u) & 1u;
-  // Fraction bits at P positions -1..-24 (round bit fbit above
-  // covers position -1): they live in w[3] bits 8..31 for Fhi and split
-  // across w[2] bits 16..31 (low 16) plus w[3] bits 0..7 (high 8) for Flo.
-  // The P*2^128 anchor puts P bit 0 in w[4].0, P bit -1 in w[3].31,
-  // P bit -24 in w[3].8, P bit -48 in w[2].16. Earlier w[1]/w[2] picks
-  // read bits that were 32 positions too low and produced fractional
-  // arguments of magnitude ~1e9 instead of the intended [-1, 1].
-  uint Fhi = (w[3] >> 8u) & 0x00fffffu;
-  uint Flo = ((w[2] >> 16u) & 0xffffu) | ((w[3] & 0xffu) << 16u);
-  float frac_hi = float(Fhi) * (1.0f / float(1u << 24));
-  float frac_lo = float(Flo) * (1.0f / float(1u << 48));
-  float s1 = frac_hi - (fbit == 1u ? 1.0f : 0.0f);
-  r_out = fma(frac_lo, PIO2, s1 * PIO2);
-  n_out = float(qb_lo | (qb_hi << 1u) | fbit);
+  // RTMOD-EXPERIMENT: dynamic w[idx] store hazard bisect - naive
+  // reduction, valid for moderate |ax|.
+  float n = floor(ax / (2.0f * 1.5707963267948966f) + 0.5f);
+  float r = ax - n * 1.5707963267948966f;
+  n_out = mod(n, 4.0f);
+  r_out = r;
 }
 
 float sin_impl(float x) {

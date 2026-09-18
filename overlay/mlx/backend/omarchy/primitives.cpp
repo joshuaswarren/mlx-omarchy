@@ -837,6 +837,10 @@ void dispatch_float_elementwise_to(
     bool general_broadcast,
     omarchy::CommandEncoder& encoder) {
   uint32_t count = checked_u32(out.size(), name, out);
+  if (std::getenv("MLX_OMARCHY_TRACE_DISPATCH") != nullptr) {
+    fprintf(stderr, "[rtmod] FEW name=%s count=%u\n", name.c_str(), count);
+    fflush(stderr);
+  }
   omarchy::ComputeParams params;
   params.count = count;
   params.operation = operation;
