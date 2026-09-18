@@ -896,7 +896,7 @@ class AneIsland:
 class EncoderRunner:
     def __init__(self, mil_path: Path, model_root: Path, island: AneIsland | None,
                  placed: frozenset[str] = frozenset(
-                     os.environ.get("MLX_OMARCHY_PLACED", "ABC"))):
+                     os.environ.get("MLX_OMARCHY_PLACED", "AC"))):
         self.text = mil_path.read_text()
         self.blobs = Blobs(model_root)
         self.island = island
@@ -1861,7 +1861,7 @@ def main() -> int:
         help="Vulkan-only control run: every op stays on the GPU.",
     )
     parser.add_argument(
-        "--islands", default="ABC",
+        "--islands", default="AC",
         help="which islands to place on the ANE, e.g. ABC or AC. Ignored with "
              "--no-ane. AC reproduces the two-island arm from this same script.",
     )
