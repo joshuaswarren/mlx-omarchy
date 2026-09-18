@@ -16,3 +16,5 @@ __pycache__/
 dist-wip/
 local-quant-tests.log
 GATES.md
+
+.omp/
