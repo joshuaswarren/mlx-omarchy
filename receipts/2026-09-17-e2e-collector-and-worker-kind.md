@@ -71,3 +71,22 @@ Post-deploy smoke: `python3 scripts/collect_e2e.py --out smoke.tar.gz
 --skip interview` from any machine (one labeled `test_id` row; note it in
 this receipt), or negative-path first: a `kind: omarchy-mac-e2e` initiate
 with a stale payload must 422 naming the first unknown field.
+
+## Deployed and live-verified (2026-09-18)
+
+- Token transferred to this CT by Joshua (esper → CT, key-based).
+- `wrangler deploy` → version 7571e527; `check_schema_identity.py --url` →
+  OK (fields 4484ecd9…, schema 5781ea64…).
+- First live submit 500'd: `initiate: insert succeeded but row is missing`.
+  Root cause: `0001_init.sql` pinned `kind CHECK (kind IN ('quick','deep'))`;
+  `INSERT OR IGNORE` silently dropped the e2e row. Fixed in
+  `migrations/0002_e2e_kind.sql` (rebuild without the kind list; API
+  validator is the gate), applied remotely, proven in real sqlite, and
+  guarded by a new smoke scenario.
+- Live round trip: collector `--submit` → 200, receipt
+  https://mlx-omarchy-community-data.joshua-s-warren.workers.dev/v1/results/ef89a1c651ce3cb599be62dc7baa49f8bacb5e76e9e3a56d41b0fddd60627ff3
+  stored kind=omarchy-mac-e2e, test_id=collector-smoke-2026-09-17,
+  arch=x86_64, archive 19,353 bytes. That row is a labeled smoke row
+  (non-Apple dev box), not a volunteer submission.
+- Local `wrangler dev` esbuild watcher crash on this CT is a tooling flake
+  (same wrangler passed 13/13 earlier today); migration proven in sqlite.
