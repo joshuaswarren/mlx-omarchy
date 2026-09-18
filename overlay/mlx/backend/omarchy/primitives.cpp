@@ -4309,7 +4309,15 @@ void trig_argument_gate(
   }
   array magnitude = astype(
       max(abs(inputs.at(0), stream), stream), float32, stream);
+  const bool trace_gate =
+      std::getenv("MLX_OMARCHY_TRACE_DISPATCH") != nullptr;
+  if (trace_gate) {
+    fprintf(stderr, "[rtmod] GATE %s enter\n", name.c_str());
+  }
   magnitude.eval();
+  if (trace_gate) {
+    fprintf(stderr, "[rtmod] GATE %s post-eval\n", name.c_str());
+  }
   // The magnitude is read on the host, so the stream must be ordered
   // here: array::item() is eval() plus an immediate mapped read with no
   // completion wait, and an unordered read races this gate's own

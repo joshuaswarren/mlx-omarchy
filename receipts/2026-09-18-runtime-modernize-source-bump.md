@@ -251,3 +251,59 @@ references through Vulkan compute"`):
 - Instrumentation remains available: MLX_OMARCHY_TRACE_DISPATCH=1 prints
   every elementwise dispatch (kernel id, count, groups); submit prints
   cv/waits/sigs/cmds (encoder.cpp).
+
+## 13. F1 root-cause round 3 (2026-09-18, F1StallFix lane): environmental submission swallow; recovery ladder landed (WIP)
+
+- Every F1 theory from sections 11-12 is DEAD, killed by probe matrix
+  (/tmp/f1-probes*.log, /tmp/f1-trace.log on jw16): the stall is NOT the
+  trig gate (f16 sin has no gate and still hung), NOT the Abs+reduce prefix
+  (standalone abs+max+item passes at every count 1..1024), NOT
+  first-submission ordinal (sin hangs mid-process after a completed
+  warmup), NOT kernel- or shape-specific. The prefix Abs+reduce seen in
+  round 2 is just trig_argument_gate's `max(abs(x))` magnitude check
+  (primitives.cpp `trig_argument_gate`), which runs BEFORE any Cos/Sin
+  dispatch; the frozen cv=1 sigs=2 submit is that gate's submit.
+- The stall is a burst-window phenomenon: ~10:24-10:55 CDT every first
+  GPU submission of a fresh process wedged (completion timeline stuck at
+  0), across bare mx.sin/cos (f32 AND f16), gate and non-gate shapes;
+  60+ consecutive runs pass outside the burst. dpms stayed On; GPU runtime
+  PM is "unsupported" (firmware-managed). Burst coincided with the wheel
+  compile storms on jw16 (system load); self-recovers in minutes.
+  In-tree comment (device.cpp `Device::signal_timeline`) already documents
+  the deterministic member of this class: Honeykrisp SWALLOWS an empty
+  signal-only QueueSubmit (fixed there by host-signaling). Round 3 adds
+  the bursty generalization: real command buffers get dropped too.
+- TRACE ORACLE: MLX_OMARCHY_TRACE_DISPATCH=1 with stderr to a PIPE made
+  the 4-element sin probe hang deterministically inside the burst window;
+  stderr to a FILE passes. Prints delay the host in the submit window and
+  expose the race. Event-signal rides every first submit (sigs=2) via the
+  eval tail Event::signal queued path (both passing and hanging runs
+  print identical [rtmod] traces - the difference is GPU-side, not host).
+- Recovery ladder LANDED on the branch (encoder.cpp/device.{h,cpp}/
+  event.cpp, +226 lines): every submit retains its batch
+  (CompletionDispatcher::ResubmitBatch); on a no-progress watchdog
+  interval with NO started-event evidence of execution
+  (CmdSetEvent@TOP_OF_PIPE is the execution proof), the Device resubmits
+  all stalled batches (kick submit first), budget 2 rounds per wait,
+  then throws as before. `MLX_OMARCHY_TEST_DROP_SUBMIT=N` deterministically
+  simulates the driver swallow (drops the Nth QueueSubmit, host still
+  publishes the completion).
+- PROOF + REMAINING DEFECT (honest): with TEST_DROP_SUBMIT=1 the ladder
+  fires (TEST-DROP cv=1 -> SUBMIT-RECOVER round 1) and the resubmitted
+  kernels EXECUTE (started event sets), but the completion timeline still
+  never advances: Mesa does not publish a DUPLICATE timeline point
+  (resubmission re-signals value 1 while the dropped submission still
+  holds point 1). NEXT (named, no re-derivation needed): recovery must
+  signal FRESH reserved values instead of re-signaling the original -
+  vkWaitSemaphores is >=, so a higher value satisfies the stuck wait;
+  ride-along event-semaphore signals need the same fresh-value treatment
+  plus Event bookkeeping (completion_for), and the kick submit should be
+  dropped or probed for its own swallow risk. Then: full gate matrix,
+  Bonsai-2-27B tok/s (the historical F1 workload), ancestry check vs
+  63c1d3cf, certified E2E arms, oMLX A/B per the lane contract.
+- Instrumentation on this wheel (env-gated, keep): [rtmod] FEW/DISPATCH/
+  SUBMIT/JOIN/EV-SIGNAL/FENCE-UPDATE/GATE prints; all behind
+  MLX_OMARCHY_TRACE_DISPATCH. Debug edits live uncommitted on jw16
+  (~/src/mlx-omarchy-rtmod2 overlay, stash + /tmp/rtmod2-local-edsave.diff
+  hold the pre-existing instrumentation); this branch's copies are the
+  authoritative ones committed here.

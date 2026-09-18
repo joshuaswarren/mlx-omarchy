@@ -9,6 +9,7 @@
 #include <condition_variable>
 #include <cstdint>
 #include <deque>
+#include <map>
 #include <functional>
 #include <memory>
 #include <mutex>
@@ -139,16 +140,21 @@ uint64_t submit_hang_no_progress_ns();
 uint64_t submit_max_wall_ns();
 
 class CompletionDispatcher;
+class Device;
 
 // Wait for a timeline value with bounded, nonblocking progress observation.
 // The callback returns the latest completion generation known to satisfy the
 // waited value. Zero means no matching producer has been published.
+// |recovery| (optional) enables the dropped-submission recovery ladder: on a
+// no-progress interval with no evidence of execution, the device resubmits
+// the stalled batches instead of throwing (Honeykrisp swallows submissions).
 void wait_for_timeline_progress(
     VkDevice device,
     VkSemaphore semaphore,
     uint64_t target_value,
     CompletionDispatcher* progress = nullptr,
-    std::function<uint64_t()> progress_generation = {});
+    std::function<uint64_t()> progress_generation = {},
+    Device* recovery = nullptr);
 
 class CommandEncoder;
 class ComputeRuntime;
@@ -163,7 +169,7 @@ class ComputeRuntime;
 // block on the queue.
 class CompletionDispatcher {
  public:
-  explicit CompletionDispatcher(VkDevice device);
+  explicit CompletionDispatcher(VkDevice device, Device* owner = nullptr);
   ~CompletionDispatcher();
 
   CompletionDispatcher(const CompletionDispatcher&) = delete;
@@ -195,13 +201,33 @@ class CompletionDispatcher {
   bool has_active_submission(uint64_t through_value);
   void shutdown();
 
+  // Everything a submission put on the queue, retained so the watchdog's
+  // recovery ladder can resubmit it when Honeykrisp drops the batch (the
+  // completion timeline never advances and the batch never started
+  // executing). Retained under the dispatcher mutex, erased when the
+  // completion drains.
+  struct ResubmitBatch {
+    uint64_t value{0};
+    VkCommandBuffer cmd{VK_NULL_HANDLE};
+    std::vector<VkSemaphore> wait_sems;
+    std::vector<uint64_t> wait_values;
+    std::vector<VkSemaphore> signal_sems;
+    std::vector<uint64_t> signal_values;
+  };
+  void retain_for_resubmit(uint64_t value, ResubmitBatch batch);
+  std::vector<ResubmitBatch> take_resubmit_batches(uint64_t through_value);
+
  private:
   void run();
   void drain_through(uint64_t max_value);
 
   VkDevice device_;
+  Device* owner_{nullptr};
   VkSemaphore semaphore_{VK_NULL_HANDLE};
   std::deque<Completion> pending_;
+  // Completion value -> the batch that carries it, retained until the
+  // completion drains so a dropped submission can be resubmitted.
+  std::map<uint64_t, ResubmitBatch> resubmitable_;
   // Payloads of already-drained completions, released one completion
   // later. Mesa signals a submission's semaphores before its submit-final
   // cleanup releases timeline points, so a completion value on this
@@ -254,6 +280,18 @@ class Device {
   std::mutex& queue_mutex() {
     return queue_mutex_;
   }
+
+  // Dropped-submission recovery ladder, invoked by the watchdog when a
+  // waited completion value stops advancing. Honeykrisp provably swallows
+  // submissions (the in-tree empty signal-only QueueSubmit fix documents
+  // the deterministic shape; burst observations add real command buffers
+  // whose started event never fires). The ladder resubmits every retained
+  // batch through |target_value| - legal because the single queue is
+  // in-order, so no later completion can have signaled while an earlier
+  // one is still stalled, and the started event proves the batch never
+  // began executing. Returns false (leaving the wait to throw) when the
+  // batches show execution evidence or the attempt budget is spent.
+  bool recover_stalled_submissions(uint64_t target_value, uint32_t round);
 
   void join_completed_handlers();
 

@@ -886,7 +886,7 @@ Device::Device(uint32_t physical_device_index) {
           caps_.max_per_stage_descriptor_storage_buffers,
           caps_.max_descriptor_set_storage_buffers));
   compute_ = std::make_unique<ComputeRuntime>(device_, binding_limit);
-  completions_ = std::make_unique<CompletionDispatcher>(device_);
+  completions_ = std::make_unique<CompletionDispatcher>(device_, this);
 }
 
 Device::~Device() {
@@ -935,6 +935,78 @@ uint64_t Device::signal_timeline(VkSemaphore semaphore, uint64_t value) {
   VKX_CHECK(signal_fn(handle(), &cc));
   completions().enqueue(completion_value, {}, {});
   return completion_value;
+}
+
+bool Device::recover_stalled_submissions(
+    uint64_t target_value,
+    uint32_t round) {
+  // Budget: two recovery rounds per stalled wait (|round| is owned by the
+  // waiting loop, so a later wait starts fresh). Recovery is for the
+  // swallow class, not for a genuinely wedged GPU - a real hang must
+  // still surface as the typed watchdog error, not as an unbounded
+  // retry loop.
+  if (round >= 2) {
+    return false;
+  }
+
+  std::lock_guard<std::mutex> lk(queue_mutex_);
+  // Execution evidence: any retained batch through the target whose
+  // started event fired means the GPU began the work. Resubmitting then
+  // would double-execute kernels; that is a real hang, so refuse and
+  // let the watchdog throw.
+  auto& completions = this->completions();
+  if (completions.has_active_submission(target_value)) {
+    return false;
+  }
+  std::vector<CompletionDispatcher::ResubmitBatch> batches =
+      completions.take_resubmit_batches(target_value);
+  if (batches.empty()) {
+    return false;
+  }
+
+  auto& dt = vk::device_table();
+  // First, an empty queue-touch submit: if the loss was a missed
+  // doorbell rather than a dropped batch, this alone flushes the queue
+  // and the original submission completes. No semaphores, no command
+  // buffer - nothing to signal, so ordering cannot be violated.
+  VkSubmitInfo kick{VK_STRUCTURE_TYPE_SUBMIT_INFO};
+  dt.QueueSubmit(queue_, 1, &kick, VK_NULL_HANDLE);
+
+  size_t count = batches.size();
+  for (auto& batch : batches) {
+    VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
+    VkTimelineSemaphoreSubmitInfo timeline{
+        VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO};
+    std::vector<VkPipelineStageFlags> wait_stages(
+        batch.wait_sems.size(), VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
+    timeline.waitSemaphoreValueCount =
+        static_cast<uint32_t>(batch.wait_values.size());
+    timeline.pWaitSemaphoreValues = batch.wait_values.data();
+    timeline.signalSemaphoreValueCount =
+        static_cast<uint32_t>(batch.signal_values.size());
+    timeline.pSignalSemaphoreValues = batch.signal_values.data();
+    si.pNext = &timeline;
+    si.waitSemaphoreCount = static_cast<uint32_t>(batch.wait_sems.size());
+    si.pWaitSemaphores = batch.wait_sems.data();
+    si.pWaitDstStageMask = wait_stages.data();
+    si.commandBufferCount = batch.cmd != VK_NULL_HANDLE ? 1u : 0u;
+    si.pCommandBuffers = batch.cmd != VK_NULL_HANDLE ? &batch.cmd : nullptr;
+    si.signalSemaphoreCount =
+        static_cast<uint32_t>(batch.signal_sems.size());
+    si.pSignalSemaphores = batch.signal_sems.data();
+    VKX_CHECK(dt.QueueSubmit(queue_, 1, &si, VK_NULL_HANDLE));
+    // The batch is pending again; retain it for a further round.
+    uint64_t value = batch.value;
+    completions.retain_for_resubmit(value, std::move(batch));
+  }
+  fprintf(
+      stderr,
+      "[rtmod] SUBMIT-RECOVER resubmitted %zu stalled batch(es) through "
+      "cv=%llu (round %u)\n",
+      count,
+      (unsigned long long)target_value,
+      round + 1);
+  return true;
 }
 
 void Device::join_completed_handlers() {
@@ -1000,7 +1072,8 @@ void wait_for_timeline_progress(
     VkSemaphore semaphore,
     uint64_t target_value,
     CompletionDispatcher* progress,
-    std::function<uint64_t()> progress_generation) {
+    std::function<uint64_t()> progress_generation,
+    Device* recovery) {
   using clock = std::chrono::steady_clock;
   const uint64_t hang_ns = submit_hang_no_progress_ns();
   const uint64_t max_wall_ns = submit_max_wall_ns();
@@ -1008,6 +1081,7 @@ void wait_for_timeline_progress(
   const auto wall_deadline = start + std::chrono::nanoseconds(max_wall_ns);
   uint64_t last_observed = 0;
   auto last_advance = start;
+  uint32_t recovery_round = 0;
 
   VkSemaphoreWaitInfo info{VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO};
   info.semaphoreCount = 1;
@@ -1052,6 +1126,20 @@ void wait_for_timeline_progress(
     if (executing) {
       last_advance = now;
     } else if ((now - last_advance) > std::chrono::nanoseconds(hang_ns)) {
+      // No progress for a full no-progress interval. Before declaring the
+      // device hung, give the recovery ladder a chance: Honeykrisp
+      // provably swallows submissions (the empty signal-only shape was
+      // deterministic and is fixed; burst observations add real command
+      // buffers whose started event never fires). A successful resubmit
+      // restarts the no-progress clock; a refused or exhausted recovery
+      // throws exactly as before.
+      if (recovery &&
+          recovery->recover_stalled_submissions(
+              target_value, recovery_round)) {
+        recovery_round++;
+        last_advance = clock::now();
+        continue;
+      }
       throw std::runtime_error(
           std::string(
               "[omarchy] Vulkan timeline counter failed to advance for ") +
@@ -1062,7 +1150,8 @@ void wait_for_timeline_progress(
     }
   }
 }
-CompletionDispatcher::CompletionDispatcher(VkDevice device) : device_(device) {
+CompletionDispatcher::CompletionDispatcher(VkDevice device, Device* owner)
+    : device_(device), owner_(owner) {
   VkSemaphoreTypeCreateInfo type{VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO};
   type.semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE;
   type.initialValue = 0;
@@ -1085,7 +1174,7 @@ void CompletionDispatcher::wait(uint64_t value) {
   // observing the counter's motion avoids that failure mode without
   // giving up on real hang detection.
   wait_for_timeline_progress(
-      device_, semaphore_, value, this, [value] { return value; });
+      device_, semaphore_, value, this, [value] { return value; }, owner_);
   // Inline fast path: drain and run every ready completion whose value
   // is <= |value| on this thread, serialized end-to-end through
   // drain_mutex_ with the background thread so handlers cannot interleave
@@ -1203,6 +1292,27 @@ bool CompletionDispatcher::has_active_submission(uint64_t through_value) {
   return false;
 }
 
+void CompletionDispatcher::retain_for_resubmit(
+    uint64_t value,
+    ResubmitBatch batch) {
+  std::lock_guard<std::mutex> lk(mutex_);
+  resubmitable_[value] = std::move(batch);
+}
+
+std::vector<CompletionDispatcher::ResubmitBatch>
+CompletionDispatcher::take_resubmit_batches(uint64_t through_value) {
+  std::lock_guard<std::mutex> lk(mutex_);
+  std::vector<ResubmitBatch> out;
+  for (auto& [value, batch] : resubmitable_) {
+    if (value > through_value) {
+      break;
+    }
+    out.push_back(std::move(batch));
+  }
+  resubmitable_.erase(resubmitable_.begin(), resubmitable_.upper_bound(through_value));
+  return out;
+}
+
 void CompletionDispatcher::drain_through(uint64_t max_value) {
   std::lock_guard<std::mutex> drain_lk(drain_mutex_);
   std::vector<Completion> ready;
@@ -1213,6 +1323,10 @@ void CompletionDispatcher::drain_through(uint64_t max_value) {
       ready.push_back(std::move(pending_.front()));
       pending_.pop_front();
     }
+    // Their retained submit records completed - recovery must never
+    // resubmit them again.
+    resubmitable_.erase(
+        resubmitable_.begin(), resubmitable_.upper_bound(max_value));
   }
   if (ready.empty()) {
     return;

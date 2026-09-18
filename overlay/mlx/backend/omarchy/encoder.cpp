@@ -153,6 +153,10 @@ CommandEncoder::~CommandEncoder() {
 // ordered), so they can legally be begun again, and host reads see the
 // submissions' final bytes.
 void CommandEncoder::join_last_completion(const char* reason) {
+  if (std::getenv("MLX_OMARCHY_TRACE_DISPATCH") != nullptr) {
+    fprintf(stderr, "[rtmod] JOIN reason=%s last=%lu\n", reason,
+            (unsigned long)last_completion_);
+  }
   if (last_completion_ == 0) {
     return;
   }
@@ -731,7 +735,25 @@ void CommandEncoder::submit() {
     si.pSignalSemaphores = signal_sems.data();
     try {
       queue_t0 = prof::get().profiling() ? prof::host_ns() : 0;
-      VKX_CHECK(dt.QueueSubmit(device_.queue(), 1, &si, VK_NULL_HANDLE));
+      // Deterministic swallow simulation for the recovery ladder: drop
+      // the Nth (1-based) QueueSubmit exactly the way Honeykrisp drops
+      // submissions in the field. The host still publishes the
+      // completion, so the watchdog waits on a batch the GPU will never
+      // see and recovery must resubmit it.
+      static std::atomic<uint64_t> submit_sequence{0};
+      bool simulate_drop = false;
+      if (const char* drop_env =
+              std::getenv("MLX_OMARCHY_TEST_DROP_SUBMIT")) {
+        uint64_t ordinal = strtoull(drop_env, nullptr, 10);
+        simulate_drop =
+            ordinal != 0 && submit_sequence.fetch_add(1) + 1 == ordinal;
+      }
+      if (simulate_drop) {
+        fprintf(stderr, "[rtmod] TEST-DROP cv=%lu\n",
+                (unsigned long)completion_value);
+      } else {
+        VKX_CHECK(dt.QueueSubmit(device_.queue(), 1, &si, VK_NULL_HANDLE));
+      }
       queue_t1 = prof::get().profiling() ? prof::host_ns() : 0;
     } catch (...) {
       // The submission never reached the driver: the ended command buffer
@@ -752,6 +774,20 @@ void CommandEncoder::submit() {
     }
     // Publish only after the submit: the dispatcher must never wait on a
     // value whose submission has not been handed to the driver.
+    // Retain everything the batch put on the queue so the watchdog's
+    // recovery ladder can resubmit it if Honeykrisp drops the submission
+    // (erased when the completion drains).
+    {
+      CompletionDispatcher::ResubmitBatch batch;
+      batch.value = completion_value;
+      batch.cmd = recording_ ? cmd_ : VK_NULL_HANDLE;
+      batch.wait_sems = wait_sems;
+      batch.wait_values = wait_values;
+      batch.signal_sems = signal_sems;
+      batch.signal_values = signal_values;
+      device_.completions().retain_for_resubmit(
+          completion_value, std::move(batch));
+    }
     device_.completions().enqueue(
         completion_value,
         std::move(keepalive),
