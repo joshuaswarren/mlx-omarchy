@@ -6956,8 +6956,8 @@ TEST_CASE("mx.compile runs the bf16 tape bit-exact against eager") {
   using VectorFn = std::function<std::vector<array>(const std::vector<array>&)>;
 
   // The bf16 tape dispatches the same bf16 eval_gpu kernels eager uses
-  // (and the fused chain rounds each instruction to storage dtype), so
-  // compiled output widens to the identical float32 bits.
+  // (bf16 chains are fenced from fusion, see FusedChain::can_start), so
+  // compiled output must equal eager's bf16 bits exactly.
   set_compile_mode(CompileMode::enabled);
   VectorFn fused_fun = [&](const std::vector<array>& inputs) {
     return std::vector<array>{
@@ -6966,23 +6966,25 @@ TEST_CASE("mx.compile runs the bf16 tape bit-exact against eager") {
   auto fused = compile(fused_fun);
 
   set_compile_mode(CompileMode::disabled);
-  std::vector<float> expected_bf16(4);
-  // Compute the eager reference on the device in bf16, widened for
-  // reading: host float arithmetic does not reproduce bf16 rounding.
-  array eager_bf16 =
-      multiply(add(x, y, stream), x, stream);
-  eager_bf16.eval();
-  sync_stream(stream);
-  array eager_wide = astype(eager_bf16, float32, stream);
-  eager_wide.eval();
-  sync_stream(stream);
-  const float* eager_data = eager_wide.data<float>();
-  for (size_t index = 0; index < expected_bf16.size(); ++index) {
-    expected_bf16[index] = eager_data[index];
+  std::vector<array> eager_bf16 = fused_fun({x, y});
+  for (auto& out : eager_bf16) {
+    out.eval();
   }
+  omarchy::get_command_encoder(stream).synchronize();
 
-  array wide = astype(fused({x, y})[0], float32, stream);
-  check_values(wide, expected_bf16, stream, 0);
+  std::vector<array> compiled_bf16 = fused({x, y});
+  for (auto& out : compiled_bf16) {
+    out.eval();
+  }
+  omarchy::get_command_encoder(stream).synchronize();
+  set_compile_mode(CompileMode::disabled);
+  const uint16_t* eager_data = eager_bf16[0].data<uint16_t>();
+  const uint16_t* compiled_data = compiled_bf16[0].data<uint16_t>();
+  for (size_t index = 0; index < x.size(); ++index) {
+    INFO("bf16 bits mismatch at ", index, " eager=0x", std::hex,
+         eager_data[index], " compiled=0x", compiled_data[index], std::dec);
+    CHECK_EQ(eager_data[index], compiled_data[index]);
+  }
 
   // f16 and f32 tapes keep running.
   std::vector<float> expected(4);

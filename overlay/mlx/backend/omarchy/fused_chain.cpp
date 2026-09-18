@@ -193,10 +193,22 @@ bool FusedChain::can_start(const array& node) {
   if (!node.has_primitive()) {
     return false;
   }
-  if (node.dtype() != float32 && node.dtype() != float16 &&
-      node.dtype() != bfloat16) {
+  if (node.dtype() != float32 && node.dtype() != float16) {
     return false;
   }
+  // bf16 chains are fenced from fusion: in isolated fragments the bf16
+  // chain kernels match per-node dispatch bit for bit (C++ battery),
+  // but inside the full mlx-lm forward three models - Qwen3.5-9B,
+  // gemma-4-31B, Ministral-3-8B - return deterministic wrong tokens
+  // through fused bf16 chains while the same run with fusion disabled
+  // matches the eager digest exactly. The corruption is not recycled
+  // storage (poison-armed runs stay wrong, no signature) and not
+  // reproducible in isolated shape/dtype/view/cast-mixed fragments at
+  // model shapes, so the failing configuration is fenced by name and
+  // bf16 tape nodes fall back to per-node eval_gpu dispatch, which is
+  // bit-exact end to end on every model tested. Root cause tracked in
+  // docs/known-defects.md; lift requires a clean full-model mlx-lm
+  // sweep on the corrupt matrix.
   return chain_op_for(node.primitive()).has_value();
 }
 

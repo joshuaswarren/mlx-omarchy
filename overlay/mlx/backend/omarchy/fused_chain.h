@@ -25,9 +25,10 @@ namespace mlx::core::omarchy {
 // Any node the chain cannot carry (unsupported op class, shape change,
 // exotic broadcast, too many leaves, no tail dependency) makes the
 // whole run fall back to the per-node tape path: loud refusal
-// semantics are unchanged. Compiled bf16 tapes remain refused, while
-// the eager SwiGLU planner below uses the same interpreter with bf16
-// intermediate rounding.
+// semantics are unchanged. bf16 chains are fenced from fusion (see
+// can_start) and bf16 tape nodes run per-node, bit-exact against
+// eager; the eager SwiGLU planner below keeps its own bf16 support
+// with bf16 intermediate rounding.
 //
 // Fusion defaults on after exact-ID parity and paired performance validation on
 // M1 hardware. MLX_OMARCHY_FUSED_CHAIN=0 restores the per-node path.

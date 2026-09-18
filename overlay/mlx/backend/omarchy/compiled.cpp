@@ -270,10 +270,11 @@ void eval_compiled_tape(
   // float unary/binary tape nodes collapse into ONE dispatch when the
   // gate is on, and every EXTENSION must consume the open chain's tail
   // so interior members are never consumable from outside. A node the
-  // chain cannot carry closes it; the closed chain either fuses (one
+  // cannot carry closes it; the closed chain either fuses (one
   // dispatch) or falls back to the per-node path below, so refusal
-  // semantics are unchanged. bf16 nodes ride the chain's own bf16
-  // kernels or the same per-node eval_gpu dispatch eager uses.
+  // semantics are unchanged. bf16 chains are fenced from fusion
+  // (FusedChain::can_start): bf16 nodes run through the same
+  // per-node eval_gpu dispatch eager uses.
   std::optional<FusedChain> chain;
   if (fusion_enabled) {
     chain.emplace(true);

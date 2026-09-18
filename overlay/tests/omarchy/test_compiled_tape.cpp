@@ -601,14 +601,42 @@ TEST_CASE("bf16 tape runs the widened op set and matches eager exactly") {
   array x(xv.begin(), Shape{4}, bfloat16);
 
   // The widened classes dispatch per node through the same bf16
-  // eval_gpu kernels eager uses, so compiled output is bit-exact;
-  // the chain rounds every instruction to the storage dtype, matching
-  // per-node dispatch either way.
+  // eval_gpu kernels eager uses (bf16 chains are fenced from fusion,
+  // see FusedChain::can_start), so compiled output is bit-exact.
+  // Bits compare as uint16: the bf16 bit pattern IS the contract.
   auto fn = [&stream](const std::vector<array>& inputs) {
     auto rounded = round(multiply(inputs[0], inputs[0], stream), stream);
     return std::vector<array>{abs(rounded, stream)};
   };
-  check_compiled_matches_eager(fn, {x}, bfloat16, stream, 0);
+  set_compile_mode(CompileMode::disabled);
+  std::vector<array> eager_outputs = fn({x});
+  for (auto& out : eager_outputs) {
+    out.eval();
+  }
+  sync_stream(stream);
+  set_compile_mode(CompileMode::enabled);
+  auto compiled_fn = compile(fn);
+  std::vector<array> compiled_outputs = compiled_fn({x});
+  for (auto& out : compiled_outputs) {
+    out.eval();
+  }
+  sync_stream(stream);
+  set_compile_mode(CompileMode::disabled);
+
+  REQUIRE_EQ(eager_outputs.size(), compiled_outputs.size());
+  for (size_t j = 0; j < eager_outputs.size(); ++j) {
+    REQUIRE_EQ(eager_outputs[j].shape(), compiled_outputs[j].shape());
+    const uint16_t* eager =
+        eager_outputs[j].data<uint16_t>();
+    const uint16_t* compiled =
+        compiled_outputs[j].data<uint16_t>();
+    for (size_t index = 0; index < eager_outputs[j].size(); ++index) {
+      INFO("bf16 bits mismatch at ", index, " eager=0x",
+           std::hex, eager[index], " compiled=0x", compiled[index],
+           std::dec);
+      CHECK_EQ(eager[index], compiled[index]);
+    }
+  }
 }
 
 TEST_CASE("compiled tape computes Real, Imag, and Conjugate on complex64") {
@@ -902,16 +930,11 @@ TEST_CASE(
     REQUIRE_EQ(eager.size(), outputs.size());
     for (size_t j = 0; j < eager.size(); ++j) {
       REQUIRE_EQ(eager[j].shape(), outputs[j].shape());
-      array eager_wide = astype(eager[j], float32, stream);
-      array compiled_wide = astype(outputs[j], float32, stream);
-      eager_wide.eval();
-      compiled_wide.eval();
-      sync_stream(stream);
-      const float* eager_data = eager_wide.data<float>();
-      const float* compiled_data = compiled_wide.data<float>();
+      const uint16_t* eager_data = eager[j].data<uint16_t>();
+      const uint16_t* compiled_data = outputs[j].data<uint16_t>();
       for (size_t index = 0; index < eager[j].size(); ++index) {
-        INFO("element ", index, " eager=", eager_data[index],
-             " compiled=", compiled_data[index]);
+        INFO("element ", index, " eager=0x", std::hex, eager_data[index],
+             " compiled=0x", compiled_data[index], std::dec);
         CHECK_EQ(eager_data[index], compiled_data[index]);
       }
     }
