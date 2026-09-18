@@ -5,6 +5,8 @@
 // bridge. The CPU scheduler signals that bridge only after producer work;
 // GPU-stream events keep queue-ordered timeline signals.
 
+#include <unistd.h>
+#include <sys/syscall.h>
 #include "mlx/event.h"
 
 #include <algorithm>
@@ -246,8 +248,8 @@ void Event::signal(Stream s) {
   const bool trace_dispatch =
       std::getenv("MLX_OMARCHY_TRACE_DISPATCH") != nullptr;
   if (trace_dispatch) {
-    fprintf(stderr, "[rtmod] EV-SIGNAL ev=%p val=%lu st=%d host=%d\n",
-            (void*)event_.get(), (unsigned long)value(), s.index,
+    fprintf(stderr, "[rtmod] EV-SIGNAL tid=%lu ev=%p val=%lu st=%d host=%d\n",
+            (unsigned long)syscall(SYS_gettid), (void*)event_.get(), (unsigned long)value(), s.index,
             event.host ? 1 : 0);
   }
   if (event.host) {

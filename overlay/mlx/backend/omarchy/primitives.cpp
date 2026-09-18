@@ -1,6 +1,8 @@
 // Copyright © 2026 Joshua Warren / mlx-omarchy contributors.
 // SPDX-License-Identifier: MIT
 
+#include <unistd.h>
+#include <sys/syscall.h>
 #include "mlx/backend/omarchy/unsupported.h"
 #include "mlx/transforms.h"
 
@@ -4312,11 +4314,11 @@ void trig_argument_gate(
   const bool trace_gate =
       std::getenv("MLX_OMARCHY_TRACE_DISPATCH") != nullptr;
   if (trace_gate) {
-    fprintf(stderr, "[rtmod] GATE %s enter\n", name.c_str());
+    fprintf(stderr, "[rtmod] GATE tid=%lu %s enter\n", (unsigned long)syscall(SYS_gettid), name.c_str());
   }
   magnitude.eval();
   if (trace_gate) {
-    fprintf(stderr, "[rtmod] GATE %s post-eval\n", name.c_str());
+    fprintf(stderr, "[rtmod] GATE tid=%lu %s post-eval\n", (unsigned long)syscall(SYS_gettid), name.c_str());
   }
   // The magnitude is read on the host, so the stream must be ordered
   // here: array::item() is eval() plus an immediate mapped read with no
