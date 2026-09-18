@@ -744,9 +744,20 @@ void CommandEncoder::submit() {
       bool simulate_drop = false;
       if (const char* drop_env =
               std::getenv("MLX_OMARCHY_TEST_DROP_SUBMIT")) {
-        uint64_t ordinal = strtoull(drop_env, nullptr, 10);
-        simulate_drop =
-            ordinal != 0 && submit_sequence.fetch_add(1) + 1 == ordinal;
+        uint64_t ordinal = submit_sequence.fetch_add(1) + 1;
+        // Comma-separated 1-based ordinals: "1" drops the first submit,
+        // "1,2" drops the first two (consecutive-swallow recovery proof).
+        char* p = const_cast<char*>(drop_env);
+        while (*p) {
+          if (strtoull(p, &p, 10) == ordinal) {
+            simulate_drop = true;
+          }
+          if (*p == ',') {
+            ++p;
+          } else {
+            break;
+          }
+        }
       }
       if (simulate_drop) {
         fprintf(stderr, "[rtmod] TEST-DROP cv=%lu\n",

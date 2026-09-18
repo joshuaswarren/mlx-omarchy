@@ -950,16 +950,75 @@ bool Device::recover_stalled_submissions(
   }
 
   std::lock_guard<std::mutex> lk(queue_mutex_);
-  // Execution evidence: any retained batch through the target whose
-  // started event fired means the GPU began the work. Resubmitting then
-  // would double-execute kernels; that is a real hang, so refuse and
-  // let the watchdog throw.
   auto& completions = this->completions();
-  if (completions.has_active_submission(target_value)) {
-    return false;
+  // Judge and take against ALL reserved values, not just the waited one:
+  // a previous recovery round re-retains resubmitted batches at fresh
+  // values above the original target, and they must not be stranded.
+  const uint64_t reserved_through = completions.last_reserved();
+  bool executing = completions.has_active_submission(reserved_through);
+
+  // Execution evidence: the batch's started event (CmdSetEvent at
+  // TOP_OF_PIPE) fired, so the kernels ran and only the completion
+  // signal was lost. Mesa will not publish ANY queue-based signal once
+  // it has wedged a submission's timeline points (measured: fresh-value
+  // resubmission executed, timeline stayed at 0) - but vkSignalSemaphore
+  // from the host cannot be dropped (the in-tree empty-shape fix relies
+  // on exactly that). The wait has seen a full no-progress interval by
+  // definition of this call, so short kernels have long finished;
+  // host-publish the completion at a freshly reserved value.
+  if (executing) {
+    // The retained batches' user (event) semaphores are equally
+    // stranded: their ride-along signals were swallowed with the
+    // submission. Host-signal each at a bumped fresh value (timeline
+    // waits are >=), then publish the completion timeline.
+    auto stranded = completions.take_resubmit_batches(reserved_through);
+    for (auto& batch : stranded) {
+      for (size_t i = 0; i + 1 < batch.signal_values.size(); ++i) {
+        uint64_t current = 0;
+        if (vk::device_table().GetSemaphoreCounterValue(
+                device_, batch.signal_sems[i], &current) != VK_SUCCESS) {
+          current = 0;
+        }
+        batch.signal_values[i] =
+            std::max(batch.signal_values[i], current) + 1;
+      }
+    }
+    uint64_t fresh = completions.reserve();
+    static PFN_vkSignalSemaphore signal_fn = nullptr;
+    if (!signal_fn) {
+      signal_fn = reinterpret_cast<PFN_vkSignalSemaphore>(
+          vk::device_table().GetDeviceProcAddr(
+              handle(), "vkSignalSemaphore"));
+    }
+    VkSemaphoreSignalInfo cc{VK_STRUCTURE_TYPE_SEMAPHORE_SIGNAL_INFO};
+    cc.semaphore = completions.semaphore();
+    cc.value = fresh;
+    VKX_CHECK(signal_fn(handle(), &cc));
+    for (auto& batch : stranded) {
+      for (size_t i = 0; i + 1 < batch.signal_values.size(); ++i) {
+        VkSemaphoreSignalInfo us{VK_STRUCTURE_TYPE_SEMAPHORE_SIGNAL_INFO};
+        us.semaphore = batch.signal_sems[i];
+        us.value = batch.signal_values[i];
+        VKX_CHECK(signal_fn(handle(), &us));
+      }
+    }
+    fprintf(
+        stderr,
+        "[rtmod] SUBMIT-RECOVER host-signaled completion cv=%llu after "
+        "executed-but-unsignaled batch (round %u)\n",
+        (unsigned long long)fresh,
+        round + 1);
+    return true;
   }
+
+  // No execution evidence: the batch never began. Resubmit it with
+  // fresh signal values - the dropped submission still holds its
+  // original timeline points inside Mesa, and re-signaling the same
+  // value creates a duplicate point Mesa does not publish. Timeline
+  // waits are >=, so strictly higher values satisfy every existing
+  // waiter.
   std::vector<CompletionDispatcher::ResubmitBatch> batches =
-      completions.take_resubmit_batches(target_value);
+      completions.take_resubmit_batches(reserved_through);
   if (batches.empty()) {
     return false;
   }
@@ -974,6 +1033,19 @@ bool Device::recover_stalled_submissions(
 
   size_t count = batches.size();
   for (auto& batch : batches) {
+    for (size_t i = 0; i + 1 < batch.signal_values.size(); ++i) {
+      uint64_t current = 0;
+      if (vk::device_table().GetSemaphoreCounterValue(
+              device_, batch.signal_sems[i], &current) != VK_SUCCESS) {
+        current = 0;
+      }
+      batch.signal_values[i] =
+          std::max(batch.signal_values[i], current) + 1;
+    }
+    uint64_t fresh_completion = completions.reserve();
+    batch.value = fresh_completion;
+    batch.signal_values.back() = fresh_completion;
+
     VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
     VkTimelineSemaphoreSubmitInfo timeline{
         VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO};
@@ -995,14 +1067,14 @@ bool Device::recover_stalled_submissions(
         static_cast<uint32_t>(batch.signal_sems.size());
     si.pSignalSemaphores = batch.signal_sems.data();
     VKX_CHECK(dt.QueueSubmit(queue_, 1, &si, VK_NULL_HANDLE));
-    // The batch is pending again; retain it for a further round.
-    uint64_t value = batch.value;
-    completions.retain_for_resubmit(value, std::move(batch));
+    // The batch is pending again at its fresh value; retain it for a
+    // further round.
+    completions.retain_for_resubmit(fresh_completion, std::move(batch));
   }
   fprintf(
       stderr,
       "[rtmod] SUBMIT-RECOVER resubmitted %zu stalled batch(es) through "
-      "cv=%llu (round %u)\n",
+      "cv>=%llu (round %u, fresh signals)\n",
       count,
       (unsigned long long)target_value,
       round + 1);
