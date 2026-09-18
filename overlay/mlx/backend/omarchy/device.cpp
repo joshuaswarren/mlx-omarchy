@@ -956,6 +956,13 @@ bool Device::recover_stalled_submissions(
   // values above the original target, and they must not be stranded.
   const uint64_t reserved_through = completions.last_reserved();
   bool executing = completions.has_active_submission(reserved_through);
+  if (std::getenv("MLX_OMARCHY_TRACE_DISPATCH") != nullptr) {
+    fprintf(stderr,
+            "[rtmod] RECOVER-ENTER target=%llu through=%llu active=%d\n",
+            (unsigned long long)target_value,
+            (unsigned long long)reserved_through,
+            executing ? 1 : 0);
+  }
 
   // Execution evidence: the batch's started event (CmdSetEvent at
   // TOP_OF_PIPE) fired, so the kernels ran and only the completion
@@ -1020,6 +1027,9 @@ bool Device::recover_stalled_submissions(
   std::vector<CompletionDispatcher::ResubmitBatch> batches =
       completions.take_resubmit_batches(reserved_through);
   if (batches.empty()) {
+    if (std::getenv("MLX_OMARCHY_TRACE_DISPATCH") != nullptr) {
+      fprintf(stderr, "[rtmod] RECOVER-FALSE empty-batches\n");
+    }
     return false;
   }
 
@@ -1205,6 +1215,15 @@ void wait_for_timeline_progress(
       // buffers whose started event never fires). A successful resubmit
       // restarts the no-progress clock; a refused or exhausted recovery
       // throws exactly as before.
+      if (std::getenv("MLX_OMARCHY_TRACE_DISPATCH") != nullptr) {
+        fprintf(stderr,
+                "[rtmod] STALL target=%llu observed=%llu round=%u "
+                "recovery=%d\n",
+                (unsigned long long)target_value,
+                (unsigned long long)last_observed,
+                recovery_round,
+                recovery != nullptr ? 1 : 0);
+      }
       if (recovery &&
           recovery->recover_stalled_submissions(
               target_value, recovery_round)) {

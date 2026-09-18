@@ -317,6 +317,23 @@ references through Vulkan compute"`):
   (c) has_active_submission semantics for signal-only ride-alongs.
   Next debug step: stderr-trace inside recover_stalled_submissions
   entry/return with round + has_active + batch count, one build.
+- DECISION TRACE (build13, MLX_OMARCHY_TRACE_DISPATCH=1 on
+  TEST_DROP_SUBMIT=1): the ladder's silent-false is now OBSERVED, not
+  guessed. Output order: STALL target=1 through=0 round=0 →
+  RECOVER-ENTER through=0 active=0 → RECOVER-FALSE empty-batches →
+  TEST-DROP cv=1 → second stall → RECOVER-ENTER through=1 → round-1
+  resubmit ✓. Meaning: a FOREIGN WAITER (scheduler-thread event wait,
+  event.cpp scheduler::wait_event branch, line ~227) stalls BEFORE the
+  main thread submits (through=0 = nothing reserved), gets refused
+  (empty), and its watchdog throw kills the process ahead of the real
+  recovery. The round-1 resubmit for the real gate batch DID fire after.
+  Next concrete fixes: (a) wait_for_timeline_progress must not throw
+  from a foreign/stale waiter whose target exceeds last_reserved()
+  (refuse-and-return instead of throw when reserved_through==0 at first
+  stall), or scheduler::wait_event must not park GPU-timeline waits on
+  worker threads; (b) re-run drop-1/1,2 after (a); the round-2
+  host-signal rung should then engage for executed-but-unsignaled
+  batches.
 - Instrumentation on this wheel (env-gated, keep): [rtmod] FEW/DISPATCH/
   SUBMIT/JOIN/EV-SIGNAL/FENCE-UPDATE/GATE prints; all behind
   MLX_OMARCHY_TRACE_DISPATCH. Debug edits live uncommitted on jw16
