@@ -920,6 +920,12 @@ class EncoderRunner:
         # ACO launch -1547ms, resident -1099ms, all pins EXACT);
         # set MLX_OMARCHY_PIPE=0 to opt out.
         self.pipe = os.environ.get("MLX_OMARCHY_PIPE", "1") == "1"
+        # Coarser issue cadence beats per-statement (t6001-test-host sweep: conv-only
+        # 6561/5867 vs all-ops 7655/7179 AC launch/resident) - async_eval at
+        # conv statements only.
+        self.pipe_ops = frozenset(
+            os.environ.get("MLX_OMARCHY_PIPE_OPS", "conv").split(",")
+        ) - {""}
         self.glu_fusions: dict[int, tuple[str, str]] = {}
         self.glu_sigmoid_done: set[int] = set()
         self.linear_silu: dict[int, int] = {}
@@ -1213,8 +1219,8 @@ class EncoderRunner:
 
     # --------------------------------------------------------------- dispatch
 
-    def _pipe(self, *values) -> None:
-        if self.pipe:
+    def _pipe(self, *values, op: str = "") -> None:
+        if self.pipe and (not self.pipe_ops or op in self.pipe_ops):
             mx.async_eval(*[v for v in values if isinstance(v, mx.array)])
 
     def execute(self, stmt: Statement) -> None:
@@ -1290,7 +1296,7 @@ class EncoderRunner:
                 self.values[
                     self.statements[self.linear_silu[stmt.index]].names[0]
                 ] = self.values[stmt.names[0]]
-            self._pipe(self.values[stmt.names[0]])
+            self._pipe(self.values[stmt.names[0]], op=stmt.op)
         self.executed += 1
         self.gpu_ops += 1
 
