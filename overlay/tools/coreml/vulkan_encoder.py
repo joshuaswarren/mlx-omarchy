@@ -681,10 +681,10 @@ class Statement:
         self.const_kwargs: dict | None = None
 
 
-# The island bundles the attention handlers submit to. The resident session
-# loads every one of them once, up front, exactly like the launch path loads
-# its bundle per submit. Placed linear families (O, F) extend this set in
-# EncoderRunner.__init__ so resident-batch arms load what they submit.
+# Island bundles the encoder handlers may submit to. The resident session
+# preloads exactly the registered sites: the static defaults below, extended
+# at index time with every bundle the placed set can submit (the oproj
+# family registers island-oproj-L* per layer).
 RESIDENT_BUNDLES = (
     "island-attn-a-kt",
     "island-select-8head",
@@ -733,7 +733,12 @@ class AneIsland:
         self.timeouts = 0
         self.batch_open_ns = 0
         self.log: list[dict] = []
-        self._mode = os.environ.get("ANE_ISLAND_MODE", "launch")
+        # Default transport is the serve worker (spawn paid once): t6001-test-host
+        # measured resident-batch beating launch by ~730-830 ms with all
+        # pins EXACT - the per-submit spawn+init+bundle cost is not
+        # hideable behind GPU feeder compute (data-dependent serial chain,
+        # no independent GPU work during spawn windows).
+        self._mode = os.environ.get("ANE_ISLAND_MODE", "resident-batch")
         if self._mode not in ("launch", "resident-batch"):
             raise EncoderRunError(
                 f"ANE_ISLAND_MODE {self._mode!r} is not launch or resident-batch"
@@ -768,7 +773,8 @@ class AneIsland:
             worker=Path(self.worker),
             libane=Path(self.libane),
             bundles={
-                name: Path(self.bundles) / name for name in self.resident_bundles
+                name: Path(self.bundles) / name
+                for name in sorted(self.resident_bundles)
             },
             scratch=Path(self.scratch),
             deadline_ms=self.deadline_ms,
@@ -928,7 +934,7 @@ class AneIsland:
 class EncoderRunner:
     def __init__(self, mil_path: Path, model_root: Path, island: AneIsland | None,
                  placed: frozenset[str] = frozenset(
-                     os.environ.get("MLX_OMARCHY_PLACED", "ABC"))):
+                     os.environ.get("MLX_OMARCHY_PLACED", "AC"))):
         self.text = mil_path.read_text()
         self.blobs = Blobs(model_root)
         self.island = island
@@ -949,6 +955,19 @@ class EncoderRunner:
         self.op_wall_ns: dict[str, int] = {}
         self.cpu_tensor_events = 0
         self.cond_census: dict | None = None
+        # MLX_OMARCHY_PIPE: issue-only async_eval per GPU statement so the
+        # Vulkan queue stays saturated between island-boundary drains.
+        # Scheduling only - same graph, same values, no host sync.
+        # Default on (measured t6001-test-host: AC launch -1185ms, resident -813ms,
+        # ACO launch -1547ms, resident -1099ms, all pins EXACT);
+        # set MLX_OMARCHY_PIPE=0 to opt out.
+        self.pipe = os.environ.get("MLX_OMARCHY_PIPE", "1") == "1"
+        # Coarser issue cadence beats per-statement (t6001-test-host sweep: conv-only
+        # 6561/5867 vs all-ops 7655/7179 AC launch/resident) - async_eval at
+        # conv statements only.
+        self.pipe_ops = frozenset(
+            os.environ.get("MLX_OMARCHY_PIPE_OPS", "conv").split(",")
+        ) - {""}
         self.glu_fusions: dict[int, tuple[str, str]] = {}
         self.glu_sigmoid_done: set[int] = set()
         self.linear_silu: dict[int, int] = {}
@@ -1042,43 +1061,10 @@ class EncoderRunner:
                 continue
             oproj[stmt.index] = (layer, stmt)
         self.island_oproj = oproj
-
-        # FFN feed-forward linears: two modules per layer, each a 4096-wide
-        # linear1 (m375 k1024 n4096, the measured mm1 256-plane permutation)
-        # and linear2 (m375 k4096 n1024, the measured mm2 column split).
-        ffn_w = re.compile(
-            r"encoder_layers_(\d+)_feed_forward(\d)_linear(\d)"
-            r"_weight_to_fp16_palettized"
-        )
-        ffn = {}
-        for stmt in self.statements:
-            if stmt.op != "linear" or stmt.shape is None:
-                continue
-            m = ffn_w.fullmatch(
-                str(stmt.kwargs.get("weight", "")).strip().strip("'\"")
+        if self.island is not None and "O" in self.placed:
+            self.island.resident_bundles.update(
+                f"island-oproj-L{layer:02d}" for layer, _ in oproj.values()
             )
-            if m is None:
-                continue
-            layer, module, half = (int(g) for g in m.groups())
-            if stmt.shape and tuple(stmt.shape) != (
-                (1, 375, 4096) if half == 1 else (1, 375, 1024)
-            ):
-                raise EncoderRunError(
-                    f"feed_forward{module} linear{half} for L{layer:02d}-F is "
-                    f"{tuple(stmt.shape)}"
-                )
-            name = f"island-ffn{module}{half}-L{layer:02d}"
-            if self.island is None or not (self.island.bundles / name).is_dir():
-                continue
-            ffn[stmt.index] = (layer, module, half, name, stmt)
-        self.island_ffn = ffn
-        if self.island is not None:
-            if "O" in self.placed:
-                self.island.resident_bundles.update(
-                    f"island-oproj-L{layer:02d}" for layer, _ in oproj.values()
-                )
-            if "F" in self.placed:
-                self.island.resident_bundles.update(name for *_, name, _s in ffn.values())
 
     def _index_fusions(self) -> None:
         """Find the conv-module GLU: sigmoid(split_1) consumed by exactly one
@@ -1279,6 +1265,10 @@ class EncoderRunner:
 
     # --------------------------------------------------------------- dispatch
 
+    def _pipe(self, *values, op: str = "") -> None:
+        if self.pipe and (not self.pipe_ops or op in self.pipe_ops):
+            mx.async_eval(*[v for v in values if isinstance(v, mx.array)])
+
     def execute(self, stmt: Statement) -> None:
         op_started = time.monotonic_ns()
         try:
@@ -1314,9 +1304,6 @@ class EncoderRunner:
         if "O" in self.placed and stmt.index in self.island_oproj:
             self._run_island_oproj(stmt)
             return
-        if "F" in self.placed and stmt.index in self.island_ffn:
-            self._run_island_ffn(stmt)
-            return
         if (
             "A" in self.placed
             and stmt.index in self.island_a_partner
@@ -1351,6 +1338,7 @@ class EncoderRunner:
                 stream=mx.gpu,
             )[0]
             self.values[stmt.names[0]] = mx.reshape(out, a.shape)
+            self._pipe(self.values[stmt.names[0]])
             self.executed += 1
             self.gpu_ops += 1
             return
@@ -1361,12 +1349,14 @@ class EncoderRunner:
                     f"split produced {len(parts)} of {len(stmt.names)}"
                 )
             self.values.update(zip(stmt.names, parts))
+            self._pipe(*parts)
         else:
             self.values[stmt.names[0]] = self.apply(stmt)
             if stmt.index in self.linear_silu:
                 self.values[
                     self.statements[self.linear_silu[stmt.index]].names[0]
                 ] = self.values[stmt.names[0]]
+            self._pipe(self.values[stmt.names[0]], op=stmt.op)
         self.executed += 1
         self.gpu_ops += 1
 
@@ -1490,30 +1480,6 @@ class EncoderRunner:
             )
         results = self.island.submit(
             f"island-oproj-L{layer:02d}", f"L{layer:02d}-O",
-            {"x": x}, {"y": (l2.shape, "fp16")},
-        )
-        self.values[l2.names[0]] = results["y"]
-        self.executed += 1
-        self.ane_ops += 1
-
-    def _run_island_ffn(self, stmt: Statement) -> None:
-        layer, module, half, name, l2 = self.island_ffn[stmt.index]
-        # The default-ON chain fusion plans "linear+bias emits silu(x)" for
-        # exactly this linear (single silu consumer). That fold lives in the
-        # GPU kernel; the ANE island emits the pre-silu linear result, so the
-        # silu statement must execute on the GPU instead of being skipped.
-        silu_idx = self.linear_silu.get(stmt.index)
-        if silu_idx is not None:
-            self.silu_done.discard(silu_idx)
-        x = self.tensor(stmt.kwargs["x"])
-        want_k = 1024 if half == 1 else 4096
-        if tuple(x.shape) != (1, 375, want_k):
-            raise EncoderRunError(
-                f"feed_forward{module} linear{half} input for "
-                f"L{layer:02d}-F is {tuple(x.shape)}"
-            )
-        results = self.island.submit(
-            name, f"L{layer:02d}-F{module}{half}",
             {"x": x}, {"y": (l2.shape, "fp16")},
         )
         self.values[l2.names[0]] = results["y"]
@@ -1965,7 +1931,73 @@ class EncoderRunner:
         return keep
 
 
+def _loaded_libmlx() -> Path | None:
+    """Path of the libmlx.so actually mapped into THIS process.
+
+    The dynamic linker, not the import system, picks this file; a stray
+    LD_LIBRARY_PATH (or a wheel tree shadowing the venv) silently swaps
+    the GPU backend build under a measurement. 2026-09-17: the same
+    harness measured a ~2.8x per-statement GPU matmul difference purely
+    from which libmlx.so got picked up. Never quote a wall from a run
+    whose loaded binary was not verified.
+    """
+    with open("/proc/self/maps") as fh:
+        for line in fh:
+            path = line.rstrip("\n").rpartition("  ")[2]
+            if path.endswith("/libmlx.so"):
+                return Path(path)
+    return None
+
+
+def assert_mlx_binary_identity() -> dict:
+    """Record the loaded libmlx identity; fail loudly on mismatch.
+
+    Always returns the resolved {path, sha256, dist_version}; when
+    MLX_OMARCHY_EXPECTED_LIBMLX_SHA256 (or _PATH) is set, a mismatch is a
+    hard error, never a warning.
+    """
+    loaded = _loaded_libmlx()
+    if loaded is None:
+        raise RuntimeError(
+            "no libmlx.so is mapped into this process; the encoder runner "
+            "cannot attest which GPU backend it is measuring"
+        )
+    digest = hashlib.sha256(loaded.read_bytes()).hexdigest()
+    try:
+        dist_version = importlib.metadata.version("mlx-omarchy")
+    except importlib.metadata.PackageNotFoundError:
+        dist_version = None
+    identity = {
+        "loaded_libmlx_path": str(loaded),
+        "loaded_libmlx_sha256": digest,
+        "dist_version": dist_version,
+    }
+    want_sha = os.environ.get("MLX_OMARCHY_EXPECTED_LIBMLX_SHA256")
+    want_path = os.environ.get("MLX_OMARCHY_EXPECTED_LIBMLX_PATH")
+    if want_path and os.path.realpath(loaded) != os.path.realpath(want_path):
+        raise RuntimeError(
+            f"libmlx identity guard: loaded {loaded} but "
+            f"MLX_OMARCHY_EXPECTED_LIBMLX_PATH says {want_path}; refusing "
+            "to measure on the wrong binary"
+        )
+    if want_sha and digest != want_sha:
+        raise RuntimeError(
+            f"libmlx identity guard: loaded {loaded} sha256 {digest} but "
+            f"MLX_OMARCHY_EXPECTED_LIBMLX_SHA256 says {want_sha}; refusing "
+            "to measure on the wrong binary"
+        )
+    return identity
+
+
 def main() -> int:
+    mlx_identity = assert_mlx_binary_identity()
+    print(
+        "libmlx identity: "
+        f"{mlx_identity['loaded_libmlx_path']} "
+        f"sha256={mlx_identity['loaded_libmlx_sha256'][:16]} "
+        f"dist={mlx_identity['dist_version']}",
+        flush=True,
+    )
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source", type=Path, required=True)
     parser.add_argument("--capture", type=Path, required=True)
@@ -1980,10 +2012,9 @@ def main() -> int:
         help="Vulkan-only control run: every op stays on the GPU.",
     )
     parser.add_argument(
-        "--islands", default="ABC",
-        help="which islands to place on the ANE, e.g. ABC, ABCO, ABCF or "
-             "ABCFO. Ignored with --no-ane. AC reproduces the two-island arm "
-             "from this same script.",
+        "--islands", default="AC",
+        help="which islands to place on the ANE, e.g. ABC or AC. Ignored with "
+             "--no-ane. AC reproduces the two-island arm from this same script.",
     )
     parser.add_argument(
         "--repeat", type=int, default=1,
@@ -2006,7 +2037,7 @@ def main() -> int:
         )
 
     placed = frozenset(args.islands.upper())
-    if placed - frozenset("ABCOF"):
+    if placed - frozenset("ABC"):
         raise SystemExit(f"--islands {args.islands!r}: unknown island(s)")
     runner = EncoderRunner(
         args.source / "model.mil", args.source / "model-root", island, placed

@@ -100,10 +100,26 @@ describe("payload schema v1", () => {
       devicetree: {
         ane_node_present: true,
         ane_nodes: { "ane@0": { compatible: ["apple,t6001-ane"] } },
+        ane_reg: ["0x26bc04000/0x24000"],
         darts: {},
         pmgr_domains: [{ path: "pmgr/p", label: "p", compatible: ["x"] }],
+        pmgr_blocks: [{
+          path: "soc/power-management@23b700000",
+          reg: ["0x23b700000/0x14000"],
+          children: [
+            { name: "power-controller@c000", label: "ane_sys_cpu",
+              compatible: ["apple,t8103-pmgr-pwrstate"] },
+          ],
+          children_total: 132,
+        }],
         aic: { path: "aic", compatible: ["apple,aic"] },
         phandles: { "1": "dart@0" },
+        boot: {
+          model: "MacBook Pro (14-inch, 2021)",
+          compatible: ["apple,t8103", "apple,arm-platform"],
+          chosen: { "asahi,m1n1-stage1-version": "m1n1 1.2.1" },
+        },
+        dtb_sha256: "ab".repeat(32),
       },
       runtime: {
         iomem: ["ane: 0x0-0x1000"],
@@ -116,5 +132,73 @@ describe("payload schema v1", () => {
     };
     expect(validateSchemaRoot(mutate({ ane_port_detail: good }), schema))
       .toEqual([]);
+  });
+
+  test("ane_port_detail new fields accept null and reject bad shapes", () => {
+    const nulled = {
+      devicetree: {
+        ane_node_present: false,
+        ane_nodes: {},
+        ane_reg: null,
+        darts: {},
+        pmgr_domains: [],
+        pmgr_blocks: [],
+        phandles: {},
+        boot: null,
+        dtb_sha256: null,
+      },
+    };
+    expect(validateSchemaRoot(mutate({ ane_port_detail: nulled }), schema))
+      .toEqual([]);
+    // dtb_sha256 must be a lowercase 64-hex digest or null.
+    expect(
+      validateSchemaRoot(mutate({ ane_port_detail: {
+        devicetree: { ane_node_present: false, ane_nodes: {}, darts: {},
+                      pmgr_domains: [], phandles: {},
+                      dtb_sha256: "ZZ" + "ab".repeat(31) },
+      } }), schema).length,
+    ).toBeGreaterThan(0);
+    // pmgr block children reject unknown properties.
+    expect(
+      validateSchemaRoot(mutate({ ane_port_detail: {
+        devicetree: { ane_node_present: false, ane_nodes: {}, darts: {},
+                      pmgr_domains: [],
+                      pmgr_blocks: [{ path: "p", children:
+                        [{ name: "power-controller@0", reg: "0x0" }] }] },
+      } }), schema).length,
+    ).toBeGreaterThan(0);
+    // boot.chosen values are strings only.
+    expect(
+      validateSchemaRoot(mutate({ ane_port_detail: {
+        devicetree: { ane_node_present: false, ane_nodes: {}, darts: {},
+                      pmgr_domains: [], phandles: {},
+                      boot: { chosen: { "asahi,x": 42 } } },
+      } }), schema).length,
+    ).toBeGreaterThan(0);
+  });
+
+  test("macos probe payload accepts pmgr_nodes and rejects junk there", () => {
+    const base = {
+      available: true,
+      instances: [],
+      ane_nodes: [],
+      dart_nodes: [],
+      coreml: { available: false, compute_units: null, error: "x" },
+      powermetrics: { available: false, power_mw: null, error: "x" },
+    };
+    expect(
+      validateSchemaRoot(mutate({ ane_port_detail: {
+        macos: { ...base, pmgr_nodes: [
+          { name: "pmgr", location: "8E080000", reg: "0000088e" },
+        ] },
+      } }), schema),
+    ).toEqual([]);
+    expect(
+      validateSchemaRoot(mutate({ ane_port_detail: {
+        macos: { ...base, pmgr_nodes: [
+          { name: "pmgr", unknown_key: true },
+        ] },
+      } }), schema).length,
+    ).toBeGreaterThan(0);
   });
 });

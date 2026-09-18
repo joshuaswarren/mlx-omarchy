@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cstdlib>
 #include <cstring>
 #include <filesystem>
 #include <fstream>
@@ -17,6 +18,8 @@
 #include <string>
 #include <system_error>
 #include <type_traits>
+#include <fcntl.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 using namespace mlx::core::omarchy::ane;
@@ -839,4 +842,152 @@ TEST_CASE("missing bundle is a normal not-found outcome") {
   } catch (const AneBundleNotFound& error) {
     CHECK(std::string(error.what()).find("stays on Vulkan") != std::string::npos);
   }
+}
+
+namespace {
+
+// Isolates each digest-cache test from the real user sidecar and from other
+// tests; every digest-cache TEST_CASE must call this first.
+struct SidecarGuard {
+  TempDir dir;
+  SidecarGuard() {
+    setenv("MLX_OMARCHY_ANE_DIGEST_CACHE_PATH",
+           (dir.path() / "sidecar.txt").string().c_str(), 1);
+  }
+  std::filesystem::path sidecar() const { return dir.path() / "sidecar.txt"; }
+};
+
+} // namespace
+
+TEST_CASE("digest cache skips re-hash on unchanged file identity") {
+  // Default state: MLX_OMARCHY_ANE_DIGEST_CACHE unset in the test process.
+  unsetenv("MLX_OMARCHY_ANE_DIGEST_CACHE");
+  SidecarGuard sidecar;
+  Fixture fixture;
+  fixture.write();
+  REQUIRE(load_bundle(fixture.dir.path()).programs.size() == 2);
+
+  // Same size, same mtime, different content: the documented identity-keyed
+  // trade — a cache hit serves the previously verified digest.
+  const auto payload = fixture.dir.path() / "program-0.anec";
+  struct ::stat st {};
+  REQUIRE(::stat(payload.c_str(), &st) == 0);
+  struct timespec times[2]{{st.st_atim.tv_sec, st.st_atim.tv_nsec},
+                           {st.st_mtim.tv_sec, st.st_mtim.tv_nsec}};
+  write_file(payload, anec_bytes('Z'));
+  REQUIRE(::utimensat(AT_FDCWD, payload.c_str(), times, 0) == 0);
+  CHECK(load_bundle(fixture.dir.path()).programs.size() == 2);
+
+  // Same content change with a NEW mtime: cache miss, full re-verify, the
+  // mismatch against the manifest is caught.
+  write_file(payload, anec_bytes('Q'));
+  check_error(
+      [&] { load_bundle(fixture.dir.path()); }, "program-0.anec sha256 mismatch");
+
+  // The sidecar was primed (2 initial) plus the re-verified miss (1); a
+  // cache hit adds no line.
+  std::ifstream input(sidecar.sidecar());
+  std::vector<std::string> lines;
+  for (std::string line; std::getline(input, line);) {
+    lines.push_back(line);
+  }
+  REQUIRE(lines.size() == 3);
+  // Every line must carry the full identity key — a moved-from key would
+  // serialize an empty path and silently never hit across processes.
+  for (const auto& line : lines) {
+    INFO("line=", line);
+    CHECK(line.rfind(fixture.dir.path().string(), 0) == 0);
+    CHECK(line.find("|0|0|") == std::string::npos);
+  }
+}
+
+TEST_CASE("digest cache kill-switch forces full verification") {
+  SidecarGuard sidecar;
+  Fixture fixture;
+  fixture.write();
+  unsetenv("MLX_OMARCHY_ANE_DIGEST_CACHE");
+  REQUIRE(load_bundle(fixture.dir.path()).programs.size() == 2);
+
+  const auto payload = fixture.dir.path() / "program-0.anec";
+  struct ::stat st0 {};
+  REQUIRE(::stat(payload.c_str(), &st0) == 0);
+  struct timespec keep[2]{{st0.st_atim.tv_sec, st0.st_atim.tv_nsec},
+                          {st0.st_mtim.tv_sec, st0.st_mtim.tv_nsec}};
+  write_file(payload, anec_bytes('Z'));
+  REQUIRE(::utimensat(AT_FDCWD, payload.c_str(), keep, 0) == 0);
+
+  // Every accepted off-value forces the re-hash the cache would have skipped;
+  // the content change is caught even though the identity is unchanged.
+  for (const char* value : {"0", "false", "no", "off", ""}) {
+    setenv("MLX_OMARCHY_ANE_DIGEST_CACHE", value, 1);
+    INFO("value=", value);
+    check_error(
+        [&] { load_bundle(fixture.dir.path()); }, "program-0.anec sha256 mismatch");
+  }
+
+  // Any other value keeps the cache enabled: stale identity is served.
+  setenv("MLX_OMARCHY_ANE_DIGEST_CACHE", "1", 1);
+  CHECK(load_bundle(fixture.dir.path()).programs.size() == 2);
+  unsetenv("MLX_OMARCHY_ANE_DIGEST_CACHE");
+}
+
+TEST_CASE("digest cache sidecar serves a fresh process without re-hash") {
+  // Simulates a fresh worker process: prime the sidecar directly, never load
+  // the bundle in this process first.
+  unsetenv("MLX_OMARCHY_ANE_DIGEST_CACHE");
+  SidecarGuard sidecar;
+  Fixture fixture;
+  fixture.write();
+  const auto payload = fixture.dir.path() / "program-0.anec";
+
+  // helper: identity key line for the CURRENT file state
+  auto key_line = [&](const std::string& digest) {
+    struct ::stat st {};
+    REQUIRE(::stat(payload.c_str(), &st) == 0);
+    char line[512];
+    std::snprintf(
+        line,
+        sizeof(line),
+        "%s|%llx|%llx|%llx|%llx %s\n",
+        payload.c_str(),
+        static_cast<unsigned long long>(st.st_dev),
+        static_cast<unsigned long long>(st.st_ino),
+        static_cast<unsigned long long>(st.st_size),
+        static_cast<unsigned long long>(st.st_mtim.tv_sec) * 1000000000ull +
+            static_cast<unsigned long long>(st.st_mtim.tv_nsec),
+        digest.c_str());
+    return std::string(line);
+  };
+  auto bump_mtime = [&] {
+    struct ::stat st {};
+    REQUIRE(::stat(payload.c_str(), &st) == 0);
+    struct timespec times[2]{
+        {st.st_atim.tv_sec, st.st_atim.tv_nsec},
+        {st.st_mtim.tv_sec, st.st_atim.tv_nsec + 1000}};
+    REQUIRE(::utimensat(AT_FDCWD, payload.c_str(), times, 0) == 0);
+  };
+
+  // 1. Correct sidecar entry, no prior in-process state: the fresh process
+  // serves the digest from the sidecar and the bundle loads.
+  write_file(sidecar.sidecar(), key_line(fixture.digest(0)));
+  CHECK(load_bundle(fixture.dir.path()).programs.size() == 2);
+
+  // 2. A sidecar entry with a WRONG digest under a NEW identity must be
+  // caught: the cached digest is always compared against the manifest.
+  bump_mtime();
+  write_file(sidecar.sidecar(), key_line(std::string(64, '0')));
+  check_error(
+      [&] { load_bundle(fixture.dir.path()); }, "program-0.anec sha256 mismatch");
+
+  // 3. Kill-switch ignores every cache: correct sidecar restored, payload
+  // tampered with the identity preserved — the forced re-hash catches what
+  // the cache would have served.
+  write_file(payload, anec_bytes('Z'));
+  bump_mtime();
+  bump_mtime();
+  write_file(sidecar.sidecar(), key_line(fixture.digest(0)));
+  setenv("MLX_OMARCHY_ANE_DIGEST_CACHE", "0", 1);
+  check_error(
+      [&] { load_bundle(fixture.dir.path()); }, "program-0.anec sha256 mismatch");
+  unsetenv("MLX_OMARCHY_ANE_DIGEST_CACHE");
 }
