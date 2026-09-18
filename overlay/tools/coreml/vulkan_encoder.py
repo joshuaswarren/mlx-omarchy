@@ -732,7 +732,12 @@ class AneIsland:
         self.timeouts = 0
         self.batch_open_ns = 0
         self.log: list[dict] = []
-        self._mode = os.environ.get("ANE_ISLAND_MODE", "launch")
+        # Default transport is the serve worker (spawn paid once): jw16
+        # measured resident-batch beating launch by ~730-830 ms with all
+        # pins EXACT - the per-submit spawn+init+bundle cost is not
+        # hideable behind GPU feeder compute (data-dependent serial chain,
+        # no independent GPU work during spawn windows).
+        self._mode = os.environ.get("ANE_ISLAND_MODE", "resident-batch")
         if self._mode not in ("launch", "resident-batch"):
             raise EncoderRunError(
                 f"ANE_ISLAND_MODE {self._mode!r} is not launch or resident-batch"
@@ -924,7 +929,7 @@ class AneIsland:
 class EncoderRunner:
     def __init__(self, mil_path: Path, model_root: Path, island: AneIsland | None,
                  placed: frozenset[str] = frozenset(
-                     os.environ.get("MLX_OMARCHY_PLACED", "ABC"))):
+                     os.environ.get("MLX_OMARCHY_PLACED", "AC"))):
         self.text = mil_path.read_text()
         self.blobs = Blobs(model_root)
         self.island = island
@@ -945,6 +950,19 @@ class EncoderRunner:
         self.op_wall_ns: dict[str, int] = {}
         self.cpu_tensor_events = 0
         self.cond_census: dict | None = None
+        # MLX_OMARCHY_PIPE: issue-only async_eval per GPU statement so the
+        # Vulkan queue stays saturated between island-boundary drains.
+        # Scheduling only - same graph, same values, no host sync.
+        # Default on (measured jw16: AC launch -1185ms, resident -813ms,
+        # ACO launch -1547ms, resident -1099ms, all pins EXACT);
+        # set MLX_OMARCHY_PIPE=0 to opt out.
+        self.pipe = os.environ.get("MLX_OMARCHY_PIPE", "1") == "1"
+        # Coarser issue cadence beats per-statement (jw16 sweep: conv-only
+        # 6561/5867 vs all-ops 7655/7179 AC launch/resident) - async_eval at
+        # conv statements only.
+        self.pipe_ops = frozenset(
+            os.environ.get("MLX_OMARCHY_PIPE_OPS", "conv").split(",")
+        ) - {""}
         self.glu_fusions: dict[int, tuple[str, str]] = {}
         self.glu_sigmoid_done: set[int] = set()
         self.linear_silu: dict[int, int] = {}
@@ -1238,6 +1256,10 @@ class EncoderRunner:
 
     # --------------------------------------------------------------- dispatch
 
+    def _pipe(self, *values, op: str = "") -> None:
+        if self.pipe and (not self.pipe_ops or op in self.pipe_ops):
+            mx.async_eval(*[v for v in values if isinstance(v, mx.array)])
+
     def execute(self, stmt: Statement) -> None:
         op_started = time.monotonic_ns()
         try:
@@ -1307,6 +1329,7 @@ class EncoderRunner:
                 stream=mx.gpu,
             )[0]
             self.values[stmt.names[0]] = mx.reshape(out, a.shape)
+            self._pipe(self.values[stmt.names[0]])
             self.executed += 1
             self.gpu_ops += 1
             return
@@ -1317,12 +1340,14 @@ class EncoderRunner:
                     f"split produced {len(parts)} of {len(stmt.names)}"
                 )
             self.values.update(zip(stmt.names, parts))
+            self._pipe(*parts)
         else:
             self.values[stmt.names[0]] = self.apply(stmt)
             if stmt.index in self.linear_silu:
                 self.values[
                     self.statements[self.linear_silu[stmt.index]].names[0]
                 ] = self.values[stmt.names[0]]
+            self._pipe(self.values[stmt.names[0]], op=stmt.op)
         self.executed += 1
         self.gpu_ops += 1
 
@@ -1978,7 +2003,7 @@ def main() -> int:
         help="Vulkan-only control run: every op stays on the GPU.",
     )
     parser.add_argument(
-        "--islands", default="ABC",
+        "--islands", default="AC",
         help="which islands to place on the ANE, e.g. ABC or AC. Ignored with "
              "--no-ane. AC reproduces the two-island arm from this same script.",
     )
