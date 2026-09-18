@@ -150,6 +150,9 @@ Plan and contracts: [docs/plans/2026-09-12-coreml-parakeet-ane-plan.md](docs/pla
 
 ### Send us your hardware results
 
+Want to help? Start at **[docs/contribute-data.md](docs/contribute-data.md)** —
+the ten-minute version of "how do I contribute" with links to everything below.
+
 The most useful thing an M-series owner can do is run the collector and submit the report. It records chip, kernel, Mesa and Vulkan versions, correctness probes, and a benchmark sweep; it redacts user names, host names, paths, and addresses before anything is written, shows you the exact payload, and sends nothing without your explicit consent. Reports feed the public [community dataset](https://mlx-omarchy-community-data.joshua-s-warren.workers.dev/v1/results), which decides what gets fixed next.
 
 Three copy-paste paths. Pick the one that matches your machine.
