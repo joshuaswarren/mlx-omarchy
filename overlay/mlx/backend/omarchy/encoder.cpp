@@ -735,22 +735,36 @@ void CommandEncoder::submit() {
     si.pSignalSemaphores = signal_sems.data();
     try {
       queue_t0 = prof::get().profiling() ? prof::host_ns() : 0;
-      // Deterministic swallow simulation for the recovery ladder: drop
-      // the Nth (1-based) QueueSubmit exactly the way Honeykrisp drops
-      // submissions in the field. The host still publishes the
-      // completion, so the watchdog waits on a batch the GPU will never
-      // see and recovery must resubmit it.
+      // Deterministic swallow simulation for the recovery ladder, in the
+      // two field-observed classes:
+      //
+      // MLX_OMARCHY_TEST_DROP_SUBMIT drops the Nth (1-based) QueueSubmit
+      // entirely, the way Honeykrisp drops submissions in burst windows:
+      // the batch never begins, so its started event never sets and
+      // recovery rung 1 (kick + resubmit at fresh values) must fire.
+      //
+      // MLX_OMARCHY_TEST_DROP_SIGNAL submits the Nth batch but strips
+      // every timeline signal from it (ride-along user events AND the
+      // device completion): the kernels execute and the started event
+      // sets, but no signal ever publishes - the executed-but-unsignaled
+      // class - so recovery rung 2 (host vkSignalSemaphore) must fire.
+      //
+      // Both share one submit sequence; the host still publishes the
+      // completion entry, so the watchdog waits on a signal the GPU will
+      // never (submit-drop) / did not (signal-strip) deliver. Comma-
+      // separated 1-based ordinals: "1" hits the first submit, "1,2" the
+      // first two (consecutive-swallow recovery proof).
       static std::atomic<uint64_t> submit_sequence{0};
-      bool simulate_drop = false;
-      if (const char* drop_env =
-              std::getenv("MLX_OMARCHY_TEST_DROP_SUBMIT")) {
-        uint64_t ordinal = submit_sequence.fetch_add(1) + 1;
-        // Comma-separated 1-based ordinals: "1" drops the first submit,
-        // "1,2" drops the first two (consecutive-swallow recovery proof).
-        char* p = const_cast<char*>(drop_env);
+      uint64_t ordinal = submit_sequence.fetch_add(1) + 1;
+      auto env_hits_ordinal = [ordinal](const char* name) {
+        const char* e = std::getenv(name);
+        if (!e) {
+          return false;
+        }
+        char* p = const_cast<char*>(e);
         while (*p) {
           if (strtoull(p, &p, 10) == ordinal) {
-            simulate_drop = true;
+            return true;
           }
           if (*p == ',') {
             ++p;
@@ -758,9 +772,22 @@ void CommandEncoder::submit() {
             break;
           }
         }
+        return false;
+      };
+      bool simulate_drop = env_hits_ordinal("MLX_OMARCHY_TEST_DROP_SUBMIT");
+      bool simulate_strip =
+          !simulate_drop && env_hits_ordinal("MLX_OMARCHY_TEST_DROP_SIGNAL");
+      if (simulate_strip) {
+        si.signalSemaphoreCount = 0;
+        si.pSignalSemaphores = nullptr;
+        timeline.signalSemaphoreValueCount = 0;
+        timeline.pSignalSemaphoreValues = nullptr;
       }
       if (simulate_drop) {
         fprintf(stderr, "[rtmod] TEST-DROP cv=%lu\n",
+                (unsigned long)completion_value);
+      } else if (simulate_strip) {
+        fprintf(stderr, "[rtmod] TEST-STRIP cv=%lu\n",
                 (unsigned long)completion_value);
       } else {
         VKX_CHECK(dt.QueueSubmit(device_.queue(), 1, &si, VK_NULL_HANDLE));

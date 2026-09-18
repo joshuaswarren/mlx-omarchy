@@ -937,7 +937,7 @@ uint64_t Device::signal_timeline(VkSemaphore semaphore, uint64_t value) {
   return completion_value;
 }
 
-bool Device::recover_stalled_submissions(
+Device::RecoveryResult Device::recover_stalled_submissions(
     uint64_t target_value,
     uint32_t round) {
   // Budget: two recovery rounds per stalled wait (|round| is owned by the
@@ -946,7 +946,7 @@ bool Device::recover_stalled_submissions(
   // still surface as the typed watchdog error, not as an unbounded
   // retry loop.
   if (round >= 2) {
-    return false;
+    return RecoveryResult::kExhausted;
   }
 
   std::lock_guard<std::mutex> lk(queue_mutex_);
@@ -1015,7 +1015,7 @@ bool Device::recover_stalled_submissions(
         "executed-but-unsignaled batch (round %u)\n",
         (unsigned long long)fresh,
         round + 1);
-    return true;
+    return RecoveryResult::kRecovered;
   }
 
   // No execution evidence: the batch never began. Resubmit it with
@@ -1030,7 +1030,10 @@ bool Device::recover_stalled_submissions(
     if (std::getenv("MLX_OMARCHY_TRACE_DISPATCH") != nullptr) {
       fprintf(stderr, "[rtmod] RECOVER-FALSE empty-batches\n");
     }
-    return false;
+    // Another waiter's recovery already took the batches (or the
+    // producing stream has not submitted yet): not ours to recover, and
+    // not a hang verdict. The caller keeps waiting.
+    return RecoveryResult::kNotRecoverable;
   }
 
   auto& dt = vk::device_table();
@@ -1088,7 +1091,7 @@ bool Device::recover_stalled_submissions(
       count,
       (unsigned long long)target_value,
       round + 1);
-  return true;
+  return RecoveryResult::kRecovered;
 }
 
 void Device::join_completed_handlers() {
@@ -1164,6 +1167,7 @@ void wait_for_timeline_progress(
   uint64_t last_observed = 0;
   auto last_advance = start;
   uint32_t recovery_round = 0;
+  bool foreign_traced = false;
 
   VkSemaphoreWaitInfo info{VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO};
   info.semaphoreCount = 1;
@@ -1208,6 +1212,30 @@ void wait_for_timeline_progress(
     if (executing) {
       last_advance = now;
     } else if ((now - last_advance) > std::chrono::nanoseconds(hang_ns)) {
+      // Foreign/stale waiter: the waited value was never reserved by any
+      // submission (target > last_reserved), so the batch that would
+      // signal it has not even been handed to the driver yet - typically
+      // a scheduler-thread Event::wait parking ahead of the owning
+      // stream's submit. Nothing is recoverable here (no retained batch
+      // can exist above last_reserved), and throwing kills the process
+      // ahead of the owning wait's own recovery ladder (observed in the
+      // build13 decision trace). Refuse recovery and keep waiting: the
+      // owning wait runs the ladder for a real stall once it reserves,
+      // and the wall deadline below still bounds a producer that never
+      // submits.
+      if (progress && target_value > progress->last_reserved()) {
+        if (!foreign_traced &&
+            std::getenv("MLX_OMARCHY_TRACE_DISPATCH") != nullptr) {
+          foreign_traced = true;
+          fprintf(stderr,
+                  "[rtmod] STALL-FOREIGN target=%llu through=%llu (owner"
+                  " has not submitted; continuing wait)\n",
+                  (unsigned long long)target_value,
+                  (unsigned long long)progress->last_reserved());
+        }
+        last_advance = clock::now();
+        continue;
+      }
       // No progress for a full no-progress interval. Before declaring the
       // device hung, give the recovery ladder a chance: Honeykrisp
       // provably swallows submissions (the empty signal-only shape was
@@ -1224,12 +1252,24 @@ void wait_for_timeline_progress(
                 recovery_round,
                 recovery != nullptr ? 1 : 0);
       }
-      if (recovery &&
-          recovery->recover_stalled_submissions(
-              target_value, recovery_round)) {
-        recovery_round++;
-        last_advance = clock::now();
-        continue;
+      if (recovery) {
+        switch (recovery->recover_stalled_submissions(
+            target_value, recovery_round)) {
+          case Device::RecoveryResult::kRecovered:
+            recovery_round++;
+            last_advance = clock::now();
+            continue;
+          case Device::RecoveryResult::kNotRecoverable:
+            // Someone else owns the recovery (or owns the submission
+            // that has not happened yet). Throwing here killed healthy
+            // processes ahead of the real recovery (build13 decision
+            // trace); wait for the owner instead. The wall deadline
+            // below still bounds a producer that never delivers.
+            last_advance = clock::now();
+            continue;
+          case Device::RecoveryResult::kExhausted:
+            break;
+        }
       }
       throw std::runtime_error(
           std::string(
