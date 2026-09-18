@@ -683,7 +683,9 @@ class Statement:
 
 # The three island bundles the encoder handlers submit to. The resident
 # session loads every one of them once, up front, exactly like the launch
-# path loads its bundle per submit.
+# path loads its bundle per submit. Placed families (O, V, P, T) extend
+# this set in EncoderRunner._index_islands so resident-batch arms load
+# what they submit.
 RESIDENT_BUNDLES = (
     "island-attn-a-kt",
     "island-select-8head",
@@ -733,6 +735,9 @@ class AneIsland:
         self._batch_deadline_ms = int(
             os.environ.get("ANE_ISLAND_BATCH_DEADLINE_MS", "120000")
         )
+        # Placed families extend this set in EncoderRunner._index_islands so
+        # the resident session preloads exactly the bundles they submit.
+        self.resident_bundles = set(RESIDENT_BUNDLES)
         self._session = None
 
     def close(self) -> None:
@@ -758,7 +763,10 @@ class AneIsland:
         session = ResidentAneWorker(
             worker=Path(self.worker),
             libane=Path(self.libane),
-            bundles={name: Path(self.bundles) / name for name in RESIDENT_BUNDLES},
+            bundles={
+                name: Path(self.bundles) / name
+                for name in sorted(self.resident_bundles)
+            },
             scratch=Path(self.scratch),
             deadline_ms=self.deadline_ms,
         )
@@ -1007,6 +1015,158 @@ class EncoderRunner:
             oproj[stmt.index] = (layer, stmt)
         self.island_oproj = oproj
 
+        # Conv-module convs (V): the three per-layer convs of the encoder
+        # conv module in the device-proven forms -- pw1 (F1 in-proj k1x1 g1
+        # 1024->2048 bias-free), dw (F2 depthwise k1x9 g1024 +bias), pw2
+        # (F3 out-proj k1x1 1024->1024, the writeout-inverse packing
+        # geometry). Weights ride inside the bundle; a site is placed only
+        # when its bundle dir exists under the bundles root.
+        conv_pw1_w = re.compile(
+            r"encoder_layers_(\d+)_conv_pointwise_conv1_weight_to_fp16"
+        )
+        conv_pw2_w = re.compile(
+            r"encoder_layers_(\d+)_conv_pointwise_conv2_weight_to_fp16"
+        )
+        conv = {}
+        conv_modules_seen = 0
+        for stmt in self.statements:
+            if stmt.op != "conv" or stmt.shape is None:
+                continue
+            wname = str(stmt.kwargs.get("weight", "")).strip().strip("'\"")
+            wstmt = self.const_stmt.get(wname)
+            if wstmt is None or wstmt.shape is None:
+                continue
+            wshape = tuple(wstmt.shape)
+            kind = layer = None
+            m = conv_pw1_w.fullmatch(wname)
+            if m is not None:
+                if wshape != (2048, 1024, 1):
+                    raise EncoderRunError(
+                        f"{wname} is {wshape}, pw1 island geometry is "
+                        "(2048, 1024, 1)"
+                    )
+                kind, layer = "pw1", int(m.group(1))
+            else:
+                m = conv_pw2_w.fullmatch(wname)
+                if m is not None:
+                    if wshape != (1024, 1024, 1):
+                        raise EncoderRunError(
+                            f"{wname} is {wshape}, pw2 island geometry is "
+                            "(1024, 1024, 1)"
+                        )
+                    kind, layer = "pw2", int(m.group(1))
+                    conv_modules_seen += 1
+                elif wshape == (1024, 1, 9):
+                    # One conv module per layer, in statement order: the
+                    # depthwise conv sits between pw1(L) and pw2(L).
+                    if "bias" not in stmt.kwargs:
+                        raise EncoderRunError(
+                            f"depthwise conv at stmt {stmt.index} has no bias"
+                        )
+                    kind, layer = "dw", conv_modules_seen
+            if kind is None:
+                continue
+            name = f"island-conv-{kind}-L{layer:02d}"
+            if self.island is None or not (
+                self.island.bundles / name
+            ).is_dir():
+                continue
+            conv[stmt.index] = (kind, layer, name, stmt)
+        self.island_conv = conv
+
+        # Rel-pos (P): the weightless proven forms of the per-layer rel-pos
+        # shift. The Apple-oracle F4 padconv (g8 k1x1 custom pad [0,0,1,0],
+        # ones weights) is bit-identical to the coreml constant pad here:
+        # the pad value is fp16 0.0 and both pad LEFT one W step; the
+        # proven last-dim slice is matrix_bd_3. Shared bundles serve all
+        # layers (the ops carry no weights).
+        relpos = {}
+        pad_ordinal = slice_ordinal = 0
+        for stmt in self.statements:
+            name = stmt.names[0]
+            kind = None
+            if stmt.op == "pad" and tuple(stmt.shape) == (1, 8, 375, 750):
+                if tuple(self.producer[stmt.kwargs["x"]].shape) == (
+                    1, 8, 375, 749,
+                ):
+                    kind, ordinal = "pad", pad_ordinal
+                    pad_ordinal += 1
+            elif stmt.op == "slice_by_index" and tuple(stmt.shape) == (
+                1, 8, 375, 375,
+            ):
+                if tuple(self.producer[stmt.kwargs["x"]].shape) == (
+                    1, 8, 375, 749,
+                ):
+                    kind, ordinal = "slice", slice_ordinal
+                    slice_ordinal += 1
+            if kind is None:
+                continue
+            bundle = f"island-relpos-{kind}"
+            if self.island is None or not (
+                self.island.bundles / bundle
+            ).is_dir():
+                continue
+            relpos[stmt.index] = (kind, ordinal, bundle, stmt)
+        self.island_relpos = relpos
+
+        # Transposes (T): only the device-proven directions and geometries.
+        # The head-SPLIT transposes and the subsampling exit run the reverse
+        # directions of the proven programs and stay on the GPU.
+        transpose_forms = {
+            ((1, 375, 1024), (0, 2, 1), (1, 1024, 375)):
+                ("r3in", "island-tr-r3-in"),
+            ((1, 1024, 375), (0, 2, 1), (1, 375, 1024)):
+                ("r3out", "island-tr-r3-out"),
+            ((1, 8, 375, 128), (0, 2, 1, 3), (1, 375, 8, 128)):
+                ("r4out", "island-tr-r4-out"),
+        }
+        trans = {}
+        trans_ordinals: dict[str, int] = {}
+        for stmt in self.statements:
+            if stmt.op != "transpose" or stmt.shape is None:
+                continue
+            perm_ref = str(stmt.kwargs.get("perm", "")).strip().strip("'\"")
+            perm_stmt = self.const_stmt.get(perm_ref)
+            if perm_stmt is None or perm_stmt.const_kwargs is None:
+                continue
+            perm_text = str(perm_stmt.const_kwargs.get("val", ""))
+            # The val text is tensor<int32, [rank]>([perm...]); read the
+            # ints inside the final bracket group only, so the rank
+            # dimension does not leak into the perm.
+            tail = perm_text[perm_text.rindex("["):] if "[" in perm_text else ""
+            perm = tuple(int(v) for v in re.findall(r"-?\d+", tail))
+            xshape = tuple(self.producer[stmt.kwargs["x"]].shape)
+            form = transpose_forms.get((xshape, perm, tuple(stmt.shape)))
+            if form is None:
+                continue
+            kind, bundle = form
+            if self.island is None or not (
+                self.island.bundles / bundle
+            ).is_dir():
+                continue
+            ordinal = trans_ordinals.get(kind, 0)
+            trans_ordinals[kind] = ordinal + 1
+            trans[stmt.index] = (kind, ordinal, bundle, stmt)
+        self.island_transpose = trans
+
+        if self.island is not None:
+            if "O" in self.placed:
+                self.island.resident_bundles.update(
+                    f"island-oproj-L{layer:02d}" for layer, _ in oproj.values()
+                )
+            if "V" in self.placed:
+                self.island.resident_bundles.update(
+                    name for _k, _l, name, _s in conv.values()
+                )
+            if "P" in self.placed:
+                self.island.resident_bundles.update(
+                    name for _k, _o, name, _s in relpos.values()
+                )
+            if "T" in self.placed:
+                self.island.resident_bundles.update(
+                    name for _k, _o, name, _s in trans.values()
+                )
+
     def _index_fusions(self) -> None:
         """Find the conv-module GLU: sigmoid(split_1) consumed by exactly one
         mul whose other operand is the sibling split half. That mul becomes
@@ -1227,6 +1387,15 @@ class EncoderRunner:
         if "O" in self.placed and stmt.index in self.island_oproj:
             self._run_island_oproj(stmt)
             return
+        if "V" in self.placed and stmt.index in self.island_conv:
+            self._run_island_conv(stmt)
+            return
+        if "P" in self.placed and stmt.index in self.island_relpos:
+            self._run_island_relpos(stmt)
+            return
+        if "T" in self.placed and stmt.index in self.island_transpose:
+            self._run_island_transpose(stmt)
+            return
         if (
             "A" in self.placed
             and stmt.index in self.island_a_partner
@@ -1403,6 +1572,66 @@ class EncoderRunner:
             {"x": x}, {"y": (l2.shape, "fp16")},
         )
         self.values[l2.names[0]] = results["y"]
+        self.executed += 1
+        self.ane_ops += 1
+
+    def _run_island_conv(self, stmt: Statement) -> None:
+        kind, layer, name, _ = self.island_conv[stmt.index]
+        x = self.tensor(stmt.kwargs["x"])
+        if tuple(x.shape) != (1, 1024, 375):
+            raise EncoderRunError(
+                f"conv {kind} input for L{layer:02d}-V is {tuple(x.shape)}"
+            )
+        results = self.island.submit(
+            name, f"L{layer:02d}-V{kind}",
+            {"x": x}, {"y": (stmt.shape, "fp16")},
+        )
+        self.values[stmt.names[0]] = results["y"]
+        self.executed += 1
+        self.ane_ops += 1
+
+    def _run_island_relpos(self, stmt: Statement) -> None:
+        kind, ordinal, bundle, _ = self.island_relpos[stmt.index]
+        x = self.tensor(stmt.kwargs["x"])
+        if tuple(x.shape) != (1, 8, 375, 749):
+            raise EncoderRunError(
+                f"rel-pos {kind} input {tuple(x.shape)} is not the proven "
+                "[1, 8, 375, 749] surface"
+            )
+        if kind == "pad":
+            # The island pads with zeros; anything else here would silently
+            # change the rel-pos shift, so refuse rather than approximate.
+            if self.scalar(stmt.kwargs["mode"]) != "constant":
+                raise EncoderRunError("rel-pos pad mode is not constant")
+            if self.ints(stmt.kwargs["pad"]) != [0, 0, 0, 0, 0, 0, 1, 0]:
+                raise EncoderRunError(
+                    "rel-pos pad widths are not the proven [0,0,0,0,0,0,1,0]"
+                )
+            if float(self.scalar(stmt.kwargs["constant_val"])) != 0.0:
+                raise EncoderRunError("rel-pos pad value is not 0.0")
+        else:
+            if self.ints(stmt.kwargs["begin"]) != [0, 0, 0, 0]:
+                raise EncoderRunError("rel-pos slice begin is not [0,0,0,0]")
+            if self.ints(stmt.kwargs["end"]) != [1, 8, 375, 375]:
+                raise EncoderRunError(
+                    "rel-pos slice end is not the proven [1, 8, 375, 375]"
+                )
+        results = self.island.submit(
+            bundle, f"L{ordinal:02d}-P{kind}",
+            {"x": x}, {"y": (stmt.shape, "fp16")},
+        )
+        self.values[stmt.names[0]] = results["y"]
+        self.executed += 1
+        self.ane_ops += 1
+
+    def _run_island_transpose(self, stmt: Statement) -> None:
+        kind, ordinal, bundle, _ = self.island_transpose[stmt.index]
+        x = self.tensor(stmt.kwargs["x"])
+        results = self.island.submit(
+            bundle, f"L{ordinal:02d}-T{kind}",
+            {"x": x}, {"y": (stmt.shape, "fp16")},
+        )
+        self.values[stmt.names[0]] = results["y"]
         self.executed += 1
         self.ane_ops += 1
 
@@ -1886,7 +2115,7 @@ def main() -> int:
         )
 
     placed = frozenset(args.islands.upper())
-    if placed - frozenset("ABC"):
+    if placed - frozenset("ABCOFVPT"):
         raise SystemExit(f"--islands {args.islands!r}: unknown island(s)")
     runner = EncoderRunner(
         args.source / "model.mil", args.source / "model-root", island, placed
