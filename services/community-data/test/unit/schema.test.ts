@@ -177,6 +177,53 @@ describe("payload schema v1", () => {
     ).toBeGreaterThan(0);
   });
 
+  test("devicetree set_base_candidate accepted (collector always emits it on Linux)", () => {
+    // 2026-09-18 regression: _cap_port_detail emits set_base_candidate on
+    // every Linux run, but the schema declared it only under macos/, so
+    // every ANE Linux submit 422'd as schema_invalid.
+    const base = {
+      devicetree: {
+        ane_node_present: true,
+        ane_nodes: {},
+        ane_reg: null,
+        darts: {},
+        pmgr_domains: [],
+        pmgr_blocks: [],
+        phandles: {},
+        boot: null,
+        dtb_sha256: null,
+      },
+    };
+    expect(
+      validateSchemaRoot(
+        mutate({ ane_port_detail: { ...base,
+          devicetree: { ...base.devicetree, set_base_candidate: null } } }),
+        schema,
+      ),
+    ).toEqual([]);
+    expect(
+      validateSchemaRoot(
+        mutate({ ane_port_detail: { ...base,
+          devicetree: { ...base.devicetree, set_base_candidate: {
+            pmgr_block: "/soc/pmu@23d100080",
+            offset: "0xc000",
+            base: "0x23d100000",
+            driver_window_confirms: true,
+          } } } }),
+        schema,
+      ),
+    ).toEqual([]);
+    // Junk inside the candidate is still rejected — strictness is retained.
+    expect(
+      validateSchemaRoot(
+        mutate({ ane_port_detail: { ...base,
+          devicetree: { ...base.devicetree, set_base_candidate: {
+            offset: 49152 } } } }),
+        schema,
+      ).length,
+    ).toBeGreaterThan(0);
+  });
+
   test("macos probe payload accepts pmgr_nodes and rejects junk there", () => {
     const base = {
       available: true,

@@ -339,6 +339,43 @@
                 "null"
               ],
               "pattern": "^[0-9a-f]{64}$"
+            },
+            "set_base_candidate": {
+              "type": [
+                "object",
+                "null"
+              ],
+              "additionalProperties": false,
+              "description": "HYPOTHESIS, never a derived fact: ANE SET region candidate = pmgr block base + 0xc000 (where the T8103/T6001 ane_* pwrstate cluster lives and where m1n1 ps_map points). driver_window_confirms records whether Apple's own ane device reg grants a window at exactly that address, which corroborates the hypothesis (t6021: ane0 reg range 3). Linux/m1n1 enumerates the cluster itself.",
+              "properties": {
+                "pmgr_block": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 32
+                },
+                "offset": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 16
+                },
+                "base": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 32
+                },
+                "driver_window_confirms": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ]
+                }
+              }
             }
           }
         },
