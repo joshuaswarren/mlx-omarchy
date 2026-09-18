@@ -11,8 +11,9 @@
 // defect that corrupted them on Honeykrisp is fixed at the interpreter
 // (eval-time shape derivation) and pinned by the shapeless reuse cases
 // below. No override is needed or honoured: MLX_OMARCHY_ALLOW_UNSAFE_COMPILE
-// is retired. The bf16 tape gate and the trigonometric domain gate are
-// separate protections and remain.
+// is retired. bf16 tapes run on the same interpreter: the 2026-09-02
+// bf16 refusal fenced the stale-shape corruption root-caused below, not
+// a dtype defect. The trigonometric domain gate is carried per-primitive.
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "doctest/doctest.h"
@@ -591,7 +592,7 @@ TEST_CASE("compiled tape interleaves proven and widened classes in f16") {
   check_compiled_matches_eager(fn, {gate, up}, float16, stream, 2e-3);
 }
 
-TEST_CASE("bf16 tapes stay gated for the widened op set") {
+TEST_CASE("bf16 tape runs the widened op set and matches eager exactly") {
   if (!compute_available()) {
     return;
   }
@@ -599,19 +600,15 @@ TEST_CASE("bf16 tapes stay gated for the widened op set") {
   std::vector<float> xv = {0.0f, 0.1f, 0.2f, 0.3f};
   array x(xv.begin(), Shape{4}, bfloat16);
 
-  // Widened classes must not open a bf16 hole: the dtype gate refuses
-  // before any node dispatches.
-  set_compile_mode(CompileMode::enabled);
+  // The widened classes dispatch per node through the same bf16
+  // eval_gpu kernels eager uses, so compiled output is bit-exact;
+  // the chain rounds every instruction to the storage dtype, matching
+  // per-node dispatch either way.
   auto fn = [&stream](const std::vector<array>& inputs) {
     auto rounded = round(multiply(inputs[0], inputs[0], stream), stream);
     return std::vector<array>{abs(rounded, stream)};
   };
-  auto fused = compile(fn);
-  std::string fused_error = evaluation_error(fused({x})[0]);
-  CHECK(
-      fused_error.find("[omarchy] Compiled tape bfloat16") !=
-      std::string::npos);
-  set_compile_mode(CompileMode::disabled);
+  check_compiled_matches_eager(fn, {x}, bfloat16, stream, 0);
 }
 
 TEST_CASE("compiled tape computes Real, Imag, and Conjugate on complex64") {
@@ -841,6 +838,81 @@ TEST_CASE(
              " compiled=", compiled_data[index]);
         CHECK(std::abs(eager_data[index] - compiled_data[index]) <=
               1e-6 * std::max(1.0f, std::abs(eager_data[index])));
+      }
+    }
+  }
+}
+
+TEST_CASE(
+    "bf16 shapeless tape reused at a new shape matches eager exactly"
+    " (gate-lift regression)") {
+  // The configuration the lifted bf16 gate fenced: mlx-lm traces swiglu
+  // in bfloat16 at prefill shapes and serves every decode step from the
+  // same shapeless fragment. The stale-shape corruption this interpreter
+  // fixed (see the f32 case above) was the defect the 2026-09-02 bf16
+  // refusal was installed against; the dtype was never at fault. This
+  // case runs that exact trace-then-reuse pattern in bf16 and requires
+  // bit-exact agreement with eager after widening.
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+
+  auto swiglu = [](const std::vector<array>& inputs) {
+    array gate = sigmoid(inputs[0]);
+    return std::vector<array>{
+        add(multiply(inputs[0], gate), array(0.5f))};
+  };
+
+  auto make_input = [](Shape shape) {
+    std::vector<float> data(shape[0] * shape[1]);
+    for (size_t i = 0; i < data.size(); ++i) {
+      data[i] = static_cast<float>(i % 17) * 0.25f - 2.0f;
+    }
+    return array(data.begin(), shape, bfloat16);
+  };
+
+  set_compile_mode(CompileMode::enabled);
+  auto compiled_fn = compile(swiglu, /*shapeless=*/true);
+
+  std::vector<array> trace_inputs = {make_input(Shape{2, 32})};
+  auto trace_out = compiled_fn(trace_inputs);
+  for (auto& out : trace_out) {
+    out.eval();
+  }
+  sync_stream(stream);
+
+  std::vector<Shape> shapes = {Shape{4, 32}, Shape{1, 32}, Shape{3, 48}};
+  for (size_t case_index = 0; case_index < shapes.size(); ++case_index) {
+    INFO("shape case ", case_index);
+    std::vector<array> inputs = {make_input(shapes[case_index])};
+    set_compile_mode(CompileMode::disabled);
+    std::vector<array> eager = swiglu(inputs);
+    for (auto& out : eager) {
+      out.eval();
+    }
+    sync_stream(stream);
+    set_compile_mode(CompileMode::enabled);
+    auto outputs = compiled_fn(inputs);
+    for (auto& out : outputs) {
+      out.eval();
+    }
+    sync_stream(stream);
+    set_compile_mode(CompileMode::disabled);
+    REQUIRE_EQ(eager.size(), outputs.size());
+    for (size_t j = 0; j < eager.size(); ++j) {
+      REQUIRE_EQ(eager[j].shape(), outputs[j].shape());
+      array eager_wide = astype(eager[j], float32, stream);
+      array compiled_wide = astype(outputs[j], float32, stream);
+      eager_wide.eval();
+      compiled_wide.eval();
+      sync_stream(stream);
+      const float* eager_data = eager_wide.data<float>();
+      const float* compiled_data = compiled_wide.data<float>();
+      for (size_t index = 0; index < eager[j].size(); ++index) {
+        INFO("element ", index, " eager=", eager_data[index],
+             " compiled=", compiled_data[index]);
+        CHECK_EQ(eager_data[index], compiled_data[index]);
       }
     }
   }

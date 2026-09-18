@@ -6944,7 +6944,7 @@ TEST_CASE("mx.compile evaluates a four-op elementwise chain") {
   set_compile_mode(CompileMode::enabled);
 }
 
-TEST_CASE("mx.compile pins the named bfloat16 tape gate") {
+TEST_CASE("mx.compile runs the bf16 tape bit-exact against eager") {
   if (!compute_available()) {
     return;
   }
@@ -6955,18 +6955,34 @@ TEST_CASE("mx.compile pins the named bfloat16 tape gate") {
   array y(yv.begin(), Shape{4}, bfloat16);
   using VectorFn = std::function<std::vector<array>(const std::vector<array>&)>;
 
-  // bf16 fragments corrupt nondeterministically on Honeykrisp, so the tape
-  // refuses the dtype by name instead of returning wrong values.
+  // The bf16 tape dispatches the same bf16 eval_gpu kernels eager uses
+  // (and the fused chain rounds each instruction to storage dtype), so
+  // compiled output widens to the identical float32 bits.
   set_compile_mode(CompileMode::enabled);
   VectorFn fused_fun = [&](const std::vector<array>& inputs) {
     return std::vector<array>{
         multiply(add(inputs[0], inputs[1], stream), inputs[0], stream)};
   };
   auto fused = compile(fused_fun);
-  std::string fused_error = evaluation_error(fused({x, y})[0]);
-  CHECK(
-      fused_error.find("[omarchy] Compiled tape bfloat16") !=
-      std::string::npos);
+
+  set_compile_mode(CompileMode::disabled);
+  std::vector<float> expected_bf16(4);
+  // Compute the eager reference on the device in bf16, widened for
+  // reading: host float arithmetic does not reproduce bf16 rounding.
+  array eager_bf16 =
+      multiply(add(x, y, stream), x, stream);
+  eager_bf16.eval();
+  sync_stream(stream);
+  array eager_wide = astype(eager_bf16, float32, stream);
+  eager_wide.eval();
+  sync_stream(stream);
+  const float* eager_data = eager_wide.data<float>();
+  for (size_t index = 0; index < expected_bf16.size(); ++index) {
+    expected_bf16[index] = eager_data[index];
+  }
+
+  array wide = astype(fused({x, y})[0], float32, stream);
+  check_values(wide, expected_bf16, stream, 0);
 
   // f16 and f32 tapes keep running.
   std::vector<float> expected(4);

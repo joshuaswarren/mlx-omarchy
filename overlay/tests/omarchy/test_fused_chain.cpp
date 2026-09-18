@@ -708,16 +708,17 @@ std::string evaluation_error(array value) {
 
 } // namespace
 
-TEST_CASE("bf16 compiled tape stays refused") {
+TEST_CASE("bf16 compiled tape fuses and matches eager exactly") {
   if (!compute_available()) {
     return;
   }
   Stream stream = gpu_stream();
   enable_fusion();
   set_compile_mode(CompileMode::enabled);
-  // A single-node graph never forms a Compiled tape; the swiglu chain
-  // does, so the gate fires on the fragment itself. Compiled calls are
-  // lazy: the refusal throws at eval time, not call time.
+  // The model fragment: mlx_lm compiles swiglu with shapeless=True. The
+  // fused bf16 chain rounds every instruction to the storage dtype, so
+  // it matches the per-node eager sequence bit for bit. Compiled calls
+  // are lazy: values are compared at eval time.
   auto fn = compile([](const std::vector<array>& in) {
     return std::vector<array>{in[0] * sigmoid(in[0]) * in[1]};
   });
@@ -725,10 +726,34 @@ TEST_CASE("bf16 compiled tape stays refused") {
   array b = astype(random::normal(Shape{8, 8}), bfloat16);
   a.eval();
   b.eval();
-  sync_stream(stream);
-  std::string error = evaluation_error(fn({a, b})[0]);
-  CHECK(error.find("[omarchy] Compiled tape bfloat16") != std::string::npos);
+
   set_compile_mode(CompileMode::disabled);
+  std::vector<array> eager = {a * sigmoid(a) * b};
+  for (auto& out : eager) {
+    out.eval();
+  }
+  sync_stream(stream);
+
+  set_compile_mode(CompileMode::enabled);
+  std::vector<array> fused_out = fn({a, b});
+  for (auto& out : fused_out) {
+    out.eval();
+  }
+  sync_stream(stream);
+  set_compile_mode(CompileMode::disabled);
+
+  array eager_wide = astype(eager[0], float32, stream);
+  array fused_wide = astype(fused_out[0], float32, stream);
+  eager_wide.eval();
+  fused_wide.eval();
+  sync_stream(stream);
+  const float* eager_data = eager_wide.data<float>();
+  const float* fused_data = fused_wide.data<float>();
+  for (size_t index = 0; index < eager[0].size(); ++index) {
+    INFO("element ", index, " eager=", eager_data[index],
+         " fused=", fused_data[index]);
+    CHECK_EQ(eager_data[index], fused_data[index]);
+  }
 }
 
 // The model fragment: mlx_lm compiles swiglu with shapeless=True, and a
