@@ -80,16 +80,17 @@ receipt that bounds it.
    only at real subgroup size 32; a device-subgroup-size gate is a
    precondition for any ship). Re-open only with a new mechanism, not
    a re-run.
-3. **bf16 compiled tape stays disabled pending multi-core numeric
-   equality** (`receipts/2026-09-02-m1-bf16-compiled-tape.md`). bf16
-   with compile on produced wrong output on the M1; the bf16 tape gate
-   stays off in what ships, so mlx-lm bf16 runs eager. llvmpipe never
-   showed it: the differential harness and the compiled-tape battery
-   match eager exactly. The writer and the cause are not established.
-   Do not remove the guard on a theory; buffer-poisoning probes and
-   drain removal are not proposed here. The gate lifts only when
-   mlx-lm bf16 with compile on produces valid numerics under repeated
-   multi-core on-device runs. Hardware-only.
+3. **bf16 compiled-tape fusion stays fenced pending a pinned mechanism**
+   (`receipts/2026-09-18-bf16-compiled-tape.md`). The 2026-09-02
+   tape-level bf16 refusal was the stale-shape defect and is lifted
+   (2026-09-18): bf16 tapes run per-node, bit-exact against eager, and
+   mlx-lm bf16 generates coherently with compile on, digest-identical
+   to eager. Fused bf16 chains remain fenced: in-model corruption on
+   Qwen3.5-9B / gemma-4-31B / Ministral-3-8B, deterministic, not
+   recycled storage, not reproducible in isolated fragments. Do not
+   remove the fence on a theory. The fence lifts with a pinned root
+   cause plus a clean full-model mlx-lm sweep on the corrupt matrix.
+   Hardware-only.
 4. **The M1 verification bars for v0.4.0 and beyond.** The v0.4.0
    proof gate is the supported M1 matrix; v0.5.0 needs an M1 install
    of the public wheel, MLX-LM generation with zero CPU dispatches,
