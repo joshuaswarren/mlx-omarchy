@@ -289,6 +289,53 @@
                 }
               }
             },
+            "set_base_candidate": {
+              "type": [
+                "object",
+                "null"
+              ],
+              "additionalProperties": false,
+              "description": "HYPOTHESIS, never a derived fact: the device tree cannot give the ANE SET MMIO base, so this records the ane_* pwrstate cluster it does expose and says so. The SET base must come from a macOS set_base_candidate (driver_window_confirms) or an m1n1 ANE.ps_map probe; see ane_port_detail.macos.set_base_candidate.",
+              "properties": {
+                "status": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 64
+                },
+                "ane_pwrstate_cells": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "label": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "maxLength": 128
+                      },
+                      "offset": {
+                        "type": [
+                          "integer",
+                          "null"
+                        ]
+                      }
+                    }
+                  },
+                  "maxItems": 16
+                },
+                "note": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 512
+                }
+              }
+            },
             "phandles": {
               "type": "object",
               "additionalProperties": {

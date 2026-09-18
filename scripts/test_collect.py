@@ -1532,14 +1532,51 @@ class AnePortPayloadDetail(unittest.TestCase):
 class PayloadSchemaContract(unittest.TestCase):
     """build_payload and the pinned schema must agree on the key set."""
 
-    def test_payload_keys_equal_schema_properties(self):
+    @staticmethod
+    def _schema():
         path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                             os.pardir, "services", "community-data",
                             "schema", "payload-v1.schema.json")
         with open(path, "r", encoding="utf-8") as fh:
-            schema = json.load(fh)
+            return json.load(fh)
+
+    def test_payload_keys_equal_schema_properties(self):
+        schema = self._schema()
         payload = cc.build_payload("quick", {}, {})
         self.assertEqual(sorted(payload), sorted(schema["properties"]))
+
+    @classmethod
+    def _undeclared(cls, node, schema, path="$"):
+        """Paths the schema forbids: a key under an object declaring
+        `additionalProperties: false` that is not in its `properties`.
+        The endpoint refuses these with HTTP 422 schema_invalid."""
+        bad = []
+        if not isinstance(schema, dict):
+            return bad
+        props = schema.get("properties") or {}
+        if isinstance(node, dict):
+            if schema.get("additionalProperties") is False:
+                bad += [f"{path}.{key}" for key in node if key not in props]
+            for key, value in node.items():
+                if key in props:
+                    bad += cls._undeclared(value, props[key], f"{path}.{key}")
+        elif isinstance(node, list) and isinstance(schema.get("items"), dict):
+            for index, item in enumerate(node):
+                bad += cls._undeclared(item, schema["items"],
+                                       f"{path}[{index}]")
+        return bad
+
+    def test_nested_payload_keys_are_declared_by_schema(self):
+        """The key-set check above only sees the top level. A real Apple
+        Silicon devicetree section must not carry a nested key the pinned
+        schema forbids, or every Linux submit fails with 422."""
+        with tempfile.TemporaryDirectory() as tmp:
+            _build_t600x_tree(tmp)
+            devicetree = cq._ane_port_devicetree(cc.Redactor(), base=tmp)
+        quick = json.loads(json.dumps(BuildPayload.QUICK))
+        quick["ane_port"] = {"available": True, "devicetree": devicetree}
+        payload = cc.build_payload("quick", quick, {}, redactor=cc.Redactor())
+        self.assertEqual(self._undeclared(payload, self._schema()), [])
 
 class SingleNetworkModule(unittest.TestCase):
     def test_only_collect_submit_imports_urllib(self):
