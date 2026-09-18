@@ -41,7 +41,7 @@
 <p id="status">Loading&hellip;</p>
 <table id="results">
   <thead>
-    <tr><th>Published</th><th>Chip</th><th>Model</th><th>Kernel</th><th>Mesa</th><th>mlx-omarchy</th><th>Record</th></tr>
+    <tr><th>Published</th><th>Kind</th><th>Chip</th><th>Model</th><th>Kernel</th><th>Mesa</th><th>mlx-omarchy</th><th>Record</th></tr>
   </thead>
   <tbody></tbody>
 </table>
@@ -53,7 +53,7 @@
     var tbody = document.querySelector("#results tbody");
     data.results.forEach(function (s) {
       var row = document.createElement("tr");
-      [s.generated_at, s.chip, s.model, s.kernel, s.mesa_driver, s.mlx_version].forEach(function (v) {
+      [s.generated_at, s.kind, s.chip, s.model, s.kernel, s.mesa_driver, s.mlx_version].forEach(function (v) {
         var td = document.createElement("td");
         td.textContent = v === null || v === undefined ? "" : String(v);
         row.appendChild(td);
