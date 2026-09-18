@@ -133,11 +133,36 @@ std::optional<uint32_t> leaf_mode_for(
   if (data_size == 1) {
     return kLeafScalar;
   }
-  if (last_dim > 0 && data_size == last_dim) {
+  if (last_dim == 0) {
+    return std::nullopt;
+  }
+  const auto& shape = leaf.shape();
+  // ModLast (address = index % last_dim) is correct only when every leaf
+  // value repeats with period last_dim across the output - that is, the
+  // leaf is a vector over its last axis and all other dimensions are
+  // broadcast singletons. A strided leaf like (N, 1, L) carries an N
+  // axis that the mod cannot express and would silently read row 0.
+  if (data_size == last_dim) {
+    for (size_t i = 0; i + 1 < shape.size(); ++i) {
+      if (shape[i] != 1) {
+        return std::nullopt;
+      }
+    }
     return kLeafModLast;
   }
-  if (last_dim > 0 && count % last_dim == 0 && data_size == count / last_dim) {
-    return kLeafDivLast;
+  // DivLast (address = index / last_dim) repeats each leaf element
+  // last_dim consecutive outputs, which matches only a column-vector
+  // leaf broadcast along its last axis (shape (..., count/last_dim, 1)).
+  // A wide last axis such as (N, 1, L) needs the combined mapping
+  // (index / (count/data_size)) * L + index % L, which the packed leaf
+  // ABI cannot express; selecting DivLast from the data_size alone read
+  // k[N, dv] for every dk and corrupted the GDN state update (F7: NaN
+  // logits from step 4 on Bonsai-2-27B, reproduced standalone).
+  if (count % last_dim == 0 && data_size == count / last_dim) {
+    if (shape.back() == 1) {
+      return kLeafDivLast;
+    }
+    return std::nullopt;
   }
   return std::nullopt;
 }
