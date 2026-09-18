@@ -1974,6 +1974,7 @@ TEST_CASE("gather qmm gathers experts with scales and biases") {
           group_size,
           bits,
           "affine",
+          std::nullopt, /*global_scale*/
           /*sorted_indices=*/false,
           stream);
     } else {
@@ -1994,6 +1995,7 @@ TEST_CASE("gather qmm gathers experts with scales and biases") {
           group_size,
           bits,
           "affine",
+          std::nullopt,
           false,
           stream);
     }
@@ -2060,6 +2062,7 @@ TEST_CASE("gather qmm gathers experts with scales and biases") {
         std::nullopt,
         std::nullopt,
         "mxfp4",
+        std::nullopt,
         false,
         stream));
     // mxfp4 gather computes now: zero codes decode to 0.0 under any e8m0
@@ -2067,7 +2070,7 @@ TEST_CASE("gather qmm gathers experts with scales and biases") {
     REQUIRE(mode_error.empty());
     array fp_out = gather_qmm(
         x, w_words, scales8, std::nullopt, lhs0, rhs, true, std::nullopt,
-        std::nullopt, "mxfp4", false, stream);
+        std::nullopt, "mxfp4", std::nullopt, false, stream);
     std::vector<float> fp_values = readback_f32(stream, fp_out);
     REQUIRE_EQ(fp_values.size(), static_cast<size_t>(2 * 8));
     for (float v : fp_values) {
@@ -2094,7 +2097,7 @@ TEST_CASE("gather qmm gathers experts with scales and biases") {
         32,
         4,
         "affine",
-        false,
+        std::nullopt, false,
         stream);
     REQUIRE(evaluation_error(nt_out).empty());
     REQUIRE_EQ(nt_out.shape(), Shape{1, 2, 64});
@@ -2119,7 +2122,7 @@ TEST_CASE("gather qmm gathers experts with scales and biases") {
         128,
         2,
         "affine",
-        false,
+        std::nullopt, false,
         stream));
     CHECK(bits_error.find("GatherQMM bits") != std::string::npos);
 
@@ -2144,7 +2147,7 @@ TEST_CASE("gather qmm gathers experts with scales and biases") {
         128,
         4,
         "affine",
-        false,
+        std::nullopt, false,
         stream);
     REQUIRE(evaluation_error(wide_out).empty());
     REQUIRE_EQ(wide_out.shape(), Shape{1, 2, 8});

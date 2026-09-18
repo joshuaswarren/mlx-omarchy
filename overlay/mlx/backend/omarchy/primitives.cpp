@@ -1,6 +1,8 @@
 // Copyright © 2026 Joshua Warren / mlx-omarchy contributors.
 // SPDX-License-Identifier: MIT
 
+#include <unistd.h>
+#include <sys/syscall.h>
 #include "mlx/backend/omarchy/unsupported.h"
 #include "mlx/transforms.h"
 
@@ -837,6 +839,10 @@ void dispatch_float_elementwise_to(
     bool general_broadcast,
     omarchy::CommandEncoder& encoder) {
   uint32_t count = checked_u32(out.size(), name, out);
+  if (std::getenv("MLX_OMARCHY_TRACE_DISPATCH") != nullptr) {
+    fprintf(stderr, "[rtmod] FEW name=%s count=%u\n", name.c_str(), count);
+    fflush(stderr);
+  }
   omarchy::ComputeParams params;
   params.count = count;
   params.operation = operation;
@@ -4305,7 +4311,23 @@ void trig_argument_gate(
   }
   array magnitude = astype(
       max(abs(inputs.at(0), stream), stream), float32, stream);
-  magnitude.eval();
+  const bool trace_gate =
+      std::getenv("MLX_OMARCHY_TRACE_DISPATCH") != nullptr;
+  if (trace_gate) {
+    fprintf(stderr, "[rtmod] GATE tid=%lu %s enter\n", (unsigned long)syscall(SYS_gettid), name.c_str());
+  }
+  // Record the magnitude graph into the open batch without the nested
+  // blocking eval: a nested eval()'s epilogue skips the signal+commit at
+  // eval_nest_depth > 1 (settle semantics), so its synchronizer wait
+  // could never be satisfied and parked the dispatching thread until the
+  // watchdog fired - the F1 burst signature. settle() schedules the nodes
+  // into the open command buffer; the synchronize() below submits that
+  // batch and orders the mapped read, which is the ordering this gate
+  // actually needs.
+  settle({magnitude});
+  if (trace_gate) {
+    fprintf(stderr, "[rtmod] GATE tid=%lu %s post-eval\n", (unsigned long)syscall(SYS_gettid), name.c_str());
+  }
   // The magnitude is read on the host, so the stream must be ordered
   // here: array::item() is eval() plus an immediate mapped read with no
   // completion wait, and an unordered read races this gate's own
@@ -8209,7 +8231,9 @@ void Reduce::eval_gpu(const std::vector<array>& inputs, array& out) {
     }
   }
 
-  if (suffix_fast_path) {
+  // RTMOD-BISECT: scalar-output reduces (out.size()==1) suspected in the
+  // F1 first-submit stall; route them to the general reduce kernel.
+  if (suffix_fast_path && out.size() > 1) {
     out.set_data(allocate_omarchy(out.nbytes()));
     if (out.size() == 0) {
       return;
@@ -9394,7 +9418,9 @@ void SearchSorted::eval_gpu(const std::vector<array>& inputs, array& out) {
 
 // Select serves tril/triu (the where() pair behind composed lu), the
 // sampler chain's scalar selects, and the composed causal mask. Value
-// dtypes are float32, float16, bfloat16, int32, uint32, and bool, and
+// dtypes are float32, float16, bfloat16, int32, uint32, bool, complex64,
+// int64, and uint64 (the last three ride two-raw-words or word-identity
+// variants), and
 // every operand layout routes through one of two transports in
 // select.comp. The flat transport keeps the modulo fast path for dense
 // operands. The general transport unravels the output coordinate over
@@ -9439,6 +9465,13 @@ void Select::eval_gpu(const std::vector<array>& inputs, array& out) {
       // count math is unchanged because the per-thread lane loop
       // already counts condition elements, not value words.
       kernel = omarchy::ComputeKernel::SelectComplex64;
+      break;
+    case int64:
+    case uint64:
+      // Same two-raw-words bit-copy variant as complex64; a select
+      // does not interpret the payload, and int64 elements are exactly
+      // a uvec2. Serves the gated-delta chunked path (qwen3_5 GDN).
+      kernel = omarchy::ComputeKernel::SelectI64;
       break;
     default:
       omarchy::unsupported("Select dtype", out);
@@ -10266,6 +10299,20 @@ bool ScaledDotProductAttention::supports_bool_mask() {
   return false;
 }
 
+// Gated delta nets (upstream 0.32.3): no fused Vulkan kernel yet. The
+// fallback flag keeps every Qwen3.6-style GDN layer on the composite
+// primitive path, which runs entirely on implemented Vulkan ops.
+bool GatedDeltaUpdate::use_fallback(
+    const int Hk,
+    const int Dk,
+    const int Hv,
+    const int Dv,
+    const bool has_mask,
+    Stream s) {
+  return true;
+}
+OMARCHY_UNSUPPORTED_MULTI(GatedDeltaUpdate)
+
 
 namespace {
 
@@ -10795,14 +10842,17 @@ void rope_trig_gate(
   } else {
     array offset_worst =
         astype(max(abs(offset, stream), stream), float32, stream);
-    offset_worst.eval();
+    // settle, not eval(): a nested blocking eval cannot complete here
+    // (its epilogue skips signal+commit at nest depth > 1) - same class
+    // as the trig gate; the synchronize below orders the read.
+    settle({offset_worst});
     omarchy::get_command_encoder(stream).synchronize("rope_offset_vector");
     worst_offset = offset_worst.item<float>();
   }
   float inv_freq_bound;
   if (freqs != nullptr) {
     array freqs_min = min(abs(*freqs, stream), stream);
-    freqs_min.eval();
+    settle({freqs_min});
     omarchy::get_command_encoder(stream).synchronize("rope_freqs_bound");
     inv_freq_bound = 1.0f / freqs_min.item<float>();
   } else {
@@ -10844,7 +10894,10 @@ void RoPE::eval_gpu(
   // defect, with the equivalence test green.
   if (!forward_ || offset.size() > 1) {
     auto result = fallback_(inputs);
-    result[0].eval();
+    // Record-only settle: fallback nodes join the open batch, and the
+    // synchronize below submits and orders the buffer handoff. A nested
+    // blocking eval() here deadlocks on the skipped nested epilogue.
+    settle({result[0]});
     encoder.synchronize("rope_fallback");
     out.copy_shared_buffer(result[0]);
     return;

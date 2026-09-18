@@ -11,6 +11,8 @@
 #include <cstdlib>
 #include <cstring>
 #include <atomic>
+#include <unistd.h>
+#include <sys/syscall.h>
 #include <memory>
 #include <mutex>
 #include <stdexcept>
@@ -886,7 +888,7 @@ Device::Device(uint32_t physical_device_index) {
           caps_.max_per_stage_descriptor_storage_buffers,
           caps_.max_descriptor_set_storage_buffers));
   compute_ = std::make_unique<ComputeRuntime>(device_, binding_limit);
-  completions_ = std::make_unique<CompletionDispatcher>(device_);
+  completions_ = std::make_unique<CompletionDispatcher>(device_, this);
 }
 
 Device::~Device() {
@@ -912,19 +914,198 @@ Device::~Device() {
 uint64_t Device::signal_timeline(VkSemaphore semaphore, uint64_t value) {
   std::lock_guard<std::mutex> lk(queue_mutex_);
   uint64_t completion_value = completions().reserve();
-  VkSemaphore semaphores[]{semaphore, completions().semaphore()};
-  uint64_t values[]{value, completion_value};
-  VkTimelineSemaphoreSubmitInfo timeline{
-      VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO};
-  timeline.signalSemaphoreValueCount = 2;
-  timeline.pSignalSemaphoreValues = values;
-  VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
-  si.pNext = &timeline;
-  si.signalSemaphoreCount = 2;
-  si.pSignalSemaphores = semaphores;
-  VKX_CHECK(vk::device_table().QueueSubmit(queue_, 1, &si, VK_NULL_HANDLE));
+  // Host-signal both timelines. This used to be an empty signal-only
+  // QueueSubmit (no command buffer, no waits); Honeykrisp swallows that
+  // shape - the semaphores are never signaled and the reserved
+  // completion value never publishes, so the next host wait deadlocks
+  // at target=1 with the counter stuck at 0 (cos/sin, GDN chunked
+  // async_eval, Ministral/Bonsai-8B first submissions). vkSignalSemaphore
+  // from the host needs no queue involvement and cannot be dropped.
+  static PFN_vkSignalSemaphore signal_fn = nullptr;
+  if (!signal_fn) {
+    signal_fn = reinterpret_cast<PFN_vkSignalSemaphore>(
+        vk::device_table().GetDeviceProcAddr(
+            handle(), "vkSignalSemaphore"));
+  }
+  VkSemaphoreSignalInfo ev{VK_STRUCTURE_TYPE_SEMAPHORE_SIGNAL_INFO};
+  ev.semaphore = semaphore;
+  ev.value = value;
+  VKX_CHECK(signal_fn(handle(), &ev));
+  VkSemaphoreSignalInfo cc{VK_STRUCTURE_TYPE_SEMAPHORE_SIGNAL_INFO};
+  cc.semaphore = completions().semaphore();
+  cc.value = completion_value;
+  VKX_CHECK(signal_fn(handle(), &cc));
   completions().enqueue(completion_value, {}, {});
   return completion_value;
+}
+
+Device::RecoveryResult Device::recover_stalled_submissions(
+    uint64_t target_value,
+    uint32_t round) {
+  // Budget: two recovery rounds per stalled wait (|round| is owned by the
+  // waiting loop, so a later wait starts fresh). Recovery is for the
+  // swallow class, not for a genuinely wedged GPU - a real hang must
+  // still surface as the typed watchdog error, not as an unbounded
+  // retry loop.
+  if (round >= 2) {
+    return RecoveryResult::kExhausted;
+  }
+
+  std::lock_guard<std::mutex> lk(queue_mutex_);
+  auto& completions = this->completions();
+  // Judge and take against ALL reserved values, not just the waited one:
+  // a previous recovery round re-retains resubmitted batches at fresh
+  // values above the original target, and they must not be stranded.
+  const uint64_t reserved_through = completions.last_reserved();
+  bool executing = completions.has_active_submission(reserved_through);
+  if (std::getenv("MLX_OMARCHY_TRACE_DISPATCH") != nullptr) {
+    fprintf(stderr,
+            "[rtmod] RECOVER-ENTER tid=%lu target=%llu through=%llu active=%d\n",
+            (unsigned long)syscall(SYS_gettid),
+            (unsigned long long)target_value,
+            (unsigned long long)reserved_through,
+            executing ? 1 : 0);
+  }
+
+  // Execution evidence: the batch's started event (CmdSetEvent at
+  // TOP_OF_PIPE) fired, so the kernels ran and only the completion
+  // signal was lost. Mesa will not publish ANY queue-based signal once
+  // it has wedged a submission's timeline points (measured: fresh-value
+  // resubmission executed, timeline stayed at 0) - but vkSignalSemaphore
+  // from the host cannot be dropped (the in-tree empty-shape fix relies
+  // on exactly that). The wait has seen a full no-progress interval by
+  // definition of this call, so short kernels have long finished;
+  // host-publish the completion at a freshly reserved value.
+  if (executing) {
+    // The retained batches' user (event) semaphores are equally
+    // stranded: their ride-along signals were swallowed with the
+    // submission. Host-signal each at a bumped fresh value (timeline
+    // waits are >=), then publish the completion timeline.
+    auto stranded = completions.take_resubmit_batches(reserved_through);
+    for (auto& batch : stranded) {
+      for (size_t i = 0; i + 1 < batch.signal_values.size(); ++i) {
+        uint64_t current = 0;
+        if (vk::device_table().GetSemaphoreCounterValue(
+                device_, batch.signal_sems[i], &current) != VK_SUCCESS) {
+          current = 0;
+        }
+        batch.signal_values[i] =
+            std::max(batch.signal_values[i], current) + 1;
+      }
+    }
+    uint64_t fresh = completions.reserve();
+    static PFN_vkSignalSemaphore signal_fn = nullptr;
+    if (!signal_fn) {
+      signal_fn = reinterpret_cast<PFN_vkSignalSemaphore>(
+          vk::device_table().GetDeviceProcAddr(
+              handle(), "vkSignalSemaphore"));
+    }
+    VkSemaphoreSignalInfo cc{VK_STRUCTURE_TYPE_SEMAPHORE_SIGNAL_INFO};
+    cc.semaphore = completions.semaphore();
+    cc.value = fresh;
+    VKX_CHECK(signal_fn(handle(), &cc));
+    for (auto& batch : stranded) {
+      for (size_t i = 0; i + 1 < batch.signal_values.size(); ++i) {
+        VkSemaphoreSignalInfo us{VK_STRUCTURE_TYPE_SEMAPHORE_SIGNAL_INFO};
+        us.semaphore = batch.signal_sems[i];
+        us.value = batch.signal_values[i];
+        VKX_CHECK(signal_fn(handle(), &us));
+      }
+    }
+    fprintf(
+        stderr,
+        "[rtmod] SUBMIT-RECOVER tid=%lu host-signaled completion cv=%llu after "
+        "executed-but-unsignaled batch (round %u)\n",
+        (unsigned long)syscall(SYS_gettid),
+        (unsigned long long)fresh,
+        round + 1);
+    // Every reserved value needs a pending completion entry: join paths
+    // wait drained_value_ >= counter, and the fresh value's drain is what
+    // lets drained_value_ catch up past the original completion.
+    completions.enqueue(fresh, {}, {});
+    return RecoveryResult::kRecovered;
+  }
+
+  // No execution evidence: the batch never began. Resubmit it with
+  // fresh signal values - the dropped submission still holds its
+  // original timeline points inside Mesa, and re-signaling the same
+  // value creates a duplicate point Mesa does not publish. Timeline
+  // waits are >=, so strictly higher values satisfy every existing
+  // waiter.
+  std::vector<CompletionDispatcher::ResubmitBatch> batches =
+      completions.take_resubmit_batches(reserved_through);
+  if (batches.empty()) {
+    if (std::getenv("MLX_OMARCHY_TRACE_DISPATCH") != nullptr) {
+      fprintf(stderr, "[rtmod] RECOVER-FALSE tid=%lu empty-batches\n", (unsigned long)syscall(SYS_gettid));
+    }
+    // Another waiter's recovery already took the batches (or the
+    // producing stream has not submitted yet): not ours to recover, and
+    // not a hang verdict. The caller keeps waiting.
+    return RecoveryResult::kNotRecoverable;
+  }
+
+  auto& dt = vk::device_table();
+  // First, an empty queue-touch submit: if the loss was a missed
+  // doorbell rather than a dropped batch, this alone flushes the queue
+  // and the original submission completes. No semaphores, no command
+  // buffer - nothing to signal, so ordering cannot be violated.
+  VkSubmitInfo kick{VK_STRUCTURE_TYPE_SUBMIT_INFO};
+  dt.QueueSubmit(queue_, 1, &kick, VK_NULL_HANDLE);
+
+  size_t count = batches.size();
+  for (auto& batch : batches) {
+    for (size_t i = 0; i + 1 < batch.signal_values.size(); ++i) {
+      uint64_t current = 0;
+      if (vk::device_table().GetSemaphoreCounterValue(
+              device_, batch.signal_sems[i], &current) != VK_SUCCESS) {
+        current = 0;
+      }
+      batch.signal_values[i] =
+          std::max(batch.signal_values[i], current) + 1;
+    }
+    uint64_t fresh_completion = completions.reserve();
+    batch.value = fresh_completion;
+    batch.signal_values.back() = fresh_completion;
+
+    VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
+    VkTimelineSemaphoreSubmitInfo timeline{
+        VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO};
+    std::vector<VkPipelineStageFlags> wait_stages(
+        batch.wait_sems.size(), VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
+    timeline.waitSemaphoreValueCount =
+        static_cast<uint32_t>(batch.wait_values.size());
+    timeline.pWaitSemaphoreValues = batch.wait_values.data();
+    timeline.signalSemaphoreValueCount =
+        static_cast<uint32_t>(batch.signal_values.size());
+    timeline.pSignalSemaphoreValues = batch.signal_values.data();
+    si.pNext = &timeline;
+    si.waitSemaphoreCount = static_cast<uint32_t>(batch.wait_sems.size());
+    si.pWaitSemaphores = batch.wait_sems.data();
+    si.pWaitDstStageMask = wait_stages.data();
+    si.commandBufferCount = batch.cmd != VK_NULL_HANDLE ? 1u : 0u;
+    si.pCommandBuffers = batch.cmd != VK_NULL_HANDLE ? &batch.cmd : nullptr;
+    si.signalSemaphoreCount =
+        static_cast<uint32_t>(batch.signal_sems.size());
+    si.pSignalSemaphores = batch.signal_sems.data();
+    VKX_CHECK(dt.QueueSubmit(queue_, 1, &si, VK_NULL_HANDLE));
+    // The batch is pending again at its fresh value; retain it for a
+    // further round.
+    completions.retain_for_resubmit(fresh_completion, std::move(batch));
+    // Every reserved value needs a pending completion entry: join paths
+    // wait drained_value_ >= counter, and the fresh value's drain is what
+    // lets drained_value_ catch up past the original completion. Empty
+    // payload - the original completion still owns handlers/temporaries.
+    completions.enqueue(fresh_completion, {}, {});
+  }
+  fprintf(
+      stderr,
+      "[rtmod] SUBMIT-RECOVER tid=%lu resubmitted %zu stalled batch(es) through "
+      "cv>=%llu (round %u, fresh signals)\n",
+      (unsigned long)syscall(SYS_gettid),
+      count,
+      (unsigned long long)target_value,
+      round + 1);
+  return RecoveryResult::kRecovered;
 }
 
 void Device::join_completed_handlers() {
@@ -990,7 +1171,8 @@ void wait_for_timeline_progress(
     VkSemaphore semaphore,
     uint64_t target_value,
     CompletionDispatcher* progress,
-    std::function<uint64_t()> progress_generation) {
+    std::function<uint64_t()> progress_generation,
+    Device* recovery) {
   using clock = std::chrono::steady_clock;
   const uint64_t hang_ns = submit_hang_no_progress_ns();
   const uint64_t max_wall_ns = submit_max_wall_ns();
@@ -998,6 +1180,16 @@ void wait_for_timeline_progress(
   const auto wall_deadline = start + std::chrono::nanoseconds(max_wall_ns);
   uint64_t last_observed = 0;
   auto last_advance = start;
+  uint32_t recovery_round = 0;
+  // Refused recoveries (empty retained-batch set) are bounded by the same
+  // budget as resubmission rounds: a stall whose target is already
+  // reserved but whose signalling batch does not exist will never be
+  // satisfied, and waiting for "the owner" only defers the typed error
+  // to the wall deadline (minutes) with the wrong message. Real
+  // foreign/stale waiters never get here - their target exceeds
+  // last_reserved and the branch above refuses them without counting.
+  uint32_t refused_rounds = 0;
+  bool foreign_traced = false;
 
   VkSemaphoreWaitInfo info{VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO};
   info.semaphoreCount = 1;
@@ -1042,6 +1234,72 @@ void wait_for_timeline_progress(
     if (executing) {
       last_advance = now;
     } else if ((now - last_advance) > std::chrono::nanoseconds(hang_ns)) {
+      // Foreign/stale waiter: the waited value was never reserved by any
+      // submission (target > last_reserved), so the batch that would
+      // signal it has not even been handed to the driver yet - typically
+      // a scheduler-thread Event::wait parking ahead of the owning
+      // stream's submit. Nothing is recoverable here (no retained batch
+      // can exist above last_reserved), and throwing kills the process
+      // ahead of the owning wait's own recovery ladder (observed in the
+      // build13 decision trace). Refuse recovery and keep waiting: the
+      // owning wait runs the ladder for a real stall once it reserves,
+      // and the wall deadline below still bounds a producer that never
+      // submits.
+      if (progress && target_value > progress->last_reserved()) {
+        if (!foreign_traced &&
+            std::getenv("MLX_OMARCHY_TRACE_DISPATCH") != nullptr) {
+          foreign_traced = true;
+          fprintf(stderr,
+                  "[rtmod] STALL-FOREIGN tid=%lu target=%llu through=%llu (owner"
+                  " has not submitted; continuing wait)\n",
+                  (unsigned long)syscall(SYS_gettid),
+                  (unsigned long long)target_value,
+                  (unsigned long long)progress->last_reserved());
+        }
+        last_advance = clock::now();
+        continue;
+      }
+      // No progress for a full no-progress interval. Before declaring the
+      // device hung, give the recovery ladder a chance: Honeykrisp
+      // provably swallows submissions (the empty signal-only shape was
+      // deterministic and is fixed; burst observations add real command
+      // buffers whose started event never fires). A successful resubmit
+      // restarts the no-progress clock; a refused or exhausted recovery
+      // throws exactly as before.
+      if (std::getenv("MLX_OMARCHY_TRACE_DISPATCH") != nullptr) {
+        fprintf(stderr,
+                "[rtmod] STALL tid=%lu target=%llu observed=%llu round=%u "
+                "recovery=%d\n",
+                (unsigned long)syscall(SYS_gettid),
+                (unsigned long long)target_value,
+                (unsigned long long)last_observed,
+                recovery_round,
+                recovery != nullptr ? 1 : 0);
+      }
+      if (recovery) {
+        switch (recovery->recover_stalled_submissions(
+            target_value, recovery_round)) {
+          case Device::RecoveryResult::kRecovered:
+            recovery_round++;
+            last_advance = clock::now();
+            continue;
+          case Device::RecoveryResult::kNotRecoverable:
+            // Someone else may own the recovery (or own the submission
+            // that has not happened yet). Throwing on the FIRST refusal
+            // killed healthy processes ahead of the real recovery
+            // (build13 decision trace), so refuse once per round - but
+            // only for a bounded number of rounds. An unbounded wait is
+            // wrong for a stall the retained set can never satisfy: the
+            // bounded typed watchdog error is the contract.
+            if (++refused_rounds >= 2) {
+              break;
+            }
+            last_advance = clock::now();
+            continue;
+          case Device::RecoveryResult::kExhausted:
+            break;
+        }
+      }
       throw std::runtime_error(
           std::string(
               "[omarchy] Vulkan timeline counter failed to advance for ") +
@@ -1052,7 +1310,8 @@ void wait_for_timeline_progress(
     }
   }
 }
-CompletionDispatcher::CompletionDispatcher(VkDevice device) : device_(device) {
+CompletionDispatcher::CompletionDispatcher(VkDevice device, Device* owner)
+    : device_(device), owner_(owner) {
   VkSemaphoreTypeCreateInfo type{VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO};
   type.semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE;
   type.initialValue = 0;
@@ -1075,7 +1334,7 @@ void CompletionDispatcher::wait(uint64_t value) {
   // observing the counter's motion avoids that failure mode without
   // giving up on real hang detection.
   wait_for_timeline_progress(
-      device_, semaphore_, value, this, [value] { return value; });
+      device_, semaphore_, value, this, [value] { return value; }, owner_);
   // Inline fast path: drain and run every ready completion whose value
   // is <= |value| on this thread, serialized end-to-end through
   // drain_mutex_ with the background thread so handlers cannot interleave
@@ -1193,6 +1452,27 @@ bool CompletionDispatcher::has_active_submission(uint64_t through_value) {
   return false;
 }
 
+void CompletionDispatcher::retain_for_resubmit(
+    uint64_t value,
+    ResubmitBatch batch) {
+  std::lock_guard<std::mutex> lk(mutex_);
+  resubmitable_[value] = std::move(batch);
+}
+
+std::vector<CompletionDispatcher::ResubmitBatch>
+CompletionDispatcher::take_resubmit_batches(uint64_t through_value) {
+  std::lock_guard<std::mutex> lk(mutex_);
+  std::vector<ResubmitBatch> out;
+  for (auto& [value, batch] : resubmitable_) {
+    if (value > through_value) {
+      break;
+    }
+    out.push_back(std::move(batch));
+  }
+  resubmitable_.erase(resubmitable_.begin(), resubmitable_.upper_bound(through_value));
+  return out;
+}
+
 void CompletionDispatcher::drain_through(uint64_t max_value) {
   std::lock_guard<std::mutex> drain_lk(drain_mutex_);
   std::vector<Completion> ready;
@@ -1203,6 +1483,10 @@ void CompletionDispatcher::drain_through(uint64_t max_value) {
       ready.push_back(std::move(pending_.front()));
       pending_.pop_front();
     }
+    // Their retained submit records completed - recovery must never
+    // resubmit them again.
+    resubmitable_.erase(
+        resubmitable_.begin(), resubmitable_.upper_bound(max_value));
   }
   if (ready.empty()) {
     return;
