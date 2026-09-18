@@ -480,3 +480,21 @@ cause found and fixed - nested blocking eval in host-read gates; proofs green
   vs 63c1d3cf re-checked at land time. Landed to main + E2E arms (x4, main
   bytes) + oMLX A/B table remain; F7 is the new standing blocker for any
   Bonsai-2 tok/s headline.
+
+## 18. Main landed + certified E2E arm from main bytes (jw16)
+- LANDED: origin/main c136912f = merge of rtmod/source-bump (edc14d43);
+  63c1d3cf ancestry is-ancestor exit 1 (PASS, branch-side and main-side
+  re-checked at land time); push verified de7f6e55..c136912f main -> main.
+- MAIN-BYTES WHEEL: /tmp/main-e2e/dist/mlx_omarchy-0.32.3.dev202609182038+
+  c136912f (clean worktree at c136912f, build-wheel green). mx.__version__
+  reports the c136912f stamp; cholesky float64 gate + ladder contained.
+- CERTIFIED PARAKEET ARM x3 FROM MAIN BYTES: `mlx-omarchy-parakeet
+  download/verify/transcribe` on /tmp/venv-main-e2e: verify OK (12 files +
+  audio fixture); transcribe warm 1/2/3 ALL status "match", checks_failed
+  [], 104/104 emissions, pipeline 4450/4823/4689 ms, pinned transcript
+  ("He hoped there would be stew for dinner..."). Log /tmp/f1-round15.log.
+  (Runtime deps note: transcribe needs numpy+protobuf+soundfile in the
+  target venv; wheel ships the CLI under site-packages/mlx/bin/.)
+- REMAINING from the lane contract: AC/ACO x serve/launch E2E matrix and
+  the oMLX A/B table (both servers were staged in round 3; mlx_lm route +
+  readiness wait documented there - mechanical rerun).
