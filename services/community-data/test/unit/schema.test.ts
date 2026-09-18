@@ -224,6 +224,94 @@ describe("payload schema v1", () => {
     ).toBeGreaterThan(0);
   });
 
+  test("t6021 bring-up fields: macos children, dart_options, interrupt_controllers", () => {
+    const macos = {
+      available: true,
+      instances: [],
+      ane_nodes: [{
+        name: "ane0",
+        compatible: ["ane,t6021"],
+        reg: "0x0",
+        phandle: 0x169,
+        children: [{ name: "engine-sub", reg: "0x285c04000:0x24000" }],
+      }],
+      dart_nodes: [{
+        name: "dart-ane0",
+        phandle: 0x16a,
+        dart_id: 0x25,
+        iommu_cells: null,
+        dart_options: "0x25",
+      }],
+      interrupt_controllers: [{
+        name: "aic",
+        compatible: ["apple,t6021-aic"],
+        phandle: 0x16b,
+        interrupt_cells: null,
+      }],
+      coreml: { available: false, compute_units: null, error: "x" },
+      powermetrics: { available: false, power_mw: null, error: "x" },
+    };
+    expect(
+      validateSchemaRoot(mutate({ ane_port_detail: { macos } }), schema),
+    ).toEqual([]);
+    // children entries stay closed-world.
+    expect(
+      validateSchemaRoot(mutate({ ane_port_detail: { macos: { ...macos,
+        ane_nodes: [{ name: "ane0", children: [{ name: "x", junk: 1 }] }] } } }),
+        schema).length,
+    ).toBeGreaterThan(0);
+    // interrupt_controllers entries stay closed-world.
+    expect(
+      validateSchemaRoot(mutate({ ane_port_detail: { macos: { ...macos,
+        interrupt_controllers: [{ name: "aic", flags: "0x3" }] } } }),
+        schema).length,
+    ).toBeGreaterThan(0);
+  });
+
+  test("t6021 bring-up fields: devicetree adt artifact and adt_nodes", () => {
+    const base = {
+      devicetree: {
+        ane_node_present: true,
+        ane_nodes: {},
+        ane_reg: null,
+        darts: {},
+        pmgr_domains: [],
+        pmgr_blocks: [],
+        phandles: {},
+        boot: null,
+        dtb_sha256: null,
+        adt: {
+          found: true,
+          path: "/boot/efi/m1n1",
+          sha256: "ab".repeat(32),
+          source: "m1n1",
+        },
+        adt_nodes: {
+          ane0: { reg: "0x285c04000:0x24000", reg_ranges: null },
+          dart_ane0: null,
+          ane0_iommus: [{ stream_id: 8 }],
+          ane0_interrupts: ["0x374 0x0 0x4"],
+        },
+      },
+    };
+    expect(
+      validateSchemaRoot(mutate({ ane_port_detail: base }), schema),
+    ).toEqual([]);
+    // adt without the artifact records the miss instead of lying.
+    const absent = { ...base.devicetree,
+      adt: { found: false, path: null, sha256: null, source: null } };
+    expect(
+      validateSchemaRoot(
+        mutate({ ane_port_detail: { devicetree: absent } }), schema),
+    ).toEqual([]);
+    // junk in adt_nodes stays rejected.
+    expect(
+      validateSchemaRoot(mutate({ ane_port_detail: { devicetree: {
+        ...base.devicetree,
+        adt_nodes: { ane0: { stream_map: "0xff" } } } } }), schema).length,
+    ).toBeGreaterThan(0);
+  });
+
   test("macos probe payload accepts pmgr_nodes and rejects junk there", () => {
     const base = {
       available: true,

@@ -326,6 +326,38 @@ def _dt_props(node_dir, redactor, cap=16):
     return out
 
 
+_ADT_CANDIDATES = (
+    ("/boot/efi/m1n1", "m1n1"),
+    ("/boot/m1n1", "m1n1"),
+    ("/boot/asahi/adt", "adt"),
+    ("/boot/efi/asahi/adt", "adt"),
+    ("/sys/firmware/fdt", "fdt"),
+)
+
+
+def _probe_adt(redactor):
+    """Best-effort Apple Device Tree artifact discovery: presence + sha256.
+
+    The bytes stay on the machine; the hash pins which tree a capture
+    explains. `source` records which candidate matched: m1n1 stage2
+    (embeds the ADT), a distro ADT dump, or the live FDT. found=false
+    with source=null is a platform fact, not a probe failure.
+    """
+    for path, source in _ADT_CANDIDATES:
+        try:
+            with open(path, "rb") as fh:
+                data = fh.read(8 * 1024 * 1024)
+        except OSError:
+            continue
+        if not data:
+            continue
+        return {"found": True,
+                "path": redactor.apply(path),
+                "sha256": hashlib.sha256(data).hexdigest(),
+                "source": source}
+    return {"found": False, "path": None, "sha256": None, "source": None}
+
+
 def _ane_port_devicetree(redactor, base=DT_BASE,
                          fdt_path="/sys/firmware/fdt"):
     """Everything a contributor needs to port omarchy-ane to this SoC.
@@ -511,6 +543,8 @@ def _ane_port_devicetree(redactor, base=DT_BASE,
         "phandles": {str(k): phandles[k] for k in sorted(referenced)},
         "boot": boot,
         "dtb_sha256": dtb_sha256,
+        "adt": _probe_adt(redactor),
+        "adt_nodes": None,
     }
 
 

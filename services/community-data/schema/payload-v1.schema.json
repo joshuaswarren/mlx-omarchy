@@ -376,6 +376,132 @@
                   ]
                 }
               }
+            },
+            "adt": {
+              "type": [
+                "object",
+                "null"
+              ],
+              "additionalProperties": false,
+              "description": "Apple Device Tree artifact discovery on Linux (m1n1 stage2 / distro ADT dump / live FDT). Presence + sha256 only; the artifact bytes stay on the machine and the hash pins which tree a capture explains. found=false with source=null means no candidate artifact exists.",
+              "properties": {
+                "found": {
+                  "type": "boolean"
+                },
+                "path": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 256
+                },
+                "sha256": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                "source": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 16
+                }
+              }
+            },
+            "adt_nodes": {
+              "type": [
+                "object",
+                "null"
+              ],
+              "additionalProperties": false,
+              "description": "ANE-relevant nodes decoded from the ADT artifact: the authoritative path for engine base + DART stream-IDs on any SoC (macOS IORegistry does not expose the engine sub-window). null until the ADT decode step emits it.",
+              "properties": {
+                "ane0": {
+                  "type": [
+                    "object",
+                    "null"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "reg": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "maxLength": 8192
+                    },
+                    "reg_ranges": {
+                      "type": [
+                        "array",
+                        "null"
+                      ],
+                      "items": {
+                        "type": "string",
+                        "maxLength": 128
+                      },
+                      "maxItems": 256
+                    }
+                  }
+                },
+                "dart_ane0": {
+                  "type": [
+                    "object",
+                    "null"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "reg": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "maxLength": 8192
+                    },
+                    "reg_ranges": {
+                      "type": [
+                        "array",
+                        "null"
+                      ],
+                      "items": {
+                        "type": "string",
+                        "maxLength": 128
+                      },
+                      "maxItems": 256
+                    }
+                  }
+                },
+                "ane0_iommus": {
+                  "type": [
+                    "array",
+                    "null"
+                  ],
+                  "maxItems": 16,
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "stream_id": {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    }
+                  }
+                },
+                "ane0_interrupts": {
+                  "type": [
+                    "array",
+                    "null"
+                  ],
+                  "maxItems": 16,
+                  "items": {
+                    "type": "string",
+                    "maxLength": 128
+                  }
+                }
+              }
             }
           }
         },
@@ -605,6 +731,34 @@
                       ]
                     },
                     "maxItems": 256
+                  },
+                  "children": {
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "maxItems": 16,
+                    "description": "IORegistry children of this node with their reg entries, when the registry exposes them. t6021 mining showed macOS exposes NO ane0 engine sub-window; an empty/null capture is a platform fact, not a probe failure.",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "name": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "maxLength": 128
+                        },
+                        "reg": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "maxLength": 8192
+                        }
+                      }
+                    }
                   }
                 }
               }
@@ -692,6 +846,56 @@
                       "null"
                     ],
                     "description": "Devicetree-only property; always null on macOS (see truncated marker iommu_cells:unavailable_on_macos)."
+                  },
+                  "dart_options": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 256,
+                    "description": "Raw dart-options IORegistry property when present; dart-internal ID, NOT a stream map (t6021: 0x25-class values). Recorded for completeness."
+                  }
+                }
+              }
+            },
+            "interrupt_controllers": {
+              "type": "array",
+              "maxItems": 8,
+              "description": "Interrupt-controller table for decoding device IOInterruptSpecifiers (AIC phandle -> cells). IORegistry rarely surfaces #interrupt-cells; null is a platform miss, not a probe failure.",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "name"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "maxLength": 64
+                  },
+                  "compatible": {
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "items": {
+                      "type": "string",
+                      "maxLength": 128
+                    },
+                    "maxItems": 8
+                  },
+                  "phandle": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "interrupt_cells": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "minimum": 0
                   }
                 }
               }
