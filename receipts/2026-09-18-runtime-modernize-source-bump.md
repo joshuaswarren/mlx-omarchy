@@ -317,6 +317,13 @@ references through Vulkan compute"`):
   (c) has_active_submission semantics for signal-only ride-alongs.
   Next debug step: stderr-trace inside recover_stalled_submissions
   entry/return with round + has_active + batch count, one build.
+- MATRIX ADDITION (Joshua, 2026-09-18): after stock Bonsai-2-27B
+  generation is proven, run the SAME generation test on
+  rariruluis/ternary-bonsai-2-27b-mlx-runtime-abliterated (published
+  2026-09-18, abliterated on the stock prism-ml pack, presumably
+  prism_hadamard_qwen35 - VERIFY the arch/loader contract against the
+  canonical prism-ml pack first). Record tok/s + a qualitative sanity
+  line; local load/generate verification only.
 - DECISION TRACE (build13, MLX_OMARCHY_TRACE_DISPATCH=1 on
   TEST_DROP_SUBMIT=1): the ladder's silent-false is now OBSERVED, not
   guessed. Output order: STALL target=1 through=0 round=0 →
