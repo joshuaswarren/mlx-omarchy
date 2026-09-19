@@ -54,7 +54,12 @@ models. MLX quants exist for the two big ones —
 `mlx-community/Qwen3.6-27B-mxfp4` (arch `qwen3_5`) and
 `mlx-community/gemma-4-31b-it-4bit` (arch `gemma4`) — but both need a
 newer `mlx-lm` than 0.31.3 (that pin lacks the `qwen3_5`/`gemma4`
-model code). Neither has been run on this stack; treat them as
+model code) for the `mlx_lm.server` path above. One verified data point
+on this stack (2026-09-18 recert matrix, greedy 96, wheel `2def345c…`):
+gemma-4-31b-it-4bit generated coherently at 2.37 tok/s compiled ON and
+2.45 tok/s eager, digest `9f1fe40101db3a4b` identical under both modes
+([receipt](../receipts/2026-09-18-v070-pretag-recert-t6001-test-host.md)).
+`Qwen3.6-27B-mxfp4` remains untested on MLX-over-Vulkan; treat it as
 experimental until verified.
 
 **Ternary Bonsai 2 27B** (PrismML, Apache-2.0): there is **no Q4 of
@@ -74,10 +79,18 @@ average. The published packings are:
   (7.21 GB), **requires the PrismML llama.cpp fork**; stock llama.cpp
   rejects or garbles them.
 
-None of these load paths exist in this stack's pinned runtime, and
-the model is untested on MLX-over-Vulkan. If 27B-class on a 16 GiB
-machine is the goal, Bonsai 2 is the interesting artifact — as an
-upstream-mlx-lm upgrade + loader-port task, not a drop-in.
+**Verified on this stack 2026-09-18** (t6001-test-host, recert wheel from main
+`b283a16f`, wheel sha256 `2def345c…`): the `2bit` pack loads through its
+bundled `runtime/` schema-2 loader with stock `mlx_vlm` 0.7.1 and generates
+coherently at **1.44 tok/s** with compile ON (96 greedy steps, digest
+`9252095e0de70235`, `nan_at` null — the F7 NaN class is fixed at `da43969e`).
+The runtime refusal-ablation arm (129 writers, α=1.5) is coherent at
+**1.25 tok/s** with the projection proven live by probe (refusal-adjacent
+argmax 40 → 47; benign-prompt digest identical to stock). This is not an
+`mlx_lm.server` drop-in: serve-path models in the ladder above stay on the
+standard loader; Bonsai 2 runs through the pack's loader as the receipts do.
+Receipts: [`receipts/2026-09-18-v070-pretag-recert-t6001-test-host.md`](../receipts/2026-09-18-v070-pretag-recert-t6001-test-host.md),
+[`receipts/2026-09-18-ablit-bonsai2-t6001-test-host-recert-wheel.md`](../receipts/2026-09-18-ablit-bonsai2-t6001-test-host-recert-wheel.md).
 
 First download goes to `~/.cache/huggingface`.
 

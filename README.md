@@ -110,6 +110,16 @@ M1 Max versus native Max (t6001-test-host, single same-protocol battery on the v
 
 Digests match native (`7fd25a869ff21678` short, `7da83f06ec9f001d` ctx1053, every leg asserted). Against the same-protocol 2026-09-14 rerun that is +29% short decode, +49% ctx decode, +130% short prefill, and +86% ctx prefill, from the rope-pair trio, the SwiGLU store epilogue, the tile-M occupancy floor, and the SPIR-V disk cache. The M1 Max still runs the untrimmed CDM barrier: the Honeykrisp trim ships G13G-only because on G13X the designed bit set measured +13% short decode against −3.2% ctx1053, so it was not shipped.
 
+M2 Max — third Vulkan device, numbers only (t6021-test-host-linux, same-protocol battery on the F1-fixed `b744f4dd` wheel, single locked pass, eager per the standing protocol, [`receipts/2026-09-18-t6021-test-host-third-vulkan-device.md`](https://github.com/joshuaswarren/ane-linux-experiments/blob/main/receipts/2026-09-18-t6021-test-host-third-vulkan-device.md)):
+
+| Prompt / generated | Decode tok/s | Prefill tok/s | Generated-ID digest |
+|---|---:|---:|---|
+| 30 / 32 | 182.43 | 224.44 | `7fd25a869ff21678` (= native pin) |
+| 262 / 128 | 155.35 | 1593.52 | `55215e22d7f1b864` |
+| 1053 / 32 | 99.66 | 2416.61 | `7da83f06ec9f001d` (= native pin) |
+
+Both native-pinned digests reproduce bit-exact on T6021 (G14C B1, Honeykrisp). No native-M2-Max Metal divisor run exists, so no versus-native percentages are claimed for this device.
+
 To reproduce a leg:
 
 ```bash
@@ -132,13 +142,19 @@ The badge above is value-tested coverage of the 130 Mac-usable primitives: 126 /
 
 C++ and Python counts are the dated snapshot in [receipts/2026-09-11-upstream-suite/](receipts/2026-09-11-upstream-suite/). The battery closed 30 / 30 at commit `8790c463`.
 
-Known gaps: compiled bfloat16 graphs are refused (`MLX_DISABLE_COMPILE=1` runs them eagerly); `ReduceScatter` is unavailable on the Linux ring transport; `fast.CustomKernel` remains a Metal subset. The rest is in [docs/known-defects.md](docs/known-defects.md).
+Known gaps: `ReduceScatter` is unavailable on the Linux ring transport; `fast.CustomKernel` remains a Metal subset. The rest is in [docs/known-defects.md](docs/known-defects.md).
+
+The compiled-bf16 tape gate lifted 2026-09-18 (`064b7301`): compile-ON is digest-identical to eager across the five-model recert matrix on the v0.7.0 wheel bytes (main `b283a16f`, wheel sha256 `2def345c…`) — Qwen3.5-9B-MLX-4bit `910abe30d4305271` (deterministic across two compiled reps), gemma-4-31b-it-4bit `9f1fe40101db3a4b`, Ministral-3-8B-4bit `d4735e3a265e16ee`, Ternary-Bonsai-8B-2bit `25dc382d3170a80c`, and Ternary-Bonsai-2-27B coherent at **1.44 tok/s** compiled-ON ([recert receipt](receipts/2026-09-18-v070-pretag-recert-t6001-test-host.md)). The fused-chain `(N,1,L)` broadcast misindexing behind the Bonsai-2-27B NaNs (F7) is fixed at `da43969e`; in-model fused bf16 chains stay fenced to the proven per-node path in this release (`FusedChain::can_start` refuses bfloat16; the corrupt-matrix probe with fusion ON is clean on all three probed models, so the fence is liftable next release with a fresh digest sweep).
 
 ## Neural Engine
 
 The Apple Neural Engine is an internal accelerator for static graph regions, not a user-facing `mx.ane` device.
 
-The v0.6.0 wheel ships the public Parakeet reference encoder on ANE end to end on the M1 (`T8103`) **and** the M1 Max (`T6001`). Both laptops pass full E2E **104/104 transcript-exact** ([receipts/2026-09-16-parakeet-e2e-both-hosts.md](receipts/2026-09-16-parakeet-e2e-both-hosts.md): m1-test-host 8541.8 ms, t6001-test-host 6418.5 ms, transcript `db501a8c…`, `encoder_hidden` = pin `38c73261…` identical bytes on both hosts, island batch 1/1/0, `tdt_fallback_reason: null`). A 100/100 warm-run soak on the v0.5.1 wheel holds both pins with zero drift (see [`ane-linux-experiments/receipts/2026-09-16-parakeet-100-run`](https://github.com/joshuaswarren/ane-linux-experiments/tree/main/receipts/2026-09-16-parakeet-100-run), criterion 14 gate 10 closed). `MLX_OMARCHY_ANE_DEVICE=off` refuses by design.
+The v0.6.0 wheel ships the public Parakeet reference encoder on ANE end to end on the M1 (`T8103`) **and** the M1 Max (`T6001`). Both laptops pass full E2E **104/104 transcript-exact** ([receipts/2026-09-16-parakeet-e2e-both-hosts.md](receipts/2026-09-16-parakeet-e2e-both-hosts.md): m1-test-host 8541.8 ms, t6001-test-host 6418.5 ms, transcript `db501a8c…`, `encoder_hidden` = pin `38c73261…` identical bytes on both hosts, island batch 1/1/0, `tdt_fallback_reason: null`).
+
+macOS CoreML divisor for the same die (m1-test-host/T8103, [`ane-linux-experiments/receipts/2026-09-18-t8103-divisor-macos27.md`](https://github.com/joshuaswarren/ane-linux-experiments/blob/main/receipts/2026-09-18-t8103-divisor-macos27.md)): CoreML `transcribe` wall, median of all 10 runs, **259.9 ms `.ane` / 266.7 ms `.all`** on macOS 27.0 / CoreML 3600.25.2; the M1-Ultra reference (studio-host) is 292.2 / 305.8 ms on macOS 26.6.2 / CoreML 3520. **Cross-OS caveat: the two sides are different OS/CoreML generations, so ratios are indicative, not exact.** This is also a different stage definition than the Linux pipeline number above (CoreML `transcribe` wall vs whole mel → ANE → TDT pipeline) — the divisor is the reference-class target for the Linux ANE port, not a like-for-like comparison.
+
+A 100/100 warm-run soak on the v0.5.1 wheel holds both pins with zero drift (see [`ane-linux-experiments/receipts/2026-09-16-parakeet-100-run`](https://github.com/joshuaswarren/ane-linux-experiments/tree/main/receipts/2026-09-16-parakeet-100-run), criterion 14 gate 10 closed). `MLX_OMARCHY_ANE_DEVICE=off` refuses by design.
 
 `mlx-omarchy-parakeet download` and `mlx-omarchy-parakeet transcribe` ship in the wheel (v0.6.0 clean-install gate): install the aarch64 wheel into a Python 3.14 venv and the commands are on `PATH`. The downloader fetches the pinned reference plus an audio fixture (sha-verified); `transcribe` runs mel → ANE islands → TDT → transcript from a clean install with no dev clones. `transcribe` needs host numpy + protobuf plus soundfile or ffmpeg; it refuses naming them. The x86_64 wheel carries the CLI without ANE assets and refuses explicitly when asked to use the ANE.
 
