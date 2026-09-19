@@ -108,7 +108,14 @@ M1 Max versus native Max (jw16, single same-protocol battery on the v0.6.1 wheel
 | 30 / 32 | 190.6 / 287 | 66% | 459.7 / 1518 | 30% |
 | 1053 / 32 | 130.7 / 284 | 46% | 3845 / 8048 | 48% |
 
-Digests match native (`7fd25a869ff21678` short, `7da83f06ec9f001d` ctx1053, every leg asserted). Against the same-protocol 2026-09-14 rerun that is +29% short decode, +49% ctx decode, +130% short prefill, and +86% ctx prefill, from the rope-pair trio, the SwiGLU store epilogue, the tile-M occupancy floor, and the SPIR-V disk cache. The M1 Max still runs the untrimmed CDM barrier: the Honeykrisp trim ships G13G-only because on G13X the designed bit set measured +13% short decode against −3.2% ctx1053, so it was not shipped.
+Same battery on the v0.7.1 wheel (`receipts/2026-09-19-q4-chainbatch-jw16.md` in `ane-linux-experiments`, 2026-09-19; two-pass decode included; digests fatal and exact):
+
+| Prompt / generated | Decode tok/s | vs native | Prefill tok/s | vs native |
+|---|---:|---:|---:|---:|
+| 30 / 32 | 191.9 / 287 | 67% | 457 / 1518 | 30% |
+| 1053 / 32 | 150.8 / 284 | 53% | 3884 / 8048 | 48% |
+
+Digests match native (`7fd25a869ff21678` short, `7da83f06ec9f001d` ctx1053, every leg asserted). Against the same-protocol 2026-09-14 rerun that is +29% short decode, +49% ctx decode, +130% short prefill, and +86% ctx prefill, from the rope-pair trio, the SwiGLU store epilogue, the tile-M occupancy floor, and the SPIR-V disk cache. The M1 Max still runs the untrimmed CDM barrier: the Honeykrisp trim ships G13G-only because on G13X the designed bit set measured +13% short decode against −3.2% ctx1053, so it was not shipped. The batch-across-chains follow-up (`hk/cdm-chain-batch`) was screened on jw16 on 2026-09-19 and corrupts generated IDs nondeterministically (16 vs ~2500 barriers per 2-token run, digests flip run-to-run) — the per-launch G13X barrier is load-bearing memory ordering between dependent launches, and that fixed per-token cost is not addressable in this driver generation.
 
 M2 Max — third Vulkan device, numbers only (jw14m2-linux, same-protocol battery on the F1-fixed `b744f4dd` wheel, single locked pass, eager per the standing protocol, [`receipts/2026-09-18-jw14m2-third-vulkan-device.md`](https://github.com/joshuaswarren/ane-linux-experiments/blob/main/receipts/2026-09-18-jw14m2-third-vulkan-device.md)):
 
