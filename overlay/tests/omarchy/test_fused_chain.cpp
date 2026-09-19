@@ -1053,6 +1053,79 @@ TEST_CASE("nonidentity broadcast keeps the per-node fallback (shapeless)") {
   CHECK_EQ(fused, 2);
   check_compiled_matches_eager(fn, inputs, float32, stream, 0.0, true);
 }
+TEST_CASE("square row-broadcast leaf fuses and matches eager") {
+  // ModLast safety is a stride property, not a shape or flags property.
+  // A row scale broadcast across a SQUARE output - (1, 64) view of a
+  // [64] row over (64, 64), outer stride 0, last-axis stride 1 - reads
+  // flat[index % 64] correctly and must keep fusing to one eager
+  // dispatch, bit-exact against eager. This is the positive twin of the
+  // column refusal below: same output shape, same data_size, same
+  // contiguous flag, different strides.
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  enable_fusion();
+  std::vector<array> inputs{random::normal(Shape{64, 64}, float32),
+                            random::normal(Shape{64}, float32)};
+  for (auto& in : inputs) {
+    in.eval();
+  }
+  sync_stream(stream);
+  std::function<std::vector<array>(const std::vector<array>&)> fn =
+      [](const std::vector<array>& in) {
+        return std::vector<array>{in[0] * sigmoid(in[0]) * in[1]};
+      };
+  set_compile_mode(CompileMode::disabled);
+  uint64_t eager = counted_dispatches(
+      [&] { return fn(inputs)[0]; }, 1, stream);
+  set_compile_mode(CompileMode::enabled);
+  auto compiled_fn = compile(fn, /*shapeless=*/true);
+  uint64_t fused = counted_dispatches(
+      [&] { return compiled_fn(inputs)[0]; }, 2, stream);
+  set_compile_mode(CompileMode::disabled);
+  CHECK_EQ(eager, 1);
+  CHECK_EQ(fused, 2);
+  check_compiled_matches_eager(fn, inputs, float32, stream, 0.0, true);
+}
+TEST_CASE("square column-broadcast leaf refuses fusion and matches eager") {
+  // (64, 1) column expanded to (64, 64) has strides (1, 0): element
+  // (r, c) reads flat[r], which ModLast (flat[index % last_dim])
+  // cannot express. Shape, data_size (64), and the contiguous flag
+  // match the row-broadcast case exactly, so only the stride check
+  // separates them - admitting the column view silently misindexed
+  // every product (hardware: fused sum 1.32 vs per-node -9.23 on the
+  // guard-less tree). The matcher must refuse the leaf and run the
+  // tail per-node; eager and compiled must agree bit for bit.
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  enable_fusion();
+  std::vector<array> inputs{random::normal(Shape{64, 64}, float32),
+                            random::normal(Shape{64, 1}, float32)};
+  for (auto& in : inputs) {
+    in.eval();
+  }
+  sync_stream(stream);
+  std::function<std::vector<array>(const std::vector<array>&)> fn =
+      [](const std::vector<array>& in) {
+        return std::vector<array>{in[0] * sigmoid(in[0]) * in[1]};
+      };
+  set_compile_mode(CompileMode::disabled);
+  uint64_t eager = counted_dispatches(
+      [&] { return fn(inputs)[0]; }, 1, stream);
+  set_compile_mode(CompileMode::enabled);
+  auto compiled_fn = compile(fn, /*shapeless=*/true);
+  uint64_t fused = counted_dispatches(
+      [&] { return compiled_fn(inputs)[0]; }, 2, stream);
+  set_compile_mode(CompileMode::disabled);
+  // The column leaf is refused: the identity prefix still fuses and
+  // the tail mul runs per-node - two dispatches on both paths.
+  CHECK_EQ(eager, 2);
+  CHECK_EQ(fused, 2);
+  check_compiled_matches_eager(fn, inputs, float32, stream, 0.0, true);
+}
 
 TEST_CASE("incompatible call-time shapes refuse like eager (shapeless)") {
   if (!compute_available()) {
