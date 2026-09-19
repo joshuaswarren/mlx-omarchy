@@ -6955,9 +6955,10 @@ TEST_CASE("mx.compile runs the bf16 tape bit-exact against eager") {
   array y(yv.begin(), Shape{4}, bfloat16);
   using VectorFn = std::function<std::vector<array>(const std::vector<array>&)>;
 
-  // The bf16 tape dispatches the same bf16 eval_gpu kernels eager uses
-  // (bf16 chains are fenced from tape fusion), so
-  // compiled output must equal eager's bf16 bits exactly.
+  // The bf16 tape fuses through the chain's own bf16 kernels, which
+  // round every intermediate to the storage dtype exactly like
+  // per-node dispatch, so compiled output must equal eager's bf16
+  // bits exactly.
   set_compile_mode(CompileMode::enabled);
   VectorFn fused_fun = [&](const std::vector<array>& inputs) {
     return std::vector<array>{
