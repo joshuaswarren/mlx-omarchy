@@ -1086,7 +1086,33 @@ TEST_CASE("square row-broadcast leaf fuses and matches eager") {
   set_compile_mode(CompileMode::disabled);
   CHECK_EQ(eager, 1);
   CHECK_EQ(fused, 2);
-  check_compiled_matches_eager(fn, inputs, float32, stream, 0.0, true);
+  // Value-check the fusion-enabled EAGER output counted above against a
+  // fusion-disabled reference: the dispatch pin alone does not prove the
+  // fused bytes are right. Bitwise (uint32 pattern compare).
+  {
+    array fused_out = fn(inputs)[0];
+    fused_out.eval();
+    sync_stream(stream);
+    setenv("MLX_OMARCHY_FUSED_CHAIN", "0", 1);
+    array ref = fn(inputs)[0];
+    ref.eval();
+    sync_stream(stream);
+    setenv("MLX_OMARCHY_FUSED_CHAIN", "1", 1);
+    set_compile_mode(CompileMode::disabled);
+    array a = as_float32(fused_out, stream);
+    array b = as_float32(ref, stream);
+    a.eval();
+    b.eval();
+    sync_stream(stream);
+    const uint32_t* pa = reinterpret_cast<const uint32_t*>(a.data<float>());
+    const uint32_t* pb = reinterpret_cast<const uint32_t*>(b.data<float>());
+    for (size_t i = 0; i < a.size(); ++i) {
+      INFO("fused-eager bitwise mismatch at ", i, " got=0x", std::hex,
+           pa[i], " ref=0x", pb[i]);
+      CHECK_EQ(pa[i], pb[i]);
+    }
+  }
+  check_compiled_matches_eager(fn, inputs, float32, stream, -1.0, true);
 }
 TEST_CASE("square column-broadcast leaf refuses fusion and matches eager") {
   // (64, 1) column expanded to (64, 64) has strides (1, 0): element
@@ -1121,10 +1147,35 @@ TEST_CASE("square column-broadcast leaf refuses fusion and matches eager") {
       [&] { return compiled_fn(inputs)[0]; }, 2, stream);
   set_compile_mode(CompileMode::disabled);
   // The column leaf is refused: the identity prefix still fuses and
-  // the tail mul runs per-node - two dispatches on both paths.
+  // the tail mul runs per-node - two dispatches on both paths. The
+  // fusion-enabled EAGER output counted above is value-checked
+  // bitwise against a fusion-disabled reference.
   CHECK_EQ(eager, 2);
   CHECK_EQ(fused, 2);
-  check_compiled_matches_eager(fn, inputs, float32, stream, 0.0, true);
+  {
+    array eager_out = fn(inputs)[0];
+    eager_out.eval();
+    sync_stream(stream);
+    setenv("MLX_OMARCHY_FUSED_CHAIN", "0", 1);
+    array ref = fn(inputs)[0];
+    ref.eval();
+    sync_stream(stream);
+    setenv("MLX_OMARCHY_FUSED_CHAIN", "1", 1);
+    set_compile_mode(CompileMode::disabled);
+    array a = as_float32(eager_out, stream);
+    array b = as_float32(ref, stream);
+    a.eval();
+    b.eval();
+    sync_stream(stream);
+    const uint32_t* pa = reinterpret_cast<const uint32_t*>(a.data<float>());
+    const uint32_t* pb = reinterpret_cast<const uint32_t*>(b.data<float>());
+    for (size_t i = 0; i < a.size(); ++i) {
+      INFO("fused-eager bitwise mismatch at ", i, " got=0x", std::hex,
+           pa[i], " ref=0x", pb[i]);
+      CHECK_EQ(pa[i], pb[i]);
+    }
+  }
+  check_compiled_matches_eager(fn, inputs, float32, stream, -1.0, true);
 }
 
 TEST_CASE("incompatible call-time shapes refuse like eager (shapeless)") {
