@@ -26,7 +26,7 @@ export const SCHEMA_IDENTITY = {
   fields_sha256:
     "4484ecd954dfdff802ed6a66cccb7a8354d9a06788333ecbbd77927ccb28c3c8",
   schema_sha256:
-    "71e31d9abc4efabb54645f7c98a24e6a2689088d63f56850e94e581b9ffa8775",
+    "b69c2bfbcbcb9962ba601f0c5bed3daf450e4a47630c627c82920ab774878d97",
 };
 
 const CACHEABLE = "public, max-age=60";
