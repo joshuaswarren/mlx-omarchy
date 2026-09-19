@@ -10836,7 +10836,24 @@ void rope_trig_gate(
     bool host_constant = offset.status() == array::Status::available &&
         !offset.has_primitive();
     if (!host_constant) {
+      // Mirror the vector path below: settle schedules the offset if it
+      // is still unscheduled, and synchronize proves its bytes are final
+      // before the mapped read.
+      settle({offset});
       omarchy::get_command_encoder(stream).synchronize("rope_offset_scalar");
+      // The offset may carry an async-eval event latch from the pass that
+      // dispatched it - typically THIS pass, when the model graph runs
+      // inside an async_eval tape (mlx_lm BatchGenerator split/decode
+      // step with a padded-batch cache offset array). That latch's only
+      // signaler is the owning pass's epilogue commit, still ahead of
+      // this mid-tape readback, so item()'s event wait can never be
+      // satisfied: the dispatching thread deadlocked until the watchdog
+      // fired and the generation thread died ('Vulkan timeline counter
+      // failed to advance ... target=1', the mlx_lm.server / oMLX
+      // prefill serving hangs - receipts/2026-09-19-mlxlm-server-hang-jw16.md).
+      // synchronize() above proved the data is final, so drop the stale
+      // latch and read.
+      offset.detach_event();
     }
     worst_offset = std::abs(static_cast<float>(offset.item<int>()));
   } else {
