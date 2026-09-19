@@ -2,16 +2,23 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, test } from "bun:test";
 import payloadSchemaJson from "../../schema/payload-v1.schema.json";
+import payloadE2ESchemaJson from "../../schema/payload-v1-e2e.schema.json";
 import { SCHEMA_IDENTITY } from "../../src/routes";
 import { sha256Hex } from "../../src/hash";
 
-const schemaBytes = readFileSync(
-  join(import.meta.dir, "..", "..", "schema", "payload-v1.schema.json"),
+const schemaDir = join(import.meta.dir, "..", "..", "schema");
+const schemaFiles = ["payload-v1-e2e.schema.json", "payload-v1.schema.json"];
+const schemaBuffers = schemaFiles.map((name) =>
+  readFileSync(join(schemaDir, name)),
 );
-const expectedFieldsHash = sha256Hex(
-  Object.keys(payloadSchemaJson.properties).sort().join("\n"),
+const allFields = [
+  ...Object.keys(payloadSchemaJson.properties),
+  ...Object.keys(payloadE2ESchemaJson.properties),
+];
+const expectedFieldsHash = sha256Hex([...new Set(allFields)].sort().join("\n"));
+const expectedSchemaHash = sha256Hex(
+  new Uint8Array(Buffer.concat(schemaBuffers)),
 );
-const expectedSchemaHash = sha256Hex(new Uint8Array(schemaBytes));
 
 describe("SCHEMA_IDENTITY", () => {
   test("schema_version matches the bundled JSON schema", () => {
@@ -33,5 +40,12 @@ describe("SCHEMA_IDENTITY", () => {
 
   test("ane_port_detail is declared in the bundled schema (v0.6.1)", () => {
     expect(payloadSchemaJson.properties).toHaveProperty("ane_port_detail");
+  });
+
+  test("e2e-only fields are declared only in the e2e schema", () => {
+    for (const field of ["test_id", "install_path", "asahi_image", "overall", "encryption", "boot_separate"]) {
+      expect(payloadE2ESchemaJson.properties).toHaveProperty(field);
+      expect(payloadSchemaJson.properties).not.toHaveProperty(field);
+    }
   });
 });

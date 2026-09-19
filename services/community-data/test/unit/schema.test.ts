@@ -1,10 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import payloadSchemaJson from "../../schema/payload-v1.schema.json";
+import payloadE2ESchemaJson from "../../schema/payload-v1-e2e.schema.json";
 import { SchemaNode, validateSchemaRoot } from "../../src/schema";
 import fixture from "./fixtures/payload-v1.json";
 import e2eFixture from "./fixtures/payload-v1-e2e.json";
 
 const schema = payloadSchemaJson as SchemaNode;
+const e2eSchema = payloadE2ESchemaJson as SchemaNode;
 
 function mutate(overrides: Record<string, unknown>): Record<string, unknown> {
   return { ...fixture, ...overrides };
@@ -16,13 +18,21 @@ describe("payload schema v1", () => {
   });
 
   test("e2e fixture validates with the extended kind", () => {
-    expect(validateSchemaRoot(e2eFixture, schema)).toEqual([]);
+    expect(validateSchemaRoot(e2eFixture, e2eSchema)).toEqual([]);
   });
 
   test("e2e kind but missing e2e fields still validates (fields optional)", () => {
     const { test_id, install_path, asahi_image, encryption, boot_separate, overall, ...rest } =
       e2eFixture as Record<string, unknown>;
-    expect(validateSchemaRoot(rest, schema)).toEqual([]);
+    expect(validateSchemaRoot(rest, e2eSchema)).toEqual([]);
+  });
+
+  test("e2e-only fields are rejected on collector kinds (exact per-kind contract)", () => {
+    expect(validateSchemaRoot(mutate({ test_id: "x" }), schema).length).toBeGreaterThan(0);
+  });
+
+  test("collector-only kinds are rejected on the e2e schema", () => {
+    expect(validateSchemaRoot(mutate({ kind: "quick" }), e2eSchema).length).toBeGreaterThan(0);
   });
 
   test("schema_version is pinned to 1", () => {

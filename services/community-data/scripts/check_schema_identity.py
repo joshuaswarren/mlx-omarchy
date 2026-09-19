@@ -22,7 +22,7 @@ import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-SCHEMA_PATH = ROOT / "schema" / "payload-v1.schema.json"
+SCHEMA_DIR = ROOT / "schema"
 DEFAULT_URL = (
     "https://mlx-omarchy-community-data.joshua-s-warren.workers.dev"
 )
@@ -31,14 +31,15 @@ USER_AGENT = "mlx-omarchy-schema-check/1"
 
 
 def expected() -> dict:
-    raw = SCHEMA_PATH.read_bytes()
-    parsed = json.loads(raw)
-    fields = sorted(parsed["properties"].keys())
+    raws = [p.read_bytes() for p in sorted(SCHEMA_DIR.glob("payload-v1*.schema.json"))]
+    parsed = json.loads(raws[0])
+    fields = sorted(set().union(
+        *(json.loads(raw)["properties"].keys() for raw in raws)))
     return {
         "schema_version": parsed["properties"]["schema_version"]["const"],
         "fields_sha256": hashlib.sha256(
             "\n".join(fields).encode()).hexdigest(),
-        "schema_sha256": hashlib.sha256(raw).hexdigest(),
+        "schema_sha256": hashlib.sha256(b"".join(raws)).hexdigest(),
     }
 
 

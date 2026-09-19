@@ -1,0 +1,5 @@
+# Test-only dependencies (issue #7): scripts/test_collect*.py run on the
+# stdlib alone, but tests/ imports numpy and protobuf.
+numpy
+protobuf
+pytest

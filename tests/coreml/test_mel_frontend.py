@@ -179,16 +179,23 @@ def test_stage_evidence_rejects_an_unpinned_manifest(tmp_path):
     dumps = tmp_path / "dumps"
     capture.mkdir()
     dumps.mkdir()
-    (capture / "waveform.npy").write_bytes(b"waveform")
-    (capture / "mel.npy").write_bytes(b"mel")
+    contents = {
+        "waveform.npy": b"waveform",
+        "mel.npy": b"mel",
+        "mel_mask.npy": b"mel_mask",
+        "encoder_input_features.npy": b"features",
+        "encoder_input_mask.npy": b"mask",
+    }
+    for name, blob in contents.items():
+        (capture / name).write_bytes(blob)
     (dumps / "manifest.json").write_text("{}", encoding="utf-8")
 
     class Lock:
         macos_reference_paths = {
-            "waveform.npy": hashlib.sha256(b"waveform").hexdigest(),
-            "mel.npy": hashlib.sha256(b"mel").hexdigest(),
-            "mel_stage_manifest.json": "0" * 64,
+            name: hashlib.sha256(blob).hexdigest()
+            for name, blob in contents.items()
         }
+        macos_reference_paths["mel_stage_manifest.json"] = "0" * 64
 
     with pytest.raises(ValueError, match="stage manifest"):
         verify_stage_evidence(capture, dumps, Lock())

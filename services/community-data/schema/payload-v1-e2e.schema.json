@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "mlx-omarchy community submission payload, schema v1",
-  "description": "The JSON summary the collector sends alongside the chunked archive. The Worker validates this strictly; unknown fields are rejected. Covers the quick/deep collector kinds; the e2e kind has payload-v1-e2e.schema.json.",
+  "description": "The JSON summary the collector sends alongside the chunked archive. The Worker validates this strictly; unknown fields are rejected. Covers the omarchy-mac-e2e kind (e2e-only fields: test_id, install_path, asahi_image, overall, encryption, boot_separate); the quick/deep collector kinds have payload-v1.schema.json.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -15,8 +15,7 @@
     },
     "kind": {
       "enum": [
-        "quick",
-        "deep"
+        "omarchy-mac-e2e"
       ]
     },
     "generated_at": {
@@ -1326,6 +1325,46 @@
           }
         }
       }
+    },
+    "test_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 512
+    },
+    "install_path": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 512
+    },
+    "asahi_image": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 512
+    },
+    "overall": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 16
+    },
+    "encryption": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "boot_separate": {
+      "type": [
+        "boolean",
+        "null"
+      ]
     }
   }
 }
