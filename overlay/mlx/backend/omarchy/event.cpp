@@ -184,6 +184,18 @@ void Event::wait() {
   if (event.host) {
     event.host->wait(value());
   } else {
+    if (std::getenv("MLX_OMARCHY_TRACE_DISPATCH") != nullptr) {
+      uint64_t cnt = 0;
+      omarchy::vk::device_table().GetSemaphoreCounterValue(
+          event.gpu->device.handle(), event.gpu->semaphore, &cnt);
+      fprintf(stderr,
+              "[rtmod] EV-WAIT tid=%lu ev=%p val=%lu cnt=%llu resv=%llu\n",
+              (unsigned long)syscall(SYS_gettid),
+              (void*)event_.get(),
+              (unsigned long)value_,
+              (unsigned long long)cnt,
+              (unsigned long long)event.gpu->device.completions().last_reserved());
+    }
     omarchy::wait_for_timeline_progress(
         event.gpu->device.handle(),
         event.gpu->semaphore,
@@ -218,6 +230,14 @@ void Event::wait(Stream s) {
         ? event.bridge_host_to_gpu(s, value())
         : event.gpu->semaphore;
     auto& encoder = omarchy::get_command_encoder(s);
+    if (std::getenv("MLX_OMARCHY_TRACE_DISPATCH") != nullptr) {
+      fprintf(stderr,
+              "[rtmod] EV-WAIT-ENC tid=%lu ev=%p val=%lu st=%lu\n",
+              (unsigned long)syscall(SYS_gettid),
+              (void*)event_.get(),
+              (unsigned long)value(),
+              (unsigned long)s.index);
+    }
     encoder.add_semaphore_wait(semaphore, value(), event_);
   } else if (event.host) {
     uint64_t target_value = value();
@@ -226,6 +246,13 @@ void Event::wait(Stream s) {
     });
   } else {
     uint64_t target_value = value();
+    if (std::getenv("MLX_OMARCHY_TRACE_DISPATCH") != nullptr) {
+      fprintf(stderr,
+              "[rtmod] EV-WAIT-TASK tid=%lu ev=%p val=%lu\n",
+              (unsigned long)syscall(SYS_gettid),
+              (void*)event_.get(),
+              (unsigned long)target_value);
+    }
     scheduler::wait_event(s, *this, [target_value](Event& self) {
       auto& impl = self.cast<EventImpl>();
       omarchy::wait_for_timeline_progress(
@@ -290,9 +317,6 @@ void Event::signal(Stream s) {
       event.gpu->signal_from_host(value());
       event.publish_signal(value(), encoder.last_submitted_completion());
     } else {
-      if (trace_dispatch) {
-        fprintf(stderr, "[rtmod] EV-SIGNAL path=queued\n");
-      }
       event.queued_signal.store(true, std::memory_order_release);
       encoder.add_semaphore_signal(event.gpu->semaphore, value(), event_);
       encoder.commit();
