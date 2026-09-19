@@ -52,9 +52,13 @@ As of 2026-09-18 the open-weight leaders in these size tiers are
 Qwen3.6-27B, Gemma 4 31B, and the 8B/14B Ministral 3 / Qwen3 dense
 models. MLX quants exist for the two big ones —
 `mlx-community/Qwen3.6-27B-mxfp4` (arch `qwen3_5`) and
-`mlx-community/gemma-4-31b-it-4bit` (arch `gemma4`) — but both need a
-newer `mlx-lm` than 0.31.3 (that pin lacks the `qwen3_5`/`gemma4`
-model code) for the `mlx_lm.server` path above. One verified data point
+`mlx-community/gemma-4-31b-it-4bit` (arch `gemma4`). The installed
+0.31.3 does carry the `qwen3_5`/`gemma4`/`ministral3` loader code
+(verified 2026-09-19 in the installed venv), but loader presence is not
+serve support: Ministral-3-8B crashes `mlx_lm.server` 0.31.3 in its
+mistral3/tekken serve path while oMLX serves it (see §4 and the
+[bench receipt](../receipts/2026-09-19-serve-options-bench-jw16.md)).
+One verified data point
 on this stack (2026-09-18 recert matrix, greedy 96, wheel `2def345c…`):
 gemma-4-31b-it-4bit generated coherently at 2.37 tok/s compiled ON and
 2.45 tok/s eager, digest `9f1fe40101db3a4b` identical under both modes
@@ -119,7 +123,41 @@ Optional memory knobs (mlx-lm): `--kv-bits 4` for long context (disables
 batching). `--draft-model` for speculative decode if you have a smaller
 draft of the same family.
 
-## 4. Point harnesses at it
+## 4. Which server? mlx_lm.server / oMLX / mlx-serve
+
+Three servers can put an OpenAI-compatible endpoint on local MLX
+weights. Measured head-to-head on jw16 (M1 Max, Asahi) with the
+published v0.7.1 wheel (`libmlx` sha `df3d4e74c597956c` pinned inside
+the bench), Qwen2.5-7B-Instruct-4bit, exclusive GPU window,
+single-stream greedy, 128 max_tokens, median of 8 interleaved rounds
+([receipt](../receipts/2026-09-19-serve-options-bench-jw16.md)):
+
+| | `mlx_lm.server` | oMLX (`omlx`) | ddalcu/mlx-serve |
+|---|---|---|---|
+| Runs on omarchy/Linux | yes (default) | yes | **no — macOS/Apple Silicon only** |
+| Install | bundled by `install.sh` (mlx-lm 0.31.3) | from source (`github.com/jundot/omlx`, not on PyPI at 0.6.4) | `brew install mlx-serve` (Mac) |
+| Run | `mlx-omarchy -m mlx_lm.server --model <hf-id> --host 127.0.0.1 --port 8080` | `python -m omlx.server --model-dir <dir> --host 127.0.0.1 --port 8082` | `mlx-serve serve` → `:11234` |
+| Decode tok/s, Qwen2.5-7B-4bit | 9.33 | **33.6** (≈3.6×) | not measurable here |
+| Model breadth on this stack | standard mlx-lm loaders; mistral3/tekken serve path crashes on Ministral-3-8B (0.31.3 bug) | broad, incl. VLM models and Ministral-3-8B (3.3–3.4 tok/s) | every MLX arch + GGUF, on a Mac |
+| APIs | OpenAI `/v1` (chat + completions) | OpenAI `/v1`, auto-discovers the HF cache | OpenAI + Anthropic + Ollama + Responses |
+
+Choose `mlx_lm.server` (§3) as the default — it ships with the
+installer and every harness above works against it. Choose oMLX when
+decode speed matters or you need VLM models over HTTP; it is a source
+install and discovers models from `~/.cache/huggingface` by itself.
+Choose mlx-serve only on a Mac: upstream states the server is
+"macOS / Apple Silicon only" and the v26.9.4 release ships no Linux
+asset; there it also gives you the Anthropic and Ollama APIs on one
+port.
+
+Bench model verification (2026-09-19): both HF repos exist, are not
+gated, Apache-2.0 (`mlx-community/Qwen2.5-7B-Instruct-4bit`, last
+modified 2024-11-06; `mlx-community/Ministral-3-8B-Instruct-2512-4bit`,
+2025-12-06). Qwen2.5-7B is pinned as the verified-loadable bench
+default, not as current SOTA — see the September-2026 SOTA paragraph in
+§2 for the current generation.
+
+## 5. Point harnesses at it
 
 All of these speak OpenAI `/v1`. Use a dummy key. Keep the server running.
 
@@ -185,7 +223,7 @@ If LiteLLM’s Anthropic port differs, use whatever `litellm` printed.
 The server’s `/v1/models` `id` is the Hugging Face repo id. Use that
 string as the model name in the harness when it asks.
 
-## 5. Chat without a harness
+## 6. Chat without a harness
 
 ```bash
 mlx-omarchy-demo
@@ -194,7 +232,7 @@ mlx-omarchy-demo --model mlx-community/Qwen2.5-7B-Instruct-4bit
 
 Or `mlx-omarchy -m mlx_lm.generate --model … --prompt '…'`.
 
-## 6. Stop
+## 7. Stop
 
 Ctrl-C the server. Uninstall: `bash install.sh --uninstall` (models stay
 in `~/.cache/huggingface`).

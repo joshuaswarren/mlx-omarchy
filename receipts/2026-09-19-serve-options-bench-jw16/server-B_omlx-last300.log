@@ -1,0 +1,300 @@
+[rtmod] SUBMIT tid=419845 cv=1945 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=1946 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=1947 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=1948 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=1949 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=1950 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=1951 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=1952 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=1953 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=1954 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=1955 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=1956 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=1957 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=1958 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=1959 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=1960 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=1961 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=1962 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=1963 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=1964 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=1965 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=1966 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=1967 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=1968 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=1969 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=1970 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=1971 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=1972 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=1973 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=1974 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=1975 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=1976 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=1977 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=1978 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=1979 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=1980 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=1981 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=1982 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=1983 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=1984 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=1985 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=1986 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=1987 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=1988 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=1989 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+INFO:     127.0.0.1:45836 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[rtmod] SUBMIT tid=419845 cv=1990 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=1991 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=1992 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=1993 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=1994 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=1995 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=1996 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=1997 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=1998 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=1999 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=2000 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=2001 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=2002 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=2003 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=2004 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=2005 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=2006 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=2007 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=2008 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=2009 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=2010 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=2011 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=2012 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=2013 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=2014 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=2015 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=2016 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=2017 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=2018 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=2019 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=2020 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=2021 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=2022 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=2023 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=2024 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=2025 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=2026 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=2027 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=2028 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=2029 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=2030 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=2031 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=2032 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=2033 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=2034 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=2035 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=2036 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=2037 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=2038 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=2039 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=2040 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=2041 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=2042 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=2043 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=2044 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=2045 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=2046 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=2047 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=2048 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=2049 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=2050 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=2051 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=2052 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=2053 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=2054 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=2055 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=2056 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=2057 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=2058 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=2059 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=2060 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=2061 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=2062 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=2063 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=2064 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=2065 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=2066 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=2067 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=2068 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=2069 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=2070 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=2071 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=2072 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=2073 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=2074 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=2075 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=2076 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=2077 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=2078 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=2079 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=2080 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=2081 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=2082 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=2083 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=2084 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=2085 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=2086 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=2087 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=2088 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=2089 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=2090 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=2091 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=2092 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=2093 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] COMMIT-NOOP
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=2094 waits=0 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=2095 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=2096 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=2097 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=2098 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=2099 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=2100 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=2101 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=2102 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=2103 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=2104 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=2105 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=2106 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=2107 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=2108 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=2109 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=2110 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=2111 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=2112 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=2113 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=2114 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=2115 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=2116 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=2117 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=2118 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=2119 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=2120 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=2121 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=2122 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=2123 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] SUBMIT tid=419845 cv=2124 waits=1 sigs=1 cmds=1
+[rtmod] SUBMIT tid=419845 cv=2125 waits=1 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] COMMIT-NOOP
+[rtmod] COMMIT-NOOP
+INFO:omlx.scheduler:Cache phase timings: cleanup_finished_sync=239.9ms/9
+INFO:__main__:Chat completion: model=mlx-community--Qwen2.5-7B-Instruct-4bit, 128 tokens in 3.80s (33.6 tok/s), prompt: 37, finish_reason=length, max_tokens=128, request_max_tokens=128
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:omlx.process_memory_enforcer:Process memory enforcer stopped
+INFO:__main__:Process memory enforcer stopped
+INFO:omlx.admin.hf_downloader:HF Downloader shut down
+INFO:__main__:HF Downloader stopped
+INFO:omlx.engine_pool:Unloading model: mlx-community--Qwen2.5-7B-Instruct-4bit (immediate abort)
+INFO:omlx.engine_core:Engine stopped
+INFO:omlx.scheduler:Scheduler shutdown initiated...
+INFO:omlx.scheduler:Scheduler shutdown completed
+INFO:omlx.scheduler:Deep reset completed - all caches cleared
+[rtmod] COMMIT-NOOP
+[rtmod] COMMIT-NOOP
+WARNING:omlx.utils.compile_cache:MLX compile-cache clear unavailable: /tmp/servebench/venv/lib/python3.14/site-packages/mlx/lib/libmlx.dylib not found
+INFO:omlx.engine.batched:BatchedEngine stopped
+[rtmod] COMMIT-NOOP
+INFO:omlx.engine_pool:Unloaded model: mlx-community--Qwen2.5-7B-Instruct-4bit, freed=3.99GB (expected>=2.19GB), active_memory: 12.00KB (settled)
+INFO:omlx.engine_pool:Engine pool shutdown complete
+INFO:__main__:Engine pool shutdown
+INFO:     Application shutdown complete.
+INFO:     Finished server process [419790]

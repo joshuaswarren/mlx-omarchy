@@ -1,0 +1,198 @@
+/tmp/servebench/venv/lib/python3.14/site-packages/mlx_lm/server.py:1723: UserWarning: mlx_lm.server is not recommended for production as it only implements basic security checks.
+  warnings.warn(
+2026-09-19 09:44:19,830 - INFO - Starting httpd at 127.0.0.1 on port 8081...
+127.0.0.1 - - [19/Sep/2026 09:44:21] "GET /v1/models HTTP/1.1" 200 -
+2026-09-19 09:44:22,817 - INFO - Non special vocabulary size is 130072 with 1000 special tokens.
+127.0.0.1 - - [19/Sep/2026 09:44:23] "POST /v1/chat/completions HTTP/1.1" 404 -
+
+==== run 2026-09-19 09:48:00 ====
+127.0.0.1 - - [19/Sep/2026 09:48:00] "GET /v1/models HTTP/1.1" 200 -
+127.0.0.1 - - [19/Sep/2026 09:48:00] "POST /v1/chat/completions HTTP/1.1" 404 -
+Traceback (most recent call last):
+  File "<frozen runpy>", line 203, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/tmp/servebench/venv/lib/python3.14/site-packages/mlx_lm/server.py", line 1904, in <module>
+    main()
+    ~~~~^^
+  File "/tmp/servebench/venv/lib/python3.14/site-packages/mlx_lm/server.py", line 1896, in main
+    run(args.host, args.port, ModelProvider(args))
+    ~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/servebench/venv/lib/python3.14/site-packages/mlx_lm/server.py", line 1746, in run
+    _run_http_server(host, port, response_generator)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/servebench/venv/lib/python3.14/site-packages/mlx_lm/server.py", line 1714, in _run_http_server
+    httpd = server_class(
+        server_address,
+    ...<5 lines>...
+        ),
+    )
+  File "/usr/lib/python3.14/socketserver.py", line 457, in __init__
+    self.server_bind()
+    ~~~~~~~~~~~~~~~~^^
+  File "/usr/lib/python3.14/http/server.py", line 148, in server_bind
+    socketserver.TCPServer.server_bind(self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/usr/lib/python3.14/socketserver.py", line 478, in server_bind
+    self.socket.bind(self.server_address)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+OSError: [Errno 98] Address already in use
+2026-09-19 09:48:03,162 - INFO - Non special vocabulary size is 130072 with 1000 special tokens.
+127.0.0.1 - - [19/Sep/2026 09:48:05] "POST /v1/chat/completions HTTP/1.1" 404 -
+127.0.0.1 - - [19/Sep/2026 09:48:05] "POST /v1/completions HTTP/1.1" 404 -
+
+==== run 2026-09-19 09:49:29 ====
+127.0.0.1 - - [19/Sep/2026 09:49:29] "GET /v1/models HTTP/1.1" 200 -
+127.0.0.1 - - [19/Sep/2026 09:49:29] "POST /v1/chat/completions HTTP/1.1" 404 -
+Traceback (most recent call last):
+  File "<frozen runpy>", line 203, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/tmp/servebench/venv/lib/python3.14/site-packages/mlx_lm/server.py", line 1904, in <module>
+    main()
+    ~~~~^^
+  File "/tmp/servebench/venv/lib/python3.14/site-packages/mlx_lm/server.py", line 1896, in main
+    run(args.host, args.port, ModelProvider(args))
+    ~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/servebench/venv/lib/python3.14/site-packages/mlx_lm/server.py", line 1746, in run
+    _run_http_server(host, port, response_generator)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/servebench/venv/lib/python3.14/site-packages/mlx_lm/server.py", line 1714, in _run_http_server
+    httpd = server_class(
+        server_address,
+    ...<5 lines>...
+        ),
+    )
+  File "/usr/lib/python3.14/socketserver.py", line 457, in __init__
+    self.server_bind()
+    ~~~~~~~~~~~~~~~~^^
+  File "/usr/lib/python3.14/http/server.py", line 148, in server_bind
+    socketserver.TCPServer.server_bind(self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/usr/lib/python3.14/socketserver.py", line 478, in server_bind
+    self.socket.bind(self.server_address)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+OSError: [Errno 98] Address already in use
+2026-09-19 09:49:32,339 - INFO - Non special vocabulary size is 130072 with 1000 special tokens.
+127.0.0.1 - - [19/Sep/2026 09:49:34] "POST /v1/chat/completions HTTP/1.1" 404 -
+127.0.0.1 - - [19/Sep/2026 09:49:34] "POST /v1/completions HTTP/1.1" 404 -
+
+==== run 2026-09-19 09:57:20 ====
+/tmp/servebench/venv/lib/python3.14/site-packages/mlx_lm/server.py:1723: UserWarning: mlx_lm.server is not recommended for production as it only implements basic security checks.
+  warnings.warn(
+2026-09-19 09:57:21,708 - INFO - Starting httpd at 127.0.0.1 on port 8081...
+127.0.0.1 - - [19/Sep/2026 09:57:22] "GET /v1/models HTTP/1.1" 200 -
+2026-09-19 09:57:24,618 - INFO - Non special vocabulary size is 130072 with 1000 special tokens.
+127.0.0.1 - - [19/Sep/2026 09:57:25] "POST /v1/chat/completions HTTP/1.1" 404 -
+127.0.0.1 - - [19/Sep/2026 09:57:30] "POST /v1/chat/completions HTTP/1.1" 404 -
+127.0.0.1 - - [19/Sep/2026 09:57:30] "POST /v1/completions HTTP/1.1" 404 -
+
+==== run 2026-09-19 10:04:50 ====
+/tmp/servebench/venv/lib/python3.14/site-packages/mlx_lm/server.py:1723: UserWarning: mlx_lm.server is not recommended for production as it only implements basic security checks.
+  warnings.warn(
+2026-09-19 10:04:51,548 - INFO - Starting httpd at 127.0.0.1 on port 8081...
+127.0.0.1 - - [19/Sep/2026 10:04:52] "GET /v1/models HTTP/1.1" 200 -
+2026-09-19 10:04:53,125 - INFO - Non special vocabulary size is 130072 with 1000 special tokens.
+2026-09-19 10:04:55,008 - INFO - HTTP Request: GET https://huggingface.co/api/agent-harnesses "HTTP/1.1 200 OK"
+2026-09-19 10:04:55,057 - INFO - HTTP Request: GET https://huggingface.co/api/models/ministral3-8b/revision/main "HTTP/1.1 401 Unauthorized"
+127.0.0.1 - - [19/Sep/2026 10:04:55] "POST /v1/chat/completions HTTP/1.1" 404 -
+2026-09-19 10:05:00,146 - INFO - HTTP Request: GET https://huggingface.co/api/models/ministral3-8b/revision/main "HTTP/1.1 401 Unauthorized"
+127.0.0.1 - - [19/Sep/2026 10:05:00] "POST /v1/chat/completions HTTP/1.1" 404 -
+2026-09-19 10:05:00,200 - INFO - HTTP Request: GET https://huggingface.co/api/models/ministral3-8b/revision/main "HTTP/1.1 401 Unauthorized"
+127.0.0.1 - - [19/Sep/2026 10:05:00] "POST /v1/completions HTTP/1.1" 404 -
+
+==== run 2026-09-19 10:13:09 ====
+/tmp/servebench/venv/lib/python3.14/site-packages/mlx_lm/server.py:1723: UserWarning: mlx_lm.server is not recommended for production as it only implements basic security checks.
+  warnings.warn(
+2026-09-19 10:13:09,764 - INFO - Starting httpd at 127.0.0.1 on port 8081...
+127.0.0.1 - - [19/Sep/2026 10:13:11] "GET /v1/models HTTP/1.1" 200 -
+2026-09-19 10:13:11,490 - INFO - Non special vocabulary size is 130072 with 1000 special tokens.
+2026-09-19 10:13:13,446 - INFO - HTTP Request: GET https://huggingface.co/api/models/mlx-community/Ministral-3-8B-Instruct-2512-4bit/revision/main "HTTP/1.1 200 OK"
+Calling `python -m mlx_lm.server...` directly is deprecated. Use `mlx_lm.server...` or `python -m mlx_lm server ...` instead.
+Fetching 11 files:   0%|          | 0/11 [00:00<?, ?it/s]Fetching 11 files: 100%|██████████| 11/11 [00:00<00:00, 1873.52it/s]
+2026-09-19 10:13:14,883 - INFO - Non special vocabulary size is 130072 with 1000 special tokens.
+2026-09-19 10:13:15,316 - INFO - Prompt Cache: 0 sequences, 0.00 GB
+2026-09-19 10:13:15,316 - INFO - - assistant: 0 sequences, 0.00 GB
+2026-09-19 10:13:15,316 - INFO - - user: 0 sequences, 0.00 GB
+2026-09-19 10:13:15,316 - INFO - - system: 0 sequences, 0.00 GB
+Exception in thread Thread-1 (_generate):
+127.0.0.1 - - [19/Sep/2026 10:13:15] "POST /v1/chat/completions HTTP/1.1" 200 -
+Traceback (most recent call last):
+  File "/usr/lib/python3.14/threading.py", line 1082, in _bootstrap_inner
+    self._context.run(self.run)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "/usr/lib/python3.14/threading.py", line 1024, in run
+    self._target(*self._args, **self._kwargs)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/servebench/venv/lib/python3.14/site-packages/mlx_lm/server.py", line 788, in _generate
+    "detokenizer": tokenizer.detokenizer,
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/servebench/venv/lib/python3.14/site-packages/mlx_lm/tokenizer_utils.py", line 459, in __getattr__
+    return self._detokenizer
+           ^^^^^^^^^^^^^^^^^
+  File "/tmp/servebench/venv/lib/python3.14/site-packages/mlx_lm/tokenizer_utils.py", line 463, in __getattr__
+    return self.__getattribute__(attr)
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^
+AttributeError: 'TokenizerWrapper' object has no attribute '_detokenizer'. Did you mean: 'detokenizer'?
+
+==== run 2026-09-19 10:26:28 ====
+/tmp/servebench/venv/lib/python3.14/site-packages/mlx_lm/server.py:1723: UserWarning: mlx_lm.server is not recommended for production as it only implements basic security checks.
+  warnings.warn(
+2026-09-19 10:26:28,787 - INFO - Starting httpd at 127.0.0.1 on port 8081...
+127.0.0.1 - - [19/Sep/2026 10:26:30] "GET /v1/models HTTP/1.1" 200 -
+2026-09-19 10:26:32,371 - INFO - HTTP Request: GET https://huggingface.co/api/models/mlx-community/Qwen2.5-7B-Instruct-4bit/revision/main "HTTP/1.1 200 OK"
+Calling `python -m mlx_lm.server...` directly is deprecated. Use `mlx_lm.server...` or `python -m mlx_lm server ...` instead.
+Fetching 9 files:   0%|          | 0/9 [00:00<?, ?it/s]Fetching 9 files: 100%|██████████| 9/9 [00:00<00:00, 1192.09it/s]
+2026-09-19 10:26:35,341 - INFO - Prompt Cache: 0 sequences, 0.00 GB
+2026-09-19 10:26:35,341 - INFO - - assistant: 0 sequences, 0.00 GB
+2026-09-19 10:26:35,341 - INFO - - user: 0 sequences, 0.00 GB
+2026-09-19 10:26:35,341 - INFO - - system: 0 sequences, 0.00 GB
+127.0.0.1 - - [19/Sep/2026 10:26:35] "POST /v1/chat/completions HTTP/1.1" 200 -
+2026-09-19 10:26:35,757 - INFO - Prompt processing progress: 36/37
+2026-09-19 10:26:35,883 - INFO - Prompt processing progress: 37/37
+2026-09-19 10:26:42,178 - INFO - Prompt Cache: 1 sequences, 0.00 GB
+2026-09-19 10:26:42,178 - INFO - - assistant: 1 sequences, 0.00 GB
+2026-09-19 10:26:42,178 - INFO - - user: 0 sequences, 0.00 GB
+2026-09-19 10:26:42,178 - INFO - - system: 0 sequences, 0.00 GB
+127.0.0.1 - - [19/Sep/2026 10:26:42] "POST /v1/chat/completions HTTP/1.1" 200 -
+2026-09-19 10:26:42,460 - INFO - Prompt processing progress: 1/1
+2026-09-19 10:27:01,534 - INFO - Prompt Cache: 1 sequences, 0.01 GB
+2026-09-19 10:27:01,534 - INFO - - assistant: 1 sequences, 0.01 GB
+2026-09-19 10:27:01,534 - INFO - - user: 0 sequences, 0.00 GB
+2026-09-19 10:27:01,534 - INFO - - system: 0 sequences, 0.00 GB
+127.0.0.1 - - [19/Sep/2026 10:27:01] "POST /v1/chat/completions HTTP/1.1" 200 -
+2026-09-19 10:27:01,804 - INFO - Prompt processing progress: 1/1
+2026-09-19 10:27:20,951 - INFO - Prompt Cache: 1 sequences, 0.01 GB
+2026-09-19 10:27:20,951 - INFO - - assistant: 1 sequences, 0.01 GB
+2026-09-19 10:27:20,951 - INFO - - user: 0 sequences, 0.00 GB
+2026-09-19 10:27:20,951 - INFO - - system: 0 sequences, 0.00 GB
+127.0.0.1 - - [19/Sep/2026 10:27:20] "POST /v1/chat/completions HTTP/1.1" 200 -
+2026-09-19 10:27:21,199 - INFO - Prompt processing progress: 1/1
+2026-09-19 10:27:40,308 - INFO - Prompt Cache: 1 sequences, 0.01 GB
+2026-09-19 10:27:40,308 - INFO - - assistant: 1 sequences, 0.01 GB
+2026-09-19 10:27:40,308 - INFO - - user: 0 sequences, 0.00 GB
+2026-09-19 10:27:40,308 - INFO - - system: 0 sequences, 0.00 GB
+127.0.0.1 - - [19/Sep/2026 10:27:40] "POST /v1/chat/completions HTTP/1.1" 200 -
+2026-09-19 10:27:40,556 - INFO - Prompt processing progress: 1/1
+2026-09-19 10:27:59,266 - INFO - Prompt Cache: 1 sequences, 0.01 GB
+2026-09-19 10:27:59,266 - INFO - - assistant: 1 sequences, 0.01 GB
+2026-09-19 10:27:59,266 - INFO - - user: 0 sequences, 0.00 GB
+2026-09-19 10:27:59,267 - INFO - - system: 0 sequences, 0.00 GB
+127.0.0.1 - - [19/Sep/2026 10:27:59] "POST /v1/chat/completions HTTP/1.1" 200 -
+2026-09-19 10:27:59,518 - INFO - Prompt processing progress: 1/1
+2026-09-19 10:28:15,569 - INFO - Prompt Cache: 1 sequences, 0.01 GB
+2026-09-19 10:28:15,569 - INFO - - assistant: 1 sequences, 0.01 GB
+2026-09-19 10:28:15,569 - INFO - - user: 0 sequences, 0.00 GB
+2026-09-19 10:28:15,569 - INFO - - system: 0 sequences, 0.00 GB
+127.0.0.1 - - [19/Sep/2026 10:28:15] "POST /v1/chat/completions HTTP/1.1" 200 -
+2026-09-19 10:28:15,786 - INFO - Prompt processing progress: 1/1
+2026-09-19 10:28:31,586 - INFO - Prompt Cache: 1 sequences, 0.01 GB
+2026-09-19 10:28:31,586 - INFO - - assistant: 1 sequences, 0.01 GB
+2026-09-19 10:28:31,586 - INFO - - user: 0 sequences, 0.00 GB
+2026-09-19 10:28:31,586 - INFO - - system: 0 sequences, 0.00 GB
+127.0.0.1 - - [19/Sep/2026 10:28:31] "POST /v1/chat/completions HTTP/1.1" 200 -
+2026-09-19 10:28:31,824 - INFO - Prompt processing progress: 1/1
+2026-09-19 10:28:47,926 - INFO - Prompt Cache: 1 sequences, 0.01 GB
+2026-09-19 10:28:47,926 - INFO - - assistant: 1 sequences, 0.01 GB
+2026-09-19 10:28:47,927 - INFO - - user: 0 sequences, 0.00 GB
+2026-09-19 10:28:47,927 - INFO - - system: 0 sequences, 0.00 GB
+127.0.0.1 - - [19/Sep/2026 10:28:47] "POST /v1/chat/completions HTTP/1.1" 200 -
+2026-09-19 10:28:48,141 - INFO - Prompt processing progress: 1/1

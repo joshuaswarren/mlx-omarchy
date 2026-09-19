@@ -1,0 +1,192 @@
+{
+  "pins": {
+    "mlx_omarchy_version": "0.32.3.dev202609190758+50eeb29",
+    "libmlx_sha256_16": "df3d4e74c597956c"
+  },
+  "model_hf": "mlx-community/Qwen2.5-7B-Instruct-4bit",
+  "model_dir_b": "/home/joshuawarren/.cache/huggingface/hub/models--mlx-community--Qwen2.5-7B-Instruct-4bit/snapshots/c26a38f6a37d0a51b4e9a1eb3026530fa35d9fed",
+  "prompt": "Explain why the sky is blue.",
+  "rounds": 8,
+  "max_tokens": 128,
+  "load_s": {
+    "A_mlxlm": 2.0,
+    "B_omlx": 2.1
+  },
+  "warmup": {
+    "A_mlxlm": {
+      "wall_s": 5.512,
+      "completion_tokens": 16,
+      "prompt_tokens": 37,
+      "finish": "length",
+      "text_head": "The sky appears blue during the daytime because of a process called Rayleigh sca",
+      "timings": null
+    },
+    "B_omlx": {
+      "wall_s": 4.496,
+      "completion_tokens": 16,
+      "prompt_tokens": 37,
+      "finish": "length",
+      "text_head": "The sky appears blue during the daytime because of a process called Rayleigh sca",
+      "timings": null
+    }
+  },
+  "rounds_data": {
+    "A_mlxlm": [
+      {
+        "wall_s": 15.486,
+        "completion_tokens": 128,
+        "prompt_tokens": 37,
+        "finish": "length",
+        "text_head": "The sky appears blue during the daytime because of a process called Rayleigh sca",
+        "timings": null
+      },
+      {
+        "wall_s": 15.593,
+        "completion_tokens": 128,
+        "prompt_tokens": 37,
+        "finish": "length",
+        "text_head": "The sky appears blue during the daytime because of a process called Rayleigh sca",
+        "timings": null
+      },
+      {
+        "wall_s": 15.57,
+        "completion_tokens": 128,
+        "prompt_tokens": 37,
+        "finish": "length",
+        "text_head": "The sky appears blue during the daytime because of a process called Rayleigh sca",
+        "timings": null
+      },
+      {
+        "wall_s": 15.131,
+        "completion_tokens": 128,
+        "prompt_tokens": 37,
+        "finish": "length",
+        "text_head": "The sky appears blue during the daytime because of a process called Rayleigh sca",
+        "timings": null
+      },
+      {
+        "wall_s": 12.512,
+        "completion_tokens": 128,
+        "prompt_tokens": 37,
+        "finish": "length",
+        "text_head": "The sky appears blue during the daytime because of a process called Rayleigh sca",
+        "timings": null
+      },
+      {
+        "wall_s": 12.261,
+        "completion_tokens": 128,
+        "prompt_tokens": 37,
+        "finish": "length",
+        "text_head": "The sky appears blue during the daytime because of a process called Rayleigh sca",
+        "timings": null
+      },
+      {
+        "wall_s": 12.538,
+        "completion_tokens": 128,
+        "prompt_tokens": 37,
+        "finish": "length",
+        "text_head": "The sky appears blue during the daytime because of a process called Rayleigh sca",
+        "timings": null
+      },
+      {
+        "wall_s": 12.465,
+        "completion_tokens": 128,
+        "prompt_tokens": 37,
+        "finish": "length",
+        "text_head": "The sky appears blue during the daytime because of a process called Rayleigh sca",
+        "timings": null
+      }
+    ],
+    "B_omlx": [
+      {
+        "wall_s": 3.87,
+        "completion_tokens": 128,
+        "prompt_tokens": 37,
+        "finish": "length",
+        "text_head": "The sky appears blue during the daytime because of a process called Rayleigh sca",
+        "timings": null
+      },
+      {
+        "wall_s": 3.824,
+        "completion_tokens": 128,
+        "prompt_tokens": 37,
+        "finish": "length",
+        "text_head": "The sky appears blue during the daytime because of a process called Rayleigh sca",
+        "timings": null
+      },
+      {
+        "wall_s": 3.786,
+        "completion_tokens": 128,
+        "prompt_tokens": 37,
+        "finish": "length",
+        "text_head": "The sky appears blue during the daytime because of a process called Rayleigh sca",
+        "timings": null
+      },
+      {
+        "wall_s": 3.826,
+        "completion_tokens": 128,
+        "prompt_tokens": 37,
+        "finish": "length",
+        "text_head": "The sky appears blue during the daytime because of a process called Rayleigh sca",
+        "timings": null
+      },
+      {
+        "wall_s": 3.792,
+        "completion_tokens": 128,
+        "prompt_tokens": 37,
+        "finish": "length",
+        "text_head": "The sky appears blue during the daytime because of a process called Rayleigh sca",
+        "timings": null
+      },
+      {
+        "wall_s": 3.756,
+        "completion_tokens": 128,
+        "prompt_tokens": 37,
+        "finish": "length",
+        "text_head": "The sky appears blue during the daytime because of a process called Rayleigh sca",
+        "timings": null
+      },
+      {
+        "wall_s": 3.803,
+        "completion_tokens": 128,
+        "prompt_tokens": 37,
+        "finish": "length",
+        "text_head": "The sky appears blue during the daytime because of a process called Rayleigh sca",
+        "timings": null
+      },
+      {
+        "wall_s": 3.816,
+        "completion_tokens": 128,
+        "prompt_tokens": 37,
+        "finish": "length",
+        "text_head": "The sky appears blue during the daytime because of a process called Rayleigh sca",
+        "timings": null
+      }
+    ]
+  },
+  "summary": {
+    "A_mlxlm": {
+      "n": 8,
+      "n_errors": 0,
+      "median_tok_s": 9.33,
+      "min_tok_s": 8.21,
+      "max_tok_s": 10.44,
+      "mean_completion_tokens": 128,
+      "mean_prompt_tokens": 37,
+      "endpoint": "/v1/chat/completions",
+      "all_finished_length": true
+    },
+    "B_omlx": {
+      "n": 8,
+      "n_errors": 0,
+      "median_tok_s": 33.6,
+      "min_tok_s": 33.07,
+      "max_tok_s": 34.08,
+      "mean_completion_tokens": 128,
+      "mean_prompt_tokens": 37,
+      "endpoint": "/v1/chat/completions",
+      "all_finished_length": true
+    }
+  },
+  "leg_errors": {}
+}
