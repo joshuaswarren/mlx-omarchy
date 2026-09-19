@@ -116,9 +116,20 @@ class MLX_API AneWorker {
   // rule as a one-shot run().
   //
   // Throws std::invalid_argument when a session is opened twice, when
-  // no bundle is named, or when submit()/close() is called without an
-  // open session.
-  AneWorkerReport open(const std::vector<AneBundle>& bundles);
+  // no bundle is named, when submit()/close() is called without an
+  // open session, or when session_names does not name every bundle
+  // exactly once.
+  //
+  // session_names fixes the WIRE-PROTOCOL bundle names (what travels in
+  // "submit <name>" and what the resident child resolves). They are the
+  // caller's session keys, not the bundles' manifest names: the relay
+  // keys bundles by its CLI name and the relay-bypass runner speaks
+  // those keys directly. Empty means the manifest names (the historical
+  // behavior, still correct whenever every caller resolves bundles by
+  // index).
+  AneWorkerReport open(
+      const std::vector<AneBundle>& bundles,
+      const std::vector<std::string>& session_names = {});
 
   // One bounded submit against an already-resident bundle, addressed by
   // its index in the open() vector. A deadline expiry or an abnormal

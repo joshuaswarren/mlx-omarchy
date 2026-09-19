@@ -165,10 +165,15 @@ class ResidentAneWorker:
             # In bypass mode the resident's wire protocol is the
             # session boundary. Send "close\n" on stdin, expect
             # "released\n" on stdout (the pump will forward them),
-            # then wait for the worker subprocess to exit. The
-            # worker's own status is checked via the exit code; the
-            # resident's released token is the protocol completion.
+            # then wait for the worker subprocess to exit. The "close"
+            # is the final write, so stdin is half-closed immediately:
+            # the pump's sender sees EOF (and half-closes the resident
+            # socket) while the release token still travels back
+            # through the receiver. The worker's own status is checked
+            # via the exit code; the resident's released token is the
+            # protocol completion.
             self._write_bytes(b"close\n")
+            self._process.stdin.close()
             line = self._readline("release report")
             if line != "released":
                 self._die(f"expected the resident released token, got {line!r}")
@@ -177,7 +182,16 @@ class ResidentAneWorker:
             line = self._readline("release report")
             if not line.startswith("resident released "):
                 self._die(f"expected the resident release report, got {line!r}")
-        code = self._process.wait()
+        # "released" is the protocol completion: the resident has taken
+        # its programs off the device. The worker subprocess is a
+        # private child of this client, so its exit is bounded rather
+        # than awaited forever; a straggler pump is killed and the
+        # released token above stays the source of truth.
+        try:
+            code = self._process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            self._terminate()
+            code = 0
         self.close_ns = time.monotonic_ns() - started
         self._finish()
         if code != 0:
