@@ -100,7 +100,8 @@ in this receipt directory; window ledgers in `ab/window*.status`.
 
 ## oMLX-vs-mlx_lm A/B (non-streaming, temp 0, max_tokens 128, warmup 1, tok/s = completion_tokens / total e2e incl. prefill)
 
-Qwen2.5-0.5B-Instruct-4bit (both stacks functional):
+Qwen2.5-0.5B-Instruct-4bit (both stacks functional; the 2–3-token prompt row is dominated
+by fixed per-request cost and is not a decode comparison):
 
 | prompt | mlx_lm 872ae88 single-path tok | tok/s | oMLX 0.6.4 tok | tok/s |
 |---|---|---|---|---|
