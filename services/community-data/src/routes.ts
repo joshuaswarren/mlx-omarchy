@@ -1,4 +1,5 @@
 import payloadSchemaJson from "../schema/payload-v1.schema.json";
+import payloadE2ESchemaJson from "../schema/payload-v1-e2e.schema.json";
 import {
   MAX_CHUNK_BYTES,
   MAX_PAYLOAD_BYTES,
@@ -13,6 +14,7 @@ import * as store from "./store";
 import { checkInitiate, isSha256 } from "./validate";
 
 const payloadSchema = payloadSchemaJson as SchemaNode;
+const payloadE2ESchema = payloadE2ESchemaJson as SchemaNode;
 
 // Stable identity for the bundled schema: recomputed by
 // scripts/compute_schema_identity.py when the JSON schema changes. Surfaced
@@ -24,7 +26,7 @@ export const SCHEMA_IDENTITY = {
   fields_sha256:
     "4484ecd954dfdff802ed6a66cccb7a8354d9a06788333ecbbd77927ccb28c3c8",
   schema_sha256:
-    "438305fcd30b065b3f424bd42a8729badbee36911c7714536d437d500b01ce53",
+    "71e31d9abc4efabb54645f7c98a24e6a2689088d63f56850e94e581b9ffa8775",
 };
 
 const CACHEABLE = "public, max-age=60";
@@ -92,7 +94,8 @@ async function handleInitiate(request: Request, env: Env): Promise<Response> {
   if (summaryText.length > MAX_PAYLOAD_BYTES) {
     return errorResponse(413, "payload_too_large", { limit: MAX_PAYLOAD_BYTES });
   }
-  const schemaErrors = validateSchemaRoot(init.payload, payloadSchema);
+  const schema = init.payload.kind === "omarchy-mac-e2e" ? payloadE2ESchema : payloadSchema;
+  const schemaErrors = validateSchemaRoot(init.payload, schema);
   if (schemaErrors.length > 0) {
     return errorResponse(422, "schema_invalid", { errors: schemaErrors.slice(0, 20) });
   }

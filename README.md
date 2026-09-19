@@ -23,7 +23,7 @@ OpenAI-compatible server for Codex, omp, pi, Hermes, OpenClaw, and Claude Code:
 
 Apple M1 is verified on [Omarchy](https://github.com/omarchy-mac/omarchy-mac) with Mesa Honeykrisp. Apple M1 Max GPU is measured; T6001 `/dev/accel/accel0` is live. Later SoCs follow.
 
-## Install (v0.6.0)
+## Install
 
 On an M1 running Omarchy, one command installs the release wheel into a private
 venv under `~/.local/share/mlx-omarchy`, adds `mlx-omarchy`, `mlx-omarchy-demo`,
@@ -44,8 +44,8 @@ Manual install, or any other Linux box:
 ```bash
 # Apple Silicon (M1, Honeykrisp) — Python 3.14
 python3 -m venv ~/.venvs/mlx
-~/.venvs/mlx/bin/pip install \
-  https://github.com/joshuaswarren/mlx-omarchy/releases/download/v0.6.0/mlx_omarchy-0.32.2.dev202609161852%2B2e252962-cp314-cp314-linux_aarch64.whl
+~/.venvs/mlx/bin/pip install <the cp314 linux_aarch64 wheel from the latest release>
+# https://github.com/joshuaswarren/mlx-omarchy/releases/latest
 ```
 
 ```bash
@@ -53,11 +53,12 @@ python3 -m venv ~/.venvs/mlx
 # but ANE assets and the fd-protocol worker are absent; the wheel refuses when
 # asked to use the ANE. Use the aarch64 wheel above for real runs.
 python3 -m venv ~/.venvs/mlx
-~/.venvs/mlx/bin/pip install \
-  https://github.com/joshuaswarren/mlx-omarchy/releases/download/v0.6.0/mlx_omarchy-0.32.2.dev202609161852%2B2e25296-cp311-cp311-linux_x86_64.whl
+~/.venvs/mlx/bin/pip install <the cp311 linux_x86_64 wheel from the latest release>
 ```
 
-Wheel filenames carry the build commit, so the exact URLs and SHA256 sums are in the release notes and the `SHA256SUMS` asset, not here.
+Wheel filenames carry the build commit, so pin the exact URL from the release
+you choose; the SHA256 sums live in the release notes and the `SHA256SUMS`
+asset.
 
 Building from source is covered in [docs/install-omarchy.md](docs/install-omarchy.md). Build dependencies: Python 3.10+, CMake 3.25+, Vulkan headers, a C++ compiler, and the BLAS/LAPACK packages named there.
 

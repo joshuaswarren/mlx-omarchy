@@ -62,7 +62,9 @@ def verify_stage_evidence(
         "encoder_input_mask.npy",
     ):
         expected = paths.get(name)
-        if expected is None or sha256_file(capture_dir / name) != expected:
+        if expected is None:
+            raise ValueError(f"{name}: reference lock does not pin this capture file")
+        if sha256_file(capture_dir / name) != expected:
             raise ValueError(f"{name}: capture SHA-256 does not match the reference lock")
 
     manifest_path = dumps_dir / "manifest.json"

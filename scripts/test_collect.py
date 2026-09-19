@@ -1540,6 +1540,15 @@ class PayloadSchemaContract(unittest.TestCase):
             schema = json.load(fh)
         payload = cc.build_payload("quick", {}, {})
         self.assertEqual(sorted(payload), sorted(schema["properties"]))
+        # The e2e-only fields live in the sibling schema, never here:
+        # each kind keeps an exact contract.
+        e2e_path = os.path.join(os.path.dirname(path),
+                                "payload-v1-e2e.schema.json")
+        with open(e2e_path, "r", encoding="utf-8") as fh:
+            e2e = json.load(fh)
+        self.assertEqual(schema["properties"]["kind"]["enum"], ["quick", "deep"])
+        self.assertEqual(e2e["properties"]["kind"]["enum"], ["omarchy-mac-e2e"])
+        self.assertFalse(set(schema["properties"]) - set(e2e["properties"]))
 
 class SingleNetworkModule(unittest.TestCase):
     def test_only_collect_submit_imports_urllib(self):
