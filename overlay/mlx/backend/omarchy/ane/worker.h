@@ -116,9 +116,20 @@ class MLX_API AneWorker {
   // rule as a one-shot run().
   //
   // Throws std::invalid_argument when a session is opened twice, when
-  // no bundle is named, or when submit()/close() is called without an
-  // open session.
-  AneWorkerReport open(const std::vector<AneBundle>& bundles);
+  // no bundle is named, when submit()/close() is called without an
+  // open session, or when session_names does not name every bundle
+  // exactly once.
+  //
+  // session_names fixes the WIRE-PROTOCOL bundle names (what travels in
+  // "submit <name>" and what the resident child resolves). They are the
+  // caller's session keys, not the bundles' manifest names: the relay
+  // keys bundles by its CLI name and the relay-bypass runner speaks
+  // those keys directly. Empty means the manifest names (the historical
+  // behavior, still correct whenever every caller resolves bundles by
+  // index).
+  AneWorkerReport open(
+      const std::vector<AneBundle>& bundles,
+      const std::vector<std::string>& session_names = {});
 
   // One bounded submit against an already-resident bundle, addressed by
   // its index in the open() vector. A deadline expiry or an abnormal
@@ -167,6 +178,15 @@ class MLX_API AneWorker {
     return child_;
   }
 
+  // The parent-side end of the socketpair that talks to the resident
+  // child. Exposed only for the relay-bypass pump: when the worker is
+  // invoked as a pure byte bridge, it must splice bytes between its
+  // own stdin/stdout and this fd with no parsing. Returns -1 when no
+  // resident session is open.
+  int channel_fd() const {
+    return channel_;
+  }
+
   bool quarantined() const {
     return !quarantine_reason_.empty();
   }
@@ -210,6 +230,10 @@ private:
   std::string inbox_;
   size_t inbox_cursor_{0};
   size_t resident_programs_{0};
+  // Mirror of the bundles passed to open(); the wire protocol uses
+  // bundle names (so the runner can speak the resident's protocol
+  // directly without a relay translation step). Cleared by close().
+  std::vector<std::string> resident_bundle_names_;
 
   // Batch scope: absolute deadline (0 = no scope open) and the number
   // of submits served inside it.

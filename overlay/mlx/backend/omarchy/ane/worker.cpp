@@ -13,6 +13,7 @@
 #include <cerrno>
 #include <algorithm>
 #include <cstring>
+#include <set>
 #include <string>
 #include <utility>
 
@@ -262,11 +263,19 @@ std::string one_line(const std::string& text) {
 
 // One resident child: serves bounded submits against already-loaded
 // programs until the supervisor closes the session or a submit fails.
+// Bundle selector is the session name the supervisor opened the bundle
+// under (the same names the parent's submit() puts on the wire -- NOT
+// the manifests' internal names, which no supervisor speaks).
 int resident_child_loop(
     int fd,
     AneDevice& device,
     const std::vector<AneBundle>& bundles,
+    const std::vector<std::string>& session_names,
     int iterations) {
+  std::map<std::string, size_t> name_to_index;
+  for (size_t i = 0; i < bundles.size(); ++i) {
+    name_to_index[session_names[i]] = i;
+  }
   std::string carry;
   for (;;) {
     std::string line;
@@ -279,16 +288,13 @@ int resident_child_loop(
       return 0;
     }
     size_t index = bundles.size();
-    std::string selector;
-    size_t parsed = 0;
     if (line.compare(0, 7, "submit ") == 0) {
-      try {
-        index = static_cast<size_t>(std::stoull(line.substr(7), &parsed));
-      } catch (...) {
-        parsed = 0;
+      auto found = name_to_index.find(line.substr(7));
+      if (found != name_to_index.end()) {
+        index = found->second;
       }
     }
-    if (parsed == 0 || index >= bundles.size()) {
+    if (index >= bundles.size()) {
       send_frame(
           fd,
           std::string(kTokenFailed) + "unknown request '" + one_line(line) +
@@ -581,6 +587,7 @@ void AneWorker::teardown() {
   inbox_.clear();
   inbox_cursor_ = 0;
   resident_programs_ = 0;
+  resident_bundle_names_.clear();
   batch_until_ = std::chrono::milliseconds(0);
   batch_rounds_ = 0;
 }
@@ -769,13 +776,41 @@ AneWorker::Wait AneWorker::send_request(
   return Wait{true, AneWorkerStatus::Completed, std::string()};
 }
 
-AneWorkerReport AneWorker::open(const std::vector<AneBundle>& bundles) {
+AneWorkerReport AneWorker::open(
+    const std::vector<AneBundle>& bundles,
+    const std::vector<std::string>& session_names) {
   if (resident()) {
     throw std::invalid_argument("resident ANE session is already open");
   }
   if (bundles.empty()) {
     throw std::invalid_argument(
         "resident ANE session requires at least one bundle");
+  }
+  // The wire-protocol names: the caller's session keys when given, the
+  // manifest names otherwise. Validated here so a mismatch dies on the
+  // host instead of as a mid-session "unknown request" from the child.
+  std::vector<std::string> names;
+  names.reserve(bundles.size());
+  if (session_names.empty()) {
+    for (const auto& bundle : bundles) {
+      names.push_back(bundle.manifest.name);
+    }
+  } else {
+    if (session_names.size() != bundles.size()) {
+      throw std::invalid_argument(
+          "resident ANE session needs one session name per bundle");
+    }
+    std::set<std::string> unique;
+    for (const auto& name : session_names) {
+      if (name.empty()) {
+        throw std::invalid_argument("session names must not be empty");
+      }
+      if (!unique.insert(name).second) {
+        throw std::invalid_argument(
+            "duplicate session name '" + name + "'");
+      }
+      names.push_back(name);
+    }
   }
   if (quarantined()) {
     return AneWorkerReport{
@@ -789,6 +824,7 @@ AneWorkerReport AneWorker::open(const std::vector<AneBundle>& bundles) {
   // are offset by the programs already claimed.
   std::vector<AneBundle> resident;
   resident.reserve(bundles.size());
+  resident_bundle_names_ = std::move(names);
   size_t base = 0;
   for (const auto& bundle : bundles) {
     AneBundle copy = bundle;
@@ -841,7 +877,8 @@ AneWorkerReport AneWorker::open(const std::vector<AneBundle>& bundles) {
       }
       send_frame(fds[1], "loaded " + std::to_string(loaded) + "\n");
       code = resident_child_loop(
-          fds[1], *device, resident, options_.iterations);
+          fds[1], *device, resident, resident_bundle_names_,
+          options_.iterations);
     } catch (const std::exception& error) {
       send_frame(
           fds[1], std::string(kTokenFailed) + one_line(error.what()) + "\n");
@@ -904,6 +941,9 @@ AneWorkerReport AneWorker::submit(
   if (!resident()) {
     throw std::invalid_argument("no resident ANE session is open");
   }
+  if (bundle >= resident_bundle_names_.size()) {
+    throw std::invalid_argument("submit index out of range");
+  }
 
   const auto started = now_ms();
   const auto until =
@@ -912,7 +952,7 @@ AneWorkerReport AneWorker::submit(
     ++batch_rounds_;
   }
 
-  std::string header = "submit " + std::to_string(bundle) + "\n";
+  std::string header = "submit " + resident_bundle_names_[bundle] + "\n";
   auto wait = send_request(header.data(), header.size(), until);
   for (auto entry = inputs.begin(); wait.ok && entry != inputs.end();
        ++entry) {
