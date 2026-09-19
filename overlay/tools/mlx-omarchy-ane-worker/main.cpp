@@ -10,15 +10,15 @@
 #include "mlx/backend/omarchy/ane/bundle.h"
 #include "mlx/backend/omarchy/ane/worker.h"
 
-#include <atomic>
+#include <cerrno>
 #include <chrono>
 #include <cstdio>
 #include <cstring>
 #include <fstream>
 #include <iostream>
 #include <map>
+#include <poll.h>
 #include <sstream>
-#include <thread>
 #include <utility>
 #include <string>
 #include <vector>
@@ -27,6 +27,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <signal.h>
+#include <sys/socket.h>
 #include <sys/wait.h>
 #endif
 
@@ -208,6 +209,10 @@ int serve_resident(
 #else
   std::vector<AneBundle> bundles;
   std::map<std::string, size_t> index_of;
+  // The CLI session names in bundle order: the wire-protocol namespace
+  // for both the relayed and the bypassed path.
+  std::vector<std::string> session_names;
+  session_names.reserve(bundle_args.size());
   bundles.reserve(bundle_args.size());
   for (const auto& entry : bundle_args) {
     if (index_of.count(entry.first)) {
@@ -225,6 +230,7 @@ int serve_resident(
         static_cast<unsigned long long>(bundle.manifest.driver_abi_major),
         bundle.manifest.graph_hash.c_str());
     index_of[entry.first] = bundles.size();
+    session_names.push_back(entry.first);
     bundles.push_back(std::move(bundle));
   }
 
@@ -234,7 +240,7 @@ int serve_resident(
   AneWorker worker(
       [libane_path] { return make_libane_device(libane_path); }, options);
 
-  AneWorkerReport opened = worker.open(bundles);
+  AneWorkerReport opened = worker.open(bundles, session_names);
   if (opened.status != AneWorkerStatus::Completed) {
     std::fprintf(
         stderr, "resident open failed: %s\n", opened.detail.c_str());
@@ -480,6 +486,10 @@ int serve_resident_bypass(
 #else
   std::vector<AneBundle> bundles;
   std::map<std::string, size_t> index_of;
+  // The CLI session names in bundle order: the wire-protocol namespace
+  // for both the relayed and the bypassed path.
+  std::vector<std::string> session_names;
+  session_names.reserve(bundle_args.size());
   bundles.reserve(bundle_args.size());
   for (const auto& entry : bundle_args) {
     if (index_of.count(entry.first)) {
@@ -497,6 +507,7 @@ int serve_resident_bypass(
         static_cast<unsigned long long>(bundle.manifest.driver_abi_major),
         bundle.manifest.graph_hash.c_str());
     index_of[entry.first] = bundles.size();
+    session_names.push_back(entry.first);
     bundles.push_back(std::move(bundle));
   }
 
@@ -506,7 +517,7 @@ int serve_resident_bypass(
   AneWorker worker(
       [libane_path] { return make_libane_device(libane_path); }, options);
 
-  AneWorkerReport opened = worker.open(bundles);
+  AneWorkerReport opened = worker.open(bundles, session_names);
   if (opened.status != AneWorkerStatus::Completed) {
     std::fprintf(
         stderr, "resident open failed: %s\n", opened.detail.c_str());
@@ -524,45 +535,69 @@ int serve_resident_bypass(
     return 1;
   }
 
-  // One thread per direction. splice(2) moves pages between pipe and
-  // socketpair without copying through user space; each thread loops
-  // until EOF or a splice error. A dying peer surfaces as EPIPE, which
-  // on a socket raises SIGPIPE: the block is per-thread and dies with
-  // the threads, so the process signal disposition (and the resident
-  // child, forked before these threads exist) is untouched.
-  std::atomic<bool> sender_done{false};
-  std::atomic<bool> receiver_done{false};
+  // Byte pump, single thread. The wire protocol is strictly
+  // half-duplex -- the runner writes one request, then reads one
+  // response -- so one poll() loop moves bytes in whichever direction
+  // is ready: splice(2) keeps it zero-copy, with no parsing anywhere.
+  // Two threads splicing opposite directions of one socketpair was
+  // measured unstable on this kernel (the response stalls with both
+  // peers blocked), and threads buy nothing for a half-duplex
+  // protocol. EOF on stdin is a half-close: shutdown(WR) so the
+  // resident's read ends and its release token still travels back.
+  // A dying peer surfaces as EPIPE; SIGPIPE is blocked for the whole
+  // process, whose only remaining writer is this loop.
+  sigset_t pipe_mask;
+  sigemptyset(&pipe_mask);
+  sigaddset(&pipe_mask, SIGPIPE);
+  ::pthread_sigmask(SIG_BLOCK, &pipe_mask, nullptr);
 
-  auto pump = [](int in_fd, int out_fd, std::atomic<bool>& my_done,
-                 std::atomic<bool>& other_done) {
-    sigset_t pipe_mask;
-    sigemptyset(&pipe_mask);
-    sigaddset(&pipe_mask, SIGPIPE);
-    ::pthread_sigmask(SIG_BLOCK, &pipe_mask, nullptr);
-    for (;;) {
-      if (other_done.load(std::memory_order_acquire)) break;
-      ssize_t moved = ::splice(in_fd, nullptr, out_fd, nullptr, 1 << 16, 0);
-      if (moved <= 0) break;
+  bool stdin_open = true;
+  bool channel_open = true;
+  for (;;) {
+    struct pollfd fds[2] = {
+        {STDIN_FILENO, static_cast<short>(stdin_open ? POLLIN : 0), 0},
+        {channel, static_cast<short>(channel_open ? POLLIN : 0), 0},
+    };
+    int ready = ::poll(fds, 2, -1);
+    if (ready < 0) {
+      if (errno == EINTR) continue;
+      break;
     }
-    my_done.store(true, std::memory_order_release);
-  };
-
-  std::thread sender(pump, STDIN_FILENO, channel, std::ref(sender_done),
-                     std::ref(receiver_done));
-  std::thread receiver(pump, channel, STDOUT_FILENO, std::ref(receiver_done),
-                       std::ref(sender_done));
-
-  sender.join();
-  receiver.join();
+    if (stdin_open && (fds[0].revents & (POLLIN | POLLHUP | POLLERR))) {
+      ssize_t moved =
+          ::splice(STDIN_FILENO, nullptr, channel, nullptr, 1 << 16, 0);
+      if (moved > 0) continue;
+      // EOF (the runner sent its last frame) or a dead socket: end the
+      // request direction so the resident sees a clean end of input.
+      (void)::shutdown(channel, SHUT_WR);
+      stdin_open = false;
+    }
+    if (channel_open && (fds[1].revents & (POLLIN | POLLHUP | POLLERR))) {
+      ssize_t moved =
+          ::splice(channel, nullptr, STDOUT_FILENO, nullptr, 1 << 16, 0);
+      if (moved > 0) continue;
+      // The resident closed its end: the response is complete.
+      channel_open = false;
+    }
+    if (!stdin_open && !channel_open) break;
+  }
 
   // The pump ended. If the resident already exited (the runner's close
   // came through the pipe and the release token went back), reap it
-  // directly -- a second close() would fail on the dead channel. If it
-  // is still alive the runner vanished mid-flight: release through the
-  // worker so the programs come off the device.
+  // directly -- a second close() would write into a dead socket and
+  // report a failure the session never had. The child can close its
+  // channel a moment before it is reapable, so give it a bounded
+  // grace instead of a single WNOHANG. If it is still alive after
+  // that, the runner vanished mid-flight: release through the worker
+  // so the programs come off the device.
   pid_t pid = worker.resident_pid();
   int status = 0;
-  pid_t reaped = ::waitpid(pid, &status, WNOHANG);
+  pid_t reaped = 0;
+  for (int tries = 0; tries < 2000; ++tries) {
+    reaped = ::waitpid(pid, &status, WNOHANG);
+    if (reaped == pid || reaped < 0) break;
+    ::usleep(1000);
+  }
   if (reaped == pid) {
     return (WIFEXITED(status) && WEXITSTATUS(status) == 0) ? 0 : 1;
   }
