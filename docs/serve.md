@@ -126,29 +126,81 @@ draft of the same family.
 ## 4. Which server? mlx_lm.server / oMLX / mlx-serve
 
 Three servers can put an OpenAI-compatible endpoint on local MLX
-weights. Measured head-to-head on jw16 (M1 Max, Asahi) with the
-published v0.7.1 wheel (`libmlx` sha `df3d4e74c597956c` pinned inside
-the bench), Qwen2.5-7B-Instruct-4bit, exclusive GPU window,
-single-stream greedy, 128 max_tokens, median of 8 interleaved rounds
-([receipt](../receipts/2026-09-19-serve-options-bench-jw16.md)):
+weights. Measured head-to-head on jw16 (M1 Max, Asahi) in one
+exclusive GPU window with the published v0.7.1 wheel (`libmlx` sha
+`df3d4e74c597956c` pinned inside the bench), Qwen2.5-7B-Instruct-4bit
+(37 prompt tokens on every leg), single-stream greedy, 128 max_tokens,
+median of 8 interleaved rounds
+([four-leg receipt](../receipts/2026-09-19-mlxserve-linux-port-jw16.md),
+earlier two-leg run:
+[receipt](../receipts/2026-09-19-serve-options-bench-jw16.md)):
 
-| | `mlx_lm.server` | oMLX (`omlx`) | ddalcu/mlx-serve |
+| | `mlx_lm.server` | oMLX (`omlx`) | mlx-serve (Linux port) |
 |---|---|---|---|
-| Runs on omarchy/Linux | yes (default) | yes | **no — macOS/Apple Silicon only** |
-| Install | bundled by `install.sh` (mlx-lm 0.31.3) | from source (`github.com/jundot/omlx`, not on PyPI at 0.6.4) | `brew install mlx-serve` (Mac) |
-| Run | `mlx-omarchy -m mlx_lm.server --model <hf-id> --host 127.0.0.1 --port 8080` | `python -m omlx.server --model-dir <dir> --host 127.0.0.1 --port 8082` | `mlx-serve serve` → `:11234` |
-| Decode tok/s, Qwen2.5-7B-4bit | 9.33 | **33.6** (≈3.6×) | not measurable here |
-| Model breadth on this stack | standard mlx-lm loaders; mistral3/tekken serve path crashes on Ministral-3-8B (0.31.3 bug) | broad, incl. VLM models and Ministral-3-8B (3.3–3.4 tok/s) | every MLX arch + GGUF, on a Mac |
+| Runs on omarchy/Linux | yes (default) | yes | yes — **from source**, via the fork's `linux-vulkan-port` (upstream: [ddalcu/mlx-serve#473](https://github.com/ddalcu/mlx-serve/pull/473)); release binaries are macOS-only |
+| Install | bundled by `install.sh` (mlx-lm 0.31.3) | from source (`github.com/jundot/omlx`, not on PyPI at 0.6.4) | Mac: `brew install mlx-serve`; Linux: build (below) |
+| Run | `mlx-omarchy -m mlx_lm.server --model <hf-id> --host 127.0.0.1 --port 8080` | `python -m omlx.server --model-dir <dir> --host 127.0.0.1 --port 8082` | `mlx-serve --model <dir> --serve` → `:11234` |
+| Decode tok/s, Qwen2.5-7B-4bit | 10.36 | **33.5** (≈3.2×) | 5.65 — PLD speculative decode (on by default) made no difference on this prompt (5.70 with `--no-pld`) |
+| Model breadth on this stack | standard mlx-lm loaders; mistral3/tekken serve path crashes on Ministral-3-8B (0.31.3 bug) | broad, incl. VLM models and Ministral-3-8B (3.3–3.4 tok/s) | Mac: every MLX arch + GGUF; Linux port: MLX safetensors only (llama.cpp/ds4/ANE engines stubbed) |
 | APIs | OpenAI `/v1` (chat + completions) | OpenAI `/v1`, auto-discovers the HF cache | OpenAI + Anthropic + Ollama + Responses |
 
 Choose `mlx_lm.server` (§3) as the default — it ships with the
 installer and every harness above works against it. Choose oMLX when
 decode speed matters or you need VLM models over HTTP; it is a source
 install and discovers models from `~/.cache/huggingface` by itself.
-Choose mlx-serve only on a Mac: upstream states the server is
-"macOS / Apple Silicon only" and the v26.9.4 release ships no Linux
-asset; there it also gives you the Anthropic and Ollama APIs on one
-port.
+Choose mlx-serve when you want the Anthropic and Ollama APIs on one
+port — on a Mac it is a `brew install` away; on Omarchy it builds from
+the fork's Linux port but is currently the slowest of the three
+(~2× slower than `mlx_lm.server`, ~6× slower than oMLX on 7B 4-bit),
+so pick it for the API surface, not the speed.
+
+### mlx-serve on Omarchy: the Linux port
+
+Upstream states the server is "macOS / Apple Silicon only" and the
+v26.9.4 release ships only macOS assets. A Linux build exists on the
+fork ([`linux-vulkan-port`](https://github.com/joshuaswarren/mlx-serve/tree/linux-vulkan-port),
+opened upstream as
+[ddalcu/mlx-serve#473](https://github.com/ddalcu/mlx-serve/pull/473)):
+a target-gated Zig build graph that links the same `mlx-c` binding
+against the mlx-omarchy Vulkan fork of MLX (the same `libmlx` the
+wheel uses — the server and the Python stack agree token-for-token in
+greedy mode). Build:
+
+```bash
+git clone --recurse-submodules -b linux-vulkan-port \
+  https://github.com/joshuaswarren/mlx-serve && cd mlx-serve
+./scripts/fetch-zig.sh && export PATH="$PWD/.zig-toolchain:$PATH"
+# stage the Linux mlx tree once (mlx-omarchy checkout):
+#   cd <mlx-omarchy> && scripts/prepare-mlx.sh   # prints .work/mlx
+MLX_SOURCE=<mlx-omarchy>/.work/mlx ./scripts/build-mlx-linux.sh
+zig build -Doptimize=ReleaseFast
+./zig-out/bin/mlx-serve --version
+```
+
+System deps: cmake, Vulkan headers (a Vulkan 1.2 driver at runtime),
+`libwebp`, `libdns_sd` (Arch: avahi; Debian:
+`libavahi-compat-libdnssd-dev`).
+
+Serve a model (note: `--model`, not `--model-dir` — the latter is a
+discovery root and boots an empty server):
+
+```bash
+mlx-serve --model ~/.cache/huggingface/hub/models--mlx-community--Qwen2.5-7B-Instruct-4bit/snapshots/<hash> \
+  --serve --host 127.0.0.1 --port 11234
+```
+
+Requests work with `"model": "default"`; `/v1/models` reports an
+internal hash id, not a name.
+
+Rough edges of the Linux path (all observed on 2026-09-19, see the
+[four-leg receipt](../receipts/2026-09-19-mlxserve-linux-port-jw16.md)
+for the full list): MLX safetensors only (no GGUF — the embedded
+llama.cpp is stubbed); context pinned to the model card maximum
+(4096 for Qwen2.5-7B); decode ~5.7 tok/s on 7B 4-bit because the
+standard MLX op set over Vulkan carries none of the Metal fast paths
+the macOS build uses; both required submodules must be checked out or
+the build fails (loudly, since the port landed configure-time
+checks).
 
 Bench model verification (2026-09-19): both HF repos exist, are not
 gated, Apache-2.0 (`mlx-community/Qwen2.5-7B-Instruct-4bit`, last
