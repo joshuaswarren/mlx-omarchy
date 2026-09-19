@@ -3,7 +3,6 @@
   "title": "mlx-omarchy community submission payload, schema v1",
   "description": "The JSON summary the collector sends alongside the chunked archive. The Worker validates this strictly; unknown fields are rejected. Covers the quick/deep collector kinds; the e2e kind has payload-v1-e2e.schema.json.",
   "type": "object",
-  "additionalProperties": false,
   "required": [
     "schema_version",
     "kind",
@@ -132,11 +131,9 @@
         "object",
         "null"
       ],
-      "additionalProperties": false,
       "properties": {
         "devicetree": {
           "type": "object",
-          "additionalProperties": false,
           "required": [
             "ane_node_present",
             "ane_nodes",
@@ -176,7 +173,6 @@
               "maxItems": 8,
               "items": {
                 "type": "object",
-                "additionalProperties": false,
                 "required": [
                   "path",
                   "children"
@@ -202,7 +198,6 @@
                     "maxItems": 256,
                     "items": {
                       "type": "object",
-                      "additionalProperties": false,
                       "required": [
                         "name"
                       ],
@@ -240,7 +235,6 @@
               "type": "array",
               "items": {
                 "type": "object",
-                "additionalProperties": false,
                 "required": [
                   "path"
                 ],
@@ -273,7 +267,6 @@
                 "object",
                 "null"
               ],
-              "additionalProperties": false,
               "properties": {
                 "path": {
                   "type": "string",
@@ -300,7 +293,6 @@
                 "object",
                 "null"
               ],
-              "additionalProperties": false,
               "properties": {
                 "model": {
                   "type": [
@@ -344,8 +336,7 @@
                 "object",
                 "null"
               ],
-              "additionalProperties": false,
-              "description": "HYPOTHESIS, never a derived fact: ANE SET region candidate = pmgr block base + 0xc000 (where the T8103/T6001 ane_* pwrstate cluster lives and where m1n1 ps_map points). driver_window_confirms records whether Apple's own ane device reg grants a window at exactly that address, which corroborates the hypothesis (t6021: ane0 reg range 3). Linux/m1n1 enumerates the cluster itself.",
+              "description": "HYPOTHESIS, never a derived fact: ANE SET region candidate = pmgr block base + 0xc000 (where the T8103/T6001 ane_* pwrstate cluster lives and where m1n1 ps_map points). driver_window_confirms records whether Apple's own ane device reg grants a window at exactly that address, which corroborates the hypothesis (t6021: ane0 reg range 3). Linux/m1n1 enumerates the cluster itself. Open to collector extension fields since 2026-09-19 (issue #8): unknown keys pass through; declared keys keep their type/length caps.",
               "properties": {
                 "pmgr_block": {
                   "type": [
@@ -381,7 +372,6 @@
                 "object",
                 "null"
               ],
-              "additionalProperties": false,
               "description": "Apple Device Tree artifact discovery on Linux (m1n1 stage2 / distro ADT dump / live FDT). Presence + sha256 only; the artifact bytes stay on the machine and the hash pins which tree a capture explains. found=false with source=null means no candidate artifact exists.",
               "properties": {
                 "found": {
@@ -415,7 +405,6 @@
                 "object",
                 "null"
               ],
-              "additionalProperties": false,
               "description": "ANE-relevant nodes decoded from the ADT artifact: the authoritative path for engine base + DART stream-IDs on any SoC (macOS IORegistry does not expose the engine sub-window). null until the ADT decode step emits it.",
               "properties": {
                 "ane0": {
@@ -423,7 +412,6 @@
                     "object",
                     "null"
                   ],
-                  "additionalProperties": false,
                   "properties": {
                     "reg": {
                       "type": [
@@ -450,7 +438,6 @@
                     "object",
                     "null"
                   ],
-                  "additionalProperties": false,
                   "properties": {
                     "reg": {
                       "type": [
@@ -480,7 +467,6 @@
                   "maxItems": 16,
                   "items": {
                     "type": "object",
-                    "additionalProperties": false,
                     "properties": {
                       "stream_id": {
                         "type": "integer",
@@ -509,7 +495,6 @@
             "object",
             "null"
           ],
-          "additionalProperties": false,
           "properties": {
             "iomem": {
               "type": [
@@ -569,7 +554,6 @@
             "object",
             "null"
           ],
-          "additionalProperties": false,
           "required": [
             "available",
             "instances",
@@ -587,7 +571,6 @@
               "maxItems": 8,
               "items": {
                 "type": "object",
-                "additionalProperties": false,
                 "required": [
                   "name",
                   "matched",
@@ -651,7 +634,6 @@
               "maxItems": 8,
               "items": {
                 "type": "object",
-                "additionalProperties": false,
                 "required": [
                   "name"
                 ],
@@ -740,7 +722,6 @@
                     "description": "IORegistry children of this node with their reg entries, when the registry exposes them. t6021 mining showed macOS exposes NO ane0 engine sub-window; an empty/null capture is a platform fact, not a probe failure.",
                     "items": {
                       "type": "object",
-                      "additionalProperties": false,
                       "properties": {
                         "name": {
                           "type": [
@@ -767,7 +748,6 @@
               "maxItems": 8,
               "items": {
                 "type": "object",
-                "additionalProperties": false,
                 "required": [
                   "name"
                 ],
@@ -863,7 +843,6 @@
               "description": "Interrupt-controller table for decoding device IOInterruptSpecifiers (AIC phandle -> cells). IORegistry rarely surfaces #interrupt-cells; null is a platform miss, not a probe failure.",
               "items": {
                 "type": "object",
-                "additionalProperties": false,
                 "required": [
                   "name"
                 ],
@@ -907,7 +886,6 @@
               "maxItems": 8,
               "items": {
                 "type": "object",
-                "additionalProperties": false,
                 "required": [
                   "name"
                 ],
@@ -957,7 +935,6 @@
                 "object",
                 "null"
               ],
-              "additionalProperties": false,
               "required": [
                 "available",
                 "compute_units",
@@ -988,7 +965,6 @@
                 "object",
                 "null"
               ],
-              "additionalProperties": false,
               "required": [
                 "available",
                 "power_mw",
@@ -1026,7 +1002,6 @@
                 "object",
                 "null"
               ],
-              "additionalProperties": false,
               "properties": {
                 "matched_class": {
                   "type": [
@@ -1109,7 +1084,6 @@
                 "object",
                 "null"
               ],
-              "additionalProperties": false,
               "properties": {
                 "target_type": {
                   "type": [
@@ -1151,7 +1125,6 @@
                 "object",
                 "null"
               ],
-              "additionalProperties": false,
               "properties": {
                 "framework_version": {
                   "type": [
@@ -1202,8 +1175,7 @@
                 "object",
                 "null"
               ],
-              "additionalProperties": false,
-              "description": "HYPOTHESIS, never a derived fact: ANE SET region candidate = pmgr block base + 0xc000 (where the T8103/T6001 ane_* pwrstate cluster lives and where m1n1 ps_map points). driver_window_confirms records whether Apple's own ane device reg grants a window at exactly that address, which corroborates the hypothesis (t6021: ane0 reg range 3). Linux/m1n1 enumerates the cluster itself.",
+              "description": "HYPOTHESIS, never a derived fact: ANE SET region candidate = pmgr block base + 0xc000 (where the T8103/T6001 ane_* pwrstate cluster lives and where m1n1 ps_map points). driver_window_confirms records whether Apple's own ane device reg grants a window at exactly that address, which corroborates the hypothesis (t6021: ane0 reg range 3). Linux/m1n1 enumerates the cluster itself. Open to collector extension fields since 2026-09-19 (issue #8): unknown keys pass through; declared keys keep their type/length caps.",
               "properties": {
                 "pmgr_block": {
                   "type": [
@@ -1270,7 +1242,6 @@
       "maxItems": 16,
       "items": {
         "type": "object",
-        "additionalProperties": false,
         "required": [
           "n"
         ],

@@ -27,10 +27,6 @@ describe("payload schema v1", () => {
     expect(validateSchemaRoot(rest, e2eSchema)).toEqual([]);
   });
 
-  test("e2e-only fields are rejected on collector kinds (exact per-kind contract)", () => {
-    expect(validateSchemaRoot(mutate({ test_id: "x" }), schema).length).toBeGreaterThan(0);
-  });
-
   test("collector-only kinds are rejected on the e2e schema", () => {
     expect(validateSchemaRoot(mutate({ kind: "quick" }), e2eSchema).length).toBeGreaterThan(0);
   });
@@ -40,8 +36,31 @@ describe("payload schema v1", () => {
     expect(validateSchemaRoot(mutate({ schema_version: "1" }), schema).length).toBeGreaterThan(0);
   });
 
-  test("additional properties are rejected", () => {
-    expect(validateSchemaRoot(mutate({ hostname: "macbook.local" }), schema).length).toBeGreaterThan(0);
+  test("unknown root diagnostic fields are accepted (issue #8 class)", () => {
+    // 2026-09-19: closed objects 422'd every new collector field — the
+    // 2026-09-17 ane_port root addition and the set_base_candidate triple
+    // both shipped green collectors against stale closed schemas. Root and
+    // nested diagnostic objects now accept additive fields; declared keys
+    // keep type/length checks and files items stay closed (archive
+    // verification contract).
+    const withRootExtension = mutate({ ane_power: { states: 3 } });
+    expect(validateSchemaRoot(withRootExtension, schema)).toEqual([]);
+    expect(
+      validateSchemaRoot(
+        { ...withRootExtension, kind: "omarchy-mac-e2e" },
+        e2eSchema,
+      ),
+    ).toEqual([]);
+  });
+
+  test("kind still selects the schema; extras ride along additively", () => {
+    // The exact per-kind root contract was relaxed with the same change:
+    // schema choice is keyed on kind, not on shape, and unknown root
+    // fields pass. The kind const itself is still enforced.
+    expect(validateSchemaRoot(mutate({ test_id: "x" }), schema)).toEqual([]);
+    expect(
+      validateSchemaRoot(mutate({ kind: "quick" }), e2eSchema).length,
+    ).toBeGreaterThan(0);
   });
 
   test("kind is an enum", () => {
@@ -223,12 +242,87 @@ describe("payload schema v1", () => {
         schema,
       ),
     ).toEqual([]);
-    // Junk inside the candidate is still rejected — strictness is retained.
+    // Junk inside a declared field is still rejected — declared-key type
+    // checks are retained even though unknown keys now pass through.
     expect(
       validateSchemaRoot(
         mutate({ ane_port_detail: { ...base,
           devicetree: { ...base.devicetree, set_base_candidate: {
             offset: 49152 } } } }),
+        schema,
+      ).length,
+    ).toBeGreaterThan(0);
+  });
+
+  test("set_base_candidate accepts collector extension fields (issue #8)", () => {
+    // 2026-09-19 regression: collect_quick.py _ane_port_devicetree emits
+    // status/ane_pwrstate_cells/note inside devicetree.set_base_candidate,
+    // but the schema closed the object at the four macOS-side fields, so
+    // every Linux ANE submit 422'd schema_invalid on exactly those three.
+    const base = {
+      devicetree: {
+        ane_node_present: true,
+        ane_nodes: {},
+        ane_reg: null,
+        darts: {},
+        pmgr_domains: [],
+        pmgr_blocks: [],
+        phandles: {},
+        boot: null,
+        dtb_sha256: null,
+      },
+    };
+    // Exact Linux collector emission validates on the collector schema.
+    const linuxCandidate = {
+      status: "not_available_from_device_tree",
+      ane_pwrstate_cells: [
+        { label: "ane_sys", offset: 616 },
+        { label: "ane_sys_cpu", offset: 712 },
+      ],
+      note: "ane_set* entries are 4-byte power-controller pwrstate " +
+        "cells, not the SET MMIO window; the SET base must come from " +
+        "a macOS set_base_candidate (driver_window_confirms) or m1n1 " +
+        "ANE.ps_map, never from these offsets",
+    };
+    expect(
+      validateSchemaRoot(
+        mutate({ ane_port_detail: { ...base,
+          devicetree: { ...base.devicetree,
+            set_base_candidate: linuxCandidate } } }),
+        schema,
+      ),
+    ).toEqual([]);
+    // Same shape validates on the e2e schema's mirrored block.
+    expect(
+      validateSchemaRoot(
+        mutate({ kind: "omarchy-mac-e2e", ane_port_detail: { ...base,
+          devicetree: { ...base.devicetree,
+            set_base_candidate: linuxCandidate } } }),
+        e2eSchema,
+      ),
+    ).toEqual([]);
+    // Future unknown extension fields are accepted on the macOS sibling:
+    // real fixture macos block plus one collector-style extension key.
+    const withMacosExtension = structuredClone(fixture);
+    withMacosExtension.ane_port_detail.macos.set_base_candidate = {
+      ...withMacosExtension.ane_port_detail.macos.set_base_candidate,
+      window_probe: "t6021 ane0 reg range 3",
+    };
+    expect(validateSchemaRoot(withMacosExtension, schema)).toEqual([]);
+    // Declared-field type checks survive the loosening on both blocks.
+    const withMacosJunk = structuredClone(fixture);
+    withMacosJunk.ane_port_detail.macos.set_base_candidate = {
+      ...withMacosJunk.ane_port_detail.macos.set_base_candidate,
+      offset: 49152,
+    };
+    expect(
+      validateSchemaRoot(withMacosJunk, schema).length,
+    ).toBeGreaterThan(0);
+    expect(
+      validateSchemaRoot(
+        mutate({ ane_port_detail: { ...base,
+          devicetree: { ...base.devicetree, set_base_candidate: {
+            driver_window_confirms: "yes" } } } }),
         schema,
       ).length,
     ).toBeGreaterThan(0);
@@ -264,16 +358,16 @@ describe("payload schema v1", () => {
     expect(
       validateSchemaRoot(mutate({ ane_port_detail: { macos } }), schema),
     ).toEqual([]);
-    // children entries stay closed-world.
+    // children entries take additive fields; declared-shape rules still bite.
     expect(
       validateSchemaRoot(mutate({ ane_port_detail: { macos: { ...macos,
         ane_nodes: [{ name: "ane0", children: [{ name: "x", junk: 1 }] }] } } }),
-        schema).length,
-    ).toBeGreaterThan(0);
-    // interrupt_controllers entries stay closed-world.
+        schema),
+    ).toEqual([]);
+    // interrupt_controllers entries keep their required contract.
     expect(
       validateSchemaRoot(mutate({ ane_port_detail: { macos: { ...macos,
-        interrupt_controllers: [{ name: "aic", flags: "0x3" }] } } }),
+        interrupt_controllers: [{ flags: "0x3" }] } } }),
         schema).length,
     ).toBeGreaterThan(0);
   });
@@ -314,11 +408,11 @@ describe("payload schema v1", () => {
       validateSchemaRoot(
         mutate({ ane_port_detail: { devicetree: absent } }), schema),
     ).toEqual([]);
-    // junk in adt_nodes stays rejected.
+    // junk in declared adt_nodes fields stays rejected (additive fields pass).
     expect(
       validateSchemaRoot(mutate({ ane_port_detail: { devicetree: {
         ...base.devicetree,
-        adt_nodes: { ane0: { stream_map: "0xff" } } } } }), schema).length,
+        adt_nodes: { ane0: { reg: 49152 } } } } }), schema).length,
     ).toBeGreaterThan(0);
   });
 
@@ -338,10 +432,18 @@ describe("payload schema v1", () => {
         ] },
       } }), schema),
     ).toEqual([]);
+    // Additive keys pass; the required name contract does not bend.
     expect(
       validateSchemaRoot(mutate({ ane_port_detail: {
         macos: { ...base, pmgr_nodes: [
-          { name: "pmgr", unknown_key: true },
+          { name: "pmgr", probe_note: "t6021" },
+        ] },
+      } }), schema),
+    ).toEqual([]);
+    expect(
+      validateSchemaRoot(mutate({ ane_port_detail: {
+        macos: { ...base, pmgr_nodes: [
+          { location: "8E080000" },
         ] },
       } }), schema).length,
     ).toBeGreaterThan(0);
