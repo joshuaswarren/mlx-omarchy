@@ -174,7 +174,11 @@ _PROJ_SOURCE = """
 
 # Joint head, lane-parallel: each thread owns one output lane j.
 # jmode 1 (joint-only callback) rebuilds the relu from fp16(dec_in) + the
-# encoder frame, bit-identical because dec_in already holds float(pj).
+# encoder frame, bit-exact because dec_in already holds float(pj).
+# The joint buffer is uint32 fp16 pairs (see pack_step_weights): word
+# j*320 + k/2 carries weights (j, 2k) low / (j, 2k+1) high, unpacked with
+# unpackHalf2x16 (bit-exact fp16 widening). The reduction stays the pinned
+# fp32 ascending-k chain — pairs only change addressing, not op order.
 _JOINT_SOURCE = f"""
     uint g = threadgroup_position_in_grid.x;
     uint t = thread_index_in_threadgroup.x;
@@ -195,10 +199,15 @@ _JOINT_SOURCE = f"""
     threadgroup_barrier(mem_flags::mem_threadgroup);
     if (j < 8198u) {{
         precise float acc = 0.0f;
-        for (uint k = 0u; k < 640u; ++k) {{
-            acc = acc + float(sh_relu[k]) * float(joint[k * 8198u + j]);
+        uint wbase = j * 320u;
+        for (uint k = 0u; k < 320u; ++k) {{
+            vec2 w2 = unpackHalf2x16(joint[wbase + k]);
+            acc = acc + float(sh_relu[2u * k]) * w2.x;
+            acc = acc + float(sh_relu[2u * k + 1u]) * w2.y;
         }}
-        logits[j] = float(float16_t(acc) + joint[640u * 8198u + j]);
+        vec2 b2 = unpackHalf2x16(joint[8198u * 320u + (j >> 1u)]);
+        float16_t bias = ((j & 1u) == 0u) ? float16_t(b2.x) : float16_t(b2.y);
+        logits[j] = float(float16_t(acc) + bias);
     }}
 """
 
@@ -316,8 +325,16 @@ def pack_step_weights(decoder, joint_package: Path) -> StepWeights:
     jb = np.asarray(
         joint_component.constant("head_bias_to_fp16"), dtype=np.float16
     ).ravel()
+    # Joint buffer is uint32 fp16 pairs, output-lane-major: word j*320 + k/2
+    # holds weights (j, 2k) in the low half and (j, 2k+1) in the high half
+    # (little-endian, matching unpackHalf2x16). The bias tail packs the same
+    # way (8198 fp16 = 4099 words). Bit-identical to the fp16 values; only
+    # the addressing changes (see test_tdt_joint_pair_layout.py).
     joint_pack = np.concatenate(
-        [np.ascontiguousarray(jw.T, dtype=np.float16).ravel(), jb]
+        [
+            np.ascontiguousarray(jw, dtype=np.float16).view(np.uint32).ravel(),
+            np.ascontiguousarray(jb, dtype=np.float16).view(np.uint32).ravel(),
+        ]
     )
     with mx.stream(mx.gpu):
         packed = StepWeights(

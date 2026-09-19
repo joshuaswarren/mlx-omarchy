@@ -216,12 +216,18 @@ def _loop_glsl() -> str:
             uint best_i = 0u;
             for (uint j = t; j < 8198u; j += {_LT}u) {{
                 precise float acc = 0.0f;
-                for (uint k = 0u; k < 640u; ++k) {{
-                    acc = acc + float(s_relu[k])
-                              * float(joint[k * 8198u + j]);
+                uint wbase = j * 320u;
+                for (uint k = 0u; k < 320u; ++k) {{
+                    vec2 w2 = unpackHalf2x16(joint[wbase + k]);
+                    acc = acc + float(s_relu[2u * k]) * w2.x;
+                    acc = acc + float(s_relu[2u * k + 1u]) * w2.y;
                 }}
-                float lg = float(float16_t(acc)
-                                 + joint[640u * 8198u + j]);
+                vec2 b2 = unpackHalf2x16(
+                    joint[8198u * 320u + (j >> 1u)]);
+                float16_t bias = ((j & 1u) == 0u)
+                    ? float16_t(b2.x)
+                    : float16_t(b2.y);
+                float lg = float(float16_t(acc) + bias);
                 if (j < 8193u) {{
                     if ((j == t) || ((lg != lg) && (best_v == best_v))
                         || (lg > best_v)) {{
