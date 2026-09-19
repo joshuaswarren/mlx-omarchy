@@ -1041,6 +1041,38 @@ class EncoderRunner:
         self.island_a_partner = {c.index: s.index for s, c in zip(scores, content)}
         self.island_b = {s.index: (i, s) for i, s in enumerate(mask_select)}
         self.island_c = {o.index: (i, o) for i, o in enumerate(attn_out)}
+        # Fused A→mask→select→add→softmax→C candidate (placement letter
+        # "F"): pairs layer i's A statement with its B select and C
+        # statements, and records EVERY statement index between them as
+        # bundle-covered, so the run loop skips the mask chain instead of
+        # executing it on GPU. Registered only when the minted bundle
+        # dirs exist, so "F" is unreachable until the compiler lane
+        # delivers island-attn-ac-L%02d.
+        self.island_ac = {}
+        if "F" in self.placed and "A" in self.placed:
+            raise EncoderRunError(
+                "placement F (fused A+C) excludes A: the fused submit "
+                "covers A's programs"
+            )
+        if "F" in self.placed and self.island is not None:
+            a_first = {i: s for i, (s, _c) in
+                       ((i, (s, c)) for i, (s, c) in self.island_a.items())}
+            c_by_layer = {i: (o, s) for o, (i, s) in self.island_c.items()}
+            b_by_layer = {i: s for i, s in self.island_b.values()}
+            for layer, a_stmt in sorted(a_first.items()):
+                bundle = self.island.bundles / f"island-attn-ac-L{layer:02d}"
+                if not (bundle / "manifest.json").exists() and not bundle.is_dir():
+                    continue
+                c_stmt = c_by_layer[layer][1]
+                sel_stmt = b_by_layer[layer]
+                lo, hi = a_stmt.index, c_stmt.index
+                self.island_ac[a_stmt.index] = layer
+                self.island_ac_span = getattr(self, "island_ac_span", {})
+                for idx in range(lo, hi + 1):
+                    self.island_ac_span[idx] = a_stmt.index
+                self.island.resident_bundles.add(
+                    f"island-attn-ac-L{layer:02d}"
+                )
 
         oproj_w = re.compile(
             r"encoder_layers_(\d+)_self_attn_o_proj_weight_to_fp16_palettized"
@@ -1295,6 +1327,20 @@ class EncoderRunner:
         if "A" in self.placed and stmt.index in self.island_a:
             self._run_island_a(stmt)
             return
+        if (
+            "F" in self.placed
+            and getattr(self, "island_ac_span", None)
+            and stmt.index in self.island_ac_span
+        ):
+            if stmt.index in self.island_ac:
+                self._run_island_ac(stmt)
+            else:
+                # Bundle-covered statement (mask chain, select, add,
+                # softmax, partner matmuls): produced on-device by the
+                # fused submit at this layer's A statement.
+                stmt.done = True
+                self.executed += 1
+            return
         if "B" in self.placed and stmt.index in self.island_b:
             self._run_island_b(stmt)
             return
@@ -1452,6 +1498,55 @@ class EncoderRunner:
         self.values[sel_stmt.names[0]] = results["attention_mask_9"]
         self.executed += 1
         self.ane_ops += 1
+
+    def _run_island_ac(self, stmt: Statement) -> None:
+        """Fused A→mask→add→softmax→C candidate: ONE submit per layer.
+
+        Candidate under receipt §6 (ane-linux-experiments
+        2026-09-19-encoder-submit-repair.md): requires the minted
+        island-attn-ac-L%02d bundle; selected by placement letter "F",
+        which also pulls the B select, add and softmax on-device. Until
+        the bundle is minted the handler is unreachable (registration
+        only happens when the bundle dir exists).
+        """
+        layer, _scores_stmt, _content_stmt = self.island_a[stmt.index]
+        ac_i, out_stmt = next(
+            (i, s) for i, s in self.island_c.values() if i == layer
+        )
+        sel_i, sel_stmt = next(
+            (i, s) for i, s in self.island_b.values() if i == layer
+        )
+        assert ac_i == layer and sel_i == layer
+        fill = self.tensor(sel_stmt.kwargs["a"])
+        cond = self.tensor(sel_stmt.kwargs["cond"])
+        q_v = self.tensor(_scores_stmt.kwargs["x"])
+        pos_kT = self.tensor(_scores_stmt.kwargs["y"])
+        q_scaled = self.tensor(_content_stmt.kwargs["x"])
+        k_headsT = mx.swapaxes(self.tensor(_content_stmt.kwargs["y"]), -1, -2)
+        v_heads = self.tensor(out_stmt.kwargs["y"])
+        results = self.island.submit(
+            f"island-attn-ac-L{layer:02d}",
+            f"L{layer:02d}-AC",
+            {
+                "q_v": q_v,
+                "pos_kT": pos_kT,
+                "q_scaled": q_scaled,
+                "k_headsT": k_headsT,
+                "v_heads": v_heads,
+                "cond": mx.contiguous(mx.broadcast_to(cond, ISLAND_B_SHAPE)),
+                "ninf_rt": mx.contiguous(
+                    mx.broadcast_to(fill, ISLAND_B_SHAPE)
+                ),
+            },
+            {"attn_output_1": (out_stmt.shape, "fp16")},
+        )
+        self.values[out_stmt.names[0]] = results["attn_output_1"]
+        # Every statement this bundle covers, A program outputs included,
+        # is produced on-device; nothing downstream may re-execute them.
+        for covered in (self.island_a[stmt.index][1], _content_stmt, out_stmt):
+            covered.done = True
+        self.executed += 2
+        self.ane_ops += 2
 
     def _run_island_c(self, stmt: Statement) -> None:
         layer, out_stmt = self.island_c[stmt.index]
