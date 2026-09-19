@@ -1,0 +1,26 @@
+[
+ {
+  "prompt": "Say hi in one word.",
+  "ttft_s": null,
+  "total_s": 10.197,
+  "tokens": 0,
+  "decode_tok_s": null,
+  "text_head": ""
+ },
+ {
+  "prompt": "Explain in one sentence why the sky is blue.",
+  "ttft_s": null,
+  "total_s": 10.214,
+  "tokens": 0,
+  "decode_tok_s": null,
+  "text_head": ""
+ },
+ {
+  "prompt": "Name the capital of France and its population in one short sentence.",
+  "ttft_s": null,
+  "total_s": 10.232,
+  "tokens": 0,
+  "decode_tok_s": null,
+  "text_head": ""
+ }
+]

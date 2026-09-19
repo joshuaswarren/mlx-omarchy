@@ -22,6 +22,30 @@ plan. The cause is not established. No output cleanup is applied.
 The exact ANE output is retained as a native parity reference, not presented
 as clean ASR output. This is a macOS reference finding, not a demonstrated
 Linux backend defect. [Capture and exact outputs](../receipts/2026-09-12-licensed-parakeet-reference.json).
+
+## Vulkan timeline stall kills serving threads: mlx_lm.server (0.31.3 and 872ae88) and oMLX 0.6.4
+
+Observed on jw16 (M1 Max, Honeykrisp), wheel `b283a16`, 2026-09-18/19. Any serving stack
+that submits work through the affected scheduler patterns can leave a timeline value
+**reserved with no signalling batch ever enqueued**; the 10 s watchdog throws
+`[omarchy] Vulkan timeline counter failed to advance for 10000 ms (last observed=0,
+target=1)` and recovery refuses because the retained-batch set is empty.
+
+Status: **ROOT-CAUSED, runtime fix open (P1).** mlx-lm 0.31.3's server generation thread
+dies silently and every later request hangs forever (the reported ">180 s chat hang"; both
+`/v1/chat/completions` and `/v1/completions` hang — the chat-only framing was an artifact).
+872ae88 fails fast ("generation thread died") but the stall is identical: no upstream floor
+version exists. oMLX 0.6.4 hits the same stall in its own engine prefill on
+Ministral-3-8B. Threads, per-thread streams, and the chat-vs-completions split are all
+exonerated; single-sequence `stream_generate` escapes on both tested models. Deterministic
+main-thread repro (BatchGenerator on Qwen2.5-0.5B) and the full isolation ladder are in
+[the serving-hang receipt](../receipts/2026-09-19-mlxlm-server-hang-jw16.md).
+
+Until the runtime fix lands, the working serving configuration is degraded (P1): send
+mlx_lm.server requests with `"seed": <int>` (routes to `_serve_single`, no batching), or
+use oMLX on Qwen2.5-class graphs. On Qwen2.5-0.5B the oMLX engine measured 1.3–2.2x faster
+end-to-end than the seeded mlx_lm.server path.
+
 ## Open portability gaps
 
 ### Cooperative-matrix prefill output depends on which Mesa build provides the extension

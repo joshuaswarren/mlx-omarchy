@@ -1,0 +1,59 @@
+[
+ {
+  "prompt": "Say hi in one word.",
+  "ttft_s": null,
+  "total_s": 0.185,
+  "tokens": 2,
+  "decode_tok_s": 10.78,
+  "text_head": "Hi!",
+  "usage": {
+   "prompt_tokens": 35,
+   "completion_tokens": 2,
+   "total_tokens": 37,
+   "input_tokens": 35,
+   "output_tokens": 2,
+   "prompt_tokens_details": {
+    "cached_tokens": 0
+   },
+   "total_time": 0.18
+  }
+ },
+ {
+  "prompt": "Explain in one sentence why the sky is blue.",
+  "ttft_s": null,
+  "total_s": 0.593,
+  "tokens": 66,
+  "decode_tok_s": 111.25,
+  "text_head": "The sky is blue because it reflects the sunlight that enters the atmosphere, which contains all colo",
+  "usage": {
+   "prompt_tokens": 40,
+   "completion_tokens": 66,
+   "total_tokens": 106,
+   "input_tokens": 40,
+   "output_tokens": 66,
+   "prompt_tokens_details": {
+    "cached_tokens": 0
+   },
+   "total_time": 0.58
+  }
+ },
+ {
+  "prompt": "Name the capital of France and its population in one short sentence.",
+  "ttft_s": null,
+  "total_s": 0.351,
+  "tokens": 20,
+  "decode_tok_s": 57.01,
+  "text_head": "The capital of France is Paris. The population of Paris is approximately 2.1 million people.",
+  "usage": {
+   "prompt_tokens": 42,
+   "completion_tokens": 20,
+   "total_tokens": 62,
+   "input_tokens": 42,
+   "output_tokens": 20,
+   "prompt_tokens_details": {
+    "cached_tokens": 0
+   },
+   "total_time": 0.34
+  }
+ }
+]

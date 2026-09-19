@@ -1,0 +1,4 @@
+warmup done
+Say hi in one word. | ttft None | total 0.804 | tok 2 | tok/s 2.49
+Explain in one sentence why the sky is blue. | ttft None | total 9.019 | tok 39 | tok/s 4.32
+Name the capital of France and its population | ttft None | total 7.136 | tok 31 | tok/s 4.34
