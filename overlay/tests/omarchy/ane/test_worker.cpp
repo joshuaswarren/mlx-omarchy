@@ -463,12 +463,13 @@ TEST_CASE("resident session misuse is rejected, not guessed at") {
   std::vector<AneBundle> bundles = {toy_bundle()};
   REQUIRE(worker.open(bundles).status == AneWorkerStatus::Completed);
   CHECK_THROWS_AS(worker.open(bundles), std::invalid_argument);
-  // An out-of-range bundle index is a named protocol failure, not a
-  // silent dispatch to the wrong programs.
-  auto report = worker.submit(7, inputs);
-  CHECK(report.status == AneWorkerStatus::DeviceFailed);
-  CHECK(report.detail.find("unknown request") != std::string::npos);
-  CHECK(!worker.resident());
+  // An out-of-range bundle index is a named API failure, not a silent
+  // dispatch to the wrong programs. The bounds check happens here, in
+  // the parent, before any wire bytes go out -- the resident would
+  // also reject it as "unknown request", but the parent catches the
+  // shape error first and refuses the submit outright.
+  CHECK_THROWS_AS(worker.submit(7, inputs), std::invalid_argument);
+  CHECK(worker.resident());
 }
 
 TEST_CASE("an unclosed resident session does not outlive its worker") {

@@ -167,6 +167,15 @@ class MLX_API AneWorker {
     return child_;
   }
 
+  // The parent-side end of the socketpair that talks to the resident
+  // child. Exposed only for the relay-bypass pump: when the worker is
+  // invoked as a pure byte bridge, it must splice bytes between its
+  // own stdin/stdout and this fd with no parsing. Returns -1 when no
+  // resident session is open.
+  int channel_fd() const {
+    return channel_;
+  }
+
   bool quarantined() const {
     return !quarantine_reason_.empty();
   }
@@ -210,6 +219,10 @@ private:
   std::string inbox_;
   size_t inbox_cursor_{0};
   size_t resident_programs_{0};
+  // Mirror of the bundles passed to open(); the wire protocol uses
+  // bundle names (so the runner can speak the resident's protocol
+  // directly without a relay translation step). Cleared by close().
+  std::vector<std::string> resident_bundle_names_;
 
   // Batch scope: absolute deadline (0 = no scope open) and the number
   // of submits served inside it.

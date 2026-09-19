@@ -10,6 +10,7 @@
 #include "mlx/backend/omarchy/ane/bundle.h"
 #include "mlx/backend/omarchy/ane/worker.h"
 
+#include <atomic>
 #include <chrono>
 #include <cstdio>
 #include <cstring>
@@ -17,9 +18,17 @@
 #include <iostream>
 #include <map>
 #include <sstream>
+#include <thread>
 #include <utility>
 #include <string>
 #include <vector>
+
+#ifndef _WIN32
+#include <unistd.h>
+#include <fcntl.h>
+#include <signal.h>
+#include <sys/wait.h>
+#endif
 
 using namespace mlx::core::omarchy::ane;
 
@@ -447,6 +456,127 @@ int serve_resident(
 #endif
 }
 
+// Relay-bypass pump: after spawning the resident, splice(2) bytes
+// bidirectionally between the relay's own stdin/stdout and the
+// resident's socketpair. No parsing, no copy: the wire protocol is
+// whatever the runner and resident agreed on, and the relay is a
+// kernel pipe between them. One direction per thread; either EOF ends
+// the pump and tears the resident down.
+int serve_resident_bypass(
+    const std::vector<std::pair<std::string, std::string>>& bundle_args,
+    const std::string& libane_path,
+    long deadline_ms,
+    long iterations) {
+#ifndef MLX_OMARCHY_ANE_DEVICE
+  (void)bundle_args;
+  (void)libane_path;
+  (void)deadline_ms;
+  (void)iterations;
+  std::fprintf(
+      stderr,
+      "this binary was built without MLX_OMARCHY_ANE_DEVICE; no device "
+      "backend is linked\n");
+  return 70;
+#else
+  std::vector<AneBundle> bundles;
+  std::map<std::string, size_t> index_of;
+  bundles.reserve(bundle_args.size());
+  for (const auto& entry : bundle_args) {
+    if (index_of.count(entry.first)) {
+      std::fprintf(
+          stderr, "duplicate resident bundle name '%s'\n",
+          entry.first.c_str());
+      return 64;
+    }
+    AneBundle bundle = load_bundle(entry.second);
+    std::printf(
+        "resident bundle=%s index=%zu name=%s programs=%zu driver_abi=%llu "
+        "graph=%s\n",
+        entry.first.c_str(), bundles.size(), bundle.manifest.name.c_str(),
+        bundle.programs.size(),
+        static_cast<unsigned long long>(bundle.manifest.driver_abi_major),
+        bundle.manifest.graph_hash.c_str());
+    index_of[entry.first] = bundles.size();
+    bundles.push_back(std::move(bundle));
+  }
+
+  AneWorkerOptions options;
+  options.deadline = std::chrono::milliseconds(deadline_ms);
+  options.iterations = static_cast<int>(iterations);
+  AneWorker worker(
+      [libane_path] { return make_libane_device(libane_path); }, options);
+
+  AneWorkerReport opened = worker.open(bundles);
+  if (opened.status != AneWorkerStatus::Completed) {
+    std::fprintf(
+        stderr, "resident open failed: %s\n", opened.detail.c_str());
+    return 1;
+  }
+  std::printf(
+      "relay-bypass ready pid=%lld deadline_ms=%ld detail=%s\n",
+      static_cast<long long>(worker.resident_pid()), deadline_ms,
+      opened.detail.c_str());
+  std::fflush(stdout);
+
+  int channel = worker.channel_fd();
+  if (channel < 0) {
+    std::fprintf(stderr, "relay-bypass: no resident channel\n");
+    return 1;
+  }
+
+  // One thread per direction. splice(2) moves pages between pipe and
+  // socketpair without copying through user space; each thread loops
+  // until EOF or a splice error. A dying peer surfaces as EPIPE, which
+  // on a socket raises SIGPIPE: the block is per-thread and dies with
+  // the threads, so the process signal disposition (and the resident
+  // child, forked before these threads exist) is untouched.
+  std::atomic<bool> sender_done{false};
+  std::atomic<bool> receiver_done{false};
+
+  auto pump = [](int in_fd, int out_fd, std::atomic<bool>& my_done,
+                 std::atomic<bool>& other_done) {
+    sigset_t pipe_mask;
+    sigemptyset(&pipe_mask);
+    sigaddset(&pipe_mask, SIGPIPE);
+    ::pthread_sigmask(SIG_BLOCK, &pipe_mask, nullptr);
+    for (;;) {
+      if (other_done.load(std::memory_order_acquire)) break;
+      ssize_t moved = ::splice(in_fd, nullptr, out_fd, nullptr, 1 << 16, 0);
+      if (moved <= 0) break;
+    }
+    my_done.store(true, std::memory_order_release);
+  };
+
+  std::thread sender(pump, STDIN_FILENO, channel, std::ref(sender_done),
+                     std::ref(receiver_done));
+  std::thread receiver(pump, channel, STDOUT_FILENO, std::ref(receiver_done),
+                       std::ref(sender_done));
+
+  sender.join();
+  receiver.join();
+
+  // The pump ended. If the resident already exited (the runner's close
+  // came through the pipe and the release token went back), reap it
+  // directly -- a second close() would fail on the dead channel. If it
+  // is still alive the runner vanished mid-flight: release through the
+  // worker so the programs come off the device.
+  pid_t pid = worker.resident_pid();
+  int status = 0;
+  pid_t reaped = ::waitpid(pid, &status, WNOHANG);
+  if (reaped == pid) {
+    return (WIFEXITED(status) && WEXITSTATUS(status) == 0) ? 0 : 1;
+  }
+  AneWorkerReport closed = worker.close();
+  if (closed.status != AneWorkerStatus::Completed) {
+    std::fprintf(
+        stderr, "relay-bypass: resident close failed: %s\n",
+        closed.detail.c_str());
+    return 1;
+  }
+  return 0;
+#endif
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
@@ -455,6 +585,7 @@ int main(int argc, char** argv) {
   long deadline_ms = 2000;
   long iterations = 1;
   bool serve = false;
+  bool relay_bypass = false;
   std::vector<std::pair<std::string, std::string>> resident_bundles;
   std::map<std::string, std::string> input_files;
   std::map<std::string, std::string> expect_files;
@@ -471,6 +602,8 @@ int main(int argc, char** argv) {
     };
     if (flag == "--serve") {
       serve = true;
+    } else if (flag == "--relay-bypass") {
+      relay_bypass = true;
     } else if (flag == "--bundle") {
       auto assignment = value();
       std::string name;
@@ -517,13 +650,22 @@ int main(int argc, char** argv) {
   if (libane_path.empty()) {
     return usage();
   }
-  if (serve) {
+  if (serve || relay_bypass) {
     if (resident_bundles.empty()) {
       std::fprintf(
           stderr, "--serve requires at least one --bundle NAME=DIR\n");
       return usage();
     }
+    if (serve && relay_bypass) {
+      std::fprintf(
+          stderr, "--serve and --relay-bypass are mutually exclusive\n");
+      return usage();
+    }
     try {
+      if (relay_bypass) {
+        return serve_resident_bypass(
+            resident_bundles, libane_path, deadline_ms, iterations);
+      }
       return serve_resident(
           resident_bundles, libane_path, deadline_ms, iterations);
     } catch (const std::exception& error) {
