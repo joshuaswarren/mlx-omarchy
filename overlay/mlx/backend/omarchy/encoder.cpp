@@ -813,6 +813,12 @@ void CommandEncoder::submit() {
       signal_semaphores_.clear();
       completed_handlers_.clear();
       reset_dependency_tracking();
+      // The reserved completion value can never signal GPU-side: without
+      // a pending entry, later joins would block on drained_value_
+      // forever. Publish the empty entry - its waiters get the typed
+      // watchdog error instead of an unbounded join (reserved values must
+      // always have a completion entry).
+      device_.completions().enqueue(completion_value, {}, {});
       throw;
     }
     // Publish only after the submit: the dispatcher must never wait on a
