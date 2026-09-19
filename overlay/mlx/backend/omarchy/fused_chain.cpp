@@ -137,17 +137,18 @@ std::optional<uint32_t> leaf_mode_for(
     return std::nullopt;
   }
   const auto& shape = leaf.shape();
-  // ModLast (address = index % last_dim) is correct only when every leaf
-  // value repeats with period last_dim across the output - that is, the
-  // leaf is a vector over its last axis and all other dimensions are
-  // broadcast singletons. A strided leaf like (N, 1, L) carries an N
-  // axis that the mod cannot express and would silently read row 0.
+  // ModLast (address = index % last_dim) needs exactly one physical row
+  // of last_dim elements, which data_size == last_dim proves: any outer
+  // dims are necessarily stride-0 broadcast axes over that row (real
+  // outer data would make data_size > last_dim), and index % last_dim
+  // stays inside that row for every output position. The contiguous
+  // source requirement is enforced by the leaf encoder. A strided leaf
+  // like the GDN k projection (N, 1, L) never reaches this branch - its
+  // data_size N*L exceeds last_dim, so only DivLast could address it,
+  // and DivLast requires shape.back() == 1 below (F7). Removing this
+  // check restored the broadcast-vector fusion (shape [4,64], ds 64)
+  // that the 2026-09-18 guard refused and stock mlx-omarchy kept.
   if (data_size == last_dim) {
-    for (size_t i = 0; i + 1 < shape.size(); ++i) {
-      if (shape[i] != 1) {
-        return std::nullopt;
-      }
-    }
     return kLeafModLast;
   }
   // DivLast (address = index / last_dim) repeats each leaf element
