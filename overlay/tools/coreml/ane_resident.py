@@ -20,6 +20,7 @@ go through host files.
 
 from __future__ import annotations
 
+import fcntl
 import os
 import select
 import subprocess
@@ -113,6 +114,17 @@ class ResidentAneWorker:
             stdout=subprocess.PIPE,
             stderr=self._stderr,
         )
+        # The default 64 KiB pipe buffer makes every multi-MB payload
+        # round-trip a wake-up storm between this client and the worker
+        # (hundreds of context switches per submit); 1 MiB is the max
+        # without privileges. Best-effort: an old kernel refusing the
+        # ioctl only keeps the old latency.
+        set_pipe_sz = getattr(fcntl, "F_SETPIPE_SZ", 1031)
+        for stream in (self._process.stdin, self._process.stdout):
+            try:
+                fcntl.fcntl(stream.fileno(), set_pipe_sz, 1 << 20)
+            except OSError:
+                pass
         self.worker_starts += 1
         # One "resident bundle=..." line per bundle, then the load report.
         for _ in self.bundles:
@@ -164,7 +176,7 @@ class ResidentAneWorker:
         tag: str,
         inputs: Mapping[str, bytes],
         outputs: Sequence[str],
-    ) -> dict[str, bytes]:
+) -> dict[str, bytearray]:
         """One bounded submit against an already-resident bundle.
 
         Payloads travel inline on the worker's stdin and stdout. They
@@ -180,21 +192,23 @@ class ResidentAneWorker:
 
         job = ["submit", bundle]
         in_bytes = 0
-        ordered = list(inputs.items())
-        for name, payload in ordered:
-            job += ["--inline", f"{name}={len(payload)}"]
-            in_bytes += len(payload)
+        ordered = [(name, memoryview(payload))
+                   for name, payload in inputs.items()]
+        for name, view in ordered:
+            # nbytes, not len(): the runner passes contiguous numpy
+            # buffers, whose len() is a shape dimension, not a byte count.
+            job += ["--inline", f"{name}={view.nbytes}"]
+            in_bytes += view.nbytes
         for name in outputs:
             job += ["--emit", name]
 
-        request = bytearray(" ".join(job).encode() + b"\n")
-        for _, payload in ordered:
-            request += payload
-
+        request = " ".join(job).encode() + b"\n"
         started = time.monotonic_ns()
-        self._write_bytes(bytes(request))
+        # Payloads go straight from the caller's buffers: no bytes() or
+        # bytearray assembly copies on the send side.
+        self._writev([request] + [view for _, view in ordered])
         write_ns = time.monotonic_ns() - started
-        results: dict[str, bytes] = {}
+        results: dict[str, bytearray] = {}
         out_bytes = 0
         while True:
             line = self._readline(f"job report for {tag}")
@@ -305,10 +319,15 @@ class ResidentAneWorker:
         self._write_bytes((line + "\n").encode())
 
     def _write_bytes(self, payload: bytes) -> None:
+        self._writev([payload])
+
+    def _writev(self, parts) -> None:
         assert self._process is not None and self._process.stdin is not None
         try:
-            self._process.stdin.write(payload)
-            self._process.stdin.flush()
+            stream = self._process.stdin
+            for part in parts:
+                stream.write(part)
+            stream.flush()
         except (BrokenPipeError, ValueError):
             self._die("resident worker closed its input before the job was sent")
 
@@ -348,12 +367,45 @@ class ResidentAneWorker:
                 return line
             self._fill(what)
 
-    def _read_exact(self, count: int, what: str) -> bytes:
-        while len(self._inbox) < count:
-            self._fill(what)
-        payload = bytes(self._inbox[:count])
-        del self._inbox[:count]
-        return payload
+    def _read_exact(self, count: int, what: str) -> bytearray:
+        # Bulk payloads land directly in the final buffer: the old
+        # path copied every byte twice more (inbox append + bytes()
+        # slice), which is real time at ~180 MB of outputs per pass.
+        out = bytearray(count)
+        got = 0
+        if self._inbox:
+            take = min(len(self._inbox), count)
+            out[:take] = self._inbox[:take]
+            del self._inbox[:take]
+            got = take
+        if got < count:
+            assert self._process is not None and self._process.stdout is not None
+            stream = self._process.stdout
+            fd = stream.fileno()
+            deadline = time.monotonic() + (
+                self.deadline_ms + _CLIENT_GRACE_MS) / 1000
+            if self._batch_until is not None:
+                deadline = self._batch_until + _CLIENT_GRACE_MS / 1000
+            view = memoryview(out)
+            while got < count:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    self.timeouts += 1
+                    self._die(
+                        f"resident worker did not produce the {what} within "
+                        f"{self.deadline_ms + _CLIENT_GRACE_MS} ms"
+                    )
+                ready, _, _ = select.select([stream], [], [], remaining)
+                if not ready:
+                    continue
+                n = os.readv(fd, [view[got:]])
+                if not n:
+                    self._die(
+                        f"resident worker closed its output before the {what}: "
+                        f"{self._stderr_tail()}"
+                    )
+                got += n
+        return out
 
     def _stderr_tail(self, limit: int = 400) -> str:
         if self._stderr is not None:
