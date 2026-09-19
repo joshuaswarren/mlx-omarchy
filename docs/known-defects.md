@@ -44,7 +44,8 @@ main-thread repro (BatchGenerator on Qwen2.5-0.5B) and the full isolation ladder
 Until the runtime fix lands, the working serving configuration is degraded (P1): send
 mlx_lm.server requests with `"seed": <int>` (routes to `_serve_single`, no batching), or
 use oMLX on Qwen2.5-class graphs. On Qwen2.5-0.5B the oMLX engine measured 1.3–2.2x faster
-end-to-end than the seeded mlx_lm.server path.
+end-to-end on the two generation-heavy prompts (and slower than mlx_lm on a 2-token
+response, where fixed per-request costs dominate either stack).
 
 ## Open portability gaps
 
