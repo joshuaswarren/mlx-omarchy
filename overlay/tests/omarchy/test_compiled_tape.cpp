@@ -600,9 +600,9 @@ TEST_CASE("bf16 tape runs the widened op set and matches eager exactly") {
   std::vector<float> xv = {0.0f, 0.1f, 0.2f, 0.3f};
   array x(xv.begin(), Shape{4}, bfloat16);
 
-  // The widened classes dispatch per node through the same bf16
-  // eval_gpu kernels eager uses (bf16 chains are fenced from tape
-  // fusion in the tape interpreter), so compiled output is bit-exact.
+  // The widened classes fuse through the chain's own bf16 kernels,
+  // which round every instruction to the storage dtype exactly like
+  // per-node dispatch, so compiled output is bit-exact.
   // Bits compare as uint16: the bf16 bit pattern IS the contract.
   auto fn = [&stream](const std::vector<array>& inputs) {
     auto rounded = round(multiply(inputs[0], inputs[0], stream), stream);

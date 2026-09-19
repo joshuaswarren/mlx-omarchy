@@ -52,9 +52,9 @@ token IDs on M1. See the [hardware gate receipt](../receipts/2026-09-04-m1-perfo
 
 Compiled-tape elementwise chains and exact eager SwiGLU graphs
 (`gate * sigmoid(gate) * up`) fuse into one dispatch by default. The eager
-path supports f32, f16, and bf16 and materializes retained intermediate arrays;
-fused chains are a float32/float16 path - bf16 tape nodes run per-node, bit-exact
-against eager (see docs/known-defects.md). Set `MLX_OMARCHY_FUSED_CHAIN=0` to use
+path and compiled-tape chains support f32, f16, and bf16 with per-instruction
+rounding to the storage dtype, bit-exact against the per-node path
+(see docs/known-defects.md). Set `MLX_OMARCHY_FUSED_CHAIN=0` to use
 the per-node path for every dtype.
 
 Eager single-row 4-bit/group-64 quantized projections that read one x

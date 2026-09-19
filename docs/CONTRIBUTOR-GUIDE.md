@@ -80,16 +80,14 @@ receipt that bounds it.
    only at real subgroup size 32; a device-subgroup-size gate is a
    precondition for any ship). Re-open only with a new mechanism, not
    a re-run.
-3. **bf16 compiled-tape fusion stays fenced pending a pinned mechanism**
-   (`receipts/2026-09-18-bf16-compiled-tape.md`). The 2026-09-02
-   tape-level bf16 refusal was the stale-shape defect and is lifted
-   (2026-09-18): bf16 tapes run per-node, bit-exact against eager, and
-   mlx-lm bf16 generates coherently with compile on, digest-identical
-   to eager. Fused bf16 chains remain fenced: in-model corruption on
-   Qwen3.5-9B / gemma-4-31B / Ministral-3-8B, deterministic, not
-   recycled storage, not reproducible in isolated fragments. Do not
-   remove the fence on a theory. The fence lifts with a pinned root
-   cause plus a clean full-model mlx-lm sweep on the corrupt matrix.
+3. **bf16 compiled-tape fusion fence: lifted with a pinned mechanism**
+   (`receipts/2026-09-18-bf16-compiled-tape.md`,
+   `receipts/2026-09-18-v070-pretag-recert-t6001-test-host.md` corrupt-matrix
+   section). The 2026-09-02 tape-level bf16 refusal was the stale-shape
+   defect and is lifted (2026-09-18); the 2026-09-18 fused-bf16 fence
+   was the DivLast leaf misindexing fixed at `da43969e`, proven by the
+   clean full-model mlx-lm sweep on the corrupt matrix with fusion ON
+   (Qwen3.5 / Ministral / gemma-4-31B digests identical to eager).
    Hardware-only.
 4. **The M1 verification bars for v0.4.0 and beyond.** The v0.4.0
    proof gate is the supported M1 matrix; v0.5.0 needs an M1 install

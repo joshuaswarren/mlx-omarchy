@@ -4,10 +4,9 @@
 // FuseDecodeChains fused-chain coverage. Fusion defaults on and
 // MLX_OMARCHY_FUSED_CHAIN=0 disables it. Equivalence cases set their intended
 // mode explicitly. The fused path must match the
-// per-node path BIT-EXACT for float32, float16, and eager bfloat16: the
+// per-node path BIT-EXACT for float32, float16, and bfloat16: the
 // chain shader rounds every intermediate to the storage dtype exactly
-// like the per-node path materializes them. Compiled bf16 tapes remain
-// refused independently.
+// like the per-node path materializes them.
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "doctest/doctest.h"
@@ -743,11 +742,9 @@ TEST_CASE("bf16 compiled tape fuses and matches eager exactly") {
   enable_fusion();
   set_compile_mode(CompileMode::enabled);
   // The model fragment: mlx_lm compiles swiglu with shapeless=True.
-  // bf16 chains are fenced from tape fusion (compiled.cpp; the
-  // fused bf16 chain corrupts in-model, see docs/known-defects.md), so
-  // the fragment falls back to per-node eval_gpu dispatch and must
-  // still match eager bit for bit. Compiled calls are lazy: values are
-  // compared at eval time.
+  // The fused bf16 chain rounds every instruction to the storage
+  // dtype, so it matches the per-node eager sequence bit for bit.
+  // Compiled calls are lazy: values are compared at eval time.
   auto fn = compile([](const std::vector<array>& in) {
     return std::vector<array>{in[0] * sigmoid(in[0]) * in[1]};
   });

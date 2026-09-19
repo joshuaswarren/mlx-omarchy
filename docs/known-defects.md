@@ -448,34 +448,32 @@ Evidence: [original full-token comparison](../receipts/2026-09-04-native-output-
 
 Open in the current release.
 
-### Fused bf16 compiled-tape chains return wrong values inside the full mlx-lm forward
+### Fused bf16 compiled-tape chains returned wrong values inside the full mlx-lm forward (fixed)
 
 Observed 2026-09-18 on t6001-test-host (M1 Max T6001, Honeykrisp), wheel
 `0.32.3.dev202609182143+cb8c0638` with the tape-level bf16 refusal
 lifted. With fusion enabled (the default) three models - `Qwen3.5-9B-MLX-4bit`,
-`gemma-4-31b-it-4bit`, `Ministral-3-8B-Instruct-2512-4bit` - generate
+`gemma-4-31b-it-4bit`, `Ministral-3-8B-Instruct-2512-4bit` - generated
 deterministic wrong tokens (one unique garbage sequence per model, stable
 across reps; `Ministral` emits EOS immediately). The identical runs with
-`MLX_OMARCHY_FUSED_CHAIN=0` match the eager generated-id digest exactly,
+`MLX_OMARCHY_FUSED_CHAIN=0` matched the eager generated-id digest exactly,
 and the small models (`Qwen2.5-0.5B-Instruct-bf16`, `-4bit`,
-`Ternary-Bonsai-8B-mlx-2bit`) are bit-clean through the fused path.
+`Ternary-Bonsai-8B-mlx-2bit`) were bit-clean through the fused path.
 
-Eliminated: recycled storage (the `MLX_OMARCHY_POISON_FREED` poison
-detector armed through a full wrong-output run fires nothing); isolated
-fragments (pure-bf16 swiglu, cast-mixed f32/bf16 chains, shapeless
-trace-then-reuse across decode/prefill shapes, offset-view leaves, and
-3-D model shapes all match eager bit for bit, on device and in the C++
-battery); the eager SwiGLU/GEMV planners (`MLX_OMARCHY_FUSED_GEMV_SWIGLU=0`
-changes nothing). The corruption needs the full-model context around a
-fused bf16 chain; the mechanism is not pinned.
-
-Fence: `FusedChain::can_start` refuses bfloat16, so bf16 tape nodes fall
-back to per-node `eval_gpu` dispatch - the same kernels eager runs, which
-is bit-exact end to end on every model tested (compiled generated-id
-digests equal eager digests across the matrix). f16/f32 chains keep
-fusing. The lift bar is a clean full-model mlx-lm sweep on the corrupt
-matrix plus a pinned root cause; until then fusion stays a
-float32/float16 path.
+Root cause: `FusedChain::leaf_mode_for` selected `DivLast` from
+`data_size == count/last_dim` alone. For a strided leaf like the GDN k
+projection (flat `(N,1,L)`), DivLast addressing (`leaf_flat[index/last_dim]`)
+indexes by the output's second-to-last axis instead of the leaf's own last
+axis, so every elementwise product in the recurrent update misindexed and
+amplified the state (~100x per step). Fixed at `da43969e`: DivLast now
+requires `shape.back() == 1` and ModLast requires all outer dims singleton,
+so the misindexed leaf takes the per-node path. The v0.7.0 recert probe
+(`receipts/2026-09-18-v070-pretag-recert-t6001-test-host.md`, corrupt-matrix section)
+ran the full corrupt matrix with fusion ON on main bytes: Qwen3.5,
+Ministral, and gemma-4-31B digests identical to eager. The tape-interpreter
+bf16 fence is removed; bf16 nodes fuse through the chain's own bf16 kernels
+(`ROUND_INTERMEDIATE` rounds each instruction to storage dtype, matching
+per-node dispatch).
 
 ### Historical BF16 RoPE scalar corruption and queue-drain workaround
 
@@ -565,8 +563,9 @@ the `MLX_OMARCHY_ALLOW_UNSAFE_COMPILE` override all existed to fence an
 unpinned defect; the fix pins it, so they are removed rather than left
 as switches that no longer switch anything. The protections that remain,
 unchanged: the bf16 tape gate (lifted 2026-09-18 - it was this same
-stale-shape defect, one day before the root cause reached the tree;
-fused bf16 chains are fenced separately, see Live in v0.3.5), the
+stale-shape defect, one day before the root cause reached the tree; the
+2026-09-18 fused-bf16 fence that followed it was the DivLast leaf
+misindexing fixed at `da43969e`, fence now removed), the
 trigonometric accuracy gate (tape nodes dispatch through their own
 `eval_gpu`, which carries it), and the named-error contract for
 unsupported tape ops. Compiled-versus-eager speed is not measured yet

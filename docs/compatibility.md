@@ -39,14 +39,14 @@ The lift was verified on T6001: the original corruption model
 digest-stable across runs and identical to the eager generated-id
 digest, and the upstream `test_compile.py` bf16 refusals are gone.
 
-bf16 compiled-tape nodes dispatch per node through the same bf16
-`eval_gpu` kernels the eager path uses, which makes them bit-exact
-against eager by construction; the C++ compiled-tape battery pins this
-with raw-uint16 comparisons, including a bf16 shapeless
-trace-then-reuse case (the exact mlx-lm trigger).
-
-Fused bf16 chains remain fenced - see the fused-chain defect entry in
-[known-defects.md](known-defects.md).
+bf16 compiled-tape nodes fuse through the chain's own bf16 `eval_gpu`
+kernels or the same per-node dispatch eager uses, which makes them
+bit-exact against eager by construction; the C++ compiled-tape battery
+pins this with raw-uint16 comparisons, including a bf16 shapeless
+trace-then-reuse case (the exact mlx-lm trigger). The in-model
+fused-bf16 corruption behind the 2026-09-18 fence was the DivLast leaf
+misindexing fixed at `da43969e`; the fence is removed (see the
+fused-chain defect entry in [known-defects.md](known-defects.md)).
 
 ### Compiled tapes on Apple GPUs - fixed and re-enabled
 
