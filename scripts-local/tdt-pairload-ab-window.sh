@@ -35,10 +35,14 @@ git rev-parse --verify "$CAND_COMMIT^{commit}" >/dev/null || exit 4
 [ "$(git merge-base "$BASE_COMMIT" "$CAND_COMMIT")" = "$(git rev-parse "$BASE_COMMIT^{commit}")" ] \
   || { echo "CANDIDATE-NOT-BASED-ON-BASE"; exit 4; }
 
+if [ -n "${TDT_AB_WHEEL:-}" ]; then
+  WHL=$TDT_AB_WHEEL
+else
+  (cd "$FORK" && scripts/build-wheel.sh) || exit 4
+  WHL=$(ls -t "$FORK"/dist/mlx_omarchy-*aarch64.whl | head -1)
+fi
 if [ ! -x "$W/venv/bin/python" ]; then
-  scripts/build-wheel.sh || exit 4
-  WHL=$(ls -t dist/mlx_omarchy-*aarch64.whl | head -1)
-  python3 -m venv "$W/venv"
+  "${TDT_AB_PYTHON:-python3.14}" -m venv "$W/venv"
   "$W/venv/bin/pip" install --quiet "$WHL" || exit 4
 fi
 PY=$W/venv/bin/python
@@ -49,11 +53,9 @@ PY=$W/venv/bin/python
 
 for arm in base cand; do
   ref=$([ "$arm" = base ] && echo "$BASE_COMMIT" || echo "$CAND_COMMIT")
-  git archive "$ref" overlay/tools/coreml | tar -x -C "$W" 2>/dev/null || {
-    rm -rf "$W/pkg-$arm"; mkdir -p "$W/pkg-$arm"
-    git archive "$ref" overlay/tools/coreml | tar -x -C "$W/pkg-$arm"
-    mv "$W/pkg-$arm/overlay/tools/coreml" "$W/pkg-$arm/coreml"
-  }
+  rm -rf "$W/pkg-$arm"; mkdir -p "$W/pkg-$arm"
+  git archive "$ref" overlay/tools/coreml | tar -x -C "$W/pkg-$arm"
+  mv "$W/pkg-$arm/overlay/tools/coreml" "$W/pkg-$arm/coreml"
 done
 diff -rq "$W/pkg-base/coreml" "$W/pkg-cand/coreml" | sed 's/^/pkg-delta: /'
 
