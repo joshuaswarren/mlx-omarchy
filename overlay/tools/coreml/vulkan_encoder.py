@@ -1074,9 +1074,27 @@ class EncoderRunner:
                 lo, hi = a_stmt.index, c_stmt.index
                 self.island_ac[a_stmt.index] = layer
                 self.island_ac_span = getattr(self, "island_ac_span", {})
+                # _last_use has not run yet; derive the consumer extents
+                # this span needs directly from the parsed kwargs.
+                consumers = {}
+                for st in self.statements:
+                    for token in st.kwargs.values():
+                        for nm in self._operand_names(token):
+                            consumers[nm] = max(
+                                consumers.get(nm, -1), st.index
+                            )
+                # Identity proof, not just op types: every value produced
+                # inside the span must be dead by the span's end (the
+                # bundle is self-contained) except the span's declared
+                # output. An unrelated allowed-type op whose result is
+                # consumed later is a live-out -> named refusal.
+                produced = {}
                 for idx in range(lo, hi + 1):
                     st = self.statements[idx]
-                    if st.op != "const" and st.op not in FUSED_COVERED_OPS:
+                    if st.op == "const":
+                        self.island_ac_span[idx] = a_stmt.index
+                        continue
+                    if st.op not in FUSED_COVERED_OPS:
                         raise EncoderRunError(
                             f"placement F layer {layer}: statement {idx} "
                             f"({st.op}) inside the A..C range is not part of "
@@ -1084,6 +1102,32 @@ class EncoderRunner:
                             "disagree"
                         )
                     self.island_ac_span[idx] = a_stmt.index
+                    for nm in st.names:
+                        produced[nm] = idx
+                declared = {c_stmt.names[0]}
+                dead = sorted(
+                    nm for nm in produced
+                    if nm not in declared and nm not in consumers
+                )
+                if dead:
+                    raise EncoderRunError(
+                        f"placement F layer {layer}: values produced inside "
+                        f"the A..C range are never consumed: {dead}; the "
+                        "mint and the span disagree"
+                    )
+                live_out = {
+                    nm: consumers.get(nm, prod_idx)
+                    for nm, prod_idx in produced.items()
+                    if consumers.get(nm, prod_idx) > hi
+                    and nm != c_stmt.names[0]
+                }
+                if live_out:
+                    raise EncoderRunError(
+                        f"placement F layer {layer}: values produced inside "
+                        f"the A..C range are consumed after it: "
+                        f"{sorted(live_out.items())}; the mint and the span "
+                        "disagree"
+                    )
                 self.island.resident_bundles.add(
                     f"island-attn-ac-L{layer:02d}"
                 )
