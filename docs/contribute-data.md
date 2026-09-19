@@ -38,7 +38,7 @@ recent version are all useful, and the archive accepts them all.
 ## Your data
 
 Redacted hostnames, paths, and serials; explicit preview; opt-in submit;
-open [schema](../schema/) and [archive](https://mlx-omarchy-community-data.joshua-s-warren.workers.dev/v1/results).
+open [schema](../services/community-data/schema/) and [archive](https://mlx-omarchy-community-data.joshua-s-warren.workers.dev/v1/results).
 Something failed or looks weird (a 422, a crash, an exotic machine)?
 [Open an issue](https://github.com/joshuaswarren/mlx-omarchy/issues) and
 paste the exact error text — the collector prints the failing field, and
