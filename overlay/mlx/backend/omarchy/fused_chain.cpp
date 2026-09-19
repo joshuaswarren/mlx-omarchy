@@ -137,18 +137,30 @@ std::optional<uint32_t> leaf_mode_for(
     return std::nullopt;
   }
   const auto& shape = leaf.shape();
-  // ModLast (address = index % last_dim) needs exactly one physical row
-  // of last_dim elements, which data_size == last_dim proves: any outer
-  // dims are necessarily stride-0 broadcast axes over that row (real
-  // outer data would make data_size > last_dim), and index % last_dim
-  // stays inside that row for every output position. The contiguous
-  // source requirement is enforced by the leaf encoder. A strided leaf
-  // like the GDN k projection (N, 1, L) never reaches this branch - its
-  // data_size N*L exceeds last_dim, so only DivLast could address it,
-  // and DivLast requires shape.back() == 1 below (F7). Removing this
-  // check restored the broadcast-vector fusion (shape [4,64], ds 64)
-  // that the 2026-09-18 guard refused and stock mlx-omarchy kept.
+  // ModLast (address = index % last_dim) is correct exactly when every
+  // output element (r, c) reads flat[c]: the leaf must be a single
+  // physical row of last_dim elements (data_size == last_dim) whose
+  // outer axes are pure broadcasts. Strides, not flags, prove that:
+  // the last axis needs unit stride, and every outer axis needs stride
+  // 0 (broadcast view) or a singleton shape (stride irrelevant). A
+  // column broadcast - (64, 1) leaf expanded to (64, 64), strides
+  // (1, 0) - has the same shape, data_size, and contiguous flag as the
+  // row broadcast (0, 1) but its element (r, c) reads flat[r], which
+  // index % last_dim cannot express; admitting it misindexed every
+  // product (hardware-confirmed: fused sum 1.32 vs per-node -9.23).
+  // The 2026-09-18 shape-only guard refused both broadcasts and cost
+  // the row case its fusion (v0.7.0 recert fc pin anomaly); the
+  // stride check refuses exactly the unsafe one.
   if (data_size == last_dim) {
+    const auto& strides = leaf.strides();
+    if (strides.empty() || strides.back() != 1) {
+      return std::nullopt;
+    }
+    for (size_t i = 0; i + 1 < strides.size(); ++i) {
+      if (strides[i] != 0 && shape[i] != 1) {
+        return std::nullopt;
+      }
+    }
     return kLeafModLast;
   }
   // DivLast (address = index / last_dim) repeats each leaf element
