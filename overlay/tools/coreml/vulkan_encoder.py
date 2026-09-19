@@ -795,9 +795,11 @@ class AneIsland:
         marshal_started = time.monotonic_ns()
         for name, value in inputs.items():
             mx.eval(value)
-            raw = np.ascontiguousarray(np.asarray(value)).tobytes()
+            # Contiguous numpy buffer, sent as a memoryview: tobytes()
+            # was a second full copy of every island input per round.
+            raw = np.ascontiguousarray(np.asarray(value))
             payload[name] = raw
-            in_bytes += len(raw)
+            in_bytes += raw.nbytes
         round_marshal_ns = time.monotonic_ns() - marshal_started
         self.marshal_ns += round_marshal_ns
         out_names = list(outputs)
