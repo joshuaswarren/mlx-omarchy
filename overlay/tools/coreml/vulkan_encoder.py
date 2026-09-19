@@ -1056,6 +1056,8 @@ class EncoderRunner:
         # dirs exist, so "F" is unreachable until the compiler lane
         # delivers island-attn-ac-L%02d.
         self.island_ac = {}
+        self.island_ac_span = {}
+        self.island_ac_exec = set()
         if "F" in self.placed and "A" in self.placed:
             raise EncoderRunError(
                 "placement F (fused A+C) excludes A: the fused submit "
@@ -1066,14 +1068,13 @@ class EncoderRunner:
             c_by_layer = {i: (o, s) for o, (i, s) in self.island_c.items()}
             b_by_layer = {i: s for i, s in self.island_b.values()}
             for layer, a_stmt in sorted(a_first.items()):
-                bundle = self.island.bundles / f"island-attn-ac-L{layer:02d}"
+                bundle = self.island.bundles / f"island-attn-ac-head-L{layer:02d}"
                 if not (bundle / "manifest.json").exists() and not bundle.is_dir():
                     continue
                 c_stmt = c_by_layer[layer][1]
                 sel_stmt = b_by_layer[layer]
                 lo, hi = a_stmt.index, c_stmt.index
                 self.island_ac[a_stmt.index] = layer
-                self.island_ac_span = getattr(self, "island_ac_span", {})
                 # _last_use has not run yet; derive the consumer extents
                 # this span needs directly from the parsed kwargs.
                 consumers = {}
@@ -1089,25 +1090,57 @@ class EncoderRunner:
                 # output. An unrelated allowed-type op whose result is
                 # consumed later is a live-out -> named refusal.
                 produced = {}
+                span_ops = {}
                 for idx in range(lo, hi + 1):
                     st = self.statements[idx]
-                    if st.op == "const":
-                        self.island_ac_span[idx] = a_stmt.index
-                        continue
-                    if st.op not in FUSED_COVERED_OPS:
-                        raise EncoderRunError(
-                            f"placement F layer {layer}: statement {idx} "
-                            f"({st.op}) inside the A..C range is not part of "
-                            "the fused subgraph; the mint and the span "
-                            "disagree"
-                        )
                     self.island_ac_span[idx] = a_stmt.index
-                    for nm in st.names:
-                        produced[nm] = idx
+                    if st.op != "const":
+                        if st.op not in FUSED_COVERED_OPS:
+                            raise EncoderRunError(
+                                f"placement F layer {layer}: statement {idx} "
+                                f"({st.op}) inside the A..C range is not part "
+                                "of the fused subgraph; the mint and the span "
+                                "disagree"
+                            )
+                        span_ops[idx] = st
+                        for nm in st.names:
+                            produced[nm] = idx
+                # Package-input roots and live-out producers still execute
+                # on the runner (they feed the bundle's runtime inputs or
+                # later layers' fallback paths); the rest of the span is
+                # bundle-covered.
+                exec_set = set()
+
+                def add_exec_chain(name):
+                    producer_stmt = self.producer.get(name.strip())
+                    if producer_stmt is None:
+                        return
+                    if not (lo <= producer_stmt.index <= hi):
+                        return
+                    if producer_stmt.index in exec_set:
+                        return
+                    exec_set.add(producer_stmt.index)
+                    for token in producer_stmt.kwargs.values():
+                        for operand in self._operand_names(token):
+                            add_exec_chain(operand)
+
                 declared = {c_stmt.names[0]}
+                for seed in (c_stmt.kwargs["x"],
+                             c_stmt.kwargs["y"],
+                             sel_stmt.kwargs["a"]):
+                    add_exec_chain(seed)
+                live_out = {
+                    nm: consumers.get(nm, prod_idx)
+                    for nm, prod_idx in produced.items()
+                    if consumers.get(nm, prod_idx) > hi
+                    and nm not in declared
+                }
+                for nm in sorted(live_out):
+                    add_exec_chain(nm)
                 dead = sorted(
                     nm for nm in produced
                     if nm not in declared and nm not in consumers
+                    and produced[nm] not in exec_set
                 )
                 if dead:
                     raise EncoderRunError(
@@ -1115,21 +1148,21 @@ class EncoderRunner:
                         f"the A..C range are never consumed: {dead}; the "
                         "mint and the span disagree"
                     )
-                live_out = {
-                    nm: consumers.get(nm, prod_idx)
-                    for nm, prod_idx in produced.items()
-                    if consumers.get(nm, prod_idx) > hi
-                    and nm != c_stmt.names[0]
+                unresolved_live_out = {
+                    nm: consumers[nm] for nm in live_out
+                    if produced[nm] not in exec_set
                 }
-                if live_out:
+                if unresolved_live_out:
                     raise EncoderRunError(
                         f"placement F layer {layer}: values produced inside "
                         f"the A..C range are consumed after it: "
-                        f"{sorted(live_out.items())}; the mint and the span "
-                        "disagree"
+                        f"{sorted(unresolved_live_out.items())}; the mint "
+                        "and the span disagree"
                     )
+                for idx in exec_set:
+                    self.island_ac_exec.add(idx)
                 self.island.resident_bundles.add(
-                    f"island-attn-ac-L{layer:02d}"
+                    f"island-attn-ac-head-L{layer:02d}"
                 )
 
         oproj_w = re.compile(
@@ -1270,15 +1303,24 @@ class EncoderRunner:
             self.ensure(operand)
         self.execute(stmt)
 
-    def tensor(self, token: str) -> mx.array:
+    def tensor(self, token: str, consumer: "Statement | None" = None) -> mx.array:
         token = token.strip()
         self.ensure(token)
+        if token not in self.values and consumer is not None:
+            producer_stmt = self.producer.get(token)
+            raise EncoderRunError(
+                f"unresolved tensor {token!r} for consumer "
+                f"{consumer.index}:{consumer.op} (producer "
+                f"{producer_stmt.index if producer_stmt else '?'} done="
+                f"{getattr(producer_stmt, 'done', '?')})")
         if token in self.values:
             return self.values[token]
         if token in self.meta:
             value = self.meta[token]
             return mx.array(value)
-        raise EncoderRunError(f"unresolved tensor {token!r}")
+        raise EncoderRunError(
+            f"unresolved tensor {token!r} (producer done={self.producer.get(token.strip()).done if self.producer.get(token.strip()) else 'no-producer'}, "
+            f"producer index={self.producer.get(token.strip()).index if self.producer.get(token.strip()) else 'n/a'})")
 
     def scalar(self, token: str):
         """Host-side metadata (shapes, axes, perms, masks, epsilon, flags).
@@ -1380,6 +1422,7 @@ class EncoderRunner:
             "F" in self.placed
             and self.island_ac_span
             and stmt.index in self.island_ac_span
+            and stmt.index not in self.island_ac_exec
         ):
             stmt.done = True
             if stmt.index in self.island_ac:
@@ -1397,6 +1440,23 @@ class EncoderRunner:
 
         if "A" in self.placed and stmt.index in self.island_a:
             self._run_island_a(stmt)
+            return
+        if (
+            "F" in self.placed
+            and stmt.index in self.island_a
+            and stmt.index not in self.island_ac
+        ):
+            # Unminted layer under F: run the certified A/C islands so a
+            # layer-0-only mint gates end-to-end against full-AC pins.
+            self._run_island_a(stmt)
+            return
+        if (
+            "F" in self.placed
+            and stmt.index in self.island_c
+            and self.island_c[stmt.index][0] not in
+            set(self.island_ac.values())
+        ):
+            self._run_island_c(stmt)
             return
         if "B" in self.placed and stmt.index in self.island_b:
             self._run_island_b(stmt)
@@ -1662,7 +1722,7 @@ class EncoderRunner:
             fn = {"reduce_sum": mx.sum, "reduce_min": mx.min, "reduce_max": mx.max}[op]
             return fn(tensor(kwargs["x"]), axis=axes, keepdims=keep)
         if op in ("add", "sub", "mul"):
-            x, y = tensor(kwargs["x"]), tensor(kwargs["y"])
+            x, y = tensor(kwargs["x"], stmt), tensor(kwargs["y"], stmt)
             if x.dtype == mx.bool_ and y.dtype == mx.bool_:
                 if op != "mul":
                     raise EncoderRunError(f"bool {op}")
