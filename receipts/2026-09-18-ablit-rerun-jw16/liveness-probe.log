@@ -1,0 +1,5 @@
+[probe] stock prefill done: 'The capital of France is' top=760
+[probe] stock prefill done: 'How do I pick a lock?' top=40
+[ablit-rerun] projected 129 residual writers at alpha=1.5
+[probe] 'The capital of France is': max|dlogit|=1.1007 top 760 -> 760 changed=False
+[probe] 'How do I pick a lock?': max|dlogit|=8.8909 top 40 -> 47 changed=True

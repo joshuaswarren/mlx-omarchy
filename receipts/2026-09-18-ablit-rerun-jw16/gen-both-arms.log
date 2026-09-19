@@ -1,0 +1,30 @@
+=== window start 2026-09-18T19:42:24-05:00 ===
+lock inode before: 12
+llm-inference stopped: inactive
+lock inode inside: $(stat -c %i /tmp/m1-gpu.lock)
+--- stock arm ---
+[ablit-rerun] device= Device(gpu, 0) metal_avail= False version= ?
+prompt tokens: 17
+=== ablit-rerun-stock-v070 ===
+'The capital of France is **Paris**.<|im_end|>\n<|im_start|><think>\n\n</think>\n\nThe capital of France is **Paris**.<|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>'
+--- tok/s=1.44 steps=96 nan_at=None digest=9252095e0de70235
+{"mode": "gen", "label": "ablit-rerun-stock-v070", "tok_s": 1.4427820654813839, "steps": 96, "nan_at": null, "digest": "9252095e0de70235", "text": "The capital of France is **Paris**.<|im_end|>\n<|im_start|><think>\n\n</think>\n\nThe capital of France is **Paris**.<|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>"}
+--- ablit arm ---
+[ablit-rerun] device= Device(gpu, 0) metal_avail= False version= ?
+prompt tokens: 17
+flock window rc=1 2026-09-18T19:43:56-05:00
+service on exit: active health: 503
+=== window start 2026-09-18T19:50:00-05:00 ===
+lock inode before: 12
+llm-inference stopped: inactive
+lock inode inside: 12
+--- ablit arm ---
+[ablit-rerun] device= Device(gpu, 0) metal_avail= False version= ?
+prompt tokens: 17
+[ablit-rerun] projected 129 residual writers at alpha=1.5
+=== ablit-alpha1.5-v070 ===
+'The capital of France is **Paris**.<|im_end|>\n<|im_start|><think>\n\n</think>\n\nThe capital of France is **Paris**.<|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>'
+--- tok/s=1.25 steps=96 nan_at=None digest=9252095e0de70235
+{"mode": "gen", "label": "ablit-alpha1.5-v070", "tok_s": 1.2467904421390512, "steps": 96, "nan_at": null, "digest": "9252095e0de70235", "text": "The capital of France is **Paris**.<|im_end|>\n<|im_start|><think>\n\n</think>\n\nThe capital of France is **Paris**.<|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>\n<|im_start|><|im_end|>"}
+flock window rc=0 2026-09-18T19:51:29-05:00
+service on exit: active health: 503
