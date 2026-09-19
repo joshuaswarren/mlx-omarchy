@@ -31,21 +31,40 @@ that submits work through the affected scheduler patterns can leave a timeline v
 `[omarchy] Vulkan timeline counter failed to advance for 10000 ms (last observed=0,
 target=1)` and recovery refuses because the retained-batch set is empty.
 
-Status: **ROOT-CAUSED, runtime fix open (P1).** mlx-lm 0.31.3's server generation thread
-dies silently and every later request hangs forever (the reported ">180 s chat hang"; both
-`/v1/chat/completions` and `/v1/completions` hang — the chat-only framing was an artifact).
-872ae88 fails fast ("generation thread died") but the stall is identical: no upstream floor
-version exists. oMLX 0.6.4 hits the same stall in its own engine prefill on
+Status: **FIXED at c08cf2ed (branch timeline-stall-fix, v0.7.1 candidate).** Root cause:
+when the model graph ran inside an `async_eval` tape (mlx-lm BatchGenerator's
+batched-prefill → split → first-decode-step with a padded-batch cache offset array; the
+same shape in oMLX's Ministral-3-8B VLM prefill), the RoPE primitive's trig-argument gate
+read the offset scalar on the host mid-tape. The offset array carried the pass's
+async-eval event latch, whose only signaler is the owning pass's epilogue commit — still
+ahead of the readback on the call stack. `offset.item<int>()` blocked on that latch
+forever; the watchdog threw the timeline error above and the recovery ladder refused
+(correctly — the retained-batch set was empty because every retained submission had
+drained; there was no reservation leak). mlx-lm 0.31.3's server generation thread then
+died silently and every later request hung forever (the reported ">180 s chat hang"; both
+`/v1/chat/completions` and `/v1/completions` hang — the chat-only framing was an
+artifact). 872ae88 fails fast ("generation thread died") but the stall is identical: no
+upstream floor version exists. oMLX 0.6.4 hit the same stall in its own engine prefill on
 Ministral-3-8B. Threads, per-thread streams, and the chat-vs-completions split are all
 exonerated; single-sequence `stream_generate` escapes on both tested models. Deterministic
-main-thread repro (BatchGenerator on Qwen2.5-0.5B) and the full isolation ladder are in
+main-thread repro (`probe_bg.py`), the full isolation ladder, and the instrumented
+event-lifecycle trace that pinned the deadlock are in
 [the serving-hang receipt](../receipts/2026-09-19-mlxlm-server-hang-t6001-test-host.md).
 
-Until the runtime fix lands, the working serving configuration is degraded (P1): send
-mlx_lm.server requests with `"seed": <int>` (routes to `_serve_single`, no batching), or
-use oMLX on Qwen2.5-class graphs. On Qwen2.5-0.5B the oMLX engine measured 1.3–2.2x faster
-end-to-end on the two generation-heavy prompts (and slower than mlx_lm on a 2-token
-response, where fixed per-request costs dominate either stack).
+The fix: the gate's scalar path now mirrors its vector path — `settle()` schedules a
+still-unscheduled offset event-free, `synchronize()` proves the bytes are final, and the
+stale latch is detached before the read. Additionally, a failed `QueueSubmit` now
+publishes its reserved completion entry so later joins get the typed watchdog error
+instead of an unbounded `drained_value` join. Verification on t6001-test-host (fixed wheel
+`c08cf2ed`, GPU window discipline held): `probe_bg.py` clean ×3 (all three BatchGenerator
+thread variants per run, previously 3/3 deadlocks per run); `omarchy_primitive_tests`
+103/103 and `omarchy_runtime_tests` 41/41 from the branch; mlx_lm.server 0.31.3 batched
+serves 12/12 completions + 12/12 chat HTTP 200 (zero thread deaths, zero stalls — was
+000@300s on the first request); 872ae88 serves 12/12 chat; oMLX 0.6.4 Ministral serve 6/6
+requests with correct answers and zero prefill failures (was 3/3 prefill stalls);
+single-sequence control 143.6 tok/s (no regression against the 82–84 baseline); Parakeet
+pinned-reference E2E `match` with 104/104 emissions. The degraded P1 workaround (seeded
+requests → `_serve_single`) is no longer needed: batched serving works.
 
 ## Open portability gaps
 
