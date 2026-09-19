@@ -55,7 +55,7 @@ for arm in base cand; do
   ref=$([ "$arm" = base ] && echo "$BASE_COMMIT" || echo "$CAND_COMMIT")
   rm -rf "$W/pkg-$arm"; mkdir -p "$W/pkg-$arm"
   git archive "$ref" overlay/tools/coreml | tar -x -C "$W/pkg-$arm"
-  mv "$W/pkg-$arm/overlay/tools/coreml" "$W/pkg-$arm/coreml"
+  mv "$W/pkg-$arm/overlay/tools/coreml" "$W/pkg-$arm"
 done
 diff -rq "$W/pkg-base/coreml" "$W/pkg-cand/coreml" | sed 's/^/pkg-delta: /'
 
@@ -84,11 +84,11 @@ run_one () { # arm idx pkg
 }
 
 # warm-up each arm (excluded), then INTERLEAVED measured runs
-run_one base-warm "$W/pkg-base/coreml"
-run_one cand-warm "$W/pkg-cand/coreml"
+run_one base-warm "$W/pkg-base"
+run_one cand-warm "$W/pkg-cand"
 for i in $(seq 1 "$MEASURED"); do
-  run_one "base-$i" "$W/pkg-base/coreml"
-  run_one "cand-$i" "$W/pkg-cand/coreml"
+  run_one "base-$i" "$W/pkg-base"
+  run_one "cand-$i" "$W/pkg-cand"
 done
 
 python3 - "$W" "$MEASURED" <<'PYEOF'
