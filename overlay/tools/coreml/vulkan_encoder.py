@@ -685,6 +685,13 @@ class Statement:
 # preloads exactly the registered sites: the static defaults below, extended
 # at index time with every bundle the placed set can submit (the oproj
 # family registers island-oproj-L* per layer).
+# Ops the fused A+C bundle covers (receipt §6.1): anything else inside a
+# layer's A..C range is a named refusal, never a silent skip.
+FUSED_COVERED_OPS = frozenset((
+    "matmul", "pad", "reshape", "slice_by_index", "mul", "logical_not",
+    "select", "add", "softmax", "transpose",
+))
+
 RESIDENT_BUNDLES = (
     "island-attn-a-kt",
     "island-select-8head",
@@ -1055,8 +1062,7 @@ class EncoderRunner:
                 "covers A's programs"
             )
         if "F" in self.placed and self.island is not None:
-            a_first = {i: s for i, (s, _c) in
-                       ((i, (s, c)) for i, (s, c) in self.island_a.items())}
+            a_first = {v[0]: v[1] for v in self.island_a.values()}
             c_by_layer = {i: (o, s) for o, (i, s) in self.island_c.items()}
             b_by_layer = {i: s for i, s in self.island_b.values()}
             for layer, a_stmt in sorted(a_first.items()):
@@ -1069,6 +1075,14 @@ class EncoderRunner:
                 self.island_ac[a_stmt.index] = layer
                 self.island_ac_span = getattr(self, "island_ac_span", {})
                 for idx in range(lo, hi + 1):
+                    st = self.statements[idx]
+                    if st.op != "const" and st.op not in FUSED_COVERED_OPS:
+                        raise EncoderRunError(
+                            f"placement F layer {layer}: statement {idx} "
+                            f"({st.op}) inside the A..C range is not part of "
+                            "the fused subgraph; the mint and the span "
+                            "disagree"
+                        )
                     self.island_ac_span[idx] = a_stmt.index
                 self.island.resident_bundles.add(
                     f"island-attn-ac-L{layer:02d}"
@@ -1318,6 +1332,19 @@ class EncoderRunner:
     def _execute(self, stmt: Statement) -> None:
         if stmt.done:
             return
+        if (
+            "F" in self.placed
+            and self.island_ac_span
+            and stmt.index in self.island_ac_span
+        ):
+            stmt.done = True
+            if stmt.index in self.island_ac:
+                self._run_island_ac(stmt)
+                self.executed += 1  # this statement joins the pair count
+                self.ane_ops += 1
+            else:
+                self.executed += 1  # bundle-covered (incl. in-span consts)
+            return
         stmt.done = True
         if stmt.op == "const":
             self.eval_const(stmt)
@@ -1326,20 +1353,6 @@ class EncoderRunner:
 
         if "A" in self.placed and stmt.index in self.island_a:
             self._run_island_a(stmt)
-            return
-        if (
-            "F" in self.placed
-            and getattr(self, "island_ac_span", None)
-            and stmt.index in self.island_ac_span
-        ):
-            if stmt.index in self.island_ac:
-                self._run_island_ac(stmt)
-            else:
-                # Bundle-covered statement (mask chain, select, add,
-                # softmax, partner matmuls): produced on-device by the
-                # fused submit at this layer's A statement.
-                stmt.done = True
-                self.executed += 1
             return
         if "B" in self.placed and stmt.index in self.island_b:
             self._run_island_b(stmt)

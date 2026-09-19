@@ -47,15 +47,16 @@ def make_runner(tmp_path, placed, layers=2, bundles=("island-attn-ac-L00",)):
 
     for layer in range(layers):
         n = layer + 1
+        s = add(
+            f"attention_scores_{n}_cast_fp16", "matmul", (1, 8, 375, 749),
+            transpose_x="false", transpose_y="false", x="pos", y="q",
+        )
+        # MIL order (stmts 208-228): the mask chain consumes A's output.
         pad = add(f"var_pad{layer}", "pad", (1, 8, 375, 750))
         mask = add(f"matrix_bd_5_{layer}", "mul", (1, 8, 375, 375))
         sel = add(
             f"attention_mask_{n}_cast_fp16", "select", (1, 8, 375, 375),
             a="ninf", cond="var_373", b=mask.names[0],
-        )
-        s = add(
-            f"attention_scores_{n}_cast_fp16", "matmul", (1, 8, 375, 749),
-            transpose_x="false", transpose_y="false", x="pos", y="q",
         )
         content_stmt = add(
             f"matmul_{n}_cast_fp16", "matmul", (1, 8, 375, 375),
@@ -65,7 +66,7 @@ def make_runner(tmp_path, placed, layers=2, bundles=("island-attn-ac-L00",)):
             f"attn_output_{n}_cast_fp16", "matmul", (1, 8, 375, 128),
             transpose_x="false", transpose_y="false", x="probs", y="vh",
         )
-        assert pad.index < sel.index < s.index < content_stmt.index < out.index
+        assert s.index < pad.index < sel.index < content_stmt.index < out.index
         scores.append(s)
         contents.append(content_stmt)
         outs.append(out)
@@ -99,15 +100,10 @@ def test_f_without_minted_bundles_registers_nothing(tmp_path):
     assert r.island.resident_bundles == set(ve.RESIDENT_BUNDLES)
 
 
-@pytest.mark.xfail(reason=(
-    "synthetic graph places the mask chain before the A matmul; the real "
-    "MIL (stmts 207-241) places it after, where the span covers it. Align "
-    "the mini-graph with real MIL indexing when the layer-0 mint lands."
-), strict=True)
 def test_f_span_boundaries_are_exact(tmp_path):
     r = make_runner(
         tmp_path, placed=("F",), layers=2,
-        bundles=("island-attn-ac-L00", "island-attn-ac-L01"),
+        bundles=("island-attn-ac-L00",),
     )
     r._index_islands()
     span = r.island_ac_span
@@ -135,3 +131,17 @@ def test_default_ac_placement_registers_no_f(tmp_path):
     assert r.island_ac == {}
     assert not getattr(r, "island_ac_span", {})
     assert r.island.resident_bundles == set(ve.RESIDENT_BUNDLES)
+
+
+def test_f_unrelated_op_in_span_is_a_named_refusal(tmp_path):
+    r = make_runner(tmp_path, placed=("F",), layers=2,
+                    bundles=("island-attn-ac-L00",))
+    # An unrelated GPU op inside the A..C range: the mint and the span
+    # would disagree, so placement must refuse instead of silently
+    # skipping it.
+    conv = stmt(2, "var_conv_unrelated", "conv", (1, 8, 375, 375))
+    r.statements.insert(2, conv)
+    for i in range(3, len(r.statements)):
+        r.statements[i].index = i
+    with pytest.raises(Exception, match="not part of the fused subgraph"):
+        r._index_islands()
