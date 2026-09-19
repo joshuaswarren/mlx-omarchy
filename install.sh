@@ -10,7 +10,6 @@
 set -euo pipefail
 
 REPO=joshuaswarren/mlx-omarchy
-VERSION="${MLX_OMARCHY_VERSION:-v0.4.2}"
 PREFIX="${MLX_OMARCHY_HOME:-$HOME/.local/share/mlx-omarchy}"
 VENV="$PREFIX/venv"
 BIN="$HOME/.local/bin"
@@ -31,6 +30,19 @@ case "${1:-}" in
   "") ;;
   *) die "unknown option: $1 (supported: --ane, --uninstall)" ;;
 esac
+
+# MLX_OMARCHY_VERSION pins a release explicitly; otherwise the latest published
+# release is resolved from the GitHub API (unauthenticated limit: 60 req/h/IP).
+if [[ -n "${MLX_OMARCHY_VERSION:-}" ]]; then
+  VERSION=$MLX_OMARCHY_VERSION
+  say "Installing mlx-omarchy $VERSION (pinned by MLX_OMARCHY_VERSION)"
+else
+  say "Resolving the latest mlx-omarchy release"
+  VERSION=$(curl -fsSL "https://api.github.com/repos/$REPO/releases/latest" |
+    python3 -c 'import json, sys; print(json.load(sys.stdin)["tag_name"])' 2>/dev/null) ||
+    die "could not resolve the latest release from api.github.com (offline, or the unauthenticated 60 req/h limit is exhausted); install a known version with MLX_OMARCHY_VERSION=v0.7.1"
+  say "Installing mlx-omarchy $VERSION"
+fi
 
 # 1. Hardware and interpreter checks. The release wheel is cp314 linux_aarch64
 #    and is verified on the M1 (apple,t8103) only.
