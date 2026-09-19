@@ -54,6 +54,7 @@ class ResidentAneWorker:
         scratch: Path,
         deadline_ms: int = 20000,
         iterations: int = 1,
+        relay_bypass: bool | None = None,
     ):
         if not bundles:
             raise ResidentWorkerError("a resident session needs at least one bundle")
@@ -67,6 +68,22 @@ class ResidentAneWorker:
         self.scratch = Path(scratch)
         self.deadline_ms = deadline_ms
         self.iterations = iterations
+        # Relay-bypass: the worker subprocess is invoked with
+        # --relay-bypass so it becomes a pure splice(2) pump between
+        # its stdin/stdout and the resident socketpair. The runner
+        # speaks the resident's native frame protocol directly -- one
+        # `submit <name>\n` + `in <name> <len>\n` + bytes + `run\n`
+        # round trip, with no relay translation in the middle. Skips
+        # the relay's getline/stdin.read/fwrite round-trips per
+        # payload, which is the load-bearing part of the
+        # round-trip-latency-bound AC serve wall. Unset -> the
+        # MLX_OMARCHY_ANE_RELAY_BYPASS env var decides, so an A/B
+        # harness can flip the arm without touching the runner.
+        if relay_bypass is None:
+            relay_bypass = os.environ.get(
+                "MLX_OMARCHY_ANE_RELAY_BYPASS", ""
+            ).lower() not in ("", "0", "off", "false")
+        self.relay_bypass = relay_bypass
 
         # Counters in the shape the parity harness reports (section 42).
         self.submissions = 0
@@ -89,6 +106,7 @@ class ResidentAneWorker:
         self._banner: list[str] = []
         self._inbox = bytearray()
         self._batch_until: float | None = None
+        self._bypass_batch_base = 0
 
     # ------------------------------------------------------------ lifecycle
     def start(self) -> None:
@@ -97,7 +115,7 @@ class ResidentAneWorker:
         self.scratch.mkdir(parents=True, exist_ok=True)
         argv = [
             str(self.worker),
-            "--serve",
+            "--relay-bypass" if self.relay_bypass else "--serve",
             "--libane", str(self.libane),
             "--deadline-ms", str(self.deadline_ms),
             "--iterations", str(self.iterations),
@@ -114,29 +132,66 @@ class ResidentAneWorker:
             stderr=self._stderr,
         )
         self.worker_starts += 1
-        # One "resident bundle=..." line per bundle, then the load report.
+        # In relay-bypass mode the worker prints the same bundle reports
+        # and a "relay-bypass ready ..." banner; the resident's "loaded"
+        # line never reaches us (it's the worker's spawn success line,
+        # not part of the wire protocol). The pump then forwards the
+        # resident's wire bytes on the same stdin/stdout pipes; submit()
+        # speaks the resident's protocol directly.
         for _ in self.bundles:
             line = self._readline("bundle report")
             if not line.startswith("resident bundle="):
                 self._die(f"expected a resident bundle report, got {line!r}")
             self._banner.append(line)
             self.bundle_loads += 1
-        line = self._readline("load report")
-        if not line.startswith("resident loaded "):
-            self._die(f"expected the resident load report, got {line!r}")
-        self._banner.append(line)
-        self.device_program_loads = _loaded_programs(line)
+        if self.relay_bypass:
+            line = self._readline("relay-bypass ready")
+            if not line.startswith("relay-bypass ready"):
+                self._die(f"expected the relay-bypass ready banner, got {line!r}")
+            self._banner.append(line)
+        else:
+            line = self._readline("load report")
+            if not line.startswith("resident loaded "):
+                self._die(f"expected the resident load report, got {line!r}")
+            self._banner.append(line)
+            self.device_program_loads = _loaded_programs(line)
         self.start_ns = time.monotonic_ns() - started
 
     def close(self) -> dict:
         if self._process is None:
             raise ResidentWorkerError("no resident session is open")
         started = time.monotonic_ns()
-        self._write("quit")
-        line = self._readline("release report")
-        if not line.startswith("resident released "):
-            self._die(f"expected the resident release report, got {line!r}")
-        code = self._process.wait()
+        if self.relay_bypass:
+            # In bypass mode the resident's wire protocol is the
+            # session boundary. Send "close\n" on stdin, expect
+            # "released\n" on stdout (the pump will forward them),
+            # then wait for the worker subprocess to exit. The "close"
+            # is the final write, so stdin is half-closed immediately:
+            # the pump's sender sees EOF (and half-closes the resident
+            # socket) while the release token still travels back
+            # through the receiver. The worker's own status is checked
+            # via the exit code; the resident's released token is the
+            # protocol completion.
+            self._write_bytes(b"close\n")
+            self._process.stdin.close()
+            line = self._readline("release report")
+            if line != "released":
+                self._die(f"expected the resident released token, got {line!r}")
+        else:
+            self._write("quit")
+            line = self._readline("release report")
+            if not line.startswith("resident released "):
+                self._die(f"expected the resident release report, got {line!r}")
+        # "released" is the protocol completion: the resident has taken
+        # its programs off the device. The worker subprocess is a
+        # private child of this client, so its exit is bounded rather
+        # than awaited forever; a straggler pump is killed and the
+        # released token above stays the source of truth.
+        try:
+            code = self._process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            self._terminate()
+            code = 0
         self.close_ns = time.monotonic_ns() - started
         self._finish()
         if code != 0:
@@ -178,32 +233,60 @@ class ResidentAneWorker:
         if bundle not in self.bundles:
             raise ResidentWorkerError(f"unknown resident bundle {bundle!r}")
 
-        job = ["submit", bundle]
         in_bytes = 0
         ordered = list(inputs.items())
-        for name, payload in ordered:
-            job += ["--inline", f"{name}={len(payload)}"]
-            in_bytes += len(payload)
-        for name in outputs:
-            job += ["--emit", name]
-
-        request = bytearray(" ".join(job).encode() + b"\n")
         for _, payload in ordered:
-            request += payload
+            in_bytes += len(payload)
+
+        if self.relay_bypass:
+            # Resident's wire protocol directly. The pump splices
+            # these bytes between the runner and the resident with no
+            # parsing: one "submit <name>\n" header, an "in <name>
+            # <len>\n" frame per input followed by its raw bytes, a
+            # "run\n" terminator, and a trailing "\n" (matches the
+            # existing submit() contract; the resident reads it but
+            # ignores). The resident returns "iter\n" once per
+            # iteration (consumed as a no-op here), one "out <name>
+            # <len>\n" + bytes frame per produced output, then
+            # "done\n".
+            request = bytearray()
+            request += f"submit {bundle}\n".encode()
+            for name, payload in ordered:
+                request += f"in {name} {len(payload)}\n".encode()
+                request += payload
+            request += b"run\n"
+        else:
+            job = ["submit", bundle]
+            for name, payload in ordered:
+                job += ["--inline", f"{name}={len(payload)}"]
+            for name in outputs:
+                job += ["--emit", name]
+
+            request = bytearray(" ".join(job).encode() + b"\n")
+            for _, payload in ordered:
+                request += payload
 
         started = time.monotonic_ns()
         self._write_bytes(bytes(request))
         write_ns = time.monotonic_ns() - started
         results: dict[str, bytes] = {}
         out_bytes = 0
+        report_line = ""
         while True:
             line = self._readline(f"job report for {tag}")
+            if line == "iter":
+                continue
             if line.startswith("out "):
                 _, name, length = line.split(" ", 2)
                 payload = self._read_exact(int(length), f"output {name}")
                 results[name] = payload
                 out_bytes += len(payload)
                 continue
+            if line.startswith("failed:"):
+                if "deadline" in line:
+                    self.timeouts += 1
+                self._die(f"resident submit {tag} ({bundle}) failed: {line}")
+            report_line = line
             break
         elapsed = time.monotonic_ns() - started
         read_ns = elapsed - write_ns
@@ -211,31 +294,43 @@ class ResidentAneWorker:
         self.submissions += 1
         self.exec_ns += elapsed
         self.input_bytes += in_bytes
-        # The worker's own job report carries its internal split: elapsed_ms
-        # covers recv+stage+exec+read+send-back inside the child; stage_ms is
-        # its input staging share and save_ms its output retrieval share.
+        # The worker / resident's own report carries its internal
+        # split: in bypass mode the resident's "done\n" carries no
+        # fields, so elapsed_ms/stage_ms/save_ms are unavailable here
+        # -- only the client's own elapsed_ns / write_ns / read_ns
+        # split. The non-bypass mode still parses the relay's
+        # "job status=N elapsed_ms=... stage_ms=... save_ms=..."
+        # fields.
         report_fields = {}
-        for token in line.replace("\n", " ").split():
-            key, sep, value = token.partition("=")
-            if sep and key in ("status", "elapsed_ms", "stage_ms", "save_ms"):
-                report_fields[key] = value
+        if not self.relay_bypass:
+            for token in report_line.replace("\n", " ").split():
+                key, sep, value = token.partition("=")
+                if sep and key in ("status", "elapsed_ms", "stage_ms", "save_ms"):
+                    report_fields[key] = value
         record = {
             "tag": tag,
             "bundle": bundle,
             "elapsed_ns": elapsed,
             "write_ns": write_ns,
             "read_ns": read_ns,
-            "report": line,
+            "report": report_line,
             "input_bytes": in_bytes,
             "output_bytes": out_bytes,
             **report_fields,
         }
         self.log.append(record)
 
-        if not line.startswith("job status=0"):
-            if "deadline" in line:
-                self.timeouts += 1
-            self._die(f"resident submit {tag} ({bundle}) failed: {line}")
+        if self.relay_bypass:
+            if report_line != "done":
+                self._die(
+                    f"resident submit {tag} ({bundle}) returned "
+                    f"{report_line!r} instead of 'done'"
+                )
+        else:
+            if not report_line.startswith("job status=0"):
+                if "deadline" in report_line:
+                    self.timeouts += 1
+                self._die(f"resident submit {tag} ({bundle}) failed: {report_line}")
         missing = [name for name in outputs if name not in results]
         if missing:
             self._die(
@@ -258,6 +353,16 @@ class ResidentAneWorker:
             raise ResidentWorkerError("no resident session is open")
         if deadline_ms <= 0:
             raise ResidentWorkerError("a batch scope needs a positive deadline")
+        if self.relay_bypass:
+            # The batch scope was always parent-side bookkeeping (the
+            # stock AneWorker::open_batch sends nothing to the
+            # resident); in bypass mode the client IS the parent, so
+            # the scope is the client's own absolute deadline. The
+            # resident never saw batch frames in either path.
+            self._batch_until = time.monotonic() + deadline_ms / 1000
+            self._bypass_batch_base = self.submissions
+            self.batch_opens += 1
+            return
         self._write(f"batch {deadline_ms}")
         line = self._readline("batch open report")
         if not line.startswith("batch opened "):
@@ -271,6 +376,11 @@ class ResidentAneWorker:
             raise ResidentWorkerError("no resident session is open")
         if self._batch_until is None:
             raise ResidentWorkerError("no batch scope is open")
+        if self.relay_bypass:
+            rounds = self.submissions - self._bypass_batch_base
+            self._batch_until = None
+            self.batch_rounds += rounds
+            return rounds
         self._write("batch-end")
         line = self._readline("batch close report")
         if not line.startswith("batch closed "):

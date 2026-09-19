@@ -463,12 +463,13 @@ TEST_CASE("resident session misuse is rejected, not guessed at") {
   std::vector<AneBundle> bundles = {toy_bundle()};
   REQUIRE(worker.open(bundles).status == AneWorkerStatus::Completed);
   CHECK_THROWS_AS(worker.open(bundles), std::invalid_argument);
-  // An out-of-range bundle index is a named protocol failure, not a
-  // silent dispatch to the wrong programs.
-  auto report = worker.submit(7, inputs);
-  CHECK(report.status == AneWorkerStatus::DeviceFailed);
-  CHECK(report.detail.find("unknown request") != std::string::npos);
-  CHECK(!worker.resident());
+  // An out-of-range bundle index is a named API failure, not a silent
+  // dispatch to the wrong programs. The bounds check happens here, in
+  // the parent, before any wire bytes go out -- the resident would
+  // also reject it as "unknown request", but the parent catches the
+  // shape error first and refuses the submit outright.
+  CHECK_THROWS_AS(worker.submit(7, inputs), std::invalid_argument);
+  CHECK(worker.resident());
 }
 
 TEST_CASE("an unclosed resident session does not outlive its worker") {
@@ -678,4 +679,50 @@ TEST_CASE("batch scope misuse is rejected, not guessed at") {
   CHECK_THROWS_AS(worker.close_batch(), std::invalid_argument);
   auto release = worker.close();
   CHECK(release.status == AneWorkerStatus::Completed);
+}
+
+TEST_CASE("session names drive the wire, not manifest names") {
+  // The relay-bypass runner speaks the caller's session keys (the
+  // --bundle CLI names), which need not match the bundles' internal
+  // manifest names. The first submit of the EncWallRelayBypass A/B
+  // died exactly here: the child resolved the wire name against the
+  // manifest namespace, rejected the request, and exited while the
+  // runner was still writing the payload. The wire namespace is the
+  // session namespace end to end or this test fails.
+  FakeDevice::behavior = FakeDevice::Behavior::ReportState;
+  AneWorkerOptions options;
+  options.deadline = std::chrono::milliseconds(4000);
+  options.iterations = 1;
+  AneWorker worker([] { return std::unique_ptr<AneDevice>(new FakeDevice); },
+                   options);
+  AneBundle first = toy_bundle();
+  first.manifest.name = "manifest-name-a";
+  AneBundle second = second_bundle();
+  second.manifest.name = "manifest-name-b";
+  CHECK_THROWS_AS(
+      worker.open({first, second}, {"only-one"}),
+      std::invalid_argument);
+  CHECK_THROWS_AS(
+      worker.open({first, second}, {"", "x"}),
+      std::invalid_argument);
+  CHECK_THROWS_AS(
+      worker.open({first, second}, {"dup", "dup"}),
+      std::invalid_argument);
+  auto opened = worker.open({first, second}, {"cli-a", "cli-b"});
+  REQUIRE(opened.status == AneWorkerStatus::Completed);
+  for (int round = 0; round < 4; ++round) {
+    const uint8_t marker = static_cast<uint8_t>(0x50 + round);
+    std::map<std::string, AneWorker::Buffer> inputs;
+    inputs["a"] = marked_input(marker);
+    inputs["b"] = marked_input(marker);
+    std::map<std::string, AneWorker::Buffer> outputs;
+    auto report = worker.submit(
+        static_cast<size_t>(round % 2), inputs, &outputs);
+    REQUIRE(report.status == AneWorkerStatus::Completed);
+    REQUIRE(outputs.count("y") == 1);
+    CHECK(outputs["y"][1] == marker);
+    CHECK(!worker.quarantined());
+  }
+  auto closed = worker.close();
+  REQUIRE(closed.status == AneWorkerStatus::Completed);
 }
