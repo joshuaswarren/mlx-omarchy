@@ -45,7 +45,7 @@ else
 fi
 
 # 1. Hardware and interpreter checks. The release wheel is cp314 linux_aarch64
-#    and is verified on the M1 (apple,t8103) only.
+#    and is verified on M1 (t8103), M1 Max (t6001) and M2 Max (t6021).
 if (( ANE )); then
   [[ -c /dev/accel/accel0 ]] || die "ANE installation requires /dev/accel/accel0."
   command -v sudo >/dev/null || die "ANE installation requires sudo."
@@ -53,8 +53,9 @@ if (( ANE )); then
   getent group render >/dev/null || die "ANE installation requires the render group."
 fi
 [[ "$(uname -m)" == aarch64 ]] || die "mlx-omarchy runs on Apple Silicon (aarch64); this machine is $(uname -m)."
-if [[ -r /proc/device-tree/compatible ]] && ! tr '\0' ' ' </proc/device-tree/compatible | grep -q 'apple,t8103'; then
-  echo "warning: this is not an Apple M1 (t8103). Only the M1 is verified; later chips are untested." >&2
+if [[ -r /proc/device-tree/compatible ]] &&
+   ! tr '\0' ' ' </proc/device-tree/compatible | grep -qE 'apple,t(8103|6001|6021)'; then
+  echo "warning: this SoC is not one mlx-omarchy is verified on (M1 t8103, M1 Max t6001, M2 Max t6021); it is untested here." >&2
 fi
 command -v python3 >/dev/null || die "python3 is missing."
 python3 -c 'import sys; sys.exit(sys.version_info[:2] != (3, 14))' \
