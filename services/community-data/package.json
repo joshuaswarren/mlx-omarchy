@@ -4,7 +4,9 @@
   "scripts": {
     "test": "bun test test/unit",
     "smoke": "bun test/smoke.ts",
-    "lint": "oxlint ."
+    "lint": "oxlint .",
+    "check:schema": "python3 scripts/check_schema_identity.py",
+    "deploy": "wrangler deploy && python3 scripts/check_schema_identity.py"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260831.1",

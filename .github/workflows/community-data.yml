@@ -73,3 +73,13 @@ jobs:
           fi
           git commit -m "community data snapshot $(date -u +%Y-%m-%dT%H:%M:%SZ) from $BASE_URL"
           git push origin community-data
+
+      - name: Check deployed schema identity
+        # Runs last so the mirror always completes, but still fails the job
+        # loudly. A stale worker deploy rejects every current-collector
+        # submission with a 422 and is otherwise silent -- the endpoint keeps
+        # serving reads, so nothing else here would notice. Exits 2 when the
+        # live schema_sha256 / fields_sha256 differ from the bundled schema.
+        run: |
+          python3 services/community-data/scripts/check_schema_identity.py \
+            --url "$BASE_URL"
