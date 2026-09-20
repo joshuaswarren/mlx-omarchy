@@ -391,8 +391,15 @@ def direct_control(args, python: str, mode: str) -> dict:
                                     max_tokens=args.max_tokens,
                                     rounds=args.rounds)
     compile(snippet, f"<direct-{mode}>", "exec")  # fail fast on syntax errors
-    out = subprocess.run([python, "-c", snippet], capture_output=True, text=True,
-                         timeout=args.timeout * (args.rounds + 2))
+    try:
+        out = subprocess.run([python, "-c", snippet], capture_output=True, text=True,
+                             timeout=args.timeout * (args.rounds + 2))
+    except subprocess.TimeoutExpired as e:
+        err = (e.stderr or b"").decode(errors="replace") if isinstance(e.stderr, bytes) else (e.stderr or "")
+        tb = err.find("Traceback")
+        detail = err[tb:] if tb >= 0 else err
+        return {"error": f"subprocess timeout after {args.timeout * (args.rounds + 2)}s; "
+                         f"partial stdout={len(e.stdout or b'')}B; {detail.strip()[-500:]}"}
     for line in out.stdout.splitlines():
         if line.startswith("{"):
             return json.loads(line)
