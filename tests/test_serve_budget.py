@@ -59,6 +59,21 @@ class EstimateTests(unittest.TestCase):
         self.assertGreaterEqual(est.total, int(1 * GiB) + 1_000_000 * 1_000_000)
         self.assertGreater(est.total, 2 * GiB)
 
+    def test_peak_override_keeps_workspace_floor(self):
+        # max(peak, weights+kv) alone would drop the activation margin at
+        # large contexts; the unmeasured floor must survive until a
+        # measured context-specific peak exists (the schema carries none).
+        weights = int(1 * GiB)
+        est = budget.estimate_required(memory(1.0, kv_per_tok=1_000_000, peak=2 * GiB),
+                                       1_000_000)
+        expected_floor = max(int(0.25 * weights), budget.WORKSPACE_MIN_BYTES)
+        self.assertGreaterEqual(est.workspace, expected_floor)
+        self.assertGreaterEqual(est.total,
+                                weights + 1_000_000_000 + expected_floor)
+        # and a generous peak still wins when it exceeds floor math
+        est2 = budget.estimate_required(memory(16.0, kv_per_tok=1024, peak=40), 1024)
+        self.assertEqual(est2.total, int(40 * GiB))
+
     def test_meminfo_nonpositive_and_empty_rejected(self):
         with self.assertRaises(budget.BudgetError):
             budget.parse_meminfo("MemAvailable:   -5 kB\n")
@@ -138,14 +153,63 @@ class AdmissionTests(unittest.TestCase):
                                    state="resident")
             with unittest.mock.patch.object(budget, "mem_available",
                                             lambda: int(16 * GiB)):
-                # resident already lives inside MemAvailable: only pending counts
-                result = budget.admit(int(13 * GiB), home)
+                # resident WITHOUT a verified floor keeps its full bytes
+                # held (conservative): 16 - 2 safety - 5 - 1 = 8 GiB usable
+                result = budget.admit(int(8 * GiB), home)
                 self.assertTrue(result.fits)
-                self.assertEqual(result.reserved, int(1 * GiB))
+                self.assertEqual(result.reserved, int(6 * GiB))
+                over = budget.admit(int(9 * GiB), home)
+                self.assertFalse(over.fits)
             budget.set_reservation_state("laya", "resident", home)
             self.assertEqual(budget.load_reservations(home)["laya"]["state"], "resident")
             with self.assertRaises(budget.BudgetError):
                 budget.set_reservation("x", 1, "", home, state="ghost")
+
+    def test_resident_holds_only_unmaterialized_headroom(self):
+        # laya peak 3 GiB, weights (1 GiB) verified materialized and already
+        # inside MemAvailable: only the 2 GiB future KV/workspace may be held.
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            budget.set_reservation("laya", int(3 * GiB), "peak", home, state="pending")
+            with unittest.mock.patch.object(budget, "mem_available",
+                                            lambda: int(16 * GiB)):
+                # pending: full 3 GiB held
+                self.assertEqual(budget.admit(int(9 * GiB), home).reserved, int(3 * GiB))
+                budget.set_reservation_state("laya", "resident", home,
+                                             resident_floor_bytes=int(1 * GiB))
+                # resident: only peak-minus-floor held
+                result = budget.admit(int(9 * GiB), home)
+                self.assertEqual(result.reserved, int(2 * GiB))
+                self.assertTrue(result.fits)
+                # concurrent-peak refusal: chat + laya-at-peak + safety > MemAvailable
+                over = budget.admit(int(13 * GiB), home)
+                self.assertFalse(over.fits)
+
+    def test_resident_without_floor_stays_fully_reserved(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            budget.set_reservation("laya", int(3 * GiB), "peak", home)
+            budget.set_reservation_state("laya", "resident", home)
+            with unittest.mock.patch.object(budget, "mem_available",
+                                            lambda: int(16 * GiB)):
+                # no verified baseline: conservative full hold, never overadmit
+                self.assertEqual(budget.admit(int(1 * GiB), home).reserved, int(3 * GiB))
+
+    def test_resident_floor_validation(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            budget.set_reservation("laya", int(3 * GiB), "peak", home)
+            with self.assertRaises(budget.BudgetError):
+                budget.set_reservation_state("laya", "resident", home,
+                                             resident_floor_bytes=int(4 * GiB))
+            with self.assertRaises(budget.BudgetError):
+                budget.set_reservation("x", int(1 * GiB), "", home,
+                                       resident_floor_bytes=-1)
+            (home / budget.RESERVATIONS_FILE).write_text(json.dumps(
+                {"bad": {"bytes": 100, "note": "", "state": "resident",
+                         "resident_floor_bytes": -4}}))
+            with self.assertRaises(budget.BudgetError):
+                budget.load_reservations(home)
 
     def test_concurrent_reservation_writes_stay_consistent(self):
         import threading
