@@ -82,16 +82,22 @@ def test_dead_worker_is_not_detected(fake_worker):
 
 
 def test_mention_in_a_command_line_is_not_a_worker(tmp_path):
-    # What pgrep -f counts and this helper must not: a shell that merely
-    # names the worker. `:` keeps sh from exec'ing away into sleep.
+    # What pgrep -f counts and this helper must not: a process that merely
+    # names the worker in its arguments. A `sh -c` decoy raced: sh execs
+    # its last command, and /proc/<pid>/cmdline reads back empty mid-exec,
+    # which failed this test whenever it ran after the fake-worker tests
+    # (4/4 in a full run, 0/4 alone). A Python child never execs away, so
+    # its argv keeps the mention and argv[0] is the interpreter.
     proc = subprocess.Popen(
-        ["/bin/sh", "-c", f": {liveness.WORKER_NAME}; sleep 30"],
+        [sys.executable, "-c", "import time; time.sleep(30)",
+         liveness.WORKER_NAME],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
     try:
-        cmdline = Path(f"/proc/{proc.pid}/cmdline").read_bytes().decode()
-        assert liveness.WORKER_NAME in cmdline, "decoy lost its mention"
+        assert _wait(lambda: liveness.WORKER_NAME
+                     in Path(f"/proc/{proc.pid}/cmdline").read_bytes().decode()), \
+            "decoy lost its mention"
         assert proc.pid not in _pids()
     finally:
         proc.kill()

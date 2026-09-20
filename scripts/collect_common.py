@@ -142,10 +142,16 @@ class Redactor:
                            r"(?![\w.-])", re.IGNORECASE),
                 self._replace("hostname", "[host]"),
             ))
+        # The user name is PII inside a hyphenated token too
+        # (`/tmp/steve-build`, `build-steve/out`), so `-` is not a boundary
+        # for it. The hostname rule above keeps `-` as a boundary on
+        # purpose: Omarchy's default hostname is `omarchy`, and every
+        # `mlx-omarchy-*` / `omarchy-*` token would otherwise turn into
+        # `[host]`.
         if self.username and len(self.username) >= 2:
             rules.append((
-                re.compile(r"(?<![\w.-])" + re.escape(self.username) +
-                           r"(?![\w.-])", re.IGNORECASE),
+                re.compile(r"(?<![\w.])" + re.escape(self.username) +
+                           r"(?![\w.])", re.IGNORECASE),
                 self._replace("username", "[user]"),
             ))
         return rules
