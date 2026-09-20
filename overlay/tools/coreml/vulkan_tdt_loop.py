@@ -230,7 +230,41 @@ def _loop_glsl() -> str:
 
             float best_v = 0.0f;
             uint best_i = 0u;
-            for (uint j = t; j < 8198u; j += {_LT}u) {{
+            for (uint j = t; j < 8192u; j += {2 * _LT}u) {{
+                uint j2 = j + {_LT}u;
+                precise float acc1 = 0.0f;
+                precise float acc2 = 0.0f;
+                for (uint k = 0u; k < 640u; ++k) {{
+                    uint row = k * 8198u;
+                    acc1 = acc1 + float(s_relu[k])
+                              * float(joint[row + j]);
+                    acc2 = acc2 + float(s_relu[k])
+                              * float(joint[row + j2]);
+                }}
+                float lg = float(float16_t(acc1)
+                                 + joint[640u * 8198u + j]);
+                if (j < 8193u) {{
+                    if ((j == t) || ((lg != lg) && (best_v == best_v))
+                        || (lg > best_v)) {{
+                        best_v = lg;
+                        best_i = j;
+                    }}
+                }} else {{
+                    s_dval[j - 8193u] = lg;
+                }}
+                float lg2 = float(float16_t(acc2)
+                                  + joint[640u * 8198u + j2]);
+                if (j2 < 8193u) {{
+                    if (((lg2 != lg2) && (best_v == best_v))
+                        || (lg2 > best_v)) {{
+                        best_v = lg2;
+                        best_i = j2;
+                    }}
+                }} else {{
+                    s_dval[j2 - 8193u] = lg2;
+                }}
+            }}
+            for (uint j = t + {8 * _LT}u; j < 8198u; j += {8 * _LT}u) {{
                 precise float acc = 0.0f;
                 for (uint k = 0u; k < 640u; ++k) {{
                     acc = acc + float(s_relu[k])
@@ -239,7 +273,7 @@ def _loop_glsl() -> str:
                 float lg = float(float16_t(acc)
                                  + joint[640u * 8198u + j]);
                 if (j < 8193u) {{
-                    if ((j == t) || ((lg != lg) && (best_v == best_v))
+                    if (((lg != lg) && (best_v == best_v))
                         || (lg > best_v)) {{
                         best_v = lg;
                         best_i = j;
