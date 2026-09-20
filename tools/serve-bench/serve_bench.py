@@ -190,19 +190,22 @@ def wait_ready(port: int, name: str, deadline_s: int) -> float:
     return -1.0  # unreachable
 
 
-def discover_model_name(port: int, hint: str | None, hf_id: str) -> str:
+def discover_model_name(port: int, hint: str | None, hf_id: str) -> str | None:
     if not hint:
         return hf_id
     try:
         with urllib.request.urlopen(f"http://{HOST}:{port}/v1/models", timeout=10) as r:
             ids = [m.get("id", "") for m in json.loads(r.read()).get("data", [])]
         match = [i for i in ids if hint.lower() in i.lower()]
-        picked = match[0] if match else "default"
+        if not match:
+            log(f"[discover] NO model matching hint {hint!r} in {ids}")
+            return None
+        picked = match[0]
         log(f"[discover] model_name={picked} from {ids[:6]}")
         return picked
     except Exception as e:
         log(f"[discover] fallback default ({e})")
-        return "default"
+        return None
 
 
 def chat_once(port: int, body: dict, timeout: int) -> dict:
@@ -342,6 +345,10 @@ def run_leg(leg: str, args, python: str, results: dict) -> None:
     try:
         load_s = wait_ready(port, leg, args.ready_deadline)
         model_name = discover_model_name(port, hints.get(leg), args.hf_id)
+        if not model_name:
+            results["leg_errors"][leg] = f"model discovery failed for hint {hints.get(leg)!r}"
+            log(f"[leg-failed] {leg}: {results['leg_errors'][leg]}")
+            return
         warm = []
         for _ in range(args.warmup_rounds):
             warm.append(chat_once(port, {"model": model_name,
