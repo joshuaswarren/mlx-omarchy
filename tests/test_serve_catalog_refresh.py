@@ -414,22 +414,17 @@ class SchemaAndDataTests(unittest.TestCase):
         cls.data = json.loads(CATALOG_PATH.read_text(encoding="utf-8"))
         cls.module = catalog_module
 
-    @unittest.expectedFailure  # pending schema owner: extension key + quant null
     def test_bundled_catalog_validates(self):
         self.module.validate_catalog(self.data)
 
-    @unittest.expectedFailure  # pending schema owner: extension key + quant null
     def test_validate_file_accepts_bundled_catalog(self):
         self.module.validate_file(CATALOG_PATH)
 
     def test_recommended_rule_enforced(self):
-        entry = json.loads(json.dumps(self.data["models"][0]))
-        entry["id"] = "violator"
-        entry["recommended"] = True  # generation untested
-        doc = json.loads(json.dumps(self.data))
-        doc["models"] = [entry]
+        entry = seed_entry(entry_id="violator")
+        entry["recommended"] = True  # generation untested in the fixture
         with self.assertRaises(self.module.CatalogError):
-            self.module.validate_catalog(doc)
+            self.module.validate_catalog(seed_catalog(entry))
 
     def test_bad_metadata_rejected(self):
         cases = []
