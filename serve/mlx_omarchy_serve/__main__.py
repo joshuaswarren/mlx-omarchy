@@ -243,7 +243,8 @@ def disk_need_bytes(resolved: Resolved) -> int | None:
 
 def plan_lines(resolved: Resolved, context_tokens: int, backend: str,
                module: str | None, host: str, port: int,
-               weights_override: int | None, home: Path | None) -> tuple[list[str], budget.Admission | None, bool]:
+               weights_override: int | None, home: Path | None,
+               prompt_cache_size: int = 0) -> tuple[list[str], budget.Admission | None, bool]:
     lines: list[str] = []
     est = None
     admission = None
@@ -271,6 +272,18 @@ def plan_lines(resolved: Resolved, context_tokens: int, backend: str,
             f"cover {context_tokens} tokens; use --context <= "
             f"{budget.DEFAULT_CONTEXT_TOKENS} or a catalog entry with KV facts"
         )
+    cache_extra = 0
+    if backend == "mlx-lm" and prompt_cache_size > 0:
+        # Retained prompt-cache entries hold their own KV (each <= the
+        # capped request total). The admission must reserve them BEFORE
+        # launch; without KV facts they cannot be budgeted at all.
+        if not est.kv_known:
+            raise budget.BudgetError(
+                f"--prompt-cache-size {prompt_cache_size} needs KV facts to "
+                "budget the retained caches; this entry has unknown "
+                "KV-per-token"
+            )
+        cache_extra = est.kv * prompt_cache_size
     lines.append(f"model:        {resolved.repo or resolved.local_path}")
     if resolved.revision:
         lines.append(f"revision:     {resolved.revision} (pinned)")
@@ -282,6 +295,15 @@ def plan_lines(resolved: Resolved, context_tokens: int, backend: str,
         lines.append(f"kv cache:     {est.kv / GiB:.2f} GiB at {context_tokens} tokens")
     else:
         lines.append(f"kv cache:     UNKNOWN -> flat {budget.UNKNOWN_KV_MARGIN / GiB:.2f} GiB margin included")
+    if cache_extra:
+        # hold the retained caches inside the estimate: raise the total and
+        # the visible margin by exactly the cache KV
+        est = budget.Estimate(est.weights, est.kv, est.kv_known,
+                              est.workspace + cache_extra, est.peak_override,
+                              est.total + cache_extra)
+        lines.append(f"prompt cache: +{cache_extra / GiB:.2f} GiB "
+                     f"({prompt_cache_size} retained entries x KV at "
+                     f"{context_tokens} tokens)")
     label = "measured peak" if est.peak_override else "workspace margin, unmeasured estimate"
     lines.append(f"margin:       {est.workspace / GiB:.2f} GiB ({label})")
     disk_ok = True
@@ -434,6 +456,10 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         p.add_argument("--weights-gib", type=parse_weights_gib, default=None, dest="weights_gib",
                        help="explicit checkpoint size in GiB for off-catalog/local models "
                             "(positive, finite; the FULL artifact)")
+        p.add_argument("--prompt-cache-size", type=int, default=0,
+                       help="mlx-lm prompt cache entries; 0 (default) keeps the "
+                            "aggregate KV bound at the admitted context, N raises "
+                            "the worst case to (N+1) x context and is budgeted")
 
     p_recommend = sub.add_parser("recommend", help="show curated fits and the pick")
     common(p_recommend, with_target=False)
@@ -450,10 +476,6 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     p_serve.add_argument("--port", type=int, default=8080)
     p_serve.add_argument("--yes", action="store_true",
                          help="noninteractive explicit opt-in; requires an explicit target")
-    p_serve.add_argument("--prompt-cache-size", type=int, default=0,
-                         help="mlx-lm prompt cache entries; 0 (default) keeps the "
-                              "aggregate KV bound at the admitted context, N raises "
-                              "the worst case to (N+1) x context")
 
     p_cat = sub.add_parser("catalog", help="catalog list/status/refresh")
     csub = p_cat.add_subparsers(dest="catalog_command", required=True)
@@ -557,9 +579,15 @@ def do_plan(args, cat, home) -> tuple[Resolved, list[str], budget.Admission | No
         if reason is not None and resolved.named_explicitly:
             warn(f"{resolved.entry['id']}: {reason}; you named it explicitly, proceeding "
                  "with an unqualified target")
+    cache_size = max(int(getattr(args, "prompt_cache_size", 0) or 0), 0)
+    if cache_size > 0 and backend != "mlx-lm":
+        raise budget.BudgetError(
+            "--prompt-cache-size applies only to the mlx-lm backend"
+        )
     lines, admission, disk_ok = plan_lines(
         resolved, context, backend, module, args.host, args.port,
         args.weights_gib if args.weights_gib else None, home,
+        prompt_cache_size=cache_size,
     )
     return resolved, lines, admission, disk_ok, backend, module, context
 
@@ -624,12 +652,6 @@ def cmd_serve(args, cat, home) -> int:
 
     argv = server_argv(backend, module, model_dir, args.host, args.port, context,
                        prompt_cache_size=max(int(getattr(args, "prompt_cache_size", 0) or 0), 0))
-    if backend == "mlx-lm" and int(getattr(args, "prompt_cache_size", 0) or 0) > 0:
-        warn(
-            f"prompt cache {args.prompt_cache_size}: worst-case resident KV is "
-            f"({args.prompt_cache_size} + 1) x the admitted context of {context} "
-            "tokens; the admission budget covers ONE context only"
-        )
     child_env = dict(os.environ)
     if backend == "mlx-lm":
         child_env[cap_shim.LIMIT_ENV] = str(context)

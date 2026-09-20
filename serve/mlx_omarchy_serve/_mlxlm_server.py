@@ -22,6 +22,7 @@ of silently dropping the cap.
 
 from __future__ import annotations
 
+import inspect
 import os
 import sys
 
@@ -57,6 +58,9 @@ def check_pinned(server_module) -> str:
     )
 
 
+EXPECTED_TOKENIZE_SIGNATURE = ("self", "tokenizer", "request", "args")
+
+
 def install(server_module, limit: int) -> None:
     generator = server_module.ResponseGenerator
     original = getattr(generator, "_tokenize", None)
@@ -66,20 +70,35 @@ def install(server_module, limit: int) -> None:
             "does not know this mlx-lm version and refuses to launch without "
             "the total-context cap"
         )
+    # Enforced for the pinned version AND any pin bypass: if the internals
+    # moved, the cap cannot be proven to hold and the launch refuses.
+    try:
+        params = tuple(inspect.signature(original).parameters)
+    except (TypeError, ValueError):
+        params = ()
+    if params != EXPECTED_TOKENIZE_SIGNATURE:
+        raise RuntimeError(
+            "unexpected _tokenize signature "
+            f"{params} != {EXPECTED_TOKENIZE_SIGNATURE}; this shim does not "
+            "know this mlx-lm build and refuses to launch without the "
+            "verified total-context cap"
+        )
 
     def capped(self, tokenizer, request, args):
         result = original(self, tokenizer, request, args)
         prompt = result[0]
-        max_tokens = getattr(args, "max_tokens", 0)
-        if max_tokens is None:
-            max_tokens = 0
-        if isinstance(max_tokens, bool) or not isinstance(max_tokens, int):
+        # Upstream semantics (verified in the pinned source): the HTTP
+        # handler resolves max_tokens from the body or the CLI default
+        # (an int, default 512) and validates int >= 0 BEFORE queuing, so
+        # None or negatives never legitimately reach this boundary.
+        # 0 generates nothing (bounded); -1 (infinite) is handler-blocked.
+        max_tokens = getattr(args, "max_tokens", None)
+        if max_tokens is None or isinstance(max_tokens, bool) \
+                or not isinstance(max_tokens, int) or max_tokens < 0:
             raise ValueError(
-                f"request rejected: max_tokens must be a non-negative int, "
-                f"got {type(max_tokens).__name__}"
+                "request rejected: max_tokens must be a non-negative int at "
+                f"the cap boundary, got {max_tokens!r}"
             )
-        if max_tokens < 0:
-            raise ValueError("request rejected: max_tokens must be >= 0")
         total = len(prompt) + max_tokens
         if total > limit:
             raise ValueError(

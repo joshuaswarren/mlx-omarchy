@@ -10,10 +10,17 @@ max_completion_tokens alias at :1169, validation at :1232):
 - both max-token aliases are capped identically;
 - prompt + max_tokens == limit passes; limit + 1 is refused with the
   budget message BEFORE generation (no tokens processed);
-- the batch path under concurrency 1 serves concurrent clients serially;
-- the prompt-cache path is exercised (cache disabled by default: honest
-  cached_tokens=0; an explicit cache size re-enables hits at a documented
-  (cache + 1) x context worst case).
+- the direct /v1/completions text path generates under the same cap;
+- boundary + 1 is refused on BOTH max-token aliases;
+- concurrency is proven by a source-linked assertion: the recorded launch
+  argv pins --decode-concurrency 1 --prompt-concurrency 1 and the
+  INSTALLED pinned server source wires those flags to the BatchGenerator
+  batch sizes, so at most one request is active and the aggregate equals
+  the admitted context (the concurrent-clients test is a smoke, not the
+  seriality proof);
+- the prompt cache is disabled (cached_tokens asserted 0). Cache-enabled
+  configurations are a separate documented mode and are NOT exercised or
+  claimed by these tests.
 
 Skipped unless the prepared venv exists (never touches the network):
   python3 -m venv --system-site-packages /tmp/mlxlm-accept-venv
@@ -22,8 +29,10 @@ Skipped unless the prepared venv exists (never touches the network):
       mlx_lm-0.31.3-py3-none-any.whl
 """
 
+import inspect
 import json
 import os
+import socket
 import subprocess
 import sys
 import tempfile
@@ -40,7 +49,14 @@ MODEL_REPO_DIR = (
 )
 CONTEXT_LIMIT = 64
 PROMPT = "Say hi in one word."
-PORT = int(os.environ.get("MLXLM_ACCEPTANCE_PORT", "8977"))
+def free_port() -> int:
+    # Overlapping suite runs on one box must not fight over a fixed port.
+    with socket.socket() as sock:
+        sock.bind(("127.0.0.1", 0))
+        return sock.getsockname()[1]
+
+
+PORT = free_port()
 
 
 def model_snapshot() -> Path | None:
@@ -95,14 +111,16 @@ class PinnedHTTPAcceptance(unittest.TestCase):
         env = {**os.environ,
                "PYTHONPATH": str(REPO_ROOT / "serve"),
                "MLX_OMARCHY_SERVE_CONTEXT_LIMIT": str(CONTEXT_LIMIT)}
+        cls.launch_argv = [
+            str(VENV / "bin/python"), "-m", "mlx_omarchy_serve._mlxlm_server",
+            "--model", str(model_snapshot()),
+            "--host", "127.0.0.1", "--port", str(PORT),
+            "--max-tokens", "16",
+            "--decode-concurrency", "1",
+            "--prompt-concurrency", "1",
+            "--prompt-cache-size", "0"]
         cls.server = subprocess.Popen(
-            [str(VENV / "bin/python"), "-m", "mlx_omarchy_serve._mlxlm_server",
-             "--model", str(model_snapshot()),
-             "--host", "127.0.0.1", "--port", str(PORT),
-             "--max-tokens", "16",
-             "--decode-concurrency", "1",
-             "--prompt-concurrency", "1",
-             "--prompt-cache-size", "0"],
+            cls.launch_argv,
             env=env, stdout=cls.log, stderr=cls.log,
         )
         import time
@@ -142,6 +160,27 @@ class PinnedHTTPAcceptance(unittest.TestCase):
         code, body = self.chat(8, alias="max_completion_tokens")
         self.assertEqual(code, 200, body)
 
+    def test_direct_text_completions_generates_under_cap(self):
+        request = urllib.request.Request(
+            f"http://127.0.0.1:{PORT}/v1/completions",
+            data=json.dumps({"model": self.MODEL_ID,
+                             "prompt": "The sky is",
+                             "max_tokens": 6}).encode(),
+            headers={"Content-Type": "application/json"},
+        )
+        with urllib.request.urlopen(request, timeout=300) as response:
+            body = json.loads(response.read())
+        self.assertTrue(body["choices"][0]["text"] is not None)
+        self.assertGreater(body["usage"]["prompt_tokens"], 0)
+
+    def test_alias_boundary_plus_one_refused(self):
+        prompt_tokens = self.chat(1)[1]["usage"]["prompt_tokens"]
+        code, body = self.chat(CONTEXT_LIMIT - prompt_tokens + 1,
+                               alias="max_completion_tokens")
+        self.assertNotEqual(code, 200)
+        message = body["error"] if isinstance(body, dict) else str(body)
+        self.assertIn("admitted context budget", message)
+
     def test_exact_boundary_passes(self):
         prompt_tokens = self.chat(1)[1]["usage"]["prompt_tokens"]
         code, body = self.chat(CONTEXT_LIMIT - prompt_tokens)
@@ -162,7 +201,29 @@ class PinnedHTTPAcceptance(unittest.TestCase):
         code, body = self.chat(4)
         self.assertEqual(code, 200, body)
 
-    def test_concurrent_clients_served_serially(self):
+    def test_concurrency_bound_proven_by_source_and_argv(self):
+        # Seriality is NOT inferred from two 200s. The proof chain:
+        # (a) the recorded launch argv pinned both concurrencies to 1;
+        self.assertIn("--decode-concurrency", self.launch_argv)
+        self.assertEqual(self.launch_argv[
+            self.launch_argv.index("--decode-concurrency") + 1], "1")
+        self.assertIn("--prompt-concurrency", self.launch_argv)
+        self.assertEqual(self.launch_argv[
+            self.launch_argv.index("--prompt-concurrency") + 1], "1")
+        # (b) the INSTALLED pinned server source wires exactly those flags
+        # to the batch generator's completion/prefill batch sizes, so the
+        # active batch is at most one request and the aggregate KV equals
+        # one capped request.
+        site = next((VENV / "lib").glob("python3*/site-packages/mlx_lm/server.py"))
+        source = site.read_text(encoding="utf-8")
+        self.assertIn(
+            "completion_batch_size=self.cli_args.decode_concurrency", source)
+        self.assertIn(
+            "prefill_batch_size=self.cli_args.prompt_concurrency", source)
+
+    def test_concurrent_clients_both_served_within_budget(self):
+        # Smoke only: both concurrent clients are served inside the cap.
+        # Seriality itself is proven by the source-linked assertion above.
         import threading
 
         results = {}

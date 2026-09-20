@@ -62,9 +62,12 @@ class CapTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.gen._tokenize(None, FakeRequest(2000), FakeArgs(0))
 
-    def test_missing_max_tokens_treated_as_zero(self):
-        result = self.gen._tokenize(None, FakeRequest(1024), FakeArgs(None))
-        self.assertEqual(len(result[0]), 1024)
+    def test_missing_max_tokens_rejected_not_coerced(self):
+        # Upstream always resolves an int before queuing (body or CLI
+        # default 512, validated int >= 0); a None at the boundary is
+        # misuse and must be rejected, never silently treated as 0.
+        with self.assertRaises(ValueError):
+            self.gen._tokenize(None, FakeRequest(1024), FakeArgs(None))
 
     def test_rejections_carry_no_partial_generation(self):
         with self.assertRaises(ValueError):
@@ -119,6 +122,39 @@ class CapTests(unittest.TestCase):
         gen = RecordingServer.ResponseGenerator()
         with self.assertRaises(ValueError):
             gen._tokenize(None, FakeRequest(600), FakeArgs(0))  # 600 > 512
+
+
+class SignatureTests(unittest.TestCase):
+    def test_wrong_signature_refused_even_with_bypass(self):
+        # A pin bypass must not imply a supported cap: if the hooked
+        # internals moved, the launch refuses regardless of the override.
+        import types
+
+        class Shifted:
+            __version__ = "0.99.0"
+
+            @staticmethod
+            def _tokenize(tokenizer, request, args):  # lost self
+                return ([], [], [], None)
+
+        module = types.SimpleNamespace(ResponseGenerator=Shifted,
+                                       __version__="0.99.0")
+        with unittest.mock.patch.dict(os.environ, {cap.UNPINNED_ENV: "1"}):
+            with self.assertRaises(RuntimeError) as ctx:
+                cap.install(module, limit=1024)
+        self.assertIn("signature", str(ctx.exception))
+
+    def test_matching_signature_installs_under_bypass(self):
+        import types
+
+        server = fresh_server()
+        module = types.SimpleNamespace(ResponseGenerator=server.ResponseGenerator,
+                                       __version__="0.99.0")
+        with unittest.mock.patch.dict(os.environ, {cap.UNPINNED_ENV: "1"}):
+            cap.install(module, limit=1024)
+        gen = module.ResponseGenerator()
+        with self.assertRaises(ValueError):
+            gen._tokenize(None, FakeRequest(2000), FakeArgs(0))
 
 
 class PinCheckTests(unittest.TestCase):
