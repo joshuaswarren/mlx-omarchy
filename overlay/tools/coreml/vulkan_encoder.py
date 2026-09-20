@@ -1731,6 +1731,55 @@ class EncoderRunner:
             {"attn_output_1": (out_stmt.shape, "fp16")},
         )
         self.values[out_stmt.names[0]] = results["attn_output_1"]
+        # Per-intermediate matched comparison: device outputs vs the exact
+        # certified GPU computation of the same stage, on the same device,
+        # same inputs. Bit-level: fp16 viewed as uint16 (ULP), plus
+        # explicit +inf/-inf/NaN mask agreement. Dumped for the window
+        # record when MLX_OMARCHY_F_DUMP is set.
+        if dump_dir:
+            q_t = self.tensor(content_stmt.kwargs["x"])
+            k_t = self.tensor(content_stmt.kwargs["y"])
+            cond_b = self.tensor(sel_stmt.kwargs["cond"])
+            fill_b = self.tensor(sel_stmt.kwargs["a"])
+            scores_ref = mx.matmul(q_t, mx.transpose(k_t, (0, 1, 3, 2)))
+            masked_ref = mx.where(cond_b, fill_b, bd)
+            add_ref = scores_ref + masked_ref
+            smax_ref = mx.softmax(add_ref, axis=-1)
+            attn_ref = mx.matmul(head["smax"],
+                                 mx.transpose(self.tensor(
+                                     out_stmt.kwargs["y"]), (0, 1, 3, 2)))
+            import json as _json
+            report = {}
+            # The head bundle emits only smax (intermediates bd/masked/
+            # scores/add stay in-package); per-intermediate isolation runs
+            # through the truncated-dispatch prefix bundles.
+            for stage, dev, ref in (
+                ("softmax", head["smax"], smax_ref),
+                ("attn-out", results["attn_output_1"], attn_ref),
+            ):
+                dev16 = np.asarray(dev).astype(np.float16)
+                ref16 = np.asarray(ref).astype(np.float16)
+                d32 = dev16.astype(np.float32)
+                r32 = ref16.astype(np.float32)
+                diff = np.abs(d32 - r32)
+                report[stage] = {
+                    "bit_equal": bool(np.array_equal(
+                        dev16.view(np.uint16), ref16.view(np.uint16))),
+                    "mismatch_count": int((dev16.view(np.uint16)
+                                           != ref16.view(np.uint16)).sum()),
+                    "max_abs_finite": float(diff[np.isfinite(diff)].max())
+                    if np.isfinite(diff).any() else None,
+                    "dev_inf": int(np.isinf(d32).sum()),
+                    "ref_inf": int(np.isinf(r32).sum()),
+                    "dev_neginf": int(np.isneginf(d32).sum()),
+                    "ref_neginf": int(np.isneginf(r32).sum()),
+                    "dev_nan": int(np.isnan(d32).sum()),
+                    "ref_nan": int(np.isnan(r32).sum()),
+                }
+            (dump_dir / "per-intermediate.json").write_text(
+                _json.dumps(report, indent=2))
+            print(f"F-DUMP per-intermediate: {_json.dumps(report)}",
+                  flush=True)
         for covered in (content_stmt, out_stmt):
             covered.done = True
         self.executed += 3
