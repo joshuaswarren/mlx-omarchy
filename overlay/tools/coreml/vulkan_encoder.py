@@ -1671,9 +1671,9 @@ class EncoderRunner:
         self.values[scores_stmt.names[0]] = relpos
         scores_stmt.done = True
         self.gpu_ops += 1
-        # 2. the model scales the sliced mask columns (mul after slice);
-        #    scaling the full width pre-slice is elementwise-identical, and
-        #    the package slices internally.
+        # 2. the head takes a CONTIGUOUS pre-sliced bd input: slice the
+        #    rel-pos scores on GPU and apply the model's mask scale
+        #    (var_371, elementwise after slice — identical values).
         bd_name = sel_stmt.kwargs["b"].strip()
         scale_name = None
         for key in ("y", "x"):
@@ -1683,24 +1683,39 @@ class EncoderRunner:
             operand_stmt = self.producer.get(operand.strip())
             if operand_stmt is not None and operand_stmt.op == "const":
                 scale_name = operand.strip()
+        # The certified chain is a REBLOCKING, not a plain column slice:
+        # pad 749->750, reshape [1,8,750,375], slice [1,8,749,375],
+        # reshape [1,8,375,749], slice [1,8,375,375], then the var_371
+        # scale. Mirror it element-exactly on GPU.
+        padded = mx.pad(relpos, [(0, 0), (0, 0), (0, 0), (0, 1)])
+        r1 = mx.reshape(padded, (1, 8, 750, 375))
+        r2 = r1[:, :, :749, :]
+        r3 = mx.reshape(r2, (1, 8, 375, 749))
+        bd = mx.contiguous(r3[:, :, :, :375])
+        if scale_name is not None:
+            scale = self.scalar(scale_name)
+            bd = mx.contiguous(
+                (bd * mx.array(scale, mx.float16)).astype(mx.float16))
         head_inputs = {
+            # DISCRIMINATOR (explicitly scoped, Main-approved): finite
+            # fill -65504 instead of -inf bits. NOT a fix: acceptance of
+            # any clamp requires proved valid-domain equivalence + fatal
+            # pins. This arm isolates the -inf datapath from the rest.
             "a_fill": mx.contiguous(
-                mx.broadcast_to(self.tensor(sel_stmt.kwargs["a"]),
-                                ISLAND_B_SHAPE)
+                mx.broadcast_to(
+                    mx.array(np.float16(-65504), mx.float16)
+                    if os.environ.get("MLX_OMARCHY_F_FINITE_FILL") == "1"
+                    else self.tensor(sel_stmt.kwargs["a"]),
+                    ISLAND_B_SHAPE)
             ),
+            "bd": bd,
             "cond": mx.contiguous(
                 mx.broadcast_to(self.tensor(sel_stmt.kwargs["cond"]),
                                 ISLAND_B_SHAPE)
             ),
             "q": self.tensor(content_stmt.kwargs["x"]),
             "k": self.tensor(content_stmt.kwargs["y"]),
-            "relpos": mx.contiguous(relpos),
         }
-        if scale_name is not None:
-            scale = self.scalar(scale_name)
-            head_inputs["relpos"] = mx.contiguous(
-                (relpos * mx.array(scale, mx.float16)).astype(mx.float16)
-            )
         head = self.island.submit(
             f"island-attn-ac-head-L{layer:02d}", f"L{layer:02d}-AC",
             head_inputs,
