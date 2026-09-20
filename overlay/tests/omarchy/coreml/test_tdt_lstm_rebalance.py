@@ -21,6 +21,7 @@ exactly-onto coverage of the item mapping and bit-exactness of every
 carrier.
 """
 
+import re
 import unittest
 
 import numpy as np
@@ -30,10 +31,113 @@ _GATES = 4
 _ITEMS = _LANES * _GATES
 _THREADS = 1024
 
+try:
+    from _bootstrap import _TOOLS  # plain-script execution
+except ImportError:  # package discovery (omarchy.coreml.*)
+    from ._bootstrap import _TOOLS  # noqa: F401
+
+from coreml.vulkan_tdt_loop import LOOP_WORKGROUP_MEMORY_BYTES, _loop_glsl
+
 
 def _thread_items(t):
     """Items the rebalanced kernel assigns to thread ``t``."""
     return [p for p in (t, t + _THREADS, t + 2 * _THREADS) if p < _ITEMS]
+
+
+_TYPE_BYTES = {"float": 4, "float16_t": 2, "uint": 4, "int": 4}
+
+
+def _rendered_shader():
+    """The real shader source the fork compiles (no GPU needed to render)."""
+    return _loop_glsl()
+
+
+def _declared_arrays(src):
+    """Parse actual threadgroup declarations: name -> (type, elements)."""
+    pairs = re.findall(
+        r"threadgroup\s+(\S+)\s+(\w+)\[(\d+)\];", src)
+    return {name: (typ, int(n)) for typ, name, n in pairs}
+
+
+def _guard_holds(src):
+    """Code-linked checks: (ok, reason) against the REAL rendered shader."""
+    src = re.sub(r"\s+", " ", src)
+    if "for (uint p = t; p < 2560u; p += 1024u)" not in src:
+        return False, "thread mapping loop bound/stride changed"
+    chains = src.find("for (uint p = t; p < 2560u")
+    pairing = src.find("for (uint lane = t; lane < 640u; lane += 1024u)", chains)
+    if chains < 0 or pairing < 0:
+        return False, "chains or pairing phase missing"
+    barrier = src.find("threadgroup_barrier(mem_flags::mem_threadgroup);", chains)
+    if not (chains < barrier < pairing):
+        return False, "staging barrier between chains and pairing missing"
+    writes = (
+        "s_relu[lane] = pr;", "s_bval[lane] = float(pr);",
+        "s_bidx[lane] = floatBitsToUint(float(pr));", "s_h1[lane] = float(pr);",
+    )
+    for w in writes:
+        if w not in src[chains:pairing]:
+            return False, f"carrier write missing from chains phase: {w}"
+    reads = (
+        "float16_t pr0 = s_relu[lane];",
+        "float16_t pr1 = float16_t(s_bval[lane]);",
+        "float16_t pr2 = float16_t( uintBitsToFloat(s_bidx[lane]));",
+        "float16_t pr3 = float16_t(s_h1[lane]);",
+    )
+    for r in reads:
+        if r not in src[pairing:]:
+            return False, f"carrier read missing from pairing phase: {r}"
+    h1_read = src.find("float16_t pr3 = float16_t(s_h1[lane]);", pairing)
+    h1_write = src.find("s_h1[lane] = float(h1);", pairing)
+    if not (0 <= h1_read < h1_write):
+        return False, "s_h1 carrier read must precede the h1 store"
+    return True, "mapping, staging barrier, carriers, and h1 order all present"
+
+
+class RenderedShaderGuard(unittest.TestCase):
+    """Code-linked guard over the REAL rendered kernel (no GPU required).
+
+    These tests import the module and render ``_loop_glsl()`` — the exact
+    source the fork compiles — so reverting the kernel, breaking the
+    thread mapping, dropping the staging barrier, or changing a carrier
+    fails here instead of only on device.
+    """
+
+    def test_rendered_shader_carries_rebalance(self):
+        ok, reason = _guard_holds(_rendered_shader())
+        self.assertTrue(ok, reason)
+
+    def test_guard_is_load_bearing(self):
+        """Failing-first: each targeted mutation breaks the guard."""
+        src = _rendered_shader()
+        chains = src.find("for (uint p = t; p < 2560u")
+        pairing = src.find("for (uint lane = t; lane < 640u; lane += 1024u)", chains)
+        barrier = src.find(
+            "threadgroup_barrier(mem_flags::mem_threadgroup);", chains)
+        mutations = {
+            "staging barrier removed":
+                src[:barrier] + src[barrier + len(
+                    "threadgroup_barrier(mem_flags::mem_threadgroup);"):],
+            "mapping bound shrunk": src.replace("p < 2560u", "p < 2048u", 1),
+            "gate 2 carrier write dropped":
+                src.replace("s_bidx[lane] = floatBitsToUint(float(pr));", "", 1),
+        }
+        for name, mutated in mutations.items():
+            with self.subTest(mutation=name):
+                ok, reason = _guard_holds(mutated)
+                self.assertFalse(ok, f"guard failed to detect: {name}: {reason}")
+
+    def test_budget_derived_from_declarations(self):
+        """Byte sum comes from the shader's own declarations, not constants."""
+        arrays = _declared_arrays(_rendered_shader())
+        self.assertEqual(
+            set(arrays),
+            {"s_hidden", "s_cell", "s_h1", "s_a", "s_pj", "s_relu",
+             "s_bval", "s_bidx", "s_dval", "s_ctl"},
+        )
+        total = sum(n * _TYPE_BYTES[typ] for typ, n in arrays.values())
+        self.assertLessEqual(total, LOOP_WORKGROUP_MEMORY_BYTES)
+        self.assertLessEqual(LOOP_WORKGROUP_MEMORY_BYTES, 32768)
 
 
 class LstmRebalanceTest(unittest.TestCase):
@@ -92,22 +196,9 @@ class LstmRebalanceTest(unittest.TestCase):
                 v.view(np.uint16),
             )
 
-    def test_threadgroup_budget_unchanged(self):
-        """Rebalance stages through existing arrays: no shared-memory growth."""
-        # The kernel's declared threadgroup arrays are unchanged; assert the
-        # actual array byte sum and that the kernel's conservative requirement
-        # constant (LOOP_WORKGROUP_MEMORY_BYTES = 28768, used by
-        # device_blockers) stays at or above it and within the M1 32 KiB
-        # workgroup limit, so no device silently loses the loop path.
-        actual = {
-            "s_hidden": 1280 * 4, "s_cell": 1280 * 4, "s_h1": 640 * 4,
-            "s_a": 1280 * 2, "s_pj": 640 * 2, "s_relu": 640 * 2,
-            "s_bval": 1024 * 4, "s_bidx": 1024 * 4,
-            "s_dval": 8 * 4, "s_ctl": 16 * 4,
-        }
-        self.assertEqual(sum(actual.values()), 26208)
-        self.assertLessEqual(sum(actual.values()), 28768)
-        self.assertLessEqual(28768, 32768)
+
+if __name__ == "__main__":
+    unittest.main(verbosity=2)
 
 
 if __name__ == "__main__":
