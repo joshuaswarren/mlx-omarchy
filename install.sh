@@ -193,6 +193,14 @@ for laya_file in __init__.py model.py sequence.py api.py server.py convert.py qu
   curl -fsSL "https://raw.githubusercontent.com/$REPO/$VERSION/serve/mlx_omarchy_laya/$laya_file" \
     -o "$LAYA_PKG/$laya_file"
 done
+# Bonsai2 packed-runtime server (serve/mlx_omarchy_bonsai2/), same release
+# tag; catalog entries route to it via serve.backend == "module".
+BONSAI2_PKG="$PREFIX/mlx_omarchy_bonsai2"
+mkdir -p "$BONSAI2_PKG"
+for bonsai2_file in __init__.py packed.py loader.py server.py; do
+  curl -fsSL "https://raw.githubusercontent.com/$REPO/$VERSION/serve/mlx_omarchy_bonsai2/$bonsai2_file" \
+    -o "$BONSAI2_PKG/$bonsai2_file"
+done
 cat >"$BIN/mlx-omarchy-serve" <<EOF
 #!/usr/bin/env bash
 # Serve CLI: recommend/plan/serve/catalog; memory-admitted, approve-first.
