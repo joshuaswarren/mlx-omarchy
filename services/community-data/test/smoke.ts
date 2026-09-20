@@ -195,7 +195,7 @@ scenario("full multi-chunk submission publishes and serves", async () => {
 });
 
 scenario("e2e kind initiates and publishes (regression: kind CHECK dropped the row)", async () => {
-  const archive = makeArchive(1, 2);
+  const archive = makeArchive(1, 9);
   const e2ePayload = { ...payload(), kind: "omarchy-mac-e2e", test_id: "smoke", install_path: "encrypted", asahi_image: "Minimal BTRFS", encryption: true, boot_separate: true, overall: "PASS" };
   const init = await initiate(archive, { kind: "omarchy-mac-e2e", payload: e2ePayload });
   expect(init.res.status === 200, `initiate ${init.res.status}: ${JSON.stringify(init.body)}`);
