@@ -62,5 +62,27 @@ class PhaseSplitSourceGuard(unittest.TestCase):
         self.assertNotIn(" break;", joint)
 
 
+
+
+class SyntheticScopeGuard(unittest.TestCase):
+    """Pins the zero-emission synthetic instrument's coverage limits.
+
+    The synthetic sweep exercises blank decisions only.  Emission,
+    recurrent-state and blank-skip/end coverage lives in the decisive
+    mode (real captured inputs, 104 emissions, full-state compare).
+    """
+
+    def test_synthetic_scope_markers_present_in_rendered_source(self):
+        from coreml.vulkan_tdt_loop import _loop_glsl
+        src = _loop_glsl()
+        # emission path exists in the kernel (control writes emissions)
+        self.assertIn("emissions[c * 3 + 0]", src)
+        # recurrent pj state export exists
+        self.assertIn("state[i] = float(s_pj[i]);", src)
+        # blank skip/end machinery exists (frame advance + run gate)
+        self.assertIn("s_ctl[0] = s_ctl[0] + adv;", src)
+        self.assertIn("if (s_ctl[8] == 0) { break; }", src)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
