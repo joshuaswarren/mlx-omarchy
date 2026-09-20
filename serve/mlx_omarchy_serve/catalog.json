@@ -289,7 +289,9 @@
         "min_mem_gib_basis": "ceil(weights_bytes * 1.25 / 2^30); static weights floor, not a measured peak",
         "kv_basis": "kv_bytes_per_token = 2 (K+V) x 10 full-attention layers (40/4) x 2 kv heads x 256 head_dim x 2 bytes (bf16), from the pinned config; GDN layers carry fixed recurrent state, not a growing cache; MTP excluded",
         "variant": "bf16",
-        "model_architecture": "Qwen3_5MoeForConditionalGeneration"
+        "model_architecture": "Qwen3_5MoeForConditionalGeneration",
+        "residency": "Distill lane manifest (agent/distill-moe-enablement @ 2ed9db4a, header-level from the pinned snapshot): loader drops vision+MTP = 2,582,424,032 B (2.41 GiB) on the mlx-lm text path, so text-resident weights are 69,321,354,504 B (64.56 GiB) while weights_bytes/size_bytes stay at the full 71,903,778,536 B disk artifact (conservative for admission, exact for download).",
+        "gdn_state": "Fixed recurrent state, not a growing cache: ssm 60.0 MiB (fp32) + conv 1.4 MiB; KV 20,480 B/token over the 10 full-attention layers."
       },
       "serve": null
     },
