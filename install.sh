@@ -31,6 +31,19 @@ case "${1:-}" in
   *) die "unknown option: $1 (supported: --ane, --uninstall)" ;;
 esac
 
+# 1. Hardware and interpreter checks. The release wheel is cp314 linux_aarch64
+#    and is verified on M1 (t8103), M1 Max (t6001) and M2 Max (t6021).
+#    The ANE gate runs BEFORE any network access: a missing device is a
+#    local fact and must refuse the install without depending on the
+#    GitHub API (rate-limited runners otherwise see the release-resolution
+#    error instead of the device refusal).
+if (( ANE )); then
+  [[ -c /dev/accel/accel0 ]] || die "ANE installation requires /dev/accel/accel0."
+  command -v sudo >/dev/null || die "ANE installation requires sudo."
+  command -v systemd-tmpfiles >/dev/null || die "ANE installation requires systemd-tmpfiles."
+  getent group render >/dev/null || die "ANE installation requires the render group."
+fi
+
 # MLX_OMARCHY_VERSION pins a release explicitly; otherwise the latest published
 # release is resolved from the GitHub API (unauthenticated limit: 60 req/h/IP).
 if [[ -n "${MLX_OMARCHY_VERSION:-}" ]]; then
@@ -42,15 +55,6 @@ else
     python3 -c 'import json, sys; print(json.load(sys.stdin)["tag_name"])' 2>/dev/null) ||
     die "could not resolve the latest release from api.github.com (offline, or the unauthenticated 60 req/h limit is exhausted); install a known version with MLX_OMARCHY_VERSION=v0.7.1"
   say "Installing mlx-omarchy $VERSION"
-fi
-
-# 1. Hardware and interpreter checks. The release wheel is cp314 linux_aarch64
-#    and is verified on M1 (t8103), M1 Max (t6001) and M2 Max (t6021).
-if (( ANE )); then
-  [[ -c /dev/accel/accel0 ]] || die "ANE installation requires /dev/accel/accel0."
-  command -v sudo >/dev/null || die "ANE installation requires sudo."
-  command -v systemd-tmpfiles >/dev/null || die "ANE installation requires systemd-tmpfiles."
-  getent group render >/dev/null || die "ANE installation requires the render group."
 fi
 [[ "$(uname -m)" == aarch64 ]] || die "mlx-omarchy runs on Apple Silicon (aarch64); this machine is $(uname -m)."
 if [[ -r /proc/device-tree/compatible ]] &&
