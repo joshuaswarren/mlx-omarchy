@@ -352,10 +352,26 @@ def state_fingerprint(cache):
                     "v16": h(values) if values is not None else None}})
     return out
 
+def assert_fresh_prefix(cache, ref_state, ref_offset, tag):
+    # Per-layer: offsets AND bytes must equal the fresh-prefix
+    # reference (heterogeneous multimodal cache lists may carry
+    # non-text layers whose offsets legitimately differ from the
+    # text prefix length).
+    st = state_fingerprint(cache)
+    offs_ok = all(e["offset"] == r["offset"] for e, r in zip(st, ref_state))
+    bytes_ok = all(e["k16"] == r["k16"] and e["v16"] == r["v16"]
+                   for e, r in zip(st, ref_state))
+    if not (offs_ok and bytes_ok):
+        raise SystemExit(f"{{tag}}: cache != fresh prefix: offsets_ok={{offs_ok}} "
+                         f"bytes_ok={{bytes_ok}} state={{json.dumps(st)[:400]}}")
+    return {{"offsets_ok": offs_ok, "bytes_ok": bytes_ok}}
+
 rounds = []
 warm_ids = []
 proofs = None
 warm_prefix_ids_ok = None
+trim_counts = None
+ref_offset = None
 if MODE == "d1c":
     # Cold-cache rounds: fresh cache + full prefill every round.
     # Within-leg id equality across rounds is the determinism test under
@@ -367,56 +383,31 @@ if MODE == "d1c":
                        "n": len(ids),
                        "ids_sha16": hashlib.sha256(json.dumps(ids).encode()).hexdigest()[:16]}})
 elif MODE == "d1w":
-    # Server-replicated warm-cache rounds: one cache; before each timed
-    # round, trim the generated tokens off the cache so it holds the
-    # prompt prefix minus the last token (which enters the first decode
-    # step) -- the steady state of mlx_lm.server's prompt_cache fetch
-    # path (server.py:962-976). trim_prompt_cache/KVCache.trim remove BY
-    # count, in place.
-    # PROOF (Main gate): before every timed round, the cache state must
-    # be byte-identical (per-layer keys/values hashes) to a FRESH
-    # prefill of prompt[:-1], with offset == len(prompt)-1 on every
-    # layer. Also proved for the warmup-trimmed state once.
-    fresh = make_prompt_cache(model)
-    model(mx.array([prompt_ids[:-1]]), cache=fresh)
-    mx.eval([c.state for c in fresh])
-    ref_state = state_fingerprint(fresh)
+    # Server-replicated warm rounds WITHOUT trim. Source-proven server
+    # mechanism (models/cache.py:1674 fetch_nearest_cache shorter-key
+    # branch + server.py:962-976): the stored prefix entry is deepcopied
+    # untrimmed and only the remaining suffix is prefetched; out11's
+    # server log shows steady rounds at "Prompt processing progress:
+    # 1/1". Replicate: prefill prompt[:-1] once into a pristine master
+    # cache (untimed, like the server's stored entry), then per round
+    # deepcopy it and decode from the last prompt token. The pre-round
+    # state fingerprint must equal the master's (byte-exact) every
+    # round.
+    import copy as _copy
+    master = make_prompt_cache(model)
+    model(mx.array([prompt_ids[:-1]]), cache=master)
+    mx.eval([c.state for c in master])
+    ref_state = state_fingerprint(master)
     ref_offset = len(prompt_ids) - 1
-    ref_ids = list(prompt_ids[:-1])
-
-    def assert_fresh_prefix(cache, tag):
-        st = state_fingerprint(cache)
-        # Per-layer: offsets AND bytes must equal the fresh-prefix
-        # reference (heterogeneous multimodal cache lists may carry
-        # non-text layers whose offsets legitimately differ from the
-        # text prefix length).
-        offs_ok = all(e["offset"] == r["offset"] for e, r in zip(st, ref_state))
-        bytes_ok = all(e["k16"] == r["k16"] and e["v16"] == r["v16"]
-                       for e, r in zip(st, ref_state))
-        if not (offs_ok and bytes_ok):
-            raise SystemExit(f"{{tag}}: cache != fresh prefix: offsets_ok={{offs_ok}} "
-                             f"bytes_ok={{bytes_ok}} state={{json.dumps(st)[:400]}}")
-        return {{"offsets_ok": offs_ok, "bytes_ok": bytes_ok}}
-
-    cache = make_prompt_cache(model)
-    warm_ids, _, _ = run_stream_round(cache, prompt_ids, WARMUP_TOKENS)
-    prev_n = len(warm_ids)
-    trim_counts = None
+    warm_prefix_ids_ok = True
     proofs = []
     for _ in range(ROUNDS):
-        # trim_prompt_cache returns ONLY layer[0]'s trimmed count; on
-        # multimodal wrappers layer[0] can be a zero-offset cache while
-        # the text layers trim correctly. Trim per layer and gate on the
-        # STATE fingerprint (offsets + bytes vs a fresh prefill), not on
-        # the returned scalar.
-        trim_counts = [c.trim(prev_n) for c in cache]
-        proofs.append(assert_fresh_prefix(cache, "pre-round"))
+        cache = _copy.deepcopy(master)
+        proofs.append(assert_fresh_prefix(cache, ref_state, ref_offset, "pre-round"))
         ids, t_first, wall = run_stream_round(cache, prompt_ids[-1:], MAXTOK)
-        prev_n = len(ids)
         rounds.append({{"ids": ids, "ttft_s": t_first, "wall_s": wall,
                        "n": len(ids),
                        "ids_sha16": hashlib.sha256(json.dumps(ids).encode()).hexdigest()[:16]}})
-    warm_prefix_ids_ok = warm_ids[:len(ref_ids)] == ref_ids
 elif MODE == "d1m":
     # Margin probe: manual greedy loop recording the full-distribution
     # top1-top2 logprob margin per step (stream_generate only exposes the
