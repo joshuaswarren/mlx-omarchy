@@ -42,6 +42,27 @@ contract), instead of the historical ad-hoc scripts. The pack:
 - `receipts/2026-09-18-ablit-bonsai2-t6001-test-host-recert-wheel.md`: loader
   contract verified against the canonical pack; base revision matched.
 
+## Attempt ledger (t6001-test-host, honest record)
+
+| attempt | outcome |
+| --- | --- |
+| 1 | FAULT (my staging): mlx_omarchy_serve budget package not deployed; --managed correctly failed closed exit 3. Gates 1-2 green (identity; parity A-E). |
+| 2 | FAULT (same staging family, caught by budget presence): preflight NameError — my refactor dropped the pack_footprint import; dev tests never reached that line. Fixed + full-path preflight test added. Gates 1-2 green again; parity numbers identical to attempt 1 run (deterministic). |
+| 3 | HANG n=1: all gates through managed launch + health OK; first HTTP chat forward hung (server blocked 0.2% CPU 35 min). Structural suspect (unisolated): omarchy command encoders are thread_local and the server ran mx ops on per-request threads — every successful forward (CLI, probe) ran on the main thread. Concurrent 19G Distill transfer started the same minute — alternative hypothesis, untested. Killed; lock freed; service restored (health 200 + generation verified). |
+| 4 (planned, SHORT) | server-path fix validation only, NO parity rerun: main-thread mx worker (topology of the successful CLI forwards), faulthandler all-thread dumps every 180 s, bounded curls, managed lifecycle + boundary + stream/error gates. Transfer-free. |
+
+## Attempt ledger notes for reviewers
+
+- The GPU parity numbers are REPRODUCIBLE: attempts 1/2/3 produced
+  identical deltas per input set (A 1.38e-4, B 1.08e-4, C 1.10e-4,
+  D 1.71e-4, E 1.16e-4) with identical greedy IDs — recorded as
+  measured; the diagnostic band remains the post-measurement 1e-3/1e-2
+  envelope described above, not a predeclared gate.
+- The hang occurred exactly once, on the request-thread topology, only
+  after the server was healthy — the transfer hypothesis and the
+  thread-affinity hypothesis are both open; attempt 4 tests the
+  thread-affinity fix transfer-free.
+
 ## Requested window
 
 - Host: t6001-test-host (T6001). Backup: t6021-test-host (T6021, GPU-qualified). No ANE use.
