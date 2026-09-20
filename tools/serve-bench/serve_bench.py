@@ -238,6 +238,7 @@ def chat_once(port: int, body: dict, timeout: int) -> dict:
             "cached_tokens": (usage.get("prompt_tokens_details") or {}).get("cached_tokens"),
             "finish": choice.get("finish_reason"),
             "text_head": ((choice.get("message") or {}).get("content") or "")[:80],
+            "text": (choice.get("message") or {}).get("content") or "",
             "timings": payload.get("timings")}
 
 
@@ -299,43 +300,113 @@ def summarize(rounds: list[dict], streams: list[dict], conc: dict | None) -> dic
     return out
 
 
-def engine_control(args, python: str) -> dict:
-    """Same prompt/max_tokens decoded via mlx_lm stream_generate in-process.
-
-    No HTTP, no server layer: separates backend decode cost from serving
-    overhead. Prints one JSON line.
-    """
-    code = f"""
-import json, time
+DIRECT_SNIPPET = """
+import hashlib, json, time
 import mlx.core as mx
 from mlx_lm import load
-from mlx_lm.generate import stream_generate
-model, tokenizer = load({args.model_snapshot!r})
-prompt = tokenizer.apply_chat_template(
-    [{{"role": "user", "content": {args.prompt!r}}}], add_generation_prompt=True)
-cache = None
+from mlx_lm.generate import stream_generate, BatchGenerator
 from mlx_lm.models.cache import make_prompt_cache
+
+MODE = {mode!r}
+SNAPSHOT = {snapshot!r}
+PROMPT = {prompt!r}
+WARMUP_TOKENS = {warmup_tokens}
+MAXTOK = {max_tokens}
+ROUNDS = {rounds}
+
+model, tokenizer = load(SNAPSHOT)
+prompt_ids = tokenizer.apply_chat_template(
+    [{{"role": "user", "content": PROMPT}}], add_generation_prompt=True)
+if hasattr(prompt_ids, "tolist"):
+    prompt_ids = prompt_ids.tolist()
+prompt_ids = prompt_ids[0] if (len(prompt_ids) and isinstance(prompt_ids[0], list)) else prompt_ids
+psha = hashlib.sha256(json.dumps(prompt_ids).encode()).hexdigest()[:16]
+sampler = lambda x: mx.argmax(x, axis=-1)
+
+def collect_stream(max_tokens, cache):
+    ids, t0, t_first = [], time.perf_counter(), None
+    for r in stream_generate(model, tokenizer, prompt_ids, max_tokens=max_tokens,
+                             sampler=sampler, prompt_cache=cache):
+        if t_first is None:
+            t_first = time.perf_counter()
+        ids.append(r.token)
+        if len(ids) >= max_tokens:
+            break
+    wall = time.perf_counter() - t0
+    return ids, round(t_first - t0, 4), round(wall, 4)
+
 cache = make_prompt_cache(model)
-gen = stream_generate(model, tokenizer, prompt[0] if isinstance(prompt, list) else prompt,
-                      max_tokens={args.max_tokens}, sampler=lambda x: mx.argmax(x, axis=-1),
-                      prompt_cache=cache)
-t0 = time.time(); t_first = None; n = 0
-for r in gen:
-    if t_first is None:
-        t_first = time.time()
-    n += 1
-    _ = r.token
-wall = time.time() - t0
-print(json.dumps({{"n": n, "ttft_s": round(t_first - t0, 3),
-                   "wall_s": round(wall, 3),
-                   "end_to_end_tok_s": round(n / wall, 2)}}))
+wid, wttft, wwall = collect_stream(WARMUP_TOKENS, cache)
+rounds = []
+for _ in range(ROUNDS):
+    ids, t_first, wall = collect_stream(MAXTOK, cache)
+    rounds.append({{"ids": ids, "ttft_s": t_first, "wall_s": wall,
+                   "n": len(ids),
+                   "ids_sha16": hashlib.sha256(json.dumps(ids).encode()).hexdigest()[:16]}})
+
+if MODE == "d2":
+    shared = cache
+    brounds = []
+    for _ in range(ROUNDS):
+        gen = BatchGenerator(model, stop_tokens=[], sampler=sampler)
+        uids = gen.insert([prompt_ids], [MAXTOK], caches=[shared])
+        ids, t0, t_first = [], time.perf_counter(), None
+        while len(ids) < MAXTOK:
+            for r in gen.next_generated():
+                if r.uid != uids[0]:
+                    continue
+                if t_first is None:
+                    t_first = time.perf_counter()
+                ids.append(r.token)
+        wall = time.perf_counter() - t0
+        caches = gen.extract_cache(uids)
+        shared = caches[uids[0]]
+        gen.close()
+        brounds.append({{"ids": ids, "ttft_s": round(t_first - t0, 4),
+                        "wall_s": round(wall, 4), "n": len(ids),
+                        "ids_sha16": hashlib.sha256(json.dumps(ids).encode()).hexdigest()[:16]}})
+    rounds = brounds
+
+out_ids = [t for r in rounds for t in r["ids"]]
+print(json.dumps({{
+    "mode": MODE,
+    "prompt_n": len(prompt_ids),
+    "prompt_ids_sha16": psha,
+    "warmup": {{"n": len(wid), "wall_s": wwall}},
+    "rounds": rounds,
+    "output_ids_sha16": hashlib.sha256(json.dumps(out_ids).encode()).hexdigest()[:16],
+    "text": tokenizer.decode(out_ids)[:400],
+}}))
 """
-    out = subprocess.run([python, "-c", code], capture_output=True, text=True,
-                         timeout=args.timeout * 4)
+
+
+def direct_control(args, python: str, mode: str) -> dict:
+    """D1 (stream_generate) / D2 (GenerationBatch via BatchGenerator, batch=1)
+    decode of the identical prompt, no HTTP. Records token ids so numeric
+    agreement between legs is checkable, not assumed."""
+    snippet = DIRECT_SNIPPET.format(mode=mode, snapshot=args.model_snapshot,
+                                    prompt=args.prompt,
+                                    warmup_tokens=args.warmup_tokens,
+                                    max_tokens=args.max_tokens,
+                                    rounds=args.rounds)
+    compile(snippet, f"<direct-{mode}>", "exec")  # fail fast on syntax errors
+    out = subprocess.run([python, "-c", snippet], capture_output=True, text=True,
+                         timeout=args.timeout * (args.rounds + 2))
     for line in out.stdout.splitlines():
         if line.startswith("{"):
             return json.loads(line)
     return {"error": (out.stderr.strip()[-300:] or "no json output")}
+
+
+def ids_agreement(direct: dict) -> dict:
+    keys = [k for k in ("d1", "d2") if k in direct and "output_ids_sha16" in direct[k]]
+    if len(keys) < 2:
+        return {"d1_vs_d2": None, "reason": "fewer than two successful direct legs"}
+    return {
+        "d1_vs_d2_prompt": direct["d1"]["prompt_ids_sha16"] == direct["d2"]["prompt_ids_sha16"],
+        "d1_vs_d2_output": direct["d1"]["output_ids_sha16"] == direct["d2"]["output_ids_sha16"],
+        "lengths": {k: [r["n"] for r in direct[k]["rounds"]] for k in keys},
+    }
 
 
 def run_leg(leg: str, args, python: str, results: dict) -> None:
@@ -463,8 +534,7 @@ def main() -> None:
     ap.add_argument("--omlx-extra-args", default="", help="extra args appended to the omlx server cmd, e.g. --max-model-memory 32GB")
     ap.add_argument("--expect-version", default="", help="fatal unless mlx-omarchy version matches")
     ap.add_argument("--expect-libmlx", default="", help="fatal unless libmlx sha256-16 matches")
-    ap.add_argument("--engine-control", action="store_true",
-                    help="add bare mlx_lm stream_generate leg (no HTTP)")
+    ap.add_argument("--direct-legs", default="", help="comma list from d1,d2: no-HTTP direct decode legs (token ids recorded; numeric agreement checked)")
     ap.add_argument("--outdir", default="/tmp/servebench")
     ap.add_argument("--selfcheck", action="store_true")
     args = ap.parse_args()
@@ -496,9 +566,18 @@ def main() -> None:
         "legs": {}, "leg_errors": {},
     }
     log(f"pins: {json.dumps(results['pins'])}")
-    if args.engine_control:
-        results["engine_control_mlxlm"] = engine_control(args, args.python)
-        log(f"engine-control: {json.dumps(results['engine_control_mlxlm'])}")
+    direct_modes = [m.strip() for m in args.direct_legs.split(",") if m.strip()]
+    unknown_direct = [m for m in direct_modes if m not in ("d1", "d2")]
+    if unknown_direct:
+        fatal(f"unknown direct legs {unknown_direct}; choose from d1,d2", 2)
+    if direct_modes:
+        results["direct"] = {}
+        for mode in direct_modes:
+            log(f"[direct {mode}] starting (no HTTP)")
+            results["direct"][mode] = direct_control(args, args.python, mode)
+            log(f"[direct {mode}] {json.dumps(results['direct'][mode])[:220]}")
+        results["ids_agreement"] = ids_agreement(results["direct"])
+        log(f"ids_agreement: {json.dumps(results['ids_agreement'])}")
     try:
         for leg in legs:
             run_leg(leg, args, args.python, results)
@@ -576,6 +655,22 @@ def selfcheck() -> int:
         assert s["all_finished_length"] and s["n"] == 4, s
         assert s["median_ttft_s"] >= 0.05, s
         assert s["median_decode_tok_s"] and s["median_decode_tok_s"] > 12.8, s
+        # ids_agreement logic
+        ok = {"d1": {"prompt_ids_sha16": "aa", "output_ids_sha16": "bb",
+                     "rounds": [{"n": 128}]},
+              "d2": {"prompt_ids_sha16": "aa", "output_ids_sha16": "bb",
+                     "rounds": [{"n": 128}]}}
+        agr = ids_agreement(ok)
+        assert agr == {"d1_vs_d2_prompt": True, "d1_vs_d2_output": True,
+                       "lengths": {"d1": [128], "d2": [128]}}, agr
+        bad = {"d1": dict(ok["d1"], output_ids_sha16="cc"),
+               "d2": dict(ok["d2"])}
+        assert ids_agreement(bad)["d1_vs_d2_output"] is False
+        assert ids_agreement({})["d1_vs_d2"] is None
+        # direct snippets must compile
+        snippet = DIRECT_SNIPPET.format(mode="d1", snapshot="/x", prompt="p",
+                                        warmup_tokens=16, max_tokens=128, rounds=1)
+        compile(snippet, "<d1>", "exec")
         print(f"SELFCheck OK: {json.dumps(s)}")
         return 0
     except AssertionError as e:
