@@ -1678,16 +1678,11 @@ class EncoderRunner:
         # 3. head submit: select + scores + add + softmax on device.
         head = self.island.submit(
             f"island-attn-ac-head-L{layer:02d}", f"L{layer:02d}-AC",
-            {"a_fill": memoryview(np.ascontiguousarray(
-                np.asarray(fill_full).astype(np.float16))),
-             "bd": memoryview(np.ascontiguousarray(
-                 np.asarray(bd).astype(np.float16))),
-             "cond": memoryview(np.ascontiguousarray(
-                 np.asarray(cond_full).astype(np.bool_))),
-             "q": memoryview(np.ascontiguousarray(
-                 np.asarray(q_t).astype(np.float16))),
-             "k": memoryview(np.ascontiguousarray(
-                 np.asarray(k_t).astype(np.float16)))},
+            {"a_fill": np.asarray(fill_full).astype(np.float16).tobytes(),
+             "bd": np.asarray(bd).astype(np.float16).tobytes(),
+             "cond": np.asarray(cond_full).astype(np.bool_).tobytes(),
+             "q": np.asarray(q_t).astype(np.float16).tobytes(),
+             "k": np.asarray(k_t).astype(np.float16).tobytes()},
             {"smax": (sel_stmt.shape, "fp16")},
         )
         # 4. certified PV bundle.
