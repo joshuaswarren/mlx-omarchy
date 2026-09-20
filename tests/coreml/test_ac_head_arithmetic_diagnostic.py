@@ -37,6 +37,7 @@ exercises them all together.
 
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
@@ -79,6 +80,13 @@ def _mx_matmul(lhs, rhs):
     return _MxArray((a @ b).astype(np.float16))
 
 
+def _mx_add(lhs, rhs):
+    return _MxArray(
+        (np.asarray(lhs).astype(np.float32) + np.asarray(rhs).astype(np.float32))
+        .astype(np.float16)
+    )
+
+
 def _mx_where(cond, x, y):
     return _MxArray(np.where(np.asarray(cond), np.asarray(x), np.asarray(y)))
 
@@ -111,6 +119,7 @@ def mx_stub(monkeypatch):
         reshape = staticmethod(_mx_reshape)
         transpose = staticmethod(_mx_transpose)
         matmul = staticmethod(_mx_matmul)
+        add = staticmethod(_mx_add)
         where = staticmethod(_mx_where)
         softmax = staticmethod(_mx_softmax)
         contiguous = staticmethod(_mx_contiguous)
@@ -227,7 +236,12 @@ def _gpu_ref_from_inputs(mx, bundle, decoded_inputs, fill_neg_inf):
             mx.matmul(q, mx.transpose(k, (0, 1, 3, 2)))
         ).astype(np.float16)
     if bundle == "island-add-head":
-        return (decoded_inputs["scores"] + decoded_inputs["masked"]).astype(np.float16)
+        return np.asarray(
+            mx.add(
+                mx.array(decoded_inputs["scores"]),
+                mx.array(decoded_inputs["masked"]),
+            )
+        ).astype(np.float16)
     if bundle == "island-softmax-head":
         return np.asarray(
             mx.softmax(mx.array(decoded_inputs["add"]), axis=-1)
@@ -462,3 +476,183 @@ def test_per_stage_ref_uses_serialized_arrays_not_pristine_capture(
                 f"{stage} not bit-equal: per-stage ref diverged from "
                 "the serialized input — pristine-ref contamination"
             )
+
+
+def test_stageB_tamper_propagates_to_stageC_through_chain(
+    mx_stub, captured, manifests, tmp_path
+):
+    """Same-input defect regression.
+
+    Inject a tampered ``scores`` device output (zeros) at stage
+    scores-mm. The diagnostic's chained ``scores`` then feeds
+    island-add-head, where the per-stage ref is built from the
+    SAME serialized bytes the device received — and the fake
+    submit returns the same arithmetic on those zeros. So:
+
+      - stage B (scores-mm): bit_equal=False — device sent zeros,
+        the per-stage ref is matmul(q,k) which is non-zero. The
+        diagnostic sees the divergence.
+      - stage C (add-head): bit_equal=True — per-stage ref is
+        mx.add(chained_scores=0, chained_masked=passthrough); the
+        device's add-head also computes add(zeros, masked) =
+        masked. Both sides see the chained zeros and agree.
+      - chaining sha256: differs from an un-tampered run because
+        the chained scores bytes are all-zero now, not the
+        original scores bytes.
+
+    A pristine-ref build would (incorrectly) flag stage C as a
+    mismatch because pristine scores != chained scores; this test
+    fails on pristine-ref contamination.
+    """
+    fill_neg_inf = np.full((1, 8, 375, 375), float("-inf"), np.float16)
+
+    def tamper_scores_then_passthrough(mx, bundle, decoded_inputs, fill):
+        # Stage B: return zeros instead of the GPU ref.
+        if bundle == "island-scores-mm":
+            return np.zeros((1, 8, 375, 375), dtype=np.float16)
+        # All other stages: honest GPU ref on the chained inputs.
+        return _gpu_ref_from_inputs(mx, bundle, decoded_inputs, fill)
+
+    submit = _make_fake_submit(mx_stub, tamper_scores_then_passthrough)
+    report = diag.diagnose_ladder(
+        cap=captured, submit=submit, manifests=manifests, out=tmp_path,
+    )
+    # Stage B: divergence is real — diagnostic flags it.
+    rec_b = report["arithmetic_isolation"]["island-scores-mm"]["scores"]
+    assert not rec_b["bit_equal"], (
+        "stage B (scores-mm) tampering should produce a real divergence"
+    )
+    assert rec_b["mismatch_count"] > 0
+
+    # Stage C: per-stage ref follows the chained scores (zeros), so
+    # add-head's bit_equal holds. A pristine-ref build would (wrongly)
+    # flag this stage.
+    rec_c = report["arithmetic_isolation"]["island-add-head"]["add"]
+    assert rec_c["bit_equal"], (
+        f"island-add-head/add: per-stage ref should follow chained zeros; "
+        f"got mismatch — pristine-ref contamination. {rec_c}"
+    )
+
+    # The chained scores sha differs from a non-tampered run; this
+    # proves the chain actually followed the tampered stage B.
+    chaining = report["chaining"]
+    tampered_scores_sha = chaining["island-scores-mm"]["scores"]["sha256"]
+    assert tampered_scores_sha == _sha256(
+        np.zeros((1, 8, 375, 375), dtype=np.float16).tobytes()
+    ), "stage B tampered output did not propagate through the chain"
+
+
+def test_validate_inputs_cpu_preflight(tmp_path):
+    """The CLI preflight verifies capture + manifest wiring without mlx."""
+    fdump = tmp_path / "fdump"
+    fdump.mkdir()
+    for name, shape, dtype in [
+        ("q", [1, 8, 375, 128], "float16"),
+        ("k", [1, 8, 375, 128], "float16"),
+        ("cond", [1, 1, 375, 375], "bool"),
+        ("relpos", [1, 8, 375, 749], "float16"),
+        ("a_fill", [], "float16"),
+    ]:
+        (fdump / f"{name}.json").write_text(
+            json.dumps({"shape": shape, "dtype": dtype})
+        )
+        dt = np.dtype(dtype)
+        (fdump / f"{name}.bin").write_bytes(
+            np.zeros(int(np.prod(shape)) * dt.itemsize, dtype=np.uint8).tobytes()
+        )
+    bundles = tmp_path / "bundles"
+    bundles.mkdir()
+    for name in diag.LADDER:
+        (bundles / name).mkdir()
+    # select-rta requires bd (derived) + a_fill + cond -> masked
+    (bundles / "island-select-rta" / "manifest.json").write_text(json.dumps({
+        "outputs": [{
+            "name": "masked", "stride": 2310144, "byte_size": 2250000,
+            "dtype": "float16", "shape": [1, 8, 375, 375],
+        }],
+        "programs": [{
+            "inputs": [
+                {"tensor": "a_fill"},
+                {"tensor": "bd"},
+                {"tensor": "cond"},
+            ],
+            "operation": "select",
+        }],
+    }))
+    (bundles / "island-scores-mm" / "manifest.json").write_text(json.dumps({
+        "outputs": [{
+            "name": "scores", "stride": 2310144, "byte_size": 2250000,
+            "dtype": "float16", "shape": [1, 8, 375, 375],
+        }],
+        "programs": [{
+            "inputs": [{"tensor": "q"}, {"tensor": "k"}],
+            "operation": "matmul",
+        }],
+    }))
+    (bundles / "island-add-head" / "manifest.json").write_text(json.dumps({
+        "outputs": [{
+            "name": "add", "stride": 2310144, "byte_size": 2250000,
+            "dtype": "float16", "shape": [1, 8, 375, 375],
+        }],
+        "programs": [{
+            "inputs": [{"tensor": "scores"}, {"tensor": "masked"}],
+            "operation": "add",
+        }],
+    }))
+    (bundles / "island-softmax-head" / "manifest.json").write_text(json.dumps({
+        "outputs": [{
+            "name": "smax", "stride": 2310144, "byte_size": 2250000,
+            "dtype": "float16", "shape": [1, 8, 375, 375],
+        }],
+        "programs": [{
+            "inputs": [{"tensor": "add"}],
+            "operation": "softmax",
+        }],
+    }))
+    out = tmp_path / "out"
+    # Run preflight as a subprocess to verify the CLI flag works.
+    import subprocess
+    import sys as _sys
+    diag_path = Path(diag.__file__).resolve()
+    res = subprocess.run(
+        [_sys.executable, str(diag_path),
+         "--fdump", str(fdump), "--bundles", str(bundles),
+         "--out", str(out), "--validate-inputs"],
+        capture_output=True, text=True,
+    )
+    assert res.returncode == 0, res.stderr[-400:]
+    payload = json.loads(res.stdout.strip())
+    assert payload["validated"] is True
+    assert set(payload["islands"]) == set(diag.LADDER)
+    assert set(payload["captured"]) == set(diag.CAPTURED_INPUTS)
+    assert (out / "input-validation.json").is_file()
+
+
+def test_validate_inputs_rejects_wrong_byte_count(tmp_path):
+    fdump = tmp_path / "fdump"
+    fdump.mkdir()
+    (fdump / "q.json").write_text(json.dumps({"shape": [1, 8, 375, 128], "dtype": "float16"}))
+    # 1-byte too short
+    (fdump / "q.bin").write_bytes(b"\0" * (1 * 8 * 375 * 128 * 2 - 1))
+    for name in ("k", "cond", "relpos", "a_fill"):
+        pass
+    (fdump / "k.json").write_text(json.dumps({"shape": [1, 8, 375, 128], "dtype": "float16"}))
+    (fdump / "k.bin").write_bytes(np.zeros(1 * 8 * 375 * 128 * 2, dtype=np.uint8).tobytes())
+    (fdump / "cond.json").write_text(json.dumps({"shape": [1, 1, 375, 375], "dtype": "bool"}))
+    (fdump / "cond.bin").write_bytes(np.zeros(1 * 1 * 375 * 375, dtype=np.uint8).tobytes())
+    (fdump / "relpos.json").write_text(json.dumps({"shape": [1, 8, 375, 749], "dtype": "float16"}))
+    (fdump / "relpos.bin").write_bytes(np.zeros(1 * 8 * 375 * 749 * 2, dtype=np.uint8).tobytes())
+    (fdump / "a_fill.json").write_text(json.dumps({"shape": [], "dtype": "float16"}))
+    (fdump / "a_fill.bin").write_bytes(np.zeros(2, dtype=np.uint8).tobytes())
+    bundles = tmp_path / "bundles"
+    bundles.mkdir()
+    for name in diag.LADDER:
+        (bundles / name).mkdir()
+        (bundles / name / "manifest.json").write_text("{}")
+    with pytest.raises(ValueError, match="bin="):
+        diag.validate_inputs(fdump, bundles)
+
+
+def _sha256(data: bytes) -> str:
+    import hashlib
+    return hashlib.sha256(data).hexdigest()

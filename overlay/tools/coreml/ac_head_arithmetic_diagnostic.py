@@ -207,8 +207,11 @@ def _stage_ref(mx, stage: str, serialized_inputs: dict[str, np.ndarray]) -> np.n
             mx.matmul(q, mx.transpose(k, (0, 1, 3, 2)))
         ).astype(np.float16)
     if stage == "island-add-head":
-        return (
-            serialized_inputs["scores"] + serialized_inputs["masked"]
+        return np.asarray(
+            mx.add(
+                mx.array(serialized_inputs["scores"]),
+                mx.array(serialized_inputs["masked"]),
+            )
         ).astype(np.float16)
     if stage == "island-softmax-head":
         return np.asarray(
@@ -332,17 +335,143 @@ def diagnose_ladder(
     return report
 
 
+def validate_inputs(
+    fdump: Path, bundles: Path, ladder: tuple[str, ...] = LADDER
+) -> dict[str, Any]:
+    """CPU-only preflight: verify capture names/dtypes/bytecounts and
+    manifest input/output wiring without mlx or the ANE worker.
+
+    For each captured tensor (q/k/cond/relpos/a_fill), assert the
+    .json shape+dtype match the .bin byte count. For each island,
+    assert the manifest's inputs[*].name maps to one of the captured
+    names (or to bd, which the diagnostic derives from relpos) and
+    the manifest outputs[*] match the produced tensor names. Also
+    asserts the four island bundles share the same logical wire
+    contract on chained tensors (scores/masked/add are produced by
+    stage X and consumed by stage X+1).
+    """
+    captured = {}
+    for name in CAPTURED_INPUTS:
+        meta = json.loads((fdump / f"{name}.json").read_text())
+        raw = (fdump / f"{name}.bin").read_bytes()
+        dt = np.dtype(meta["dtype"])
+        expected_bytes = int(np.prod(meta["shape"])) * dt.itemsize
+        if len(raw) != expected_bytes:
+            raise ValueError(
+                f"capture {name!r}: bin={len(raw)} bytes, "
+                f"shape={meta['shape']} dtype={meta['dtype']} "
+                f"implies {expected_bytes} bytes"
+            )
+        captured[name] = {"shape": meta["shape"], "dtype": meta["dtype"]}
+
+    known_input_names = set(CAPTURED_INPUTS) | {"bd"} | {
+        "scores", "masked", "add",  # chained device outputs
+    }
+    known_output_names = {"masked", "scores", "add", "smax"}
+    islands: dict[str, dict] = {}
+    for name in ladder:
+        manifest_path = bundles / name / "manifest.json"
+        manifest = json.loads(manifest_path.read_text())
+        prog_inputs = set()
+        for p in manifest["programs"]:
+            for inp in p["inputs"]:
+                if inp["tensor"] not in known_input_names:
+                    raise ValueError(
+                        f"island {name}: program input tensor "
+                        f"{inp['tensor']!r} is not in the captured set "
+                        f"{sorted(known_input_names)}"
+                    )
+                prog_inputs.add(inp["tensor"])
+        prog_outputs = [out["name"] for out in manifest["outputs"]]
+        for out_name in prog_outputs:
+            if out_name not in known_output_names:
+                raise ValueError(
+                    f"island {name}: produced tensor {out_name!r} "
+                    "not in the known set "
+                    f"{sorted(known_output_names)}"
+                )
+        for out in manifest["outputs"]:
+            expected_bytes = int(np.prod(out["shape"])) * np.dtype(out["dtype"]).itemsize
+            if out["byte_size"] != expected_bytes:
+                raise ValueError(
+                    f"island {name} output {out['name']!r}: byte_size="
+                    f"{out['byte_size']} != shape * dtype size "
+                    f"({expected_bytes})"
+                )
+        islands[name] = {
+            "inputs": sorted(prog_inputs),
+            "outputs": prog_outputs,
+            "byte_size": [
+                out["byte_size"] for out in manifest["outputs"]
+            ],
+        }
+    # Chaining contract: select-rta produces masked; add-head consumes
+    # masked. scores-mm produces scores; add-head consumes scores.
+    # softmax-head consumes add.
+    if "masked" not in islands["island-select-rta"]["outputs"]:
+        raise ValueError("island-select-rta must produce 'masked'")
+    if "scores" not in islands["island-scores-mm"]["outputs"]:
+        raise ValueError("island-scores-mm must produce 'scores'")
+    if "add" not in islands["island-add-head"]["outputs"]:
+        raise ValueError("island-add-head must produce 'add'")
+    if "smax" not in islands["island-softmax-head"]["outputs"]:
+        raise ValueError("island-softmax-head must produce 'smax'")
+    if "scores" not in islands["island-add-head"]["inputs"]:
+        raise ValueError("island-add-head must consume 'scores'")
+    if "masked" not in islands["island-add-head"]["inputs"]:
+        raise ValueError("island-add-head must consume 'masked'")
+    if "add" not in islands["island-softmax-head"]["inputs"]:
+        raise ValueError("island-softmax-head must consume 'add'")
+    # bd is derived from relpos on the host before submit; the device
+    # receives bd as a regular per-program input.
+    if "bd" not in islands["island-select-rta"]["inputs"]:
+        raise ValueError(
+            "island-select-rta must consume 'bd' (derived on the host "
+            "from relpos via the certified reshape chain)"
+        )
+    return {
+        "schema": "mlx-omarchy.ac-head-arithmetic-input-validation/1",
+        "captured": captured,
+        "islands": islands,
+        "ladder": list(ladder),
+        "a_fill_scalar": captured["a_fill"]["shape"] == []
+                          and captured["a_fill"]["dtype"] == "float16",
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--fdump", type=Path, required=True)
     parser.add_argument("--bundles", type=Path, required=True)
-    parser.add_argument("--worker", type=Path, required=True)
-    parser.add_argument("--libane", type=Path, required=True)
-    parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument("--worker", type=Path)
+    parser.add_argument("--libane", type=Path)
+    parser.add_argument("--out", type=Path)
     parser.add_argument("--deadline-ms", type=int, default=20000)
     parser.add_argument("--relay-bypass", action="store_true")
+    parser.add_argument("--validate-inputs", action="store_true",
+                        help="CPU-only preflight: verify capture metadata "
+                             "and manifest wiring without mlx/ANE.")
     args = parser.parse_args()
 
+    if args.validate_inputs:
+        report = validate_inputs(args.fdump, args.bundles)
+        out = args.out or args.bundles
+        out.mkdir(parents=True, exist_ok=True)
+        (out / "input-validation.json").write_text(
+            json.dumps(report, indent=2) + "\n"
+        )
+        print(json.dumps({
+            "validated": True,
+            "islands": list(report["islands"]),
+            "captured": list(report["captured"]),
+        }))
+        return 0
+
+    if not (args.worker and args.libane and args.out):
+        parser.error(
+            "--worker, --libane and --out are required when "
+            "--validate-inputs is not set"
+        )
     cap = {name: _load_capture_input(args.fdump, name) for name in CAPTURED_INPUTS}
     manifests = {
         name: json.loads((args.bundles / name / "manifest.json").read_text())
