@@ -86,10 +86,13 @@ class DispatchArityTest(unittest.TestCase):
     def test_failing_first_broken_dispatch_detected(self):
         """Failing-first: a joint dispatch missing packed.joint is detected."""
         import ast as ast_mod
-        broken = (self.tree and None) or ast_mod.parse(
-            Path(_DRIVER).read_text().replace(
-                "inputs=[pj_out, packed.joint, enc, cfg, mx.array(ctl)],",
-                "inputs=[pj_out, enc, cfg, mx.array(ctl)],", 1))
+        driver_text = Path(_DRIVER).read_text()
+        target = "inputs=[pj_out, packed.joint, enc, cfg, mx.array(ctl)],"
+        if target not in driver_text:
+            target = "inputs=[pj_out, packed.joint, enc, cfg, ctl_arr],"
+        assert target in driver_text, "no dispatch to mutate"
+        broken = ast_mod.parse(driver_text.replace(target, target.replace(
+            "packed.joint, ", ""), 1))
         joint_dispatches = 0
         short = 0
         for node in ast_mod.walk(broken):
