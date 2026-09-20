@@ -1,7 +1,7 @@
 # Maintainer: Joshua Warren <joshua@joshuawarren.com>
 #
 # Drop-in replacement for the asahi-alarm `mesa` package that builds the
-# Honeykrisp fork branch (github.com/joshuaswarren/mesa, honeykrisp-omarchy).
+# Honeykrisp fork branch (github.com/joshuaswarren/mesa-1, honeykrisp-omarchy).
 # The recipe is AsahiLinux/PKGBUILDs mesa/PKGBUILD at 28229b8 (the exact
 # PKGBUILD that produced the installed mesa 26.1.7-1, .BUILDINFO
 # pkgbuild_sha256sum 296cee6f...) with the source switched to the fork commit,
@@ -17,7 +17,7 @@ pkgver=26.3.0.devel.hk${_commit:0:7}
 pkgrel=1
 pkgdesc="Mesa with the Honeykrisp fork fixes (coopmat, byte extract, precise math) for Apple Silicon"
 arch=('aarch64')
-url="https://github.com/joshuaswarren/mesa/tree/honeykrisp-omarchy"
+url="https://github.com/joshuaswarren/mesa-1/tree/honeykrisp-omarchy"
 license=('MIT AND BSD-3-Clause AND SGI-B-2.0')
 makedepends=('git' 'python-mako' 'libxml2' 'libx11' 'xorgproto' 'libdrm' 'libxshmfence' 'libxxf86vm'
   'libxdamage' 'libva' 'wayland' 'wayland-protocols' 'zstd' 'elfutils' 'llvm' 'spirv-llvm-translator'
@@ -32,7 +32,7 @@ provides=('mesa=26.3.0' 'mesa-libgl' 'opengl-driver' 'libva-mesa-driver' 'vulkan
 conflicts=('mesa' 'mesa-asahi' 'mesa-asahi-edge' 'mesa-libgl' 'vulkan-swrast')
 options=('!debug' '!lto')
 source=(
-  "mesa::git+https://github.com/joshuaswarren/mesa.git#commit=$_commit"
+  "mesa::git+https://github.com/joshuaswarren/mesa-1.git#commit=$_commit"
   Mesa-MLAA-License-Clarification-Email.txt
 )
 sha512sums=('SKIP'
