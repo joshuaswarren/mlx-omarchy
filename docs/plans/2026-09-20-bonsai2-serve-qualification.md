@@ -102,25 +102,42 @@ corrected record.
    - `GET /health` → 200 with `config_sha256`, quantization, device=gpu,
      license files present.
    - `GET /v1/models` → id matches `--model-id`.
-   - **Correctness gate — pinned greedy IDs, not vibes.** Greedy
-     (`temperature: 0`) over a fixed prompt set, fixed seedless greedy
-     decode; the receipt records the full generated token-ID sequence
-     and final logits (top-k + absmax) for each prompt from THIS wheel
-     and THIS checkpoint, and that record becomes the pinned reference
-     for the checkpoint. A second independent arm (raw `stream_generate`
-     outside HTTP, same prompts) must produce the IDENTICAL ID sequence
-     — HTTP vs raw divergence is a fault. This record is a
-     self-consistency **regression baseline for the checkpoint** (the
-     standard later wheels reproduce or explicitly diff against), NOT
-     independent numerical validation of the model. Prompt text
-     coherence is recorded as a qualitative sanity line only; it is not
-     the gate.
+   - **Correctness gate — frozen prospective criteria (written before
+     the window opens, per Main + MCQ).** Input sets: FIVE new fixed
+     8-token sequences, `--input-set A` … `--input-set E` (derivation
+     `sha256("bonsai2-parity-v1:<set>")`, published here BEFORE the
+     window). Steps: 2 per input. Arms: upstream pack runtime vs this
+     repo's loader, both on the omarchy GPU device, same wheel.
+     - FROZEN PASS CRITERION: per input and per step, the two arms'
+       greedy token IDs are IDENTICAL, and the measured max |logits|
+       delta is RECORDED. A greedy-ID mismatch on any input or step is a
+       fault (window ends).
+     - Tolerance handling: the CPU diagnostic band is the recorded
+       9.5e-05 (post-measurement band, NOT a predeclared gate — see
+       receipts/2026-09-20-bonsai2-port-parity-cpu.md). The GPU deltas
+       are compared against it and "tolerance movement" is REPORTED;
+       a delta above 1e-2 (fp16 ULP scale at the observed logit
+       magnitudes) is a fault; movement inside 1e-2 is reported and
+       pass/fail is left to Main + MCQ review, not claimed here.
+     - The exact-token-877 CPU equality is a NARROW check; no blanket
+       numerical-equivalence or model-quality claim is made anywhere.
    - Warm second request, different prompt; record the `timings` block.
      **No performance claim is made against the historical 1.44 tok/s
      band** (different checkpoint lineage and harness); the receipt
      records numbers with provenance and stops.
-   - Context cap: request with `max_tokens` beyond `--max-context` →
-     400 with the cap in the message.
+   - Strict context bounds on device: `prompt + max_tokens == cap`
+     succeeds; one token over → 400 naming the cap; streaming SSE ends
+     with `[DONE]`, every chunk a valid chat.completion.chunk, error
+     paths return in-band errors; malformed bodies (non-object JSON,
+     bad UTF-8, NaN/bool temperature, non-string content) → 400 over
+     the real device.
+   - Atomic resident admission on device: server launched with
+     `--managed`; `reservations.json` shows the entry pending BEFORE
+     weights materialize, resident after load (with
+     `resident_floor_bytes` = exact weights), and absent after server
+     shutdown; an `admit_and_reserve` refusal path is exercised with a
+     deliberately inflated second reservation BEFORE the real launch
+     and must exit 3.
 5. **Memory gate:** `--managed` is the admission contract: admit +
    reserve against `mlx_omarchy_serve.budget` BEFORE any weights are
    touched (estimate_required over exact header weights + KV per token
