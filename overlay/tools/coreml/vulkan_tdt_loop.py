@@ -133,37 +133,53 @@ def _loop_glsl() -> str:
                             float16_t(s_hidden[layer * 640u + k]);
                     }}
                     threadgroup_barrier(mem_flags::mem_threadgroup);
-                    for (uint lane = t; lane < 640u; lane += {_LT}u) {{
-                        float16_t pr[4];
-                        for (uint gate = 0u; gate < 4u; ++gate) {{
-                            uint n = gate * 640u + lane;
-                            float16_t bacc = float16_t(0.0f);
-                            for (uint block = 0u; block < 10u; ++block) {{
-                                float16_t bc = float16_t(0.0f);
-                                uint k = block * 128u;
-                                for (uint j = 0u; j < 128u; ++j) {{
-                                    bc = exact_fma16(
-                                        bc, s_a[k],
-                                        weights[layer * 3276800u
-                                                + k * 2560u + n]);
-                                    ++k;
-                                }}
-                                if (block == 0u) {{
-                                    bacc = bc;
-                                }} else {{
-                                    bacc = float16_t(bacc + bc);
-                                }}
+                    for (uint p = t; p < 2560u; p += {_LT}u) {{
+                        uint gate = p / 640u;
+                        uint lane = p % 640u;
+                        uint n = gate * 640u + lane;
+                        float16_t bacc = float16_t(0.0f);
+                        for (uint block = 0u; block < 10u; ++block) {{
+                            float16_t bc = float16_t(0.0f);
+                            uint k = block * 128u;
+                            for (uint j = 0u; j < 128u; ++j) {{
+                                bc = exact_fma16(
+                                    bc, s_a[k],
+                                    weights[layer * 3276800u
+                                            + k * 2560u + n]);
+                                ++k;
                             }}
-                            pr[gate] = float16_t(
-                                bacc + biases[layer * 2560u + n]);
+                            if (block == 0u) {{
+                                bacc = bc;
+                            }} else {{
+                                bacc = float16_t(bacc + bc);
+                            }}
                         }}
-                        uint bi = packHalf2x16(vec2(float(pr[0]), 0.0f))
+                        float16_t pr = float16_t(
+                            bacc + biases[layer * 2560u + n]);
+                        if (gate == 0u) {{
+                            s_relu[lane] = pr;
+                        }} else if (gate == 1u) {{
+                            s_bval[lane] = float(pr);
+                        }} else if (gate == 2u) {{
+                            s_bidx[lane] = floatBitsToUint(float(pr));
+                        }} else {{
+                            s_h1[lane] = float(pr);
+                        }}
+                    }}
+                    threadgroup_barrier(mem_flags::mem_threadgroup);
+                    for (uint lane = t; lane < 640u; lane += {_LT}u) {{
+                        float16_t pr0 = s_relu[lane];
+                        float16_t pr1 = float16_t(s_bval[lane]);
+                        float16_t pr2 = float16_t(
+                            uintBitsToFloat(s_bidx[lane]));
+                        float16_t pr3 = float16_t(s_h1[lane]);
+                        uint bi = packHalf2x16(vec2(float(pr0), 0.0f))
                                   & 0xFFFFu;
-                        uint bf = packHalf2x16(vec2(float(pr[1]), 0.0f))
+                        uint bf = packHalf2x16(vec2(float(pr1), 0.0f))
                                   & 0xFFFFu;
-                        uint bo = packHalf2x16(vec2(float(pr[2]), 0.0f))
+                        uint bo = packHalf2x16(vec2(float(pr2), 0.0f))
                                   & 0xFFFFu;
-                        uint bg = packHalf2x16(vec2(float(pr[3]), 0.0f))
+                        uint bg = packHalf2x16(vec2(float(pr3), 0.0f))
                                   & 0xFFFFu;
                         float16_t si = luts[bi];
                         float16_t sf = luts[bf];
