@@ -61,7 +61,8 @@
         "min_mem_gib_basis": "ceil(weights_bytes * 1.25 / 2^30); static weights floor, not a measured peak",
         "family_note": "Only variant with a device qualification pass (text-only CLI).",
         "variant": "4bit",
-        "model_architecture": "Qwen3_5ForConditionalGeneration"
+        "model_architecture": "Qwen3_5ForConditionalGeneration",
+        "cache_behavior": "Serve screen 2026-09-20 (SPA, t6001-test-host): the multimodal checkpoint's ArraysCache is non-trimmable — prefix-trim replication is unbuildable on this checkpoint; long-context KV management cannot rely on cache trimming for this entry."
       },
       "serve": {
         "backend": "mlx-lm",
