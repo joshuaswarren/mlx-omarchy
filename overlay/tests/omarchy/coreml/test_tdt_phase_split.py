@@ -36,6 +36,9 @@ class PhaseSplitSourceGuard(unittest.TestCase):
         for name in in_joint:
             self.assertIn(ph[name], joint, f"{name} drifted in K_JOINT")
             self.assertIn(ph[name], stock, f"{name} not found in stock source")
+        for marker in ("float bv = s_bval[0];", "emissions[c * 3 + 0] = tokd;",
+                       "s_ctl[3] = c + 1;", "s_ctl[4] = op;"):
+            self.assertIn(marker, ph["reduce_control"])
 
     def test_crossing_buffers_declared(self):
         dec, joint, _ = build_all()
