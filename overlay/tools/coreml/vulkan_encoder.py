@@ -1633,11 +1633,14 @@ class EncoderRunner:
 
     def _run_island_ac(self, stmt: Statement) -> None:
         """Fused candidate, TWO submits per layer (receipt §7): the minted
-        bd-input head (select, scaled-scores matmul, broadcast add, softmax
-        — 4 programs) consumes the GPU-prepared bd/masked/scores, then the
-        certified island-pv bundle produces attn_output. The rel-pos
-        matmul executes on GPU as the head's relpos-slice replacement is
-        not device-qualified; bd is its contiguous scaled slice.
+        ONE head submit plus the certified island-pv submit per layer,
+        shared bookkeeping and dump tail. When the bd-scale graph bundle
+        (island-attn-ac-head-L<NN>-bdscale, 6 programs) is minted for the
+        layer, the graph slices AND scales relpos on device and the raw
+        GPU rel-pos matmul result crosses unscaled; otherwise the
+        certified bd-input head runs with bd as its host-scaled
+        contiguous slice. Either way exactly one head and one PV submit
+        feed the same comparisons.
         """
         layer, scores_stmt, content_stmt = self.island_a[stmt.index]
         _ci, out_stmt = next(
@@ -1652,21 +1655,27 @@ class EncoderRunner:
         self.values[scores_stmt.names[0]] = relpos
         scores_stmt.done = True
         self.gpu_ops += 1
-        # 2. bd: contiguous scaled slice of the rel-pos scores.
-        bd = mx.contiguous(relpos[:, :, :, :375])
-        bd_name = sel_stmt.kwargs["b"].strip()
-        scale_name = None
-        for key in ("y", "x"):
-            operand = self.producer[bd_name].kwargs.get(key)
-            if operand is None:
-                continue
-            operand_stmt = self.producer.get(operand.strip())
-            if operand_stmt is not None and operand_stmt.op == "const":
-                scale_name = operand.strip()
-        if scale_name is not None:
-            scale = self.scalar(scale_name)
-            bd = mx.contiguous(
-                (bd * mx.array(scale, mx.float16)).astype(mx.float16))
+        # 2. head bundle + bd spelling. The bdscale graph bundle slices
+        #    AND scales relpos on device (relpos crosses raw); the
+        #    certified bd-input head needs the host-scaled slice.
+        bdscale = f"island-attn-ac-head-L{layer:02d}-bdscale"
+        bdscale_minted = (
+            self.island.bundles / bdscale / "manifest.json").exists()
+        if not bdscale_minted:
+            bd = mx.contiguous(relpos[:, :, :, :375])
+            bd_name = sel_stmt.kwargs["b"].strip()
+            scale_name = None
+            for key in ("y", "x"):
+                operand = self.producer[bd_name].kwargs.get(key)
+                if operand is None:
+                    continue
+                operand_stmt = self.producer.get(operand.strip())
+                if operand_stmt is not None and operand_stmt.op == "const":
+                    scale_name = operand.strip()
+            if scale_name is not None:
+                scale = self.scalar(scale_name)
+                bd = mx.contiguous(
+                    (bd * mx.array(scale, mx.float16)).astype(mx.float16))
         q_t = self.tensor(content_stmt.kwargs["x"])
         k_t = self.tensor(content_stmt.kwargs["y"])
         cond_t = self.tensor(sel_stmt.kwargs["cond"])
@@ -1675,14 +1684,25 @@ class EncoderRunner:
             mx.broadcast_to(fill_t, ISLAND_B_SHAPE))
         cond_full = mx.contiguous(
             mx.broadcast_to(cond_t, ISLAND_B_SHAPE))
-        # 3. head submit: select + scores + add + softmax on device.
+        # 3. head submit: slice(+scale)+select+scores+add+softmax.
+        head_inputs = {"a_fill": np.asarray(fill_full).astype(
+                           np.float16).tobytes(),
+                       "cond": np.asarray(cond_full).astype(
+                           np.bool_).tobytes(),
+                       "q": np.asarray(q_t).astype(np.float16).tobytes(),
+                       "k": np.asarray(k_t).astype(np.float16).tobytes()}
+        if bdscale_minted:
+            head_bundle = bdscale
+            head_tag = f"L{layer:02d}-AC-bdscale"
+            head_inputs["relpos"] = np.asarray(relpos).astype(
+                np.float16).tobytes()
+        else:
+            head_bundle = f"island-attn-ac-head-L{layer:02d}"
+            head_tag = f"L{layer:02d}-AC"
+            head_inputs["bd"] = np.asarray(bd).astype(
+                np.float16).tobytes()
         head = self.island.submit(
-            f"island-attn-ac-head-L{layer:02d}", f"L{layer:02d}-AC",
-            {"a_fill": np.asarray(fill_full).astype(np.float16).tobytes(),
-             "bd": np.asarray(bd).astype(np.float16).tobytes(),
-             "cond": np.asarray(cond_full).astype(np.bool_).tobytes(),
-             "q": np.asarray(q_t).astype(np.float16).tobytes(),
-             "k": np.asarray(k_t).astype(np.float16).tobytes()},
+            head_bundle, head_tag, head_inputs,
             {"smax": (sel_stmt.shape, "fp16")},
         )
         # 4. certified PV bundle.
@@ -1700,7 +1720,10 @@ class EncoderRunner:
             dump = Path(dump_dir)
             dump.mkdir(parents=True, exist_ok=True)
             scores_ref = mx.matmul(q_t, mx.transpose(k_t, (0, 1, 3, 2)))
-            masked_ref = mx.where(cond_t, fill_t, bd)
+            bd_scaled = mx.contiguous(
+                (relpos[:, :, :, :375] * mx.array(
+                    float.fromhex("0x1p-4"), mx.float16)))
+            masked_ref = mx.where(cond_t, fill_t, bd_scaled)
             add_ref = scores_ref + masked_ref
             smax_ref = mx.softmax(add_ref, axis=-1)
             attn_ref = mx.matmul(head["smax"],
