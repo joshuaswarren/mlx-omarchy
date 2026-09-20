@@ -1667,7 +1667,27 @@ class EncoderRunner:
                     json.dumps({"shape": list(arr.shape),
                                 "dtype": str(arr.dtype)})
                 )
-            print(f"F-DUMP layer-0 inputs -> {dump_dir}", flush=True)
+            # + the certified GPU intermediates for the upstream
+            # per-program differential (bd/masked/scores/add, element-exact
+            # mx on the same device): the reference side of the ladder.
+            q_gpu = self.tensor(content_stmt.kwargs["x"])
+            k_gpu = self.tensor(content_stmt.kwargs["y"])
+            cond_gpu = self.tensor(sel_stmt.kwargs["cond"])
+            fill_gpu = self.tensor(sel_stmt.kwargs["a"])
+            scores_gpu = mx.matmul(q_gpu, mx.transpose(k_gpu, (0, 1, 3, 2)))
+            bd_gpu = mx.contiguous(r3[:, :, :, :375])
+            masked_gpu = mx.where(cond_gpu, fill_gpu, bd_gpu)
+            add_gpu = scores_gpu + masked_gpu
+            smax_gpu = mx.softmax(add_gpu, axis=-1)
+            for nm, tensor in (("bd", bd_gpu), ("masked", masked_gpu),
+                               ("scores", scores_gpu), ("add", add_gpu),
+                               ("smax", smax_gpu)):
+                arr = np.asarray(tensor)
+                arr.tofile(dump / f"ref-{nm}.bin")
+                (dump / f"ref-{nm}.json").write_text(json.dumps(
+                    {"shape": list(arr.shape), "dtype": str(arr.dtype)}))
+            print(f"F-DUMP layer-0 inputs + GPU intermediates -> {dump_dir}",
+                  flush=True)
         self.values[scores_stmt.names[0]] = relpos
         scores_stmt.done = True
         self.gpu_ops += 1
@@ -1687,7 +1707,7 @@ class EncoderRunner:
         # pad 749->750, reshape [1,8,750,375], slice [1,8,749,375],
         # reshape [1,8,375,749], slice [1,8,375,375], then the var_371
         # scale. Mirror it element-exactly on GPU.
-        padded = mx.pad(relpos, [(0, 0), (0, 0), (0, 1), (0, 0)])
+        padded = mx.pad(relpos, [(0, 0), (0, 0), (0, 0), (1, 0)])
         r1 = mx.reshape(padded, (1, 8, 750, 375))
         r2 = r1[:, :, 1:, :]
         r3 = mx.reshape(r2, (1, 8, 375, 749))
@@ -1746,8 +1766,7 @@ class EncoderRunner:
             add_ref = scores_ref + masked_ref
             smax_ref = mx.softmax(add_ref, axis=-1)
             attn_ref = mx.matmul(head["smax"],
-                                 mx.transpose(self.tensor(
-                                     out_stmt.kwargs["y"]), (0, 1, 3, 2)))
+                                 self.tensor(out_stmt.kwargs["y"]))
             import json as _json
             report = {}
             # The head bundle emits only smax (intermediates bd/masked/
@@ -1776,7 +1795,7 @@ class EncoderRunner:
                     "dev_nan": int(np.isnan(d32).sum()),
                     "ref_nan": int(np.isnan(r32).sum()),
                 }
-            (dump_dir / "per-intermediate.json").write_text(
+            (Path(dump_dir) / "per-intermediate.json").write_text(
                 _json.dumps(report, indent=2))
             print(f"F-DUMP per-intermediate: {_json.dumps(report)}",
                   flush=True)
