@@ -1064,10 +1064,10 @@ class EncoderRunner:
                 "covers A's programs"
             )
         if "F" in self.placed and self.island is not None:
-            a_first = {v[0]: v[1] for v in self.island_a.values()}
+            a_first = {v[0]: (v[1], v[2]) for v in self.island_a.values()}
             c_by_layer = {i: (o, s) for o, (i, s) in self.island_c.items()}
             b_by_layer = {i: s for i, s in self.island_b.values()}
-            for layer, a_stmt in sorted(a_first.items()):
+            for layer, (a_stmt, content_partner) in sorted(a_first.items()):
                 bundle = self.island.bundles / f"island-attn-ac-head-L{layer:02d}"
                 if not (bundle / "manifest.json").exists() and not bundle.is_dir():
                     continue
@@ -1125,9 +1125,16 @@ class EncoderRunner:
                             add_exec_chain(operand)
 
                 declared = {c_stmt.names[0]}
-                for seed in (c_stmt.kwargs["x"],
-                             c_stmt.kwargs["y"],
-                             sel_stmt.kwargs["a"]):
+                # Seeds = the minted head's runtime-input roots ONLY
+                # (a_fill, q, k, cond; relpos is the trigger itself, which
+                # the handler executes). The C statement's operands are
+                # in-span internals -- walking them would mark the whole
+                # span (including the trigger) as exec.
+                for seed in (sel_stmt.kwargs["a"],
+                             sel_stmt.kwargs["cond"],
+                             content_partner.kwargs["x"],
+                             content_partner.kwargs["y"],
+                             c_stmt.kwargs["y"]):
                     add_exec_chain(seed)
                 live_out = {
                     nm: consumers.get(nm, prod_idx)
@@ -1320,7 +1327,7 @@ class EncoderRunner:
             return mx.array(value)
         raise EncoderRunError(
             f"unresolved tensor {token!r} (producer done={self.producer.get(token.strip()).done if self.producer.get(token.strip()) else 'no-producer'}, "
-            f"producer index={self.producer.get(token.strip()).index if self.producer.get(token.strip()) else 'n/a'})")
+            f"producer index={self.producer.get(token.strip()).index if self.producer.get(token.strip()) else 'n/a'}, consumer={getattr(self, '_current_stmt', None) and (self._current_stmt.index, self._current_stmt.op)})")
 
     def scalar(self, token: str):
         """Host-side metadata (shapes, axes, perms, masks, epsilon, flags).
@@ -1402,6 +1409,7 @@ class EncoderRunner:
             mx.async_eval(*[v for v in values if isinstance(v, mx.array)])
 
     def execute(self, stmt: Statement) -> None:
+        self._current_stmt = stmt
         op_started = time.monotonic_ns()
         try:
             self._execute(stmt)
@@ -1422,16 +1430,23 @@ class EncoderRunner:
             "F" in self.placed
             and self.island_ac_span
             and stmt.index in self.island_ac_span
-            and stmt.index not in self.island_ac_exec
         ):
-            stmt.done = True
             if stmt.index in self.island_ac:
                 self._run_island_ac(stmt)
                 self.executed += 1  # this statement joins the pair count
                 self.ane_ops += 1
-            else:
+                return
+            if stmt.index not in self.island_ac_exec:
+                stmt.done = True
+                if stmt.op == "const":
+                    # Bundle-self-contained consts still evaluate: their
+                    # host metadata feeds scalar reads (e.g. the mask
+                    # scale) and lazy graph nodes.
+                    self.eval_const(stmt)
                 self.executed += 1  # bundle-covered (incl. in-span consts)
-            return
+                return
+            # exec-set statement: falls through to normal dispatch (it
+            # feeds the bundle's runtime inputs or later fallback layers)
         stmt.done = True
         if stmt.op == "const":
             self.eval_const(stmt)
@@ -1617,52 +1632,75 @@ class EncoderRunner:
         self.ane_ops += 1
 
     def _run_island_ac(self, stmt: Statement) -> None:
-        """Fused A→mask→add→softmax→C candidate: ONE submit per layer.
-
-        Candidate under receipt §6 (ane-linux-experiments
-        2026-09-19-encoder-submit-repair.md): requires the minted
-        island-attn-ac-L%02d bundle; selected by placement letter "F",
-        which also pulls the B select, add and softmax on-device. Until
-        the bundle is minted the handler is unreachable (registration
-        only happens when the bundle dir exists).
+        """Fused candidate, TWO submits per layer (receipt §7): the minted
+        head (slice, select, scaled-scores matmul, broadcast add, softmax)
+        consumes the rel-pos scores as a RUNTIME input, so the trigger
+        statement itself executes on GPU first (input prep), then the head
+        covers select/add/softmax/the content matmul on-device, then the
+        certified island-pv bundle produces attn_output.
         """
-        layer, _scores_stmt, _content_stmt = self.island_a[stmt.index]
-        ac_i, out_stmt = next(
+        layer, scores_stmt, content_stmt = self.island_a[stmt.index]
+        _ci, out_stmt = next(
             (i, s) for i, s in self.island_c.values() if i == layer
         )
-        sel_i, sel_stmt = next(
+        _bi, sel_stmt = next(
             (i, s) for i, s in self.island_b.values() if i == layer
         )
-        assert ac_i == layer and sel_i == layer
-        fill = self.tensor(sel_stmt.kwargs["a"])
-        cond = self.tensor(sel_stmt.kwargs["cond"])
-        q_v = self.tensor(_scores_stmt.kwargs["x"])
-        pos_kT = self.tensor(_scores_stmt.kwargs["y"])
-        q_scaled = self.tensor(_content_stmt.kwargs["x"])
-        k_headsT = mx.swapaxes(self.tensor(_content_stmt.kwargs["y"]), -1, -2)
-        v_heads = self.tensor(out_stmt.kwargs["y"])
+        # 1. rel-pos scores matmul on GPU: its output is the head's relpos
+        #    runtime input.
+        relpos = mx.matmul(self.tensor(scores_stmt.kwargs["x"]),
+                           self.tensor(scores_stmt.kwargs["y"]))
+        self.values[scores_stmt.names[0]] = relpos
+        scores_stmt.done = True
+        self.gpu_ops += 1
+        # 2. the model scales the sliced mask columns (mul after slice);
+        #    scaling the full width pre-slice is elementwise-identical, and
+        #    the package slices internally.
+        bd_name = sel_stmt.kwargs["b"].strip()
+        scale_name = None
+        for key in ("y", "x"):
+            operand = self.producer[bd_name].kwargs.get(key)
+            if operand is None:
+                continue
+            operand_stmt = self.producer.get(operand.strip())
+            if operand_stmt is not None and operand_stmt.op == "const":
+                scale_name = operand.strip()
+        head_inputs = {
+            "a_fill": mx.contiguous(
+                mx.broadcast_to(self.tensor(sel_stmt.kwargs["a"]),
+                                ISLAND_B_SHAPE)
+            ),
+            "cond": mx.contiguous(
+                mx.broadcast_to(self.tensor(sel_stmt.kwargs["cond"]),
+                                ISLAND_B_SHAPE)
+            ),
+            "q": self.tensor(content_stmt.kwargs["x"]),
+            "k": self.tensor(content_stmt.kwargs["y"]),
+            "relpos": mx.contiguous(relpos),
+        }
+        if scale_name is not None:
+            scale = self.scalar(scale_name)
+            head_inputs["relpos"] = mx.contiguous(
+                (relpos * mx.array(scale, mx.float16)).astype(mx.float16)
+            )
+        head = self.island.submit(
+            f"island-attn-ac-head-L{layer:02d}", f"L{layer:02d}-AC",
+            head_inputs,
+            {"smax": (sel_stmt.shape, "fp16")},
+        )
+        # 3. certified PV bundle: probs + v_heads -> attn_output.
         results = self.island.submit(
-            f"island-attn-ac-L{layer:02d}",
-            f"L{layer:02d}-AC",
+            "island-pv", f"L{layer:02d}-PV",
             {
-                "q_v": q_v,
-                "pos_kT": pos_kT,
-                "q_scaled": q_scaled,
-                "k_headsT": k_headsT,
-                "v_heads": v_heads,
-                "cond": mx.contiguous(mx.broadcast_to(cond, ISLAND_B_SHAPE)),
-                "ninf_rt": mx.contiguous(
-                    mx.broadcast_to(fill, ISLAND_B_SHAPE)
-                ),
+                "probs": head["smax"],
+                "v_heads": self.tensor(out_stmt.kwargs["y"]),
             },
             {"attn_output_1": (out_stmt.shape, "fp16")},
         )
         self.values[out_stmt.names[0]] = results["attn_output_1"]
-        # Every statement this bundle covers, A program outputs included,
-        # is produced on-device; nothing downstream may re-execute them.
-        for covered in (self.island_a[stmt.index][1], _content_stmt, out_stmt):
+        for covered in (content_stmt, out_stmt):
             covered.done = True
-        self.executed += 2
+        self.executed += 3
         self.ane_ops += 2
 
     def _run_island_c(self, stmt: Statement) -> None:
