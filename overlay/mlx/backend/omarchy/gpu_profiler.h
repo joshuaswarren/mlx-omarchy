@@ -32,6 +32,14 @@
 //                     and of the noncoherent invalidate, plus the caller reason
 //   {"k":"end",...}   at exit: totals incl. barrier decisions ("barriers",
 //                     "barriers_skipped"; transfer/fill decisions included)
+//                     and light-mode "unsampled" count
+//
+// Light sampling mode: MLX_OMARCHY_GPU_PROFILE_SAMPLE=<N> (N >= 2) records
+// timestamps and the profiler's own isolation barrier for only every Nth
+// dispatch, with the sampled position rotating every command buffer so
+// periodic dispatch patterns cannot alias a fixed 1-in-N wave. Sampled d
+// events carry "est":N - they are stratified samples for their kernel, and
+// per-kernel estimates must never be read as full-population totals.
 //
 // GPU ticks convert to nanoseconds with meta.period_ns; tick wraparound
 // wraps at 2^valid_bits. Kernel enum values map to names by their
@@ -142,8 +150,14 @@ class GpuProfiler {
     if (ctx == nullptr) {
       return;
     }
+    if (sample_n_ > 1) {
+      // Rotating offset: the sampled position moves every command buffer so
+      // a periodic dispatch pattern cannot alias a fixed 1-in-N wave.
+      phase_ = static_cast<uint32_t>((batches_ * 2654435761u) % sample_n_);
+      batches_++;
+    }
     flush_slot(*ctx, slot, ctx->slots[slot].last_sub);
-    SlotCtx& s = ctx->slots[slot];
+    SlotCtx& s = ctx.slots[slot];
     s.cursor = 0;
     s.pending.clear();
     vk::device_table().CmdResetQueryPool(cmd, s.pool, 0, kPoolQueries);
@@ -165,7 +179,21 @@ class GpuProfiler {
     if (ctx == nullptr) {
       return;
     }
-    SlotCtx& s = ctx->slots[slot];
+    SlotCtx& s = ctx.slots[slot];
+    if (sample_n_ > 1) {
+      // Light mode: unsampled dispatches record nothing - no isolation
+      // barrier, no timestamps, no pending entry - so the command stream
+      // stays close to release scheduling. after_dispatch relies on
+      // last_sampled and must not read pending.
+      bool sampled = (dispatch_seq_++ + phase_) % sample_n_ == 0;
+      s.last_sampled = sampled;
+      if (!sampled) {
+        unsampled_++;
+        return;
+      }
+    } else {
+      s.last_sampled = true;
+    }
     PendingDispatch p{};
     p.skipped = s.cursor + 2 > kPoolQueries;
     p.bar = barrier ? 1u : 0u;
@@ -216,7 +244,13 @@ class GpuProfiler {
     if (ctx == nullptr) {
       return;
     }
-    SlotCtx& s = ctx->slots[slot];
+    SlotCtx& s = ctx.slots[slot];
+    dispatches_++;
+    if (!s.last_sampled || s.pending.empty()) {
+      // Light mode: unsampled dispatch has no pending entry and recorded
+      // no timestamps; the estimator multiplier rides the emitted d events.
+      return;
+    }
     PendingDispatch& p = s.pending.back();
     p.kernel = static_cast<uint32_t>(kernel);
     p.operation = params.operation;
@@ -237,7 +271,6 @@ class GpuProfiler {
           cmd, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, s.pool, p.tick_index + 1);
       s.cursor = p.tick_index + 2;
     }
-    dispatches_++;
   }
 
   // Called at the end of a successful submit(); sub is 0 for submissions
@@ -343,6 +376,9 @@ class GpuProfiler {
     VkQueryPool pool{VK_NULL_HANDLE};
     uint32_t cursor{0};
     uint64_t last_sub{0};
+    // Set by before_dispatch; after_dispatch must not touch pending for an
+    // unsampled dispatch (light mode pushed nothing).
+    bool last_sampled{true};
     std::vector<PendingDispatch> pending;
   };
 
@@ -362,14 +398,15 @@ class GpuProfiler {
     emitf("{\"k\":\"end\",\"t\":%" PRIu64 ",\"dispatches\":%" PRIu64
           ",\"dropped\":%u,\"submissions\":%" PRIu64 ",\"joins\":%" PRIu64
           ",\"barriers\":%" PRIu64 ",\"barriers_skipped\":%" PRIu64
-          "}\n",
+          ",\"unsampled\":%" PRIu64 "}\n",
           host_ns(),
           dispatches_,
           dropped_,
           submissions_,
           joins_,
           barriers_emitted_,
-          barriers_skipped_);
+          barriers_skipped_,
+          unsampled_);
     std::fclose(out_);
     out_ = nullptr;
   }
@@ -424,6 +461,11 @@ class GpuProfiler {
             p.host_cost,
             p.tape,
             p.bar);
+      if (sample_n_ > 1) {
+        // Estimator multiplier: this d event is one of N stratified
+        // samples for its kernel, never a full-population total.
+        emitf(",\"est\":%u", sample_n_);
+      }
       if (p.tick_index + 1 < queries &&
           ticks[p.tick_index + 1] >= ticks[p.tick_index]) {
         emitf(",\"t0\":%" PRIu64 ",\"t1\":%" PRIu64,
@@ -460,15 +502,32 @@ class GpuProfiler {
     device_ = device.handle();
     host_t0_ = host_ns();
     const char* label = std::getenv("MLX_OMARCHY_GPU_PROFILE_LABEL");
+    // Light sampling mode: MLX_OMARCHY_GPU_PROFILE_SAMPLE=<N>, N >= 2.
+    // Only every Nth dispatch is timestamped and only the profiler's own
+    // isolation barrier is dropped for unsampled dispatches, so the
+    // recorded command stream stays close to release scheduling. The
+    // phase rotates per command buffer so a periodic dispatch pattern
+    // (e.g. the 201/218 dispatches-per-token decode graphs) cannot stand
+    // in a fixed 1-in-N wave; per-kernel estimates must be formed by
+    // grouping d events per kernel enum (each carries "est":N) - sampled
+    // counts are never full-population totals.
+    const char* sample_env = std::getenv("MLX_OMARCHY_GPU_PROFILE_SAMPLE");
+    if (sample_env != nullptr && sample_env[0] != '\0') {
+      long n = std::strtol(sample_env, nullptr, 10);
+      if (n >= 2) {
+        sample_n_ = static_cast<uint32_t>(n);
+      }
+    }
     emitf("{\"k\":\"meta\",\"device\":\"%s\",\"period_ns\":%.6f"
           ",\"valid_bits\":%u,\"pool\":%u,\"label\":\"%s\",\"host_t0\":%"
-          PRIu64 "}\n",
+          PRIu64 ",\"sample\":%u}\n",
           device.capabilities().device_name.c_str(),
           static_cast<double>(period_ns_),
           valid_bits_,
           kPoolQueries,
           label != nullptr ? label : "",
-          host_t0_);
+          host_t0_,
+          sample_n_);
     if (valid_bits_ == 0) {
       std::fprintf(
           stderr,
@@ -504,6 +563,12 @@ class GpuProfiler {
   uint32_t dropped_{0};
   uint64_t barriers_emitted_{0};
   uint64_t barriers_skipped_{0};
+  // Light sampling state (see open_output): sample_n_ == 1 is full mode.
+  uint32_t sample_n_{1};
+  uint32_t phase_{0};
+  uint64_t batches_{0};
+  uint64_t dispatch_seq_{0};
+  uint64_t unsampled_{0};
 };
 
 // Namespace-level accessor used by encoder.cpp call sites.
