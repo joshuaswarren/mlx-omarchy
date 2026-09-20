@@ -40,7 +40,8 @@ class PhaseSplitSourceGuard(unittest.TestCase):
     def test_crossing_buffers_declared(self):
         dec, joint, _ = build_all()
         # K_DEC exports and K_JOINT consumes the pj bus; both declare it
-        self.assertIn("pj_out", dec) and self.assertIn("pj_out", joint)
+        self.assertIn("pj_out", dec)
+        self.assertIn("pj_bus", joint)
         self.assertIn("threadgroup float16_t s_pj[640];", joint)
         # K_DEC keeps the carrier arrays the rebalance needs (s_relu,
         # s_bval, s_bidx, s_h1) and K_JOINT keeps its own argmax arrays
@@ -57,11 +58,16 @@ class PhaseSplitSourceGuard(unittest.TestCase):
     def test_run_continuation_in_k_joint(self):
         _, joint, _ = build_all()
         self.assertIn("ctl_out[5] = (s_ctl[", joint)
-        self.assertIn("cfg[0]", joint) and self.assertIn("cfg[1]", joint)
+        self.assertIn("cfg[0]", joint)
+        self.assertIn("cfg[1]", joint)
         # no break in the split: the driver loops instead
         self.assertNotIn(" break;", joint)
 
-
+    def test_validity_and_same_frame_symbol_count_cross_dispatches(self):
+        _, joint, _ = build_all()
+        self.assertIn("s_ctl[2] = 1;", joint)
+        self.assertIn("s_ctl[9] = ctl_in[6];", joint)
+        self.assertIn("ctl_out[6] = (s_ctl[4] == 0) ? s_ctl[9] : 0;", joint)
 
 
 class SyntheticScopeGuard(unittest.TestCase):
