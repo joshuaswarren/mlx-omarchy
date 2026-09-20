@@ -1633,11 +1633,11 @@ class EncoderRunner:
 
     def _run_island_ac(self, stmt: Statement) -> None:
         """Fused candidate, TWO submits per layer (receipt §7): the minted
-        head (slice, select, scaled-scores matmul, broadcast add, softmax)
-        consumes the rel-pos scores as a RUNTIME input, so the trigger
-        statement itself executes on GPU first (input prep), then the head
-        covers select/add/softmax/the content matmul on-device, then the
-        certified island-pv bundle produces attn_output.
+        bd-input head (select, scaled-scores matmul, broadcast add, softmax
+        — 4 programs) consumes the GPU-prepared bd/masked/scores, then the
+        certified island-pv bundle produces attn_output. The rel-pos
+        matmul executes on GPU as the head's relpos-slice replacement is
+        not device-qualified; bd is its contiguous scaled slice.
         """
         layer, scores_stmt, content_stmt = self.island_a[stmt.index]
         _ci, out_stmt = next(
@@ -1646,54 +1646,14 @@ class EncoderRunner:
         _bi, sel_stmt = next(
             (i, s) for i, s in self.island_b.values() if i == layer
         )
-        # 1. rel-pos scores matmul on GPU: its output is the head's relpos
-        #    runtime input.
+        # 1. rel-pos scores matmul on GPU (head runtime input bd source).
         relpos = mx.matmul(self.tensor(scores_stmt.kwargs["x"]),
                            self.tensor(scores_stmt.kwargs["y"]))
-        dump_dir = os.environ.get("MLX_OMARCHY_F_DUMP")
-        if dump_dir and layer == 0:
-            dump = Path(dump_dir)
-            dump.mkdir(parents=True, exist_ok=True)
-            for nm, tensor in (
-                ("q", self.tensor(content_stmt.kwargs["x"])),
-                ("k", self.tensor(content_stmt.kwargs["y"])),
-                ("cond", self.tensor(sel_stmt.kwargs["cond"])),
-                ("relpos", relpos),
-                ("a_fill", self.tensor(sel_stmt.kwargs["a"])),
-            ):
-                arr = np.asarray(tensor)
-                arr.tofile(dump / f"{nm}.bin")
-                (dump / f"{nm}.json").write_text(
-                    json.dumps({"shape": list(arr.shape),
-                                "dtype": str(arr.dtype)})
-                )
-            # + the certified GPU intermediates for the upstream
-            # per-program differential (bd/masked/scores/add, element-exact
-            # mx on the same device): the reference side of the ladder.
-            q_gpu = self.tensor(content_stmt.kwargs["x"])
-            k_gpu = self.tensor(content_stmt.kwargs["y"])
-            cond_gpu = self.tensor(sel_stmt.kwargs["cond"])
-            fill_gpu = self.tensor(sel_stmt.kwargs["a"])
-            scores_gpu = mx.matmul(q_gpu, mx.transpose(k_gpu, (0, 1, 3, 2)))
-            bd_gpu = mx.contiguous(r3[:, :, :, :375])
-            masked_gpu = mx.where(cond_gpu, fill_gpu, bd_gpu)
-            add_gpu = scores_gpu + masked_gpu
-            smax_gpu = mx.softmax(add_gpu, axis=-1)
-            for nm, tensor in (("bd", bd_gpu), ("masked", masked_gpu),
-                               ("scores", scores_gpu), ("add", add_gpu),
-                               ("smax", smax_gpu)):
-                arr = np.asarray(tensor)
-                arr.tofile(dump / f"ref-{nm}.bin")
-                (dump / f"ref-{nm}.json").write_text(json.dumps(
-                    {"shape": list(arr.shape), "dtype": str(arr.dtype)}))
-            print(f"F-DUMP layer-0 inputs + GPU intermediates -> {dump_dir}",
-                  flush=True)
         self.values[scores_stmt.names[0]] = relpos
         scores_stmt.done = True
         self.gpu_ops += 1
-        # 2. the head takes a CONTIGUOUS pre-sliced bd input: slice the
-        #    rel-pos scores on GPU and apply the model's mask scale
-        #    (var_371, elementwise after slice — identical values).
+        # 2. bd: contiguous scaled slice of the rel-pos scores.
+        bd = mx.contiguous(relpos[:, :, :, :375])
         bd_name = sel_stmt.kwargs["b"].strip()
         scale_name = None
         for key in ("y", "x"):
@@ -1703,99 +1663,78 @@ class EncoderRunner:
             operand_stmt = self.producer.get(operand.strip())
             if operand_stmt is not None and operand_stmt.op == "const":
                 scale_name = operand.strip()
-        # The certified chain is a REBLOCKING, not a plain column slice:
-        # pad 749->750, reshape [1,8,750,375], slice [1,8,749,375],
-        # reshape [1,8,375,749], slice [1,8,375,375], then the var_371
-        # scale. Mirror it element-exactly on GPU.
-        padded = mx.pad(relpos, [(0, 0), (0, 0), (0, 0), (1, 0)])
-        r1 = mx.reshape(padded, (1, 8, 750, 375))
-        r2 = r1[:, :, 1:, :]
-        r3 = mx.reshape(r2, (1, 8, 375, 749))
-        bd = mx.contiguous(r3[:, :, :, :375])
         if scale_name is not None:
             scale = self.scalar(scale_name)
             bd = mx.contiguous(
                 (bd * mx.array(scale, mx.float16)).astype(mx.float16))
-        head_inputs = {
-            # DISCRIMINATOR (explicitly scoped, Main-approved): finite
-            # fill -65504 instead of -inf bits. NOT a fix: acceptance of
-            # any clamp requires proved valid-domain equivalence + fatal
-            # pins. This arm isolates the -inf datapath from the rest.
-            "a_fill": mx.contiguous(
-                mx.broadcast_to(
-                    mx.array(np.float16(-65504), mx.float16)
-                    if os.environ.get("MLX_OMARCHY_F_FINITE_FILL") == "1"
-                    else self.tensor(sel_stmt.kwargs["a"]),
-                    ISLAND_B_SHAPE)
-            ),
-            "bd": bd,
-            "cond": mx.contiguous(
-                mx.broadcast_to(self.tensor(sel_stmt.kwargs["cond"]),
-                                ISLAND_B_SHAPE)
-            ),
-            "q": self.tensor(content_stmt.kwargs["x"]),
-            "k": self.tensor(content_stmt.kwargs["y"]),
-        }
+        q_t = self.tensor(content_stmt.kwargs["x"])
+        k_t = self.tensor(content_stmt.kwargs["y"])
+        cond_t = self.tensor(sel_stmt.kwargs["cond"])
+        fill_t = self.tensor(sel_stmt.kwargs["a"])
+        fill_full = mx.contiguous(
+            mx.broadcast_to(fill_t, ISLAND_B_SHAPE))
+        cond_full = mx.contiguous(
+            mx.broadcast_to(cond_t, ISLAND_B_SHAPE))
+        # 3. head submit: select + scores + add + softmax on device.
         head = self.island.submit(
             f"island-attn-ac-head-L{layer:02d}", f"L{layer:02d}-AC",
-            head_inputs,
+            {"a_fill": memoryview(np.ascontiguousarray(
+                np.asarray(fill_full).astype(np.float16))),
+             "bd": memoryview(np.ascontiguousarray(
+                 np.asarray(bd).astype(np.float16))),
+             "cond": memoryview(np.ascontiguousarray(
+                 np.asarray(cond_full).astype(np.bool_))),
+             "q": memoryview(np.ascontiguousarray(
+                 np.asarray(q_t).astype(np.float16))),
+             "k": memoryview(np.ascontiguousarray(
+                 np.asarray(k_t).astype(np.float16)))},
             {"smax": (sel_stmt.shape, "fp16")},
         )
-        # 3. certified PV bundle: probs + v_heads -> attn_output.
+        # 4. certified PV bundle.
         results = self.island.submit(
             "island-pv", f"L{layer:02d}-PV",
-            {
-                "probs": head["smax"],
-                "v_heads": self.tensor(out_stmt.kwargs["y"]),
-            },
+            {"probs": head["smax"],
+             "v_heads": self.tensor(out_stmt.kwargs["y"])},
             {"attn_output_1": (out_stmt.shape, "fp16")},
         )
         self.values[out_stmt.names[0]] = results["attn_output_1"]
-        # Per-intermediate matched comparison: device outputs vs the exact
-        # certified GPU computation of the same stage, on the same device,
-        # same inputs. Bit-level: fp16 viewed as uint16 (ULP), plus
-        # explicit +inf/-inf/NaN mask agreement. Dumped for the window
-        # record when MLX_OMARCHY_F_DUMP is set.
-        if dump_dir:
-            q_t = self.tensor(content_stmt.kwargs["x"])
-            k_t = self.tensor(content_stmt.kwargs["y"])
-            cond_b = self.tensor(sel_stmt.kwargs["cond"])
-            fill_b = self.tensor(sel_stmt.kwargs["a"])
+        # 5. matched per-intermediate comparison (identical inputs, same
+        #    device): device softmax/smax vs the certified GPU chain.
+        dump_dir = os.environ.get("MLX_OMARCHY_F_DUMP")
+        if dump_dir and layer == 0:
+            dump = Path(dump_dir)
+            dump.mkdir(parents=True, exist_ok=True)
             scores_ref = mx.matmul(q_t, mx.transpose(k_t, (0, 1, 3, 2)))
-            masked_ref = mx.where(cond_b, fill_b, bd)
+            masked_ref = mx.where(cond_t, fill_t, bd)
             add_ref = scores_ref + masked_ref
             smax_ref = mx.softmax(add_ref, axis=-1)
             attn_ref = mx.matmul(head["smax"],
                                  self.tensor(out_stmt.kwargs["y"]))
             import json as _json
             report = {}
-            # The head bundle emits only smax (intermediates bd/masked/
-            # scores/add stay in-package); per-intermediate isolation runs
-            # through the truncated-dispatch prefix bundles.
             for stage, dev, ref in (
                 ("softmax", head["smax"], smax_ref),
                 ("attn-out", results["attn_output_1"], attn_ref),
             ):
-                dev16 = np.asarray(dev).astype(np.float16)
-                ref16 = np.asarray(ref).astype(np.float16)
+                dev16 = np.ascontiguousarray(
+                    np.asarray(dev)).astype(np.float16)
+                ref16 = np.ascontiguousarray(
+                    np.asarray(ref)).astype(np.float16)
                 d32 = dev16.astype(np.float32)
                 r32 = ref16.astype(np.float32)
                 diff = np.abs(d32 - r32)
+                finite = np.isfinite(diff)
                 report[stage] = {
                     "bit_equal": bool(np.array_equal(
                         dev16.view(np.uint16), ref16.view(np.uint16))),
-                    "mismatch_count": int((dev16.view(np.uint16)
-                                           != ref16.view(np.uint16)).sum()),
-                    "max_abs_finite": float(diff[np.isfinite(diff)].max())
-                    if np.isfinite(diff).any() else None,
-                    "dev_inf": int(np.isinf(d32).sum()),
-                    "ref_inf": int(np.isinf(r32).sum()),
+                    "mismatch": int((dev16.view(np.uint16)
+                                     != ref16.view(np.uint16)).sum()),
+                    "finite_max_abs": float(diff[finite].max())
+                    if finite.any() else None,
                     "dev_neginf": int(np.isneginf(d32).sum()),
-                    "ref_neginf": int(np.isneginf(r32).sum()),
                     "dev_nan": int(np.isnan(d32).sum()),
-                    "ref_nan": int(np.isnan(r32).sum()),
                 }
-            (Path(dump_dir) / "per-intermediate.json").write_text(
+            (dump / "per-intermediate.json").write_text(
                 _json.dumps(report, indent=2))
             print(f"F-DUMP per-intermediate: {_json.dumps(report)}",
                   flush=True)
