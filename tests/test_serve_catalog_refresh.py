@@ -508,5 +508,49 @@ class CliWorkerMemoryGateTests(unittest.TestCase):
         self.assertIn("huge needs", proc.stdout)
 
 
+WORKFLOW = REPO_ROOT / ".github" / "workflows" / "serve-catalog-refresh.yml"
+
+
+class RefreshWorkflowContractTests(unittest.TestCase):
+    """The scheduled refresh follows the house CI standards.
+
+    Mirrors tests/test_community_data.py's workflow checks: scheduled +
+    dispatchable, bot identity, least-privilege, no secrets, and above all
+    metadata-only via PR -- never a direct push to main, never an
+    autopromote of qualification or recommended flags.
+    """
+
+    def test_workflow_exists_and_runs_the_refresher(self):
+        text = WORKFLOW.read_text(encoding="utf-8")
+        self.assertIn("tools/refresh_serve_catalog.py", text)
+        self.assertIn("tests/test_serve_catalog_refresh.py", text)
+
+    def test_workflow_is_scheduled_and_dispatchable(self):
+        text = WORKFLOW.read_text(encoding="utf-8")
+        self.assertIn("schedule:", text)
+        self.assertIn("cron:", text)
+        self.assertIn("workflow_dispatch:", text)
+
+    def test_workflow_never_pushes_main_and_uses_pr(self):
+        text = WORKFLOW.read_text(encoding="utf-8")
+        self.assertIn("gh pr create", text)
+        self.assertIn('--base main', text)
+        # The only push target is the dedicated refresh branch.
+        self.assertIn('git push -f origin "$BRANCH"', text)
+        self.assertNotIn("git push origin main", text)
+
+    def test_workflow_states_immutability_contract(self):
+        text = WORKFLOW.read_text(encoding="utf-8").lower()
+        self.assertIn("metadata-only", text)
+        self.assertIn("auto-merges", text)
+        self.assertIn("immutable", text)
+
+    def test_workflow_drift_exit_does_not_fail_the_job(self):
+        # Exit 3 (drift, revisions retained) must proceed to the PR step.
+        text = WORKFLOW.read_text(encoding="utf-8")
+        self.assertIn("case \"$code\" in", text)
+        self.assertIn("0|3)", text)
+
+
 if __name__ == "__main__":
     unittest.main()

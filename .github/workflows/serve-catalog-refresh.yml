@@ -1,0 +1,86 @@
+name: Refresh serve catalog availability
+
+# Maintainer-side availability refresh for serve/mlx_omarchy_serve/
+# catalog.json, on a schedule and always through a metadata-only pull
+# request. The refresher (tools/refresh_serve_catalog.py) rewrites ONLY
+# availability.size_bytes / availability.refreshed_at and the top-level
+# generated_at; qualification, recommended, revision, priority, and every
+# other vetted field are immutable by construction and verified by tests.
+# Nothing auto-merges: a human reviews and merges the PR. Reads no
+# secret: the Hugging Face metadata API is public and unauthenticated.
+
+on:
+  schedule:
+    - cron: "43 4 * * *" # daily, off the top of the hour
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: serve-catalog-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # push the refresh branch; nothing more
+      pull-requests: write # open the metadata-only PR
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Refresh availability from the Hugging Face metadata API
+        # Exit 0 = clean refresh, 3 = refreshed with upstream drift
+        # (revisions retained, drift report in the log); both proceed to
+        # the PR. Exit 1 (fetch error) or 2 (invalid catalog) fails the
+        # job and leaves the committed catalog untouched: last-known-good
+        # wins.
+        id: refresh
+        run: |
+          set -euo pipefail
+          code=0
+          python3 tools/refresh_serve_catalog.py \
+            --catalog serve/mlx_omarchy_serve/catalog.json || code=$?
+          case "$code" in
+            0|3) echo "refresher exit $code" ;;
+            *) exit "$code" ;;
+          esac
+
+      - name: Validate the refreshed catalog and run the catalog tests
+        run: |
+          python3 -m pytest tests/test_serve_catalog_refresh.py
+
+      - name: Open metadata-only pull request
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- serve/mlx_omarchy_serve/catalog.json; then
+            echo "Availability already current; no PR needed."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          BRANCH=serve-catalog-refresh
+          if git ls-remote --exit-code --heads origin "$BRANCH" >/dev/null 2>&1; then
+            git fetch origin "$BRANCH"
+            git checkout -B "$BRANCH" "origin/$BRANCH"
+          else
+            git checkout -B "$BRANCH"
+          fi
+          git add serve/mlx_omarchy_serve/catalog.json
+          git commit -m "catalog: availability refresh (metadata-only, automated)"
+          git push -f origin "$BRANCH"
+          cat > pr-body.md <<'BODY'
+          Automated availability refresh: size_bytes / refreshed_at /
+          generated_at only. The refresher cannot write qualification,
+          recommended, revision, or priority; the structural pre-write
+          guard and tests/test_serve_catalog_refresh.py verify it. Any
+          upstream-drift warnings are in the job log. Human merge
+          required; nothing auto-merges.
+          BODY
+          gh pr create --head "$BRANCH" --base main \
+            --title "serve catalog: availability refresh (metadata-only)" \
+            --body-file pr-body.md \
+            || echo "PR already open; pushed update to existing branch."
+        env:
+          GH_TOKEN: ${{ github.token }}
