@@ -51,8 +51,23 @@ def main() -> int:
 
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
-    bundle_dir = Path(args.bundles) / BUNDLE
+    # --bundles accepts either the bundles PARENT or the bundle directory
+    # itself; resolve once and refuse anything ambiguous before the worker
+    # ever launches (a nested copy made the C++ loader fail mid-window).
+    candidates = [Path(args.bundles) / BUNDLE, Path(args.bundles)]
+    bundle_dir = next(
+        (c for c in candidates if (c / "manifest.json").is_file()), None)
+    if bundle_dir is None:
+        raise SystemExit(
+            f"cannot resolve {BUNDLE}: {args.bundles} must be either the "
+            "bundle directory itself (manifest.json directly inside) or "
+            "its parent, without nested copies")
     manifest = json.loads((bundle_dir / "manifest.json").read_text())
+    stray = sorted(d.name for d in bundle_dir.iterdir() if d.is_dir())
+    if stray:
+        raise SystemExit(
+            f"{bundle_dir} contains unexpected subdirectories {stray}; the "
+            "bundle layout is manifest.json + program-N.anec files only")
     print(f"bundle {BUNDLE} graph {manifest.get('graph_hash', '?')[:16]} "
           f"programs {len(manifest.get('programs', []))}")
 
