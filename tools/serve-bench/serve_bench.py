@@ -158,6 +158,8 @@ def start_leg(leg: str, args, python: str) -> subprocess.Popen:
     elif leg == "omlx":
         cmd = [python, "-m", "omlx.server", "--model-dir", args.model_snapshot,
                "--host", HOST, "--port", str(port)]
+        if args.omlx_extra_args:
+            cmd += args.omlx_extra_args.split()
     elif leg == "mlxserve":
         cmd = [args.mlxserve_bin, "--model", args.model_snapshot, "--serve",
                "--host", HOST, "--port", str(port)]
@@ -458,6 +460,7 @@ def main() -> None:
     ap.add_argument("--python", default=sys.executable, help="bench venv python that has mlx-omarchy")
     ap.add_argument("--mlxserve-bin", default=os.path.expanduser("~/src/mlx-serve-clean/zig-out/bin/mlx-serve"))
     ap.add_argument("--omlx-hint", default=None, help="substring to pick /v1/models id on the omlx leg")
+    ap.add_argument("--omlx-extra-args", default="", help="extra args appended to the omlx server cmd, e.g. --max-model-memory 32GB")
     ap.add_argument("--expect-version", default="", help="fatal unless mlx-omarchy version matches")
     ap.add_argument("--expect-libmlx", default="", help="fatal unless libmlx sha256-16 matches")
     ap.add_argument("--engine-control", action="store_true",
