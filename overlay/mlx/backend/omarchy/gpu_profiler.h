@@ -36,10 +36,13 @@
 //
 // Light sampling mode: MLX_OMARCHY_GPU_PROFILE_SAMPLE=<N> (N >= 2) records
 // timestamps and the profiler's own isolation barrier for only every Nth
-// dispatch, with the sampled position rotating every command buffer so
-// periodic dispatch patterns cannot alias a fixed 1-in-N wave. Sampled d
-// events carry "est":N - they are stratified samples for their kernel, and
-// per-kernel estimates must never be read as full-population totals.
+// dispatch in a SYSTEMATIC sample whose position rotates every command
+// buffer, so a periodic dispatch pattern cannot stand in a fixed 1-in-N
+// wave. It is not stratified per kernel (the kernel enum is not known at
+// t0-recording time). Sampled d events carry "est":N: per-kernel figures
+// from a light stream are ratio estimates over the sampled subset of each
+// kernel and must never be read as full-population totals; kernels with
+// few dispatches need full mode.
 //
 // GPU ticks convert to nanoseconds with meta.period_ns; tick wraparound
 // wraps at 2^valid_bits. Kernel enum values map to names by their
@@ -153,11 +156,11 @@ class GpuProfiler {
     if (sample_n_ > 1) {
       // Rotating offset: the sampled position moves every command buffer so
       // a periodic dispatch pattern cannot alias a fixed 1-in-N wave.
-      phase_ = static_cast<uint32_t>((batches_ * 2654435761u) % sample_n_);
-      batches_++;
+      ctx->phase = static_cast<uint32_t>((ctx->batches * 2654435761u) % sample_n_);
+      ctx->batches++;
     }
     flush_slot(*ctx, slot, ctx->slots[slot].last_sub);
-    SlotCtx& s = ctx.slots[slot];
+    SlotCtx& s = ctx->slots[slot];
     s.cursor = 0;
     s.pending.clear();
     vk::device_table().CmdResetQueryPool(cmd, s.pool, 0, kPoolQueries);
@@ -179,13 +182,13 @@ class GpuProfiler {
     if (ctx == nullptr) {
       return;
     }
-    SlotCtx& s = ctx.slots[slot];
+    SlotCtx& s = ctx->slots[slot];
     if (sample_n_ > 1) {
       // Light mode: unsampled dispatches record nothing - no isolation
       // barrier, no timestamps, no pending entry - so the command stream
       // stays close to release scheduling. after_dispatch relies on
       // last_sampled and must not read pending.
-      bool sampled = (dispatch_seq_++ + phase_) % sample_n_ == 0;
+      bool sampled = (ctx->dispatch_seq++ + ctx->phase) % sample_n_ == 0;
       s.last_sampled = sampled;
       if (!sampled) {
         unsampled_++;
@@ -244,7 +247,7 @@ class GpuProfiler {
     if (ctx == nullptr) {
       return;
     }
-    SlotCtx& s = ctx.slots[slot];
+    SlotCtx& s = ctx->slots[slot];
     dispatches_++;
     if (!s.last_sampled || s.pending.empty()) {
       // Light mode: unsampled dispatch has no pending entry and recorded
@@ -384,6 +387,11 @@ class GpuProfiler {
 
   struct Ctx {
     std::array<SlotCtx, kProfilerSlots> slots;
+    // Light-sampling sequence state lives per encoder: the runtime records
+    // on one encoder thread per Ctx, so no two encoders share a sequence.
+    uint64_t dispatch_seq{0};
+    uint64_t batches{0};
+    uint32_t phase{0};
   };
 
   // Generous per-command-buffer budget: 32768 dispatches. Overflow drops
@@ -462,8 +470,9 @@ class GpuProfiler {
             p.tape,
             p.bar);
       if (sample_n_ > 1) {
-        // Estimator multiplier: this d event is one of N stratified
-        // samples for its kernel, never a full-population total.
+        // Estimator multiplier: this d event is one systematic sample of N
+        // for its kernel's dispatch population - a ratio-estimate input,
+        // never a full-population total.
         emitf(",\"est\":%u", sample_n_);
       }
       if (p.tick_index + 1 < queries &&
@@ -563,11 +572,10 @@ class GpuProfiler {
   uint32_t dropped_{0};
   uint64_t barriers_emitted_{0};
   uint64_t barriers_skipped_{0};
-  // Light sampling state (see open_output): sample_n_ == 1 is full mode.
+  // Light sampling mode (see open_output): sample_n_ == 1 is full mode.
+  // Sequence state is per encoder (Ctx); only the mode and the unsampled
+  // tally are global.
   uint32_t sample_n_{1};
-  uint32_t phase_{0};
-  uint64_t batches_{0};
-  uint64_t dispatch_seq_{0};
   uint64_t unsampled_{0};
 };
 
