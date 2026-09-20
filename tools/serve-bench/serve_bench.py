@@ -585,7 +585,7 @@ def main() -> None:
         out = pathlib.Path(args.outdir) / "results-servebench.json"
         out.write_text(json.dumps(results, indent=2))
         log(f"wrote {out}")
-    if not results["legs"]:
+    if not results["legs"] and not results.get("direct"):
         fatal("all legs failed", 7)
 
 
