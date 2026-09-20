@@ -177,7 +177,7 @@
       "serve": null
     },
     {
-      "id": "ternary-bonsai-2-27b-mlx-2bit",
+      "id": "bonsai-2-27b-mlx-2bit",
       "repo": "prism-ml/Ternary-Bonsai-2-27B-mlx-2bit",
       "revision": "3f926b415992eaa2ae9dd7b573706494d6bbf787",
       "kind": "chat",
@@ -223,17 +223,23 @@
         "model_type": "prism_hadamard_qwen35",
         "params": 27359638768,
         "multimodal": true,
-        "requires_pack_runtime": true,
-        "remote_code_warning": "The pack config declares requires_runtime and ships runtime/*.py executed by the specialized loader. Catalog tooling never fetches or executes it; running this model requires trusting and reviewing that runtime first.",
+        "requires_pack_runtime": false,
+        "remote_code_warning": "The pack ships runtime/*.py, but the serving module (mlx_omarchy_bonsai2) never imports it: the Hadamard/packing semantics are ported in-repo (serve/mlx_omarchy_bonsai2/packed.py, auditable). Nothing remote is executed.",
         "hybrid_attention": "linear_attention x3 + full_attention, interval 4, 64 layers (gdn_activation_layout custom)",
         "quant_backend_support": "affine bits 2 / group 128 is implemented in overlay/mlx/backend/omarchy/primitives.cpp (bits {2,3,4,5,6,8} x groups {32,64,128}); implemented primitives are not per-model qualification",
         "min_mem_gib_basis": "ceil(weights_bytes * 1.25 / 2^30); static weights floor, not a measured peak",
         "kv_basis": "kv_bytes_per_token = 2 (K+V) x 16 full-attention layers (64/4) x 4 kv heads x 256 head_dim x 2 bytes (bf16), from the pinned config; GDN layers carry fixed recurrent state, not a growing cache",
         "variant": "2bit",
         "weights_sha256": "130de5925082c168b7866b2e91b52e44abbafc99017e3ca352b77b5b55a269ed (model.safetensors, 8,595,477,990 B; Bonsai2RuntimeEnablement 2026-09-20, confirmed by the pinned commit's git-LFS pointer, the pack's files.json, and byte-hashes on t6001-test-host)",
-        "config_sha256": "238de7c5 (config.json, per the same lane record)"
+        "config_sha256": "238de7c5 (config.json, per the same lane record)",
+        "residency": "Vision tower tensors are excluded from the resident set and accounted separately (loader reports exact text-only resident_bytes at load); MTP is 0 layers.",
+        "admission_bound": "Config max_position_embeddings is 262144, but the server enforces its own --max-context hard cap and serializes generation; on a 16 GiB host the KV rate (64 KiB/token) bounds practical context to ~8k tokens at ~4 GiB headroom.",
+        "attribution": "Apache-2.0 + NOTICE attribution: 'Created using Bonsai by Prism ML'; built from Qwen3.8-27B (Apache-2.0)."
       },
-      "serve": null
+      "serve": {
+        "backend": "module",
+        "module": "mlx_omarchy_bonsai2.server"
+      }
     },
     {
       "id": "qwen3.8-35b-a3b-distill",
