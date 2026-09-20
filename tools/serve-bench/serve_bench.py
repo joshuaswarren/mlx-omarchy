@@ -512,6 +512,43 @@ def ids_agreement(direct: dict) -> dict:
     return out
 
 
+def parse_server_log_diagnostics(path: str) -> dict:
+    """Minimal diagnostics from the existing mlx_lm.server log: per-request
+    prompt-processing suffix counts (a cache hit shows as '1/1' — the
+    server prefetched only the last token, which itself proves the
+    request's prompt-token prefix matched the stored entry exactly),
+    prompt-cache size over time, and request POST count."""
+    import re
+    prog = []
+    cache_lines = []
+    posts = 0
+    try:
+        with open(path, "r", errors="replace") as f:
+            for line in f:
+                m = re.search(r"Prompt processing progress: (\d+)/(\d+)", line)
+                if m:
+                    prog.append({"done": int(m.group(1)), "total": int(m.group(2))})
+                    continue
+                m = re.search(r"Prompt Cache: (\d+) sequences, ([\d.]+) GB", line)
+                if m:
+                    cache_lines.append({"sequences": int(m.group(1)),
+                                        "gb": float(m.group(2))})
+                    continue
+                if "POST /v1/chat" in line:
+                    posts += 1
+    except OSError:
+        return {"error": "log missing"}
+    # Group the progress markers into requests: a request's LAST marker
+    # gives (suffix_done, prompt_total). A request whose final marker has
+    # done==total==1 hit the cached prefix (prompt-ID agreement, proved
+    # server-side); done==total>1 means full prefill ran.
+    return {"prompt_processing_markers": prog,
+            "cache_state_lines": cache_lines,
+            "chat_posts": posts,
+            "requests_full_prefill": sum(1 for p in prog if p["done"] == p["total"] and p["total"] > 1),
+            "requests_cache_hit": sum(1 for p in prog if p["done"] == p["total"] == 1)}
+
+
 def run_leg(leg: str, args, python: str, results: dict) -> None:
     port = PORTS[leg]
     free_port(port)
@@ -699,6 +736,15 @@ def main() -> None:
         for leg in legs:
             run_leg(leg, args, args.python, results)
     finally:
+        # Server-side diagnostics from the existing log path: the
+        # per-request prefill suffix counts prove server-side prompt-ID
+        # agreement (a 1/1 marker = cached-prefix hit) and record cache
+        # behavior without touching server code.
+        results["server_log_diagnostics"] = {}
+        for leg in legs:
+            lp = pathlib.Path(args.outdir) / f"server-{leg}.log"
+            results["server_log_diagnostics"][leg] = parse_server_log_diagnostics(str(lp))
+        log(f"server_log_diagnostics: {json.dumps(results['server_log_diagnostics'])[:300]}")
         out = pathlib.Path(args.outdir) / "results-servebench.json"
         out.write_text(json.dumps(results, indent=2))
         log(f"wrote {out}")
