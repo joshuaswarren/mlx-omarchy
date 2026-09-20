@@ -1650,6 +1650,24 @@ class EncoderRunner:
         #    runtime input.
         relpos = mx.matmul(self.tensor(scores_stmt.kwargs["x"]),
                            self.tensor(scores_stmt.kwargs["y"]))
+        dump_dir = os.environ.get("MLX_OMARCHY_F_DUMP")
+        if dump_dir and layer == 0:
+            dump = Path(dump_dir)
+            dump.mkdir(parents=True, exist_ok=True)
+            for nm, tensor in (
+                ("q", self.tensor(content_stmt.kwargs["x"])),
+                ("k", self.tensor(content_stmt.kwargs["y"])),
+                ("cond", self.tensor(sel_stmt.kwargs["cond"])),
+                ("relpos", relpos),
+                ("a_fill", self.tensor(sel_stmt.kwargs["a"])),
+            ):
+                arr = np.asarray(tensor)
+                arr.tofile(dump / f"{nm}.bin")
+                (dump / f"{nm}.json").write_text(
+                    json.dumps({"shape": list(arr.shape),
+                                "dtype": str(arr.dtype)})
+                )
+            print(f"F-DUMP layer-0 inputs -> {dump_dir}", flush=True)
         self.values[scores_stmt.names[0]] = relpos
         scores_stmt.done = True
         self.gpu_ops += 1
