@@ -106,14 +106,16 @@ generic estimates:
 - BEFORE load: the pending reservation holds the FULL estimated peak =
   weights + GDN state + KV for the intended context + workspace
   margin. Weights are NOT marked resident before materialization.
-- AFTER load completes: `resident_floor_bytes` is set to the ACTUAL
-  materialized resident size (measured; CPU-run VmHWM precedent
-  18.62 GiB), and KV + workspace headroom stays reserved above the
-  floor (not floored) to protect concurrent admission.
-- Exact post-load floor for this artifact:
-  19,537,340,176 + 64,389,120 = **19,601,729,296 B** (18.25 GiB);
-  the earlier 64,440,320 / 19,601,780,496 figure circulated in chat
-  was arithmetic-rounded and is superseded by these exact values.
+- AFTER load completes: `resident_floor_bytes` is set to the PARAMETER
+  bytes actually loaded — packed weights + GDN state =
+  19,601,729,296 B — NOT a max-RSS figure: VmHWM (18.62 GiB on the
+  CPU run) includes transient workspace and overstates the steady
+  resident set. KV + workspace remain reserved separately and
+  conservatively above the floor (not floored).
+- Exact post-load floor: 19,537,340,176 + 64,389,120 =
+  **19,601,729,296 B** (18.25 GiB); the earlier 64,440,320 /
+  19,601,780,496 figure circulated in chat was arithmetic-rounded
+  and is superseded by these exact values.
 
 ## Device queue and host preference
 
