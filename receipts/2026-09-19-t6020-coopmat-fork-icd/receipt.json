@@ -1,0 +1,139 @@
+{
+ "date": "2026-09-19",
+ "title": "T6020 (M2 Pro, G14S B1): honeykrisp-omarchy coopmat fork measured against stock Mesa via an extracted ICD; first G14 cooperative-matrix measurement in this repository's receipts",
+ "host": {
+  "machine": "Apple MacBook Pro (14-inch, M2 Pro, 2023)",
+  "board": "apple,j414s",
+  "soc": "apple,t6020",
+  "gpu": "Apple M2 Pro (G14S B1)",
+  "os": "Omarchy (Asahi Arch), kernel 7.1.13-3-2-ARCH",
+  "memory_mib": 15613,
+  "cpus": 10,
+  "submitter": "wickthumb (community; dataset rows 5c803596fd75 Linux deep, ea8c35bd20bf macOS deep, same laptop)"
+ },
+ "wheel": {
+  "dist": "mlx-omarchy 0.32.3.dev202609190758+50eeb29",
+  "release": "v0.7.1",
+  "provenance": "verified=match harness=50eeb29 core.cpython-314-aarch64-linux-gnu.so=sha256:211710c72b767243 libmlx.so=sha256:df3d4e74c597956c",
+  "mlx_lm": "0.31.3"
+ },
+ "drivers": {
+  "stock": {
+   "package": "mesa 1:26.2.3-1 (Arch/Asahi)",
+   "driverInfo": "Mesa 26.2.3-arch1.1",
+   "driverID": "DRIVER_ID_MESA_HONEYKRISP",
+   "api": "1.4.354",
+   "coopmat": false,
+   "atomic_float": false,
+   "subgroup_size": 32,
+   "shared_memory": 32768,
+   "workgroup": [
+    1024,
+    1024,
+    1024,
+    1024
+   ]
+  },
+  "fork": {
+   "package": "mesa-honeykrisp-omarchy 26.3.0.devel.hk6f6afc8-1 built from packaging/mesa-honeykrisp-omarchy/PKGBUILD with makepkg -f (1m55s wall, 10 cores)",
+   "driverInfo": "Mesa 26.3.0-devel (git-6f6afc8968)",
+   "api": "1.4.359",
+   "coopmat": true,
+   "coopmat_stages": [
+    "VK_SHADER_STAGE_COMPUTE_BIT"
+   ],
+   "atomic_float": false,
+   "subgroup_size": 32,
+   "how_loaded": "package extracted (bsdtar) and the loader pointed at it: VK_DRIVER_FILES=<extract>/fork-icd.json (asahi_icd json with absolute library_path) and LD_LIBRARY_PATH=<extract>/usr/lib. System Mesa untouched; Hyprland kept running on stock GL. No sudo."
+  }
+ },
+ "change": {
+  "code": "none; measurement only",
+  "build_fix": "packaging/mesa-honeykrisp-omarchy/Mesa-MLAA-License-Clarification-Email.txt added: the PKGBUILD's source=() names it (sha512 ecdabad21a86f04d…, the asahi-alarm mesa recipe file, AsahiLinux/PKGBUILDs mesa@28229b8) but the directory shipped only the PKGBUILD, so `makepkg` failed at 'was not found in the build directory' before this file existed",
+  "axes": "docs/chip-capability-axes.json gains a measured t6020 row (both driver builds)"
+ },
+ "protocol": "scripts/bench_matrix.py --mode run, engine scripts/bench_decode.py, Qwen2.5-0.5B-Instruct-4bit rev a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3, greedy temp 0 seed 0 warmup 4, EOS suppressed, MLX_DISABLE_COMPILE=1, clean_check clean (ollama.service stopped) for both passes",
+ "legs": {
+  "short-decode-32 (30/32)": {
+   "stock": {
+    "decode_tok_s": 155.71,
+    "prefill_tok_s": 226.9,
+    "digest": "7fd25a869ff21678"
+   },
+   "fork": {
+    "decode_tok_s": 176.99,
+    "prefill_tok_s": 404.9,
+    "digest": "7fd25a869ff21678"
+   },
+   "native_pin": "7fd25a869ff21678"
+  },
+  "long-decode-128 (262/128)": {
+   "stock": {
+    "decode_tok_s": 124.46,
+    "prefill_tok_s": 1179.8,
+    "digest": "55215e22d7f1b864"
+   },
+   "fork": {
+    "decode_tok_s": 170.85,
+    "prefill_tok_s": 1829.1,
+    "digest": "f873dc2bdd34c0fe"
+   },
+   "native_pin": null,
+   "note": "not a native-pinned leg; digest moved with the driver build as parity-id-policy allows. Stock value equals the jw14m2 T6021 receipt."
+  },
+  "longctx-1024-decode-32 (1053/32)": {
+   "stock": {
+    "decode_tok_s": 82.98,
+    "prefill_tok_s": 1285.5,
+    "digest": "7da83f06ec9f001d"
+   },
+   "fork": {
+    "decode_tok_s": 149.13,
+    "prefill_tok_s": 2265.6,
+    "digest": "7da83f06ec9f001d"
+   },
+   "native_pin": "7da83f06ec9f001d"
+  },
+  "short-decode-32 compile-ON": {
+   "stock": {
+    "decode_tok_s": 148.94,
+    "digest": "7fd25a869ff21678"
+   },
+   "fork": {
+    "decode_tok_s": 165.42,
+    "digest": "7fd25a869ff21678"
+   }
+  }
+ },
+ "benchmark": {
+  "matmul_f32_tflops": {
+   "n": [
+    256,
+    512,
+    1024
+   ],
+   "stock": [
+    0.1097,
+    0.2111,
+    0.3985
+   ],
+   "fork": [
+    0.0617,
+    0.4519,
+    0.7334
+   ]
+  },
+  "fork_numeric_check": "f32 matmul vs float64 host reference, normal(0,1) operands: max_abs_err 4.4e-05 / 1.0e-04 / 2.0e-04 at n=256/512/1024 (|ref| ~13/18/26); bf16 n=1024 max_abs_err 0.487 mean 0.036 (bf16 output rounding)"
+ },
+ "limitations": [
+  "Not a §4 qualification: no arithmetic-contract probe set, no upstream suite battery, no bf16 digest legs, no native-Metal divisor for this die (macOS bench_decode run pending on the same laptop). install.sh's verified-SoC list is deliberately NOT changed by this receipt.",
+  "Fork loaded through a private ICD, not installed; GL/EGL side of the fork unexercised here.",
+  "One machine, one pass per leg per driver (his single-locked-pass protocol); clean_check clean both passes, ollama stopped.",
+  "The fork does not advertise VK_EXT_shader_atomic_float on G14 either; Scatter stays on FCAS.",
+  "Coopmat 8x8x8 fp32 shape enumeration not dumped by vulkaninfo text/JSON; evidence that the gate opened is the route-dependent throughput and the unchanged native digests."
+ ],
+ "files": {
+  "matrix-clean.json": "stock pass (bench_matrix --out)",
+  "matrix-coopmat.json": "fork pass (bench_matrix --out)"
+ }
+}
