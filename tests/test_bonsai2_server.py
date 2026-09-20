@@ -72,6 +72,11 @@ class ServerTests(unittest.TestCase):
 
         args = server_module._parse_args(argv)
         state = server_module.Bonsai2State(args)
+        cls.worker_state = state
+        cls.worker_thread = threading.Thread(
+            target=server_module._worker_loop, args=(state,), daemon=True
+        )
+        cls.worker_thread.start()
         cls.httpd = ThreadingHTTPServer(("127.0.0.1", port), server_module._make_handler(state))
         cls.thread = threading.Thread(target=cls.httpd.serve_forever, daemon=True)
         cls.thread.start()
@@ -82,6 +87,8 @@ class ServerTests(unittest.TestCase):
         if cls.httpd:
             cls.httpd.shutdown()
             cls.httpd.server_close()
+        if cls.worker_state is not None:
+            cls.worker_state.job_queue.put((None, None))
         shutil.rmtree(cls.tmp, ignore_errors=True)
 
     def test_health_reports_pack_facts(self):
@@ -224,6 +231,11 @@ class RequestValidationTests(unittest.TestCase):
             ["--model", str(pack_dir), "--host", "127.0.0.1", "--port", str(port), "--allow-cpu"]
         )
         state = server_module.Bonsai2State(args)
+        cls.worker_state = state
+        cls.worker_thread = threading.Thread(
+            target=server_module._worker_loop, args=(state,), daemon=True
+        )
+        cls.worker_thread.start()
         cls.httpd = ThreadingHTTPServer(("127.0.0.1", port), server_module._make_handler(state))
         threading.Thread(target=cls.httpd.serve_forever, daemon=True).start()
         cls.base = "http://127.0.0.1:%d" % cls.httpd.server_address[1]
@@ -233,6 +245,8 @@ class RequestValidationTests(unittest.TestCase):
         if cls.httpd:
             cls.httpd.shutdown()
             cls.httpd.server_close()
+        if cls.worker_state is not None:
+            cls.worker_state.job_queue.put((None, None))
         shutil.rmtree(cls.tmp, ignore_errors=True)
 
     def _raw(self, payload: bytes):
@@ -426,6 +440,25 @@ class RequestValidationTests(unittest.TestCase):
         self.assertGreater(calls["byte_count"], 0)
         self.assertEqual(calls["owner"], "pid0-abc")
         self.assertEqual(calls["state"], "pending")
+
+
+    def test_concurrent_requests_serialize_and_succeed(self):
+        """Two overlapping chat requests both complete via the mx worker."""
+        import concurrent.futures
+
+        def one(i):
+            return _request(
+                self.base,
+                "/v1/chat/completions",
+                {"messages": [{"role": "user", "content": "Hello"}], "max_tokens": 2},
+            )
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
+            results = list(pool.map(one, range(2)))
+        for status, body in results:
+            self.assertEqual(status, 200)
+            self.assertTrue(body["choices"][0]["message"]["content"])
+            self.assertEqual(body["timings"]["predicted_n"], 2)
 
 
 if __name__ == "__main__":

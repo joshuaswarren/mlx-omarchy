@@ -32,6 +32,7 @@ import argparse
 import json
 import math
 import os
+import queue
 import sys
 import threading
 import time
@@ -229,9 +230,34 @@ class Bonsai2State:
         self.owner = getattr(args, "owner", None) or _owner_token(None)
         self.max_context = args.max_context or self.info["max_position_embeddings"]
         # One shared model + cache per process: requests queue, they never
-        # interleave inside a forward pass.
+        # interleave inside a forward pass. The job queue also pins ALL mx
+        # work to ONE thread: the omarchy backend keeps command encoders
+        # thread_local (encoder.cpp get_command_encoders), so GPU ops must
+        # run on the same thread every time — a fresh per-request HTTP
+        # thread wedged on its first submit (observed on t6001-test-host, attempt 3).
         self.generate_lock = threading.Lock()
+        self.job_queue = queue.Queue()
         self.reservation_bytes = None
+
+    def submit(self, job):
+        """Run job(emit) on the mx worker thread; returns the emit sink."""
+        sink = queue.Queue()
+        self.job_queue.put((job, sink))
+        return sink
+
+
+def _worker_loop(state):
+    """Drain the job queue. Runs on the process main thread under
+    serve_main (GPU thread affinity), or on a helper thread in tests."""
+    while True:
+        job, sink = state.job_queue.get()
+        if job is None:
+            break
+        try:
+            job(sink.put)
+        except Exception as exc:
+            sink.put({"__error__": str(exc)})
+        sink.put(None)
 
 
 def _timings(prompt_n: int, prompt_tps: float, predicted_n: int, predicted_tps: float) -> dict:
@@ -423,46 +449,61 @@ def _make_handler(state: Bonsai2State):
                 )
                 return
             created = int(time.time())
-            try:
+
+            def _nonstream_job(emit):
                 with state.generate_lock:
-                    if stream:
-                        self._send_stream(req, state, prompt_ids, max_tokens, temperature, created)
-                    else:
-                        text, finish_reason, timings = _generate(
-                            state, prompt_ids, max_tokens, temperature, top_p
-                        )
-                        self._send_json(
-                            200,
+                    text, finish_reason, timings = _generate(
+                        state, prompt_ids, max_tokens, temperature, top_p
+                    )
+                emit({
+                    "response": {
+                        "id": "chatcmpl-bonsai2-%d" % created,
+                        "object": "chat.completion",
+                        "created": created,
+                        "model": state.catalog_id,
+                        "choices": [
                             {
-                                "id": "chatcmpl-bonsai2-%d" % created,
-                                "object": "chat.completion",
-                                "created": created,
-                                "model": state.catalog_id,
-                                "choices": [
-                                    {
-                                        "index": 0,
-                                        "message": {"role": "assistant", "content": text},
-                                        "finish_reason": finish_reason,
-                                    }
-                                ],
-                                "usage": {
-                                    "prompt_tokens": timings["prompt_n"],
-                                    "completion_tokens": timings["predicted_n"],
-                                    "total_tokens": timings["prompt_n"] + timings["predicted_n"],
-                                },
-                                "timings": timings,
-                            },
-                        )
+                                "index": 0,
+                                "message": {"role": "assistant", "content": text},
+                                "finish_reason": finish_reason,
+                            }
+                        ],
+                        "usage": {
+                            "prompt_tokens": timings["prompt_n"],
+                            "completion_tokens": timings["predicted_n"],
+                            "total_tokens": timings["prompt_n"] + timings["predicted_n"],
+                        },
+                        "timings": timings,
+                    }
+                })
+
+            def _stream_job(emit):
+                with state.generate_lock:
+                    self._stream_job(state, prompt_ids, max_tokens, temperature, req, created, emit)
+
+            try:
+                if stream:
+                    sink = state.submit(_stream_job)
+                    self._send_stream_response(sink, state, created)
+                else:
+                    sink = state.submit(_nonstream_job)
+                    payload = None
+                    while True:
+                        item = sink.get()
+                        if item is None:
+                            break
+                        if "__error__" in item:
+                            self._send_json(500, {"error": "backend evaluation failed: %s" % item["__error__"]})
+                            return
+                        payload = item.get("response", payload)
+                    self._send_json(200, payload)
             except Exception as exc:  # backend failure: exact error, never a fallback
                 self._send_json(500, {"error": "backend evaluation failed: %s" % exc})
 
-        def _send_stream(self, req, state, prompt_ids, max_tokens, temperature, created):
+        def _stream_job(self, state, prompt_ids, max_tokens, temperature, req, created, emit):
+            """Worker-side streaming generation: emits chunk dicts, never
+            touches the socket (the handler thread drains and writes)."""
             from mlx_lm.generate import stream_generate
-
-            self.send_response(200)
-            self.send_header("Content-Type", "text/event-stream")
-            self.send_header("Cache-Control", "no-cache")
-            self.end_headers()
 
             def chunk(delta, finish=None, extra=None):
                 payload = {
@@ -474,35 +515,53 @@ def _make_handler(state: Bonsai2State):
                 }
                 if extra:
                     payload.update(extra)
-                self.wfile.write(b"data: " + json.dumps(payload).encode() + b"\n\n")
+                emit({"__chunk__": payload})
 
             kwargs = {"sampler": _sampler(temperature, req.get("top_p"))}
-            tic = time.perf_counter()
             prompt_n = len(prompt_ids)
             prompt_tps = predicted_tps = 0.0
             predicted_n = 0
             finish_reason = "length"
-            try:
-                for response in stream_generate(
-                    state.model, state.tokenizer, list(prompt_ids), max_tokens=max_tokens, **kwargs
-                ):
-                    if response.prompt_tps:
-                        prompt_tps = response.prompt_tps
-                    predicted_n = response.generation_tokens
-                    predicted_tps = response.generation_tps
-                    finish_reason = response.finish_reason or finish_reason
-                    chunk({"content": response.text}, finish=response.finish_reason)
-            except Exception as exc:  # backend failure surfaced in-band, stream stays parseable
-                self.wfile.write(
-                    b"data: " + json.dumps({"error": "backend evaluation failed: %s" % exc}).encode() + b"\n\n"
-                )
-                self.wfile.write(b"data: [DONE]\n\n")
-                return
-            wall = time.perf_counter() - tic
-            if not predicted_tps and predicted_n:
-                predicted_tps = predicted_n / max(wall, 1e-9)
+            for response in stream_generate(
+                state.model, state.tokenizer, list(prompt_ids), max_tokens=max_tokens, **kwargs
+            ):
+                if response.prompt_tps:
+                    prompt_tps = response.prompt_tps
+                predicted_n = response.generation_tokens
+                predicted_tps = response.generation_tps
+                finish_reason = response.finish_reason or finish_reason
+                chunk({"content": response.text}, finish=response.finish_reason)
             timings = _timings(prompt_n, prompt_tps, predicted_n, predicted_tps)
-            chunk({}, finish=finish_reason, extra={"timings": timings})
+            emit({"__final__": {"finish_reason": finish_reason, "timings": timings}})
+
+        def _send_stream_response(self, sink, state, created):
+            self.send_response(200)
+            self.send_header("Content-Type", "text/event-stream")
+            self.send_header("Cache-Control", "no-cache")
+            self.end_headers()
+
+            def write(payload):
+                self.wfile.write(b"data: " + json.dumps(payload).encode() + b"\n\n")
+
+            while True:
+                item = sink.get()
+                if item is None:
+                    break
+                if "__error__" in item:
+                    write({"error": "backend evaluation failed: %s" % item["__error__"]})
+                    break
+                if "__chunk__" in item:
+                    write(item["__chunk__"])
+                elif "__final__" in item:
+                    final = item["__final__"]
+                    write({
+                        "id": "chatcmpl-bonsai2-%d" % created,
+                        "object": "chat.completion.chunk",
+                        "created": created,
+                        "model": state.catalog_id,
+                        "choices": [{"index": 0, "delta": {}, "finish_reason": final["finish_reason"]}],
+                        "timings": final["timings"],
+                    })
             self.wfile.write(b"data: [DONE]\n\n")
 
     return Handler
@@ -510,6 +569,7 @@ def _make_handler(state: Bonsai2State):
 
 def serve_main(argv):
     args = _parse_args(argv)
+    import faulthandler
     import signal
 
     import mlx.core as mx
@@ -519,6 +579,10 @@ def serve_main(argv):
 
     signal.signal(signal.SIGTERM, _terminate)
     signal.signal(signal.SIGINT, _terminate)
+    # All-thread stack dumps to stderr (server.log) every 180 s: a wedged
+    # submit self-documents where every thread is stuck.
+    faulthandler.enable(all_threads=True)
+    faulthandler.dump_traceback_later(180, repeat=True)
     if mx.default_device() != mx.gpu and not args.allow_cpu:
         print(
             "bonsai2: refusing to start: default MLX device is %r; serving requires mx.gpu "
@@ -534,32 +598,37 @@ def serve_main(argv):
         _preflight_managed(args, args.reservation_name)
     state = Bonsai2State(args)
     registered = _register_reservation(args, state)
+    httpd = ThreadingHTTPServer((args.host, args.port), _make_handler(state))
+    # GPU thread affinity: the worker loop (ALL mx evaluation) runs on the
+    # process MAIN thread — the same topology as every successful CLI
+    # forward. The HTTP server only marshals in daemon threads.
+    server_thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    server_thread.start()
+    print(
+        "mlx-omarchy-bonsai2: serving %s on http://%s:%d (device=%s, packed_modules=%d, "
+        "resident_bytes=%d, excluded_bytes=%s, max_context=%d, reservation_bytes=%s)"
+        % (
+            state.catalog_id,
+            args.host,
+            httpd.server_address[1],
+            state.device,
+            state.info["packed_modules"],
+            state.info["resident_bytes"],
+            state.info["excluded_bytes"],
+            state.max_context,
+            state.reservation_bytes,
+        ),
+        flush=True,
+    )
+    print(state.info["attribution"], flush=True)
     try:
-        httpd = ThreadingHTTPServer((args.host, args.port), _make_handler(state))
-        print(
-            "mlx-omarchy-bonsai2: serving %s on http://%s:%d (device=%s, packed_modules=%d, "
-            "resident_bytes=%d, excluded_bytes=%s, max_context=%d, reservation_bytes=%s)"
-            % (
-                state.catalog_id,
-                args.host,
-                httpd.server_address[1],
-                state.device,
-                state.info["packed_modules"],
-                state.info["resident_bytes"],
-                state.info["excluded_bytes"],
-                state.max_context,
-                state.reservation_bytes,
-            ),
-            flush=True,
-        )
-        print(state.info["attribution"], flush=True)
-        try:
-            httpd.serve_forever()
-        except KeyboardInterrupt:
-            pass
-        finally:
-            httpd.server_close()
+        _worker_loop(state)
+    except KeyboardInterrupt:
+        pass
     finally:
+        httpd.shutdown()
+        httpd.server_close()
+        state.job_queue.put((None, None))
         if registered:
             _release_reservation(state)
 
