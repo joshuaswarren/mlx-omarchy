@@ -11,8 +11,15 @@
 #   TDT_AB_LIBMLX_SHA=<libmlx16 sha of the built wheel> ./tdt-pairload-ab-window.sh
 set -uo pipefail
 W=${TDT_AB_OUT:-/var/tmp/tdt-pairload-ab}
-BASE_COMMIT=${TDT_AB_BASE:-origin/main}
-CAND_COMMIT=${TDT_AB_CAND:-agent/tdt-joint-pair-load}
+# PINS (full SHAs, resolved at pre-registration - not mutable refs):
+#   BASE fabe6697052d2afdebb60a752c7ab84175dca9a8 (post-#12 main)
+#   CAND 040f456eb867595f984656fa2580a7a6a24584aa (ILP2 + orchestration)
+# Exercised file (vulkan_tdt_loop.py) at pins:
+#   BASE blob 9047bbb7e91ed184c97dabaf49e40683787e8308 sha256 76aef6670417b46d1ef8a57f1a2fe9c5db0e13a8ac42c57a810765c89b903a0a
+#   CAND blob d53cd1d886a560f4c7f0a2a66255b42f083c761a sha256 fa9e23f4e37afa0329a59afb3127d1d43df3cabf6c206fda1fdfc5dba6ca1eac
+# Orchestration-only proof: git diff f7fb7aec..040f456e -- overlay/tools/coreml/ is EMPTY.
+BASE_COMMIT=${TDT_AB_BASE:-fabe6697052d2afdebb60a752c7ab84175dca9a8}
+CAND_COMMIT=${TDT_AB_CAND:-040f456eb867595f984656fa2580a7a6a24584aa}
 FORK=${TDT_AB_FORK:-$HOME/src/mlx-omarchy}
 RUN=/var/tmp/ParakeetE2EJw16
 RUNNER=/var/tmp/encwall-v071/base/vulkan_encoder.py
