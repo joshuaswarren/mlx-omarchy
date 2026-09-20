@@ -381,3 +381,121 @@ def test_convert_and_verify_end_to_end(tmp_path, monkeypatch):
     # convert refuses to clobber a published output
     with pytest.raises(SystemExit):
         q.cmd_convert(args)
+
+
+# ---------------------------------------------------------------------------
+# the definitive offline contract check: load the artifact through the
+# REAL pinned mlx_lm qwen3_5_moe module tree and run a forward pass
+# ---------------------------------------------------------------------------
+
+def _dim_consistent_source():
+    """HF-layout bf16 weights for a 2-layer qwen3_5_moe mini model
+    (layer 0 = gated delta linear attention, layer 1 = full attention).
+    """
+    import mlx.core as mx
+
+    k = [mx.random.key(i) for i in range(40)]
+    H, E, I = 128, 4, 64
+    kdim, nv, hd = 64, 4, 32  # key_dim = 2 key heads x 32; v: 4 heads x 32
+    vdim = nv * hd
+    conv_dim = 2 * kdim + vdim
+
+    def r(shape, i):
+        return mx.random.normal(shape, key=k[i])
+
+    w = {
+        "model.language_model.embed_tokens.weight": r((256, H), 0),
+        "model.language_model.norm.weight": mx.full((H,), 2.0, mx.bfloat16),
+        "lm_head.weight": r((256, H), 17),
+    }
+    for l in range(2):
+        p = f"model.language_model.layers.{l}"
+        w[f"{p}.input_layernorm.weight"] = mx.full((H,), 2.0, mx.bfloat16)
+        w[f"{p}.post_attention_layernorm.weight"] = mx.full(
+            (H,), 2.0, mx.bfloat16
+        )
+        w[f"{p}.mlp.experts.gate_up_proj"] = r((E, 2 * I, H), 10 + l)
+        w[f"{p}.mlp.experts.down_proj"] = r((E, H, I), 11 + l)
+        w[f"{p}.mlp.gate.weight"] = r((E, H), 12 + l)
+        w[f"{p}.mlp.shared_expert.gate_proj.weight"] = r((I, H), 13 + l)
+        w[f"{p}.mlp.shared_expert.up_proj.weight"] = r((I, H), 14 + l)
+        w[f"{p}.mlp.shared_expert.down_proj.weight"] = r((H, I), 15 + l)
+        w[f"{p}.mlp.shared_expert_gate.weight"] = r((1, H), 16 + l)
+        if l == 0:  # linear attention (gated delta net)
+            w[f"{p}.linear_attn.in_proj_qkv.weight"] = r(
+                (2 * kdim + vdim, H), 1
+            )
+            w[f"{p}.linear_attn.in_proj_z.weight"] = r((vdim, H), 2)
+            w[f"{p}.linear_attn.in_proj_b.weight"] = r((nv, H), 3)
+            w[f"{p}.linear_attn.in_proj_a.weight"] = r((nv, H), 4)
+            w[f"{p}.linear_attn.conv1d.weight"] = r((conv_dim, 1, 4), 5)
+            w[f"{p}.linear_attn.A_log"] = r((nv,), 6).astype(mx.float32)
+            w[f"{p}.linear_attn.dt_bias"] = r((nv,), 7).astype(mx.float32)
+            w[f"{p}.linear_attn.norm.weight"] = r((hd,), 8)
+            w[f"{p}.linear_attn.out_proj.weight"] = r((H, vdim), 9)
+        else:  # full attention (GQA, head_dim 64)
+            w[f"{p}.self_attn.q_proj.weight"] = r((2 * 2 * 64, H), 20)  # attn_output_gate doubles q
+            w[f"{p}.self_attn.k_proj.weight"] = r((1 * 64, H), 21)
+            w[f"{p}.self_attn.v_proj.weight"] = r((1 * 64, H), 22)
+            w[f"{p}.self_attn.o_proj.weight"] = r((H, 2 * 64), 23)
+            w[f"{p}.self_attn.q_norm.weight"] = r((64,), 24)
+            w[f"{p}.self_attn.k_norm.weight"] = r((64,), 25)
+    return w
+
+
+MINI_TEXT_CONFIG = {
+    "hidden_size": 128,
+    "num_hidden_layers": 2,
+    "num_attention_heads": 2,
+    "head_dim": 64,
+    "num_key_value_heads": 1,
+    "num_experts": 4,
+    "num_experts_per_tok": 2,
+    "moe_intermediate_size": 64,
+    "shared_expert_intermediate_size": 64,
+    "linear_num_key_heads": 2,
+    "linear_key_head_dim": 32,
+    "linear_num_value_heads": 4,
+    "linear_value_head_dim": 32,
+    "linear_conv_kernel_dim": 4,
+    "vocab_size": 256,
+    "rms_norm_eps": 1e-5,
+    "layer_types": ["linear_attention", "full_attention"],
+    "full_attention_interval": 2,
+    "tie_word_embeddings": False,
+    "mtp_num_hidden_layers": 1,
+}
+
+
+def test_real_mlx_lm_loader_roundtrip():
+    pytest.importorskip("mlx_lm")
+    from mlx_lm.models.qwen3_5_moe import Model, ModelArgs
+    import mlx.nn as nn
+
+    src = _dim_consistent_source()
+    out = q.transform_shard(src, bits=4, group=64, has_mtp=True)
+
+    model = Model(ModelArgs.from_dict({
+        "model_type": "qwen3_5_moe",
+        "text_config": dict(MINI_TEXT_CONFIG),
+    }))
+    qcfg = q.output_quantization_config(num_layers=2, bits=4, group=64)
+
+    def class_predicate(p, m):
+        if p in qcfg:
+            return qcfg[p]
+        if not hasattr(m, "to_quantized"):
+            return False
+        return f"{p}.scales" in out
+
+    nn.quantize(
+        model, group_size=64, bits=4, mode="affine",
+        class_predicate=class_predicate,
+    )
+    # strict load: any key/shape mismatch in the artifact fails here
+    model.load_weights(list(out.items()))
+
+    logits = model(mx.array([[1, 2, 3]]))
+    mx.eval(logits)
+    assert logits.shape == (1, 3, 256)
+    assert bool(mx.isfinite(logits).all())
