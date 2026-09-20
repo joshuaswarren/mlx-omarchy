@@ -185,10 +185,17 @@ summary["paired_deltas_by_round_ms"] = [
 ]
 summary["paired_wins_cand"] = sum(
     1 for d in summary["paired_deltas_by_round_ms"] if d < 0)
+summary["paired_deltas_by_order"] = {
+    "AB": [summary["paired_deltas_by_round_ms"][i]
+           for i in range(N) if summary["schedule"][i].endswith("AB")],
+    "BA": [summary["paired_deltas_by_round_ms"][i]
+           for i in range(N) if summary["schedule"][i].endswith("BA")],
+}
 json.dump(summary, open(f"{W}/summary.json", "w"), indent=2)
 print(json.dumps({a: {"tdt_decode_median_ms": summary[a]["tdt_decode_median_ms"],
                       "per_run": summary[a]["tdt_decode_per_run_ms"]} for a in ("base", "cand")}, indent=2))
 print("paired deltas by round (cand-base):", summary["paired_deltas_by_round_ms"])
+print("by order:", summary["paired_deltas_by_order"])
 print("schedule:", summary["schedule"])
 print(f"TDT-AB-DONE delta={summary['tdt_decode_delta_ms']}ms paired_wins={summary['paired_wins_cand']}/{N}")
 PYEOF
