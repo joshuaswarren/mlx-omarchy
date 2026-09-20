@@ -32,8 +32,9 @@ if ! flock -w 180 9; then
 fi
 echo "TAKE held t6001-test-host GPU window lock-inode=$INODE $(date -Is)"
 
+PY=${SERVEBENCH_PY:-/tmp/servebench/venv/bin/python}
 rc=0
-/tmp/servebench/venv/bin/python "$(dirname "$0")/serve_bench.py" "$@" || rc=$?
+"$PY" "$(dirname "$0")/serve_bench.py" "$@" || rc=$?
 echo "== serve_bench rc=$rc =="
 
 flock -u 9
