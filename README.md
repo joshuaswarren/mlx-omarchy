@@ -68,6 +68,13 @@ Wheel filenames carry the build commit, so pin the exact URL from the release
 you choose; the SHA256 sums live in the release notes and the `SHA256SUMS`
 asset.
 
+**Release candidate:** [v0.7.2-rc.1](https://github.com/joshuaswarren/mlx-omarchy/releases/tag/v0.7.2-rc.1)
+publishes verified x86_64 and aarch64 wheels. The uploaded aarch64 wheel
+passed an M1 Max Qwen3.8-distilled 2B Q4 decode with compilation enabled
+and three GPU SDPA numerical checks ([receipt](receipts/2026-09-20-release-v0.7.2-rc.1/receipt.json)).
+This is a prerelease, not full GPU/native parity or M2 ANE qualification;
+the default installer continues to select the stable release.
+
 Building from source is covered in [docs/install-omarchy.md](docs/install-omarchy.md). Build dependencies: Python 3.10+, CMake 3.25+, Vulkan headers, a C++ compiler, and the BLAS/LAPACK packages named there.
 
 Do not install the upstream `mlx` package beside this wheel; both provide the `mlx` module. `mlx-lm` depends on upstream `mlx`, so install it with `pip install --no-deps mlx-lm` and add its own dependencies (`transformers[sentencepiece] numpy protobuf pyyaml jinja2 huggingface_hub`) as `install.sh` does.
