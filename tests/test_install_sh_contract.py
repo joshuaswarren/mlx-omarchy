@@ -34,7 +34,7 @@ class InstallerContractTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             result = subprocess.run(
                 ["bash", str(INSTALLER), "--ane"],
-                env={**os.environ, "HOME": tmp},
+                env={**os.environ, **PINNED_VERSION_ENV, "HOME": tmp},
                 capture_output=True, text=True, timeout=30, check=False,
             )
             self.assertNotEqual(result.returncode, 0)
@@ -145,7 +145,7 @@ class ServeCliContractTests(unittest.TestCase):
     def test_serve_package_fetched_from_pinned_release_tag(self):
         section = self.serve_section()
         self.assertIn('"https://raw.githubusercontent.com/$REPO/$VERSION/serve/mlx_omarchy_serve/$serve_file"', section)
-        for member in ("__init__.py", "catalog.py", "budget.py", "__main__.py", "catalog.json"):
+        for member in ("__init__.py", "catalog.py", "budget.py", "__main__.py", "_mlxlm_server.py", "catalog.json"):
             self.assertIn(member, section.split("for serve_file in", 1)[1].split(";", 1)[0],
                           f"missing catalog/package file {member}")
         self.assertIn('"https://raw.githubusercontent.com/$REPO/$VERSION/serve/mlx_omarchy_laya/$laya_file"', section)

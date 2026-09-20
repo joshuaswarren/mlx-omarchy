@@ -181,7 +181,7 @@ chmod +x "$BIN/mlx-omarchy" "$BIN/mlx-omarchy-demo" "$BIN/mlx-omarchy-info"
 say "Installing serve CLI"
 SERVE_PKG="$PREFIX/mlx_omarchy_serve"
 mkdir -p "$SERVE_PKG"
-for serve_file in __init__.py catalog.py budget.py __main__.py catalog.json; do
+for serve_file in __init__.py catalog.py budget.py __main__.py _mlxlm_server.py catalog.json; do
   curl -fsSL "https://raw.githubusercontent.com/$REPO/$VERSION/serve/mlx_omarchy_serve/$serve_file" \
     -o "$SERVE_PKG/$serve_file"
 done

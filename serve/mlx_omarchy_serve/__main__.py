@@ -12,6 +12,10 @@ Design invariants (do not weaken):
 - Catalog refresh touches ONLY the public GitHub raw URL; no telemetry,
   no background timers, no automatic code or model downloads.
 - trust_remote_code is never enabled anywhere.
+- The mlx_lm.server path runs behind our total-context cap shim: upstream
+  --max-tokens is only a per-request default, so prompt+output is enforced
+  <= the admitted context at tokenization time, and the launch fails
+  loudly if the mlx-lm pin bump moves the internals.
 """
 
 from __future__ import annotations
@@ -27,6 +31,7 @@ import sys
 from pathlib import Path
 
 from . import budget, catalog
+from . import _mlxlm_server as cap_shim
 
 GiB = 1024**3
 DISK_SLACK_FRACTION = 0.05  # headroom over the download size for partial files
@@ -46,6 +51,7 @@ MODULE_ALLOWLIST = frozenset({
 # listed here launch without the flag and are best-effort by contract.
 MODULE_MANAGED = frozenset({
     "mlx_omarchy_laya.server",
+    "mlx_omarchy_bonsai2.server",
 })
 
 MAX_WEIGHTS_GIB = 4096
@@ -363,10 +369,14 @@ def check_custom_code(model_dir: Path) -> None:
 def server_argv(backend: str, module: str | None, model_dir: Path, host: str,
                 port: int, context_tokens: int) -> list[str]:
     if backend == "mlx-lm":
-        # --max-tokens (verified present in mlx_lm 0.31.3 server argparse)
-        # is the server-side cap that matches the admitted context budget.
-        # --trust-remote-code exists on this server; it is never passed.
-        return [sys.executable, "-m", "mlx_lm.server", "--model", str(model_dir),
+        # Upstream --max-tokens is only a per-request default (client
+        # overridable, verified in the 0.31.3 wheel), so the REAL total
+        # cap lives in our _mlxlm_server shim (prompt+output <= budget,
+        # enforced at tokenization). The flag remains as the default for
+        # clients that omit max_tokens. --trust-remote-code exists on
+        # this server; it is never passed.
+        return [sys.executable, "-m", "mlx_omarchy_serve._mlxlm_server",
+                "--model", str(model_dir),
                 "--host", host, "--port", str(port),
                 "--max-tokens", str(context_tokens)]
     if backend == "omlx":
@@ -599,9 +609,12 @@ def cmd_serve(args, cat, home) -> int:
         warn(f"{args.host} is not loopback: this development server has no authentication")
 
     argv = server_argv(backend, module, model_dir, args.host, args.port, context)
+    child_env = dict(os.environ)
+    if backend == "mlx-lm":
+        child_env[cap_shim.LIMIT_ENV] = str(context)
     print(f"launching: {' '.join(argv)}")
     try:
-        completed = subprocess.run(argv)
+        completed = subprocess.run(argv, env=child_env)
     except FileNotFoundError as exc:
         return fail(f"server launch failed: {exc}", 3)
     return completed.returncode

@@ -217,7 +217,7 @@ class ServeApprovalTests(CliTestBase):
         self.assertEqual(code, 0)
         self.assertEqual(seen["downloaded"], "mlx-community/Test-Chat-4b")
         self.assertIn("-m", seen["argv"])
-        self.assertIn("mlx_lm.server", seen["argv"])
+        self.assertIn("mlx_omarchy_serve._mlxlm_server", seen["argv"])
         self.assertIn("127.0.0.1", seen["argv"])
         self.assertNotIn("trust_remote_code", " ".join(seen["argv"]))
 
@@ -252,7 +252,7 @@ class ServeLaunchTests(CliTestBase):
     def test_local_model_launches_mlx_lm(self):
         code, seen, out, err = self.serve_local()
         self.assertEqual(code, 0)
-        self.assertIn("mlx_lm.server", seen["argv"])
+        self.assertIn("mlx_omarchy_serve._mlxlm_server", seen["argv"])
         # server-side context cap matches the admitted budget (default 4096)
         self.assertIn("--max-tokens", seen["argv"])
         self.assertEqual(seen["argv"][seen["argv"].index("--max-tokens") + 1], "4096")
@@ -414,7 +414,8 @@ class CatalogCommandTests(CliTestBase):
              unittest.mock.patch.object(serve_cli.subprocess, "run", fake_run):
             code, _, _ = self.run_cli(["serve", "test-chat-4b", "--yes", "--offline"])
         self.assertEqual(code, 0)
-        self.assertIn("mlx_lm.server", seen["argv"])
+        self.assertIn("mlx_omarchy_serve._mlxlm_server", seen["argv"])
+        self.assertIn("--max-tokens", seen["argv"])
 
     def test_partial_snapshot_counts_as_download(self):
         model_dir = Path(self.tmp.name) / "partial"
