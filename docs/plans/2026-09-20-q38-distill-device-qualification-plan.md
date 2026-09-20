@@ -101,21 +101,24 @@ generic estimates:
 | KV cache | 20,480 B/token |
 | workspace margin | device-owned; measured peak overrides (ServeCatalog budget API) |
 
-### Reservation semantics (corrected per owner, 2026-09-20)
+### Reservation semantics (corrected per owner, 2026-09-20; amended after review)
 
-- BEFORE load: the pending reservation holds the FULL estimated peak =
-  weights + GDN state + KV for the intended context + workspace
-  margin. Weights are NOT marked resident before materialization.
-- AFTER load completes: `resident_floor_bytes` is set to the PARAMETER
-  bytes actually loaded — packed weights + GDN state =
-  19,601,729,296 B — NOT a max-RSS figure: VmHWM (18.62 GiB on the
-  CPU run) includes transient workspace and overstates the steady
-  resident set. KV + workspace remain reserved separately and
-  conservatively above the floor (not floored).
-- Exact post-load floor: 19,537,340,176 + 64,389,120 =
-  **19,601,729,296 B** (18.25 GiB); the earlier 64,440,320 /
-  19,601,780,496 figure circulated in chat was arithmetic-rounded
-  and is superseded by these exact values.
+- BEFORE load: the pending reservation holds the FULL estimated peak,
+  placed with the ATOMIC `admit_and_reserve` API (no separate
+  check-then-set): packed weights + GDN state + KV for the intended
+  context + workspace margin. Weights are NOT marked resident before
+  materialization.
+- AFTER load completes: `resident_floor_bytes` is set to PARAMETER
+  bytes only — the packed weights actually loaded =
+  **19,537,340,176 B**. GDN state is NOT a parameter and is NOT
+  counted in the floor; it keeps its own conservative reservation
+  line (64,389,120 B) alongside KV (20,480 B/token at served context)
+  and workspace. If GDN state is ever folded into the floor instead,
+  its allocation residency must be proven first and it must be
+  counted exactly once — the default here is the separate line.
+- Exact figures: parameter floor 19,537,340,176 B; GDN state
+  64,389,120 B (supersedes the rounded 64,440,320 figure circulated
+  in chat).
 
 ## Device queue and host preference
 
