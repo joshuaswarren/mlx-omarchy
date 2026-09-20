@@ -38,6 +38,19 @@ def decode_strided(raw: bytes, shape, dtype, stride: int) -> np.ndarray:
     return out.reshape(shape)
 
 
+def ulp_signed(a16: np.ndarray, b16: np.ndarray) -> np.ndarray:
+    """Sign-order ULP: monotonic signed mapping (-mag for neg, +mag for pos).
+
+    -0.0 → 0, +0.0 → 0 (ULP distance 0 ✓)
+    -1denorm → -1, +1denorm → +1 (ULP distance 2, crossing zero ✓)
+    """
+    ai = a16.view(np.uint16).astype(np.int32)
+    bi = b16.view(np.uint16).astype(np.int32)
+    sa = np.where(ai & 0x8000, -(ai & 0x7FFF), ai & 0x7FFF)
+    sb = np.where(bi & 0x8000, -(bi & 0x7FFF), bi & 0x7FFF)
+    return np.abs(sa - sb)
+
+
 def compare_record(dev: np.ndarray, ref: np.ndarray) -> dict:
     """Bit-level comparison record: exact/ULP + inf/nan mask agreement."""
     d16 = np.ascontiguousarray(dev).astype(np.float16)
@@ -47,6 +60,10 @@ def compare_record(dev: np.ndarray, ref: np.ndarray) -> dict:
     diff = np.abs(d32 - r32)
     finite = np.isfinite(diff)
     d16v, r16v = d16.view(np.uint16), r16.view(np.uint16)
+    ulp = ulp_signed(d16, r16)
+    finite_mask = ~np.isnan(d32.astype(np.float32)) & ~np.isnan(
+        r16.astype(np.float32).astype(np.float32)) & ~np.isinf(
+        d16.astype(np.float32)) & ~np.isinf(r16.astype(np.float32))
     return {
         "bit_equal": bool(np.array_equal(d16v, r16v)),
         "mismatch_count": int((d16v != r16v).sum()),
@@ -60,6 +77,10 @@ def compare_record(dev: np.ndarray, ref: np.ndarray) -> dict:
         "ref_posinf": int(np.isposinf(r32).sum()),
         "dev_nan": int(np.isnan(d32).sum()),
         "ref_nan": int(np.isnan(r32).sum()),
+        "ulp_max_finite": int(ulp[finite_mask].max()) if finite_mask.any() else None,
+        "ulp_zero_crossings": int(((sa_sign := np.where(
+            d16.view(np.uint16) & 0x8000, -1, 1)) !=
+            np.where(r16.view(np.uint16) & 0x8000, -1, 1)).sum()),
     }
 
 
