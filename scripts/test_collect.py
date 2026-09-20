@@ -1550,6 +1550,31 @@ class PayloadSchemaContract(unittest.TestCase):
         self.assertEqual(e2e["properties"]["kind"]["enum"], ["omarchy-mac-e2e"])
         self.assertFalse(set(schema["properties"]) - set(e2e["properties"]))
 
+class HyphenAdjacentUserName(unittest.TestCase):
+    """A user name inside a hyphenated token is still the user name."""
+
+    def setUp(self):
+        self.red = cc.Redactor(hostname="omarchy", username="steve",
+                               home="/home/steve")
+
+    def test_user_name_inside_hyphenated_tokens_is_redacted(self):
+        self.assertEqual(self.red.apply("/tmp/steve-build/out"),
+                         "/tmp/[user]-build/out")
+        self.assertEqual(self.red.apply("build-steve/log"), "build-[user]/log")
+        self.assertEqual(self.red.counts.get("username"), 2)
+
+    def test_default_hostname_keeps_project_tokens(self):
+        # Omarchy's default hostname is `omarchy`; hyphen stays a boundary
+        # for the hostname rule so the project's own names survive.
+        text = "mlx-omarchy 0.32.3 via mlx-omarchy-info; omarchy-ane; host omarchy"
+        self.assertEqual(self.red.apply(text),
+                         "mlx-omarchy 0.32.3 via mlx-omarchy-info; omarchy-ane; host [host]")
+
+    def test_substrings_untouched(self):
+        self.assertEqual(self.red.apply("steven stevex user=steve"),
+                         "steven stevex user=[user]")
+
+
 class SingleNetworkModule(unittest.TestCase):
     def test_only_collect_submit_imports_urllib(self):
         base = os.path.dirname(os.path.abspath(__file__))
