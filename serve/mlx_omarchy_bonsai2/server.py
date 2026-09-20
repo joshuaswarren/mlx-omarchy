@@ -508,8 +508,15 @@ def _make_handler(state: Bonsai2State):
 
 def serve_main(argv):
     args = _parse_args(argv)
+    import signal
+
     import mlx.core as mx
 
+    def _terminate(signum, frame):
+        raise SystemExit(0)
+
+    signal.signal(signal.SIGTERM, _terminate)
+    signal.signal(signal.SIGINT, _terminate)
     if mx.default_device() != mx.gpu and not args.allow_cpu:
         print(
             "bonsai2: refusing to start: default MLX device is %r; serving requires mx.gpu "

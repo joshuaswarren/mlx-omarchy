@@ -115,10 +115,12 @@ corrected record.
      - Tolerance handling: the CPU diagnostic band is the recorded
        9.5e-05 (post-measurement band, NOT a predeclared gate — see
        receipts/2026-09-20-bonsai2-port-parity-cpu.md). The GPU deltas
-       are compared against it and "tolerance movement" is REPORTED;
-       a delta above 1e-2 (fp16 ULP scale at the observed logit
-       magnitudes) is a fault; movement inside 1e-2 is reported and
-       pass/fail is left to Main + MCQ review, not claimed here.
+       are compared against it and "tolerance movement" is REPORTED.
+       The >1e-2 trip FAILS the gate — this rule stays frozen; the
+       recorded per-step max|logit| magnitude column is CONTEXT for
+       post-window review documentation only and does not rescue a
+       trip. Any changed criterion belongs to a future experiment with
+       its own prospective freeze.
      - The exact-token-877 CPU equality is a NARROW check; no blanket
        numerical-equivalence or model-quality claim is made anywhere.
    - Warm second request, different prompt; record the `timings` block.
