@@ -102,6 +102,12 @@ and the serve flow refuse a model whose floor exceeds available memory,
 naming the model, the floor, and what is available; refusal is data, not
 failure of the model.
 
+Context enforcement note (ServeCatalogImplementation, 2026-09-20): on the
+mlx-lm path, prompt + output tokens are enforced against the admitted
+context by the project's shim — upstream `--max-tokens` is only a
+generation default, not a context cap. Any doc that states a context cap
+should reference the shim behavior, not upstream flags.
+
 Measured fleet facts (2026-09-20, Main): the M2 Max host reports
 ~94.25 GiB OS-usable and ~80.77 GiB available; the user fleet has no
 single memory cap (64 GiB t6001-test-host, 96 GB-class M2, 16 GiB m1-test-host pending).
