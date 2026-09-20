@@ -132,7 +132,10 @@ print(json.dumps(pins))
         fatal(f"runtime pin mismatch: libmlx={pins.get('libmlx_sha256_16')} expected={expect_libmlx}", 3)
     for mod in ("mlx-lm", "omlx"):
         info = venv_json(python, f"import importlib.metadata as md, json; print(json.dumps(md.version('{mod}')))")
-        pins[mod.replace("-", "_")] = info.get("error", list(info.values())[0])
+        if isinstance(info, str):
+            pins[mod.replace("-", "_")] = info
+        else:
+            pins[mod.replace("-", "_")] = info.get("error", "UNKNOWN")
     return pins
 
 
