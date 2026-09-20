@@ -118,13 +118,17 @@ HTTP-qualified, with a working backend and a memory fit — so until an
 HTTP pass qualifies an entry, auto-pick refuses and names no model;
 manual targets with unqualified status proceed only with a loud warning.
 
-Admission passes its context decision to the backend launch: the mlx-lm
-backend is launched with `--max-tokens <admitted context>` — whether that
-flag caps total context or only generated output is being verified in the
-request flow, and until then no total-context cap is claimed — while the
-omlx backend, which has no verified server-side cap flag, is launched
-with an honest warning saying so. `--server module` routes only through
-an audited in-repo allowlist (`mlx_omarchy_laya.server`,
+Context is enforced on the mlx-lm path by a project shim
+(`_mlxlm_server.py`): every request is capped so prompt and output
+together stay within the admitted context — upstream `--max-tokens` alone
+does not do this (it is an output-only per-request default). The shim
+pins mlx-lm to 0.31.3 and refuses other versions loudly, rejects
+non-integer token arguments, and launches with decode/prompt concurrency
+1 so exactly one request's tokens are resident; a nonzero
+`--prompt-cache-size` is sized into the memory admission before launch.
+The omlx backend has no verified server-side cap and launches with an
+honest warning saying so. `--server module` routes only through an
+audited in-repo allowlist (`mlx_omarchy_laya.server`,
 `mlx_omarchy_bonsai2.server`); catalog-named modules are never executed
 directly.
 
