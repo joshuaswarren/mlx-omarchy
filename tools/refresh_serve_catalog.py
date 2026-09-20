@@ -103,6 +103,7 @@ def refresh(catalog_path, fetch, validate, api_base=DEFAULT_API_BASE, timeout=20
 
     updated = copy.deepcopy(catalog)
     drifted = []
+    changed = False
     for entry in updated["models"]:
         repo = entry["repo"]
         revision = entry["revision"]
@@ -136,9 +137,22 @@ def refresh(catalog_path, fetch, validate, api_base=DEFAULT_API_BASE, timeout=20
                 f"must repin (which resets qualification) or requalify"
             )
 
+        if entry.get("availability", {}).get("size_bytes") == size:
+            report.append(f"{entry['id']}: size unchanged ({size})")
+            continue
+        changed = True
         entry.setdefault("availability", {})["size_bytes"] = size
         entry["availability"]["refreshed_at"] = now
         report.append(f"{entry['id']}: availability.size_bytes={size} at pinned revision")
+
+    # Zero-noise: a pure verification pass (every size already current)
+    # writes nothing -- refreshed_at/generated_at tick only on real
+    # metadata change, so the CI workflow never opens a cosmetic PR.
+    if not changed:
+        report.append(
+            "all availability sizes already current; catalog not written"
+        )
+        return (EXIT_DRIFT if drifted else EXIT_OK), report
 
     # Defense in depth: prove only allowed fields moved.
     for old, new in zip(catalog["models"], updated["models"]):

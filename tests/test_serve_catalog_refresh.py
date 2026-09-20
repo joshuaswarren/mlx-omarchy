@@ -144,6 +144,29 @@ class RefreshCoreTests(unittest.TestCase):
         self.assertEqual(after["version"], before["version"])
         self.assertEqual(after["source"], before["source"])
 
+    def test_no_write_when_every_size_already_current(self):
+        self.write(seed_catalog(seed_entry()))
+        before = self.path.read_text(encoding="utf-8")
+
+        code, report = refresher.refresh(
+            self.path, FakeFetch({"org/repo": ("a" * 40, 1000)}), ok_validate,
+            now="2026-09-20T20:00:00Z")
+
+        self.assertEqual(code, refresher.EXIT_OK)
+        self.assertEqual(self.path.read_text(encoding="utf-8"), before)
+        self.assertTrue(any("already current" in line for line in report))
+
+    def test_drift_without_size_change_reports_but_writes_nothing(self):
+        self.write(seed_catalog(seed_entry()))
+        before = self.path.read_text(encoding="utf-8")
+
+        code, report = refresher.refresh(
+            self.path, FakeFetch({"org/repo": ("b" * 40, 1000)}), ok_validate)
+
+        self.assertEqual(code, refresher.EXIT_DRIFT)
+        self.assertEqual(self.path.read_text(encoding="utf-8"), before)
+        self.assertTrue(any("DRIFT" in line for line in report))
+
     def test_upstream_drift_retains_vetted_revision_and_qualification(self):
         self.write(seed_catalog(seed_entry()))
         before = self.read()

@@ -11,7 +11,7 @@ name: Refresh serve catalog availability
 
 on:
   schedule:
-    - cron: "43 4 * * *" # daily, off the top of the hour
+    - cron: "43 4 * * 1-5" # weekdays, off the top of the hour (UTC)
   workflow_dispatch:
 
 permissions:
