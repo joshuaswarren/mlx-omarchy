@@ -1687,9 +1687,9 @@ class EncoderRunner:
         # pad 749->750, reshape [1,8,750,375], slice [1,8,749,375],
         # reshape [1,8,375,749], slice [1,8,375,375], then the var_371
         # scale. Mirror it element-exactly on GPU.
-        padded = mx.pad(relpos, [(0, 0), (0, 0), (0, 0), (0, 1)])
+        padded = mx.pad(relpos, [(0, 0), (0, 0), (0, 1), (0, 0)])
         r1 = mx.reshape(padded, (1, 8, 750, 375))
-        r2 = r1[:, :, :749, :]
+        r2 = r1[:, :, 1:, :]
         r3 = mx.reshape(r2, (1, 8, 375, 749))
         bd = mx.contiguous(r3[:, :, :, :375])
         if scale_name is not None:
