@@ -76,17 +76,44 @@ run is the locked reference fixture per the repo's comparison rule.
 
 ## Managed-memory budget (for the device admission system)
 
+All values derived from the pinned model config (text_config), not
+generic estimates:
+
+- Layers: 40 total = 30 linear_attention (gated delta) + 10
+  full_attention (`full_attention_interval: 4`,
+  `layer_types[3,7,...,39] == "full_attention"`).
+- Attention KV per token (the 10 full-attn layers only):
+  `num_key_value_heads (2) x head_dim (256) x 2 (K+V) x 2 B (bf16)
+  x 10 layers = 20,480 B/token`.
+- GDN ssm state (constant once materialized): 30 layers x
+  `linear_num_value_heads (32) x linear_value_head_dim (128) x
+  linear_key_head_dim (128) x 4 B (fp32, mamba_ssm_dtype) =
+  62,914,560 B`.
+- GDN conv state (constant): 30 layers x conv_dim
+  (`2 x key_dim (16x128=2048) + value_dim (32x128=4096) = 8192`)
+  x (kernel 4 - 1) x 2 B = 1,474,560 B.
+- Packed weights (text-resident, measured artifact): 19,537,340,176 B.
+
 | component | bytes |
 |---|---|
-| packed weights (text-resident) | 19,537,340,176 |
-| fixed GDN state (ssm 60.0 MiB fp32 + conv 1.4 MiB) | 64,440,320 |
-| KV cache | 20,480 B/token (10 full-attn layers, 2 kv heads x 256, K+V bf16) |
+| packed weights | 19,537,340,176 |
+| GDN state total (ssm + conv) | 64,389,120 |
+| KV cache | 20,480 B/token |
 | workspace margin | device-owned; measured peak overrides (ServeCatalog budget API) |
 
-Reservation floor: 19,601,780,496 B resident from step one
-(weights + fixed state). The 16-token contract adds ~0.33 MiB KV.
-Device admission must use actual MemAvailable/cgroup headroom, per the
-CPU-run precedent.
+### Reservation semantics (corrected per owner, 2026-09-20)
+
+- BEFORE load: the pending reservation holds the FULL estimated peak =
+  weights + GDN state + KV for the intended context + workspace
+  margin. Weights are NOT marked resident before materialization.
+- AFTER load completes: `resident_floor_bytes` is set to the ACTUAL
+  materialized resident size (measured; CPU-run VmHWM precedent
+  18.62 GiB), and KV + workspace headroom stays reserved above the
+  floor (not floored) to protect concurrent admission.
+- Exact post-load floor for this artifact:
+  19,537,340,176 + 64,389,120 = **19,601,729,296 B** (18.25 GiB);
+  the earlier 64,440,320 / 19,601,780,496 figure circulated in chat
+  was arithmetic-rounded and is superseded by these exact values.
 
 ## Device queue and host preference
 
@@ -99,7 +126,10 @@ CPU-run precedent.
    19G transfers — this is why t6001-test-host is preferred).
 
 Transfer integrity: sha256 the six shards after copy on the device
-host; abort on any mismatch.
+host; abort on any mismatch. Transfers happen ONLY during an agreed
+non-measurement window on the target host (transfer I/O pollutes
+timing), and only after the persistent-disk headroom check confirms
+room for the 19G artifact plus working space.
 
 ## Run protocol on the device
 
