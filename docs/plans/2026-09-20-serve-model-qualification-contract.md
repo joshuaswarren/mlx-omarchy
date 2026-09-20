@@ -14,7 +14,10 @@ in the refresh path can flip it: `tools/refresh_serve_catalog.py` writes
 2. Repinning to a new upstream revision is a manual commit that resets the
    entry's qualification to `untested` in the same commit.
 3. `recommended` requires `qualification.generation.status == "qualified"`
-   and a pinned revision; the validator enforces both.
+   and a pinned revision; the validator enforces both. Owner directive
+   2026-09-20 is stricter and governs the seed: every recommendation stays
+   `false` until HTTP serving is qualified on devices for that exact
+   runtime and revision. Until then the catalog recommends nothing.
 4. Generation and HTTP are qualified separately. A generation pass says
    nothing about HTTP serving, and vice versa.
 5. Implemented backend primitives are not model qualification. "Affine

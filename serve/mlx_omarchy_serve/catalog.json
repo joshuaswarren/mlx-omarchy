@@ -9,7 +9,7 @@
       "revision": "10c35caafbb80f7dc6a7a432cdd11af10a6d4818",
       "kind": "chat",
       "priority": 1,
-      "recommended": true,
+      "recommended": false,
       "license": "apache-2.0",
       "quant": {
         "bits": 4,
@@ -25,10 +25,10 @@
         "max_tokens": 262144
       },
       "capability": {
+        "min_mem_gib": 19,
         "arch": [
-          "Qwen3_5ForConditionalGeneration"
-        ],
-        "min_mem_gib": 19
+          "t6021"
+        ]
       },
       "qualification": {
         "generation": {
@@ -46,6 +46,7 @@
         "size_bytes": 16054541349,
         "refreshed_at": "2026-09-20T19:30:09Z"
       },
+      "family": "qwen3.8-27b",
       "extension": {
         "scope": "Text-only CLI generation qualified on t6021-test-host (T6021) with candidate wheel 0.32.3.dev202609201346+a1251aaa, mlx-vlm 0.7.1, mlx-lm 0.31.3; HTTP serving, vision, ANE, and 16 GiB M1 gates are NOT qualified. Multimodal checkpoint loaded language-model-only; the MTP block is an auxiliary prediction component, not a standalone smaller model.",
         "model_type": "qwen3_5",
@@ -58,10 +59,14 @@
         "source_base_revision": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0",
         "fast_path": "affine 4-bit/group-64 transposed weights hit the Q4 specialized paths: DecodeQ4Word decode GEMV, QmmVecQ4Multi fused decode group, QmmTileRbF16/QmmPrefillCoopmat prefill (overlay/mlx/backend/omarchy/primitives.cpp)",
         "min_mem_gib_basis": "ceil(weights_bytes * 1.25 / 2^30); static weights floor, not a measured peak",
-        "family_note": "Only variant with a device qualification pass (text-only CLI)."
+        "family_note": "Only variant with a device qualification pass (text-only CLI).",
+        "variant": "4bit",
+        "model_architecture": "Qwen3_5ForConditionalGeneration"
       },
-      "family": "qwen3.8-27b",
-      "variant": "4bit"
+      "serve": {
+        "backend": "mlx-lm",
+        "module": null
+      }
     },
     {
       "id": "qwen3.8-27b-8bit",
@@ -85,10 +90,8 @@
         "max_tokens": 262144
       },
       "capability": {
-        "arch": [
-          "Qwen3_5ForConditionalGeneration"
-        ],
-        "min_mem_gib": 35
+        "min_mem_gib": 35,
+        "arch": null
       },
       "qualification": {
         "generation": {
@@ -106,6 +109,7 @@
         "size_bytes": 29501218479,
         "refreshed_at": "2026-09-20T19:30:09Z"
       },
+      "family": "qwen3.8-27b",
       "extension": {
         "model_type": "qwen3_5",
         "params": 27356728560,
@@ -114,10 +118,11 @@
         "source_base_revision": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0",
         "min_mem_gib_basis": "ceil(weights_bytes * 1.25 / 2^30); static weights floor, not a measured peak",
         "scope": "Untested on this stack. Canonical mlx-community conversion of the pinned base; same architecture as the qualified 4-bit variant, higher-fidelity weights.",
-        "kv_basis": "kv_bytes_per_token = 2 (K+V) x 16 full-attention layers (64/4) x 4 kv heads x 256 head_dim x 2 bytes (bf16), from the pinned config; linear-attention layers carry recurrent state, not a growing KV cache; MTP excluded"
+        "kv_basis": "kv_bytes_per_token = 2 (K+V) x 16 full-attention layers (64/4) x 4 kv heads x 256 head_dim x 2 bytes (bf16), from the pinned config; linear-attention layers carry recurrent state, not a growing KV cache; MTP excluded",
+        "variant": "8bit",
+        "model_architecture": "Qwen3_5ForConditionalGeneration"
       },
-      "family": "qwen3.8-27b",
-      "variant": "8bit"
+      "serve": null
     },
     {
       "id": "qwen3.8-27b-bf16",
@@ -137,10 +142,8 @@
         "max_tokens": 262144
       },
       "capability": {
-        "arch": [
-          "Qwen3_5ForConditionalGeneration"
-        ],
-        "min_mem_gib": 64
+        "min_mem_gib": 64,
+        "arch": null
       },
       "qualification": {
         "generation": {
@@ -158,6 +161,7 @@
         "size_bytes": 54713606485,
         "refreshed_at": "2026-09-20T19:30:09Z"
       },
+      "family": "qwen3.8-27b",
       "extension": {
         "model_type": "qwen3_5",
         "params": 27356728560,
@@ -166,10 +170,11 @@
         "source_base_revision": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0",
         "min_mem_gib_basis": "ceil(weights_bytes * 1.25 / 2^30); static weights floor, not a measured peak",
         "scope": "Untested on this stack. Unquantized bf16 conversion of the pinned base; 50.9 GiB of weights, fits only large-memory hosts under the live-memory admission rule.",
-        "kv_basis": "kv_bytes_per_token = 2 (K+V) x 16 full-attention layers (64/4) x 4 kv heads x 256 head_dim x 2 bytes (bf16), from the pinned config; linear-attention layers carry recurrent state, not a growing KV cache; MTP excluded"
+        "kv_basis": "kv_bytes_per_token = 2 (K+V) x 16 full-attention layers (64/4) x 4 kv heads x 256 head_dim x 2 bytes (bf16), from the pinned config; linear-attention layers carry recurrent state, not a growing KV cache; MTP excluded",
+        "variant": "bf16",
+        "model_architecture": "Qwen3_5ForConditionalGeneration"
       },
-      "family": "qwen3.8-27b",
-      "variant": "bf16"
+      "serve": null
     },
     {
       "id": "ternary-bonsai-2-27b-mlx-2bit",
@@ -193,10 +198,8 @@
         "max_tokens": 262144
       },
       "capability": {
-        "arch": [
-          "prism_hadamard_qwen35"
-        ],
-        "min_mem_gib": 11
+        "min_mem_gib": 11,
+        "arch": null
       },
       "qualification": {
         "generation": {
@@ -214,6 +217,7 @@
         "size_bytes": 8595477990,
         "refreshed_at": "2026-09-20T19:30:09Z"
       },
+      "family": "ternary-bonsai-2-27b",
       "extension": {
         "scope": "NOT qualified. Historical evidence only: coherent 96-step generation at 1.44 tok/s on candidate wheel b283a16 (t6001-test-host, 2026-09-18), recorded in receipts/2026-09-18-v070-pretag-recert-t6001-test-host.md through the specialized pack runtime; that receipt does not record the pack revision used, so it does not qualify this pinned revision. Not a drop-in serving recommendation.",
         "model_type": "prism_hadamard_qwen35",
@@ -224,10 +228,10 @@
         "hybrid_attention": "linear_attention x3 + full_attention, interval 4, 64 layers (gdn_activation_layout custom)",
         "quant_backend_support": "affine bits 2 / group 128 is implemented in overlay/mlx/backend/omarchy/primitives.cpp (bits {2,3,4,5,6,8} x groups {32,64,128}); implemented primitives are not per-model qualification",
         "min_mem_gib_basis": "ceil(weights_bytes * 1.25 / 2^30); static weights floor, not a measured peak",
-        "kv_basis": "kv_bytes_per_token = 2 (K+V) x 16 full-attention layers (64/4) x 4 kv heads x 256 head_dim x 2 bytes (bf16), from the pinned config; GDN layers carry fixed recurrent state, not a growing cache"
+        "kv_basis": "kv_bytes_per_token = 2 (K+V) x 16 full-attention layers (64/4) x 4 kv heads x 256 head_dim x 2 bytes (bf16), from the pinned config; GDN layers carry fixed recurrent state, not a growing cache",
+        "variant": "2bit"
       },
-      "family": "ternary-bonsai-2-27b",
-      "variant": "2bit"
+      "serve": null
     },
     {
       "id": "qwen3.8-35b-a3b-distill",
@@ -247,10 +251,8 @@
         "max_tokens": 262144
       },
       "capability": {
-        "arch": [
-          "Qwen3_5MoeForConditionalGeneration"
-        ],
-        "min_mem_gib": 84
+        "min_mem_gib": 84,
+        "arch": null
       },
       "qualification": {
         "generation": {
@@ -268,6 +270,7 @@
         "size_bytes": 71903778536,
         "refreshed_at": "2026-09-20T19:30:09Z"
       },
+      "family": "qwen3.8-35b-a3b-distill",
       "extension": {
         "scope": "Untested on this stack. Never executed here.",
         "model_type": "qwen3_5_moe",
@@ -284,10 +287,11 @@
         "fitment": "Admission is a per-host runtime decision from actual available memory (with context, workspace, and co-resident models), not a fleet-max assumption: the 64 GiB t6001-test-host cannot admit the bf16 weights; the M2 Max measured 94.25 GiB OS-usable / 80.77 GiB available on 2026-09-20, so the 84 GiB floor refuses at that measured availability and a quieter host state is required. A Q4/group-64 conversion remains the fitment path for 64 GiB-class hosts; none exists upstream (checked 2026-09-20) and producing one is a weight-download job under Main coordination.",
         "hybrid_attention": "linear_attention x3 + full_attention, interval 4",
         "min_mem_gib_basis": "ceil(weights_bytes * 1.25 / 2^30); static weights floor, not a measured peak",
-        "kv_basis": "kv_bytes_per_token = 2 (K+V) x 10 full-attention layers (40/4) x 2 kv heads x 256 head_dim x 2 bytes (bf16), from the pinned config; GDN layers carry fixed recurrent state, not a growing cache; MTP excluded"
+        "kv_basis": "kv_bytes_per_token = 2 (K+V) x 10 full-attention layers (40/4) x 2 kv heads x 256 head_dim x 2 bytes (bf16), from the pinned config; GDN layers carry fixed recurrent state, not a growing cache; MTP excluded",
+        "variant": "bf16",
+        "model_architecture": "Qwen3_5MoeForConditionalGeneration"
       },
-      "family": "qwen3.8-35b-a3b-distill",
-      "variant": "bf16"
+      "serve": null
     },
     {
       "id": "qwen3.8-35b-a3b-distill-oq8",
@@ -311,10 +315,8 @@
         "max_tokens": 262144
       },
       "capability": {
-        "arch": [
-          "Qwen3_5MoeForConditionalGeneration"
-        ],
-        "min_mem_gib": 46
+        "min_mem_gib": 46,
+        "arch": null
       },
       "qualification": {
         "generation": {
@@ -332,6 +334,7 @@
         "size_bytes": 39498128455,
         "refreshed_at": "2026-09-20T19:30:09Z"
       },
+      "family": "qwen3.8-35b-a3b-distill",
       "extension": {
         "scope": "Untested on this stack; third-party community conversion (NovaeonStudio), not produced or verified by this project. Per-layer 8/128 overrides exist on lm_head and linear-attention projections on top of the dominant 8/64 affine config.",
         "model_type": "qwen3_5_moe",
@@ -340,10 +343,11 @@
         "mixed_precision": "dominant affine 8/64; lm_head and linear_attn in_proj layers 8/128",
         "family_note": "Third-party variant of the empero-ai distill family; in-house Q4/group-64 conversion from the pinned bf16 revision remains the Distill lane's fitment target for 64 GiB-class hosts.",
         "min_mem_gib_basis": "ceil(weights_bytes * 1.25 / 2^30); static weights floor, not a measured peak",
-        "kv_basis": "kv_bytes_per_token = 2 (K+V) x 10 full-attention layers (40/4) x 2 kv heads x 256 head_dim x 2 bytes (bf16 KV dtype), from the pinned config; GDN layers carry fixed recurrent state, not a growing cache; MTP excluded"
+        "kv_basis": "kv_bytes_per_token = 2 (K+V) x 10 full-attention layers (40/4) x 2 kv heads x 256 head_dim x 2 bytes (bf16 KV dtype), from the pinned config; GDN layers carry fixed recurrent state, not a growing cache; MTP excluded",
+        "variant": "oq8",
+        "model_architecture": "Qwen3_5MoeForConditionalGeneration"
       },
-      "family": "qwen3.8-35b-a3b-distill",
-      "variant": "oq8"
+      "serve": null
     },
     {
       "id": "qwen3.8-27b-mxfp4",
@@ -367,10 +371,8 @@
         "max_tokens": 262144
       },
       "capability": {
-        "arch": [
-          "Qwen3_5ForConditionalGeneration"
-        ],
-        "min_mem_gib": 18
+        "min_mem_gib": 18,
+        "arch": null
       },
       "qualification": {
         "generation": {
@@ -388,6 +390,7 @@
         "size_bytes": 15214058084,
         "refreshed_at": "2026-09-20T19:30:09Z"
       },
+      "family": "qwen3.8-27b",
       "extension": {
         "model_type": "qwen3_5",
         "params": 27356728560,
@@ -396,10 +399,11 @@
         "source_base_revision": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0",
         "min_mem_gib_basis": "ceil(weights_bytes * 1.25 / 2^30); static weights floor, not a measured peak",
         "scope": "Untested on this stack. Non-affine mxfp4 format (group 32); the backend implements mxfp4 4/32 (primitives.cpp) but the qwen3_5 loader path with an fp-format checkpoint is unproven - qualification will verify.",
-        "kv_basis": "kv_bytes_per_token = 2 (K+V) x 16 full-attention layers (64/4) x 4 kv heads x 256 head_dim x 2 bytes (bf16), from the pinned config; linear-attention layers carry recurrent state, not a growing KV cache; MTP excluded"
+        "kv_basis": "kv_bytes_per_token = 2 (K+V) x 16 full-attention layers (64/4) x 4 kv heads x 256 head_dim x 2 bytes (bf16), from the pinned config; linear-attention layers carry recurrent state, not a growing KV cache; MTP excluded",
+        "variant": "mxfp4",
+        "model_architecture": "Qwen3_5ForConditionalGeneration"
       },
-      "family": "qwen3.8-27b",
-      "variant": "mxfp4"
+      "serve": null
     },
     {
       "id": "qwen3.8-27b-nvfp4",
@@ -423,10 +427,8 @@
         "max_tokens": 262144
       },
       "capability": {
-        "arch": [
-          "Qwen3_5ForConditionalGeneration"
-        ],
-        "min_mem_gib": 19
+        "min_mem_gib": 19,
+        "arch": null
       },
       "qualification": {
         "generation": {
@@ -444,6 +446,7 @@
         "size_bytes": 16054475404,
         "refreshed_at": "2026-09-20T19:30:09Z"
       },
+      "family": "qwen3.8-27b",
       "extension": {
         "model_type": "qwen3_5",
         "params": 27356728560,
@@ -452,10 +455,11 @@
         "source_base_revision": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0",
         "min_mem_gib_basis": "ceil(weights_bytes * 1.25 / 2^30); static weights floor, not a measured peak",
         "scope": "Untested on this stack. Non-affine nvfp4 format (group 16, global scale); backend implements nvfp4 4/16 (primitives.cpp), loader path unproven - qualification will verify.",
-        "kv_basis": "kv_bytes_per_token = 2 (K+V) x 16 full-attention layers (64/4) x 4 kv heads x 256 head_dim x 2 bytes (bf16), from the pinned config; linear-attention layers carry recurrent state, not a growing KV cache; MTP excluded"
+        "kv_basis": "kv_bytes_per_token = 2 (K+V) x 16 full-attention layers (64/4) x 4 kv heads x 256 head_dim x 2 bytes (bf16), from the pinned config; linear-attention layers carry recurrent state, not a growing KV cache; MTP excluded",
+        "variant": "nvfp4",
+        "model_architecture": "Qwen3_5ForConditionalGeneration"
       },
-      "family": "qwen3.8-27b",
-      "variant": "nvfp4"
+      "serve": null
     },
     {
       "id": "qwen3.8-27b-mxfp8",
@@ -479,10 +483,8 @@
         "max_tokens": 262144
       },
       "capability": {
-        "arch": [
-          "Qwen3_5ForConditionalGeneration"
-        ],
-        "min_mem_gib": 34
+        "min_mem_gib": 34,
+        "arch": null
       },
       "qualification": {
         "generation": {
@@ -500,6 +502,7 @@
         "size_bytes": 28660735192,
         "refreshed_at": "2026-09-20T19:30:09Z"
       },
+      "family": "qwen3.8-27b",
       "extension": {
         "model_type": "qwen3_5",
         "params": 27356728560,
@@ -508,10 +511,11 @@
         "source_base_revision": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0",
         "min_mem_gib_basis": "ceil(weights_bytes * 1.25 / 2^30); static weights floor, not a measured peak",
         "scope": "Untested on this stack. Non-affine mxfp8 format (group 32); backend implements mxfp8 8/32 (primitives.cpp), loader path unproven - qualification will verify.",
-        "kv_basis": "kv_bytes_per_token = 2 (K+V) x 16 full-attention layers (64/4) x 4 kv heads x 256 head_dim x 2 bytes (bf16), from the pinned config; linear-attention layers carry recurrent state, not a growing KV cache; MTP excluded"
+        "kv_basis": "kv_bytes_per_token = 2 (K+V) x 16 full-attention layers (64/4) x 4 kv heads x 256 head_dim x 2 bytes (bf16), from the pinned config; linear-attention layers carry recurrent state, not a growing KV cache; MTP excluded",
+        "variant": "mxfp8",
+        "model_architecture": "Qwen3_5ForConditionalGeneration"
       },
-      "family": "qwen3.8-27b",
-      "variant": "mxfp8"
+      "serve": null
     },
     {
       "id": "laya-mlx",
@@ -531,7 +535,7 @@
         "max_tokens": 512
       },
       "capability": {
-        "arch": [],
+        "arch": null,
         "min_mem_gib": 1
       },
       "qualification": {
@@ -550,6 +554,7 @@
         "size_bytes": 842609225,
         "refreshed_at": "2026-09-20T19:30:09Z"
       },
+      "family": "laya",
       "extension": {
         "scope": "Untested on this stack. Never executed here.",
         "pack_format": "laya-mlx",
@@ -566,10 +571,10 @@
         "source_head_at_discovery": "1c5edc17a7acd8701df6fc341c0d179f1c62c982",
         "source_drift": "Upstream source moved past the revision recorded in the pack manifest (2026-09-20); repacking requires requalification. Lane tests cover both revisions.",
         "runtime_owner": "Runtime adaptation is owned by the Laya serving lane; this entry records metadata only.",
-        "min_mem_gib_basis": "ceil(weights_bytes * 1.25 / 2^30); static weights floor, not a measured peak"
+        "min_mem_gib_basis": "ceil(weights_bytes * 1.25 / 2^30); static weights floor, not a measured peak",
+        "variant": "fp16-pack"
       },
-      "family": "laya",
-      "variant": "fp16-pack"
+      "serve": null
     }
   ]
 }
