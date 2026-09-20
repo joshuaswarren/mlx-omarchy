@@ -54,6 +54,7 @@ def _mk_runner(tmp_path: Path, with_bdscale: bool):
     r.ane_ops = 0
     r.executed = 0
     r.placed = frozenset({"F"})
+    mx.set_default_device(mx.cpu)
     r.island = island
     r.statements = []
     r.placed = frozenset({"F"})
@@ -69,7 +70,10 @@ def _mk_runner(tmp_path: Path, with_bdscale: bool):
     s = stmt("attention_scores_1_cast_fp16", "matmul", (1, 8, 375, 749),
              transpose_x="false", transpose_y="false", x="pos", y="q")
     pad = stmt("var_pad0", "pad", (1, 8, 375, 750), x=s.names[0])
-    mul = stmt("matrix_bd_5_0", "mul", (1, 8, 375, 375), x=pad.names[0])
+    mul = stmt("matrix_bd_5_0", "mul", (1, 8, 375, 375),
+               x=pad.names[0], y="var_371")
+    const_stmt = stmt("var_371", "const", None)
+    r.meta = {"var_371": 0.0625}  # scalar() reads meta (MIL fp16 literal)
     sel = stmt("attention_mask_1_cast_fp16", "select", (1, 8, 375, 375),
                a="ninf", cond="var_373", b=mul.names[0])
     content = stmt("matmul_1_cast_fp16", "matmul", (1, 8, 375, 375),
@@ -83,17 +87,18 @@ def _mk_runner(tmp_path: Path, with_bdscale: bool):
     r.island_b = {sel.index: (0, sel)}
     r.island_c = {out.index: (0, out)}
     r.island_oproj = {}
-    r.producer = {mul.names[0]: mul, sel.names[0]: sel}
+    r.producer = {mul.names[0]: mul, sel.names[0]: sel,
+                  "var_371": const_stmt}
     # values the handler resolves by name
     rng = np.random.default_rng(7)
     raw_relpos = rng.standard_normal((1, 8, 375, 749)).astype(np.float16)
     raw_relpos = mx.array(raw_relpos)
     r.values = {
         "pos": mx.array(rng.standard_normal((1, 8, 375, 128)).astype(np.float16)),
-        "q": mx.zeros((1, 8, 128, 749), mx.float16),
-        "kt": mx.zeros((1, 8, 128, 375), mx.float16),
-        "qs": mx.zeros((1, 8, 375, 128), mx.float16),
-        "vh": mx.zeros((1, 8, 375, 128), mx.float16),
+        "q": mx.array(rng.standard_normal((1, 8, 128, 749)).astype(np.float16)),
+        "kt": mx.array(rng.standard_normal((1, 8, 375, 128)).astype(np.float16)),
+        "qs": mx.array(rng.standard_normal((1, 8, 375, 128)).astype(np.float16)),
+        "vh": mx.array(rng.standard_normal((1, 8, 375, 128)).astype(np.float16)),
         "ninf": mx.array(-np.inf, mx.float16),
         "var_373": mx.zeros((1, 1, 375, 375), mx.bool_),
         s.names[0]: raw_relpos,
@@ -110,9 +115,8 @@ def _capture(monkeypatch):
         calls.append(record)
         out = {}
         for name in outputs:
-            out[name] = np.zeros((1, 8, 375, 375), np.float16).tobytes() \
-                if name == "smax" else \
-                np.zeros((1, 8, 375, 128), np.float16).tobytes()
+            shape = (1, 8, 375, 375) if name == "smax" else (1, 8, 375, 128)
+            out[name] = mx.zeros(shape, mx.float16)  # mx arrays, like the real island
         return out
 
     monkeypatch.setattr(ve.AneIsland, "submit",
@@ -151,11 +155,15 @@ def test_bdscale_head_submits_raw_relpos(tmp_path, monkeypatch) -> None:
     assert rel != scaled, "relpos payload is a scaled slice, not raw"
     # and no legacy bd key anywhere in the bdscale submit
     assert "bd" not in head["inputs"]
-    # shared bookkeeping ran (single head+PV path, no early return)
+    # shared bookkeeping: EXACTLY one head + one PV, exact counters
+    assert [c["bundle"] for c in calls] == [
+        "island-attn-ac-head-L00-bdscale", "island-pv"], calls
+    assert r.executed == 3 and r.ane_ops == 2 and r.gpu_ops == 1, (
+        r.executed, r.ane_ops, r.gpu_ops)
     assert s.done and _out.done and _content.done
-    assert r.executed >= 2 and r.ane_ops >= 2
     stored = r.values[_out.names[0]]
-    assert len(bytes(stored)) == 768000, len(bytes(stored))
+    assert isinstance(stored, mx.array) or isinstance(stored, object)
+    assert np.asarray(stored).size == 8 * 375 * 128
 
 
 def test_fallback_head_unchanged_without_bdscale(tmp_path, monkeypatch) -> None:
@@ -166,17 +174,22 @@ def test_fallback_head_unchanged_without_bdscale(tmp_path, monkeypatch) -> None:
     assert set(head["inputs"]) == {"a_fill", "bd", "cond", "q", "k"}
     bd = head["inputs"]["bd"]
     assert len(bd) == L0_BD_BYTES
-    # The fixture wires no const-mul scale operand, so the legacy path
-    # emits the contiguous slice unscaled - exactly what the pre-bdscale
-    # code produced for the same wiring. Assert that unchanged behavior.
     # relpos inside the handler is pos @ q (recomputed on device/CPU);
-    # the legacy bd is exactly its contiguous unscaled slice.
+    # with the var_371 const producer wired, the legacy bd MUST be the
+    # 1/16-scaled contiguous slice (and differ from the raw slice).
     rel = np.asarray(mx.matmul(r.values["pos"], r.values["q"])
                      ).astype(np.float16)
-    expected = np.ascontiguousarray(rel[:, :, :, :375]).tobytes()
-    assert bd == expected, "fallback bd is not the contiguous unscaled slice"
+    scaled = np.ascontiguousarray(
+        (rel[:, :, :, :375] * np.float16(0.0625)).astype(np.float16)
+    ).tobytes()
+    raw = np.ascontiguousarray(rel[:, :, :, :375]).tobytes()
+    assert bd == scaled, "fallback bd is not the 1/16-scaled slice"
+    assert bd != raw, "scaled slice equals raw slice on nonzero fixture"
+    assert [c["bundle"] for c in calls] == [
+        "island-attn-ac-head-L00", "island-pv"], calls
+    assert r.executed == 3 and r.ane_ops == 2 and r.gpu_ops == 1, (
+        r.executed, r.ane_ops, r.gpu_ops)
     assert s.done and _out.done and _content.done
-    assert r.executed >= 2 and r.ane_ops >= 2
 
 if __name__ == "__main__":
     import tempfile, traceback
