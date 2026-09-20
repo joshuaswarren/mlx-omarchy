@@ -10,6 +10,7 @@ prompt + output. These tests prove the shim does.
 """
 
 import os
+import unittest.mock
 import sys
 import unittest
 from pathlib import Path
@@ -98,6 +99,7 @@ class CapTests(unittest.TestCase):
         calls = {"main": False}
 
         class RecordingServer:
+            __version__ = "0.31.3"  # the pinned version must pass the pin check
             ResponseGenerator = server.ResponseGenerator
 
             @staticmethod
@@ -117,6 +119,45 @@ class CapTests(unittest.TestCase):
         gen = RecordingServer.ResponseGenerator()
         with self.assertRaises(ValueError):
             gen._tokenize(None, FakeRequest(600), FakeArgs(0))  # 600 > 512
+
+
+class PinCheckTests(unittest.TestCase):
+    def test_pinned_version_passes(self):
+        import types
+
+        module = types.SimpleNamespace(__version__="0.31.3")
+        self.assertEqual(cap.check_pinned(module), "0.31.3")
+
+    def test_unknown_version_refuses_without_override(self):
+        import types
+
+        module = types.SimpleNamespace(__version__="0.32.0")
+        with self.assertRaises(RuntimeError) as ctx:
+            cap.check_pinned(module)
+        self.assertIn("pinned", str(ctx.exception))
+
+    def test_unknown_version_allowed_only_with_explicit_override(self):
+        import types
+
+        module = types.SimpleNamespace(__version__="0.32.0")
+        with unittest.mock.patch.dict(os.environ, {cap.UNPINNED_ENV: "1"}):
+            self.assertEqual(cap.check_pinned(module), "0.32.0")
+
+    def test_missing_version_is_unknown_and_refused(self):
+        import types
+
+        module = types.SimpleNamespace()
+        with self.assertRaises(RuntimeError):
+            cap.check_pinned(module)
+
+    def test_strict_max_tokens_type_rejected(self):
+        server = fresh_server()
+        cap.install(server, limit=1024)
+        gen = server.ResponseGenerator()
+        for bad in ("16", 1.5, True):
+            with self.subTest(bad=bad):
+                with self.assertRaises(ValueError):
+                    gen._tokenize(None, FakeRequest(10), FakeArgs(bad))
 
 
 if __name__ == "__main__":

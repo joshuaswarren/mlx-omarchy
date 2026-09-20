@@ -367,7 +367,8 @@ def check_custom_code(model_dir: Path) -> None:
 
 
 def server_argv(backend: str, module: str | None, model_dir: Path, host: str,
-                port: int, context_tokens: int) -> list[str]:
+                port: int, context_tokens: int,
+                prompt_cache_size: int = 0) -> list[str]:
     if backend == "mlx-lm":
         # Upstream --max-tokens is only a per-request default (client
         # overridable, verified in the 0.31.3 wheel), so the REAL total
@@ -375,10 +376,19 @@ def server_argv(backend: str, module: str | None, model_dir: Path, host: str,
         # enforced at tokenization). The flag remains as the default for
         # clients that omit max_tokens. --trust-remote-code exists on
         # this server; it is never passed.
-        return [sys.executable, "-m", "mlx_omarchy_serve._mlxlm_server",
+        # Aggregate bound: concurrency 1 means exactly one request's
+        # tokens are resident; prompt cache 0 means no retained KV caches
+        # -- so the aggregate equals the admitted context. A larger
+        # --prompt-cache-size re-enables caching at a documented
+        # (cache + 1) x context worst case.
+        argv = [sys.executable, "-m", "mlx_omarchy_serve._mlxlm_server",
                 "--model", str(model_dir),
                 "--host", host, "--port", str(port),
-                "--max-tokens", str(context_tokens)]
+                "--max-tokens", str(context_tokens),
+                "--decode-concurrency", "1",
+                "--prompt-concurrency", "1",
+                "--prompt-cache-size", str(prompt_cache_size)]
+        return argv
     if backend == "omlx":
         return [sys.executable, "-m", "omlx.server", "--model-dir", str(model_dir),
                 "--host", host, "--port", str(port)]
@@ -440,6 +450,10 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     p_serve.add_argument("--port", type=int, default=8080)
     p_serve.add_argument("--yes", action="store_true",
                          help="noninteractive explicit opt-in; requires an explicit target")
+    p_serve.add_argument("--prompt-cache-size", type=int, default=0,
+                         help="mlx-lm prompt cache entries; 0 (default) keeps the "
+                              "aggregate KV bound at the admitted context, N raises "
+                              "the worst case to (N+1) x context")
 
     p_cat = sub.add_parser("catalog", help="catalog list/status/refresh")
     csub = p_cat.add_subparsers(dest="catalog_command", required=True)
@@ -608,7 +622,14 @@ def cmd_serve(args, cat, home) -> int:
     if host_nonlocal(args.host):
         warn(f"{args.host} is not loopback: this development server has no authentication")
 
-    argv = server_argv(backend, module, model_dir, args.host, args.port, context)
+    argv = server_argv(backend, module, model_dir, args.host, args.port, context,
+                       prompt_cache_size=max(int(getattr(args, "prompt_cache_size", 0) or 0), 0))
+    if backend == "mlx-lm" and int(getattr(args, "prompt_cache_size", 0) or 0) > 0:
+        warn(
+            f"prompt cache {args.prompt_cache_size}: worst-case resident KV is "
+            f"({args.prompt_cache_size} + 1) x the admitted context of {context} "
+            "tokens; the admission budget covers ONE context only"
+        )
     child_env = dict(os.environ)
     if backend == "mlx-lm":
         child_env[cap_shim.LIMIT_ENV] = str(context)
