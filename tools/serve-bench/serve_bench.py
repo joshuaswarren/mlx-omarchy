@@ -359,8 +359,9 @@ if MODE == "d2":
                     t_first = time.perf_counter()
                 ids.append(r.token)
         wall = time.perf_counter() - t0
-        caches = gen.extract_cache(uids)
-        shared = caches[uids[0]]
+        cache_map = gen.extract_cache(uids)
+        entry = cache_map.get(uids[0]) if isinstance(cache_map, dict) else None
+        shared = entry[0] if isinstance(entry, tuple) else entry
         gen.close()
         brounds.append({{"ids": ids, "ttft_s": round(t_first - t0, 4),
                         "wall_s": round(wall, 4), "n": len(ids),
@@ -395,7 +396,10 @@ def direct_control(args, python: str, mode: str) -> dict:
     for line in out.stdout.splitlines():
         if line.startswith("{"):
             return json.loads(line)
-    return {"error": (out.stderr.strip()[-300:] or "no json output")}
+    err = out.stderr or ""
+    tb = err.find("Traceback")
+    detail = err[tb:] if tb >= 0 else err
+    return {"error": (detail.strip()[-800:] or "no json output")}
 
 
 def ids_agreement(direct: dict) -> dict:
