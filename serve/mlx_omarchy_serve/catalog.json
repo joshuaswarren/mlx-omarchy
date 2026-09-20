@@ -229,7 +229,9 @@
         "quant_backend_support": "affine bits 2 / group 128 is implemented in overlay/mlx/backend/omarchy/primitives.cpp (bits {2,3,4,5,6,8} x groups {32,64,128}); implemented primitives are not per-model qualification",
         "min_mem_gib_basis": "ceil(weights_bytes * 1.25 / 2^30); static weights floor, not a measured peak",
         "kv_basis": "kv_bytes_per_token = 2 (K+V) x 16 full-attention layers (64/4) x 4 kv heads x 256 head_dim x 2 bytes (bf16), from the pinned config; GDN layers carry fixed recurrent state, not a growing cache",
-        "variant": "2bit"
+        "variant": "2bit",
+        "weights_sha256": "130de5925082c168b7866b2e91b52e44abbafc99017e3ca352b77b5b55a269ed (model.safetensors, 8,595,477,990 B; Bonsai2RuntimeEnablement 2026-09-20, confirmed by the pinned commit's git-LFS pointer, the pack's files.json, and byte-hashes on t6001-test-host)",
+        "config_sha256": "238de7c5 (config.json, per the same lane record)"
       },
       "serve": null
     },
