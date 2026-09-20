@@ -386,7 +386,11 @@ elif MODE == "d1w":
 
     def assert_fresh_prefix(cache, tag):
         st = state_fingerprint(cache)
-        offs_ok = all(e["offset"] == ref_offset for e in st)
+        # Per-layer: offsets AND bytes must equal the fresh-prefix
+        # reference (heterogeneous multimodal cache lists may carry
+        # non-text layers whose offsets legitimately differ from the
+        # text prefix length).
+        offs_ok = all(e["offset"] == r["offset"] for e, r in zip(st, ref_state))
         bytes_ok = all(e["k16"] == r["k16"] and e["v16"] == r["v16"]
                        for e, r in zip(st, ref_state))
         if not (offs_ok and bytes_ok):
@@ -397,21 +401,21 @@ elif MODE == "d1w":
     cache = make_prompt_cache(model)
     warm_ids, _, _ = run_stream_round(cache, prompt_ids, WARMUP_TOKENS)
     prev_n = len(warm_ids)
-    trims = []
+    trim_counts = None
     proofs = []
     for _ in range(ROUNDS):
-        t = trim_prompt_cache(cache, prev_n)
-        trims.append(t)
-        if t != prev_n:
-            raise SystemExit(f"trim mismatch: asked {{prev_n}} trimmed {{t}}")
+        # trim_prompt_cache returns ONLY layer[0]'s trimmed count; on
+        # multimodal wrappers layer[0] can be a zero-offset cache while
+        # the text layers trim correctly. Trim per layer and gate on the
+        # STATE fingerprint (offsets + bytes vs a fresh prefill), not on
+        # the returned scalar.
+        trim_counts = [c.trim(prev_n) for c in cache]
         proofs.append(assert_fresh_prefix(cache, "pre-round"))
         ids, t_first, wall = run_stream_round(cache, prompt_ids[-1:], MAXTOK)
         prev_n = len(ids)
         rounds.append({{"ids": ids, "ttft_s": t_first, "wall_s": wall,
                        "n": len(ids),
                        "ids_sha16": hashlib.sha256(json.dumps(ids).encode()).hexdigest()[:16]}})
-    if rounds and trims[0] != WARMUP_TOKENS:
-        raise SystemExit(f"warmup trim mismatch: {{trims[0]}} != {{WARMUP_TOKENS}}")
     warm_prefix_ids_ok = warm_ids[:len(ref_ids)] == ref_ids
 elif MODE == "d1m":
     # Margin probe: manual greedy loop recording the full-distribution
@@ -451,6 +455,7 @@ if MODE == "d1w":
         "fresh_prefix_ref_offset": ref_offset,
         "per_round_proofs": proofs,
         "warm_prefix_ids_ok": warm_prefix_ids_ok,
+        "trim_counts_first_round": trim_counts,
     }}
 print(json.dumps(result))
 """
@@ -472,22 +477,32 @@ def direct_control(args, python: str, mode: str) -> dict:
                                     max_tokens=args.max_tokens,
                                     rounds=args.rounds)
     compile(snippet, f"<direct-{mode}>", "exec")  # fail fast on syntax errors
+    def clean_err(text: str) -> str:
+        # rtmod kernel-trace lines bury the actual failure; drop them and
+        # keep real error output (SystemExit messages print WITHOUT a
+        # Traceback header).
+        lines = [ln for ln in text.splitlines()
+                 if ln.strip() and not ln.startswith("[rtmod]")
+                 and not ln.startswith("ts=") and "COMMIT-NOOP" not in ln
+                 and "SUBMIT tid=" not in ln]
+        return "\n".join(lines)
+
     try:
         out = subprocess.run([python, "-c", snippet], capture_output=True, text=True,
                              timeout=args.timeout * (args.rounds + 2))
     except subprocess.TimeoutExpired as e:
         err = (e.stderr or b"").decode(errors="replace") if isinstance(e.stderr, bytes) else (e.stderr or "")
         tb = err.find("Traceback")
-        detail = err[tb:] if tb >= 0 else err
+        detail = err[tb:] if tb >= 0 else clean_err(err)
         return {"error": f"subprocess timeout after {args.timeout * (args.rounds + 2)}s; "
                          f"partial stdout={len(e.stdout or b'')}B; {detail.strip()[-500:]}"}
     for line in out.stdout.splitlines():
         if line.startswith("{"):
             return json.loads(line)
-    err = out.stderr or ""
+    err = clean_err(out.stderr or "")
     tb = err.find("Traceback")
     detail = err[tb:] if tb >= 0 else err
-    return {"error": (detail.strip()[-800:] or "no json output")}
+    return {"error": (detail.strip()[-800:] or err[-500:] or "no json output")}
 
 
 def ids_agreement(direct: dict) -> dict:
