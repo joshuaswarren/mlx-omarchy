@@ -230,6 +230,48 @@ std::vector<Parameter> parse_parameters(const std::string& signature) {
   return parameters;
 }
 
+// Strip // and /* */ comments from an MSL kernel body before token
+// translation.  Comment text is semantically meaningless, but it trips
+// the MSL-leftover marker check below (e.g. the word "threadgroup" in
+// an explanatory comment).  Newlines are preserved so downstream error
+// line numbers stay meaningful; block comments collapse to one space.
+void strip_comments(std::string& code) {
+  std::string out;
+  out.reserve(code.size());
+  bool in_line = false;
+  bool in_block = false;
+  for (size_t i = 0; i < code.size(); ++i) {
+    if (in_line) {
+      if (code[i] == '\n') {
+        in_line = false;
+        out += '\n';
+      }
+      continue;
+    }
+    if (in_block) {
+      if (code[i] == '*' && i + 1 < code.size() && code[i + 1] == '/') {
+        in_block = false;
+        ++i;
+        out += ' ';
+      }
+      continue;
+    }
+    if (code[i] == '/' && i + 1 < code.size() && code[i + 1] == '/') {
+      in_line = true;
+      ++i;
+      continue;
+    }
+    if (code[i] == '/' && i + 1 < code.size() && code[i + 1] == '*') {
+      in_block = true;
+      ++i;
+      out += ' ';
+      continue;
+    }
+    out += code[i];
+  }
+  code = std::move(out);
+}
+
 void resolve_kernel_templates(
     const std::string& source,
     size_t marker,
@@ -419,6 +461,7 @@ Translation translate_msl(
 
   std::string header;
   std::string body = source.substr(body_open + 1, body_close - body_open - 1);
+  strip_comments(body);
   resolve_kernel_templates(source, marker, header, body);
   translate_header(header);
 
