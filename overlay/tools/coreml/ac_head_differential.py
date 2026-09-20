@@ -41,6 +41,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--bundles", required=True,
                         help="bundle root containing " + BUNDLE)
+    parser.add_argument("--bundle-name", default=BUNDLE,
+                        help="bundle identifier (default: " + BUNDLE + ")")
     parser.add_argument("--worker", required=True)
     parser.add_argument("--libane", required=True)
     parser.add_argument("--arms", required=True,
@@ -51,16 +53,17 @@ def main() -> int:
 
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
+    bundle_name = args.bundle_name
     # --bundles accepts either the bundles PARENT or the bundle directory
     # itself; resolve once and refuse anything ambiguous before the worker
     # ever launches (a nested copy made the C++ loader fail mid-window).
-    candidates = [Path(args.bundles) / BUNDLE, Path(args.bundles)]
+    candidates = [Path(args.bundles) / bundle_name, Path(args.bundles)]
     bundle_dir = next(
         (c for c in candidates if (c / "manifest.json").is_file()), None)
     if bundle_dir is None:
         raise SystemExit(
-            f"cannot resolve {BUNDLE}: {args.bundles} must be either the "
-            "bundle directory itself (manifest.json directly inside) or "
+            f"cannot resolve {bundle_name}: {args.bundles} must be either "
+            "the bundle directory itself (manifest.json directly inside) or "
             "its parent, without nested copies")
     manifest = json.loads((bundle_dir / "manifest.json").read_text())
     stray = sorted(d.name for d in bundle_dir.iterdir() if d.is_dir())
@@ -68,32 +71,46 @@ def main() -> int:
         raise SystemExit(
             f"{bundle_dir} contains unexpected subdirectories {stray}; the "
             "bundle layout is manifest.json + program-N.anec files only")
-    print(f"bundle {BUNDLE} graph {manifest.get('graph_hash', '?')[:16]} "
+    print(f"bundle {bundle_name} graph {manifest.get('graph_hash', '?')[:16]} "
           f"programs {len(manifest.get('programs', []))}")
+    actual_name = manifest.get("name")
+    if actual_name != bundle_name:
+        raise SystemExit(
+            f"FAIL: manifest.name={actual_name!r} does not match "
+            f"--bundle-name={bundle_name!r}")
 
     arms = sorted(p for p in Path(args.arms).iterdir() if p.is_dir())
     if not arms:
         raise SystemExit(f"no arm directories under {args.arms}")
 
-    session = ResidentAneWorker(
+    # Use the context manager (ResidentAneWorker.__exit__) so a worker
+    # crash mid-submit terminates the process exactly once instead of
+    # re-raising on close() of an already-dead session.
+    with ResidentAneWorker(
         worker=Path(args.worker),
         libane=Path(args.libane),
-        bundles={BUNDLE: bundle_dir},
+        bundles={bundle_name: bundle_dir},
         scratch=out / "scratch",
         deadline_ms=args.deadline_ms,
-    )
-    session.start()
-    try:
+    ) as session:
         for arm in arms:
             inputs = {}
             for name in INPUTS:
                 meta = json.loads((arm / f"{name}.json").read_text())
+                raw = (arm / f"{name}.bin").read_bytes()
                 import numpy as np
-                buf = (arm / f"{name}.bin").read_bytes()
-                arr = np.frombuffer(buf, dtype=np.dtype(meta["dtype"]))
-                inputs[name] = memoryview(arr.reshape(meta["shape"]))
+                expected = int(np.prod(meta["shape"]) *
+                               np.dtype(meta["dtype"]).itemsize)
+                if len(raw) != expected:
+                    raise SystemExit(
+                        f"FAIL: {arm.name}/{name} on-disk bytes={len(raw)} "
+                        f"!= fixture-metadata byte count={expected}")
+                # Frame the raw bytes (len(bytes) == byte count). A
+                # multidim memoryview would make len() the dimension
+                # count, corrupting the wire "in <name> <len>" header.
+                inputs[name] = raw
             started = time.monotonic_ns()
-            results = session.submit(BUNDLE, arm.name, inputs, ["smax"])
+            results = session.submit(bundle_name, arm.name, inputs, ["smax"])
             elapsed = time.monotonic_ns() - started
             payload = bytes(results["smax"])
             digest = hashlib.sha256(payload).hexdigest()
@@ -104,8 +121,6 @@ def main() -> int:
             }
             print(json.dumps(record))
             (out / f"{arm.name}.json").write_text(json.dumps(record))
-    finally:
-        session.close()
     print(f"ARMS={len(arms)} smax dumps in {out}")
     return 0
 
