@@ -17,16 +17,28 @@ Estimate model (per catalog entry, at an explicit context limit):
                  compile buffers, and allocator slack.
     kv unknown -> flat UNKNOWN_KV_MARGIN added, labeled in every table.
 
-Admission: required + sum(active reservations) + SAFETY_RESERVE must fit in
-MemAvailable. Reservations (e.g. a resident Laya decisions server) are
-explicit user/maintainer declarations, never runtime guesses.
+Admission: required + sum(pending reservations) + SAFETY_RESERVE must fit in
+MemAvailable.
+
+Reservation states (two-phase, so a co-resident server is never counted
+twice): "pending" = declared but weights NOT resident yet (the service is
+about to start; admission subtracts it from MemAvailable); "resident" =
+weights materialized, already visible as reduced MemAvailable (admission
+must NOT subtract it again). Legacy files without a state read as pending.
+
+This module is a conservative budget gate, not a live admission
+coordinator: it sees MemAvailable snapshots and explicit declarations, not
+process tables. Over-declaring (reserving something already resident) can
+only cause a conservative false refusal, never an unsafe admission.
 """
 
 from __future__ import annotations
 
+import fcntl
 import json
 import os
 import shutil
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -39,6 +51,7 @@ UNKNOWN_KV_MARGIN = 2 * GiB             # flat margin when kv_bytes_per_token is
 DEFAULT_CONTEXT_TOKENS = 4096           # when a catalog entry has no max_tokens
 
 RESERVATIONS_FILE = "reservations.json"
+RESERVATION_STATES = ("pending", "resident")
 
 
 class BudgetError(ValueError):
@@ -54,11 +67,13 @@ def parse_meminfo(text: str) -> int:
     for line in text.splitlines():
         key, _, rest = line.partition(":")
         if key.strip() == "MemAvailable":
-            kb = rest.strip().split()[0]
             try:
-                return int(kb) * 1024
+                kb = int(rest.split()[0])
             except (ValueError, IndexError) as exc:
                 raise BudgetError(f"MemAvailable unparsable: {line!r}") from exc
+            if kb <= 0:
+                raise BudgetError(f"MemAvailable non-positive ({kb} kB); refusing to budget")
+            return kb * 1024
     raise BudgetError("/proc/meminfo has no MemAvailable; cannot budget memory honestly")
 
 
@@ -87,8 +102,10 @@ def estimate_required(memory: dict, context_tokens: int) -> Estimate:
     kv_known = kv_per_tok is not None
     kv = (kv_per_tok * context_tokens) if kv_known else 0
     if peak is not None:
-        workspace = max(peak - weights - kv, 0)
-        return Estimate(weights, kv, kv_known, workspace, True, peak)
+        # The measurement was taken at some context; a larger requested
+        # context must not hide behind it. Never below weights + KV.
+        total = max(peak, weights + kv)
+        return Estimate(weights, kv, kv_known, total - weights - kv, True, total)
     workspace = max(int(WORKSPACE_FRACTION * weights), WORKSPACE_MIN_BYTES)
     if not kv_known:
         workspace += UNKNOWN_KV_MARGIN
@@ -113,8 +130,7 @@ def reservations_path(home: Path | None = None) -> Path:
     return (home or default_home()) / RESERVATIONS_FILE
 
 
-def load_reservations(home: Path | None = None) -> dict[str, dict]:
-    path = reservations_path(home)
+def _load_reservations_file(path: Path) -> dict[str, dict]:
     try:
         obj = json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError:
@@ -122,33 +138,80 @@ def load_reservations(home: Path | None = None) -> dict[str, dict]:
     except (OSError, json.JSONDecodeError) as exc:
         raise BudgetError(f"reservations file unreadable ({exc}); refusing to guess") from exc
     if not isinstance(obj, dict):
-        raise BudgetError("reservations file must be an object of name -> {bytes, note}")
+        raise BudgetError("reservations file must be an object of name -> reservation")
     out: dict[str, dict] = {}
     for name, val in obj.items():
-        if not isinstance(val, dict) or not isinstance(val.get("bytes"), int) or isinstance(val.get("bytes"), bool):
-            raise BudgetError(f"reservation {name!r}: expected {{bytes: int, note: str}}")
-        out[str(name)] = {"bytes": val["bytes"], "note": str(val.get("note", ""))}
+        if not isinstance(val, dict) or isinstance(val.get("bytes"), bool) \
+                or not isinstance(val.get("bytes"), int) or val["bytes"] <= 0:
+            raise BudgetError(f"reservation {name!r}: expected positive {{bytes: int, note, state}}")
+        state = val.get("state", "pending")  # legacy files were pending by definition
+        if state not in RESERVATION_STATES:
+            raise BudgetError(f"reservation {name!r}: unknown state {state!r}")
+        out[str(name)] = {"bytes": val["bytes"], "note": str(val.get("note", "")), "state": state}
     return out
 
 
-def set_reservation(name: str, byte_count: int, note: str = "", home: Path | None = None) -> None:
-    if not name or byte_count <= 0:
-        raise BudgetError("reservation needs a name and positive bytes")
-    data = load_reservations(home)
-    data[name] = {"bytes": int(byte_count), "note": note}
+def load_reservations(home: Path | None = None) -> dict[str, dict]:
+    return _load_reservations_file(reservations_path(home))
+
+
+def _update_reservations(mutate, home: Path | None):
+    """Read-modify-write under an exclusive lock, atomic replace: no torn
+    files, no lost update between concurrent launcher processes."""
     path = reservations_path(home)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    lock_path = path.with_suffix(path.suffix + ".lock")
+    with open(lock_path, "w") as lock_fh:
+        fcntl.flock(lock_fh, fcntl.LOCK_EX)
+        data = _load_reservations_file(path)
+        result = mutate(data)
+        fd, tmp = tempfile.mkstemp(dir=str(path.parent), prefix=path.name, suffix=".tmp")
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as fh:
+                fh.write(json.dumps(data, indent=2, sort_keys=True) + "\n")
+            os.replace(tmp, path)
+        except BaseException:
+            try:
+                os.unlink(tmp)
+            except OSError:
+                pass
+            raise
+        return result
+
+
+def set_reservation(name: str, byte_count: int, note: str = "",
+                    home: Path | None = None, state: str = "pending") -> None:
+    if not name or byte_count <= 0:
+        raise BudgetError("reservation needs a name and positive bytes")
+    if state not in RESERVATION_STATES:
+        raise BudgetError(f"reservation state must be one of {RESERVATION_STATES}")
+
+    def mutate(data):
+        data[name] = {"bytes": int(byte_count), "note": note, "state": state}
+
+    _update_reservations(mutate, home)
+
+
+def set_reservation_state(name: str, state: str, home: Path | None = None) -> None:
+    """Two-phase: pending -> resident once the weights are materialized."""
+    if state not in RESERVATION_STATES:
+        raise BudgetError(f"reservation state must be one of {RESERVATION_STATES}")
+
+    def mutate(data):
+        if name not in data:
+            raise BudgetError(f"no reservation named {name!r}")
+        data[name]["state"] = state
+
+    _update_reservations(mutate, home)
 
 
 def clear_reservation(name: str, home: Path | None = None) -> bool:
-    data = load_reservations(home)
-    if name not in data:
-        return False
-    del data[name]
-    path = reservations_path(home)
-    path.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    return True
+    def mutate(data):
+        found = name in data
+        data.pop(name, None)
+        return found
+
+    return bool(_update_reservations(mutate, home))
 
 
 @dataclass
@@ -165,7 +228,8 @@ class Admission:
 def admit(required: int, home: Path | None = None) -> Admission:
     """Fit check against MemAvailable with aggregate reservations."""
     available = mem_available()
-    reserved = sum(r["bytes"] for r in load_reservations(home).values())
+    reserved = sum(r["bytes"] for r in load_reservations(home).values()
+                   if r["state"] == "pending")
     headroom = available - SAFETY_RESERVE_BYTES - reserved - required
     lines = [
         f"MemAvailable:      {available / GiB:.2f} GiB",

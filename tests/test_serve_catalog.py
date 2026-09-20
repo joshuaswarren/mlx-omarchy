@@ -8,6 +8,7 @@ import contextlib
 import unittest.mock
 import http.server
 import json
+import os
 import sys
 import tempfile
 import threading
@@ -138,6 +139,28 @@ class ValidateTests(unittest.TestCase):
                 with self.assertRaises(catalog.CatalogError):
                     catalog.validate_catalog(obj)
 
+    def test_version_bool_rejected(self):
+        obj = {**VALID, "version": True}
+        with self.assertRaises(catalog.CatalogError):
+            catalog.validate_catalog(obj)
+
+    def test_priority_duplicate_nonadjacent_rejected(self):
+        obj = catalog_of(entry(id="a", priority=1), entry(id="b", priority=2),
+                         entry(id="c", priority=1))
+        with self.assertRaises(catalog.CatalogError):
+            catalog.validate_catalog(obj)
+
+    def test_null_quant_is_honest_full_precision(self):
+        catalog.validate_catalog(catalog_of(entry(quant=None)))
+
+    def test_extension_optional_object_or_null(self):
+        catalog.validate_catalog(catalog_of(entry()))  # absent
+        catalog.validate_catalog(catalog_of(entry(extension=None)))
+        catalog.validate_catalog(catalog_of(entry(
+            extension={"kv_derivation": "2x10x2x256x2", "variant": "bf16"})))
+        with self.assertRaises(catalog.CatalogError):
+            catalog.validate_catalog(catalog_of(entry(extension="bf16 notes")))
+
     def test_file_size_bound(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "big.json"
@@ -207,6 +230,12 @@ class RefreshTests(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.home = Path(self.tmp.name)
+        # The local test server is not the approved GitHub URL; tests opt
+        # into the explicit dev override. Enforcement tests below unset it.
+        env_patch = unittest.mock.patch.dict(os.environ,
+                                             {catalog.DEV_URL_OVERRIDE_ENV: "1"})
+        env_patch.start()
+        self.addCleanup(env_patch.stop)
         self.store = {"body": json.dumps(VALID).encode(), "etag": '"v1"',
                       "requests": 0, "fail": False, "changed": False}
         self.server = http.server.HTTPServer(("127.0.0.1", 0), _Handler)
@@ -270,6 +299,48 @@ class RefreshTests(unittest.TestCase):
         self.store["body"] = (json.dumps(VALID) + " " * (catalog.CATALOG_MAX_BYTES + 1)).encode()
         result = self.refresh(ttl_hours=0)
         self.assertEqual(result["status"], "fallback")
+
+    def test_refresh_rejects_non_approved_urls(self):
+        with unittest.mock.patch.dict(os.environ, {catalog.DEV_URL_OVERRIDE_ENV: ""}):
+            with self.assertRaises(catalog.CatalogError):
+                catalog.refresh(self.home, url="https://evil.example/catalog.json",
+                                ttl_hours=0)
+            with self.assertRaises(catalog.CatalogError):
+                catalog.refresh(
+                    self.home,
+                    url="http://raw.githubusercontent.com/joshuaswarren/mlx-omarchy/main/x.json",
+                    ttl_hours=0)
+            with self.assertRaises(catalog.CatalogError):
+                catalog.refresh(
+                    self.home,
+                    url="https://raw.githubusercontent.com/other/repo/main/catalog.json",
+                    ttl_hours=0)
+
+    def test_dev_url_override_is_explicit_and_nondefault(self):
+        with unittest.mock.patch.dict(os.environ,
+                                      {catalog.DEV_URL_OVERRIDE_ENV: "1"}):
+            result = catalog.refresh(self.home, url="https://127.0.0.1:9/x.json",
+                                     ttl_hours=0, timeout=1)
+        self.assertEqual(result["status"], "fallback")  # attempted, then kept
+
+    def test_redirect_is_refused_not_followed(self):
+        class Redirect(http.server.BaseHTTPRequestHandler):
+            def do_GET(self):  # noqa: N802
+                self.send_response(302)
+                self.send_header("Location", "https://evil.example/x")
+                self.end_headers()
+
+            def log_message(self, *_a):
+                pass
+
+        srv = http.server.HTTPServer(("127.0.0.1", 0), Redirect)
+        threading.Thread(target=srv.serve_forever, daemon=True).start()
+        self.addCleanup(srv.server_close)
+        self.addCleanup(srv.shutdown)
+        result = catalog.refresh(
+            self.home, ttl_hours=0, timeout=5,
+            url=f"http://127.0.0.1:{srv.server_port}/redirecting")
+        self.assertEqual(result["status"], "fallback")  # 3xx is a fetch failure
 
     def test_changed_body_bypasses_304(self):
         self.refresh(ttl_hours=0)

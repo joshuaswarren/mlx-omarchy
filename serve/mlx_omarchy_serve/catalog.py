@@ -21,8 +21,10 @@ from __future__ import annotations
 import json
 import os
 import re
+import sys
 import tempfile
 import urllib.error
+import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
@@ -39,6 +41,11 @@ DEFAULT_CATALOG_URL = (
 )
 DEFAULT_TTL_HOURS = 24.0
 DEFAULT_TIMEOUT_SECONDS = 5.0
+
+APPROVED_CATALOG_HOSTS = frozenset({"raw.githubusercontent.com"})
+APPROVED_CATALOG_PREFIX = "/joshuaswarren/mlx-omarchy/"
+DEV_URL_OVERRIDE_ENV = "MLX_OMARCHY_CATALOG_ALLOW_ANY_URL"
+
 
 REPO_PATTERN = re.compile(r"^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$")
 REVISION_PATTERN = re.compile(r"^[0-9a-f]{40}$")
@@ -68,6 +75,10 @@ def default_home() -> Path:
     return Path(os.environ.get("MLX_OMARCHY_HOME", Path.home() / ".local/share/mlx-omarchy"))
 
 
+def env_offline() -> bool:
+    return os.environ.get("MLX_OMARCHY_OFFLINE", "") not in ("", "0", "false")
+
+
 def cache_path(home: Path | None = None) -> Path:
     return (home or default_home()) / "cache" / "recommended-catalog.json"
 
@@ -95,10 +106,10 @@ def _check_int(value, field: str, lo: int, hi: int) -> None:
         _fail(f"{field}: expected int in [{lo}, {hi}]")
 
 
-def _check_keys(obj, expected: tuple, where: str) -> None:
+def _check_keys(obj, expected: tuple, where: str, optional: tuple = ()) -> None:
     if not isinstance(obj, dict):
         _fail(f"{where}: expected object")
-    extra = sorted(set(obj) - set(expected))
+    extra = sorted(set(obj) - set(expected) - set(optional))
     missing = sorted(set(expected) - set(obj))
     if extra:
         _fail(f"{where}: unknown key(s) {extra}")
@@ -122,7 +133,7 @@ def _check_qualification(group: str, obj) -> None:
 def validate_catalog(obj) -> None:
     """Validate a parsed catalog object against schema v1. Raises CatalogError."""
     _check_keys(obj, ("version", "generated_at", "source", "models"), "catalog")
-    if obj["version"] != SCHEMA_VERSION:
+    if isinstance(obj["version"], bool) or obj["version"] != SCHEMA_VERSION:
         _fail(f"catalog.version: expected {SCHEMA_VERSION}, got {obj['version']!r}")
     _check_str(obj["source"], "catalog.source", 256)
     if not obj["source"].startswith("https://"):
@@ -134,7 +145,7 @@ def validate_catalog(obj) -> None:
         _fail(f"catalog.models: expected 1..{MAX_MODELS} entries")
 
     seen_ids: set[str] = set()
-    seen_priority: dict[str, int] = {}
+    seen_priorities: dict[str, set[int]] = {}
     for i, entry in enumerate(models):
         where = f"models[{i}]"
         _check_keys(
@@ -145,6 +156,7 @@ def validate_catalog(obj) -> None:
                 "recommended", "serve", "availability",
             ),
             where,
+            optional=("extension",),
         )
         _check_str(entry["id"], f"{where}.id", 64, ID_PATTERN)
         if entry["id"] in seen_ids:
@@ -159,29 +171,33 @@ def validate_catalog(obj) -> None:
         if entry["family"] is not None:
             _check_str(entry["family"], f"{where}.family", 64)
         _check_int(entry["priority"], f"{where}.priority", 1, 999)
-        prior = seen_priority.get(entry["kind"])
-        if prior is not None and prior == entry["priority"]:
+        if entry["priority"] in seen_priorities.setdefault(entry["kind"], set()):
             _fail(f"{where}.priority: duplicate priority {entry['priority']} in kind {entry['kind']!r}")
-        seen_priority[entry["kind"]] = entry["priority"]
+        seen_priorities[entry["kind"]].add(entry["priority"])
 
         quant = entry["quant"]
-        _check_keys(quant, ("bits", "group_size", "mode"), f"{where}.quant")
-        mode = quant["mode"]
-        if mode not in QUANT_MODES:
-            _fail(f"{where}.quant.mode: unknown mode {mode!r}")
-        if mode == "affine":
-            _check_int(quant["bits"], f"{where}.quant.bits", 2, 8)
-            if quant["bits"] not in QUANT_BITS:
-                _fail(f"{where}.quant.bits: {quant['bits']} not a supported affine bitwidth")
-            if quant["group_size"] is None:
-                _fail(f"{where}.quant.group_size: required for affine")
-            _check_int(quant["group_size"], f"{where}.quant.group_size", 16, 128)
-            if quant["group_size"] not in (32, 64, 128):
-                _fail(f"{where}.quant.group_size: affine groups are 32/64/128")
-        else:
-            bits, group = FP_MODE_SHAPES[mode]
-            if quant["bits"] != bits or quant["group_size"] != group:
-                _fail(f"{where}.quant: {mode} requires bits={bits}, group_size={group}")
+        if quant is not None:  # null = unquantized (full-precision) checkpoint
+            _check_keys(quant, ("bits", "group_size", "mode"), f"{where}.quant")
+            mode = quant["mode"]
+            if mode not in QUANT_MODES:
+                _fail(f"{where}.quant.mode: unknown mode {mode!r}")
+            if mode == "affine":
+                _check_int(quant["bits"], f"{where}.quant.bits", 2, 8)
+                if quant["bits"] not in QUANT_BITS:
+                    _fail(f"{where}.quant.bits: {quant['bits']} not a supported affine bitwidth")
+                if quant["group_size"] is None:
+                    _fail(f"{where}.quant.group_size: required for affine")
+                _check_int(quant["group_size"], f"{where}.quant.group_size", 16, 128)
+                if quant["group_size"] not in (32, 64, 128):
+                    _fail(f"{where}.quant.group_size: affine groups are 32/64/128")
+            else:
+                bits, group = FP_MODE_SHAPES[mode]
+                if quant["bits"] != bits or quant["group_size"] != group:
+                    _fail(f"{where}.quant: {mode} requires bits={bits}, group_size={group}")
+
+        extension = entry.get("extension")
+        if extension is not None and not isinstance(extension, dict):
+            _fail(f"{where}.extension: must be an object when present")
 
         mem = entry["memory"]
         _check_keys(mem, MEM_FIELDS, f"{where}.memory")
@@ -291,6 +307,31 @@ def _atomic_write(path: Path, data: bytes) -> None:
         raise
 
 
+def validate_catalog_url(url: str) -> None:
+    """Only the project's public GitHub raw URLs are approved catalog sources.
+    Anything else needs the explicit non-default dev override env."""
+    parsed = urllib.parse.urlsplit(url)
+    approved = (parsed.scheme == "https"
+                and parsed.hostname in APPROVED_CATALOG_HOSTS
+                and parsed.path.startswith(APPROVED_CATALOG_PREFIX))
+    if approved:
+        return
+    if os.environ.get(DEV_URL_OVERRIDE_ENV) == "1":
+        print(f"warning: {DEV_URL_OVERRIDE_ENV}=1 — using non-default catalog URL {url}",
+              file=sys.stderr)
+        return
+    raise CatalogError(
+        f"catalog URL {url!r} is not an approved public GitHub raw URL "
+        f"(expected https://raw.githubusercontent.com{APPROVED_CATALOG_PREFIX}...); "
+        f"export {DEV_URL_OVERRIDE_ENV}=1 only for explicit development use"
+    )
+
+
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, *_args, **_kwargs):
+        return None  # a catalog fetch must not silently follow a redirect
+
+
 def refresh(
     home: Path | None = None,
     *,
@@ -313,10 +354,11 @@ def refresh(
     """
     dest = cache_path(home)
     url = url or os.environ.get("MLX_OMARCHY_CATALOG_URL") or DEFAULT_CATALOG_URL
+    validate_catalog_url(url)
     ttl = float(os.environ["MLX_OMARCHY_CATALOG_TTL_HOURS"]) if "MLX_OMARCHY_CATALOG_TTL_HOURS" in os.environ else (DEFAULT_TTL_HOURS if ttl_hours is None else ttl_hours)
     timeout = DEFAULT_TIMEOUT_SECONDS if timeout is None else timeout
     if offline is None:
-        offline = os.environ.get("MLX_OMARCHY_OFFLINE", "") not in ("", "0", "false")
+        offline = env_offline()
 
     if offline:
         return {"status": "skipped", "path": str(dest), "detail": "offline opt-out honored"}
@@ -335,7 +377,8 @@ def refresh(
 
     try:
         request = urllib.request.Request(url, headers=headers)
-        with urllib.request.urlopen(request, timeout=timeout) as response:
+        opener = urllib.request.build_opener(_NoRedirect)
+        with opener.open(request, timeout=timeout) as response:
             if response.status != 200:
                 raise urllib.error.URLError(f"unexpected status {response.status}")
             body = response.read(CATALOG_MAX_BYTES + 1)

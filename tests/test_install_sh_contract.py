@@ -12,6 +12,10 @@ from pathlib import Path
 INSTALLER = Path(__file__).resolve().parents[1] / "install.sh"
 LAUNCHERS = ("mlx-omarchy", "mlx-omarchy-demo", "mlx-omarchy-info")
 
+# Deterministic offline contract tests: never resolve the latest release
+# over the network (api.github.com rate limits make that flake).
+PINNED_VERSION_ENV = {"MLX_OMARCHY_VERSION": "v0.7.1"}
+
 
 def installer_text():
     return INSTALLER.read_text()
@@ -99,7 +103,7 @@ class AneSmokeGateTests(unittest.TestCase):
     def test_extracted_ane_smoke_refuses_char_device_without_fdt(self):
         script = extract_ane_smoke()
         with tempfile.TemporaryDirectory() as tmp:
-            env = {**os.environ, "MLX_OMARCHY_ACCEL_DEV": "/dev/null",
+            env = {**os.environ, **PINNED_VERSION_ENV, "MLX_OMARCHY_ACCEL_DEV": "/dev/null",
                    "MLX_OMARCHY_SYSROOT": tmp}
             result = subprocess.run(
                 ["python3", "-c", script],
@@ -149,6 +153,10 @@ class ServeCliContractTests(unittest.TestCase):
                        "server.py", "convert.py", "qualify.py"):
             self.assertIn(member, section.split("for laya_file in", 1)[1].split(";", 1)[0],
                           f"missing laya package file {member}")
+        self.assertIn('"https://raw.githubusercontent.com/$REPO/$VERSION/serve/mlx_omarchy_bonsai2/$bonsai2_file"', section)
+        for member in ("__init__.py", "packed.py", "loader.py", "server.py"):
+            self.assertIn(member, section.split("for bonsai2_file in", 1)[1].split(";", 1)[0],
+                          f"missing bonsai2 package file {member}")
         self.assertNotIn("CONTRACT.md", section)  # repo documentation stays in-repo
 
     def test_serve_launcher_sets_pythonpath_and_module(self):

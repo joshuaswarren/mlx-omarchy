@@ -19,6 +19,7 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import json
+import math
 import os
 import re
 import subprocess
@@ -31,6 +32,39 @@ GiB = 1024**3
 DISK_SLACK_FRACTION = 0.05  # headroom over the download size for partial files
 
 REPO_RE = re.compile(r"^[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)+$")
+
+# Catalog data must never choose executable code. A module backend is only
+# routed if its module name is on this audited allowlist (ships in-repo);
+# extending it is a code review, not a catalog edit.
+MODULE_ALLOWLIST = frozenset({
+    "mlx_omarchy_laya.server",
+    "mlx_omarchy_bonsai2.server",
+})
+
+# Modules that accept --managed (admission-controlled launch: the server
+# must fail closed if it cannot register its reservation). Modules not
+# listed here launch without the flag and are best-effort by contract.
+MODULE_MANAGED = frozenset({
+    "mlx_omarchy_laya.server",
+})
+
+MAX_WEIGHTS_GIB = 4096
+
+
+def offline_requested(args) -> bool:
+    return bool(getattr(args, "offline", False)) or catalog.env_offline()
+
+
+def parse_weights_gib(value: str) -> int:
+    try:
+        gib = float(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"--weights-gib {value!r} is not a number")
+    if not math.isfinite(gib) or gib <= 0:
+        raise argparse.ArgumentTypeError("--weights-gib must be positive and finite")
+    if gib > MAX_WEIGHTS_GIB:
+        raise argparse.ArgumentTypeError(f"--weights-gib exceeds {MAX_WEIGHTS_GIB} GiB")
+    return int(gib * GiB)
 
 
 def warn(msg: str) -> None:
@@ -71,9 +105,47 @@ class Resolved:
         return self.target is not None
 
 
-def pick_recommended(cat: dict, kind: str, context_tokens: int, home: Path | None):
-    """Curated priority among compatible fits: recommended first, then
-    priority, then file order — first entry that fits memory wins."""
+def backend_available(entry: dict) -> bool:
+    serve = entry["serve"]
+    if serve is None:
+        return False
+    if serve["backend"] == "omlx":
+        return omlx_available()
+    if serve["backend"] == "module":
+        return serve["module"] in MODULE_ALLOWLIST
+    return True
+
+
+def auto_serve_reason(entry: dict) -> str | None:
+    """Why this entry may not be AUTO-picked (manual naming is still allowed)."""
+    qual = entry["qualification"]
+    if not entry["recommended"]:
+        return "not recommended"
+    if qual["generation"]["status"] != "qualified":
+        return "generation unqualified"
+    if qual["http"]["status"] != "qualified":
+        return "http serving unqualified"
+    if entry["serve"] is None:
+        return "no serve route"
+    if entry["serve"]["backend"] == "module" and entry["serve"]["module"] not in MODULE_ALLOWLIST:
+        return "module not in audited allowlist"
+    return None
+
+
+def entry_context_tokens(entry: dict, requested: int | None) -> int | None:
+    """Per-entry context for display/admission; None = requested exceeds limit."""
+    limit = entry["context"]["max_tokens"]
+    if requested is not None:
+        if limit is not None and requested > limit:
+            return None
+        return requested
+    return limit if limit is not None else budget.DEFAULT_CONTEXT_TOKENS
+
+
+def pick_recommended(cat: dict, kind: str, context_tokens: int | None, home: Path | None):
+    """Auto-pick = curated order among entries that are recommended,
+    generation AND http qualified, have a working backend, are device
+    compatible, and fit memory. Everything else is listed, never auto-picked."""
     soc = machine_soc()
     ranked = sorted(
         (e for e in cat["models"] if e["kind"] == kind),
@@ -81,8 +153,13 @@ def pick_recommended(cat: dict, kind: str, context_tokens: int, home: Path | Non
     )
     fits = []
     for entry in ranked:
+        if auto_serve_reason(entry) is not None:
+            continue
         if entry["capability"]["arch"] is not None and soc is not None \
                 and soc not in entry["capability"]["arch"]:
+            continue
+        ctx = entry_context_tokens(entry, context_tokens)
+        if ctx is None:
             continue
         if entry["capability"]["min_mem_gib"] is not None:
             try:
@@ -90,7 +167,7 @@ def pick_recommended(cat: dict, kind: str, context_tokens: int, home: Path | Non
                     continue
             except budget.BudgetError:
                 pass
-        est = budget.estimate_required(entry["memory"], context_tokens)
+        est = budget.estimate_required(entry["memory"], ctx)
         if budget.admit(est.total, home).fits:
             fits.append(entry)
     return fits, ranked, soc
@@ -113,6 +190,8 @@ def resolve_target(target: str | None, cat: dict) -> Resolved:
 
 
 def quant_label(entry: dict) -> str:
+    if entry["quant"] is None:
+        return "unquantized"
     mode = entry["quant"]["mode"]
     if mode == "affine":
         return f"{entry['quant']['bits']}bit/g{entry['quant']['group_size']}"
@@ -137,7 +216,9 @@ def backend_for(resolved: Resolved, server_flag: str | None) -> tuple[str, str |
 def hf_cache_dir() -> Path:
     home = os.environ.get("HF_HOME")
     base = Path(home) if home else Path.home() / ".cache/huggingface"
-    return base / "hub"
+    hub = base / "hub"
+    hub.mkdir(parents=True, exist_ok=True)  # the download would create it; stat it now
+    return hub
 
 
 def disk_need_bytes(resolved: Resolved) -> int | None:
@@ -156,7 +237,7 @@ def disk_need_bytes(resolved: Resolved) -> int | None:
 
 def plan_lines(resolved: Resolved, context_tokens: int, backend: str,
                module: str | None, host: str, port: int,
-               weights_override: int | None, home: Path | None) -> tuple[list[str], budget.Admission | None]:
+               weights_override: int | None, home: Path | None) -> tuple[list[str], budget.Admission | None, bool]:
     lines: list[str] = []
     est = None
     admission = None
@@ -197,32 +278,55 @@ def plan_lines(resolved: Resolved, context_tokens: int, backend: str,
         lines.append(f"kv cache:     UNKNOWN -> flat {budget.UNKNOWN_KV_MARGIN / GiB:.2f} GiB margin included")
     label = "measured peak" if est.peak_override else "workspace margin, unmeasured estimate"
     lines.append(f"margin:       {est.workspace / GiB:.2f} GiB ({label})")
+    disk_ok = True
     need = disk_need_bytes(resolved) if resolved.local_path is None else None
     if need is not None:
         ok, free, where = budget.disk_check(need, hf_cache_dir())
+        disk_ok = ok
         lines.append(f"disk:         need {need / GiB:.2f} GiB, {free / GiB:.2f} GiB free at {where}"
                      + ("" if ok else "  -> INSUFFICIENT"))
     admission = budget.admit(est.total, home)
     lines.extend("mem:          " + stripped for stripped in (ln.strip() for ln in admission.lines))
-    lines.append("verdict:      " + ("FITS" if admission.fits else "DOES NOT FIT — refusing (no swap/OOM gambles)"))
-    return lines, admission
+    lines.append("verdict:      " + ("FITS" if admission.fits and disk_ok else
+                                  "DOES NOT FIT — refusing (no swap/OOM gambles)"))
+    return lines, admission, disk_ok
 
 
-def needs_download(resolved: Resolved) -> bool:
+def snapshot_complete(path: Path) -> bool:
+    """A directory alone proves nothing: verify the safetensors set the
+    index names (or the single weights file) exists and is nonempty."""
+    index = path / "model.safetensors.index.json"
+    if index.is_file():
+        try:
+            weight_map = json.loads(index.read_text(encoding="utf-8")).get("weight_map", {})
+        except (OSError, json.JSONDecodeError):
+            return False
+        shards = sorted(set(weight_map.values()))
+        if not shards:
+            return False
+        return all((path / shard).is_file() and (path / shard).stat().st_size > 0
+                   for shard in shards)
+    single = path / "model.safetensors"
+    return single.is_file() and single.stat().st_size > 0
+
+
+def probe_snapshot(resolved: Resolved) -> Path | None:
+    """Local-only snapshot resolution. Returns a verified-complete path or
+    None (missing OR partial weights). Never touches the network."""
     if resolved.local_path is not None:
-        return False
+        return resolved.local_path
     hub = _import_huggingface_hub()
     if hub is None:
-        return True  # cannot prove presence; the approval flow will say so
+        return None  # cannot prove presence; the approval flow will say so
     try:
-        hub.snapshot_download(
+        path = Path(hub.snapshot_download(
             repo_id=resolved.repo,
             revision=resolved.revision,
             local_files_only=True,
-        )
-        return False
+        ))
     except Exception:  # huggingface_hub raises several types for a missing snapshot
-        return True
+        return None
+    return path if snapshot_complete(path) else None
 
 
 def _import_huggingface_hub():
@@ -256,10 +360,15 @@ def check_custom_code(model_dir: Path) -> None:
         )
 
 
-def server_argv(backend: str, module: str | None, model_dir: Path, host: str, port: int) -> list[str]:
+def server_argv(backend: str, module: str | None, model_dir: Path, host: str,
+                port: int, context_tokens: int) -> list[str]:
     if backend == "mlx-lm":
+        # --max-tokens (verified present in mlx_lm 0.31.3 server argparse)
+        # is the server-side cap that matches the admitted context budget.
+        # --trust-remote-code exists on this server; it is never passed.
         return [sys.executable, "-m", "mlx_lm.server", "--model", str(model_dir),
-                "--host", host, "--port", str(port)]
+                "--host", host, "--port", str(port),
+                "--max-tokens", str(context_tokens)]
     if backend == "omlx":
         return [sys.executable, "-m", "omlx.server", "--model-dir", str(model_dir),
                 "--host", host, "--port", str(port)]
@@ -267,8 +376,13 @@ def server_argv(backend: str, module: str | None, model_dir: Path, host: str, po
         if not module:
             raise budget.BudgetError("module backend needs a module name (catalog serve.module)")
         code = f"import sys; from {module} import serve_main; serve_main(sys.argv[1:])"
-        return [sys.executable, "-c", code, "--model", str(model_dir),
+        argv = [sys.executable, "-c", code, "--model", str(model_dir),
                 "--host", host, "--port", str(port)]
+        if module in MODULE_MANAGED:
+            # --managed: admission-controlled launch; the module must fail
+            # closed if it cannot register its reservation.
+            argv.append("--managed")
+        return argv
     raise budget.BudgetError(f"unknown backend {backend!r}")
 
 
@@ -297,8 +411,9 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
                        help="context tokens (KV is budgeted at this); default = model limit or 4096")
         p.add_argument("--server", choices=("mlx-lm", "omlx", "module"), default=None,
                        help="serve backend; default from catalog, else mlx-lm")
-        p.add_argument("--weights-gib", type=float, default=None, dest="weights_gib",
-                       help="explicit checkpoint size for off-catalog/local models")
+        p.add_argument("--weights-gib", type=parse_weights_gib, default=None, dest="weights_gib",
+                       help="explicit checkpoint size in GiB for off-catalog/local models "
+                            "(positive, finite; the FULL artifact)")
 
     p_recommend = sub.add_parser("recommend", help="show curated fits and the pick")
     common(p_recommend, with_target=False)
@@ -338,35 +453,49 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
 
 
 def cmd_recommend(args, cat, home) -> int:
-    context = None
-    fits, ranked, soc = pick_recommended(cat, args.kind, context or budget.DEFAULT_CONTEXT_TOKENS, home)
-    print(f"machine SoC: {soc or 'unknown'}; kind: {args.kind}; curated order:")
+    requested = args.context
+    fits, ranked, soc = pick_recommended(cat, args.kind, requested, home)
+    print(f"machine SoC: {soc or 'unknown'}; kind: {args.kind}; curated order "
+          f"(auto-serve needs recommended + generation and http qualified + backend):")
     for entry in ranked:
-        est = budget.estimate_required(entry["memory"], context or budget.DEFAULT_CONTEXT_TOKENS)
+        ctx = entry_context_tokens(entry, requested)
+        reason = auto_serve_reason(entry)
+        if ctx is None:
+            est_total = budget.estimate_required(entry["memory"],
+                                                 entry["context"]["max_tokens"]).total
+            note = f"context {requested} over limit {entry['context']['max_tokens']}"
+        else:
+            est_total = budget.estimate_required(entry["memory"], ctx).total
+            note = reason or ""
         fits_now = entry in fits
         print(f"  {'*' if fits_now else ' '} {entry['id']:<28} {quant_label(entry):<10}"
               f" p{entry['priority']}"
               f" {'recommended' if entry['recommended'] else '           '}"
-              f" {est.total / GiB:6.2f} GiB"
+              f" {est_total / GiB:6.2f} GiB"
               f" gen:{entry['qualification']['generation']['status']}"
-              f" http:{entry['qualification']['http']['status']}")
+              f" http:{entry['qualification']['http']['status']}"
+              + (f"  [{note}]" if note else ""))
     if fits:
         pick = fits[0]
-        print(f"pick: {pick['id']} (curated priority within {args.kind}, memory fits; "
-              "other fitting variants above are servable by id)")
+        print(f"pick: {pick['id']} (qualified, compatible, memory fits; other fitting "
+              "variants above are servable by id)")
         return 0
-    print("pick: none — no compatible entry fits this machine's memory right now")
+    print("pick: none — no entry passes the auto-serve gate; name a target explicitly "
+          "to serve something unqualified")
     return 0
 
 
 def build_resolved(args, cat) -> Resolved:
     resolved = resolve_target(args.target, cat)
-    if resolved.target is None and args.command == "serve":
+    if resolved.target is None and args.command in ("serve", "plan"):
         fits, ranked, _soc = pick_recommended(
-            cat, "chat", args.context or budget.DEFAULT_CONTEXT_TOKENS, None
+            cat, "chat", args.context, None
         )
         if not fits:
-            raise budget.BudgetError("no recommended chat model fits this machine; name a target explicitly")
+            raise budget.BudgetError(
+                "no auto-servable chat model (needs recommended + generation and "
+                "http qualified + working backend + memory fit); name a target explicitly"
+            )
         entry = fits[0]
         if sys.stdin.isatty() and len(fits) > 1:
             # Manual variant selection: every fitting quant variant is offered,
@@ -391,17 +520,28 @@ def do_plan(args, cat, home) -> tuple[Resolved, list[str], budget.Admission | No
         args.context,
     )
     backend, module = backend_for(resolved, args.server)
-    if backend == "module" and module is None:
-        raise budget.BudgetError("module backend selected but no serve.module is set")
-    lines, admission = plan_lines(
+    if backend == "module":
+        if not module:
+            raise budget.BudgetError("module backend selected but no serve.module is set")
+        if resolved.entry is not None and module not in MODULE_ALLOWLIST:
+            raise budget.BudgetError(
+                f"module {module!r} is not in the audited allowlist {sorted(MODULE_ALLOWLIST)}; "
+                "catalog data must never select executable code"
+            )
+    if resolved.entry is not None and args.command in ("serve", "plan"):
+        reason = auto_serve_reason(resolved.entry)
+        if reason is not None and resolved.named_explicitly:
+            warn(f"{resolved.entry['id']}: {reason}; you named it explicitly, proceeding "
+                 "with an unqualified target")
+    lines, admission, disk_ok = plan_lines(
         resolved, context, backend, module, args.host, args.port,
-        int(args.weights_gib * GiB) if args.weights_gib else None, home,
+        args.weights_gib if args.weights_gib else None, home,
     )
-    return resolved, lines, admission, backend, module
+    return resolved, lines, admission, disk_ok, backend, module, context
 
 
 def cmd_plan(args, cat, home) -> int:
-    _resolved, lines, _adm, _backend, _module = do_plan(args, cat, home)
+    _resolved, lines, _adm, _disk, _backend, _module, _ctx = do_plan(args, cat, home)
     print("\n".join(lines))
     return 0
 
@@ -426,16 +566,18 @@ def approve_download(lines: list[str], *, interactive: bool, assume_yes: bool,
 
 
 def cmd_serve(args, cat, home) -> int:
-    resolved, lines, admission, backend, module = do_plan(args, cat, home)
-    if admission is not None and not admission.fits:
+    resolved, lines, admission, disk_ok, backend, module, context = do_plan(args, cat, home)
+    if (admission is not None and not admission.fits) or not disk_ok:
         print("\n".join(lines), file=sys.stderr)
-        print("\nrefusing: does not fit; nothing was downloaded or started", file=sys.stderr)
+        print("\nrefusing: does not fit (memory or disk); nothing was downloaded or started",
+              file=sys.stderr)
         return 1
 
     interactive = sys.stdin.isatty()
-    download = needs_download(resolved)
-    if download and args.offline:
-        return fail("--offline set and the model is not on disk; refusing to download", 1)
+    model_dir = probe_snapshot(resolved)
+    download = model_dir is None
+    if download and offline_requested(args):
+        return fail("--offline set and a complete model is not on disk; refusing to download", 1)
 
     if download:
         if not approve_download(lines, interactive=interactive, assume_yes=args.yes,
@@ -445,18 +587,18 @@ def cmd_serve(args, cat, home) -> int:
         print(f"downloaded to {model_dir}")
     else:
         print("\n".join(lines))
-        model_dir = resolved.local_path or Path(
-            download_snapshot(resolved)  # resolve the on-disk snapshot path
-        )
     check_custom_code(model_dir)
 
     if backend == "omlx" and not omlx_available():
         return fail("omlx is not installed (source install only; see docs/serve.md); "
                     "use --server mlx-lm", 3)
+    if backend == "omlx":
+        warn("omlx backend: no verified server-side context cap flag; the "
+             "admitted context budget is enforced by this estimate only")
     if host_nonlocal(args.host):
         warn(f"{args.host} is not loopback: this development server has no authentication")
 
-    argv = server_argv(backend, module, model_dir, args.host, args.port)
+    argv = server_argv(backend, module, model_dir, args.host, args.port, context)
     print(f"launching: {' '.join(argv)}")
     try:
         completed = subprocess.run(argv)
@@ -494,7 +636,7 @@ def cmd_catalog(args, _cat, home) -> int:
         print(f"url:    {os.environ.get('MLX_OMARCHY_CATALOG_URL') or catalog.DEFAULT_CATALOG_URL}")
         print(f"live:   {'cache' if path.is_file() else 'bundled fallback'}")
         return 0
-    result = catalog.refresh(home=home, offline=args.offline)
+    result = catalog.refresh(home=home, offline=offline_requested(args))
     print(f"catalog refresh: {result['status']} ({result['detail']})")
     return 0 if result["status"] in ("fresh", "updated", "not-modified", "skipped") else 1
 
@@ -503,7 +645,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(sys.argv[1:] if argv is None else argv)
     home = budget.default_home()
     try:
-        catalog.refresh(home=home, offline=getattr(args, "offline", False))
+        catalog.refresh(home=home, offline=offline_requested(args))
         cat = catalog.load_catalog(home)
         if args.command == "recommend":
             return cmd_recommend(args, cat, home)

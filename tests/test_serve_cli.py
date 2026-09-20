@@ -1,6 +1,7 @@
 """Serve CLI: approval gate, admission refusal, launch argv, catalog commands."""
 
 import contextlib
+import os
 import unittest.mock
 import io
 import json
@@ -34,7 +35,7 @@ def fixture_entry(**over):
         "capability": {"arch": None, "min_mem_gib": None},
         "qualification": {
             "generation": {"status": "qualified", "receipt": "r.md", "date": "2026-09-20"},
-            "http": {"status": "untested", "receipt": None, "date": None},
+            "http": {"status": "qualified", "receipt": "http.md", "date": "2026-09-20"},
         },
         "recommended": True,
         "serve": {"backend": "mlx-lm", "module": None},
@@ -44,11 +45,21 @@ def fixture_entry(**over):
     return base
 
 
+def http_unqualified_entry():
+    return fixture_entry(id="unqualified-chat", repo="mlx-community/Unqualified",
+                         priority=2,
+                         qualification={
+                             "generation": {"status": "qualified", "receipt": "r.md",
+                                            "date": "2026-09-20"},
+                             "http": {"status": "untested", "receipt": None, "date": None},
+                         })
+
+
 FIXTURE = {
     "version": 1,
     "generated_at": "2026-09-20T00:00:00Z",
     "source": "https://example.invalid/catalog.json",
-    "models": [fixture_entry()],
+    "models": [fixture_entry(), http_unqualified_entry()],
 }
 
 
@@ -83,6 +94,14 @@ class RecommendTests(CliTestBase):
         self.assertEqual(code, 0)
         self.assertIn("pick: test-chat-4b", out)
 
+    def test_auto_pick_skips_http_unqualified_entries(self):
+        FIXTURE["models"] = [http_unqualified_entry()]
+        code, out, _ = self.run_cli(["recommend"])
+        self.assertEqual(code, 0)
+        self.assertIn("pick: none", out)
+        self.assertIn("http serving unqualified", out)
+        FIXTURE["models"] = [fixture_entry(), http_unqualified_entry()]
+
     def test_no_fit_when_memory_small(self):
         with unittest.mock.patch.object(budget, "mem_available", lambda: int(5 * GiB)):
             code, out, _ = self.run_cli(["recommend"])
@@ -102,10 +121,26 @@ class PlanTests(CliTestBase):
         self.assertEqual(code, 2)
         self.assertIn("exceeds this model's limit", err)
 
+    def test_manual_unqualified_target_warns_but_plans(self):
+        code, out, err = self.run_cli(["plan", "unqualified-chat"])
+        self.assertEqual(code, 0)
+        self.assertIn("http serving unqualified", err)
+        self.assertIn("FITS", out)
+
+    def test_module_not_in_allowlist_refuses(self):
+        FIXTURE["models"].append(fixture_entry(
+            id="rogue-module", repo="mlx-community/Rogue", priority=3,
+            kind="decisions", recommended=False, serve={"backend": "module",
+                                                        "module": "evil_pkg.server"}))
+        code, _, err = self.run_cli(["plan", "rogue-module"])
+        self.assertEqual(code, 2)
+        self.assertIn("allowlist", err)
+        FIXTURE["models"].pop()
+
     def test_kv_unknown_model_refuses_long_context(self):
         FIXTURE["models"].append(fixture_entry(
             id="no-kv-facts", repo="mlx-community/NoKv", recommended=False,
-            priority=2,
+            priority=4,
             memory={"weights_bytes": int(2 * GiB), "kv_bytes_per_token": None,
                     "peak_estimate_bytes": None},
             context={"max_tokens": None}))
@@ -141,20 +176,20 @@ class PlanTests(CliTestBase):
 
 class ServeApprovalTests(CliTestBase):
     def test_noninteractive_without_yes_refuses(self):
-        with unittest.mock.patch.object(serve_cli, "needs_download", lambda _r: True):
+        with unittest.mock.patch.object(serve_cli, "probe_snapshot", lambda _r: None):
             code, _, err = self.run_cli(["serve", "test-chat-4b"])
         self.assertEqual(code, 1)
         self.assertIn("noninteractive", err)
 
     def test_yes_without_explicit_target_refuses(self):
-        with unittest.mock.patch.object(serve_cli, "needs_download", lambda _r: True):
+        with unittest.mock.patch.object(serve_cli, "probe_snapshot", lambda _r: None):
             code, _, err = self.run_cli(["serve", "--yes"])
         self.assertEqual(code, 1)
         self.assertIn("explicitly named target", err)
 
     def test_interactive_rejection_aborts(self):
         inputs = iter(["no\n"])
-        with unittest.mock.patch.object(serve_cli, "needs_download", lambda _r: True), \
+        with unittest.mock.patch.object(serve_cli, "probe_snapshot", lambda _r: None), \
              unittest.mock.patch.object(serve_cli.sys.stdin, "isatty", lambda: True), \
              unittest.mock.patch("builtins.input", lambda *_: next(inputs)):
             code, _, err = self.run_cli(["serve", "test-chat-4b"])
@@ -173,7 +208,7 @@ class ServeApprovalTests(CliTestBase):
             seen["argv"] = argv
             return unittest.mock.Mock(returncode=0)
 
-        with unittest.mock.patch.object(serve_cli, "needs_download", lambda _r: True), \
+        with unittest.mock.patch.object(serve_cli, "probe_snapshot", lambda _r: None), \
              unittest.mock.patch.object(serve_cli, "download_snapshot", fake_download), \
              unittest.mock.patch.object(serve_cli.subprocess, "run", fake_run), \
              unittest.mock.patch.object(serve_cli.sys.stdin, "isatty", lambda: True), \
@@ -197,9 +232,12 @@ class ServeLaunchTests(CliTestBase):
             seen["argv"] = argv
             return unittest.mock.Mock(returncode=0)
 
+        def forbidden_download(_resolved):
+            raise AssertionError("download must not run for a complete local snapshot")
+
         patchers = [
-            unittest.mock.patch.object(serve_cli, "needs_download", lambda _r: False),
-            unittest.mock.patch.object(serve_cli, "download_snapshot", lambda _r: model_dir),
+            unittest.mock.patch.object(serve_cli, "probe_snapshot", lambda _r: model_dir),
+            unittest.mock.patch.object(serve_cli, "download_snapshot", forbidden_download),
             unittest.mock.patch.object(serve_cli.subprocess, "run", fake_run),
         ]
         for patcher in patchers:
@@ -215,6 +253,24 @@ class ServeLaunchTests(CliTestBase):
         code, seen, out, err = self.serve_local()
         self.assertEqual(code, 0)
         self.assertIn("mlx_lm.server", seen["argv"])
+        # server-side context cap matches the admitted budget (default 4096)
+        self.assertIn("--max-tokens", seen["argv"])
+        self.assertEqual(seen["argv"][seen["argv"].index("--max-tokens") + 1], "4096")
+        self.assertNotIn("trust_remote_code", " ".join(seen["argv"]))
+
+    def test_explicit_context_flows_to_server_cap(self):
+        code, seen, out, err = self.serve_local(["--context", "2048"])
+        self.assertEqual(code, 0)
+        self.assertEqual(seen["argv"][seen["argv"].index("--max-tokens") + 1], "2048")
+
+    def test_disk_insufficient_blocks_serve(self):
+        def fake_run(argv, **_kw):
+            return unittest.mock.Mock(returncode=0)
+        with unittest.mock.patch.object(serve_cli.subprocess, "run", fake_run), \
+             unittest.mock.patch.object(budget, "disk_free", lambda _p: 0):
+            code, out, err = self.run_cli(["serve", "test-chat-4b", "--yes"])
+        self.assertEqual(code, 1)
+        self.assertIn("memory or disk", err)
 
     def test_nonloopback_warns(self):
         code, seen, out, err = self.serve_local(["--host", "0.0.0.0"])
@@ -242,8 +298,7 @@ class ServeLaunchTests(CliTestBase):
             seen["argv"] = argv
             return unittest.mock.Mock(returncode=0)
 
-        with unittest.mock.patch.object(serve_cli, "needs_download", lambda _r: False), \
-             unittest.mock.patch.object(serve_cli, "download_snapshot", lambda _r: model_dir), \
+        with unittest.mock.patch.object(serve_cli, "probe_snapshot", lambda _r: model_dir), \
              unittest.mock.patch.object(serve_cli.subprocess, "run", fake_run), \
              unittest.mock.patch.object(serve_cli.importlib.util, "find_spec", find_spec):
             code, _, _ = self.run_cli(["serve", str(model_dir), "--weights-gib", "3",
@@ -269,8 +324,7 @@ class ServeLaunchTests(CliTestBase):
 
         model_dir = Path(self.tmp.name) / "laya-ckpt"
         model_dir.mkdir(exist_ok=True)
-        with unittest.mock.patch.object(serve_cli, "needs_download", lambda _r: False), \
-             unittest.mock.patch.object(serve_cli, "download_snapshot", lambda _r: model_dir), \
+        with unittest.mock.patch.object(serve_cli, "probe_snapshot", lambda _r: model_dir), \
              unittest.mock.patch.object(serve_cli.subprocess, "run", fake_run):
             code, _, _ = self.run_cli(["serve", "laya-typed-decisions"])
         self.assertEqual(code, 0)
@@ -278,6 +332,7 @@ class ServeLaunchTests(CliTestBase):
         self.assertIn("-c", argv)
         self.assertIn("mlx_omarchy_laya.server", argv[argv.index("-c") + 1])
         self.assertIn("serve_main", argv[argv.index("-c") + 1])
+        self.assertIn("--managed", argv)  # admission-controlled launch
         FIXTURE["models"].pop()
 
     def test_decisions_kind_without_module_backend_is_honest(self):
@@ -323,10 +378,82 @@ class CatalogCommandTests(CliTestBase):
         self.assertEqual(budget.load_reservations(self.home), {})
 
     def test_offline_flag_blocks_download(self):
-        with unittest.mock.patch.object(serve_cli, "needs_download", lambda _r: True):
+        with unittest.mock.patch.object(serve_cli, "probe_snapshot", lambda _r: None):
             code, _, err = self.run_cli(["serve", "test-chat-4b", "--yes", "--offline"])
         self.assertEqual(code, 1)
         self.assertIn("offline", err)
+
+    def test_offline_env_var_blocks_download(self):
+        with unittest.mock.patch.dict(os.environ, {"MLX_OMARCHY_OFFLINE": "1"}):
+            with unittest.mock.patch.object(serve_cli, "probe_snapshot", lambda _r: None):
+                code, _, err = self.run_cli(["serve", "test-chat-4b", "--yes"])
+        self.assertEqual(code, 1)
+        self.assertIn("offline", err)
+
+    def test_offline_complete_snapshot_launches_without_network(self):
+        model_dir = Path(self.tmp.name) / "complete"
+        model_dir.mkdir()
+        (model_dir / "model.safetensors").write_bytes(b"x" * 64)
+        seen = {}
+
+        def fake_run(argv, **_kw):
+            seen["argv"] = argv
+            return unittest.mock.Mock(returncode=0)
+
+        class FakeHub:
+            def snapshot_download(self, **kw):
+                assert kw.get("local_files_only") is True, "offline must stay local"
+                return model_dir
+
+        def forbidden(_resolved):
+            raise AssertionError("online download ran under --offline")
+
+        with unittest.mock.patch.object(serve_cli, "_import_huggingface_hub",
+                                        lambda: FakeHub()), \
+             unittest.mock.patch.object(serve_cli, "download_snapshot", forbidden), \
+             unittest.mock.patch.object(serve_cli.subprocess, "run", fake_run):
+            code, _, _ = self.run_cli(["serve", "test-chat-4b", "--yes", "--offline"])
+        self.assertEqual(code, 0)
+        self.assertIn("mlx_lm.server", seen["argv"])
+
+    def test_partial_snapshot_counts_as_download(self):
+        model_dir = Path(self.tmp.name) / "partial"
+        model_dir.mkdir()
+        (model_dir / "model.safetensors.index.json").write_text(json.dumps(
+            {"weight_map": {"w0": "model-00000-of-00002.safetensors",
+                            "w1": "model-00001-of-00002.safetensors"}}))
+        (model_dir / "model-00000-of-00002.safetensors").write_bytes(b"x" * 32)
+
+        class FakeHub:
+            def snapshot_download(self, **kw):
+                assert kw.get("local_files_only") is True
+                return model_dir
+
+        # shard 2 missing -> probe says incomplete -> download gate applies;
+        # noninteractive without --yes must refuse before any fetch.
+        with unittest.mock.patch.object(serve_cli, "_import_huggingface_hub",
+                                        lambda: FakeHub()):
+            code, _, err = self.run_cli(["serve", "test-chat-4b"])
+        self.assertEqual(code, 1)
+        self.assertIn("noninteractive", err)
+
+    def test_complete_snapshot_passes_the_probe(self):
+        model_dir = Path(self.tmp.name) / "complete"
+        model_dir.mkdir()
+        (model_dir / "model.safetensors.index.json").write_text(json.dumps(
+            {"weight_map": {"w0": "model-00000-of-00001.safetensors"}}))
+        (model_dir / "model-00000-of-00001.safetensors").write_bytes(b"x" * 32)
+        self.assertTrue(serve_cli.snapshot_complete(model_dir))
+        empty = Path(self.tmp.name) / "empty"
+        empty.mkdir()
+        self.assertFalse(serve_cli.snapshot_complete(empty))
+
+    def test_weights_gib_rejects_nonpositive_and_nonfinite(self):
+        for bad in ("-3", "0", "nan", "inf", "abc"):
+            with self.subTest(bad):
+                with self.assertRaises(SystemExit) as ctx:
+                    self.run_cli(["plan", "someone/Some-Model", "--weights-gib", bad])
+                self.assertEqual(ctx.exception.code, 2)
 
 
 

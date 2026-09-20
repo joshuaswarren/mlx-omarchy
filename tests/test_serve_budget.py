@@ -51,6 +51,22 @@ class EstimateTests(unittest.TestCase):
         self.assertTrue(est.peak_override)
         self.assertEqual(est.total, int(20.5 * GiB))
 
+    def test_peak_never_hides_context_growth(self):
+        # A peak measured at a small context must not cap the estimate when
+        # the requested context is large: total >= weights + kv always.
+        est = budget.estimate_required(memory(1.0, kv_per_tok=1_000_000, peak=2 * GiB),
+                                       1_000_000)
+        self.assertGreaterEqual(est.total, int(1 * GiB) + 1_000_000 * 1_000_000)
+        self.assertGreater(est.total, 2 * GiB)
+
+    def test_meminfo_nonpositive_and_empty_rejected(self):
+        with self.assertRaises(budget.BudgetError):
+            budget.parse_meminfo("MemAvailable:   -5 kB\n")
+        with self.assertRaises(budget.BudgetError):
+            budget.parse_meminfo("MemAvailable:\n")
+        with self.assertRaises(budget.BudgetError):
+            budget.parse_meminfo("MemAvailable:   kB\n")
+
     def test_moe_counts_total_weights(self):
         # 35B-A3B: admission uses the FULL 35B checkpoint, not 3B active.
         est = budget.estimate_required(memory(66.97, kv_per_tok=1024), 1024)
@@ -103,6 +119,51 @@ class AdmissionTests(unittest.TestCase):
                 result = budget.admit(int(3 * GiB), Path(tmp))
                 self.assertFalse(result.fits)
                 self.assertLess(result.headroom, 0)
+
+    def test_negative_reservation_bytes_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            home.mkdir(exist_ok=True)
+            (home / budget.RESERVATIONS_FILE).write_text(
+                json.dumps({"cheat": {"bytes": -4, "note": ""}}))
+            with self.assertRaises(budget.BudgetError):
+                budget.load_reservations(home)
+
+    def test_two_phase_reservation_pending_vs_resident(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            budget.set_reservation("laya", int(1 * GiB), "before load", home,
+                                   state="pending")
+            budget.set_reservation("chat", int(5 * GiB), "running", home,
+                                   state="resident")
+            with unittest.mock.patch.object(budget, "mem_available",
+                                            lambda: int(16 * GiB)):
+                # resident already lives inside MemAvailable: only pending counts
+                result = budget.admit(int(13 * GiB), home)
+                self.assertTrue(result.fits)
+                self.assertEqual(result.reserved, int(1 * GiB))
+            budget.set_reservation_state("laya", "resident", home)
+            self.assertEqual(budget.load_reservations(home)["laya"]["state"], "resident")
+            with self.assertRaises(budget.BudgetError):
+                budget.set_reservation("x", 1, "", home, state="ghost")
+
+    def test_concurrent_reservation_writes_stay_consistent(self):
+        import threading
+
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            def writer(i):
+                budget.set_reservation(f"svc{i}", 1024 * (i + 1), "", home)
+            threads = [threading.Thread(target=writer, args=(i,)) for i in range(8)]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join()
+            data = budget.load_reservations(home)
+            self.assertEqual(len(data), 8)
+            leftovers = [p.name for p in home.iterdir()
+                         if p.name.endswith(".tmp")]
+            self.assertEqual(leftovers, [])
 
     def test_corrupt_reservations_refuse_to_guess(self):
         with tempfile.TemporaryDirectory() as tmp:
