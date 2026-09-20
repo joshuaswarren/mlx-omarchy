@@ -388,6 +388,46 @@ class RequestValidationTests(unittest.TestCase):
         self.assertTrue(all(n.startswith("bonsai-2-27b-mlx-2bit-") for n in names))
 
 
+    def test_managed_preflight_happy_path_admits_and_reserves(self):
+        """Full preflight with a working atomic budget: pack facts parsed,
+        estimate asked, admit_and_reserve called with owner + pending."""
+        import types
+
+        from mlx_omarchy_bonsai2 import server as server_module
+
+        calls = {}
+
+        def fake_atomic(name, byte_count, *, note="", owner=None, state="pending"):
+            calls.update(name=name, byte_count=byte_count, note=note, owner=owner, state=state)
+            return types.SimpleNamespace(fits=True, lines=["ok"])
+
+        fake_budget = types.SimpleNamespace(
+            estimate_required=lambda memory, context_tokens: types.SimpleNamespace(
+                total=memory["weights_bytes"] + 1024
+            ),
+            admit_and_reserve=fake_atomic,
+        )
+        fake_pkg = types.SimpleNamespace(budget=fake_budget)
+        saved = sys.modules.get("mlx_omarchy_serve")
+        sys.modules["mlx_omarchy_serve"] = fake_pkg
+        argv = types.SimpleNamespace(
+            model=str(self.tmp / "pack"), max_context=64, model_id="bonsai-2-27b-mlx-2bit",
+            owner="pid0-abc",
+        )
+        try:
+            total = server_module._preflight_managed(argv, "res-name")
+        finally:
+            if saved is None:
+                sys.modules.pop("mlx_omarchy_serve", None)
+            else:
+                sys.modules["mlx_omarchy_serve"] = saved
+        self.assertGreater(total, 0)
+        self.assertEqual(calls["name"], "res-name")
+        self.assertGreater(calls["byte_count"], 0)
+        self.assertEqual(calls["owner"], "pid0-abc")
+        self.assertEqual(calls["state"], "pending")
+
+
 if __name__ == "__main__":
     print("provenance: mlx %s on %s (CPU reference)" % (mx.__version__, mx.default_device()))
     unittest.main()

@@ -114,6 +114,8 @@ def _preflight_managed(args, reservation_name):
     managed mode — the gap is an overadmission race — so its absence
     fails closed.
     """
+    from .loader import pack_footprint
+
     budget = _budget_module()
     if budget is None:
         _fail_managed("budget module unavailable")
