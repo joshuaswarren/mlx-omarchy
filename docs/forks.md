@@ -6,12 +6,15 @@ Upstreaming a change is a separate, later decision.
 
 ## Upstream to fork map
 
+The lineage rows below preserve their original fork bases; the current
+build consumes `mlx.lock` and the patch set described below.
+
 | Upstream | Fork | Branch | Base and carried work |
 | --- | --- | --- | --- |
 | `ml-explore/mlx` | `joshuaswarren/omarchy-mlx` | `omarchy` | MLX 0.32.2 commit `1f8e74e3f12f31365464a6867c6579f0e9b29d85`, the `mlx.lock` pin, plus the six patches from `patches/`, one commit per patch |
 | `eiln/ane` and `allbilly/libane` | `joshuaswarren/omarchy-ane` | `omarchy`, `omarchy-kmd` | `omarchy`: eiln/ane tip `0dcea99` plus the six-commit libane series from `~/keep/eiln-ane-series/`, applied with `git am`. `omarchy-kmd`: allbilly/libane head `1e0afd8` plus the m1-test-host debug instrumentation from `~/keep/ane-kmd-local/local-kmd-changes.patch` |
 | `AsahiLinux/linux` | `joshuaswarren/linux` | `ane-dt-t8103` | Asahi tag `asahi-7.1.6-1`, the exact source of the Arch kernel `7.1.6-1-1-ARCH` on the M1 test machine, plus two commits `326d6033059d18a1f47833ba7ad3a3ee2c4eb443` and `b1cb024a1`: the ANE device-tree node, `status = "disabled"` in `t8103.dtsi` and enabled in `t8103-j293.dts`. After hostile review found that an enabled ANE DART node would let the in-tree `apple-dart` driver and the out-of-tree driver fight over the same MMIO window and IRQ 417, the second commit keeps the ANE DART node disabled everywhere and drops the `iommus` phandle. |
-| `gitlab.freedesktop.org/mesa/mesa` | `joshuaswarren/mesa` | `honeykrisp-miscompile-repros` | Upstream `main` tip `4a34ded300c` plus one change: `src/asahi/repro/`, standalone reproductions for the five Honeykrisp miscompiles with the family analysis and per-defect workaround links |
+| `gitlab.freedesktop.org/mesa/mesa` | `joshuaswarren/mesa-1` (current work); `joshuaswarren/mesa` (historical reproductions) | `honeykrisp-omarchy`; historical `honeykrisp-miscompile-repros` | New driver work targets `mesa-1`. The reproduction branch remains in the older repository as of 2026-09-20; it must not be linked as though migrated. |
 
 `eiln/ane` and `allbilly/libane` are one lineage. `allbilly/libane` is a fork
 of `eiln/ane` that stays ahead of it, and it carries both the kernel module in
@@ -62,8 +65,8 @@ on the pinned base, cherry-pick that commit instead.
 
 The build still consumes the pinned upstream archive:
 
-- `mlx.lock` pins MLX 0.32.2 at commit `1f8e74e3f12f31365464a6867c6579f0e9b29d85`, with the archive URL and SHA-256.
-- `scripts/prepare-mlx.sh` downloads the archive and applies the six patches from `patches/`.
+- `mlx.lock` pins MLX 0.32.3 at commit `59d600b5e64c238427d0f8d897ab7c682ef4d3d2`, with the archive URL and SHA-256 (verified against main on 2026-09-20).
+- `scripts/prepare-mlx.sh` downloads the archive and applies the 13 patches from `patches/`.
 - Nothing in the build reads `joshuaswarren/omarchy-mlx`.
 
 Switching the build to the fork is an owner decision that has not been made.
@@ -103,14 +106,14 @@ with an automatic module load.
 
 ## Mesa miscompile reproductions
 
-`joshuaswarren/mesa` carries the five Honeykrisp miscompiles as
-standalone Vulkan compute programs that any Mesa developer can build
-and run on Apple hardware. Upstream is
-`gitlab.freedesktop.org/mesa/mesa`. The fork was cut from the GitHub
-mirror `intel-lgci-fdo-gitlab-mirror/mesa.mesa` on 2026-09-03, because
-the old `Mesa3D/mesa` mirror no longer exists. The clone keeps
-`upstream` pointed at the canonical GitLab remote with push disabled.
-The branch is `honeykrisp-miscompile-repros`.
+New driver branches and PRs target `joshuaswarren/mesa-1` for upstreaming
+toward `omacom/mesa`. This does not relocate historical branch URLs.
+On 2026-09-20, `git ls-remote` confirmed `honeykrisp-miscompile-repros`
+at `7302d43288b1aa2b561dcd1b9dba0b88109e12ae` in
+[`joshuaswarren/mesa`](https://github.com/joshuaswarren/mesa/tree/honeykrisp-miscompile-repros),
+not in `mesa-1`. It carries standalone Vulkan reproductions of the five
+Honeykrisp miscompiles. Historical upstream is `gitlab.freedesktop.org/mesa/mesa`;
+the fork was cut from `intel-lgci-fdo-gitlab-mirror/mesa.mesa` on 2026-09-03.
 
 Purpose: Dj does the Mesa-side Apple GPU work and asked for the fixes
 in a form he can read, evaluate, and reuse on newer ISAs. The branch

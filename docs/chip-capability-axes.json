@@ -149,9 +149,9 @@
     }
   ],
   "per_chip_expectations": {
-    "m1_g13": "reference row; every value measured or gate-proven on m1-test-host-linux",
-    "m1_max": "this machine; macOS-side analogues of every axis runtime-measured pre-install in receipts/2026-09-11-m1max-macos-capture (applegpu_g13s, 32 GPU cores, threadExecutionWidth 32, threadgroup memory 32768 B verified, maxThreadsPerThreadgroup 1024^3 dispatched, argument buffers tier2, unified memory, device atomic_float add exact, GPU blit copy roof 306 GB/s median / CPU memcpy roof 190 GB/s); every Linux/Vulkan-side value below stays unknown until Omarchy qualification on this die - the m1_g13 reference row (8-core g13g) is NOT valid for it",
-    "m2_max": "target once Omarchy lands on it: memory_model known (uma_coherent); driver_variant, coopmat, subgroup, shared, workgroup, atomic_float_add, and all six digests must be measured at qualification time",
+    "m1_g13": "reference row; historical dated evidence from prior m1-test-host Linux boots only (m1-test-host fresh Arch boot reported 2026-09-20; Omarchy provisioning and benchmark recertification pending)",
+    "m1_max": "Linux GPU and ANE measured on t6001-test-host (T6001); see docs/chip-portability.md and dated receipts. The per-axis unknown lists above preserve the 2026-09-11 audit, not current fleet status. Never substitute the M1 G13G reference values for this die or another driver build.",
+    "m2_max": "GPU verified third-silicon on Honeykrisp / Vulkan 1.4.354 (ane-linux-experiments/receipts/2026-09-18-t6021-test-host-third-vulkan-device.md); t6021-test-host Linux reads kernel 7.1.13-3-1-ARCH stable, ANE_UNBOUND, no /dev/accel/accel0. ANE is NOT live-inference-qualified on the Linux driver (macOS ANE numbers are macOS CoreML / aned measurements, not Linux-side execution). Apple GPU and Apple ANE are separate lanes.",
     "m3": "Asahi has installer support but software rendering only: no Honeykrisp GPU driver -> backend refuses at device discovery unless run under a software driver via MLX_OMARCHY_ALLOW_NON_APPLE=1 (development only)",
     "m4": "GPU support TBA upstream: everything unknown",
     "m5_m6": "arrive ~2026-10: everything unknown; all axes must come from runtime discovery, never from a chip-name table"

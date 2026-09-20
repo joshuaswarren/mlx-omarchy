@@ -12,13 +12,33 @@ Blocked means an external or hardware condition prevents the qualifying run.
 
 ## Hardware
 
-M1 Omarchy is in progress.
-Vulkan runtime and matched kernel gates passed through `v0.2.0`.
-The receipt used Vulkan API `1.4.354`, `MESA_HONEYKRISP`, Mesa `26.1.7`, and an Apple M1 device.
-The device reported vendor `0x10005`.
-ANE research continues in [`ane-linux-experiments`](https://github.com/joshuaswarren/ane-linux-experiments).
+**Current hardware status (2026-09-20).** Apple M1 Omarchy (m1-test-host, T8103)
+fresh Arch boot reported (user-observed at login); Omarchy provisioning
+and benchmark recertification pending; recovery success not yet
+published. Every M1 row below and every M1 number in this tree is
+**historical dated evidence** from prior Linux boots, NOT a current
+recert under any live firmware/kernel pair. t6001-test-host (T6001) Linux ANE is
+live.
 
-M2, M3, and M4 Omarchy Linux work is deferred.
+Apple M1 Max (T6001) GPU and Linux ANE have measured runs. The dated
+[v0.7.1 Parakeet receipt](https://github.com/joshuaswarren/ane-linux-experiments/blob/main/receipts/2026-09-19-parakeet-e2e-v071-t6001-test-host.md)
+records 104/104 transcript agreement on its fixture. This does not
+qualify full-encoder ANE coverage or macOS performance parity.
+
+Apple M2 Max (T6021, t6021-test-host) GPU is verified third-silicon on Mesa
+Honeykrisp / Vulkan 1.4.354 ([`ane-linux-experiments/receipts/2026-09-18-t6021-test-host-third-vulkan-device.md`](https://github.com/joshuaswarren/ane-linux-experiments/blob/main/receipts/2026-09-18-t6021-test-host-third-vulkan-device.md)).
+t6021-test-host Linux reads kernel 7.1.13-3-1-ARCH stable, ANE_UNBOUND, no
+`/dev/accel/accel0`. **Apple M2 Max ANE is NOT live-inference-qualified
+on the Linux driver.** macOS-side ANE numbers cited in this tree
+(T8103/T6021 "divisor" measurements, t6021 captures, H14 oracle mints)
+are macOS CoreML / `aned` measurements on t6021-test-host / studio-host, not
+Linux-side execution. The T6021 driver descriptor is `ANE_RECOGNIZED`,
+not `ANE_QUALIFIED`
+([`omarchy-ane/ane/src/ane_drv.c` `ane_soc_t6021`](https://github.com/joshuaswarren/omarchy-ane/blob/main/ane/src/ane_drv.c)).
+Apple GPU and Apple ANE are separate lanes: M2 Max GPU qualification
+does not qualify M2 Max ANE.
+
+M3 and M4 Omarchy Linux work is deferred.
 Vulkan, ANE, and install gates are not qualified on those systems.
 
 ## MLX core

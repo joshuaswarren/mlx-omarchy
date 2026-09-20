@@ -16,12 +16,21 @@ One-command install on an M1 running Omarchy, the first model download, the stre
 
 ## Serve a local model
 
-OpenAI-compatible server for Codex, omp, pi, Hermes, OpenClaw, and Claude Code:
-[docs/serve.md](docs/serve.md). RAM-tier model IDs and exact commands are there.
+Current text-generation guidance and the qualification limits of local
+OpenAI-compatible servers: [docs/serve.md](docs/serve.md).
 
 ## Hardware
 
-Apple M1 is verified on [Omarchy](https://github.com/omarchy-mac/omarchy-mac) with Mesa Honeykrisp. Apple M1 Max GPU is measured; T6001 `/dev/accel/accel0` is live. Later SoCs follow.
+Apple M1 is verified on [Omarchy](https://github.com/omarchy-mac/omarchy-mac) with Mesa Honeykrisp. Apple M1 Max GPU is measured; T6001 `/dev/accel/accel0` is live. M2 Max (T6021) GPU is verified third-silicon on Mesa Honeykrisp / Vulkan 1.4.354; M2 Max ANE is **not** live-inference-qualified on the Linux driver. Apple GPU and Apple ANE are separate lanes: T6021 GPU qualification does not qualify T6021 ANE.
+
+**Current hardware status (2026-09-20):** m1-test-host (T8103) fresh Arch boot
+reported (user-observed at login); Omarchy provisioning and benchmark
+recertification pending. Historical M1 numbers in this tree are dated
+evidence from prior Linux boots and are not a current recert. t6001-test-host
+(T6001) Linux ANE is live; t6021-test-host (T6021) Linux reads kernel 7.1.13-3-1-ARCH
+stable, ANE_UNBOUND, no `/dev/accel/accel0`.
+
+Later SoCs follow.
 
 ## Install
 
@@ -33,11 +42,10 @@ entry stays MLX (Apple GPU). It never replaces Mesa or edits Omarchy files.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/joshuaswarren/mlx-omarchy/main/install.sh | bash
-mlx-omarchy-demo
 ```
 
-[demo/README.md](demo/README.md) walks through what to expect. Remove it all
-with `bash install.sh --uninstall`.
+The bundled interactive demo is a separate mlx-lm path; current Qwen3.8
+generation is documented below. Remove the install with `bash install.sh --uninstall`.
 
 Manual install, or any other Linux box:
 
@@ -79,19 +87,46 @@ value, grad = mx.value_and_grad(loss)(w)
 print(value, grad)
 ```
 
-Run a language model with [mlx-lm](https://github.com/ml-explore/mlx-lm):
+For Qwen3.8 text generation, the M2 Max passed a clean-environment smoke
+with candidate wheel `0.32.3.dev202609201346+a1251aaa`, `mlx-vlm` 0.7.1
+and `mlx-lm` 0.31.3. **This candidate is not yet a published release.**
+Model metadata verified **2026-09-20**: [Hugging Face repository](https://huggingface.co/mlx-community/Qwen3.8-27B-4bit),
+Apache-2.0, ungated, last modified 2026-09-14.
+
+From this checkout, in a Python 3.14 environment containing that candidate
+wheel (installed with `--no-deps`):
 
 ```bash
-pip install mlx-lm
-python -m mlx_lm generate \
-  --model mlx-community/Qwen2.5-0.5B-Instruct-4bit \
-  --prompt "What is the capital of France? Answer in one word." \
-  --max-tokens 32
+python -m pip install --no-deps -r receipts/2026-09-20-qwen38-text-install/requirements.txt
+env -u MLX_DISABLE_COMPILE python -m mlx_vlm.generate \
+  --model mlx-community/Qwen3.8-27B-4bit \
+  --max-tokens 32 --prompt "Say READY."
 ```
+
+The [receipt and raw output](receipts/2026-09-20-qwen38-text-install/receipt.json)
+record exit 0 and `READY.` with compilation enabled. The frozen dependencies
+cover this text smoke, not every loader feature. `pip check` still reports
+two missing `mlx` distribution requirements: the fork is named `mlx-omarchy`
+but provides the `mlx` module. Do not install upstream `mlx` to silence them.
+
+This model downloads approximately 15 GB of weights. The tested revision is
+`10c35caafbb80f7dc6a7a432cdd11af10a6d4818`; qualification on the 16 GB M1
+is pending. Do not assume it fits merely because the package installs.
 
 ## Performance
 
-Qwen2.5-0.5B-Instruct-4bit, greedy decode, 32 generated tokens. Linux tok/s versus the pinned native Metal result on the same chip class, one same-protocol battery per host.
+Current Qwen3.8+ performance numbers: review pending (no claim
+published here yet). The Quick start above is the verified portable
+smoke; full benchmark numbers are a follow-up.
+
+### Historical Qwen2.5 benchmarks (not current recommendation)
+
+The Qwen2.5-0.5B-Instruct-4bit rows below are preserved verbatim as dated
+2026-09-17 / 2026-09-19 evidence from prior Linux boots. They are
+**not** a current recommendation — the current recommended model is the
+Qwen3.8-27B-4bit baseline above. Reproduce these rows only as
+archival reproduction of the previous generation's evidence, not as a
+fresh benchmark; do not present them as current performance.
 
 M1 versus native Metal (m1-test-host, single same-protocol battery on the v0.6.3 wheel, `ane-linux-experiments` `receipts/2026-09-17-m1-test-host-gpu-parity-refresh.md`; native from [receipts/2026-09-10-native-macos-metal-baseline/committed-base-m1/native-baseline-baseM1.json](receipts/2026-09-10-native-macos-metal-baseline/committed-base-m1/native-baseline-baseM1.json)):
 
@@ -116,7 +151,7 @@ Same battery on the v0.7.1 wheel (`receipts/2026-09-19-q4-chainbatch-t6001-test-
 | 30 / 32 | 191.9 / 287 | 67% | 457 / 1518 | 30% |
 | 1053 / 32 | 150.8 / 284 | 53% | 3884 / 8048 | 48% |
 
-Digests match native (`7fd25a869ff21678` short, `7da83f06ec9f001d` ctx1053, every leg asserted). Against the same-protocol 2026-09-14 rerun that is +29% short decode, +49% ctx decode, +130% short prefill, and +86% ctx prefill, from the rope-pair trio, the SwiGLU store epilogue, the tile-M occupancy floor, and the SPIR-V disk cache. The M1 Max still runs the untrimmed CDM barrier: the Honeykrisp trim ships G13G-only because on G13X the designed bit set measured +13% short decode against −3.2% ctx1053, so it was not shipped. The batch-across-chains follow-up (`hk/cdm-chain-batch`) was screened on t6001-test-host on 2026-09-19 and corrupts generated IDs nondeterministically (16 vs ~2500 barriers per 2-token run, digests flip run-to-run) — the per-launch G13X barrier is load-bearing memory ordering between dependent launches, and that fixed per-token cost is not addressable in this driver generation.
+Digests match native (`7fd25a869ff21678` short, `7da83f06ec9f001d` ctx1053, every leg asserted). Against the same-protocol 2026-09-14 rerun that is +29% short decode, +49% ctx decode, +130% short prefill, and +86% ctx prefill, from the rope-pair trio, the SwiGLU store epilogue, the tile-M occupancy floor, and the SPIR-V disk cache. The M1 Max still runs the untrimmed CDM barrier: the Honeykrisp trim ships G13G-only because on G13X the designed bit set measured +13% short decode against −3.2% ctx1053, so it was not shipped. The batch-across-chains follow-up (`hk/cdm-chain-batch`) was screened on t6001-test-host on 2026-09-19 and corrupts generated IDs nondeterministically (16 vs ~2500 barriers per 2-token run, digests flip run-to-run) — the per-launch G13X barrier is lo…
 
 M2 Max — third Vulkan device, numbers only (t6021-test-host-linux, same-protocol battery on the F1-fixed `b744f4dd` wheel, single locked pass, eager per the standing protocol, [`receipts/2026-09-18-t6021-test-host-third-vulkan-device.md`](https://github.com/joshuaswarren/ane-linux-experiments/blob/main/receipts/2026-09-18-t6021-test-host-third-vulkan-device.md)):
 
@@ -128,7 +163,7 @@ M2 Max — third Vulkan device, numbers only (t6021-test-host-linux, same-protoc
 
 Both native-pinned digests reproduce bit-exact on T6021 (G14C B1, Honeykrisp). No native-M2-Max Metal divisor run exists, so no versus-native percentages are claimed for this device.
 
-To reproduce a leg:
+To reproduce a historical (archival) leg:
 
 ```bash
 MLX_DISABLE_COMPILE=1 python3 scripts/bench_decode.py \
@@ -158,7 +193,18 @@ The compiled-bf16 tape gate lifted 2026-09-18 (`064b7301`): compile-ON is digest
 
 The Apple Neural Engine is an internal accelerator for static graph regions, not a user-facing `mx.ane` device.
 
-The v0.6.0 wheel ships the public Parakeet reference encoder on ANE end to end on the M1 (`T8103`) **and** the M1 Max (`T6001`). Both laptops pass full E2E **104/104 transcript-exact** ([receipts/2026-09-16-parakeet-e2e-both-hosts.md](receipts/2026-09-16-parakeet-e2e-both-hosts.md): m1-test-host 8541.8 ms, t6001-test-host 6418.5 ms, transcript `db501a8c…`, `encoder_hidden` = pin `38c73261…` identical bytes on both hosts, island batch 1/1/0, `tdt_fallback_reason: null`).
+**ANE current status (2026-09-20):** live Linux ANE inference is qualified
+on the M1 Max (T6001, t6001-test-host) and previously qualified on the M1 (T8103,
+m1-test-host, historical). The M2 Max (T6021) GPU path is qualified, but the M2
+Max ANE is **not** live-inference-qualified on the Linux driver (macOS
+ANE numbers cited below are macOS CoreML / `aned` measurements on t6021-test-host
+/ studio-host, not Linux-side execution). Apple GPU and Apple ANE are
+separate lanes: M2 Max GPU qualification does not qualify M2 Max ANE.
+The T6021 driver descriptor
+([`omarchy-ane/ane/src/ane_drv.c` `ane_soc_t6021`](https://github.com/joshuaswarren/omarchy-ane/blob/main/ane/src/ane_drv.c))
+is `ANE_RECOGNIZED`, not `ANE_QUALIFIED`.
+
+The v0.6.0 wheel ships the public Parakeet reference encoder on ANE end to end on the M1 (`T8103`) **and** the M1 Max (`T6001`). Both laptops pass full E2E **104/104 transcript-exact** ([receipts/2026-09-16-parakeet-e2e-both-hosts.md](receipts/2026-09-16-parakeet-e2e-both-hosts.md): m1-test-host 8541.8 ms, t6001-test-host 6418.5 ms, transcript `db501a8c…`, `encoder_hidden` = pin `38c73261…` identical bytes on both hosts, island batch 1/1/0, `tdt_fallback_reason: null`). **Historical dated evidence** — the m1-test-host row is from a prior Linux boot (pre-2026-09-18) and is not a current recert; the t6001-test-host row is the live non-m1-test-host data path.
 
 macOS CoreML divisor for the same die (m1-test-host/T8103, [`ane-linux-experiments/receipts/2026-09-18-t8103-divisor-macos27.md`](https://github.com/joshuaswarren/ane-linux-experiments/blob/main/receipts/2026-09-18-t8103-divisor-macos27.md)): CoreML `transcribe` wall, median of all 10 runs, **259.9 ms `.ane` / 266.7 ms `.all`** on macOS 27.0 / CoreML 3600.25.2; the M1-Ultra reference (studio-host) is 292.2 / 305.8 ms on macOS 26.6.2 / CoreML 3520. **Cross-OS caveat: the two sides are different OS/CoreML generations, so ratios are indicative, not exact.** This is also a different stage definition than the Linux pipeline number above (CoreML `transcribe` wall vs whole mel → ANE → TDT pipeline) — the divisor is the reference-class target for the Linux ANE port, not a like-for-like comparison.
 
@@ -169,8 +215,6 @@ Linux Parakeet E2E wall on the same v0.7.1 bytes (t6001-test-host/T6001, warm-up
 A 100/100 warm-run soak on the v0.5.1 wheel holds both pins with zero drift (see [`ane-linux-experiments/receipts/2026-09-16-parakeet-100-run`](https://github.com/joshuaswarren/ane-linux-experiments/tree/main/receipts/2026-09-16-parakeet-100-run), criterion 14 gate 10 closed). `MLX_OMARCHY_ANE_DEVICE=off` refuses by design.
 
 `mlx-omarchy-parakeet download` and `mlx-omarchy-parakeet transcribe` ship in the wheel (v0.6.0 clean-install gate): install the aarch64 wheel into a Python 3.14 venv and the commands are on `PATH`. The downloader fetches the pinned reference plus an audio fixture (sha-verified); `transcribe` runs mel → ANE islands → TDT → transcript from a clean install with no dev clones. `transcribe` needs host numpy + protobuf plus soundfile or ffmpeg; it refuses naming them. The x86_64 wheel carries the CLI without ANE assets and refuses explicitly when asked to use the ANE.
-
-TM-recovery discipline on the two laptops diverges: m1-test-host (T8103) holds no-reboot recovery on the standing `omarchy-ane main` tip (`44dd9bf8`); t6001-test-host (T6001) fails-safe — the recovery path is unproven at the head, so a hang aborts the run instead of risking the box (see [`ane-linux-experiments/receipts/2026-09-16-tm-recovery-t8103`](https://github.com/joshuaswarren/ane-linux-experiments/tree/main/receipts/2026-09-16-tm-recovery-t8103) and [`…/2026-09-15-tm-recovery-t6001`](https://github.com/joshuaswarren/ane-linux-experiments/tree/main/receipts/2026-09-15-tm-recovery-t6001)).
 
 Plan and contracts: [docs/plans/2026-09-12-coreml-parakeet-ane-plan.md](docs/plans/2026-09-12-coreml-parakeet-ane-plan.md), [docs/ane-bundles.md](docs/ane-bundles.md), [docs/2026-09-13-encoder-parity-harness.md](docs/2026-09-13-encoder-parity-harness.md).
 

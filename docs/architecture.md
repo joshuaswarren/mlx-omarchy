@@ -59,6 +59,16 @@ A missing native format does not permit CPU fallback.
 ANE integration starts after the `v0.5.0` Vulkan compatibility release.
 It also requires the corrected 13-layer Qwen graph and 11-layer tail to pass on Linux.
 
+**ANE current scope (2026-09-20).** Live Linux ANE inference is qualified
+on the M1 Max (T6001, t6001-test-host) and previously qualified on the M1 (T8103,
+m1-test-host, historical — m1-test-host fresh Arch boot reported, Omarchy provisioning
+and benchmark recertification pending). M2 Max (T6021, t6021-test-host) GPU is
+qualified but its ANE is not live-inference-qualified on the Linux
+driver (t6021-test-host Linux reads kernel 7.1.13-3-1-ARCH stable, ANE_UNBOUND,
+no `/dev/accel/accel0`; macOS ANE numbers are macOS CoreML / `aned`
+measurements, not Linux-side execution). Apple GPU and Apple ANE are
+separate lanes.
+
 The partitioner uses an exact capability key:
 
 - operation sequence

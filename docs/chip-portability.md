@@ -120,6 +120,28 @@ A new chip is "supported" only when every item here has a receipt under
 `receipts/`. Evidence keys on the **driver build** (`vulkaninfo` driverInfo
 git hash + driverUUID + `mlx-omarchy-info` full dump), never on the chip name.
 
+**Per-chip status (2026-09-20):**
+
+- **M1 (T8103, m1-test-host) GPU/ANE**: previously qualified, historical only —
+  m1-test-host fresh Arch boot reported (user-observed at login); Omarchy
+  provisioning and benchmark recertification pending.
+- **M1 Max (T6001, t6001-test-host) GPU**: measured, live.
+- **M1 Max (T6001, t6001-test-host) ANE**: qualified (104/104 Parakeet E2E on v0.6.0;
+  recerted 4773.8 ms `.ane` on v0.7.1 in [`ane-linux-experiments/receipts/2026-09-19-parakeet-e2e-v071-t6001-test-host.md`](https://github.com/joshuaswarren/ane-linux-experiments/blob/main/receipts/2026-09-19-parakeet-e2e-v071-t6001-test-host.md)).
+- **M2 Max (T6021, t6021-test-host) GPU**: verified third-silicon on Honeykrisp /
+  Vulkan 1.4.354 ([`ane-linux-experiments/receipts/2026-09-18-t6021-test-host-third-vulkan-device.md`](https://github.com/joshuaswarren/ane-linux-experiments/blob/main/receipts/2026-09-18-t6021-test-host-third-vulkan-device.md));
+  t6021-test-host Linux reads kernel 7.1.13-3-1-ARCH stable, ANE_UNBOUND, no
+  `/dev/accel/accel0`.
+- **M2 Max (T6021, t6021-test-host) ANE**: **NOT live-inference-qualified** on the
+  Linux driver (macOS ANE numbers cited in this tree are macOS CoreML /
+  `aned` measurements on t6021-test-host / studio-host, not Linux-side execution).
+  Apple GPU and Apple ANE are separate lanes.
+- **M3 / M4**: not qualified by this project; no inference support claim.
+
+The contract below governs what a *future* chip run must demonstrate to
+be added to this list with status `qualified` rather than the historical
+caveats above.
+
 1. **Identity bundle**: `mlx-omarchy-info` dump (all `CapabilityReport`
    fields), `vulkaninfo` summary, driver package + git hash, ICD in use.
    This fills every axis in section 3 with measured values — no gate-proven
