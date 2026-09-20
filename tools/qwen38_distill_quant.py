@@ -17,6 +17,18 @@ Subcommands:
   verify    Check a converted output directory against the plan and
             write a receipt JSON with artifact hashes.
 
+The output directory is a standard mlx-lm canonical checkpoint: any
+mlx-lm >= 0.31.3 (first release with native ``qwen3_5_moe`` support)
+loads it directly from a local path, no hub upload or catalog entry
+required:
+
+    python -m mlx_lm.server --model <output-dir> --host 127.0.0.1 --port 8080
+    # or programmatically: mlx_lm.utils.load("<output-dir>")
+
+Serving is text-only by design: the pinned loader drops the vision
+tower and mtp block at sanitize. Until a device generation pass, the
+artifact stays unqualified and is excluded from recommended catalogs.
+
 The transform mirrors mlx-lm v0.31.3 exactly:
   - ``qwen3_5_moe.Model.sanitize``: drop ``model.visual.*`` and
     ``mtp.*``; rename ``model.language_model`` -> ``language_model.model``;
