@@ -23,7 +23,14 @@ die() { printf '\033[1;31merror:\033[0m %s\n' "$*" >&2; exit 1; }
 case "${1:-}" in
   --ane) ANE=1 ;;
   --uninstall)
-    rm -rf "$PREFIX" "$BIN/mlx-omarchy" "$BIN/mlx-omarchy-demo" "$BIN/mlx-omarchy-info" "$APPS/mlx-omarchy-demo.desktop"
+    rm -rf "$PREFIX" "$BIN/mlx-omarchy" "$BIN/mlx-omarchy-demo" "$BIN/mlx-omarchy-info" \
+      "$BIN/mlx-omarchy-serve" "$BIN/omarchy-mlx-serve" "$APPS/mlx-omarchy-demo.desktop"
+    if command -v omarchy >/dev/null 2>&1; then
+      omarchy_target="$(dirname "$(command -v omarchy)")/omarchy-mlx-serve"
+      if [[ -w "$(dirname "$omarchy_target")" ]] && grep -qs 'mlx_omarchy_serve' "$omarchy_target" 2>/dev/null; then
+        rm -f "$omarchy_target"
+      fi
+    fi
     say "mlx-omarchy removed. Model downloads stay in ~/.cache/huggingface; delete them yourself if you want the space back."
     exit 0
     ;;
@@ -167,6 +174,68 @@ print(next(p for root in mlx.__path__
            if os.access(p := os.path.join(root, "bin", "mlx-omarchy-info"), os.X_OK)))')
 printf '#!/usr/bin/env bash\nexec %q "$@"\n' "$INFO" >"$BIN/mlx-omarchy-info"
 chmod +x "$BIN/mlx-omarchy" "$BIN/mlx-omarchy-demo" "$BIN/mlx-omarchy-info"
+
+# 5b. Serve CLI: catalog-driven serving with memory admission and an
+#     approve-first download gate. The package ships from the same release
+#     tag as the wheel, so an install is internally consistent.
+say "Installing serve CLI"
+SERVE_PKG="$PREFIX/mlx_omarchy_serve"
+mkdir -p "$SERVE_PKG"
+for serve_file in __init__.py catalog.py budget.py __main__.py catalog.json; do
+  curl -fsSL "https://raw.githubusercontent.com/$REPO/$VERSION/serve/mlx_omarchy_serve/$serve_file" \
+    -o "$SERVE_PKG/$serve_file"
+done
+# Laya typed-decisions server (serve/mlx_omarchy_laya/), same release tag;
+# its catalog entries route to it via serve.backend == "module".
+LAYA_PKG="$PREFIX/mlx_omarchy_laya"
+mkdir -p "$LAYA_PKG"
+for laya_file in __init__.py model.py sequence.py api.py server.py convert.py qualify.py; do
+  curl -fsSL "https://raw.githubusercontent.com/$REPO/$VERSION/serve/mlx_omarchy_laya/$laya_file" \
+    -o "$LAYA_PKG/$laya_file"
+done
+cat >"$BIN/mlx-omarchy-serve" <<EOF
+#!/usr/bin/env bash
+# Serve CLI: recommend/plan/serve/catalog; memory-admitted, approve-first.
+export PYTHONPATH="$PREFIX\${PYTHONPATH:+:\$PYTHONPATH}"
+exec "$VENV/bin/python" -m mlx_omarchy_serve "\$@"
+EOF
+chmod +x "$BIN/mlx-omarchy-serve"
+
+# 5c. Omarchy command-center integration: our own self-describing binary in
+#     the command center's conventions (omarchy:group metadata header). This
+#     never modifies an Omarchy-owned file; it adds ours next to them.
+#     An existing non-mlx-omarchy binary is never overwritten.
+write_omarchy_serve_launcher() {
+  local dest="$1"
+  cat >"$dest" <<'OMLX'
+#!/usr/bin/env bash
+# omarchy:group=mlx
+# omarchy:name=serve
+# omarchy:summary=Serve a vetted local model on the Apple GPU (memory-checked, approve-first)
+# omarchy:args=[target] [--context N] [--server mlx-lm|omlx] [--host H] [--port P] [--yes]
+# omarchy:examples=omarchy mlx serve | omarchy mlx serve recommend | omarchy mlx serve plan <model> | omarchy mlx serve catalog list
+export PYTHONPATH="$HOME/.local/share/mlx-omarchy${PYTHONPATH:+:$PYTHONPATH}"
+exec "$HOME/.local/share/mlx-omarchy/venv/bin/python" -m mlx_omarchy_serve "$@"
+OMLX
+  chmod +x "$dest"
+}
+if command -v omarchy >/dev/null 2>&1; then
+  omarchy_bin_dir="$(dirname "$(command -v omarchy)")"
+  omarchy_target="$omarchy_bin_dir/omarchy-mlx-serve"
+  if [[ -e "$omarchy_target" ]] &&
+     ! grep -qs 'mlx_omarchy_serve' "$omarchy_target"; then
+    echo "note: $omarchy_target exists and is not mlx-omarchy's; left untouched."
+    write_omarchy_serve_launcher "$BIN/omarchy-mlx-serve"
+    echo "note: 'omarchy mlx serve' routes only from $omarchy_bin_dir; until then use: mlx-omarchy-serve"
+  elif [[ -w "$omarchy_bin_dir" ]]; then
+    write_omarchy_serve_launcher "$omarchy_target"
+  else
+    write_omarchy_serve_launcher "$BIN/omarchy-mlx-serve"
+    echo "note: to register 'omarchy mlx serve' in the system command center, run:"
+    echo "  sudo install -m 755 $BIN/omarchy-mlx-serve $omarchy_target"
+    echo "note: mlx-omarchy-serve works right now without that step."
+  fi
+fi
 if command -v omarchy-launch-floating-terminal-with-presentation >/dev/null; then
   cat >"$APPS/mlx-omarchy-demo.desktop" <<EOF
 [Desktop Entry]
@@ -273,5 +342,6 @@ fi
 say "Done."
 echo "  Run the demo:        mlx-omarchy-demo      (also in the Omarchy app launcher as 'MLX Chat')"
 echo "  Use in your scripts: mlx-omarchy your_script.py   (import mlx.core as mx)"
+echo "  Serve a model:       mlx-omarchy-serve     (also 'omarchy mlx serve' when registered)"
 echo "  Remove everything:   bash install.sh --uninstall"
 case ":$PATH:" in *":$BIN:"*) ;; *) echo "  note: $BIN is not on your PATH in this shell; open a new terminal or add it." ;; esac

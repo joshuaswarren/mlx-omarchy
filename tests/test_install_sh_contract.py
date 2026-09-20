@@ -129,5 +129,72 @@ class AneSmokeGateTests(unittest.TestCase):
             self.assertIn("ANE smoke OK", result.stdout)
 
 
+class ServeCliContractTests(unittest.TestCase):
+    """Serve CLI integration: package fetch, launchers, omarchy conventions."""
+
+    def serve_section(self):
+        text = installer_text()
+        start = text.index('# 5b. Serve CLI')
+        end = text.index('if command -v omarchy-launch-floating-terminal-with-presentation')
+        return text[start:end]
+
+    def test_serve_package_fetched_from_pinned_release_tag(self):
+        section = self.serve_section()
+        self.assertIn('"https://raw.githubusercontent.com/$REPO/$VERSION/serve/mlx_omarchy_serve/$serve_file"', section)
+        for member in ("__init__.py", "catalog.py", "budget.py", "__main__.py", "catalog.json"):
+            self.assertIn(member, section.split("for serve_file in", 1)[1].split(";", 1)[0],
+                          f"missing catalog/package file {member}")
+        self.assertIn('"https://raw.githubusercontent.com/$REPO/$VERSION/serve/mlx_omarchy_laya/$laya_file"', section)
+        for member in ("__init__.py", "model.py", "sequence.py", "api.py",
+                       "server.py", "convert.py", "qualify.py"):
+            self.assertIn(member, section.split("for laya_file in", 1)[1].split(";", 1)[0],
+                          f"missing laya package file {member}")
+        self.assertNotIn("CONTRACT.md", section)  # repo documentation stays in-repo
+
+    def test_serve_launcher_sets_pythonpath_and_module(self):
+        text = self.serve_section()
+        self.assertIn('"$BIN/mlx-omarchy-serve"', text)
+        self.assertIn('export PYTHONPATH="$PREFIX\\${PYTHONPATH:+:\\$PYTHONPATH}"', text)
+        self.assertIn('exec "$VENV/bin/python" -m mlx_omarchy_serve', text)
+
+    def test_omarchy_launcher_carries_command_center_metadata(self):
+        section = self.serve_section()
+        self.assertIn("# omarchy:group=mlx", section)
+        self.assertIn("# omarchy:name=serve", section)
+        self.assertIn("# omarchy:summary=", section)
+        self.assertIn("# omarchy:examples=", section)
+
+    def test_existing_non_ours_omarchy_binary_is_never_overwritten(self):
+        section = self.serve_section()
+        self.assertIn("grep -qs 'mlx_omarchy_serve'", section)
+        self.assertIn("left untouched", section)
+
+    def test_unwritable_omarchy_bin_falls_back_to_user_bin_with_sudo_hint(self):
+        section = self.serve_section()
+        self.assertIn("sudo install -m 755 $BIN/omarchy-mlx-serve", section)
+
+    def test_uninstall_covers_serve_launchers_and_omarchy_copy(self):
+        text = installer_text()
+        case_block = text[text.index("  --uninstall)"):text.index('  "") ;;')]
+        self.assertIn('"$BIN/mlx-omarchy-serve"', case_block)
+        self.assertIn('"$BIN/omarchy-mlx-serve"', case_block)
+        self.assertIn("omarchy-mlx-serve", case_block)
+
+    def test_no_background_scheduler_is_installed(self):
+        text = installer_text()
+        self.assertNotIn("systemctl", text)
+        self.assertNotIn(".timer", text)
+        self.assertNotIn(".service", text.replace("omarchy-launch-floating-terminal-with-presentation", ""))
+
+    def test_periodic_checker_ships_only_with_the_release_that_has_it(self):
+        # Migration contract: the checker is part of the serve package fetched
+        # at the pinned tag. Old installs have no serve package and therefore
+        # no checker; nothing retroactive, nothing polling in the background.
+        section = self.serve_section()
+        self.assertIn("serve/mlx_omarchy_serve/$serve_file", section)
+        self.assertNotIn("cron", section)
+        self.assertNotIn("systemd-run", section)
+
+
 if __name__ == "__main__":
     unittest.main()

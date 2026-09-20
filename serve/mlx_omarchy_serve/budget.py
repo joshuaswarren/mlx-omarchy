@@ -1,0 +1,182 @@
+"""Memory and disk admission for serving.
+
+Everything here is CONSERVATIVE and labeled. The goal is to refuse a model
+that does not fit before any download or load, never to trade an OOM/swap
+death for a false "fits".
+
+Estimate model (per catalog entry, at an explicit context limit):
+
+    required = weights + kv + workspace
+      weights  = memory.weights_bytes  — the FULL checkpoint. MoE total
+                 parameters count (35B-A3B reserves for 35B, not 3B active);
+                 "active" is compute, not resident memory.
+      kv       = memory.kv_bytes_per_token * context_tokens (0 when unknown)
+      workspace= memory.peak_estimate_bytes overrides everything when set
+                 (measured); otherwise max(WORKSPACE_FRACTION * weights,
+                 WORKSPACE_MIN_BYTES) — an UNMEASURED margin for activations,
+                 compile buffers, and allocator slack.
+    kv unknown -> flat UNKNOWN_KV_MARGIN added, labeled in every table.
+
+Admission: required + sum(active reservations) + SAFETY_RESERVE must fit in
+MemAvailable. Reservations (e.g. a resident Laya decisions server) are
+explicit user/maintainer declarations, never runtime guesses.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import shutil
+from dataclasses import dataclass
+from pathlib import Path
+
+GiB = 1024**3
+
+SAFETY_RESERVE_BYTES = 2 * GiB          # keep for the OS/desktop; never budgeted to models
+WORKSPACE_FRACTION = 0.25               # unmeasured; catalog peak_estimate_bytes overrides
+WORKSPACE_MIN_BYTES = 1 * GiB
+UNKNOWN_KV_MARGIN = 2 * GiB             # flat margin when kv_bytes_per_token is null
+DEFAULT_CONTEXT_TOKENS = 4096           # when a catalog entry has no max_tokens
+
+RESERVATIONS_FILE = "reservations.json"
+
+
+class BudgetError(ValueError):
+    """A budget question cannot be answered honestly (bad input/limits)."""
+
+
+def default_home() -> Path:
+    return Path(os.environ.get("MLX_OMARCHY_HOME", Path.home() / ".local/share/mlx-omarchy"))
+
+
+def parse_meminfo(text: str) -> int:
+    """Extract MemAvailable in bytes. Raises BudgetError if absent."""
+    for line in text.splitlines():
+        key, _, rest = line.partition(":")
+        if key.strip() == "MemAvailable":
+            kb = rest.strip().split()[0]
+            try:
+                return int(kb) * 1024
+            except (ValueError, IndexError) as exc:
+                raise BudgetError(f"MemAvailable unparsable: {line!r}") from exc
+    raise BudgetError("/proc/meminfo has no MemAvailable; cannot budget memory honestly")
+
+
+def mem_available() -> int:
+    return parse_meminfo(Path("/proc/meminfo").read_text(encoding="utf-8", errors="replace"))
+
+
+def disk_free(path: Path) -> int:
+    return shutil.disk_usage(path).free
+
+
+@dataclass
+class Estimate:
+    weights: int
+    kv: int
+    kv_known: bool
+    workspace: int
+    peak_override: bool
+    total: int
+
+
+def estimate_required(memory: dict, context_tokens: int) -> Estimate:
+    weights = memory["weights_bytes"]
+    kv_per_tok = memory.get("kv_bytes_per_token")
+    peak = memory.get("peak_estimate_bytes")
+    kv_known = kv_per_tok is not None
+    kv = (kv_per_tok * context_tokens) if kv_known else 0
+    if peak is not None:
+        workspace = max(peak - weights - kv, 0)
+        return Estimate(weights, kv, kv_known, workspace, True, peak)
+    workspace = max(int(WORKSPACE_FRACTION * weights), WORKSPACE_MIN_BYTES)
+    if not kv_known:
+        workspace += UNKNOWN_KV_MARGIN
+    return Estimate(weights, kv, kv_known, workspace, False, weights + kv + workspace)
+
+
+def resolve_context(context: dict, requested: int | None) -> int:
+    """Explicit per-model context admission. Over the model limit is an
+    error, not a silent clamp; the limit is the admission contract."""
+    limit = context.get("max_tokens")
+    if requested is not None:
+        if limit is not None and requested > limit:
+            raise BudgetError(
+                f"requested context {requested} exceeds this model's limit {limit}; "
+                "lower --context"
+            )
+        return requested
+    return limit if limit is not None else DEFAULT_CONTEXT_TOKENS
+
+
+def reservations_path(home: Path | None = None) -> Path:
+    return (home or default_home()) / RESERVATIONS_FILE
+
+
+def load_reservations(home: Path | None = None) -> dict[str, dict]:
+    path = reservations_path(home)
+    try:
+        obj = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return {}
+    except (OSError, json.JSONDecodeError) as exc:
+        raise BudgetError(f"reservations file unreadable ({exc}); refusing to guess") from exc
+    if not isinstance(obj, dict):
+        raise BudgetError("reservations file must be an object of name -> {bytes, note}")
+    out: dict[str, dict] = {}
+    for name, val in obj.items():
+        if not isinstance(val, dict) or not isinstance(val.get("bytes"), int) or isinstance(val.get("bytes"), bool):
+            raise BudgetError(f"reservation {name!r}: expected {{bytes: int, note: str}}")
+        out[str(name)] = {"bytes": val["bytes"], "note": str(val.get("note", ""))}
+    return out
+
+
+def set_reservation(name: str, byte_count: int, note: str = "", home: Path | None = None) -> None:
+    if not name or byte_count <= 0:
+        raise BudgetError("reservation needs a name and positive bytes")
+    data = load_reservations(home)
+    data[name] = {"bytes": int(byte_count), "note": note}
+    path = reservations_path(home)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def clear_reservation(name: str, home: Path | None = None) -> bool:
+    data = load_reservations(home)
+    if name not in data:
+        return False
+    del data[name]
+    path = reservations_path(home)
+    path.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return True
+
+
+@dataclass
+class Admission:
+    fits: bool
+    required: int
+    reserved: int
+    available: int
+    safety: int
+    headroom: int  # available - safety - reserved - required
+    lines: list[str]
+
+
+def admit(required: int, home: Path | None = None) -> Admission:
+    """Fit check against MemAvailable with aggregate reservations."""
+    available = mem_available()
+    reserved = sum(r["bytes"] for r in load_reservations(home).values())
+    headroom = available - SAFETY_RESERVE_BYTES - reserved - required
+    lines = [
+        f"MemAvailable:      {available / GiB:.2f} GiB",
+        f"safety reserve:    {SAFETY_RESERVE_BYTES / GiB:.2f} GiB",
+        f"reservations:      {reserved / GiB:.2f} GiB",
+        f"model requirement: {required / GiB:.2f} GiB",
+        f"headroom:          {headroom / GiB:.2f} GiB",
+    ]
+    return Admission(headroom >= 0, required, reserved, available, SAFETY_RESERVE_BYTES, headroom, lines)
+
+
+def disk_check(need: int, path: Path) -> tuple[bool, int, str]:
+    free = disk_free(path)
+    return free >= need, free, str(path)
