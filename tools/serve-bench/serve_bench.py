@@ -335,8 +335,27 @@ def run_stream_round(cache, prompt, max_tokens):
     wall = time.perf_counter() - t0
     return ids, round(t_first - t0, 4), round(wall, 4)
 
+def state_fingerprint(cache):
+    # Per-layer (offset, hash16(keys), hash16(values)) for byte-exact
+    # state comparison. Missing arrays recorded as None.
+    out = []
+    for c in cache:
+        offset = getattr(c, "offset", None)
+        keys, values = c.state if hasattr(c, "state") else (None, None)
+        def h(a):
+            try:
+                return hashlib.sha256(bytes(a)).hexdigest()[:16]
+            except Exception:
+                return None
+        out.append({{"offset": offset,
+                    "k16": h(keys) if keys is not None else None,
+                    "v16": h(values) if values is not None else None}})
+    return out
+
 rounds = []
 warm_ids = []
+proofs = None
+warm_prefix_ids_ok = None
 if MODE == "d1c":
     # Cold-cache rounds: fresh cache + full prefill every round.
     # Within-leg id equality across rounds is the determinism test under
@@ -354,15 +373,38 @@ elif MODE == "d1w":
     # step) -- the steady state of mlx_lm.server's prompt_cache fetch
     # path (server.py:962-976). trim_prompt_cache/KVCache.trim remove BY
     # count, in place.
+    # PROOF (Main gate): before every timed round, the cache state must
+    # be byte-identical (per-layer keys/values hashes) to a FRESH
+    # prefill of prompt[:-1], with offset == len(prompt)-1 on every
+    # layer. Also proved for the warmup-trimmed state once.
+    fresh = make_prompt_cache(model)
+    model(mx.array([prompt_ids[:-1]]), cache=fresh)
+    mx.eval([c.state for c in fresh])
+    ref_state = state_fingerprint(fresh)
+    ref_offset = len(prompt_ids) - 1
+    ref_ids = list(prompt_ids[:-1])
+
+    def assert_fresh_prefix(cache, tag):
+        st = state_fingerprint(cache)
+        offs_ok = all(e["offset"] == ref_offset for e in st)
+        bytes_ok = all(e["k16"] == r["k16"] and e["v16"] == r["v16"]
+                       for e, r in zip(st, ref_state))
+        if not (offs_ok and bytes_ok):
+            raise SystemExit(f"{{tag}}: cache != fresh prefix: offsets_ok={{offs_ok}} "
+                             f"bytes_ok={{bytes_ok}} state={{json.dumps(st)[:400]}}")
+        return {{"offsets_ok": offs_ok, "bytes_ok": bytes_ok}}
+
     cache = make_prompt_cache(model)
     warm_ids, _, _ = run_stream_round(cache, prompt_ids, WARMUP_TOKENS)
     prev_n = len(warm_ids)
     trims = []
+    proofs = []
     for _ in range(ROUNDS):
         t = trim_prompt_cache(cache, prev_n)
         trims.append(t)
         if t != prev_n:
             raise SystemExit(f"trim mismatch: asked {{prev_n}} trimmed {{t}}")
+        proofs.append(assert_fresh_prefix(cache, "pre-round"))
         ids, t_first, wall = run_stream_round(cache, prompt_ids[-1:], MAXTOK)
         prev_n = len(ids)
         rounds.append({{"ids": ids, "ttft_s": t_first, "wall_s": wall,
@@ -370,6 +412,7 @@ elif MODE == "d1w":
                        "ids_sha16": hashlib.sha256(json.dumps(ids).encode()).hexdigest()[:16]}})
     if rounds and trims[0] != WARMUP_TOKENS:
         raise SystemExit(f"warmup trim mismatch: {{trims[0]}} != {{WARMUP_TOKENS}}")
+    warm_prefix_ids_ok = warm_ids[:len(ref_ids)] == ref_ids
 elif MODE == "d1m":
     # Margin probe: manual greedy loop recording the full-distribution
     # top1-top2 logprob margin per step (stream_generate only exposes the
@@ -393,7 +436,7 @@ else:
     raise SystemExit("unknown mode: " + MODE)
 
 out_ids = [t for r in rounds for t in r["ids"]]
-print(json.dumps({{
+result = {{
     "mode": MODE,
     "prompt_n": len(prompt_ids),
     "prompt_ids_sha16": psha,
@@ -402,7 +445,14 @@ print(json.dumps({{
     "output_ids_sha16": hashlib.sha256(json.dumps(out_ids).encode()).hexdigest()[:16],
     "rounds_identical": len({{r["ids_sha16"] for r in rounds}}) == 1,
     "text": tokenizer.decode(out_ids)[:400],
-}}))
+}}
+if MODE == "d1w":
+    result["cache_state_proof"] = {{
+        "fresh_prefix_ref_offset": ref_offset,
+        "per_round_proofs": proofs,
+        "warm_prefix_ids_ok": warm_prefix_ids_ok,
+    }}
+print(json.dumps(result))
 """
 
 
@@ -625,6 +675,20 @@ def main() -> None:
             log(f"[direct {mode}] {json.dumps(results['direct'][mode])[:220]}")
         results["ids_agreement"] = ids_agreement(results["direct"])
         log(f"ids_agreement: {json.dumps(results['ids_agreement'])}")
+        # Margins only on demonstrated within-leg id mismatch (Main gate):
+        # nondeterminism measurement is not run speculatively.
+        ril = results["ids_agreement"].get("rounds_identical_within_leg") or {}
+        if any(v is False for v in ril.values()) and "d1m" not in results["direct"]:
+            results["margins_needed"] = True
+            log("[direct d1m] id mismatch demonstrated — running margin probe")
+            results["direct"]["d1m"] = direct_control(args, args.python, "d1m")
+            log(f"[direct d1m] {json.dumps(results['direct']['d1m'])[:220]}")
+            d1m = results["direct"]["d1m"]
+            results["margins"] = [
+                {"round": i, "min_margin": r.get("min_margin"),
+                 "margin_p10": r.get("margin_p10")}
+                for i, r in enumerate(d1m.get("rounds", []), 1)
+            ] if isinstance(d1m, dict) and "rounds" in d1m else None
     try:
         for leg in legs:
             run_leg(leg, args, args.python, results)
