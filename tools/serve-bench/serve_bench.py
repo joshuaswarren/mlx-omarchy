@@ -370,29 +370,47 @@ def run_leg(leg: str, args, python: str, results: dict) -> None:
         conc = None
         if args.concurrency > 1:
             import threading
-            per: list[dict] = []
-            lock = threading.Lock()
+            total_gb = None
+            try:
+                for line in pathlib.Path("/proc/meminfo").read_text().splitlines():
+                    if line.startswith("MemTotal:"):
+                        total_gb = int(line.split()[1]) / 1024 / 1024
+                        break
+            except OSError:
+                pass
+            # Admission: resident model + 2 GiB workspace per stream must fit
+            # 90% of unified memory; else record explicit N/A (Main's gate).
+            budget = (total_gb or 0) * 0.9
+            need = (rss_load or 0) + 2 * args.concurrency
+            if total_gb is None or need > budget:
+                conc = {"n": args.concurrency, "decision": "N/A",
+                        "reason": f"admission: rss_load={rss_load}GB + 2GiB/stream "
+                                  f"x{args.concurrency} vs total={total_gb}GB budget={budget:.1f}GB"}
+                log(f"[concurrency] {leg}: N/A — {conc['reason']}")
+            else:
+                per: list[dict] = []
+                lock = threading.Lock()
 
-            def one() -> None:
-                w = chat_stream(port, {"model": model_name,
-                                       "messages": [{"role": "user", "content": args.prompt}],
-                                       "max_tokens": args.max_tokens,
-                                       "temperature": 0}, args.timeout)
-                with lock:
-                    per.append(w)
-            t0 = time.time()
-            threads = [threading.Thread(target=one) for _ in range(args.concurrency)]
-            for t in threads:
-                t.start()
-            for t in threads:
-                t.join()
-            wall = round(time.time() - t0, 3)
-            toks = sum(p.get("completion_tokens") or 0 for p in per)
-            ttfts = [p["ttft_s"] for p in per if p.get("ttft_s") is not None]
-            conc = {"n": args.concurrency, "wall_s": wall,
-                    "aggregate_tok_s": round(toks / wall, 2) if wall else None,
-                    "mean_ttft_s": round(statistics.mean(ttfts), 3) if ttfts else None,
-                    "per_stream": per}
+                def one() -> None:
+                    w = chat_stream(port, {"model": model_name,
+                                           "messages": [{"role": "user", "content": args.prompt}],
+                                           "max_tokens": args.max_tokens,
+                                           "temperature": 0}, args.timeout)
+                    with lock:
+                        per.append(w)
+                t0 = time.time()
+                threads = [threading.Thread(target=one) for _ in range(args.concurrency)]
+                for t in threads:
+                    t.start()
+                for t in threads:
+                    t.join()
+                wall = round(time.time() - t0, 3)
+                toks = sum(p.get("completion_tokens") or 0 for p in per)
+                ttfts = [p["ttft_s"] for p in per if p.get("ttft_s") is not None]
+                conc = {"n": args.concurrency, "wall_s": wall,
+                        "aggregate_tok_s": round(toks / wall, 2) if wall else None,
+                        "mean_ttft_s": round(statistics.mean(ttfts), 3) if ttfts else None,
+                        "per_stream": per}
         rss_after = rss_gb(proc.pid)
         results["legs"][leg] = {
             "port": port, "model_name": model_name, "load_s": load_s,
