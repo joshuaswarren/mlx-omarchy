@@ -305,7 +305,7 @@ import hashlib, json, time
 import mlx.core as mx
 from mlx_lm import load
 from mlx_lm.generate import stream_generate, BatchGenerator
-from mlx_lm.models.cache import make_prompt_cache
+from mlx_lm.models.cache import make_prompt_cache, trim_prompt_cache
 
 MODE = {mode!r}
 SNAPSHOT = {snapshot!r}
@@ -323,9 +323,9 @@ prompt_ids = prompt_ids[0] if (len(prompt_ids) and isinstance(prompt_ids[0], lis
 psha = hashlib.sha256(json.dumps(prompt_ids).encode()).hexdigest()[:16]
 sampler = lambda x: mx.argmax(x, axis=-1)
 
-def collect_stream(max_tokens, cache):
+def run_stream_round(cache, prompt, max_tokens):
     ids, t0, t_first = [], time.perf_counter(), None
-    for r in stream_generate(model, tokenizer, prompt_ids, max_tokens=max_tokens,
+    for r in stream_generate(model, tokenizer, prompt, max_tokens=max_tokens,
                              sampler=sampler, prompt_cache=cache):
         if t_first is None:
             t_first = time.perf_counter()
@@ -335,56 +335,87 @@ def collect_stream(max_tokens, cache):
     wall = time.perf_counter() - t0
     return ids, round(t_first - t0, 4), round(wall, 4)
 
-cache = make_prompt_cache(model)
-wid, wttft, wwall = collect_stream(WARMUP_TOKENS, cache)
 rounds = []
-for _ in range(ROUNDS):
-    ids, t_first, wall = collect_stream(MAXTOK, cache)
-    rounds.append({{"ids": ids, "ttft_s": t_first, "wall_s": wall,
-                   "n": len(ids),
-                   "ids_sha16": hashlib.sha256(json.dumps(ids).encode()).hexdigest()[:16]}})
-
-if MODE == "d2":
-    shared = cache
-    brounds = []
+warm_ids = []
+if MODE == "d1c":
+    # Cold-cache rounds: fresh cache + full prefill every round.
+    # Within-leg id equality across rounds is the determinism test under
+    # a VALID (fresh) cache state.
     for _ in range(ROUNDS):
-        gen = BatchGenerator(model, stop_tokens=[], sampler=sampler)
-        uids = gen.insert([prompt_ids], [MAXTOK], caches=[shared])
-        ids, t0, t_first = [], time.perf_counter(), None
-        while len(ids) < MAXTOK:
-            for r in gen.next_generated():
-                if r.uid != uids[0]:
-                    continue
-                if t_first is None:
-                    t_first = time.perf_counter()
-                ids.append(r.token)
-        wall = time.perf_counter() - t0
-        cache_map = gen.extract_cache(uids)
-        entry = cache_map.get(uids[0]) if isinstance(cache_map, dict) else None
-        shared = entry[0] if isinstance(entry, tuple) else entry
-        gen.close()
-        brounds.append({{"ids": ids, "ttft_s": round(t_first - t0, 4),
-                        "wall_s": round(wall, 4), "n": len(ids),
-                        "ids_sha16": hashlib.sha256(json.dumps(ids).encode()).hexdigest()[:16]}})
-    rounds = brounds
+        cache = make_prompt_cache(model)
+        ids, t_first, wall = run_stream_round(cache, prompt_ids, MAXTOK)
+        rounds.append({{"ids": ids, "ttft_s": t_first, "wall_s": wall,
+                       "n": len(ids),
+                       "ids_sha16": hashlib.sha256(json.dumps(ids).encode()).hexdigest()[:16]}})
+elif MODE == "d1w":
+    # Server-replicated warm-cache rounds: one cache; before each timed
+    # round, trim the generated tokens off the cache so it holds the
+    # prompt prefix minus the last token (which enters the first decode
+    # step) -- the steady state of mlx_lm.server's prompt_cache fetch
+    # path (server.py:962-976). trim_prompt_cache/KVCache.trim remove BY
+    # count, in place.
+    cache = make_prompt_cache(model)
+    warm_ids, _, _ = run_stream_round(cache, prompt_ids, WARMUP_TOKENS)
+    prev_n = len(warm_ids)
+    trims = []
+    for _ in range(ROUNDS):
+        t = trim_prompt_cache(cache, prev_n)
+        trims.append(t)
+        if t != prev_n:
+            raise SystemExit(f"trim mismatch: asked {{prev_n}} trimmed {{t}}")
+        ids, t_first, wall = run_stream_round(cache, prompt_ids[-1:], MAXTOK)
+        prev_n = len(ids)
+        rounds.append({{"ids": ids, "ttft_s": t_first, "wall_s": wall,
+                       "n": len(ids),
+                       "ids_sha16": hashlib.sha256(json.dumps(ids).encode()).hexdigest()[:16]}})
+    if rounds and trims[0] != WARMUP_TOKENS:
+        raise SystemExit(f"warmup trim mismatch: {{trims[0]}} != {{WARMUP_TOKENS}}")
+elif MODE == "d1m":
+    # Margin probe: manual greedy loop recording the full-distribution
+    # top1-top2 logprob margin per step (stream_generate only exposes the
+    # sampled logprob). Timing NOT comparable -- measurement leg only.
+    rounds = []
+    for _ in range(ROUNDS):
+        cache = make_prompt_cache(model)
+        ids, margins = [], []
+        logits = model(mx.array([prompt_ids]), cache=cache)
+        for _ in range(MAXTOK):
+            lprobs = logits[:, -1, :] - mx.logsumexp(logits[:, -1, :], keepdims=True)
+            top2 = mx.sort(lprobs[0])[-2:]
+            margins.append(float((top2[1] - top2[0]).item()))
+            nxt = int(mx.argmax(lprobs[0]).item())
+            ids.append(nxt)
+            logits = model(mx.array([[nxt]]), cache=cache)
+        rounds.append({{"ids": ids, "n": len(ids), "min_margin": round(min(margins), 6),
+                       "margin_p10": round(sorted(margins)[MAXTOK // 10], 6),
+                       "ids_sha16": hashlib.sha256(json.dumps(ids).encode()).hexdigest()[:16]}})
+else:
+    raise SystemExit("unknown mode: " + MODE)
 
 out_ids = [t for r in rounds for t in r["ids"]]
 print(json.dumps({{
     "mode": MODE,
     "prompt_n": len(prompt_ids),
     "prompt_ids_sha16": psha,
-    "warmup": {{"n": len(wid), "wall_s": wwall}},
+    "warmup": {{"n": len(warm_ids), "ids_sha16": hashlib.sha256(json.dumps(warm_ids).encode()).hexdigest()[:16]}},
     "rounds": rounds,
     "output_ids_sha16": hashlib.sha256(json.dumps(out_ids).encode()).hexdigest()[:16],
+    "rounds_identical": len({{r["ids_sha16"] for r in rounds}}) == 1,
     "text": tokenizer.decode(out_ids)[:400],
 }}))
 """
 
 
 def direct_control(args, python: str, mode: str) -> dict:
-    """D1 (stream_generate) / D2 (GenerationBatch via BatchGenerator, batch=1)
-    decode of the identical prompt, no HTTP. Records token ids so numeric
-    agreement between legs is checkable, not assumed."""
+    """No-HTTP direct decode legs on the identical prompt/token budget.
+
+    d1c: cold cache per round (full prefill; determinism test under valid
+    state). d1w: server-replicated warm cache via trim_prompt_cache
+    (matches mlx_lm.server steady rounds). d1m: manual greedy loop
+    recording full-distribution top1-top2 margins per step (timing not
+    comparable). All record token ids; agreement is asserted, never
+    assumed.
+    """
     snippet = DIRECT_SNIPPET.format(mode=mode, snapshot=args.model_snapshot,
                                     prompt=args.prompt,
                                     warmup_tokens=args.warmup_tokens,
@@ -410,14 +441,19 @@ def direct_control(args, python: str, mode: str) -> dict:
 
 
 def ids_agreement(direct: dict) -> dict:
-    keys = [k for k in ("d1", "d2") if k in direct and "output_ids_sha16" in direct[k]]
-    if len(keys) < 2:
-        return {"d1_vs_d2": None, "reason": "fewer than two successful direct legs"}
-    return {
-        "d1_vs_d2_prompt": direct["d1"]["prompt_ids_sha16"] == direct["d2"]["prompt_ids_sha16"],
-        "d1_vs_d2_output": direct["d1"]["output_ids_sha16"] == direct["d2"]["output_ids_sha16"],
-        "lengths": {k: [r["n"] for r in direct[k]["rounds"]] for k in keys},
+    modes = [m for m in direct if isinstance(direct[m], dict)
+             and "output_ids_sha16" in direct[m]]
+    if not modes:
+        return {"error": "no successful direct legs"}
+    out = {
+        "prompt_ids_sha16s": {m: direct[m]["prompt_ids_sha16"] for m in modes},
+        "prompt_ids_match": len({direct[m]["prompt_ids_sha16"] for m in modes}) == 1,
+        "rounds_identical_within_leg": {m: direct[m].get("rounds_identical") for m in modes},
     }
+    if len(modes) > 1:
+        out["cross_mode_output_match"] = len({direct[m]["output_ids_sha16"] for m in modes}) == 1
+        out["output_ids_sha16s"] = {m: direct[m]["output_ids_sha16"] for m in modes}
+    return out
 
 
 def run_leg(leg: str, args, python: str, results: dict) -> None:
@@ -578,9 +614,9 @@ def main() -> None:
     }
     log(f"pins: {json.dumps(results['pins'])}")
     direct_modes = [m.strip() for m in args.direct_legs.split(",") if m.strip()]
-    unknown_direct = [m for m in direct_modes if m not in ("d1", "d2")]
+    unknown_direct = [m for m in direct_modes if m not in ("d1c", "d1w", "d1m")]
     if unknown_direct:
-        fatal(f"unknown direct legs {unknown_direct}; choose from d1,d2", 2)
+        fatal(f"unknown direct legs {unknown_direct}; choose from d1c,d1w,d1m", 2)
     if direct_modes:
         results["direct"] = {}
         for mode in direct_modes:
@@ -666,22 +702,23 @@ def selfcheck() -> int:
         assert s["all_finished_length"] and s["n"] == 4, s
         assert s["median_ttft_s"] >= 0.05, s
         assert s["median_decode_tok_s"] and s["median_decode_tok_s"] > 12.8, s
-        # ids_agreement logic
-        ok = {"d1": {"prompt_ids_sha16": "aa", "output_ids_sha16": "bb",
-                     "rounds": [{"n": 128}]},
-              "d2": {"prompt_ids_sha16": "aa", "output_ids_sha16": "bb",
-                     "rounds": [{"n": 128}]}}
+        # ids_agreement logic (schema: prompt/rounds/cross-mode)
+        ok = {"d1c": {"prompt_ids_sha16": "aa", "output_ids_sha16": "bb",
+                      "rounds_identical": True, "rounds": [{"n": 128}]},
+              "d1w": {"prompt_ids_sha16": "aa", "output_ids_sha16": "bb",
+                      "rounds_identical": True, "rounds": [{"n": 128}]}}
         agr = ids_agreement(ok)
-        assert agr == {"d1_vs_d2_prompt": True, "d1_vs_d2_output": True,
-                       "lengths": {"d1": [128], "d2": [128]}}, agr
-        bad = {"d1": dict(ok["d1"], output_ids_sha16="cc"),
-               "d2": dict(ok["d2"])}
-        assert ids_agreement(bad)["d1_vs_d2_output"] is False
-        assert ids_agreement({})["d1_vs_d2"] is None
-        # direct snippets must compile
-        snippet = DIRECT_SNIPPET.format(mode="d1", snapshot="/x", prompt="p",
-                                        warmup_tokens=16, max_tokens=128, rounds=1)
-        compile(snippet, "<d1>", "exec")
+        assert agr["prompt_ids_match"] and agr["cross_mode_output_match"], agr
+        assert agr["rounds_identical_within_leg"] == {"d1c": True, "d1w": True}, agr
+        bad = {"d1c": dict(ok["d1c"], rounds_identical=False),
+               "d1w": dict(ok["d1w"])}
+        assert ids_agreement(bad)["rounds_identical_within_leg"]["d1c"] is False
+        assert ids_agreement({}) == {"error": "no successful direct legs"}
+        # direct snippets must compile in every mode
+        for mode in ("d1c", "d1w", "d1m"):
+            snippet = DIRECT_SNIPPET.format(mode=mode, snapshot="/x", prompt="p",
+                                            warmup_tokens=16, max_tokens=128, rounds=1)
+            compile(snippet, f"<{mode}>", "exec")
         print(f"SELFCheck OK: {json.dumps(s)}")
         return 0
     except AssertionError as e:
