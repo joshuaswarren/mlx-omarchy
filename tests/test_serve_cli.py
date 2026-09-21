@@ -137,6 +137,53 @@ class PlanTests(CliTestBase):
         self.assertIn("allowlist", err)
         FIXTURE["models"].pop()
 
+    def test_prompt_cache_size_feeds_admission(self):
+        # cache 1 retains one extra context of KV: the requirement must
+        # grow by exactly kv*ctx before launch.
+        code, out, _ = self.run_cli(["plan", "test-chat-4b"])
+        base_line = next(ln for ln in out.splitlines() if "model requirement" in ln)
+        # run_cli appends to the shared capture buffers: reset between
+        # invocations so assertions see only the second run's output.
+        self.stdout = io.StringIO()
+        self.stderr = io.StringIO()
+        code, out2, _ = self.run_cli(
+            ["plan", "test-chat-4b", "--prompt-cache-size", "1"])
+        self.assertEqual(code, 0)
+        self.assertIn("prompt cache: +0.50 GiB", out2)
+        cached_line = next(ln for ln in out2.splitlines() if "model requirement" in ln)
+        self.assertGreater(
+            float(cached_line.rsplit(":", 1)[1].strip().split()[0]),
+            float(base_line.rsplit(":", 1)[1].strip().split()[0]))
+
+    def test_prompt_cache_with_unknown_kv_refuses(self):
+        FIXTURE["models"].append(fixture_entry(
+            id="no-kv-cache", repo="mlx-community/NoKv2", recommended=False,
+            priority=5,
+            memory={"weights_bytes": int(2 * GiB), "kv_bytes_per_token": None,
+                    "peak_estimate_bytes": None}))
+        code, _, err = self.run_cli(
+            ["plan", "no-kv-cache", "--context", "2048",
+             "--prompt-cache-size", "1"])
+        self.assertEqual(code, 2)
+        self.assertIn("needs KV facts", err)
+        FIXTURE["models"].pop()
+
+    def test_prompt_cache_only_applies_to_mlx_lm_backend(self):
+        FIXTURE["models"].append(fixture_entry(
+            id="laya-typed-decisions",
+            repo="mlx-community/Laya", kind="decisions",
+            recommended=False,
+            serve={"backend": "module", "module": "mlx_omarchy_laya.server"},
+            context={"max_tokens": 1024}))
+        model_dir = Path(self.tmp.name) / "laya-ckpt"
+        model_dir.mkdir(exist_ok=True)
+        with unittest.mock.patch.object(serve_cli, "probe_snapshot", lambda _r: model_dir):
+            code, _, err = self.run_cli(
+                ["serve", "laya-typed-decisions", "--prompt-cache-size", "2"])
+        self.assertEqual(code, 2)
+        self.assertIn("only to the mlx-lm backend", err)
+        FIXTURE["models"].pop()
+
     def test_kv_unknown_model_refuses_long_context(self):
         FIXTURE["models"].append(fixture_entry(
             id="no-kv-facts", repo="mlx-community/NoKv", recommended=False,
@@ -217,7 +264,7 @@ class ServeApprovalTests(CliTestBase):
         self.assertEqual(code, 0)
         self.assertEqual(seen["downloaded"], "mlx-community/Test-Chat-4b")
         self.assertIn("-m", seen["argv"])
-        self.assertIn("mlx_lm.server", seen["argv"])
+        self.assertIn("mlx_omarchy_serve._mlxlm_server", seen["argv"])
         self.assertIn("127.0.0.1", seen["argv"])
         self.assertNotIn("trust_remote_code", " ".join(seen["argv"]))
 
@@ -252,7 +299,7 @@ class ServeLaunchTests(CliTestBase):
     def test_local_model_launches_mlx_lm(self):
         code, seen, out, err = self.serve_local()
         self.assertEqual(code, 0)
-        self.assertIn("mlx_lm.server", seen["argv"])
+        self.assertIn("mlx_omarchy_serve._mlxlm_server", seen["argv"])
         # server-side context cap matches the admitted budget (default 4096)
         self.assertIn("--max-tokens", seen["argv"])
         self.assertEqual(seen["argv"][seen["argv"].index("--max-tokens") + 1], "4096")
@@ -414,7 +461,8 @@ class CatalogCommandTests(CliTestBase):
              unittest.mock.patch.object(serve_cli.subprocess, "run", fake_run):
             code, _, _ = self.run_cli(["serve", "test-chat-4b", "--yes", "--offline"])
         self.assertEqual(code, 0)
-        self.assertIn("mlx_lm.server", seen["argv"])
+        self.assertIn("mlx_omarchy_serve._mlxlm_server", seen["argv"])
+        self.assertIn("--max-tokens", seen["argv"])
 
     def test_partial_snapshot_counts_as_download(self):
         model_dir = Path(self.tmp.name) / "partial"

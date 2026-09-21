@@ -12,6 +12,10 @@ Design invariants (do not weaken):
 - Catalog refresh touches ONLY the public GitHub raw URL; no telemetry,
   no background timers, no automatic code or model downloads.
 - trust_remote_code is never enabled anywhere.
+- The mlx_lm.server path runs behind our total-context cap shim: upstream
+  --max-tokens is only a per-request default, so prompt+output is enforced
+  <= the admitted context at tokenization time, and the launch fails
+  loudly if the mlx-lm pin bump moves the internals.
 """
 
 from __future__ import annotations
@@ -27,6 +31,7 @@ import sys
 from pathlib import Path
 
 from . import budget, catalog
+from . import _mlxlm_server as cap_shim
 
 GiB = 1024**3
 DISK_SLACK_FRACTION = 0.05  # headroom over the download size for partial files
@@ -46,6 +51,7 @@ MODULE_ALLOWLIST = frozenset({
 # listed here launch without the flag and are best-effort by contract.
 MODULE_MANAGED = frozenset({
     "mlx_omarchy_laya.server",
+    "mlx_omarchy_bonsai2.server",
 })
 
 MAX_WEIGHTS_GIB = 4096
@@ -237,7 +243,8 @@ def disk_need_bytes(resolved: Resolved) -> int | None:
 
 def plan_lines(resolved: Resolved, context_tokens: int, backend: str,
                module: str | None, host: str, port: int,
-               weights_override: int | None, home: Path | None) -> tuple[list[str], budget.Admission | None, bool]:
+               weights_override: int | None, home: Path | None,
+               prompt_cache_size: int = 0) -> tuple[list[str], budget.Admission | None, bool]:
     lines: list[str] = []
     est = None
     admission = None
@@ -265,6 +272,18 @@ def plan_lines(resolved: Resolved, context_tokens: int, backend: str,
             f"cover {context_tokens} tokens; use --context <= "
             f"{budget.DEFAULT_CONTEXT_TOKENS} or a catalog entry with KV facts"
         )
+    cache_extra = 0
+    if backend == "mlx-lm" and prompt_cache_size > 0:
+        # Retained prompt-cache entries hold their own KV (each <= the
+        # capped request total). The admission must reserve them BEFORE
+        # launch; without KV facts they cannot be budgeted at all.
+        if not est.kv_known:
+            raise budget.BudgetError(
+                f"--prompt-cache-size {prompt_cache_size} needs KV facts to "
+                "budget the retained caches; this entry has unknown "
+                "KV-per-token"
+            )
+        cache_extra = est.kv * prompt_cache_size
     lines.append(f"model:        {resolved.repo or resolved.local_path}")
     if resolved.revision:
         lines.append(f"revision:     {resolved.revision} (pinned)")
@@ -276,6 +295,15 @@ def plan_lines(resolved: Resolved, context_tokens: int, backend: str,
         lines.append(f"kv cache:     {est.kv / GiB:.2f} GiB at {context_tokens} tokens")
     else:
         lines.append(f"kv cache:     UNKNOWN -> flat {budget.UNKNOWN_KV_MARGIN / GiB:.2f} GiB margin included")
+    if cache_extra:
+        # hold the retained caches inside the estimate: raise the total and
+        # the visible margin by exactly the cache KV
+        est = budget.Estimate(est.weights, est.kv, est.kv_known,
+                              est.workspace + cache_extra, est.peak_override,
+                              est.total + cache_extra)
+        lines.append(f"prompt cache: +{cache_extra / GiB:.2f} GiB "
+                     f"({prompt_cache_size} retained entries x KV at "
+                     f"{context_tokens} tokens)")
     label = "measured peak" if est.peak_override else "workspace margin, unmeasured estimate"
     lines.append(f"margin:       {est.workspace / GiB:.2f} GiB ({label})")
     disk_ok = True
@@ -361,14 +389,28 @@ def check_custom_code(model_dir: Path) -> None:
 
 
 def server_argv(backend: str, module: str | None, model_dir: Path, host: str,
-                port: int, context_tokens: int) -> list[str]:
+                port: int, context_tokens: int,
+                prompt_cache_size: int = 0) -> list[str]:
     if backend == "mlx-lm":
-        # --max-tokens (verified present in mlx_lm 0.31.3 server argparse)
-        # is the server-side cap that matches the admitted context budget.
-        # --trust-remote-code exists on this server; it is never passed.
-        return [sys.executable, "-m", "mlx_lm.server", "--model", str(model_dir),
+        # Upstream --max-tokens is only a per-request default (client
+        # overridable, verified in the 0.31.3 wheel), so the REAL total
+        # cap lives in our _mlxlm_server shim (prompt+output <= budget,
+        # enforced at tokenization). The flag remains as the default for
+        # clients that omit max_tokens. --trust-remote-code exists on
+        # this server; it is never passed.
+        # Aggregate bound: concurrency 1 means exactly one request's
+        # tokens are resident; prompt cache 0 means no retained KV caches
+        # -- so the aggregate equals the admitted context. A larger
+        # --prompt-cache-size re-enables caching at a documented
+        # (cache + 1) x context worst case.
+        argv = [sys.executable, "-m", "mlx_omarchy_serve._mlxlm_server",
+                "--model", str(model_dir),
                 "--host", host, "--port", str(port),
-                "--max-tokens", str(context_tokens)]
+                "--max-tokens", str(context_tokens),
+                "--decode-concurrency", "1",
+                "--prompt-concurrency", "1",
+                "--prompt-cache-size", str(prompt_cache_size)]
+        return argv
     if backend == "omlx":
         return [sys.executable, "-m", "omlx.server", "--model-dir", str(model_dir),
                 "--host", host, "--port", str(port)]
@@ -414,6 +456,10 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         p.add_argument("--weights-gib", type=parse_weights_gib, default=None, dest="weights_gib",
                        help="explicit checkpoint size in GiB for off-catalog/local models "
                             "(positive, finite; the FULL artifact)")
+        p.add_argument("--prompt-cache-size", type=int, default=0,
+                       help="mlx-lm prompt cache entries; 0 (default) keeps the "
+                            "aggregate KV bound at the admitted context, N raises "
+                            "the worst case to (N+1) x context and is budgeted")
 
     p_recommend = sub.add_parser("recommend", help="show curated fits and the pick")
     common(p_recommend, with_target=False)
@@ -533,9 +579,15 @@ def do_plan(args, cat, home) -> tuple[Resolved, list[str], budget.Admission | No
         if reason is not None and resolved.named_explicitly:
             warn(f"{resolved.entry['id']}: {reason}; you named it explicitly, proceeding "
                  "with an unqualified target")
+    cache_size = max(int(getattr(args, "prompt_cache_size", 0) or 0), 0)
+    if cache_size > 0 and backend != "mlx-lm":
+        raise budget.BudgetError(
+            "--prompt-cache-size applies only to the mlx-lm backend"
+        )
     lines, admission, disk_ok = plan_lines(
         resolved, context, backend, module, args.host, args.port,
         args.weights_gib if args.weights_gib else None, home,
+        prompt_cache_size=cache_size,
     )
     return resolved, lines, admission, disk_ok, backend, module, context
 
@@ -598,10 +650,14 @@ def cmd_serve(args, cat, home) -> int:
     if host_nonlocal(args.host):
         warn(f"{args.host} is not loopback: this development server has no authentication")
 
-    argv = server_argv(backend, module, model_dir, args.host, args.port, context)
+    argv = server_argv(backend, module, model_dir, args.host, args.port, context,
+                       prompt_cache_size=max(int(getattr(args, "prompt_cache_size", 0) or 0), 0))
+    child_env = dict(os.environ)
+    if backend == "mlx-lm":
+        child_env[cap_shim.LIMIT_ENV] = str(context)
     print(f"launching: {' '.join(argv)}")
     try:
-        completed = subprocess.run(argv)
+        completed = subprocess.run(argv, env=child_env)
     except FileNotFoundError as exc:
         return fail(f"server launch failed: {exc}", 3)
     return completed.returncode
