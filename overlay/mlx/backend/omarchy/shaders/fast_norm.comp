@@ -141,7 +141,20 @@ void main() {
               : LOAD_VALUE(bias_data.values[params.aux_offset + index]);
       float result = (value - mu) * norm * weight + bias;
 #else
-      float result = value * norm * weight;
+      // Two-round semantics for weighted bf16 rows, matching the
+      // upstream composite (mlx/fast.cpp: astype(out_type) BEFORE the
+      // weight multiply) and the Metal fused kernel: round the
+      // normalized value to bf16 first, then multiply by the bf16
+      // weight. Scalar-weight (weightless) rows keep single-round
+      // semantics, exactly like the weightless upstream form; fp16 and
+      // fp32 storage keep their existing behavior.
+      float result = value * norm;
+#ifdef USE_BF16
+      if (params.lhs_size != 1u) {
+        result = float(bf16_store(result));
+      }
+#endif
+      result = result * weight;
 #endif
       output_data.values[params.output_offset + row * row_length + index] =
           STORE_VALUE(result);

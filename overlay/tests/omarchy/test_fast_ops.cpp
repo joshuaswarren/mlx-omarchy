@@ -405,6 +405,63 @@ TEST_CASE("fused norm forward on f16 and bf16 storage") {
   require_close(gotbf, want, 5e-2, "rms_norm bf16");
 }
 
+// Round-to-nearest-even float -> bf16 -> float (the same bit algorithm
+// the backend storage conversion and mlx astype use).
+float round_bf16_rne(float value) {
+  if (std::isnan(value)) {
+    return value;
+  }
+  uint32_t bits;
+  std::memcpy(&bits, &value, sizeof(bits));
+  bits = (bits + 0x7fffu + ((bits >> 16) & 1u)) >> 16;
+  uint32_t out = bits << 16;
+  std::memcpy(&value, &out, sizeof(value));
+  return value;
+}
+
+TEST_CASE("weighted bf16 RMSNorm rounds the normalized value before the weight multiply") {
+  // Upstream mlx/fast.cpp evaluates rms_norm for bf16 rows as the
+  // composite: normalize in f32, astype to bf16 (round 1), then
+  // multiply by the bf16 weight (round 2). The Metal fused kernel
+  // matches those two-round semantics bit-for-bit. This fixture pins
+  // the same behavior for the omarchy shader on the smallest input
+  // that distinguishes the expressions.
+  if (!compute_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  const float eps = 1e-6f;
+  const size_t cols = 8;
+  // All-equal row: value * norm = 1 - eps/(2 v^2) = 0.9999995, which
+  // rounds to bf16 1.0. Two-round then multiplies by 1.00390625 ->
+  // 1.00390625; single-round computes
+  // bf16(0.9999995 * 1.00390625) = 1.0 — 1 ulp apart.
+  std::vector<float> x_data(cols, 1.0f);
+  std::vector<float> w_data(cols, 1.00390625f);
+
+  array x = astype(
+      array(x_data.begin(), Shape{int(cols)}, float32), bfloat16, stream);
+  array w = astype(
+      array(w_data.begin(), Shape{int(cols)}, float32), bfloat16, stream);
+  auto got = flat(fast::rms_norm(x, w, eps, stream), stream);
+
+  double n = 1.0 / std::sqrt(1.0 + eps);
+  std::vector<float> two_round;
+  std::vector<float> single_round;
+  for (size_t i = 0; i < cols; ++i) {
+    float normalized = round_bf16_rne(float(x_data[i] * n));
+    two_round.push_back(round_bf16_rne(normalized * w_data[i]));
+    single_round.push_back(round_bf16_rne(float(x_data[i] * n) * w_data[i]));
+  }
+  // Fixture self-check: the recorded input genuinely distinguishes the
+  // expressions (both host references are valid bf16 roundings).
+  REQUIRE(two_round[0] != single_round[0]);
+
+  for (size_t i = 0; i < cols; ++i) {
+    CHECK_EQ(got[i], two_round[i]);
+  }
+}
+
 TEST_CASE("RMSNormVJP matches finite differences and the composed formula") {
   if (!compute_available()) {
     return;
