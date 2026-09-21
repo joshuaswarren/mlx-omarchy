@@ -89,6 +89,9 @@ def make_stream_probe(orig_stream, log):
     state = {"emitted": False}
 
     def stream_probe(*a, **k):
+        import faulthandler
+        faulthandler.cancel_dump_traceback_later()
+        faulthandler.dump_traceback_later(600, exit=True)
         ids = []
         t0 = time.perf_counter()
         t_first = None
@@ -100,6 +103,7 @@ def make_stream_probe(orig_stream, log):
             if emitted:
                 return
             emitted = True
+            faulthandler.cancel_dump_traceback_later()
             wall = time.perf_counter() - t0
             log({"event": "generation", "n": len(ids),
                  "wall_s": round(wall, 3),
@@ -132,10 +136,6 @@ def make_stream_probe(orig_stream, log):
 
 def main():
     import faulthandler
-    # If the server hangs (e.g. post-prefill stall), dump ALL thread stacks
-    # to stderr after 600s so the hang is diagnosable post-mortem from the
-    # captured server log.
-    faulthandler.dump_traceback_later(600, exit=True)
     import mlx_lm.server as srv
 
     # --- 1. cache fetch branch + arithmetic probe ---------------------
