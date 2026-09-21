@@ -79,6 +79,51 @@ def install_detok_probe():
             cls.reset = reset_probe
 
 
+def make_stream_probe(orig_stream, log):
+    """Wrap a stream_generate generator so exactly ONE event is emitted per
+    generation, at the moment the finish token passes through — NOT
+    dependent on the caller closing the generator (a break with the
+    generator retained defers finally/GC emission indefinitely)."""
+    state = {"emitted": False}
+
+    def stream_probe(*a, **k):
+        ids = []
+        t0 = time.perf_counter()
+        t_first = None
+        finish = None
+
+        def emit_now():
+            if state["emitted"]:
+                return
+            state["emitted"] = True
+            wall = time.perf_counter() - t0
+            log({"event": "generation", "n": len(ids),
+                 "wall_s": round(wall, 3),
+                 "ttft_s": round(t_first - t0, 4) if t_first else None,
+                 "ids_sha16": sha16(ids), "ids": list(ids),
+                 "finish_reason": finish})
+
+        try:
+            for r in orig_stream(*a, **k):
+                if t_first is None:
+                    t_first = time.perf_counter()
+                ids.append(r.token)
+                finish = getattr(r, "finish_reason", None)
+                if finish is not None:
+                    # finish token (length cap or stop): flush NOW, before
+                    # handing it to the caller — one event per request,
+                    # independent of caller break/close/GC.
+                    emit_now()
+                yield r
+                if finish is not None:
+                    return
+        finally:
+            # early caller abort: flush the partial generation once
+            emit_now()
+
+    return stream_probe
+
+
 def main():
     import mlx_lm.server as srv
 
@@ -162,31 +207,7 @@ def main():
     install_detok_probe()
 
     # generated ids: wrap stream_generate used by the server module
-    orig_stream = srv.stream_generate
-
-    def stream_probe(*a, **k):
-        ids, t0, t_first = [], time.perf_counter(), None
-        finish = None
-        try:
-            for r in orig_stream(*a, **k):
-                if t_first is None:
-                    t_first = time.perf_counter()
-                ids.append(r.token)
-                finish = getattr(r, "finish_reason", None)
-                yield r
-                if finish is not None:
-                    break
-        finally:
-            # finally runs even when the caller breaks early — the
-            # server's loop breaks at finish_reason=length.
-            wall = time.perf_counter() - t0
-            emit({"event": "generation", "n": len(ids),
-                  "wall_s": round(wall, 3),
-                  "ttft_s": round(t_first - t0, 4) if t_first else None,
-                  "ids_sha16": sha16(ids), "ids": ids,
-                  "finish_reason": finish})
-
-    srv.stream_generate = stream_probe
+    srv.stream_generate = make_stream_probe(srv.stream_generate, emit)
 
     # --- 3. run the real server --------------------------------------
     sys.argv = ["mlx_lm.server"] + sys.argv[1:]
