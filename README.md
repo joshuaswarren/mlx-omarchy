@@ -19,6 +19,10 @@ One-command install on an M1 running Omarchy, the first model download, the stre
 Current text-generation guidance and the qualification limits of local
 OpenAI-compatible servers: [docs/serve.md](docs/serve.md).
 
+A serving catalog CLI (`omarchy mlx serve`) with memory-aware approved
+downloads, and typed-decision co-serving (Laya), are being integrated —
+docs/serve.md marks what is qualified and what is still pending.
+
 ## Hardware
 
 Apple M1 is verified on [Omarchy](https://github.com/omarchy-mac/omarchy-mac) with Mesa Honeykrisp. Apple M1 Max GPU is measured; T6001 `/dev/accel/accel0` is live. M2 Max (T6021) GPU is verified third-silicon on Mesa Honeykrisp / Vulkan 1.4.354; M2 Max ANE is **not** live-inference-qualified on the Linux driver. Apple GPU and Apple ANE are separate lanes: T6021 GPU qualification does not qualify T6021 ANE.

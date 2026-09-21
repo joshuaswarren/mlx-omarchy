@@ -19,6 +19,9 @@ Use the [README text-generation example](../README.md#quick-start) and its
 [pinned install receipt](../receipts/2026-09-20-qwen38-text-install/receipt.json).
 Compilation was enabled; the older diagnostic wheel
 `b744f4dd` required `MLX_DISABLE_COMPILE=1`, which is not a current-main limitation.
+The published prerelease [v0.7.2-rc.1](https://github.com/joshuaswarren/mlx-omarchy/releases/tag/v0.7.2-rc.1)
+(`5b18306`) re-ran the same smoke on the same model revision with the same
+result ([receipt](../receipts/2026-09-20-release-v0.7.2-rc.1/m2-receipt.json)).
 Image inference and Qwen3.8 HTTP serving on this Linux stack are not yet
 qualified. Model-card server snippets alone do not establish compatibility.
 
@@ -27,6 +30,123 @@ peak runtime memory. A 16 GiB M1 has not passed this model's memory and
 generation gates; no smaller current-generation Q4 replacement is qualified
 here yet. The MTP checkpoint is an auxiliary prediction component, not a
 standalone smaller language model.
+
+## Model status for serving (2026-09-20)
+
+"Recommended" here requires a qualification pass on real hardware — a
+generation gate alone does not make a model recommended, and no
+HTTP-serving qualification exists on this stack yet, so the catalog
+currently recommends nothing. One checkpoint is generation-qualified,
+for text CLI use only:
+
+| Model | Verified online (HF API) | Serving status here |
+|---|---|---|
+| [`mlx-community/Qwen3.8-27B-4bit`](https://huggingface.co/mlx-community/Qwen3.8-27B-4bit) | 2026-09-20, Apache-2.0, ungated | **Generation-qualified, text CLI only** — revision `10c35caa`, candidate wheel `a1251aaa`, [receipt](../receipts/2026-09-20-qwen38-text-install/receipt.json). Not recommended for serving: HTTP is untested. Image input: not qualified. |
+| [`prism-ml/Ternary-Bonsai-2-27B-mlx-2bit`](https://huggingface.co/prism-ml/Ternary-Bonsai-2-27B-mlx-2bit) | 2026-09-20, Apache-2.0, ungated | Not qualified for serving — device qualification is pending and no serve-path gate has run. A dedicated `mlx_omarchy_bonsai2` module backend is in the serving tree so the pack's bundled runtime, which is remote code, is never executed; its server enforces a hard context cap and reports the pack's LICENSE/NOTICE with the required attribution. Historical coherent decode on this pack: ~1.44 tok/s ([v0.7.0 recert receipt](../receipts/2026-09-18-v070-pretag-recert-t6001-test-host.md)). |
+| [`empero-ai/Qwen3.8-35B-A3B-Distill`](https://huggingface.co/empero-ai/Qwen3.8-35B-A3B-Distill) | 2026-09-20, Apache-2.0, ungated | Not qualified. No load or serve test recorded on this stack; device qualification is planned. Scripting trap for this GDN/hybrid family: `mlx_lm.generate_step` takes a 1-D `[S]` prompt tensor while direct `model()` calls take `[B,S]` — use the CLI or handle shapes explicitly. |
+| [`convaiinnovations/laya`](https://huggingface.co/convaiinnovations/laya) (upstream) · [`aac6fef/laya-mlx`](https://huggingface.co/aac6fef/laya-mlx) (MLX conversion) | 2026-09-20, Apache-2.0, ungated | Typed decision model, co-serving integration in progress. Not implemented in a release, no GPU qualification run — see below. |
+
+## Laya co-serving (in progress — do not rely on it)
+
+Laya is not a chat LLM: it is a ~421M-parameter non-autoregressive typed
+decision model (choice / score / yes-no questions) with calibrated
+probabilities and an explicit escalate/abstain probability per answer.
+The plan under development serves it as a second model in the same serve
+process with its own model id and a typed decision endpoint, concurrent
+with the chat model — a shape `mlx_lm.server` does not offer. As of
+2026-09-20 this is implemented in neither a wheel nor a release, and no
+hardware qualification run has happened. This section documents direction,
+not a working feature.
+
+## Serving catalog CLI (pending — not released, pending acceptance)
+
+The installer's serve front door is `mlx-omarchy-serve` in `~/.local/bin`,
+intended to expose the same surface as `omarchy mlx serve …`. The command
+shapes below are verified against the implementation branch, but the CLI
+is **not released and not accepted**: a critical review found behavior
+gaps that are being fixed — auto-recommend could surface unqualified
+models, the disk-space refusal and context limits were not enforced on
+the serve path, an "offline" run with a cached catalog could still touch
+the network, and the `module` backend could execute catalog-supplied
+Python. Treat this section as the contracted design, not working
+behavior.
+
+```bash
+mlx-omarchy-serve                 # interactive recommend, plan, approve, serve
+mlx-omarchy-serve recommend [--kind chat|base|decisions|embed|other] [--offline]
+mlx-omarchy-serve plan [target] [--context N] [--server mlx-lm|omlx|module] [--offline]
+mlx-omarchy-serve serve [target] [--context N] [--server mlx-lm|omlx|module] \
+    [--host H] [--port P] [--yes] [--offline]
+mlx-omarchy-serve catalog list|status|refresh
+mlx-omarchy-serve reserve NAME GIB [--note TEXT]   # memory another local service owns
+mlx-omarchy-serve unreserve NAME
+```
+
+`target` is a catalog id, a Hugging Face `org/name`, or a local model
+directory; without one, `plan` and `serve` use the curated
+recommendation. `plan` runs the admission and disk checks only — it
+downloads nothing.
+
+The catalog it reads seeds ten pinned entries — six Qwen3.8-27B
+quantizations (4-bit through bf16/mxfp4/nvfp4/mxfp8), the
+Qwen3.8-35B-A3B-Distill pair, Ternary-Bonsai-2-27B, and the laya-mlx
+decision model. Only `qwen3.8-27b-4bit` carries a qualification record
+(generation, text CLI); every other entry is an untested placeholder
+until it passes the same bars — and generation and HTTP are gated
+separately, so the catalog recommends nothing until an HTTP pass lands
+on real hardware.
+
+Before anything downloads, a memory-aware gate budgets `MemAvailable` as
+weights (the full total for MoE; a 35B-A3B counts its full 35B) plus KV at
+the model's explicit context limit, plus a labeled workspace-margin
+estimate and a safety reserve, minus reservations declared with
+`reserve` (a pending reservation subtracts from `MemAvailable`; a
+resident one does not, because the memory is already in use). A no-fit
+is rejected: the gate never trades swap or OOM for
+a download, and a pass is a conservative pre-flight check, not a live
+admission coordinator between concurrent servers. Disk free is checked
+before download. Interactive runs
+require typed approval before any download; noninteractive runs fail
+closed without `--yes`, and `--yes` requires an explicit target — a
+recommendation is never downloaded silently.
+
+Selection: `recommend` orders the catalog by curated priority within a
+kind among tested/compatible fits, not "largest model that fits". Manual
+use accepts a catalog id, an explicit Hugging Face repo, or a local path.
+The automatic pick requires an entry that is recommended, generation- and
+HTTP-qualified, with a working backend and a memory fit — so until an
+HTTP pass qualifies an entry, auto-pick refuses and names no model;
+manual targets with unqualified status proceed only with a loud warning.
+
+Context is enforced on the mlx-lm path by a project shim
+(`_mlxlm_server.py`): every request is capped so prompt and output
+together stay within the admitted context — upstream `--max-tokens` alone
+does not do this (it is an output-only per-request default). The shim
+pins mlx-lm to 0.31.3 and refuses other versions loudly, rejects
+non-integer token arguments, and launches with decode/prompt concurrency
+1 so exactly one request's tokens are resident; a nonzero
+`--prompt-cache-size` is sized into the memory admission before launch.
+The omlx backend has no verified server-side cap and launches with an
+honest warning saying so. `--server module` routes only through an
+audited in-repo allowlist (`mlx_omarchy_laya.server`,
+`mlx_omarchy_bonsai2.server`); catalog-named modules are never executed
+directly.
+
+Catalog refresh fetches from GitHub raw only: conditional ETag, 5 s
+timeout, atomic rename over a last-known-good copy, with a bundled
+fallback before the first successful fetch. `MLX_OMARCHY_OFFLINE=1` (or
+per-command `--offline`) disables refresh entirely,
+`MLX_OMARCHY_CATALOG_TTL_HOURS` (default 24) gates staleness,
+`MLX_OMARCHY_CATALOG_URL` can repoint the source, and
+`MLX_OMARCHY_HOME` relocates state. The TTL check runs only inside
+serve/catalog invocations — no daemon, no telemetry.
+
+Safety boundaries as designed: loopback bind by default, `trust_remote_code`
+is never enabled, unsupported models error honestly, nothing downloads in
+the background. The unit suite is green (71 tests, 2026-09-20) and the
+command shapes above are real, but green tests and help output are not
+behavioral proof: the open review findings above gate acceptance, HTTP
+serving is unqualified, and no performance claim is made.
 
 ## Install and check the backend
 
@@ -92,11 +212,25 @@ for Qwen3.8 or evidence that those servers load it.
 | oMLX | 33.5 | Source installation |
 | mlx-serve | 5.65 | `linux-vulkan-port` source build; MLX safetensors only |
 
+The measured rate is end-to-end HTTP wall-clock divided by
+`usage.completion_tokens`: it includes prefill, detokenization and HTTP
+handling, and is not a decode-only figure. All legs were single-stream —
+no concurrency was measured — and all four servers were co-resident on
+one GPU in one shared window, which is fair across legs but understates
+each server's solo absolute rate. mlx-serve's prompt-lookup decoding made
+no measurable difference on this prompt (5.65 tok/s on vs 5.70 off). The
+earlier two-leg run that day measured the mlx_lm.server leg at 9.33
+tok/s versus 10.36 in the four-leg run; the four-leg numbers are the
+canonical comparison because every leg shared that window.
+
 See the [four-leg receipt](../receipts/2026-09-19-mlxserve-linux-port-t6001-test-host.md)
 and [earlier comparison](../receipts/2026-09-19-serve-options-bench-t6001-test-host.md)
-for reproduction, versions and limitations. Linux mlx-serve's GGUF and ANE
-engines were not operational in that comparison. Its `/v1/models` ID may
-be an internal hash rather than a Hugging Face repository name.
+for reproduction, versions and limitations. These measurements establish
+nothing about current-generation models: they predate Qwen3.8
+qualification and must not be read as a "fastest server for current
+models" claim. Linux mlx-serve's GGUF and ANE engines were not
+operational in that comparison. Its `/v1/models` ID may be an internal
+hash rather than a Hugging Face repository name.
 
 Other historical loader experiments, including the specialized Bonsai
 runtime, remain in the [v0.7.0 recertification receipt](../receipts/2026-09-18-v070-pretag-recert-t6001-test-host.md).

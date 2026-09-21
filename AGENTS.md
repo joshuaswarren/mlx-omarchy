@@ -91,6 +91,18 @@ serving host from LiteLLM and confirm it is quiescent before benchmarking.
 Native performance comparisons must match the physical machine; never
 use the base M1 as the M1 Max denominator.
 
+**Hardware status (2026-09-20).** m1-test-host (13-inch M1) fresh Arch boot
+reported (user-observed at login); Omarchy provisioning and benchmark
+recertification pending. Every M1 ANE / Parakeet number in this tree
+is historical dated evidence from prior m1-test-host Linux boots and is NOT
+current recertification. t6001-test-host (T6001) Linux ANE is live. t6021-test-host (T6021)
+Linux reads kernel 7.1.13-3-1-ARCH stable, ANE_UNBOUND, no
+`/dev/accel/accel0`. T6021 GPU is qualified
+([`ane-linux-experiments/receipts/2026-09-18-t6021-test-host-third-vulkan-device.md`](https://github.com/joshuaswarren/ane-linux-experiments/blob/main/receipts/2026-09-18-t6021-test-host-third-vulkan-device.md));
+T6021 ANE is **not** live-inference-qualified on the Linux driver
+(macOS-side numbers are macOS CoreML / `aned` measurements, not Linux
+execution). Apple GPU and Apple ANE are separate lanes.
+
 New descriptor, synchronization, and dma-buf tests can reset the device or machine.
 Use a bounded timeout for every new hardware path.
 Run one new failure mode at a time.
