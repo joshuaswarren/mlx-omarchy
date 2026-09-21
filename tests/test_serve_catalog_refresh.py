@@ -167,6 +167,33 @@ class RefreshCoreTests(unittest.TestCase):
         self.assertEqual(self.path.read_text(encoding="utf-8"), before)
         self.assertTrue(any("DRIFT" in line for line in report))
 
+    def test_availability_files_filter_sums_only_served_variant(self):
+        # Multi-variant repos (laya ships root + multilingual/ +
+        # typed-decisions/ checkpoints): extension.availability_files pins
+        # the served artifact so availability tracks it, not the repo sum.
+        entry = seed_entry(entry_id="variant", repo="org/variant")
+        entry["extension"] = {"availability_files": ["model.safetensors"]}
+        self.write(seed_catalog(entry))
+
+        class MultiVariant(FakeFetch):
+            def __init__(self):
+                super().__init__({})
+
+            def __call__(self, url):
+                if "blobs=true" in url:
+                    return {"sha": "a" * 40, "siblings": [
+                        {"rfilename": "model.safetensors", "size": 1000},
+                        {"rfilename": "multilingual/model.safetensors", "size": 700},
+                        {"rfilename": "typed-decisions/model.safetensors", "size": 700},
+                    ]}
+                return {"sha": "a" * 40}
+
+        code, _ = refresher.refresh(
+            self.path, MultiVariant(), ok_validate, now="2026-09-20T20:00:00Z")
+
+        self.assertEqual(code, refresher.EXIT_OK)
+        self.assertEqual(self.read()["models"][0]["availability"]["size_bytes"], 1000)
+
     def test_upstream_drift_retains_vetted_revision_and_qualification(self):
         self.write(seed_catalog(seed_entry()))
         before = self.read()
