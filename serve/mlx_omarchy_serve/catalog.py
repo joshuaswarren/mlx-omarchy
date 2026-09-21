@@ -222,9 +222,10 @@ def validate_catalog(obj) -> None:
             _check_int(cap["min_mem_gib"], f"{where}.capability.min_mem_gib", 1, 512)
 
         qual = entry["qualification"]
-        _check_keys(qual, ("generation", "http"), f"{where}.qualification")
+        _check_keys(qual, ("generation", "http", "managed"), f"{where}.qualification")
         _check_qualification("generation", qual["generation"])
         _check_qualification("http", qual["http"])
+        _check_qualification("managed", qual["managed"])
 
         if not isinstance(entry["recommended"], bool):
             _fail(f"{where}.recommended: expected bool")

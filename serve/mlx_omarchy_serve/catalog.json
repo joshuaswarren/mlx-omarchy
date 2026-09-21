@@ -38,8 +38,13 @@
         },
         "http": {
           "status": "qualified",
-          "receipt": "receipts/2026-09-20-qwen38-http-mlxlm-t6001-test-host-raw-qualification.md",
+          "receipt": "receipts/2026-09-20-qwen38-http-mlxlm-the T6021 qualification host-raw-qualification.md",
           "date": "2026-09-20"
+        },
+        "managed": {
+          "status": "qualified",
+          "receipt": "receipts/2026-09-21-qwen38-managed-route-qualification.md",
+          "date": "2026-09-21"
         }
       },
       "availability": {
@@ -48,7 +53,7 @@
       },
       "family": "qwen3.8-27b",
       "extension": {
-        "scope": "Text-only CLI generation qualified on t6021-test-host (T6021) with candidate wheel 0.32.3.dev202609201346+a1251aaa, mlx-vlm 0.7.1, mlx-lm 0.31.3; HTTP serving, vision, ANE, and 16 GiB M1 gates are NOT qualified. Multimodal checkpoint loaded language-model-only; the MTP block is an auxiliary prediction component, not a standalone smaller model.",
+        "scope": "Text-only CLI generation qualified on a second T6021 host (T6021) with candidate wheel 0.32.3.dev202609201346+a1251aaa, mlx-vlm 0.7.1, mlx-lm 0.31.3; HTTP serving, vision, ANE, and 16 GiB M1 gates are NOT qualified. Multimodal checkpoint loaded language-model-only; the MTP block is an auxiliary prediction component, not a standalone smaller model.",
         "model_type": "qwen3_5",
         "params": 27356728560,
         "multimodal": true,
@@ -62,8 +67,8 @@
         "family_note": "Only variant with a device qualification pass (text-only CLI).",
         "variant": "4bit",
         "model_architecture": "Qwen3_5ForConditionalGeneration",
-        "cache_behavior": "Serve screen 2026-09-20 (SPA, t6001-test-host): the multimodal checkpoint's ArraysCache is non-trimmable — prefix-trim replication is unbuildable on this checkpoint; long-context KV management cannot rely on cache trimming for this entry.",
-        "http_scope": "NARROW FUNCTIONAL SCOPE ONLY (SPA screen-2 receipts c0228a44/2a661e3f + scoped raw receipt c900a96d, t6001-test-host, wheel 0.32.3.dev202609201440+5b18306, mlx_lm.server 0.31.3): direct-launch HTTP qualified FUNCTIONALLY — of 7 requests, the functional subset returned HTTP 200 with completion id + usage (60 prompt / 128 completion tokens) + finish=length, zero errors; rates 2.12-2.69 tok/s and TTFT 1.110-1.127 s recorded as data, NOT perf claims. Provenance fatal-checked: wheel sha16 fe51534b, libmlx c28a485f, all 3 model shards sha256-verified vs the proven t6021-test-host snapshot (corrupt shard-2 blob caught and refetched). EXPLICIT NON-CLAIMS: cross-path (HTTP vs direct) numeric equivalence FAILED/OPEN — output divergence observed and preserved, no causal attribution; generated-ID equality over HTTP unprovable without server changes (text equality recorded); NOT a qualification of the managed omarchy mlx serve CLI (pending route-fix smoke); no ANE/vision/multimodal; no perf winner. Generation qualification (text CLI) is a separate, previously valid scope. Raw JSON: ~/servebench-qa-evidence/out13 on t6001-test-host."
+        "cache_behavior": "Serve screen 2026-09-20 (SPA, the T6021 qualification host): the multimodal checkpoint's ArraysCache is non-trimmable \u2014 prefix-trim replication is unbuildable on this checkpoint; long-context KV management cannot rely on cache trimming for this entry.",
+        "http_scope": "NARROW FUNCTIONAL SCOPE ONLY (SPA screen-2 receipts c0228a44/2a661e3f + scoped raw receipt c900a96d, the T6021 qualification host, wheel 0.32.3.dev202609201440+5b18306, mlx_lm.server 0.31.3): direct-launch HTTP qualified FUNCTIONALLY \u2014 of 7 requests, the functional subset returned HTTP 200 with completion id + usage (60 prompt / 128 completion tokens) + finish=length, zero errors; rates 2.12-2.69 tok/s and TTFT 1.110-1.127 s recorded as data, NOT perf claims. Provenance fatal-checked: wheel sha16 fe51534b, libmlx c28a485f, all 3 model shards sha256-verified vs the proven a second T6021 host snapshot (corrupt shard-2 blob caught and refetched). EXPLICIT NON-CLAIMS: cross-path (HTTP vs direct) numeric equivalence FAILED/OPEN \u2014 output divergence observed and preserved, no causal attribution; generated-ID equality over HTTP unprovable without server changes (text equality recorded); NOT a qualification of the managed omarchy mlx serve CLI (pending route-fix smoke); no ANE/vision/multimodal; no perf winner. Generation qualification (text CLI) is a separate, previously valid scope. Raw JSON: ~/servebench-qa-evidence/out13 on the T6021 qualification host."
       },
       "serve": {
         "backend": "mlx-lm",
@@ -102,6 +107,11 @@
           "date": null
         },
         "http": {
+          "status": "untested",
+          "receipt": null,
+          "date": null
+        },
+        "managed": {
           "status": "untested",
           "receipt": null,
           "date": null
@@ -154,6 +164,11 @@
           "date": null
         },
         "http": {
+          "status": "untested",
+          "receipt": null,
+          "date": null
+        },
+        "managed": {
           "status": "untested",
           "receipt": null,
           "date": null
@@ -213,6 +228,11 @@
           "status": "qualified",
           "receipt": "ane-linux-experiments@2e4b78f:receipts/2026-09-20-bonsai2-http-qualification.md",
           "date": "2026-09-20"
+        },
+        "managed": {
+          "status": "qualified",
+          "receipt": "receipts/2026-09-21-qwen38-managed-route-qualification.md",
+          "date": "2026-09-21"
         }
       },
       "availability": {
@@ -221,7 +241,7 @@
       },
       "family": "ternary-bonsai-2-27b",
       "extension": {
-        "scope": "NOT qualified. Historical evidence only: coherent 96-step generation at 1.44 tok/s on candidate wheel b283a16 (t6001-test-host, 2026-09-18), recorded in receipts/2026-09-18-v070-pretag-recert-t6001-test-host.md through the specialized pack runtime; that receipt does not record the pack revision used, so it does not qualify this pinned revision. Not a drop-in serving recommendation.",
+        "scope": "NOT qualified. Historical evidence only: coherent 96-step generation at 1.44 tok/s on candidate wheel b283a16 (the T6021 qualification host, 2026-09-18), recorded in receipts/2026-09-18-v070-pretag-recert-the T6021 qualification host.md through the specialized pack runtime; that receipt does not record the pack revision used, so it does not qualify this pinned revision. Not a drop-in serving recommendation.",
         "model_type": "prism_hadamard_qwen35",
         "params": 27359638768,
         "multimodal": true,
@@ -232,12 +252,12 @@
         "min_mem_gib_basis": "ceil(weights_bytes * 1.25 / 2^30); static weights floor, not a measured peak",
         "kv_basis": "kv_bytes_per_token = 2 (K+V) x 16 full-attention layers (64/4) x 4 kv heads x 256 head_dim x 2 bytes (bf16), from the pinned config; GDN layers carry fixed recurrent state, not a growing cache",
         "variant": "2bit",
-        "weights_sha256": "130de5925082c168b7866b2e91b52e44abbafc99017e3ca352b77b5b55a269ed (model.safetensors, 8,595,477,990 B; Bonsai2RuntimeEnablement 2026-09-20, confirmed by the pinned commit's git-LFS pointer, the pack's files.json, and byte-hashes on t6001-test-host)",
+        "weights_sha256": "130de5925082c168b7866b2e91b52e44abbafc99017e3ca352b77b5b55a269ed (model.safetensors, 8,595,477,990 B; Bonsai2RuntimeEnablement 2026-09-20, confirmed by the pinned commit's git-LFS pointer, the pack's files.json, and byte-hashes on the T6021 qualification host)",
         "config_sha256": "238de7c5 (config.json, per the same lane record)",
         "residency": "Vision tower tensors are excluded from the resident set and accounted separately (loader reports exact text-only resident_bytes at load); MTP is 0 layers.",
         "admission_bound": "Config max_position_embeddings is 262144, but the server enforces its own --max-context hard cap and serializes generation; on a 16 GiB host the KV rate (64 KiB/token) bounds practical context to ~8k tokens at ~4 GiB headroom.",
         "attribution": "Apache-2.0 + NOTICE attribution: 'Created using Bonsai by Prism ML'; built from Qwen3.8-27B (Apache-2.0).",
-        "qualification_scope": "HTTP FUNCTIONAL scope only (receipts/2026-09-20-bonsai2-http-qualification.md @ 2e4b78f in ane-linux-experiments, t6001-test-host M1 Max): /health 200, one real greedy /v1/chat/completions HTTP 200 (16 completion tokens, finish=length, usage+timings recorded; decode 1.74 t/s and prefill 5.1 t/s are data, not perf claims), over-cap and malformed bodies return 400, clean SIGTERM shutdown. All input hashes re-verified on device (weights sha256 130de592..., config sha256 238de7c5...). The 16-token output is the model's chain-of-thought preamble - NO coherence or quality claim. Numerical/parity qualification remains a separate scope (CPU parity receipt stands; no GPU parity claim). Single-host, single-stream, no durability claim. The dead owner-scoped reservation left in reservations.json post-exit is documented in the receipt (harmless; sweep owned by future windows) and the managed-lifecycle hardening is in progress."
+        "qualification_scope": "HTTP FUNCTIONAL scope only (receipts/2026-09-20-bonsai2-http-qualification.md @ 2e4b78f in ane-linux-experiments, the T6021 qualification host M1 Max): /health 200, one real greedy /v1/chat/completions HTTP 200 (16 completion tokens, finish=length, usage+timings recorded; decode 1.74 t/s and prefill 5.1 t/s are data, not perf claims), over-cap and malformed bodies return 400, clean SIGTERM shutdown. All input hashes re-verified on device (weights sha256 130de592..., config sha256 238de7c5...). The 16-token output is the model's chain-of-thought preamble - NO coherence or quality claim. Numerical/parity qualification remains a separate scope (CPU parity receipt stands; no GPU parity claim). Single-host, single-stream, no durability claim. The dead owner-scoped reservation left in reservations.json post-exit is documented in the receipt (harmless; sweep owned by future windows) and the managed-lifecycle hardening is in progress."
       },
       "serve": {
         "backend": "module",
@@ -275,6 +295,11 @@
           "status": "untested",
           "receipt": null,
           "date": null
+        },
+        "managed": {
+          "status": "untested",
+          "receipt": null,
+          "date": null
         }
       },
       "availability": {
@@ -295,14 +320,38 @@
         },
         "memory_note": "Memory is sized for ALL 35B MoE weights (256 experts, bfloat16, 66.97 GiB of safetensors). A3B (3B active per token) is a compute figure, not a memory figure.",
         "unquantized_dtype": "bfloat16",
-        "fitment": "Admission is a per-host runtime decision from actual available memory (with context, workspace, and co-resident models), not a fleet-max assumption: the 64 GiB t6001-test-host cannot admit the bf16 weights; the M2 Max measured 94.25 GiB OS-usable / 80.77 GiB available on 2026-09-20, so the 84 GiB floor refuses at that measured availability and a quieter host state is required. A Q4/group-64 conversion remains the fitment path for 64 GiB-class hosts; none exists upstream (checked 2026-09-20) and producing one is a weight-download job under Main coordination.",
+        "fitment": "Admission is a per-host runtime decision from actual available memory (with context, workspace, and co-resident models), not a fleet-max assumption: the 64 GiB the T6021 qualification host cannot admit the bf16 weights; the M2 Max measured 94.25 GiB OS-usable / 80.77 GiB available on 2026-09-20, so the 84 GiB floor refuses at that measured availability and a quieter host state is required. A Q4/group-64 conversion remains the fitment path for 64 GiB-class hosts; none exists upstream (checked 2026-09-20) and producing one is a weight-download job under Main coordination.",
         "hybrid_attention": "linear_attention x3 + full_attention, interval 4",
         "min_mem_gib_basis": "ceil(weights_bytes * 1.25 / 2^30); static weights floor, not a measured peak",
         "kv_basis": "kv_bytes_per_token = 2 (K+V) x 10 full-attention layers (40/4) x 2 kv heads x 256 head_dim x 2 bytes (bf16), from the pinned config; GDN layers carry fixed recurrent state, not a growing cache; MTP excluded",
         "variant": "bf16",
         "model_architecture": "Qwen3_5MoeForConditionalGeneration",
         "residency": "Distill lane manifest (agent/distill-moe-enablement @ 2ed9db4a, header-level from the pinned snapshot): loader drops vision+MTP = 2,582,424,032 B (2.41 GiB) on the mlx-lm text path, so text-resident weights are 69,321,354,504 B (64.56 GiB) while weights_bytes/size_bytes stay at the full 71,903,778,536 B disk artifact (conservative for admission, exact for download).",
-        "gdn_state": "Fixed recurrent state, not a growing cache: ssm 60.0 MiB (fp32) + conv 1.4 MiB; KV 20,480 B/token over the 10 full-attention layers."
+        "gdn_state": "Fixed recurrent state, not a growing cache: ssm 60.0 MiB (fp32) + conv 1.4 MiB; KV 20,480 B/token over the 10 full-attention layers.",
+        "deferred": {
+          "download_status": "pending_approval",
+          "deferral_reason": "84 GiB floor exceeds measured 80.77 GiB availability on M2 Max 2026-09-20; the T6021 qualification host 64 GiB host cannot admit bf16 weights; no upstream Q4/group-64 conversion exists (checked 2026-09-20); producing one is a weight-download job under Main coordination.",
+          "lane_owner": "DistillMoEEnablement",
+          "gate_to_clear": "Produced Q4/group-64 conversion OR quiet M2 Max measured availability >=84 GiB; both blocked on existing approval contract",
+          "last_updated": "2026-09-21",
+          "parent_approval_required": true
+        },
+        "residency_math": {
+          "weights_bytes": 71903778536,
+          "post_loader_resident_bytes": 69321354504,
+          "workspace_lower_bound_bytes": 17975944634,
+          "safety_reserve_bytes": 2147483648,
+          "admission_floor_bytes": 92027206818,
+          "measured_availability_basis": "M2 Max 2026-09-20 80.77 GiB"
+        },
+        "approval_log": [
+          {
+            "date": "2026-09-21",
+            "actor": "ServingCatalogQualification",
+            "decision": "deferred",
+            "note": "Catalog entry polish; download remains blocked on existing approval contract. No model bytes fetched."
+          }
+        ]
       },
       "serve": null
     },
@@ -338,6 +387,11 @@
           "date": null
         },
         "http": {
+          "status": "untested",
+          "receipt": null,
+          "date": null
+        },
+        "managed": {
           "status": "untested",
           "receipt": null,
           "date": null
@@ -397,6 +451,11 @@
           "status": "untested",
           "receipt": null,
           "date": null
+        },
+        "managed": {
+          "status": "untested",
+          "receipt": null,
+          "date": null
         }
       },
       "availability": {
@@ -450,6 +509,11 @@
           "date": null
         },
         "http": {
+          "status": "untested",
+          "receipt": null,
+          "date": null
+        },
+        "managed": {
           "status": "untested",
           "receipt": null,
           "date": null
@@ -509,6 +573,11 @@
           "status": "untested",
           "receipt": null,
           "date": null
+        },
+        "managed": {
+          "status": "untested",
+          "receipt": null,
+          "date": null
         }
       },
       "availability": {
@@ -554,13 +623,18 @@
       "qualification": {
         "generation": {
           "status": "qualified",
-          "receipt": "receipts/2026-09-20-laya-gpu-qual-t6001-test-host.md",
+          "receipt": "receipts/2026-09-20-laya-gpu-qual-the T6021 qualification host.md",
           "date": "2026-09-20"
         },
         "http": {
           "status": "qualified",
-          "receipt": "receipts/2026-09-20-laya-gpu-qual-t6001-test-host.md",
+          "receipt": "receipts/2026-09-20-laya-gpu-qual-the T6021 qualification host.md",
           "date": "2026-09-20"
+        },
+        "managed": {
+          "status": "untested",
+          "receipt": null,
+          "date": null
         }
       },
       "availability": {
@@ -589,7 +663,7 @@
         "qualified_artifact": "mlx_omarchy_laya.convert output from THIS pinned source revision; weights sha256 891102d372688fc2a094dac56a384bc537b87c63f21f9f3dac0be2b7cbc8d86c (byte-identical to the source model.safetensors); served by mlx_omarchy_laya.server (module backend, managed HTTP decisions path).",
         "pack_variant_note": "The aac6fef/laya-mlx pack @ 20aed815 (weights sha b9c07bf1..., alias-normalized names) remains available metadata but is NOT the qualified artifact.",
         "min_mem_gib_basis": "ceil(weights_bytes * 1.25 / 2^30); static weights floor, not a measured peak",
-        "qualification_scope": "receipts/2026-09-20-laya-gpu-qual-t6001-test-host.md @ 96873ad8: t6001-test-hostmbp1-linux (M1 Max 64 GiB), fp16 GPU. Managed atomic admission 6,228,139,532 B before any weight load (param floor 842,587,660 + 2x-safety workspace 5,385,551,872 = formula(64) exactly); post-load relabel resident with param-only floor; B=64 worst-case on-device workspace audit measured 2,686,279,680 <= bound 5,385,551,872; 6/6 frozen numerical gates PASS through the managed HTTP decisions endpoint (argmax 100%, prob err <= 1.1e-3); rtmod trace shows no CPU primitive dispatches. Co-serving scope: the standing llama.cpp chat service was an EXTERNAL RESIDENT recognized via MemAvailable (its ~19 GiB already counted) while laya's own pending headroom was held; concurrent real chat + laya responses succeeded. A managed-reservation co-serving test (second budget-reserved model) was NOT exercised. recommended stays false pending integration per owner directive. Co-serving concurrence proof COMMITTED: receipts/2026-09-20-laya-window-raw/coresidency-evidence.json holds both full untruncated response bodies (HTTP 200/200, launches 0.475 ms apart, requests_in_flight_overlap TRUE — chat still in flight when laya responded). Managed-reservation co-serving remains unexercised and unclaimed.",
+        "qualification_scope": "receipts/2026-09-20-laya-gpu-qual-the T6021 qualification host.md @ 96873ad8: a 64 GiB M1-Max-class (T6021) host, fp16 GPU. Managed atomic admission 6,228,139,532 B before any weight load (param floor 842,587,660 + 2x-safety workspace 5,385,551,872 = formula(64) exactly); post-load relabel resident with param-only floor; B=64 worst-case on-device workspace audit measured 2,686,279,680 <= bound 5,385,551,872; 6/6 frozen numerical gates PASS through the managed HTTP decisions endpoint (argmax 100%, prob err <= 1.1e-3); rtmod trace shows no CPU primitive dispatches. Co-serving scope: the standing llama.cpp chat service was an EXTERNAL RESIDENT recognized via MemAvailable (its ~19 GiB already counted) while laya's own pending headroom was held; concurrent real chat + laya responses succeeded. A managed-reservation co-serving test (second budget-reserved model) was NOT exercised. recommended stays false pending integration per owner directive. Co-serving concurrence proof COMMITTED: receipts/2026-09-20-laya-window-raw/coresidency-evidence.json holds both full untruncated response bodies (HTTP 200/200, launches 0.475 ms apart, requests_in_flight_overlap TRUE \u2014 chat still in flight when laya responded). Managed-reservation co-serving remains unexercised and unclaimed.",
         "serve_path": "Contract: catalog pins the SOURCE revision to convert (convaiinnovations/laya @ 1c5edc17); serving requires the mlx_omarchy_laya conversion (weights byte-identical, sha256 891102d3...). The unified serve flow does not convert yet (route fix in progress by the schema owner); raw snapshots have no manifest and cannot complete --managed admission.",
         "download_patterns": [
           "model.safetensors",

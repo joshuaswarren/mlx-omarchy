@@ -1,0 +1,114 @@
+"""Failing-first tests for the SSE TTFT probe (scripts-local/ttft_probe.py).
+
+Mock SSE server replays a scripted chunk timeline with real delays:
+  - chunk A at ~0.05s: reasoning-only delta (content empty)  -> must NOT start TTFT
+  - chunk B at ~0.30s: first non-empty content delta         -> TTFT lands HERE
+  - chunk C at ~0.40s: another content delta
+  - [DONE]
+
+Asserts:
+  1. ttft_s is within the chunk-B window (>= 0.25, <= 0.45) — a buffered
+     reader (v3's 4096-byte defect) would report ~0.45+ for everything.
+  2. ttft_s < total_s (strictly).
+  3. first_token_event_index == 2 (chunk B is the 2nd data event).
+  4. A response with NO content deltas returns an error, not a fake TTFT.
+"""
+
+import json
+import sys
+import threading
+import time
+import unittest
+import http.server
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPO_ROOT / "scripts-local"))
+
+from ttft_probe import measure_ttft  # noqa: E402
+
+
+def sse_bytes(script):
+    out = b""
+    for delay, payload in script:
+        time.sleep(delay)
+        out += b"data: " + json.dumps(payload).encode() + b"\n\n"
+    out += b"data: [DONE]\n\n"
+    return out
+
+
+class _MockSSE(http.server.BaseHTTPRequestHandler):
+    protocol_version = "HTTP/1.1"
+
+    def do_POST(self):  # noqa: N802
+        self.rfile.read(int(self.headers.get("Content-Length", 0)))
+        self.send_response(200)
+        self.send_header("Content-Type", "text/event-stream")
+        self.send_header("Transfer-Encoding", "chunked")
+        self.end_headers()
+        for chunk in self.server.script_chunks:
+            time.sleep(chunk["delay"])
+            payload = (b"data: " + json.dumps(chunk["payload"]).encode()
+                       + b"\n\n")
+            self.wfile.write(f"{len(payload):x}\r\n".encode() + payload
+                             + b"\r\n")
+            self.wfile.flush()
+        tail = b"data: [DONE]\n\n"
+        self.wfile.write(f"{len(tail):x}\r\n".encode() + tail + b"\r\n")
+        self.wfile.write(b"0\r\n\r\n")
+        self.wfile.flush()
+
+    def log_message(self, *_a):
+        pass
+
+
+def _delta(content, reasoning=None):
+    delta = {}
+    if reasoning is not None:
+        delta["reasoning_content"] = reasoning
+    if content is not None:
+        delta["content"] = content
+    return {"choices": [{"index": 0, "delta": delta}],
+            "object": "chat.completion.chunk"}
+
+
+class TtftProbeTests(unittest.TestCase):
+    def setUp(self):
+        self.server = http.server.HTTPServer(("127.0.0.1", 0), _MockSSE)
+        self.port = self.server.server_port
+        threading.Thread(target=self.server.serve_forever, daemon=True).start()
+        self.addCleanup(self.server.server_close)
+        self.addCleanup(self.server.shutdown)
+        self.body = {"model": "m", "messages": [{"role": "user", "content": "x"}],
+                     "max_tokens": 8, "stream": True}
+
+    def test_ttft_lands_on_first_nonempty_content_token(self):
+        self.server.script_chunks = [
+            {"delay": 0.05, "payload": _delta(None, reasoning="thinking...")},
+            {"delay": 0.25, "payload": _delta("Paris")},
+            {"delay": 0.10, "payload": _delta(" is the city.")},
+        ]
+        result = measure_ttft("127.0.0.1", self.port, self.body, timeout=10)
+        self.assertIsNone(result.get("error"), result)
+        # Chunk B lands at ~0.30s after start; a 4096-byte-buffered reader
+        # or first-byte reader would report ~0.05s or ~0.45s.
+        self.assertGreaterEqual(result["ttft_s"], 0.25,
+                                f"TTFT started too early (reasoning counted?): {result}")
+        self.assertLessEqual(result["ttft_s"], 0.45,
+                             f"TTFT too late (buffered read?): {result}")
+        self.assertLess(result["ttft_s"], result["total_s"])
+        self.assertEqual(result["first_token_event_index"], 2)
+        self.assertEqual(result["events"], 3)
+
+    def test_no_content_deltas_is_an_error_not_fake_ttft(self):
+        self.server.script_chunks = [
+            {"delay": 0.05, "payload": _delta(None, reasoning="only reasoning")},
+            {"delay": 0.05, "payload": _delta("")},  # empty content does not count
+        ]
+        result = measure_ttft("127.0.0.1", self.port, self.body, timeout=10)
+        self.assertIn("error", result)
+        self.assertNotIn("ttft_s", result)
+
+
+if __name__ == "__main__":
+    unittest.main()

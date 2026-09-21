@@ -224,6 +224,8 @@ def auto_serve_reason(entry: dict) -> str | None:
         return "generation unqualified"
     if qual["http"]["status"] != "qualified":
         return "http serving unqualified"
+    if qual["managed"]["status"] != "qualified":
+        return "managed-route unqualified"
     if entry["serve"] is None:
         return "no serve route"
     if entry["serve"]["backend"] == "module" and entry["serve"]["module"] not in MODULE_ALLOWLIST:
@@ -242,9 +244,18 @@ def entry_context_tokens(entry: dict, requested: int | None) -> int | None:
 
 
 def pick_recommended(cat: dict, kind: str, context_tokens: int | None, home: Path | None):
-    """Auto-pick = curated order among entries that are recommended,
-    generation AND http qualified, have a working backend, are device
-    compatible, and fit memory. Everything else is listed, never auto-picked."""
+    """Auto-pick = curated order among entries that are recommended:true
+    AND pass every other gate (generation/http/managed qualified, working
+    backend, device compatible, fit memory). The first fitting entry wins.
+
+    `recommended: false` is a quarantine: an entry with it NEVER auto-picks
+    and NEVER appears in `fits`, no matter how small or well it fits. If no
+    recommended entry fits, `fits` is empty and the caller prints
+    "pick: none — name a target explicitly": the user's manual override is
+    the only path to anything unqualified, and downloads always require
+    the standing approval contract. Curated priority reflects quality and
+    is preserved as the ordering within the recommended tier; the same
+    ordering is the `ranked` display order the CLI table uses verbatim."""
     soc = machine_soc()
     ranked = sorted(
         (e for e in cat["models"] if e["kind"] == kind),
