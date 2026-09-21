@@ -7,10 +7,12 @@ loop (for response in stream_generate(...): break on finish_reason) never
 calls detok.finalize explicitly, so the hook wraps stream_generate and
 force-finalizes the detokenizer on generator close.
 
-The bonsai2 server captures stream_generate via `from mlx_lm.generate
-import stream_generate` (function-body, executed on every call) — and
-the install function MUST save the original BEFORE rebinding, otherwise
-the wrap's `orig_stream` captures the wrap itself (infinite recursion)."""
+In mlx_lm 0.31.3 the symbol `mlx_lm.generate` is the stream_generate
+function itself (re-exported at the package level), not a submodule —
+so the wrap targets the function via the package attribute. The wrap
+also rebinds on mlx_omarchy_bonsai2.server so the bonsai2 for-loop
+iterates the wrap (not the original). The original is saved BEFORE
+rebinding to avoid infinite recursion when the wrap calls orig_stream."""
 from __future__ import annotations
 import hashlib
 import json
@@ -19,16 +21,8 @@ import sys
 
 PROBE_ENV = "MLX_OMARCHY_SERVE_IDS_PROBE"
 
-# Module-level caches: save the original stream_generate on each module
-# the FIRST time install_ids_probe is called, BEFORE the rebind. This is
-# a one-time save per import; subsequent install calls find the cached
-# value (which the wrap rebinds, so we always re-save at the top of
-# install_ids_probe by reading via a dedicated helper).
-_ORIGINAL_STREAM_GENERATE = None
-
 
 def install_ids_probe(emit=None):
-    global _ORIGINAL_STREAM_GENERATE
     if os.environ.get(PROBE_ENV) != "1":
         return None
     if emit is None:
@@ -41,7 +35,10 @@ def install_ids_probe(emit=None):
             SPMStreamingDetokenizer,
             StreamingDetokenizer,
         )
-        import mlx_lm.generate as _mlx_lm_generate
+        import mlx_lm as _mlx_lm_pkg
+        # mlx_lm 0.31.3 flattens mlx_lm.generate to the stream_generate
+        # function (re-export at package level). Use it directly.
+        _stream_generate = _mlx_lm_pkg.generate
     except Exception as exc:
         print(f"shim: ids probe install failed: {exc}", file=sys.stderr,
               flush=True)
@@ -92,7 +89,7 @@ def install_ids_probe(emit=None):
     # CRITICAL: save the ORIGINAL stream_generate BEFORE rebinding, so
     # the wrap's orig_stream points to the real generator function (and
     # not to the wrap itself, which would cause infinite recursion).
-    _original = _mlx_lm_generate.stream_generate
+    _original = _stream_generate
 
     def _resolve_detok(*args, **kwargs):
         for tok in args[1:3]:
@@ -124,7 +121,9 @@ def install_ids_probe(emit=None):
             if state["detok"] is not None:
                 state["detok"].finalize()
 
-    _mlx_lm_generate.stream_generate = stream_probe
+    # Rebind on both the package attribute (mlx_lm.generate) and the
+    # bonsai2 server module so the server's for-loop iterates the wrap.
+    _mlx_lm_pkg.generate = stream_probe
     try:
         import mlx_omarchy_bonsai2.server as _bonsai_server
         _bonsai_server.stream_generate = stream_probe

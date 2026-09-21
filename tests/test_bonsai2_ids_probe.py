@@ -2,11 +2,9 @@
 
 The hook contract: per-uid/add_token accumulates, reset/finalize flushes.
 The bonsai shim wraps stream_generate to force-finalize the detokenizer
-on generator close (the bonsai2 for-loop never calls detok.finalize
-itself). The wrap also rebinds on mlx_omarchy_bonsai2.server (the
-bonsai server captures stream_generate by name at function definition
-time). The wrap saves the original BEFORE rebinding to avoid infinite
-recursion when the wrap calls orig_stream."""
+on generator close. In mlx_lm 0.31.3, `mlx_lm.generate` is the
+stream_generate function itself (re-exported at the package level),
+not a submodule; the hook handles this layout."""
 import importlib
 import json
 import os
@@ -39,6 +37,10 @@ def _fake_tokenizer_utils():
     return mod
 
 
+def _fake_stream_fn(*a, **k):
+    return iter(())
+
+
 def _fresh_module_under_test():
     for mod in (
             "mlx_omarchy_bonsai2.ids_probe",
@@ -50,11 +52,11 @@ def _fresh_module_under_test():
         sys.modules.pop(mod, None)
     sys.path.insert(0, str(REPO_ROOT / "serve"))
     fake_tok = _fake_tokenizer_utils()
-    fake_generate = types.ModuleType("mlx_lm.generate")
-    fake_generate.stream_generate = lambda *a, **k: iter(())
+    # mlx_lm 0.31.3 flattens: mlx_lm.generate IS the stream_generate
+    # function itself, not a submodule. The package has only the function.
     sys.modules["mlx_lm"] = types.ModuleType("mlx_lm")
+    sys.modules["mlx_lm"].generate = _fake_stream_fn
     sys.modules["mlx_lm.tokenizer_utils"] = fake_tok
-    sys.modules["mlx_lm.generate"] = fake_generate
     mod = importlib.import_module("mlx_omarchy_bonsai2.ids_probe")
     return mod, fake_tok
 
@@ -99,10 +101,6 @@ class Bonsai2IdsProbeTests(unittest.TestCase):
         self.assertEqual(len(events[0]["ids_sha16"]), 16)
 
     def test_records_ids_and_emits_on_finalize_when_env_on(self):
-        """The bonsai2 server's for-loop never calls detok.finalize
-        explicitly; the stream_generate wrap triggers finalize on
-        GeneratorExit. This test exercises the detok.finalize path
-        directly (which stream_probe does on close)."""
         os.environ[self.mod.PROBE_ENV] = "1"
         events = []
         self.mod.install_ids_probe(emit=events.append)
@@ -123,16 +121,16 @@ class Bonsai2IdsProbeTests(unittest.TestCase):
         os.environ[self.mod.PROBE_ENV] = "1"
         import sys as _sys
         fake_outer = self.fake
-        # The wrap saves the original stream_generate BEFORE rebinding, so
-        # this fake MUST be installed as mlx_lm.generate.stream_generate
-        # BEFORE install_ids_probe. After install the wrap calls the saved
-        # fake as the "original" stream_generate.
         def _fake_stream(model, tokenizer, prompt, **kwargs):
             for t in (11, 22, 33):
                 tokenizer.detokenizer.add_token(t)
             return
             yield  # makes this a generator function
-        _sys.modules["mlx_lm.generate"].stream_generate = _fake_stream
+        # The wrap saves the original stream_generate BEFORE rebinding, so
+        # this fake MUST be installed as mlx_lm.generate BEFORE install_ids_probe.
+        # In mlx_lm 0.31.3, mlx_lm.generate IS the function (not a
+        # submodule); the hook reads it via the package attr.
+        _sys.modules["mlx_lm"].generate = _fake_stream
         bonsai = _sys.modules["mlx_omarchy_bonsai2.server"] = types.ModuleType(
             "mlx_omarchy_bonsai2.server")
         bonsai.stream_generate = _fake_stream  # will be rebound to wrap
