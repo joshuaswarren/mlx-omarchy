@@ -36,6 +36,33 @@ from . import _mlxlm_server as cap_shim
 GiB = 1024**3
 DISK_SLACK_FRACTION = 0.05  # headroom over the download size for partial files
 
+# allow_patterns declared per entry (extension.download_patterns) are the
+# ONLY catalog-controlled download filter; they are validated here so a
+# vetted entry can narrow a multi-variant repo to its own variant without
+# any pattern able to escape the snapshot directory.
+PATTERN_RE = re.compile(r"^[A-Za-z0-9 ._/*\[\]-]{1,128}$")
+
+
+def download_patterns_for(entry: dict | None) -> list[str] | None:
+    if entry is None:
+        return None
+    extension = entry.get("extension") or {}
+    patterns = extension.get("download_patterns")
+    if patterns is None:
+        return None
+    if not isinstance(patterns, list) or not patterns or len(patterns) > 64:
+        raise budget.BudgetError(
+            f"{entry.get('id', 'entry')}: extension.download_patterns must be "
+            "a non-empty list (max 64) of file patterns"
+        )
+    for pattern in patterns:
+        if (not isinstance(pattern, str) or not PATTERN_RE.match(pattern)
+                or ".." in pattern):
+            raise budget.BudgetError(
+                f"{entry.get('id', 'entry')}: unsafe download pattern {pattern!r}"
+            )
+    return [str(pat) for pat in patterns]
+
 REPO_RE = re.compile(r"^[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)+$")
 
 # Catalog data must never choose executable code. A module backend is only
@@ -53,6 +80,70 @@ MODULE_MANAGED = frozenset({
     "mlx_omarchy_laya.server",
     "mlx_omarchy_bonsai2.server",
 })
+
+# Catalog entries may point at an UPSTREAM RAW repo while a module backend
+# needs its own CONVERTED artifact. Until a source->converted route exists
+# and is tested, a raw snapshot is a hard preflight refusal naming the
+# manual conversion command — never an implicit conversion download.
+# Modules that accept a server-side context flag the CLI forwards
+# (module_context_flag(module) -> flag name). Modules without an entry
+# enforce their own internal cap.
+MODULE_CONTEXT_FLAG = {
+    "mlx_omarchy_bonsai2.server": "--max-context",
+}
+
+MODULE_CONVERT_HINTS = {
+    "mlx_omarchy_laya.server":
+        "python -m mlx_omarchy_laya.convert --out <converted-dir> "
+        "--from-local <snapshot-dir> [--variant typed-decisions]",
+    "mlx_omarchy_bonsai2.server":
+        "build the pack with the mlx_omarchy_bonsai2 tooling "
+        "(serve/mlx_omarchy_bonsai2 loader/packed); see that module's docs",
+}
+
+
+def module_artifact_problem(module: str, model_dir: Path) -> str | None:
+    """Ask the module ecosystem whether model_dir is a usable converted
+    artifact. Order: the server module's own validate_artifact hook, then
+    the sibling <pkg>.convert checkpoint_state classifier (Laya contract:
+    converted/raw/invalid). No hook at all -> a conservative generic
+    reason, since raw bytes cannot be proven servable."""
+    try:
+        imported = importlib.import_module(module)
+    except Exception as exc:
+        return f"server module {module!r} is not importable ({exc})"
+    validator = getattr(imported, "validate_artifact", None)
+    if callable(validator):
+        try:
+            return validator(model_dir)
+        except Exception as exc:
+            return f"artifact validation failed: {exc}"
+    convert_module_name = module.rsplit(".", 1)[0] + ".convert"
+    try:
+        convert_module = importlib.import_module(convert_module_name)
+    except Exception:
+        return (
+            f"module {module!r} exposes no validate_artifact hook and no "
+            f"{convert_module_name}.checkpoint_state classifier; cannot "
+            "prove this directory is a converted artifact"
+        )
+    classifier = getattr(convert_module, "checkpoint_state", None)
+    if not callable(classifier):
+        return (
+            f"module {module!r} exposes no artifact validator; cannot prove "
+            "this directory is a converted artifact"
+        )
+    try:
+        state, details = classifier(model_dir)
+    except Exception as exc:
+        return f"artifact classification failed: {exc}"
+    if state == "converted":
+        return None
+    if state == "raw":
+        command = details.get("convert_command") if isinstance(details, dict) else None
+        hint = command or MODULE_CONVERT_HINTS.get(module, "convert the snapshot first")
+        return f"RAW UPSTREAM SNAPSHOT (not converted): {details}. Convert first: {hint}"
+    return f"invalid artifact: {details}"
 
 MAX_WEIGHTS_GIB = 4096
 
@@ -220,11 +311,27 @@ def backend_for(resolved: Resolved, server_flag: str | None) -> tuple[str, str |
 
 
 def hf_cache_dir() -> Path:
-    home = os.environ.get("HF_HOME")
-    base = Path(home) if home else Path.home() / ".cache/huggingface"
-    hub = base / "hub"
+    # Mirror huggingface_hub's own precedence when it is importable
+    # (HF_HUB_CACHE > HF_HOME/hub > default); fall back to the same
+    # order manually so the disk check cannot look at the wrong volume.
+    env_hub = os.environ.get("HF_HUB_CACHE")
+    if env_hub:
+        hub = Path(env_hub)
+    else:
+        try:
+            from huggingface_hub import constants as hub_constants
+
+            hub = Path(hub_constants.HF_HUB_CACHE)
+        except Exception:
+            home = os.environ.get("HF_HOME")
+            base = Path(home) if home else Path.home() / ".cache/huggingface"
+            hub = base / "hub"
     hub.mkdir(parents=True, exist_ok=True)  # the download would create it; stat it now
     return hub
+
+
+def download_need_bytes(resolved: Resolved) -> int | None:
+    return disk_need_bytes(resolved)
 
 
 def disk_need_bytes(resolved: Resolved) -> int | None:
@@ -244,7 +351,8 @@ def disk_need_bytes(resolved: Resolved) -> int | None:
 def plan_lines(resolved: Resolved, context_tokens: int, backend: str,
                module: str | None, host: str, port: int,
                weights_override: int | None, home: Path | None,
-               prompt_cache_size: int = 0) -> tuple[list[str], budget.Admission | None, bool]:
+               prompt_cache_size: int = 0,
+               patterns: list[str] | None = None) -> tuple[list[str], budget.Admission | None, bool]:
     lines: list[str] = []
     est = None
     admission = None
@@ -304,6 +412,9 @@ def plan_lines(resolved: Resolved, context_tokens: int, backend: str,
         lines.append(f"prompt cache: +{cache_extra / GiB:.2f} GiB "
                      f"({prompt_cache_size} retained entries x KV at "
                      f"{context_tokens} tokens)")
+    if patterns:
+        lines.append(f"download filter: {len(patterns)} pattern(s) from the "
+                     "catalog entry (whole-repo download prevented)")
     label = "measured peak" if est.peak_override else "workspace margin, unmeasured estimate"
     lines.append(f"margin:       {est.workspace / GiB:.2f} GiB ({label})")
     disk_ok = True
@@ -320,9 +431,13 @@ def plan_lines(resolved: Resolved, context_tokens: int, backend: str,
     return lines, admission, disk_ok
 
 
-def snapshot_complete(path: Path) -> bool:
-    """A directory alone proves nothing: verify the safetensors set the
-    index names (or the single weights file) exists and is nonempty."""
+def snapshot_complete(path: Path, patterns: list[str] | None = None) -> bool:
+    """A directory alone proves nothing: weights (index shards or single
+    file) must exist nonempty, config.json must be present, some tokenizer
+    file must be present, and every declared download pattern must be
+    satisfied (exact patterns: the file exists; wildcard patterns: at
+    least one match). Missing encoder/tokenizer configs are unacceptable
+    even when the weights are complete."""
     index = path / "model.safetensors.index.json"
     if index.is_file():
         try:
@@ -332,15 +447,31 @@ def snapshot_complete(path: Path) -> bool:
         shards = sorted(set(weight_map.values()))
         if not shards:
             return False
-        return all((path / shard).is_file() and (path / shard).stat().st_size > 0
-                   for shard in shards)
-    single = path / "model.safetensors"
-    return single.is_file() and single.stat().st_size > 0
+        if not all((path / shard).is_file() and (path / shard).stat().st_size > 0
+                   for shard in shards):
+            return False
+    else:
+        single = path / "model.safetensors"
+        if not (single.is_file() and single.stat().st_size > 0):
+            return False
+    if not (path / "config.json").is_file():
+        return False
+    if not any((path / name).is_file() for name in
+               ("tokenizer.json", "tokenizer.model", "tokenizer_config.json")):
+        return False
+    if patterns:
+        for pattern in patterns:
+            if any(ch in pattern for ch in "*?["):
+                if not any(path.glob(pattern)):
+                    return False
+            elif not (path / pattern).is_file():
+                return False
+    return True
 
 
-def probe_snapshot(resolved: Resolved) -> Path | None:
+def probe_snapshot(resolved: Resolved, patterns: list[str] | None = None) -> Path | None:
     """Local-only snapshot resolution. Returns a verified-complete path or
-    None (missing OR partial weights). Never touches the network."""
+    None (missing OR partial download). Never touches the network."""
     if resolved.local_path is not None:
         return resolved.local_path
     hub = _import_huggingface_hub()
@@ -351,10 +482,11 @@ def probe_snapshot(resolved: Resolved) -> Path | None:
             repo_id=resolved.repo,
             revision=resolved.revision,
             local_files_only=True,
+            **({"allow_patterns": patterns} if patterns else {}),
         ))
     except Exception:  # huggingface_hub raises several types for a missing snapshot
         return None
-    return path if snapshot_complete(path) else None
+    return path if snapshot_complete(path, patterns) else None
 
 
 def _import_huggingface_hub():
@@ -366,12 +498,13 @@ def _import_huggingface_hub():
     return huggingface_hub
 
 
-def download_snapshot(resolved: Resolved) -> Path:
+def download_snapshot(resolved: Resolved, patterns: list[str] | None = None) -> Path:
     hub = _import_huggingface_hub()
     if hub is None:
         raise budget.BudgetError("huggingface_hub is not installed in this environment")
     return Path(
-        hub.snapshot_download(repo_id=resolved.repo, revision=resolved.revision)
+        hub.snapshot_download(repo_id=resolved.repo, revision=resolved.revision,
+                              **({"allow_patterns": patterns} if patterns else {}))
     )
 
 
@@ -403,10 +536,15 @@ def server_argv(backend: str, module: str | None, model_dir: Path, host: str,
         # -- so the aggregate equals the admitted context. A larger
         # --prompt-cache-size re-enables caching at a documented
         # (cache + 1) x context worst case.
+        # The --max-tokens DEFAULT is bounded to min(512, context): a
+        # client that omits max_tokens inherits it, and inheriting the
+        # full context would make the shim reject every nonempty prompt
+        # (prompt + default > context). The strict prompt+output cap in
+        # the shim still applies to every request.
         argv = [sys.executable, "-m", "mlx_omarchy_serve._mlxlm_server",
                 "--model", str(model_dir),
                 "--host", host, "--port", str(port),
-                "--max-tokens", str(context_tokens),
+                "--max-tokens", str(min(512, context_tokens)),
                 "--decode-concurrency", "1",
                 "--prompt-concurrency", "1",
                 "--prompt-cache-size", str(prompt_cache_size)]
@@ -424,6 +562,9 @@ def server_argv(backend: str, module: str | None, model_dir: Path, host: str,
             # --managed: admission-controlled launch; the module must fail
             # closed if it cannot register its reservation.
             argv.append("--managed")
+        flag = MODULE_CONTEXT_FLAG.get(module)
+        if flag:
+            argv += [flag, str(context_tokens)]
         return argv
     raise budget.BudgetError(f"unknown backend {backend!r}")
 
@@ -490,7 +631,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
 
     p_res = sub.add_parser("reserve", help="declare resident memory another local service owns")
     p_res.add_argument("name")
-    p_res.add_argument("gib", type=float)
+    p_res.add_argument("gib", type=parse_weights_gib)
     p_res.add_argument("--note", default="")
     p_unres = sub.add_parser("unreserve", help="remove a reservation")
     p_unres.add_argument("name")
@@ -584,16 +725,17 @@ def do_plan(args, cat, home) -> tuple[Resolved, list[str], budget.Admission | No
         raise budget.BudgetError(
             "--prompt-cache-size applies only to the mlx-lm backend"
         )
+    patterns = download_patterns_for(resolved.entry)
     lines, admission, disk_ok = plan_lines(
         resolved, context, backend, module, args.host, args.port,
         args.weights_gib if args.weights_gib else None, home,
-        prompt_cache_size=cache_size,
+        prompt_cache_size=cache_size, patterns=patterns,
     )
-    return resolved, lines, admission, disk_ok, backend, module, context
+    return resolved, lines, admission, disk_ok, backend, module, context, patterns
 
 
 def cmd_plan(args, cat, home) -> int:
-    _resolved, lines, _adm, _disk, _backend, _module, _ctx = do_plan(args, cat, home)
+    _resolved, lines, _adm, _disk, _backend, _module, _ctx, _pat = do_plan(args, cat, home)
     print("\n".join(lines))
     return 0
 
@@ -602,23 +744,24 @@ def approve_download(lines: list[str], *, interactive: bool, assume_yes: bool,
                      explicit_target: bool, input_fn=None) -> bool:
     print("\n".join(lines))
     print()
+    # The invariant holds in BOTH modes: --yes means "pre-approved", and
+    # pre-approval requires a named target — interactive or not.
+    if assume_yes and not explicit_target:
+        print("refusing: --yes requires an explicitly named target; nothing was downloaded",
+              file=sys.stderr)
+        return False
     if not interactive:
         if not assume_yes:
             print("refusing: noninteractive without --yes; nothing was downloaded", file=sys.stderr)
             return False
-        if not explicit_target:
-            print("refusing: --yes requires an explicitly named target; nothing was downloaded",
-                  file=sys.stderr)
-            return False
-        return True
-    if assume_yes:
         return True
     answer = (input_fn or input)("Download this model now? Type 'yes' to proceed: ")
     return answer.strip().lower() == "yes"
 
 
 def cmd_serve(args, cat, home) -> int:
-    resolved, lines, admission, disk_ok, backend, module, context = do_plan(args, cat, home)
+    (resolved, lines, admission, disk_ok, backend, module, context,
+     patterns) = do_plan(args, cat, home)
     if (admission is not None and not admission.fits) or not disk_ok:
         print("\n".join(lines), file=sys.stderr)
         print("\nrefusing: does not fit (memory or disk); nothing was downloaded or started",
@@ -626,41 +769,142 @@ def cmd_serve(args, cat, home) -> int:
         return 1
 
     interactive = sys.stdin.isatty()
-    model_dir = probe_snapshot(resolved)
+    if resolved.entry is not None and patterns is None and download_need_bytes(resolved):
+        warn(f"{resolved.entry['id']} declares no extension.download_patterns; "
+             "the WHOLE repo will download — ensure the disk budget covers it")
+    model_dir = probe_snapshot(resolved, patterns)
+    if model_dir is not None and resolved.local_path is not None \
+            and backend == "mlx-lm" and not snapshot_complete(model_dir, patterns):
+        return fail(
+            f"local model directory {model_dir} is not a complete servable "
+            "artifact (weights shards, config.json, and a tokenizer file are "
+            "all required)", 2)
     download = model_dir is None
     if download and offline_requested(args):
         return fail("--offline set and a complete model is not on disk; refusing to download", 1)
 
     if download:
+        # F9: a non-catalog repo has no pinned revision, so resolve the
+        # actual current commit SHA BEFORE approval and hold it fixed for
+        # the download — what the user approves is exactly what fetches.
+        if resolved.revision is None and resolved.repo is not None:
+            hub = _import_huggingface_hub()
+            sha = None
+            if hub is not None:
+                try:
+                    sha = getattr(hub.model_info(resolved.repo), "sha", None)
+                except Exception as exc:
+                    return fail(f"cannot resolve the current commit of "
+                                f"{resolved.repo} ({exc}); refusing an "
+                                "un-pinned download", 1)
+            if not sha:
+                return fail(f"cannot resolve the current commit of "
+                            f"{resolved.repo}; refusing an un-pinned download", 1)
+            resolved.revision = str(sha)
+            lines.append(f"revision:     {sha} (resolved pre-approval)")
         if not approve_download(lines, interactive=interactive, assume_yes=args.yes,
                                 explicit_target=resolved.named_explicitly):
             return 1
-        model_dir = download_snapshot(resolved)
+        model_dir = download_snapshot(resolved, patterns)
+        if not snapshot_complete(model_dir, patterns):
+            return fail("downloaded snapshot is incomplete (weights, configs, or "
+                        "declared files missing); refusing to launch", 3)
         print(f"downloaded to {model_dir}")
     else:
         print("\n".join(lines))
     check_custom_code(model_dir)
 
-    if backend == "omlx" and not omlx_available():
-        return fail("omlx is not installed (source install only; see docs/serve.md); "
-                    "use --server mlx-lm", 3)
+    if backend == "module":
+        problem = module_artifact_problem(module, model_dir)
+        if problem:
+            hint = MODULE_CONVERT_HINTS.get(module)
+            print(f"error: {problem}", file=sys.stderr)
+            if hint:
+                print(f"convert the source snapshot first: {hint}", file=sys.stderr)
+            return fail("module backend requires its own converted artifact; "
+                        "the raw catalog/source snapshot is not servable", 2)
+
     if backend == "omlx":
-        warn("omlx backend: no verified server-side context cap flag; the "
-             "admitted context budget is enforced by this estimate only")
+        if not omlx_available():
+            return fail("omlx is not installed (source install only; see "
+                        "docs/serve.md); use --server mlx-lm", 3)
+        # omlx has no verified server-side context cap: the admitted
+        # context cannot be enforced, so the launch is memory-unsafe.
+        return fail("omlx backend has no verified server-side context cap; "
+                    "refusing to launch (memory safety cannot be enforced). "
+                    "Use --server mlx-lm", 3)
     if host_nonlocal(args.host):
         warn(f"{args.host} is not loopback: this development server has no authentication")
 
+    # Shared launch boundary: backends that do NOT self-manage their
+    # reservation (mlx-lm) get an atomic admit+reserve for the FULL
+    # requirement BEFORE the child spawns, held for the child's whole
+    # lifetime (conservative: the CLI cannot prove residency, so it never
+    # relabels). Module backends own their atomic reservation instead.
+    #
+    # Ordering (Main review): argv/env/signal handler are built FIRST;
+    # admit -> spawn -> wait run inside ONE try/finally so no failure
+    # between reserve and spawn can leak the reservation. Cleanup is
+    # SIGTERM-safe: the handler converts the signal into SystemExit, the
+    # finally terminates the child with a bounded wait (escalating to
+    # kill), and the reservation is released ONLY once the child is
+    # confirmed dead — otherwise it is retained (fail closed) so a future
+    # admission cannot double-count the child's RAM.
     argv = server_argv(backend, module, model_dir, args.host, args.port, context,
                        prompt_cache_size=max(int(getattr(args, "prompt_cache_size", 0) or 0), 0))
     child_env = dict(os.environ)
     if backend == "mlx-lm":
         child_env[cap_shim.LIMIT_ENV] = str(context)
-    print(f"launching: {' '.join(argv)}")
+    import signal
+    import threading
+
+    def _on_sigterm(signum, _frame):
+        raise SystemExit(128 + signum)
+
+    in_main_thread = threading.current_thread() is threading.main_thread()
+    previous_term = signal.signal(signal.SIGTERM, _on_sigterm) if \
+        in_main_thread else None
+    launch_owner = None
+    launch_name = None
+    child = None
     try:
-        completed = subprocess.run(argv, env=child_env)
+        if backend != "module":
+            launch_owner = budget.generate_owner()
+            launch_name = f"{backend}-launch-{launch_owner}"
+            budget.admit_and_reserve(
+                launch_name, admission.required,
+                note=f"CLI launch: {resolved.repo or resolved.local_path}",
+                owner=launch_owner, home=home, state="pending")
+        child = subprocess.Popen(argv, env=child_env)
+        returncode = child.wait()
+    except budget.BudgetError as exc:
+        print("\n".join(lines), file=sys.stderr)
+        return fail(f"concurrent launch refused: {exc}", 1)
     except FileNotFoundError as exc:
         return fail(f"server launch failed: {exc}", 3)
-    return completed.returncode
+    finally:
+        if child is not None and child.poll() is None:
+            child.terminate()
+            try:
+                child.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                child.kill()
+                try:
+                    child.wait(timeout=10)
+                except subprocess.TimeoutExpired:
+                    pass
+        confirmed_dead = child is None or child.poll() is not None
+        if launch_name is not None:
+            if confirmed_dead:
+                budget.clear_reservation(launch_name, home, owner=launch_owner)
+            else:
+                print(
+                    f"error: launched child did not confirm termination; "
+                    f"RETAINING its reservation {launch_name!r} (fail closed "
+                    "until manually cleared via unreserve)", file=sys.stderr)
+        if previous_term is not None:
+            signal.signal(signal.SIGTERM, previous_term)
+    return returncode
 
 
 def host_nonlocal(host: str) -> bool:
@@ -701,8 +945,11 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(sys.argv[1:] if argv is None else argv)
     home = budget.default_home()
     try:
-        catalog.refresh(home=home, offline=offline_requested(args))
-        cat = catalog.load_catalog(home)
+        if args.command in ("reserve", "unreserve"):
+            cat = None  # reservation bookkeeping never needs the catalog
+        else:
+            catalog.refresh(home=home, offline=offline_requested(args))
+            cat = catalog.load_catalog(home)
         if args.command == "recommend":
             return cmd_recommend(args, cat, home)
         if args.command == "plan":
@@ -712,8 +959,8 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "catalog":
             return cmd_catalog(args, cat, home)
         if args.command == "reserve":
-            budget.set_reservation(args.name, int(args.gib * GiB), args.note, home)
-            print(f"reserved {args.gib:g} GiB for {args.name}")
+            budget.set_reservation(args.name, args.gib, args.note, home)
+            print(f"reserved {args.gib / GiB:g} GiB for {args.name}")
             return 0
         if args.command == "unreserve":
             if not budget.clear_reservation(args.name, home):
