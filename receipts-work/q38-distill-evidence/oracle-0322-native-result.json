@@ -1,0 +1,11 @@
+{
+  "mlx_version": "0.32.2",
+  "metal_available": true,
+  "default_device": "Device(gpu, 0)",
+  "input_dtype": "mlx.core.bfloat16",
+  "weight_dtype": "mlx.core.bfloat16",
+  "maxabs_fused_vs_double": 0.0,
+  "bit_identical_fused_vs_double": true,
+  "maxabs_fused_vs_single": 0.125,
+  "maxabs_fused_vs_fp32ref": 0.12189483642578125
+}
