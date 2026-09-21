@@ -1,6 +1,6 @@
 # Community hardware data snapshot
 
-Records: 75 | dataset generated_at: 2026-09-20T03:17:00.000Z | source: https://mlx-omarchy-community-data.joshua-s-warren.workers.dev
+Records: 76 | dataset generated_at: 2026-09-21T03:17:00.000Z | source: https://mlx-omarchy-community-data.joshua-s-warren.workers.dev
 
 Mirrored by `.github/workflows/community-data.yml` from the public
 read API. Summaries only; archive blobs stay on the endpoint.
@@ -82,6 +82,7 @@ read API. Summaries only; archive blobs stay on the endpoint.
 | [95c59a744577](https://mlx-omarchy-community-data.joshua-s-warren.workers.dev/v1/results/95c59a744577ec0b2820bdeb81208410f0d05ac2a01233960e758b6f2e4378a8) | deep | apple,t6020 | 7.1.13-3-1-ARCH | - | 0.32.2.dev202609161852+2e252962 | [0](https://mlx-omarchy-community-data.joshua-s-warren.workers.dev/v1/results/95c59a744577ec0b2820bdeb81208410f0d05ac2a01233960e758b6f2e4378a8/archive) |
 | [c901d2bb47ba](https://mlx-omarchy-community-data.joshua-s-warren.workers.dev/v1/results/c901d2bb47ba4466c3c4733f094720fbe6b1b820d44e8543f49d1b5031a79f58) | deep | apple,t6000 | 7.1.13-3-1-ARCH | Honeykrisp | 0.32.3.dev202609190758+50eeb29 | [6](https://mlx-omarchy-community-data.joshua-s-warren.workers.dev/v1/results/c901d2bb47ba4466c3c4733f094720fbe6b1b820d44e8543f49d1b5031a79f58/archive) |
 | [5c803596fd75](https://mlx-omarchy-community-data.joshua-s-warren.workers.dev/v1/results/5c803596fd75416a012ad6f01b35236da559beaca683534b066a54d131b8e8a7) | deep | apple,t6020 | 7.1.13-3-2-ARCH | Honeykrisp | 0.32.3.dev202609190758+50eeb29 | [6](https://mlx-omarchy-community-data.joshua-s-warren.workers.dev/v1/results/5c803596fd75416a012ad6f01b35236da559beaca683534b066a54d131b8e8a7/archive) |
+| [fbc20029b7fd](https://mlx-omarchy-community-data.joshua-s-warren.workers.dev/v1/results/fbc20029b7fd044b287f75bf42631539e67a3cc89cafcea74fb97c5eef801245) | deep | apple,t6000 | 7.1.13-2-1-ARCH | - | 0.32.3.dev202609190758+50eeb29 | [0](https://mlx-omarchy-community-data.joshua-s-warren.workers.dev/v1/results/fbc20029b7fd044b287f75bf42631539e67a3cc89cafcea74fb97c5eef801245/archive) |
 
 Query this snapshot:
 
