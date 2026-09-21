@@ -1,0 +1,78 @@
+{
+  "prompt_ids": [
+    760,
+    6511,
+    314,
+    9338,
+    369
+  ],
+  "tokenizer_identity": "device raw encode == cpu encode == [760, 6511, 314, 9338, 369]",
+  "step2_forced_prefix_ids": [
+    760,
+    6511,
+    314,
+    9338,
+    369,
+    11751
+  ],
+  "step2_cpu_quantized_top8": [
+    [
+      11,
+      20.0
+    ],
+    [
+      13,
+      18.5
+    ],
+    [
+      318,
+      16.375
+    ],
+    [
+      198,
+      15.4375
+    ],
+    [
+      30,
+      15.3125
+    ],
+    [
+      321,
+      15.1875
+    ],
+    [
+      271,
+      14.6875
+    ],
+    [
+      1116,
+      14.5625
+    ]
+  ],
+  "step2_cpu_top1": [
+    11,
+    20.0
+  ],
+  "step2_cpu_top1_is_11": true,
+  "step2_margin_top1_top2": 1.5,
+  "step2_margin_top1_vs_13": 1.5,
+  "step2_device_choice_13_rank_and_gap": [
+    [
+      13,
+      1.5
+    ]
+  ],
+  "backend_jitter_floor_maxabs": 0.0,
+  "backend_jitter_floor_relL2": 0.0,
+  "teacher_forced_cpu_reference_64": null,
+  "teacher_forced_len": 23,
+  "teacher_forced_top1_match_count": 17,
+  "teacher_forced_first_mismatch": {
+    "position": 1,
+    "forced_id": 6511,
+    "top1_id": 2614,
+    "top1_matches_forced": false,
+    "margin_top1_top2": 1.5625
+  },
+  "teacher_forced_min_margin": 0.125
+}

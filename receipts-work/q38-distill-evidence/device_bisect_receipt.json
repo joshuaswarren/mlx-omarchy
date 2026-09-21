@@ -1,0 +1,81 @@
+{
+  "kind": "device_forced_prefix_bisect_evidence",
+  "source_revision": "bcc2dbe2f21b213625df2dc1a5a690212373af07",
+  "device": "16-inch M1 Max class (T6001), Linux, Vulkan (honeykrisp), mlx-lm 0.31.3 / mlx wheel 5b18306",
+  "method": "identical forced inputs both backends: (a) step-2 prefix prompt+[11751] per-layer last-position hidden trace diff, (b) 24-position fixture per-position full-vocab logit diff, (c) deep prefix prompt+[11751,11] decision logits",
+  "per_layer_relL2_last_position": {
+    "embed": 0.004783255979418755,
+    "layer_00_out": 0.06061902269721031,
+    "layer_01_out": 0.09723407030105591,
+    "layer_02_out": 0.07364758849143982,
+    "layer_03_out": 0.12109654396772385,
+    "layer_04_out": 0.10778623074293137,
+    "layer_05_out": 0.10578615963459015,
+    "layer_06_out": 0.0948876440525055,
+    "layer_07_out": 0.11161799728870392,
+    "layer_08_out": 0.1284179985523224,
+    "layer_09_out": 0.1174175962805748,
+    "layer_10_out": 0.09681689739227295,
+    "layer_11_out": 0.10969632863998413,
+    "layer_12_out": 0.11188934743404388,
+    "layer_13_out": 0.11238286644220352,
+    "layer_14_out": 0.11473607271909714,
+    "layer_15_out": 0.12981045246124268,
+    "layer_16_out": 0.14435972273349762,
+    "layer_17_out": 0.14712508022785187,
+    "layer_18_out": 0.12416134774684906,
+    "layer_19_out": 0.14331328868865967,
+    "layer_20_out": 0.13526661694049835,
+    "layer_21_out": 0.1319742500782013,
+    "layer_22_out": 0.11303975433111191,
+    "layer_23_out": 0.13083572685718536,
+    "layer_24_out": 0.13510939478874207,
+    "layer_25_out": 0.13897106051445007,
+    "layer_26_out": 0.12466635555028915,
+    "layer_27_out": 0.1328737735748291,
+    "layer_28_out": 0.14094224572181702,
+    "layer_29_out": 0.1432586908340454,
+    "layer_30_out": 0.11734805256128311,
+    "layer_31_out": 0.17628084123134613,
+    "layer_32_out": 0.17243270576000214,
+    "layer_33_out": 0.15974321961402893,
+    "layer_34_out": 0.12040497362613678,
+    "layer_35_out": 0.15562357008457184,
+    "layer_36_out": 0.1661587506532669,
+    "layer_37_out": 0.17738565802574158,
+    "layer_38_out": 0.1581486612558365,
+    "layer_39_out": 0.19013899564743042,
+    "final_norm": 0.19600678980350494,
+    "logits": 0.1744765341281891
+  },
+  "finding": "DISTRIBUTED divergence: relL2 ~0.06 at layer-0 output growing to ~0.19 at logits across ALL layers (maxabs per layer 0.02-0.63, first >0.1 at layer_14, >1.0 only at final_norm); fixture worst at position 0 (maxabs 6.28, relL2 0.358, shortest context). No single wrong layer/op isolated; consistent with per-op accumulation-order/precision differences compounding through 40 layers.",
+  "step2_decision": {
+    "cpu": {
+      "11": 20.0,
+      "13": 18.5,
+      "top1": 11
+    },
+    "device": {
+      "11": 19.25,
+      "13": 19.625,
+      "top1": 13
+    },
+    "delta_band": "logit deltas 0.75-1.125 at the competing IDs, within the measured 2.55 logits maxabs"
+  },
+  "deep_prefix": {
+    "cpu_top1": 264,
+    "device_top1": 264,
+    "agreement": "top-1 agrees (264); top-8 near-identical sets with band-level ordering swaps",
+    "delta": {
+      "maxabs": 1.875,
+      "relL2": 0.142198383808136
+    },
+    "device_11": 5.03125,
+    "device_13": 4.34375,
+    "cpu_11": 6.1875,
+    "cpu_13": 5.1875
+  },
+  "fixture_continuation_numeric_agreement": "14/18 device top1 == cpu top1 at continuation positions",
+  "acceptance_contract": "DRAFT in docs/plans/2026-09-20-q38-distill-device-qualification-plan.md; bands to be proposed from THESE accumulated-delta measurements for owner approval before any qualifying run",
+  "claim_scope": "numeric divergence localization evidence; no qualification change; no performance claim"
+}

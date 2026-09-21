@@ -1,0 +1,91 @@
+{
+  "kind": "device_forward_evidence",
+  "source_revision": "bcc2dbe2f21b213625df2dc1a5a690212373af07",
+  "artifact_shard_hashes": "matched receipt.json (verified on device post-transfer)",
+  "device": "16-inch M1 Max class (T6001), Linux, Vulkan (honeykrisp) backend, mlx-lm 0.31.3 / mlx 0.32.3.dev wheel 5b18306",
+  "protocol": "frozen vector: raw tokenizer encode, greedy generate_step, max_tokens 16, two runs",
+  "tokenizer_gate": {
+    "cpu_prompt_tokens": 5,
+    "device_prompt_tokens": 5,
+    "device_prompt_ids": [
+      760,
+      6511,
+      314,
+      9338,
+      369
+    ],
+    "note": "CLI mlx_lm.generate applies the chat template (15 prompt tokens) and is NOT vector-faithful; the python path is"
+  },
+  "logits": {
+    "shape": [
+      1,
+      5,
+      248320
+    ],
+    "finite": true
+  },
+  "cpu_reference_ids": [
+    11751,
+    11,
+    264,
+    3177,
+    3750,
+    364,
+    1141,
+    8807,
+    3712,
+    11,
+    1880,
+    11,
+    321,
+    7431,
+    13,
+    1049
+  ],
+  "device_run1_ids": [
+    11751,
+    13,
+    1049,
+    369,
+    279,
+    7526,
+    3177,
+    303,
+    9338,
+    11,
+    440,
+    264,
+    6823,
+    314,
+    888,
+    220
+  ],
+  "device_run2_ids": [
+    11751,
+    13,
+    1049,
+    369,
+    279,
+    7526,
+    3177,
+    303,
+    9338,
+    11,
+    440,
+    264,
+    6823,
+    314,
+    888,
+    220
+  ],
+  "device_deterministic": true,
+  "first_token_match": true,
+  "first_divergence_position": 1,
+  "cpu_text": " Paris, a city known for its rich history, art, and culture. It",
+  "device_text": " Paris. It is the largest city in France, with a population of over ",
+  "outcome": "DIVERGENCE per frozen rule: first token matches (11751 ' Paris'), sequence diverges at position 2 (CPU ',' vs device '.'); both continuations coherent and factual; qualification NOT auto-granted \u2014 owner review required",
+  "warnings": [
+    "RotaryEmbeddingConfigMixin: no validation function for rope_type=axial (vision-tower rope; non-fatal on text path)"
+  ],
+  "claim_scope": "device greedy generation evidence; no performance claim (3.04 tok/s recorded as context only); no bf16 parity claim"
+}

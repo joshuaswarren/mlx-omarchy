@@ -1,0 +1,60 @@
+{
+  "kind": "cpu_forward_evidence",
+  "artifact": "<artifact-dir>",
+  "source_revision": "bcc2dbe2f21b213625df2dc1a5a690212373af07",
+  "shard_hashes": "matched receipt.json (all 6)",
+  "admission": {
+    "mem_available_GiB": 33.48,
+    "requested_GiB": 22,
+    "rss_peak_GiB": 18.62
+  },
+  "threads": "4 (taskset 15,17,18,22)",
+  "logits_finite": true,
+  "logits_shape": [
+    1,
+    5,
+    248320
+  ],
+  "generated_ids_run1": [
+    11751,
+    11,
+    264,
+    3177,
+    3750,
+    364,
+    1141,
+    8807,
+    3712,
+    11,
+    1880,
+    11,
+    321,
+    7431,
+    13,
+    1049
+  ],
+  "generated_text_run1": " Paris, a city known for its rich history, art, and culture. It",
+  "generated_ids_run2": [
+    11751,
+    11,
+    264,
+    3177,
+    3750,
+    364,
+    1141,
+    8807,
+    3712,
+    11,
+    1880,
+    11,
+    321,
+    7431,
+    13,
+    1049
+  ],
+  "deterministic": true,
+  "load_seconds": 5.4,
+  "generate_seconds": 346.6,
+  "mlx": "mlx-lm 0.31.3 / mlx 0.32.3",
+  "claim_scope": "load + real generated token ids on CPU; NO bf16 parity claim, NO device performance claim"
+}

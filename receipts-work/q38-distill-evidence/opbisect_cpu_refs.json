@@ -1,0 +1,177 @@
+{
+  "embed_out": {
+    "shape": [
+      6,
+      2048
+    ],
+    "dtype": "bfloat16"
+  },
+  "l0_input_layernorm": {
+    "shape": [
+      6,
+      2048
+    ],
+    "dtype": "bfloat16"
+  },
+  "l0_attn_branch": {
+    "shape": [
+      6,
+      2048
+    ],
+    "dtype": "bfloat16"
+  },
+  "l0_attn_sum": {
+    "shape": [
+      6,
+      2048
+    ],
+    "dtype": "bfloat16"
+  },
+  "l0_post_layernorm": {
+    "shape": [
+      6,
+      2048
+    ],
+    "dtype": "bfloat16"
+  },
+  "l0_mlp_out": {
+    "shape": [
+      6,
+      2048
+    ],
+    "dtype": "bfloat16"
+  },
+  "l0_layer_out": {
+    "shape": [
+      6,
+      2048
+    ],
+    "dtype": "bfloat16"
+  },
+  "l1_input_layernorm": {
+    "shape": [
+      6,
+      2048
+    ],
+    "dtype": "bfloat16"
+  },
+  "l1_attn_branch": {
+    "shape": [
+      6,
+      2048
+    ],
+    "dtype": "bfloat16"
+  },
+  "l1_attn_sum": {
+    "shape": [
+      6,
+      2048
+    ],
+    "dtype": "bfloat16"
+  },
+  "l1_post_layernorm": {
+    "shape": [
+      6,
+      2048
+    ],
+    "dtype": "bfloat16"
+  },
+  "l1_mlp_out": {
+    "shape": [
+      6,
+      2048
+    ],
+    "dtype": "bfloat16"
+  },
+  "l1_layer_out": {
+    "shape": [
+      6,
+      2048
+    ],
+    "dtype": "bfloat16"
+  },
+  "l2_input_layernorm": {
+    "shape": [
+      6,
+      2048
+    ],
+    "dtype": "bfloat16"
+  },
+  "l2_attn_branch": {
+    "shape": [
+      6,
+      2048
+    ],
+    "dtype": "bfloat16"
+  },
+  "l2_attn_sum": {
+    "shape": [
+      6,
+      2048
+    ],
+    "dtype": "bfloat16"
+  },
+  "l2_post_layernorm": {
+    "shape": [
+      6,
+      2048
+    ],
+    "dtype": "bfloat16"
+  },
+  "l2_mlp_out": {
+    "shape": [
+      6,
+      2048
+    ],
+    "dtype": "bfloat16"
+  },
+  "l2_layer_out": {
+    "shape": [
+      6,
+      2048
+    ],
+    "dtype": "bfloat16"
+  },
+  "l3_input_layernorm": {
+    "shape": [
+      6,
+      2048
+    ],
+    "dtype": "bfloat16"
+  },
+  "l3_attn_branch": {
+    "shape": [
+      6,
+      2048
+    ],
+    "dtype": "bfloat16"
+  },
+  "l3_attn_sum": {
+    "shape": [
+      6,
+      2048
+    ],
+    "dtype": "bfloat16"
+  },
+  "l3_post_layernorm": {
+    "shape": [
+      6,
+      2048
+    ],
+    "dtype": "bfloat16"
+  },
+  "l3_mlp_out": {
+    "shape": [
+      6,
+      2048
+    ],
+    "dtype": "bfloat16"
+  },
+  "l3_layer_out": {
+    "shape": [
+      6,
+      2048
+    ],
+    "dtype": "bfloat16"
+  }
+}

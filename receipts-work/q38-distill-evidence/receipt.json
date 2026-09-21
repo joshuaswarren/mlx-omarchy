@@ -1,0 +1,19 @@
+{
+  "source_repo": "empero-ai/Qwen3.8-35B-A3B-Distill",
+  "source_revision": "bcc2dbe2f21b213625df2dc1a5a690212373af07",
+  "source_license": "apache-2.0",
+  "output_license": "apache-2.0",
+  "bits": 4,
+  "group": 64,
+  "provenance": "mlx 0.32.2 core=core.cpython-311-x86_64-linux-gnu.so:4c73887d9a0ebe95",
+  "shard_sha256": {
+    "model-1-of-6.safetensors": "640d25f27ffbf25a9daa5bc8db147f23edc914e1f5303f99e381af25a0ef28af",
+    "model-2-of-6.safetensors": "fc10593d6feafc4ebc68e4d3767e94532e1a1d5374827c8f009e67b691b693ee",
+    "model-3-of-6.safetensors": "a762747f333bd1f89b8cab326b2911c1a66094668fbf908fa4a991d393341461",
+    "model-4-of-6.safetensors": "ca8a62e28c6132f1fbaf5a47c7cff8bd3e3879720897bfed1d0b6fa42615e22e",
+    "model-5-of-6.safetensors": "ef843bd297584ac2eaac01fe12e6186a0fb6ddc2d0a4adc6d7afcc8bff7e1ce1",
+    "model-6-of-6.safetensors": "413a4e3e34ad1e17c245732ad3cbba8752944a98763584caf3e032ead8fce4af"
+  },
+  "n_tensors": 1757,
+  "n_quantized": 512
+}
