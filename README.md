@@ -19,20 +19,30 @@ One-command install on an M1 running Omarchy, the first model download, the stre
 Current text-generation guidance and the qualification limits of local
 OpenAI-compatible servers: [docs/serve.md](docs/serve.md).
 
-A serving catalog CLI (`omarchy mlx serve`) with memory-aware approved
-downloads, and typed-decision co-serving (Laya), are being integrated —
-docs/serve.md marks what is qualified and what is still pending.
+The serving catalog CLI (`omarchy mlx serve`; approve-first downloads,
+memory-aware admission) and the Laya typed-decisions server
+(device-qualified on an M1 Max) are in this source tree — not yet in any
+published release. docs/serve.md distinguishes source-checkout use from
+release packaging and marks what is qualified.
 
 ## Hardware
 
 Apple M1 is verified on [Omarchy](https://github.com/omarchy-mac/omarchy-mac) with Mesa Honeykrisp. Apple M1 Max GPU is measured; T6001 `/dev/accel/accel0` is live. M2 Max (T6021) GPU is verified third-silicon on Mesa Honeykrisp / Vulkan 1.4.354; M2 Max ANE is **not** live-inference-qualified on the Linux driver. Apple GPU and Apple ANE are separate lanes: T6021 GPU qualification does not qualify T6021 ANE.
 
-**Current hardware status (2026-09-20):** m1-test-host (T8103) fresh Arch boot
-reported (user-observed at login); Omarchy provisioning and benchmark
-recertification pending. Historical M1 numbers in this tree are dated
-evidence from prior Linux boots and are not a current recert. t6001-test-host
-(T6001) Linux ANE is live; t6021-test-host (T6021) Linux reads kernel 7.1.13-3-1-ARCH
-stable, ANE_UNBOUND, no `/dev/accel/accel0`.
+**Current hardware status (2026-09-20):** m1-test-host (T8103) runs provisioned
+Omarchy, and its Linux ANE qualification ladder has Step 5 closed: full-ASR
+runs are transcript-exact **104/104** with mel/hidden/transcript goldens
+bit-exact across two clean repeats on the fork driver
+([receipt 3babdb5](https://github.com/joshuaswarren/ane-linux-experiments/commit/3babdb5)),
+and a 10/10 resident-batch perf battery measured the encoder stage under AC
+partition at 5078–5274 ms (median 5217.4 ms) against the 259.9 ms macOS
+same-encoder divisor — an honest ~20× baseline across different OS
+generations, not a performance-parity claim
+([receipt 119b954](https://github.com/joshuaswarren/ane-linux-experiments/commit/119b954)).
+Hybrid partition and full-encoder coverage are still pending. Older M1
+numbers in this tree remain dated evidence from prior boots. t6001-test-host (T6001)
+Linux ANE is live. t6021-test-host (T6021) reads kernel 7.1.13-3-1-ARCH stable,
+ANE_UNBOUND, no `/dev/accel/accel0`; T6021 ANE is not qualified.
 
 Later SoCs follow.
 
@@ -205,17 +215,21 @@ The compiled-bf16 tape gate lifted 2026-09-18 (`064b7301`): compile-ON is digest
 The Apple Neural Engine is an internal accelerator for static graph regions, not a user-facing `mx.ane` device.
 
 **ANE current status (2026-09-20):** live Linux ANE inference is qualified
-on the M1 Max (T6001, t6001-test-host) and previously qualified on the M1 (T8103,
-m1-test-host, historical). The M2 Max (T6021) GPU path is qualified, but the M2
-Max ANE is **not** live-inference-qualified on the Linux driver (macOS
-ANE numbers cited below are macOS CoreML / `aned` measurements on t6021-test-host
-/ studio-host, not Linux-side execution). Apple GPU and Apple ANE are
-separate lanes: M2 Max GPU qualification does not qualify M2 Max ANE.
+on the M1 Max (T6001, t6001-test-host) and current again on the M1 (T8103, m1-test-host):
+after re-provisioning, m1-test-host's Step 5 closed 2026-09-20 with full-ASR
+104/104 across two bit-exact repeats and a 10/10 perf battery whose
+encoder stage measured 5078–5274 ms (median 5217.4 ms) under AC partition
+— see the Hardware section receipts. The M2 Max (T6021) GPU path is
+qualified, but the M2 Max ANE is **not** live-inference-qualified on the
+Linux driver (macOS ANE numbers cited below are macOS CoreML / `aned`
+measurements on t6021-test-host / studio-host, not Linux-side execution; the M2 ANE
+still does not ACK). Apple GPU and Apple ANE are separate lanes: M2 Max
+GPU qualification does not qualify M2 Max ANE.
 The T6021 driver descriptor
 ([`omarchy-ane/ane/src/ane_drv.c` `ane_soc_t6021`](https://github.com/joshuaswarren/omarchy-ane/blob/main/ane/src/ane_drv.c))
 is `ANE_RECOGNIZED`, not `ANE_QUALIFIED`.
 
-The v0.6.0 wheel ships the public Parakeet reference encoder on ANE end to end on the M1 (`T8103`) **and** the M1 Max (`T6001`). Both laptops pass full E2E **104/104 transcript-exact** ([receipts/2026-09-16-parakeet-e2e-both-hosts.md](receipts/2026-09-16-parakeet-e2e-both-hosts.md): m1-test-host 8541.8 ms, t6001-test-host 6418.5 ms, transcript `db501a8c…`, `encoder_hidden` = pin `38c73261…` identical bytes on both hosts, island batch 1/1/0, `tdt_fallback_reason: null`). **Historical dated evidence** — the m1-test-host row is from a prior Linux boot (pre-2026-09-18) and is not a current recert; the t6001-test-host row is the live non-m1-test-host data path.
+The v0.6.0 wheel ships the public Parakeet reference encoder on ANE end to end on the M1 (`T8103`) **and** the M1 Max (`T6001`). Both laptops pass full E2E **104/104 transcript-exact** ([receipts/2026-09-16-parakeet-e2e-both-hosts.md](receipts/2026-09-16-parakeet-e2e-both-hosts.md): m1-test-host 8541.8 ms, t6001-test-host 6418.5 ms, transcript `db501a8c…`, `encoder_hidden` = pin `38c73261…` identical bytes on both hosts, island batch 1/1/0, `tdt_fallback_reason: null`). The m1-test-host row is from a prior Linux boot; m1-test-host's current 2026-09-20 recertification is the Step-5 closure in the Hardware section above.
 
 macOS CoreML divisor for the same die (m1-test-host/T8103, [`ane-linux-experiments/receipts/2026-09-18-t8103-divisor-macos27.md`](https://github.com/joshuaswarren/ane-linux-experiments/blob/main/receipts/2026-09-18-t8103-divisor-macos27.md)): CoreML `transcribe` wall, median of all 10 runs, **259.9 ms `.ane` / 266.7 ms `.all`** on macOS 27.0 / CoreML 3600.25.2; the M1-Ultra reference (studio-host) is 292.2 / 305.8 ms on macOS 26.6.2 / CoreML 3520. **Cross-OS caveat: the two sides are different OS/CoreML generations, so ratios are indicative, not exact.** This is also a different stage definition than the Linux pipeline number above (CoreML `transcribe` wall vs whole mel → ANE → TDT pipeline) — the divisor is the reference-class target for the Linux ANE port, not a like-for-like comparison.
 

@@ -53,7 +53,11 @@ Laya is not a chat LLM: it is a ~421M-parameter non-autoregressive typed
 decision model (choice / score / yes-no questions) with calibrated
 probabilities and an explicit escalate/abstain probability per answer,
 served as a second model with its own model id and its own typed
-decision endpoint — a shape `mlx_lm.server` does not offer.
+decision endpoint — a shape `mlx_lm.server` does not offer. Serving it
+is two steps: the in-repo `mlx_omarchy_laya` converter first converts
+convaiinnovations/laya @ `1c5edc17` into a local checkpoint, then
+`mlx_omarchy_laya.server` serves that checkpoint — conversion and
+serving are separate commands.
 
 On 2026-09-20 the decisions endpoint passed device qualification on an
 M1 Max: 6/6 frozen numerical gates (fp16 GPU against an fp32 CPU
@@ -68,34 +72,35 @@ remains unqualified. The code ships with the release that contains it,
 and the catalog's recommendation flags stay off pending the integration
 decision.
 
-## Serving catalog CLI (pending — not released, pending acceptance)
+## Serving catalog CLI
 
-The installer's serve front door is `mlx-omarchy-serve` in `~/.local/bin`,
-intended to expose the same surface as `omarchy mlx serve …`. The command
-shapes below are verified against the implementation branch, but the CLI
-is **not released and not accepted**: a critical review found behavior
-gaps that are being fixed — auto-recommend could surface unqualified
-models, the disk-space refusal and context limits were not enforced on
-the serve path, an "offline" run with a cached catalog could still touch
-the network, and the `module` backend could execute catalog-supplied
-Python. Treat this section as the contracted design, not working
-behavior.
+The serve front door is `mlx-omarchy-serve`, exposed as `omarchy mlx
+serve …` when the command-center launcher is installed. It is in this
+source tree (serving packages integrated 2026-09-20) but **not yet in a
+published release or the installer**: a release install gains it only
+when a release carries it, and old installs never poll anything. From a
+source checkout, run it with `python -m serve.mlx_omarchy_serve`.
+
+Downloads are approve-first: interactive runs require typed approval
+before anything downloads, and a memory-aware admission gate must pass
+first (details below). The catalog currently flags **every entry
+`recommended: false`**, so the automatic pick names no model — name a
+target explicitly. Manual targets, exactly as `--help` defines them:
 
 ```bash
-mlx-omarchy-serve                 # interactive recommend, plan, approve, serve
-mlx-omarchy-serve recommend [--kind chat|base|decisions|embed|other] [--offline]
-mlx-omarchy-serve plan [target] [--context N] [--server mlx-lm|omlx|module] [--offline]
-mlx-omarchy-serve serve [target] [--context N] [--server mlx-lm|omlx|module] \
-    [--host H] [--port P] [--yes] [--offline]
-mlx-omarchy-serve catalog list|status|refresh
-mlx-omarchy-serve reserve NAME GIB [--note TEXT]   # memory another local service owns
-mlx-omarchy-serve unreserve NAME
+python -m serve.mlx_omarchy_serve plan qwen3.8-27b-4bit --offline
+python -m serve.mlx_omarchy_serve serve mlx-community/Qwen3.8-27B-4bit
+python -m serve.mlx_omarchy_serve serve /path/to/local/model --context 4096
+python -m serve.mlx_omarchy_serve catalog list|status|refresh
+python -m serve.mlx_omarchy_serve reserve NAME GIB [--note TEXT]   # memory another local service owns
+python -m serve.mlx_omarchy_serve unreserve NAME
 ```
 
 `target` is a catalog id, a Hugging Face `org/name`, or a local model
-directory; without one, `plan` and `serve` use the curated
-recommendation. `plan` runs the admission and disk checks only — it
-downloads nothing.
+directory. `plan` runs the admission and disk checks only — it downloads
+nothing; `serve` plans, requires approval, downloads, and launches in
+the foreground. Unqualified manual targets proceed only with a loud
+warning.
 
 The catalog it reads seeds ten pinned entries — six Qwen3.8-27B
 quantizations (4-bit through bf16/mxfp4/nvfp4/mxfp8), the
@@ -125,9 +130,10 @@ Selection: `recommend` orders the catalog by curated priority within a
 kind among tested/compatible fits, not "largest model that fits". Manual
 use accepts a catalog id, an explicit Hugging Face repo, or a local path.
 The automatic pick requires an entry that is recommended, generation- and
-HTTP-qualified, with a working backend and a memory fit — so until an
-HTTP pass qualifies an entry, auto-pick refuses and names no model;
-manual targets with unqualified status proceed only with a loud warning.
+HTTP-qualified, with a working backend and a memory fit — every catalog
+entry currently reads `recommended: false`, so auto-pick names no model
+today; manual targets with unqualified status proceed only with a loud
+warning.
 
 Context is enforced on the mlx-lm path by a project shim
 (`_mlxlm_server.py`): every request is capped so prompt and output
