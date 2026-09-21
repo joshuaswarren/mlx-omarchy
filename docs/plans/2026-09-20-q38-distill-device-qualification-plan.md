@@ -160,3 +160,50 @@ Device PASS (frozen rule above) upgrades the catalog family entry from
 unqualified to generation-qualified (recommended still requires the
 serve/http split per catalog contract). Until then the artifact stays
 unqualified and unrecommended everywhere.
+
+## Device gap follow-up (added 2026-09-20 after first device run)
+
+First device run outcome (t6001-test-host window, frozen protocol): DIVERGENCE —
+not qualified. Measured CPU-side facts at the step-2 decision point
+(forced prefix = prompt + [11751], identical token IDs both sides):
+
+- CPU quantized top-8: 11 -> 20.0, 13 -> 18.5, 318 -> 16.375 ...
+- CPU chooses 11; the device chose 13; **margin top1-vs-13 = 1.5
+  logits**. A 1.5-logit gap is NOT a razor tie: the "near-tie noise"
+  explanation is unproven until the device-side logits are captured.
+- CPU backend jitter floor (batched vs single forward): maxabs 0.0,
+  relL2 0.0 — the CPU backend is self-consistent; the flip must come
+  from accumulated cross-backend numeric difference, which is
+  unmeasured until the Vulkan half runs.
+- Bounded teacher-forced fixture (23 forced positions): 17/23 top-1
+  match, min margin 0.125. Caveat: the first 5 positions are PROMPT
+  tokens, where top-1 != forced is expected (the prompt is not the
+  model's own greedy continuation); per-continuation-position stats
+  were not persisted and the fixture should be re-run with
+  continuation-only aggregation next window.
+- CPU full position-2 logits saved:
+  step2_cpu_logits.safetensors (fp16, 248,320 values) in the artifact
+  directory; the device half must forward the SAME forced prefix and
+  report maxabs / relL2 against this vector plus its own top-8 and
+  the values for IDs 11 and 13.
+
+### Pre-declared numeric acceptance contract (DRAFT for owner approval — applies to future device tests only; the 2026-09-20 run stays FAIL)
+
+To be fixed BEFORE the next device window, by the owner:
+
+1. Identity gates (hard, no tolerance): prompt token IDs, tokenizer
+   files, shard sha256s must match the frozen vector exactly.
+2. Per-step logit comparison under identical forced prefixes: report
+   maxabs and relL2 over the full vocabulary, per generated position.
+3. Top-1 agreement rule (proposal): a generated position counts as
+   agreeing when the reference top-1 is the device top-1 OR the
+   reference margin (top1 - device_choice) is below a pre-declared
+   tie band T. Proposal: T = 2.0 logits (the measured step-2 margin
+   was 1.5; the band must be justified from accumulated-delta
+   measurements, not chosen to pass).
+4. Sequence acceptance (proposal): qualification requires every
+   position either agreeing under rule 3 or covered by the recorded
+   device-vs-reference maxabs/relL2 within bands fixed in 2 — with
+   band values pre-declared before the run and never tuned after.
+5. Any position failing both rules = DIVERGENCE; qualification is
+   granted only by explicit owner decision on the recorded trace.
