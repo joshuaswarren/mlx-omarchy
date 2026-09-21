@@ -109,6 +109,28 @@ class PublishFlowTests(unittest.TestCase):
         self.assertIn("pr list", self.gh_log.read_text())  # PR ensured, not duplicated
         self.assertEqual(self.gh_log.read_text().count("pr create"), 1)
 
+    def test_commit_succeeds_without_any_preexisting_git_identity(self):
+        # Fresh GitHub Actions checkouts have NO git identity. The script
+        # must configure the bot identity BEFORE the first commit; this
+        # fixture strips every identity source to prove it.
+        self.write_catalog("r1")
+        cfg = ["git", "-C", str(self.work)]
+        for key in ("user.name", "user.email"):
+            subprocess.run(cfg + ["config", "--unset-all", key],
+                           capture_output=True)
+        env = dict(os.environ,
+                   GIT_CONFIG_GLOBAL="/dev/null", GIT_CONFIG_SYSTEM="/dev/null",
+                   GH_TOKEN="t",
+                   PATH=str(self.gh_ok) + os.pathsep + os.environ["PATH"])
+        proc = subprocess.run(
+            ["sh", str(SCRIPT), "serve/catalog.json", BRANCH, "main"],
+            cwd=str(self.work), env=env, capture_output=True, text=True, timeout=60)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        author = subprocess.run(
+            ["git", "-C", str(self.work), "log", "-1", "--format=%an %ae",
+             BRANCH], capture_output=True, text=True, check=True).stdout
+        self.assertIn("github-actions[bot]", author)
+
     def test_fresh_drift_rebases_branch_on_current_main(self):
         self.write_catalog("r1")
         self.run_publish()
