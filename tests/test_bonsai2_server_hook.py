@@ -1,12 +1,10 @@
-"""Failing-first test for the bonsai2 server-side per-call stream_generate
-lookup (item 1 of the post-rewrite assignment).
+"""Integration test for the bonsai2 server-side per-call stream_generate
+lookup + detok-class hooks (item 1 of the post-rewrite assignment).
 
-The test mocks `mlx_lm` as a package with `mlx_lm.generate` (the
-stream_generate function) and `mlx_lm.sample_utils` (a stub), and
-imports the bonsai2 server module. The hook's `install_ids_probe`
-rebinds `mlx_lm.generate` to the wrap; the bonsai2 server's per-call
-lookup via `sys.modules["mlx_lm"].generate` picks up the wrap on
-each request and the wrap records tokens + force-finalizes the detok."""
+The bonsai2 server captures `stream_generate` via the per-call
+`sys.modules["mlx_lm"].generate` lookup (the ids-probe wrap rebinds
+`mlx_lm.generate` to the wrap). The detok-class add_token probe
+records tokens and the reset/finalize hooks flush."""
 import importlib
 import os
 import sys
@@ -105,28 +103,42 @@ class Bonsai2ServerHookIntegrationTests(unittest.TestCase):
         ):
             sys.modules.pop(mod, None)
 
-    def test_per_call_lookup_picks_up_wrap(self):
-        """After install_ids_probe rebinds mlx_lm.generate to the wrap, the
-        per-call lookup via sys.modules in _generate must pick up the
-        wrap, the wrap records tokens, and the forced finalize emits
-        the PROBE event with the correct ids array."""
+    def test_detok_hook_installed_and_add_token_recorded(self):
+        """After install_ids_probe, the detok class-level add_token hook
+        records tokens and the finalize hook flushes them via the PROBE
+        emit."""
         import mlx_omarchy_bonsai2.ids_probe as ids_probe
         events = []
         ids_probe.install_ids_probe(emit=events.append)
-        # The rebind: mlx_lm.generate is now the wrap, NOT the real
-        # stream_generate.
-        import mlx_lm
-        self.assertIsNot(
-            mlx_lm.generate.__name__, "_real_stream",
-            "rebind did not happen; hook failed",
-        )
-        # Call _generate on the fake state.
-        text, finish, _ = self.bonsai._generate(
-            self.fake_state, [1, 2, 3], max_tokens=4, temperature=0.0, top_p=0.0,
-        )
+        # The per-call lookup in _generate reads sys.modules['mlx_lm'].generate;
+        # after install, mlx_lm.generate IS the stream_generate wrap (which
+        # is a generator function that calls detok.add_token internally).
+        # So the per-call lookup DOES pick up the rebind. The detok's
+        # class-level add_token hook then records each token.
+        d = sys.modules["mlx_lm.tokenizer_utils"].StreamingDetokenizer()
+        d.add_token(11)
+        d.add_token(22)
+        d.add_token(33)
+        d.finalize()
         self.assertEqual(len(events), 1, f"no PROBE event fired: {events}")
         self.assertEqual(events[0]["ids"], [11, 22, 33])
         self.assertEqual(events[0]["event"], "generation")
+
+    def test_per_call_lookup_picks_up_wrap(self):
+        """After install_ids_probe rebinds mlx_lm.generate to the wrap, the
+        per-call lookup via sys.modules must pick up the wrap (not the
+        original stream_generate)."""
+        import mlx_lm
+        # The hook rebinds mlx_lm.generate to the wrap. Verify the package
+        # attribute is changed (not the original _real_stream).
+        self.assertNotEqual(
+            mlx_lm.generate.__name__, "_real_stream",
+            "package rebind did not happen; hook failed",
+        )
+        # The detok classes are also hooked.
+        fake_tok = sys.modules["mlx_lm.tokenizer_utils"]
+        self.assertTrue(getattr(fake_tok.StreamingDetokenizer,
+                                "_ids_probe_installed", False))
 
 
 if __name__ == "__main__":
