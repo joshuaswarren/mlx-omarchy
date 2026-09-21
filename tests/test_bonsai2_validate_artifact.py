@@ -1,21 +1,23 @@
-"""Tests for mlx_omarchy_bonsai2.validate_artifact.
+"""Tests for mlx_omarchy_bonsai2.validate_artifact (positive + negative).
 
-The unified serve CLI (mlx_omarchy_serve.__main__) calls
-`getattr(module, 'validate_artifact')(model_dir)` to decide whether the
-user-supplied directory is a usable Bonsai pack before admit-and-launch.
-Bonsai packs ARE the upstream artifact -- there is no .convert
-checkpoint_state classifier and no conversion step -- so the hook MUST
-exist and reuse pack_footprint (config.json + safetensors header,
-ZERO tensor bytes).
+The unified serve CLI (mlx_omarchy_serve.__main__.module_artifact_problem)
+calls `getattr(importlib.import_module("mlx_omarchy_bonsai2.server"),
+"validate_artifact")(model_dir)` before admit-and-launch. Bonsai packs
+ARE the upstream artifact -- there is no .convert checkpoint_state
+classifier and no conversion step -- so the hook MUST exist on the
+server module (where the CLI imports from) and reuse pack_footprint
+(config.json + safetensors header, ZERO tensor bytes).
 
-Positive: the existing tiny fixture (already shipped with the test
-suite) validates and returns None.
+Coverage:
+  - positive: real Bonsai pack (tiny fixture) -> None
+  - negative: empty dir, missing config.json, missing model.safetensors,
+    wrong schema, safetensors with no language_model.* tensors,
+    nonexistent path -> informative error string
 
-Negative: an empty directory, a directory missing config.json, a
-directory missing model.safetensors, a directory with a wrong-schema
-config.json, and a directory with a safetensors header that has no
-language_model.* tensors all fail with an informative error string
-that the CLI can surface verbatim.
+REPO/serve is mandatory. We do NOT skipWhen our own packages fail to
+import -- that is a regression, not a host-safety net. An import
+failure here makes the test FAIL with a clear assertion, so CI sees
+the breakage immediately.
 """
 
 from __future__ import annotations
@@ -30,26 +32,27 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 SERVE = REPO / "serve"
 TESTS = Path(__file__).resolve().parent
+
+# REPO/serve is mandatory. Assert the module file actually exists in
+# the checkout before importing -- a missing file is a regression, not
+# a skip case.
+_BONSAI_SERVER_PY = SERVE / "mlx_omarchy_bonsai2" / "server.py"
+assert _BONSAI_SERVER_PY.is_file(), (
+    "mlx_omarchy_bonsai2.server missing at %s -- checkout is broken; "
+    "this test must FAIL, not skip." % _BONSAI_SERVER_PY
+)
+
 for p in (str(SERVE), str(TESTS)):
     if str(p) not in sys.path:
         sys.path.insert(0, str(p))
 
-
-try:
-    import mlx_omarchy_bonsai2  # noqa: F401
-    _HAS_BONSAI = True
-except ImportError:
-    _HAS_BONSAI = False
-
-
-def _import_validate():
-    """Resolve validate_artifact lazily so missing deps fail with a clear
-    error instead of an import traceback at collection time."""
-    from mlx_omarchy_bonsai2 import validate_artifact
-    return validate_artifact
+# Import our own package -- no skipUnless. If this raises, the test
+# collection fails loudly (test count = 0 with collection error), which
+# is the correct signal: a missing/import-broken mlx_omarchy_bonsai2
+# in REPO/serve is a REGRESSION.
+from mlx_omarchy_bonsai2.server import validate_artifact  # noqa: E402
 
 
-@unittest.skipUnless(_HAS_BONSAI, "mlx_omarchy_bonsai2 import failed (MLX deps absent)")
 class ValidateArtifactPositiveTests(unittest.TestCase):
     """A real Bonsai pack must validate to None."""
 
@@ -61,25 +64,14 @@ class ValidateArtifactPositiveTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmp:
             pack_dir, _ = bonsai2_fixture.build_tiny_pack(Path(tmp))
-            result = _import_validate()(pack_dir)
+            result = validate_artifact(pack_dir)
             self.assertIsNone(
                 result,
                 "expected validate_artifact to return None for a built tiny fixture, got %r"
                 % result,
             )
 
-    def test_tiny_fixture_under_max_context_returns_none(self):
-        """The validator must NOT fail when --max-context is not yet known
-        to the CLI -- pack_footprint reads max_position_embeddings from
-        config.json, not from CLI args."""
-        import bonsai2_fixture  # noqa: F401
 
-        with tempfile.TemporaryDirectory() as tmp:
-            pack_dir, _ = bonsai2_fixture.build_tiny_pack(Path(tmp))
-            self.assertIsNone(_import_validate()(pack_dir))
-
-
-@unittest.skipUnless(_HAS_BONSAI, "mlx_omarchy_bonsai2 import failed (MLX deps absent)")
 class ValidateArtifactNegativeTests(unittest.TestCase):
     """A non-pack directory or an invalid pack must return an error string
     that the CLI can surface verbatim."""
@@ -91,7 +83,7 @@ class ValidateArtifactNegativeTests(unittest.TestCase):
         shutil.rmtree(self.tmp, ignore_errors=True)
 
     def test_empty_directory_fails(self):
-        result = _import_validate()(self.tmp)
+        result = validate_artifact(self.tmp)
         self.assertIsNotNone(result, "empty directory must fail")
         self.assertIn("missing config.json", result)
 
@@ -105,7 +97,7 @@ class ValidateArtifactNegativeTests(unittest.TestCase):
                 }
             )
         )
-        result = _import_validate()(self.tmp)
+        result = validate_artifact(self.tmp)
         self.assertIsNotNone(result)
         self.assertIn("missing model.safetensors", result)
 
@@ -121,9 +113,8 @@ class ValidateArtifactNegativeTests(unittest.TestCase):
                 }
             )
         )
-        # model.safetensors stub so pack_footprint reaches _check_config
         (self.tmp / "model.safetensors").write_bytes(b"")
-        result = _import_validate()(self.tmp)
+        result = validate_artifact(self.tmp)
         self.assertIsNotNone(result)
         self.assertIn("pack validation failed", result)
 
@@ -139,21 +130,9 @@ class ValidateArtifactNegativeTests(unittest.TestCase):
                 }
             )
         )
-        # Build a minimal-but-real safetensors header so _safetensors_header
-        # succeeds and we get past the file-exists check. The simplest
-        # legit empty-tensor safetensors file has just the 8-byte header.
-        # The "no language_model.* tensors" failure mode in pack_footprint
-        # is reached via the safetensors-header prefix filter -- we can
-        # trigger it by writing a config that admits the header but the
-        # header has only non-language_model tensors. The CLI's
-        # responsibility ends at "this is not a Bonsai pack"; the
-        # validator surfaces that.
         (self.tmp / "model.safetensors").write_bytes(b"\x00" * 8)
-        result = _import_validate()(self.tmp)
+        result = validate_artifact(self.tmp)
         self.assertIsNotNone(result)
-        # The pack_footprint failure mode for this case may be either
-        # "no language_model.* tensors" or a header-parse error from
-        # our 8-byte stub; both are legitimate rejections, not crashes.
         self.assertTrue(
             "language_model" in result
             or "pack validation failed" in result
@@ -164,7 +143,7 @@ class ValidateArtifactNegativeTests(unittest.TestCase):
 
     def test_nonexistent_directory_fails(self):
         """A path that doesn't exist must return a clear error, not crash."""
-        result = _import_validate()(self.tmp / "does-not-exist")
+        result = validate_artifact(self.tmp / "does-not-exist")
         self.assertIsNotNone(result)
         self.assertIn("not a directory", result)
 
