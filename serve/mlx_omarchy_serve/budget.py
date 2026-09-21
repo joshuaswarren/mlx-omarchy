@@ -286,15 +286,20 @@ def set_reservation_state(name: str, state: str, home: Path | None = None,
 
 
 def clear_reservation(name: str, home: Path | None = None,
-                      owner: str | None = None) -> bool:
+                      owner: str | None = None, force: bool = False) -> bool:
     def mutate(data, _available):
         entry = data.get(name)
         if entry is None:
             return False
-        if entry.get("owner") and entry["owner"] != owner:
+        # Owner protection is fail-closed: only the owning process (or the
+        # operator via the explicit --force maintenance path) may clear.
+        if entry.get("owner") and not force and entry["owner"] != owner:
+            holder_pid = owner_pid(entry["owner"])
+            state = "dead" if not pid_alive(holder_pid) else "alive"
             raise BudgetError(
                 f"reservation {name!r} is owned by another holder "
-                f"({entry['owner']}); refusing to clear"
+                f"({entry['owner']}, {state}); use `unreserve --force` only "
+                "if that process is confirmed gone"
             )
         del data[name]
         return True
@@ -306,6 +311,33 @@ def generate_owner() -> str:
     """A unique per-process owner token. Deliberately excludes hostnames:
     this repository is public."""
     return f"pid{os.getpid()}-{uuid.uuid4().hex[:12]}"
+
+
+def owner_pid(owner: str | None) -> int | None:
+    """The pid embedded in an owner token, if any. Lets the operator see
+    whether the holding process is still alive (a dead pid means the
+    reservation is stale and safe to --force clear)."""
+    if not owner or not owner.startswith("pid"):
+        return None
+    tail = owner[3:].split("-", 1)[0]
+    try:
+        return int(tail)
+    except ValueError:
+        return None
+
+
+def pid_alive(pid: int | None) -> bool | None:
+    if pid is None:
+        return None  # unknown: unowned/manual reservations carry no pid
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True  # exists, owned by someone else
+    except OSError:
+        return None
+    return True
 
 
 @dataclass

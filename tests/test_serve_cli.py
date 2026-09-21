@@ -704,6 +704,46 @@ class CatalogCommandTests(CliTestBase):
         self.assertEqual(code, 0)
         self.assertEqual(budget.load_reservations(self.home), {})
 
+    def test_stale_owned_reservation_needs_force(self):
+        # A dead owner's reservation must never block silently: plain
+        # unreserve refuses with the holder state, --force (the explicit
+        # operator maintenance path) clears it.
+        budget.set_reservation("stale", int(1 * GiB), "dead holder", self.home,
+                               owner="pid999999999-deadbeefdead")
+        with unittest.mock.patch.dict(os.environ, {}):
+            code, _, err = self.run_cli(["unreserve", "stale"])
+        self.assertEqual(code, 2)
+        self.assertIn("unreserve --force", err)
+        code, _, err = self.run_cli(["unreserve", "stale", "--force"])
+        self.assertEqual(code, 0, err)
+        self.assertEqual(budget.load_reservations(self.home), {})
+
+    def test_reservations_listing_marks_dead_holders(self):
+        budget.set_reservation("stale", int(1 * GiB), "crashed", self.home)
+        # rewrite the owner to a pid that cannot exist
+        data = budget.load_reservations(self.home)
+        data["stale"]["owner"] = "pid999999999-deadbeefdead"
+        (self.home / budget.RESERVATIONS_FILE).write_text(json.dumps(data))
+        budget.set_reservation("manual-entry", 5, "", self.home)
+        # manual entries (owner None) are written by set_reservation with
+        # owner=None; emulate by rewriting
+        code, out, _ = self.run_cli(["reservations"])
+        self.assertEqual(code, 0)
+        self.assertIn("DEAD (stale; unreserve --force)", out)
+        self.assertIn("manual-entry", out)
+
+    def test_owner_pid_parsing(self):
+        self.assertEqual(budget.owner_pid("pid656268-609075872d0f"), 656268)
+        self.assertIsNone(budget.owner_pid(None))
+        self.assertIsNone(budget.owner_pid("manual"))
+        self.assertIsNone(budget.owner_pid("pidX-bad"))
+
+    def test_pid_alive_classification(self):
+        my_pid = os.getpid()
+        self.assertTrue(budget.pid_alive(my_pid))
+        self.assertFalse(budget.pid_alive(999999999))
+        self.assertIsNone(budget.pid_alive(None))
+
     def test_reserve_rejects_nonfinite(self):
         for bad in ("nan", "inf", "-2", "abc"):
             with self.subTest(bad=bad):
