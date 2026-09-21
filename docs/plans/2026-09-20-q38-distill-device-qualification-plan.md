@@ -207,3 +207,35 @@ To be fixed BEFORE the next device window, by the owner:
    band values pre-declared before the run and never tuned after.
 5. Any position failing both rules = DIVERGENCE; qualification is
    granted only by explicit owner decision on the recorded trace.
+
+### Amendment (owner review, 2026-09-20, later same day)
+
+- The T = 2.0 logits tie band is WITHDRAWN: deriving the criterion
+  from the observed failure (step-2 margin 1.5) is empirical tailoring,
+  not root cause. Acceptance bands stay UNSET until the Vulkan-half
+  accumulated-delta measurements exist; they will then be proposed
+  from those measurements and approved by the owner before any
+  qualifying run.
+- The device half of the diagnostic covers ALL 23 forced positions at
+  the LOGIT level: prompt-position logits must agree CPU-vs-GPU at
+  the numeric-delta level even though prompt-token next-prediction
+  differs from the actual text metric (different metrics, same
+  numeric-agreement requirement). Alignment: position i logits
+  predict token i+1 (verified in the CPU trace).
+- First-divergent-layer bisect: the CPU trace
+  (step2_cpu_layertrace.safetensors: embed + 40 per-layer last-
+  position hidden states + final_norm + logits, fp16, frozen prefix
+  prompt + [11751]) is mirrored to the device; the device script
+  forwards the same prefix, diffs each layer output against the CPU
+  trace (maxabs + relL2), and reports the first layer exceeding the
+  measurement threshold plus per-layer deltas — localizing wrong
+  op / order / precision empirically.
+- Source precision survey (both backends accumulate in fp32; weights
+  fp16 scales + affine biases; activations stored bf16/fp16 and
+  widened to float in-kernel / in-loop): the per-op numeric shapes
+  match, so candidate divergence sources are (1) accumulation ORDER
+  in the quantized matmuls (shader tiling vs CPU sequential loop),
+  (2) cast-point placement for bf16 activations across composite ops,
+  (3) GDN composite state-update ordering, (4) SDPA reduction order.
+  The bisect decides empirically; no source claim is accepted without
+  it.
