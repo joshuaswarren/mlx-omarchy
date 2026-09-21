@@ -4,13 +4,17 @@
 Runs the REAL mlx_lm.server (same wheel, same venv) with runtime
 monkeypatches that record, per request:
   - the exact prompt token ids and their sha16 (prompt-ID proof),
-  - which cache-fetch branch executed (exact / longer+trim / shorter /
-    miss) and the cache list composition (class names + trimmability),
-  - the raw generated token ids per request and their sha16,
-  - per-phase timings (prefill vs decode).
+  - which cache-fetch branch executed (exact / longer+trim /
+    longer+NOT-trimmable / shorter / miss), with the trim arithmetic
+    (prefix, num_to_trim, kept, rest, context_total) and the cache class
+    mix with per-class trimmability,
+  - every raw sampled token id at the detokenizer boundary (BEFORE any
+    text/reasoning parsing), emitted per request via the detokenizer's
+    reset() boundary,
+  - per-generation timing (wall, ttft) and generated-id sha16.
 Nothing on disk is modified: the wheel and all pinned artifacts are
 untouched; patches live only in this process. Output: one JSON line per
-request on stderr prefixed PROBE: (parse with the harness).
+event on stderr prefixed PROBE:.
 
 Usage: python server_ids_probe.py <normal mlx_lm.server args...>
 """
@@ -32,11 +36,54 @@ def sha16(ids):
     return hashlib.sha256(json.dumps(list(ids)).encode()).hexdigest()[:16]
 
 
+detok_state = {"ids": []}
+
+
+def install_detok_probe():
+    """Wrap the StreamingDetokenizer classes so add_token records every RAW
+    sampled id (pre-reasoning-parser) and reset() emits the completed
+    request's id list. Only touches class objects in this process."""
+    from mlx_lm.tokenizer_utils import (
+        NaiveStreamingDetokenizer,
+        BPEStreamingDetokenizer,
+        SPMStreamingDetokenizer,
+        StreamingDetokenizer,
+    )
+
+    for cls in (StreamingDetokenizer, NaiveStreamingDetokenizer,
+                BPEStreamingDetokenizer, SPMStreamingDetokenizer):
+        orig_add = getattr(cls, "add_token", None)
+        if orig_add is None:
+            continue
+
+        def add_token_probe(self, token, _orig=orig_add):
+            detok_state["ids"].append(int(token))
+            _orig(self, token)
+
+        cls.add_token = add_token_probe
+
+    def reset_probe(self):
+        if detok_state["ids"]:
+            emit({"event": "detok_ids", "n": len(detok_state["ids"]),
+                  "ids_sha16": sha16(detok_state["ids"]),
+                  "ids": detok_state["ids"]})
+            detok_state["ids"] = []
+        if hasattr(self, "_orig_reset"):
+            return self._orig_reset()
+
+    StreamingDetokenizer.reset = reset_probe
+    for cls in (NaiveStreamingDetokenizer, BPEStreamingDetokenizer,
+                SPMStreamingDetokenizer):
+        if hasattr(cls, "reset"):
+            cls._omlx_orig_reset = cls.reset
+            cls.reset = reset_probe
+
+
 def main():
     import mlx_lm.server as srv
 
-    # --- 1. cache fetch branch + composition probe -------------------
-    cache_mod = __import__("mlx_lm.models.cache", fromlist=["PromptCache"])
+    # --- 1. cache fetch branch + arithmetic probe ---------------------
+    cache_mod = __import__("mlx_lm.models.cache", fromlist=["LRUPromptCache"])
     orig_fetch = cache_mod.LRUPromptCache.fetch_nearest_cache
 
     def fetch_probe(self, model, tokens):
@@ -73,7 +120,7 @@ def main():
             branch = "shorter"
             detail = {"shorter_len": len(result.shorter)}
         emit({"event": "fetch", "query_tokens": len(tokens),
-                       "branch": branch, **detail})
+              "branch": branch, **detail})
         return orig_fetch(self, model, tokens)
 
     cache_mod.LRUPromptCache.fetch_nearest_cache = fetch_probe
@@ -83,8 +130,8 @@ def main():
 
     def insert_probe(self, model, tokens, prompt_cache, *a, **k):
         emit({"event": "insert", "key_tokens": len(tokens),
-                       "cache": [type(c).__name__ for c in prompt_cache],
-                       "trimmable": [c.is_trimmable() for c in prompt_cache]})
+              "cache": [type(c).__name__ for c in prompt_cache],
+              "trimmable": [c.is_trimmable() for c in prompt_cache]})
         return orig_insert(self, model, tokens, prompt_cache, *a, **k)
 
     cache_mod.LRUPromptCache.insert_cache = insert_probe
@@ -102,12 +149,17 @@ def main():
                 ids = out["input_ids"]
             if ids is not None:
                 emit({"event": "template", "n": len(ids),
-                               "prompt_ids_sha16": sha16(ids)})
+                      "prompt_ids_sha16": sha16(ids)})
         except Exception:
             pass
         return out
 
     tok_utils.TokenizerWrapper.apply_chat_template = apply_probe
+
+    # --- 2b. raw sampled token IDs at the detokenizer boundary ---------
+    # add_token receives the RAW sampled id before any text reasoning
+    # parsing; reset() marks a request boundary. Emitted per request.
+    install_detok_probe()
 
     # generated ids: wrap stream_generate used by the server module
     orig_stream = srv.stream_generate
@@ -136,49 +188,10 @@ def main():
 
     srv.stream_generate = stream_probe
 
-    # --- 2b. raw sampled token IDs at the detokenizer boundary ---------
-    # add_token receives the RAW sampled id before any text reasoning
-    # parsing; reset() marks a request boundary. Emitted per request.
-    from mlx_lm.tokenizer_utils import (
-        NaiveStreamingDetokenizer,
-        BPEStreamingDetokenizer,
-        SPMStreamingDetokenizer,
-        StreamingDetokenizer,
-    )
-
-    detok_state = {"ids": []}
-
-    for cls in (StreamingDetokenizer, NaiveStreamingDetokenizer,
-                BPEStreamingDetokenizer, SPMStreamingDetokenizer):
-        orig_add = getattr(cls, "add_token", None)
-        if orig_add is None:
-            continue
-
-        def add_token_probe(self, token, _orig=orig_add, _cls=cls.__name__):
-            detok_state["ids"].append(int(token))
-            _orig(self, token)
-
-        cls.add_token = add_token_probe
-
-    orig_reset = getattr(StreamingDetokenizer, "reset", None)
-
-    def reset_probe(self):
-        if detok_state["ids"]:
-            emit({"event": "detok_ids", "n": len(detok_state["ids"]),
-                  "ids_sha16": sha16(detok_state["ids"]),
-                  "ids": detok_state["ids"]})
-            detok_state["ids"] = []
-        return orig_reset(self)
-
-    StreamingDetokenizer.reset = reset_probe
-
     # --- 3. run the real server --------------------------------------
     sys.argv = ["mlx_lm.server"] + sys.argv[1:]
     from mlx_lm.server import main as server_main
-    try:
-        server_main()
-    finally:
-        pass
+    server_main()
 
 
 if __name__ == "__main__":
