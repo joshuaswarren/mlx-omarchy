@@ -332,8 +332,22 @@ def _sampler(temperature, top_p):
 
 
 def _generate(state, prompt_ids, max_tokens, temperature, top_p):
-    """Run generation; returns (text, finish_reason, timings)."""
-    from mlx_lm.generate import stream_generate
+    """Run generation; returns (text, finish_reason, timings).
+
+    stream_generate is looked up on each call via the mlx_lm package
+    attribute, so the ids-probe env-gated wrap (which rebinds
+    `mlx_lm.generate` after this module is imported) is picked up here.
+    The captured-at-import fallback was a silent miss; per-call lookup
+    is the documented fix."""
+    # Per-call stream_generate lookup via the mlx_lm package
+    # attribute. In mlx_lm 0.31.3, `mlx_lm.generate` is the stream_generate
+    # function (re-exported at the package level), so re-reading the
+    # package attribute on each call picks up the ids-probe env-gated
+    # wrap that install_ids_probe installs. The captured-at-import
+    # `from mlx_lm.generate import stream_generate` form was a silent
+    # miss because it bound the ORIGINAL function name before the wrap
+    # could rebind the package attribute.
+    stream_generate = sys.modules["mlx_lm"].generate
 
     kwargs = {"sampler": _sampler(temperature, top_p)}
     prompt_n = len(prompt_ids)
@@ -555,8 +569,11 @@ def _make_handler(state: Bonsai2State):
 
         def _stream_job(self, state, prompt_ids, max_tokens, temperature, req, created, emit):
             """Worker-side streaming generation: emits chunk dicts, never
-            touches the socket (the handler thread drains and writes)."""
-            from mlx_lm.generate import stream_generate
+            touches the socket (the handler thread drains and writes).
+
+            Per-call stream_generate lookup (see _generate docstring)."""
+            # Per-call stream_generate lookup (see _generate).
+            stream_generate = sys.modules["mlx_lm"].generate
 
             def chunk(delta, finish=None, extra=None):
                 payload = {
