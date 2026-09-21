@@ -153,8 +153,13 @@ def rss_gb(pid: int) -> float | None:
 def start_leg(leg: str, args, python: str) -> subprocess.Popen:
     port = PORTS[leg]
     if leg == "mlxlm":
-        cmd = [python, "-m", "mlx_lm.server", "--model", args.hf_id or args.model_snapshot,
-               "--host", HOST, "--port", str(port)]
+        server = [python, "-m", "mlx_lm.server"]
+        if args.probe_server_ids:
+            probe = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                 "server_ids_probe.py")
+            server = [python, probe]
+        cmd = server + ["--model", args.hf_id or args.model_snapshot,
+                        "--host", HOST, "--port", str(port)]
     elif leg == "omlx":
         cmd = [python, "-m", "omlx.server", "--model-dir", args.model_snapshot,
                "--host", HOST, "--port", str(port)]
@@ -674,7 +679,9 @@ def main() -> None:
     ap.add_argument("--omlx-extra-args", default="", help="extra args appended to the omlx server cmd, e.g. --max-model-memory 32GB")
     ap.add_argument("--expect-version", default="", help="fatal unless mlx-omarchy version matches")
     ap.add_argument("--expect-libmlx", default="", help="fatal unless libmlx sha256-16 matches")
-    ap.add_argument("--direct-legs", default="", help="comma list from d1,d2: no-HTTP direct decode legs (token ids recorded; numeric agreement checked)")
+    ap.add_argument("--direct-legs", default="", help="comma list from d1c,d1w,d1m: no-HTTP direct decode legs (token ids recorded; numeric agreement checked)")
+    ap.add_argument("--probe-server-ids", action="store_true",
+                    help="run the mlxlm leg through server_ids_probe.py (raw prompt/generated ids + cache-branch trace; bench-only monkeypatch, no artifact modification)")
     ap.add_argument("--outdir", default="/tmp/servebench")
     ap.add_argument("--selfcheck", action="store_true")
     args = ap.parse_args()
@@ -744,6 +751,16 @@ def main() -> None:
         for leg in legs:
             lp = pathlib.Path(args.outdir) / f"server-{leg}.log"
             results["server_log_diagnostics"][leg] = parse_server_log_diagnostics(str(lp))
+            if args.probe_server_ids and leg == "mlxlm":
+                probe_events = []
+                try:
+                    with open(lp, "r", errors="replace") as f:
+                        for line in f:
+                            if line.startswith("PROBE:"):
+                                probe_events.append(json.loads(line[6:]))
+                except OSError:
+                    pass
+                results["server_log_diagnostics"][leg]["probe_events"] = probe_events
         log(f"server_log_diagnostics: {json.dumps(results['server_log_diagnostics'])[:300]}")
         out = pathlib.Path(args.outdir) / "results-servebench.json"
         out.write_text(json.dumps(results, indent=2))
