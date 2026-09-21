@@ -38,13 +38,18 @@ local_diff=0
 git diff --quiet -- "$catalog" || local_diff=1
 
 has_remote=0
+fetched_sha=""
 rc=0
 git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1 || rc=$?
 case "$rc" in
-    0) has_remote=1 ;;
-    2) has_remote=0 ;; # branch genuinely absent
-    *) echo "ERROR: git ls-remote failed (exit $rc); not treating as absent" >&2
-       exit "$rc" ;;
+    0)  has_remote=1
+        # Capture the explicit fetched SHA now: checkout below can
+        # invalidate FETCH_HEAD, and the push lease pins this exact SHA.
+        git fetch origin "$branch"
+        fetched_sha="$(git rev-parse FETCH_HEAD)" ;;
+    2)  has_remote=0 ;; # branch genuinely absent
+    *)  echo "ERROR: git ls-remote failed (exit $rc); not treating as absent" >&2
+        exit "$rc" ;;
 esac
 
 if [ "$local_diff" = 0 ] && [ "$has_remote" = 0 ]; then
@@ -56,11 +61,6 @@ fi
 # (same-commit checkout keeps the worktree), and the branch is never
 # seeded from a stale remote tip.
 git checkout -B "$branch"
-
-fetched_sha=""
-if [ "$has_remote" = 1 ]; then
-    fetched_sha="$(git rev-parse FETCH_HEAD)"
-fi
 
 if [ "$local_diff" = 1 ]; then
     git add -- "$catalog"
