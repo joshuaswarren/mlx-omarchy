@@ -38,7 +38,7 @@
         },
         "http": {
           "status": "qualified",
-          "receipt": "receipts/2026-09-20-serveperf-currentmodel-t6001-test-host.md",
+          "receipt": "receipts/2026-09-20-qwen38-http-mlxlm-t6001-test-host-raw-qualification.md",
           "date": "2026-09-20"
         }
       },
@@ -63,7 +63,7 @@
         "variant": "4bit",
         "model_architecture": "Qwen3_5ForConditionalGeneration",
         "cache_behavior": "Serve screen 2026-09-20 (SPA, t6001-test-host): the multimodal checkpoint's ArraysCache is non-trimmable — prefix-trim replication is unbuildable on this checkpoint; long-context KV management cannot rely on cache trimming for this entry.",
-        "http_scope": "NARROW SCOPE (SPA screen-2 receipts c0228a44/2a661e3f, t6001-test-host, wheel 0.32.3.dev202609201440+5b18306, mlx_lm.server 0.31.3): direct-launch HTTP qualified — 5 non-stream rounds 128/128 finish=length zero errors (median 2.13 tok/s), 3 streaming rounds, concurrency-4 recorded; prompt_ids_match TRUE across legs (daeb0a7fc9250ea4, 60 tokens); cross-mode output ids identical (33903ee46142be90); all 3 model shards sha256-verified against the proven t6021-test-host snapshot (corrupt shard-2 blob caught and refetched). NOT covered: the managed unified-CLI route (admission + context caps) — pending the schema owner's route-fix smoke. The HTTP leg exposes no raw token ids; id identity verified via in-process legs + A's decoded-text prefix. Raw HTTP JSON: ~/servebench-qa-evidence/out13 on t6001-test-host."
+        "http_scope": "NARROW SCOPE (SPA screen-2 receipts c0228a44/2a661e3f, t6001-test-host, wheel 0.32.3.dev202609201440+5b18306, mlx_lm.server 0.31.3): direct-launch HTTP qualified — 5 non-stream rounds 128/128 finish=length zero errors (median 2.13 tok/s), 3 streaming rounds, concurrency-4 recorded; prompt_ids_match TRUE across legs (daeb0a7fc9250ea4, 60 tokens); cross-mode output ids identical (33903ee46142be90); all 3 model shards sha256-verified against the proven t6021-test-host snapshot (corrupt shard-2 blob caught and refetched). NOT covered: the managed unified-CLI route (admission + context caps) — pending the schema owner's route-fix smoke. The HTTP leg exposes no raw token ids; id identity verified via in-process legs + A's decoded-text prefix. Dedicated scoped receipt: receipts/2026-09-20-qwen38-http-mlxlm-t6001-test-host-raw-qualification.md (c900a96d). OPEN non-claim: cross-path HTTP-vs-direct output divergence observed and preserved (prompts proven identical at 60 tokens incl. template-kwargs; generation-path difference unattributed). Raw HTTP JSON: ~/servebench-qa-evidence/out13 on t6001-test-host."
       },
       "serve": {
         "backend": "mlx-lm",
