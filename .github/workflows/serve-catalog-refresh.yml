@@ -51,7 +51,7 @@ jobs:
 
       - name: Validate the refreshed catalog and run the catalog tests
         run: |
-          python3 -m unittest tests.test_serve_catalog_refresh -v
+          python3 -m unittest tests.test_serve_catalog_refresh tests.test_serve_catalog_publish_flow -v
 
       - name: Publish metadata-only pull request
         run: |
