@@ -333,9 +333,15 @@ class BundledDataTests(unittest.TestCase):
         # qwen3.8-27b-4bit: generation (text CLI) + narrow direct-launch
         # HTTP (SPA screen-2). laya-mlx: generation + managed HTTP
         # decisions endpoint (t6001-test-host). Everything else untested.
+        # Qualified-HTTP entries mirror the receipt record (currently
+        # qwen3.8-27b-4bit narrow direct-launch, laya-mlx managed
+        # decisions, bonsai-2-27b-mlx-2bit functional): each flip adds
+        # exactly one entry, every flip carries its receipt.
         qualified_http = [e["id"] for e in self.entries
                           if e["qualification"]["http"]["status"] == "qualified"]
-        self.assertEqual(sorted(qualified_http), ["laya-mlx", "qwen3.8-27b-4bit"])
+        self.assertEqual(
+            sorted(qualified_http),
+            ["bonsai-2-27b-mlx-2bit", "laya-mlx", "qwen3.8-27b-4bit"])
         for entry in self.entries:
             for scope in ("generation", "http"):
                 qual = entry["qualification"][scope]
