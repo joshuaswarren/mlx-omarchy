@@ -583,11 +583,15 @@ class RefreshWorkflowContractTests(unittest.TestCase):
 
     def test_workflow_never_pushes_main_and_uses_pr(self):
         text = WORKFLOW.read_text(encoding="utf-8")
-        self.assertIn("gh pr create", text)
-        self.assertIn('--base main', text)
-        # The only push target is the dedicated refresh branch.
-        self.assertIn('git push -f origin "$BRANCH"', text)
-        self.assertNotIn("git push origin main", text)
+        self.assertIn("tools/serve_catalog_publish.sh", text)
+        self.assertIn("tests/test_serve_catalog_refresh.py", text)
+        # The push lives in the publish script, lease-protected; the
+        # workflow itself never pushes to main.
+        script = (REPO_ROOT / "tools" / "serve_catalog_publish.sh").read_text(
+            encoding="utf-8")
+        self.assertIn('git push --force-with-lease origin "$branch"', script)
+        self.assertNotIn("git push origin main", script)
+        self.assertNotIn("git push -f origin", script)
 
     def test_workflow_states_immutability_contract(self):
         text = WORKFLOW.read_text(encoding="utf-8").lower()

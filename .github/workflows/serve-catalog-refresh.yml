@@ -8,6 +8,9 @@ name: Refresh serve catalog availability
 # other vetted field are immutable by construction and verified by tests.
 # Nothing auto-merges: a human reviews and merges the PR. Reads no
 # secret: the Hugging Face metadata API is public and unauthenticated.
+# The suite runs under the stdlib unittest runner (no install step); the
+# publish flow lives in tools/serve_catalog_publish.sh and is exercised
+# by tests/test_serve_catalog_refresh.py against a local git fixture.
 
 on:
   schedule:
@@ -25,18 +28,17 @@ jobs:
   refresh:
     runs-on: ubuntu-latest
     permissions:
-      contents: write # push the refresh branch; nothing more
+      contents: write # push the publish branch; nothing more
       pull-requests: write # open the metadata-only PR
     steps:
       - uses: actions/checkout@v4
 
       - name: Refresh availability from the Hugging Face metadata API
-        # Exit 0 = clean refresh, 3 = refreshed with upstream drift
-        # (revisions retained, drift report in the log); both proceed to
-        # the PR. Exit 1 (fetch error) or 2 (invalid catalog) fails the
-        # job and leaves the committed catalog untouched: last-known-good
-        # wins.
-        id: refresh
+        # Exit 0 = clean refresh or pure verification pass (no write),
+        # 3 = refreshed with upstream drift (revisions retained, drift
+        # report in the log); all three proceed. Exit 1 (fetch error) or
+        # 2 (invalid catalog) fails the job and leaves the committed
+        # catalog untouched: last-known-good wins.
         run: |
           set -euo pipefail
           code=0
@@ -49,38 +51,11 @@ jobs:
 
       - name: Validate the refreshed catalog and run the catalog tests
         run: |
-          python3 -m pytest tests/test_serve_catalog_refresh.py
+          python3 -m unittest tests.test_serve_catalog_refresh -v
 
-      - name: Open metadata-only pull request
+      - name: Publish metadata-only pull request
         run: |
-          set -euo pipefail
-          if git diff --quiet -- serve/mlx_omarchy_serve/catalog.json; then
-            echo "Availability already current; no PR needed."
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          BRANCH=serve-catalog-refresh
-          if git ls-remote --exit-code --heads origin "$BRANCH" >/dev/null 2>&1; then
-            git fetch origin "$BRANCH"
-            git checkout -B "$BRANCH" "origin/$BRANCH"
-          else
-            git checkout -B "$BRANCH"
-          fi
-          git add serve/mlx_omarchy_serve/catalog.json
-          git commit -m "catalog: availability refresh (metadata-only, automated)"
-          git push -f origin "$BRANCH"
-          cat > pr-body.md <<'BODY'
-          Automated availability refresh: size_bytes / refreshed_at /
-          generated_at only. The refresher cannot write qualification,
-          recommended, revision, or priority; the structural pre-write
-          guard and tests/test_serve_catalog_refresh.py verify it. Any
-          upstream-drift warnings are in the job log. Human merge
-          required; nothing auto-merges.
-          BODY
-          gh pr create --head "$BRANCH" --base main \
-            --title "serve catalog: availability refresh (metadata-only)" \
-            --body-file pr-body.md \
-            || echo "PR already open; pushed update to existing branch."
+          tools/serve_catalog_publish.sh \
+            serve/mlx_omarchy_serve/catalog.json serve-catalog-refresh main
         env:
           GH_TOKEN: ${{ github.token }}
