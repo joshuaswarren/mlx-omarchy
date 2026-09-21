@@ -16,48 +16,55 @@ import json
 import sys
 import types
 
-# ---- mlx stubs (server.py imports mlx.core/nn/utils at module scope) ----
-mx_stub = types.ModuleType("mlx.core")
-for _n in ("array", "sort", "logsumexp", "argmax", "eval"):
-    setattr(mx_stub, _n, lambda *a, **k: None)
-mx_stub.clear_cache = lambda: None
-mx_stub.set_wired_limit = lambda *a, **k: None
-mx_stub.get_peak_memory = lambda: 0
-mx_stub.compile = lambda fn=None, *a, **k: (fn if fn is not None else (lambda *a2, **k2: None))
-mx_stub.random = types.SimpleNamespace(state=None)
-mx_stub.new_thread_local_stream = lambda *a, **k: None
-mx_stub.default_device = lambda: None
-mx_stub.stream = lambda *a, **k: (lambda *a2, **k2: None)
-mx_stub.synchronize = lambda *a, **k: None
+# ---- mlx stubs ONLY where real mlx is unavailable (dev box) ----------
+try:
+    import mlx.core  # noqa: F401
+    HAVE_MLX = True
+except Exception:
+    HAVE_MLX = False
 
-mx_stub.Stream = type("Stream", (), {})
-mx_stub.new_stream = lambda *a, **k: None
-mx_stub.core = mx_stub  # self-reference for mx.core attribute access
-mx_stub.Device = object
-mx_stub.load = lambda *a, **k: None
-mx_stub.save = lambda *a, **k: None
-mx_stub.matmul = lambda *a, **k: None
-mx_stub.zeros = lambda *a, **k: None
-mx_stub.ones = lambda *a, **k: None
+if not HAVE_MLX:
+    mx_stub = types.ModuleType("mlx.core")
+    for _n in ("array", "sort", "logsumexp", "argmax", "eval"):
+        setattr(mx_stub, _n, lambda *a, **k: None)
+    mx_stub.clear_cache = lambda: None
+    mx_stub.set_wired_limit = lambda *a, **k: None
+    mx_stub.get_peak_memory = lambda: 0
+    mx_stub.compile = lambda fn=None, *a, **k: (fn if fn is not None else (lambda *a2, **k2: None))
+    mx_stub.random = types.SimpleNamespace(state=None)
+    mx_stub.new_thread_local_stream = lambda *a, **k: None
+    mx_stub.default_device = lambda: None
+    mx_stub.stream = lambda *a, **k: (lambda *a2, **k2: None)
+    mx_stub.synchronize = lambda *a, **k: None
 
-mx_stub.metal = types.SimpleNamespace(is_available=lambda: False)
-mx_stub.distributed = types.SimpleNamespace(
-    init=lambda: types.SimpleNamespace(size=lambda: 1, rank=lambda: 0),
-    Group=object)
-nn_stub = types.ModuleType("mlx.nn")
-nn_stub.Module = type("Module", (), {})
-utils_stub = types.ModuleType("mlx.utils")
-for _n in ("tree_flatten", "tree_map", "tree_unflatten", "tree_map_with_path", "tree_reduce"):
-    setattr(utils_stub, _n, lambda *a, **k: None)
-mlx_stub = types.ModuleType("mlx")
-mlx_stub.core = mx_stub
-mlx_stub.nn = nn_stub
-mlx_stub.utils = utils_stub
-mlx_stub.__path__ = []
-_spec = importlib.machinery.ModuleSpec("mlx", None, is_package=True)
-mlx_stub.__spec__ = _spec
-sys.modules.update({"mlx": mlx_stub, "mlx.core": mx_stub,
-                    "mlx.nn": nn_stub, "mlx.utils": utils_stub})
+    mx_stub.Stream = type("Stream", (), {})
+    mx_stub.new_stream = lambda *a, **k: None
+    mx_stub.core = mx_stub  # self-reference for mx.core attribute access
+    mx_stub.Device = object
+    mx_stub.load = lambda *a, **k: None
+    mx_stub.save = lambda *a, **k: None
+    mx_stub.matmul = lambda *a, **k: None
+    mx_stub.zeros = lambda *a, **k: None
+    mx_stub.ones = lambda *a, **k: None
+
+    mx_stub.metal = types.SimpleNamespace(is_available=lambda: False)
+    mx_stub.distributed = types.SimpleNamespace(
+        init=lambda: types.SimpleNamespace(size=lambda: 1, rank=lambda: 0),
+        Group=object)
+    nn_stub = types.ModuleType("mlx.nn")
+    nn_stub.Module = type("Module", (), {})
+    utils_stub = types.ModuleType("mlx.utils")
+    for _n in ("tree_flatten", "tree_map", "tree_unflatten", "tree_map_with_path", "tree_reduce"):
+        setattr(utils_stub, _n, lambda *a, **k: None)
+    mlx_stub = types.ModuleType("mlx")
+    mlx_stub.core = mx_stub
+    mlx_stub.nn = nn_stub
+    mlx_stub.utils = utils_stub
+    mlx_stub.__path__ = []
+    _spec = importlib.machinery.ModuleSpec("mlx", None, is_package=True)
+    mlx_stub.__spec__ = _spec
+    sys.modules.update({"mlx": mlx_stub, "mlx.core": mx_stub,
+                        "mlx.nn": nn_stub, "mlx.utils": utils_stub})
 
 WHEEL = "/tmp/mlxlm-src/x"
 sys.path.insert(0, WHEEL)
