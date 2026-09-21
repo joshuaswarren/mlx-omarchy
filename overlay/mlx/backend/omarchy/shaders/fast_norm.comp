@@ -151,7 +151,7 @@ void main() {
       float result = value * norm;
 #ifdef USE_BF16
       if (params.lhs_size != 1u) {
-        result = float(bf16_store(result));
+        result = uintBitsToFloat(uint(bf16_store(result)) << 16u);
       }
 #endif
       result = result * weight;
