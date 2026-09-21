@@ -90,15 +90,31 @@ class TtftProbeTests(unittest.TestCase):
         ]
         result = measure_ttft("127.0.0.1", self.port, self.body, timeout=10)
         self.assertIsNone(result.get("error"), result)
-        # Chunk B lands at ~0.30s after start; a 4096-byte-buffered reader
-        # or first-byte reader would report ~0.05s or ~0.45s.
-        self.assertGreaterEqual(result["ttft_s"], 0.25,
-                                f"TTFT started too early (reasoning counted?): {result}")
-        self.assertLessEqual(result["ttft_s"], 0.45,
-                             f"TTFT too late (buffered read?): {result}")
-        self.assertLess(result["ttft_s"], result["total_s"])
-        self.assertEqual(result["first_token_event_index"], 2)
+        # first_event_s: the reasoning delta at ~0.05s starts the clock.
+        self.assertLessEqual(result["first_event_s"], 0.20,
+                             f"first_event_s missed the reasoning token: {result}")
+        # first_content_s: chunk B lands at ~0.30s; a buffered reader or a
+        # first-byte reader would report ~0.05s or ~0.45s instead.
+        self.assertGreaterEqual(result["first_content_s"], 0.20,
+                                f"first_content_s too early: {result}")
+        self.assertLessEqual(result["first_content_s"], 0.50,
+                             f"first_content_s too late (buffered read?): {result}")
+        # The reasoning lead is reported separately, not folded into content.
+        self.assertGreater(result["reasoning_lead_s"], 0.15)
+        self.assertLess(result["first_content_s"], result["total_s"])
+        self.assertEqual(result["first_content_event_index"], 2)
         self.assertEqual(result["events"], 3)
+
+    def test_content_first_reports_equal_clocks(self):
+        """No reasoning deltas: first_event_s == first_content_s."""
+        self.server.script_chunks = [
+            {"delay": 0.10, "payload": _delta("direct answer")},
+            {"delay": 0.05, "payload": _delta(" more")},
+        ]
+        result = measure_ttft("127.0.0.1", self.port, self.body, timeout=10)
+        self.assertIsNone(result.get("error"), result)
+        self.assertEqual(result["first_event_s"], result["first_content_s"])
+        self.assertEqual(result["reasoning_lead_s"], 0)
 
     def test_no_content_deltas_is_an_error_not_fake_ttft(self):
         self.server.script_chunks = [
@@ -107,7 +123,9 @@ class TtftProbeTests(unittest.TestCase):
         ]
         result = measure_ttft("127.0.0.1", self.port, self.body, timeout=10)
         self.assertIn("error", result)
-        self.assertNotIn("ttft_s", result)
+        self.assertNotIn("first_content_s", result)
+        # But the reasoning-start clock IS recorded for the record.
+        self.assertIsNotNone(result.get("first_event_s"))
 
 
 if __name__ == "__main__":

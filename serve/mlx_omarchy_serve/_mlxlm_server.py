@@ -23,6 +23,7 @@ of silently dropping the cap.
 from __future__ import annotations
 
 import inspect
+import json
 import os
 import sys
 
@@ -111,6 +112,64 @@ def install(server_module, limit: int) -> None:
     generator._tokenize = capped
 
 
+PROBE_ENV = "MLX_OMARCHY_SERVE_IDS_PROBE"
+
+
+def install_ids_probe(server_module, emit=None) -> None:
+    """Bench-only ids capture for the managed route (default OFF; enabled
+    only when MLX_OMARCHY_SERVE_IDS_PROBE=1). Wraps the streaming
+    detokenizer classes so every raw sampled token id is recorded at the
+    add_token boundary and the completed per-request id list is emitted as
+    one `PROBE: {...}` JSON line on stderr at reset(). Nothing on disk is
+    touched; with the env unset this function is never called."""
+    if emit is None:
+        def emit(event):
+            print("PROBE:", json.dumps(event), file=sys.stderr, flush=True)
+    state = {"ids": []}
+    from mlx_lm.tokenizer_utils import (
+        NaiveStreamingDetokenizer,
+        BPEStreamingDetokenizer,
+        SPMStreamingDetokenizer,
+        StreamingDetokenizer,
+    )
+
+    def wrap(cls):
+        if cls is None:
+            return
+        # Patch only methods defined in the class's OWN dict: a probe on a
+        # base class is inherited by subclasses, and wrapping both would
+        # record every token twice (subclass probe -> inherited base probe).
+        orig_add = cls.__dict__.get("add_token")
+        if orig_add is None:
+            return
+
+        def add_token_probe(self, token, _orig=orig_add):
+            state["ids"].append(int(token))
+            _orig(self, token)
+
+        cls.add_token = add_token_probe
+
+        orig_reset = cls.__dict__.get("reset")
+        if orig_reset is None:
+            return
+
+        def reset_probe(self, _orig=orig_reset):
+            if state["ids"]:
+                import hashlib
+                emit({"event": "generation", "n": len(state["ids"]),
+                      "ids_sha16": hashlib.sha256(
+                          json.dumps(state["ids"]).encode()).hexdigest()[:16],
+                      "ids": state["ids"]})
+                state["ids"] = []
+            return _orig(self)
+
+        cls.reset = reset_probe
+
+    for cls in (StreamingDetokenizer, NaiveStreamingDetokenizer,
+                BPEStreamingDetokenizer, SPMStreamingDetokenizer):
+        wrap(cls)
+
+
 def main() -> None:
     raw = os.environ.get(LIMIT_ENV, "")
     try:
@@ -128,6 +187,8 @@ def main() -> None:
         raise SystemExit(3)
     check_pinned(server_module)
     install(server_module, limit)
+    if os.environ.get(PROBE_ENV) == "1":
+        install_ids_probe(server_module)
     server_module.main()
 
 
