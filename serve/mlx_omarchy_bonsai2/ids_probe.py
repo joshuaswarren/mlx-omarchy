@@ -5,10 +5,12 @@ hook captures the raw sampled token ids at the per-token boundary and
 emits one PROBE: JSON line per request. The bonsai2 server's iteration
 loop (for response in stream_generate(...): break on finish_reason) never
 calls detok.finalize explicitly, so the hook wraps stream_generate and
-force-finalizes the detokenizer on generator close. The bonsai2 server
-captures stream_generate via `from mlx_lm.generate import stream_generate`,
-so the wrap must also rebind the bonsai2 server module's own attribute
-(the import name shadow prevents the module-level patch alone)."""
+force-finalizes the detokenizer on generator close.
+
+The bonsai2 server captures stream_generate via `from mlx_lm.generate
+import stream_generate` (function-body, executed on every call) — and
+the install function MUST save the original BEFORE rebinding, otherwise
+the wrap's `orig_stream` captures the wrap itself (infinite recursion)."""
 from __future__ import annotations
 import hashlib
 import json
@@ -17,8 +19,16 @@ import sys
 
 PROBE_ENV = "MLX_OMARCHY_SERVE_IDS_PROBE"
 
+# Module-level caches: save the original stream_generate on each module
+# the FIRST time install_ids_probe is called, BEFORE the rebind. This is
+# a one-time save per import; subsequent install calls find the cached
+# value (which the wrap rebinds, so we always re-save at the top of
+# install_ids_probe by reading via a dedicated helper).
+_ORIGINAL_STREAM_GENERATE = None
+
 
 def install_ids_probe(emit=None):
+    global _ORIGINAL_STREAM_GENERATE
     if os.environ.get(PROBE_ENV) != "1":
         return None
     if emit is None:
@@ -79,16 +89,12 @@ def install_ids_probe(emit=None):
                 BPEStreamingDetokenizer, SPMStreamingDetokenizer):
         wrap(cls)
 
-    # Wrap stream_generate so that on GeneratorExit (loop exit / break)
-    # we force-finalize the detokenizer — the bonsai2 server's for-loop
-    # never calls detok.finalize itself, so the class-level finalize
-    # hook alone would be dead. stream_generate is also rebound on the
-    # bonsai2 server module (the import name shadows the module attribute).
-    orig_stream = getattr(_mlx_lm_generate, "stream_generate", None)
+    # CRITICAL: save the ORIGINAL stream_generate BEFORE rebinding, so
+    # the wrap's orig_stream points to the real generator function (and
+    # not to the wrap itself, which would cause infinite recursion).
+    _original = _mlx_lm_generate.stream_generate
 
     def _resolve_detok(*args, **kwargs):
-        # The detokenizer lives on the tokenizer (args[1] in the
-        # generate signature: model, tokenizer, prompt, ...).
         for tok in args[1:3]:
             d = getattr(tok, "detokenizer", None) or getattr(
                 tok, "_detok", None)
@@ -98,7 +104,7 @@ def install_ids_probe(emit=None):
 
     def stream_probe(*args, **kwargs):
         state["detok"] = _resolve_detok(*args, **kwargs)
-        gen = orig_stream(*args, **kwargs)
+        gen = _original(*args, **kwargs)
         try:
             yielded = next(gen)
         except StopIteration:
@@ -118,16 +124,12 @@ def install_ids_probe(emit=None):
             if state["detok"] is not None:
                 state["detok"].finalize()
 
-    if orig_stream is not None:
-        _mlx_lm_generate.stream_generate = stream_probe
-        # Also rebind on the bonsai2 server module so the
-        # `for response in stream_generate(...)` for-loop hits the wrap.
-        try:
-            import mlx_omarchy_bonsai2.server as _bonsai_server
-            if getattr(_bonsai_server, "stream_generate", None) is not None:
-                _bonsai_server.stream_generate = stream_probe
-        except Exception as exc:
-            print(f"shim: bonsai2 server rebind failed: {exc}",
-                  file=sys.stderr, flush=True)
+    _mlx_lm_generate.stream_generate = stream_probe
+    try:
+        import mlx_omarchy_bonsai2.server as _bonsai_server
+        _bonsai_server.stream_generate = stream_probe
+    except Exception as exc:
+        print(f"shim: bonsai2 server rebind failed: {exc}",
+              file=sys.stderr, flush=True)
     print("shim: ids probe installed (bonsai2)", file=sys.stderr, flush=True)
     return state
