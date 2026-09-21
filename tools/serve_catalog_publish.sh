@@ -1,13 +1,17 @@
 #!/bin/sh
 # Publish a refreshed serve catalog as a metadata-only PR.
 #
-# Invariants (Main review 2026-09-20):
+# Invariants (Main review 2026-09-20, round 2):
+# - The bot identity is configured BEFORE any commit: a fresh checkout
+#   (GitHub Actions) has no git identity, so config-after-commit fails.
 # - The publish branch always starts from the CURRENT HEAD where the
 #   refresh ran, never from a stale remote tip, so the generated diff is
 #   preserved and every PR regenerates fully from current main.
-# - The push is --force-with-lease against the fetched remote tip: a
-#   concurrent foreign update to the branch fails the push instead of
-#   being silently overwritten.
+# - ls-remote exit codes are discriminated: 2 = branch genuinely absent;
+#   any other failure (network/auth) propagates loudly.
+# - The push is --force-with-lease pinned to the EXPLICIT fetched SHA
+#   (FETCH_HEAD from our own branch fetch), never an ambient
+#   remote-tracking ref that may not exist under CI checkouts.
 # - PR creation queries the existing PR explicitly and either creates one
 #   or reports the existing one; gh failures are LOUD (auth/network
 #   problems must fail the job, never masquerade as "already open").
@@ -20,22 +24,28 @@
 # ensured; non-zero = real failure.
 
 set -eu
-# POSIX sh: no pipefail. No pipeline in this script needs it; every gh
-# call is a single command whose failure set -e propagates.
 
 catalog="$1"
 branch="$2"
 base="${3:-main}"
 
-git diff --quiet -- "$catalog" || local_diff=1
-local_diff="${local_diff:-0}"
+# A fresh checkout has no git identity; the bot identity must exist
+# before the first commit, not after it.
+git config user.name "github-actions[bot]"
+git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
-    git fetch origin "$branch"
-    has_remote=1
-else
-    has_remote=0
-fi
+local_diff=0
+git diff --quiet -- "$catalog" || local_diff=1
+
+has_remote=0
+rc=0
+git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1 || rc=$?
+case "$rc" in
+    0) has_remote=1 ;;
+    2) has_remote=0 ;; # branch genuinely absent
+    *) echo "ERROR: git ls-remote failed (exit $rc); not treating as absent" >&2
+       exit "$rc" ;;
+esac
 
 if [ "$local_diff" = 0 ] && [ "$has_remote" = 0 ]; then
     echo "No catalog diff and no publish branch; nothing to publish."
@@ -46,6 +56,11 @@ fi
 # (same-commit checkout keeps the worktree), and the branch is never
 # seeded from a stale remote tip.
 git checkout -B "$branch"
+
+fetched_sha=""
+if [ "$has_remote" = 1 ]; then
+    fetched_sha="$(git rev-parse FETCH_HEAD)"
+fi
 
 if [ "$local_diff" = 1 ]; then
     git add -- "$catalog"
@@ -58,9 +73,13 @@ if git diff --quiet "$base" "$branch" -- "$catalog"; then
     exit 0
 fi
 
-git config user.name "github-actions[bot]"
-git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-git push --force-with-lease origin "$branch"
+if [ "$has_remote" = 1 ]; then
+    # Lease against the explicit SHA we fetched, not an ambient
+    # remote-tracking ref (which CI checkouts may not have).
+    git push --force-with-lease="refs/heads/$branch:$fetched_sha" origin "$branch"
+else
+    git push -u origin "$branch"
+fi
 
 pr_body='Automated availability refresh: size_bytes / refreshed_at /
 generated_at only. The refresher cannot write qualification,
