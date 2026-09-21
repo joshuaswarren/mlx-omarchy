@@ -8,18 +8,16 @@ Bug history (Main review):
   dead owner entry on disk; future MLX admission read the orphan and
   under-budgeted MemAvailable.
 
-This test exercises the REAL server-process-lifecycle. It spawns
-serve_main as a subprocess against the tiny CPU fixture pack with
---managed, a temp HOME so the real budget API + real
-reservations.json are exercised, and asserts the owner entry is gone
-after the child shuts down. No mock of clear_reservation, no mock of
-budget. Operator cleanup uses the EXISTING budget.clear_reservation(name,
-owner=exact-preserved-token) API after dead-PID is verified.
+This test exercises the REAL serve_main subprocess against the CHECKED-IN
+REPO/serve source. All imports resolve through REPO/serve and tests/; no
+/tmp shadow, no hardcoded staged paths. When the MLX dependency
+(mlx_omarchy_serve.budget) is not importable in the test process, the
+test skips cleanly with a clear reason -- the test cannot exercise the
+real budget API without it.
 
 The pack is the tiny fixture from bonsai2_fixture; the runtime budget
-API is the real mlx_omarchy_serve.budget that Bonsai2 staged at
-/tmp/bonsai2-window/serve; the lifecycle is the real serve_main. A
-failure here means the fix is incomplete.
+API is the real mlx_omarchy_serve.budget; the lifecycle is the real
+serve_main. A failure here means the fix is incomplete.
 """
 
 from __future__ import annotations
@@ -37,13 +35,29 @@ import unittest
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
+SERVE = REPO / "serve"
 TESTS = Path(__file__).resolve().parent
-STAGED_SERVE = Path("/tmp/bonsai2-window/serve")
-for p in (STAGED_SERVE, str(TESTS), str(REPO / "serve")):
+
+# Single source of truth: REPO/serve for the checked-in source and
+# REPO/tests for the shared fixture. We do NOT honour /tmp/bonsai2-window
+# or any other staged shadow here -- CI runs from a clean checkout and
+# shadowing would silently test stale code.
+for p in (str(SERVE), str(TESTS)):
     if str(p) not in sys.path:
         sys.path.insert(0, str(p))
 
-import bonsai2_fixture  # noqa: E402
+
+# MLX dependency gate: budget + mlx_omarchy_bonsai2.server must both be
+# importable from the checked-in source. If they are not, this test
+# CANNOT exercise the real budget API + real serve_main -- skip with
+# a clear reason rather than fabricate a fake path.
+try:
+    import mlx_omarchy_serve  # noqa: F401
+    from mlx_omarchy_serve import budget  # noqa: F401
+    _MLX_AVAILABLE = True
+except ImportError as _exc:
+    _MLX_AVAILABLE = False
+    _MLX_SKIP_REASON = "mlx_omarchy_serve import failed: %s" % _exc
 
 
 def _free_port():
@@ -76,7 +90,7 @@ def _wait_for_resident(home: Path, deadline_s: float = 60.0) -> dict | None:
                 data = json.loads(path.read_text())
             except (OSError, json.JSONDecodeError):
                 data = {}
-            for name, payload in data.items():
+            for _name, payload in data.items():
                 if payload.get("state") == "resident" and payload.get("owner"):
                     return data
         time.sleep(0.2)
@@ -93,13 +107,16 @@ def _wait_for_clear(home: Path, reservation_name: str, deadline_s: float = 30.0)
 
 
 def _spawn(python: str, pack_dir: Path, home: Path, port: int, *, allow_cpu: bool = True):
+    """Spawn serve_main as a subprocess. Imports resolve through REPO/serve
+    only (no /tmp/bonsai2-window or any other staged shadow) so CI runs
+    against the checked-in source."""
     argv = [
         python,
         "-c",
         (
             "import sys; sys.path.insert(0, %r); "
             "from mlx_omarchy_bonsai2 import serve_main; "
-            "serve_main(sys.argv[1:])" % str(STAGED_SERVE)
+            "serve_main(sys.argv[1:])" % str(SERVE)
         ),
         "--model", str(pack_dir),
         "--host", "127.0.0.1",
@@ -111,8 +128,14 @@ def _spawn(python: str, pack_dir: Path, home: Path, port: int, *, allow_cpu: boo
     if allow_cpu:
         argv.append("--allow-cpu")
     env = os.environ.copy()
+    # Pin HOME so the test never touches the user's real reservations.json.
     env["HOME"] = str(home)
     env["MLX_OMARCHY_HOME"] = str(home / ".local" / "share" / "mlx-omarchy")
+    # Force the subprocess to use REPO/serve for its mlx_omarchy_bonsai2
+    # import. Prepend REPO/serve to PYTHONPATH (and remove any inherited
+    # path that points at a staged shadow) so the subprocess never
+    # resolves through a non-checked-in copy.
+    env["PYTHONPATH"] = str(SERVE)
     return subprocess.Popen(
         argv,
         env=env,
@@ -122,6 +145,7 @@ def _spawn(python: str, pack_dir: Path, home: Path, port: int, *, allow_cpu: boo
     )
 
 
+@unittest.skipUnless(_MLX_AVAILABLE, _MLX_SKIP_REASON)
 class ReservationReleaseTests(unittest.TestCase):
     """Real serve_main subprocess + real budget API + real reservations.json."""
 
@@ -129,13 +153,13 @@ class ReservationReleaseTests(unittest.TestCase):
         self.tmp = Path(tempfile.mkdtemp())
         self.home = self.tmp / "home"
         self.home.mkdir()
+        # Import bonsai2_fixture lazily -- it imports mlx, which may
+        # also be missing on hosts without MLX installed.
+        import bonsai2_fixture  # noqa: F401
+
         self.pack_dir, _ = bonsai2_fixture.build_tiny_pack(self.tmp / "pack")
         self.port = _free_port()
         self._diag = []
-        # Pin HOME/MLX_OMARCHY_HOME in the TEST process so direct budget
-        # calls (which default to default_home() == HOME/.local/share/...)
-        # read the same registry the subprocess wrote. The subprocess env
-        # is pinned separately by _spawn.
         self._saved_env = {
             "HOME": os.environ.get("HOME"),
             "MLX_OMARCHY_HOME": os.environ.get("MLX_OMARCHY_HOME"),
@@ -240,7 +264,6 @@ class ReservationReleaseTests(unittest.TestCase):
         # Operator cleanup: EXISTING budget.clear_reservation API with the
         # EXACT preserved owner token. Same call shape the fixed serve_main
         # makes on shutdown; SIGKILL just bypasses the in-process handler.
-        from mlx_omarchy_serve import budget
         cleared = budget.clear_reservation(reservation_name, owner=owner_token)
         self.assertTrue(
             cleared,
