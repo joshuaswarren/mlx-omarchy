@@ -402,6 +402,48 @@ class RequestValidationTests(unittest.TestCase):
         self.assertTrue(all(n.startswith("bonsai-2-27b-mlx-2bit-") for n in names))
 
 
+    def test_sigterm_during_load_releases_reservation(self):
+        """BaseException cleanup: an interrupt after admit but before
+        steady serve still clears the reservation (Main round-6)."""
+        import types
+
+        from mlx_omarchy_bonsai2 import server as server_module
+
+        events = []
+
+        def fake_atomic(name, byte_count, *, note="", owner=None, state="pending"):
+            events.append("reserve")
+            return types.SimpleNamespace(fits=True, lines=[])
+
+        fake_budget = types.SimpleNamespace(
+            estimate_required=lambda memory, context_tokens: types.SimpleNamespace(total=1024),
+            admit_and_reserve=fake_atomic,
+            set_reservation_state=lambda *a, **k: events.append("resident"),
+            clear_reservation=lambda name, **k: events.append("clear"),
+        )
+        fake_pkg = types.SimpleNamespace(budget=fake_budget)
+        saved = sys.modules.get("mlx_omarchy_serve")
+        sys.modules["mlx_omarchy_serve"] = fake_pkg
+        original_state = server_module.Bonsai2State
+
+        def boom(args):
+            raise KeyboardInterrupt  # simulates SIGTERM mid-load
+
+        server_module.Bonsai2State = boom
+        try:
+            argv = ["--model", str(self.tmp / "pack"), "--host", "127.0.0.1",
+                    "--port", "0", "--allow-cpu", "--managed"]
+            # The interrupt is handled: clean return, reservation released.
+            server_module.serve_main(argv)
+        finally:
+            if saved is None:
+                sys.modules.pop("mlx_omarchy_serve", None)
+            else:
+                sys.modules["mlx_omarchy_serve"] = saved
+            server_module.Bonsai2State = original_state
+        self.assertIn("reserve", events)
+        self.assertIn("clear", events)
+
     def test_concurrent_requests_serialize_and_succeed(self):
         """Two overlapping chat requests both complete via the mx worker."""
         import concurrent.futures
