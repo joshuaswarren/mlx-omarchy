@@ -704,57 +704,6 @@ class CatalogCommandTests(CliTestBase):
         self.assertEqual(code, 0)
         self.assertEqual(budget.load_reservations(self.home), {})
 
-    def test_verified_dead_holder_clears_via_plain_unreserve(self):
-        # Main: a VERIFIED-DEAD holder pid needs no --force — the process
-        # cannot come back, so the plain API clears it.
-        budget.set_reservation("stale", int(1 * GiB), "dead holder", self.home,
-                               owner="pid999999999-deadbeefdead")
-        code, _, err = self.run_cli(["unreserve", "stale"])
-        self.assertEqual(code, 0, err)
-        self.assertEqual(budget.load_reservations(self.home), {})
-
-    def test_live_owned_entry_is_protected_from_plain_unreserve(self):
-        # Main: plain unreserve must PROTECT an entry held by a live
-        # process. pid reuse means alive is only 'alive, not
-        # same-owner-confirmed'; --force stays the explicit escape.
-        budget.set_reservation("running", int(1 * GiB), "live server", self.home,
-                               owner=f"pid{os.getpid()}-aaaaaaaaaaaa")
-        code, _, err = self.run_cli(["unreserve", "running"])
-        self.assertEqual(code, 2)
-        self.assertIn("LIVE process", err)
-        self.assertIn("not same-owner-confirmed", err)
-        self.assertEqual(budget.load_reservations(self.home)["running"]["bytes"],
-                         int(1 * GiB))
-        code, _, _ = self.run_cli(["unreserve", "running", "--force"])
-        self.assertEqual(code, 0)
-        self.assertEqual(budget.load_reservations(self.home), {})
-
-    def test_reservations_listing_marks_dead_holders(self):
-        budget.set_reservation("stale", int(1 * GiB), "crashed", self.home)
-        # rewrite the owner to a pid that cannot exist
-        data = budget.load_reservations(self.home)
-        data["stale"]["owner"] = "pid999999999-deadbeefdead"
-        (self.home / budget.RESERVATIONS_FILE).write_text(json.dumps(data))
-        budget.set_reservation("manual-entry", 5, "", self.home)
-        # manual entries (owner None) are written by set_reservation with
-        # owner=None; emulate by rewriting
-        code, out, _ = self.run_cli(["reservations"])
-        self.assertEqual(code, 0)
-        self.assertIn("DEAD (verified; unreserve clears)", out)
-        self.assertIn("manual-entry", out)
-
-    def test_owner_pid_parsing(self):
-        self.assertEqual(budget.owner_pid("pid656268-609075872d0f"), 656268)
-        self.assertIsNone(budget.owner_pid(None))
-        self.assertIsNone(budget.owner_pid("manual"))
-        self.assertIsNone(budget.owner_pid("pidX-bad"))
-
-    def test_pid_alive_classification(self):
-        my_pid = os.getpid()
-        self.assertTrue(budget.pid_alive(my_pid))
-        self.assertFalse(budget.pid_alive(999999999))
-        self.assertIsNone(budget.pid_alive(None))
-
     def test_reserve_rejects_nonfinite(self):
         for bad in ("nan", "inf", "-2", "abc"):
             with self.subTest(bad=bad):

@@ -286,35 +286,16 @@ def set_reservation_state(name: str, state: str, home: Path | None = None,
 
 
 def clear_reservation(name: str, home: Path | None = None,
-                      owner: str | None = None, force: bool = False) -> bool:
-    """Clear a reservation. Protection rules for an entry owned by another
-    process: a VERIFIED-DEAD holder pid allows the clear through the plain
-    API (the process cannot come back); a live holder pid refuses — pid
-    reuse means alive is only 'alive, not same-owner-confirmed', and an
-    unknown holder liveness refuses too. force (the operator maintenance
-    path) clears regardless and must never be invoked programmatically."""
+                      owner: str | None = None) -> bool:
     def mutate(data, _available):
         entry = data.get(name)
         if entry is None:
             return False
-        holder = entry.get("owner")
-        if holder and not force and holder != owner:
-            holder_pid = owner_pid(holder)
-            alive = pid_alive(holder_pid)
-            if alive is False:
-                pass  # verified dead: the plain API may clear it
-            elif alive is True:
-                raise BudgetError(
-                    f"reservation {name!r} is held by a LIVE process "
-                    f"({holder}, pid {holder_pid}; pid reuse not ruled out, "
-                    "not same-owner-confirmed); refusing to evict"
-                )
-            else:
-                raise BudgetError(
-                    f"reservation {name!r} is owned by another holder "
-                    f"({holder}) with unknown liveness; refusing to clear "
-                    "(use --force only if you have verified it gone)"
-                )
+        if entry.get("owner") and entry["owner"] != owner:
+            raise BudgetError(
+                f"reservation {name!r} is owned by another holder "
+                f"({entry['owner']}); refusing to clear"
+            )
         del data[name]
         return True
 
@@ -325,33 +306,6 @@ def generate_owner() -> str:
     """A unique per-process owner token. Deliberately excludes hostnames:
     this repository is public."""
     return f"pid{os.getpid()}-{uuid.uuid4().hex[:12]}"
-
-
-def owner_pid(owner: str | None) -> int | None:
-    """The pid embedded in an owner token, if any. Lets the operator see
-    whether the holding process is still alive (a dead pid means the
-    reservation is stale and safe to --force clear)."""
-    if not owner or not owner.startswith("pid"):
-        return None
-    tail = owner[3:].split("-", 1)[0]
-    try:
-        return int(tail)
-    except ValueError:
-        return None
-
-
-def pid_alive(pid: int | None) -> bool | None:
-    if pid is None:
-        return None  # unknown: unowned/manual reservations carry no pid
-    try:
-        os.kill(pid, 0)
-    except ProcessLookupError:
-        return False
-    except PermissionError:
-        return True  # exists, owned by someone else
-    except OSError:
-        return None
-    return True
 
 
 @dataclass

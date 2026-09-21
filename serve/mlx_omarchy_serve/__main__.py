@@ -633,13 +633,8 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     p_res.add_argument("name")
     p_res.add_argument("gib", type=parse_weights_gib)
     p_res.add_argument("--note", default="")
-    p_list = sub.add_parser("reservations",
-                            help="list reservations with owner liveness")
     p_unres = sub.add_parser("unreserve", help="remove a reservation")
     p_unres.add_argument("name")
-    p_unres.add_argument("--force", action="store_true",
-                         help="clear a reservation whose owner process is "
-                              "dead (stale); never use while its server runs")
 
     return parser.parse_args(argv)
 
@@ -967,26 +962,8 @@ def main(argv: list[str] | None = None) -> int:
             budget.set_reservation(args.name, args.gib, args.note, home)
             print(f"reserved {args.gib / GiB:g} GiB for {args.name}")
             return 0
-        if args.command == "reservations":
-            data = budget.load_reservations(home)
-            if not data:
-                print("no reservations")
-                return 0
-            print(f"{'name':<34} {'state':<9} {'GiB':>7} {'owner':<24} holder")
-            for name, r in sorted(data.items()):
-                pid = budget.owner_pid(r.get("owner"))
-                alive = budget.pid_alive(pid)
-                holder = {
-                    True: "alive (not same-owner-confirmed)",
-                    False: "DEAD (verified; unreserve clears)",
-                    None: "manual/unknown liveness",
-                }[alive]
-                print(f"{name:<34} {r['state']:<9} {r['bytes'] / GiB:>7.2f} "
-                      f"{str(r.get('owner') or '-'):<24} {holder}")
-            return 0
         if args.command == "unreserve":
-            if not budget.clear_reservation(args.name, home,
-                                            force=getattr(args, "force", False)):
+            if not budget.clear_reservation(args.name, home):
                 return fail(f"no reservation named {args.name!r}", 2)
             print(f"removed reservation {args.name}")
             return 0
