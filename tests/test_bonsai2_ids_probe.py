@@ -3,7 +3,10 @@
 The hook contract: per-uid/add_token accumulates, reset/finalize flushes.
 The bonsai shim also wraps stream_generate to force-finalize the
 detokenizer on generator close (the bonsai2 for-loop never calls
-detok.finalize itself)."""
+detok.finalize itself). The stream_generate wrap also rebinds on
+mlx_omarchy_bonsai2.server (the bonsai server captures stream_generate
+by name at function-definition time, so the module-level mlx_lm.generate
+patch alone is dead)."""
 import importlib
 import json
 import os
@@ -39,12 +42,6 @@ def _fake_tokenizer_utils():
 
 
 def _fresh_module_under_test():
-    """Purge mlx_lm / mlx_lm.tokenizer_utils / mlx_lm.generate /
-    mlx_omarchy_bonsai2(.ids_probe) so the next import sees the fakes
-    below. Real mlx_lm is not importable in this env, but if the
-    test runner's import machinery pre-loaded any of them via
-    site-packages, our fakes must win the next import to test the
-    hook contract."""
     for mod in (
             "mlx_omarchy_bonsai2.ids_probe",
             "mlx_omarchy_bonsai2",
@@ -56,10 +53,10 @@ def _fresh_module_under_test():
     sys.path.insert(0, str(REPO_ROOT / "serve"))
     fake_tok = _fake_tokenizer_utils()
     fake_generate = types.ModuleType("mlx_lm.generate")
-    # stream_generate is patched in install_ids_probe; we leave a sentinel
-    # here so the wrap has something to bind to.
-    fake_generate.stream_generate = lambda *a, **k: (_ for _ in ()).throw(
-        StopIteration)
+    # Sentinel stream_generate; the test's real generator override
+    # goes on the bonsai2 server module attr (which the hook rebinds
+    # to the wrap after install).
+    fake_generate.stream_generate = lambda *a, **k: iter(())
     sys.modules["mlx_lm"] = types.ModuleType("mlx_lm")
     sys.modules["mlx_lm.tokenizer_utils"] = fake_tok
     sys.modules["mlx_lm.generate"] = fake_generate
@@ -122,6 +119,20 @@ class Bonsai2IdsProbeTests(unittest.TestCase):
         self.assertEqual(len(events), 1)
         self.assertEqual(events[0]["ids"], [100, 200, 300])
         self.assertEqual(events[0]["event"], "generation")
+
+    def test_stream_generate_wrap_rebound_on_bonsai_server(self):
+        """The wrap must rebind stream_generate on the bonsai2 server
+        module so the server's for-loop iterates the wrap (not the
+        original stream_generate). This is a state-only contract check
+        because the full generator flow is environment-dependent and
+        hard to fake in a unit test."""
+        os.environ[self.mod.PROBE_ENV] = "1"
+        import sys as _sys
+        bonsai = _sys.modules["mlx_omarchy_bonsai2.server"] = types.ModuleType(
+            "mlx_omarchy_bonsai2.server")
+        bonsai.stream_generate = lambda *a, **k: iter(())
+        self.mod.install_ids_probe(emit=lambda e: None)
+        self.assertEqual(bonsai.stream_generate.__name__, "stream_probe")
 
 
 if __name__ == "__main__":
