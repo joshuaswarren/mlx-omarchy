@@ -139,6 +139,43 @@ class IdsProbeTests(unittest.TestCase):
         self.assertEqual(calls, ["install", "ids_probe", "serve"])
 
 
+    def test_batched_branch_flushes_on_remove_and_close(self):
+        """Mimics the ACTUAL server branch (mlx_lm/server.py:884): the
+        batched loop calls result['detokenizer'].add_token(r.token) per
+        generated token and NEVER calls detokenizer.reset/finalize. The
+        flush must therefore fire when the server removes the finished
+        uid (BatchGenerator.remove) or closes the generator."""
+        fake = _fake_tokenizer_utils()
+        events = []
+
+        class FakeBatchGenerator:
+            def remove(self, uids):
+                pass
+
+            def close(self):
+                pass
+
+        fake_mod = types.ModuleType("mlx_lm")
+        fake_mod.BatchGenerator = FakeBatchGenerator
+        with unittest.mock.patch.dict(
+                sys.modules, {"mlx_lm": fake_mod,
+                              "mlx_lm.tokenizer_utils": fake}):
+            _mlxlm_server.install_ids_probe(fake_mod, emit=events.append)
+            d = fake.StreamingDetokenizer()
+            for t in (11, 22, 33):
+                d.add_token(t)
+            # Server finishes the request -> removes its uid.
+            FakeBatchGenerator.remove(FakeBatchGenerator(), [7])
+        self.assertEqual(len(events), 1, f"no flush on remove: {events}")
+        self.assertEqual(events[0]["ids"], [11, 22, 33])
+        self.assertEqual(events[0]["event"], "generation")
+        self.assertEqual(len(events[0]["ids_sha16"]), 16)
+
+        # A later close() with an empty buffer must not emit a second event.
+        FakeBatchGenerator.close(FakeBatchGenerator(), )
+        self.assertEqual(len(events), 1)
+
+
 import os  # noqa: E402  (used in the env-gated tests above)
 
 if __name__ == "__main__":
