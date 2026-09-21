@@ -33,7 +33,7 @@ def main():
 
     # --- 1. cache fetch branch + composition probe -------------------
     cache_mod = __import__("mlx_lm.models.cache", fromlist=["PromptCache"])
-    orig_fetch = cache_mod.PromptCache.fetch_nearest_cache
+    orig_fetch = cache_mod.LRUPromptCache.fetch_nearest_cache
 
     def fetch_probe(self, model, tokens):
         result = self._trie.search(model, tokens)
@@ -75,7 +75,7 @@ def main():
     cache_mod.PromptCache.fetch_nearest_cache = fetch_probe
 
     # also surface the real class mix of a live cache at insert time
-    orig_insert = cache_mod.PromptCache.insert_cache
+    orig_insert = cache_mod.LRUPromptCache.insert_cache
 
     def insert_probe(self, model, tokens, prompt_cache, *a, **k):
         probes.append({"event": "insert", "key_tokens": len(tokens),
