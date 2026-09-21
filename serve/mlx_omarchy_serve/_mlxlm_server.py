@@ -211,6 +211,11 @@ def install_ids_probe(server_module, emit=None) -> None:
             # removes that uid (request completion).
             def next_probe(self, *_a, _orig=orig_next, **_k):
                 prompt_responses, gen_responses = _orig(self, *_a, **_k)
+                if gen_responses and not state.get("by_uid"):
+                    import sys as _s
+                    print("shim: next_probe FIRST gen_responses "
+                          f"({len(gen_responses)} items)",
+                          file=_s.stderr, flush=True)
                 for r in gen_responses or []:
                     token = getattr(r, "token", None)
                     uid = getattr(r, "uid", None)
@@ -245,6 +250,7 @@ def install_ids_probe(server_module, emit=None) -> None:
     if orig_stream is not None:
         def stream_probe(*args, **kwargs):
             gen = orig_stream(*args, **kwargs)
+            print("shim: stream_probe ENTERED", file=sys.stderr, flush=True)
             count = 0
             while True:
                 try:
