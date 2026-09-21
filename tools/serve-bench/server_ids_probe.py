@@ -93,12 +93,13 @@ def make_stream_probe(orig_stream, log):
         t0 = time.perf_counter()
         t_first = None
         finish = None
-        state = {"emitted": state["emitted"]}
+        emitted = False
 
         def emit_now():
-            if state["emitted"]:
+            nonlocal emitted
+            if emitted:
                 return
-            state["emitted"] = True
+            emitted = True
             wall = time.perf_counter() - t0
             log({"event": "generation", "n": len(ids),
                  "wall_s": round(wall, 3),
