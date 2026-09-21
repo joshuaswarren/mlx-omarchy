@@ -102,11 +102,22 @@ layout(push_constant) uniform Params {
 } params;
 
 // 4 KiB shared at TILE_ROWS = 32, 3 KiB at 16: one TILE_ROWS x 16 x
-// tile and one 16x32 f32 weight tile. The drain reuses x_s as four 8x8
-// blocks, 256 floats, which is exactly the 16-row x tile and fits
+// tile and one 16x32 f32 weight tile. The drain reuses x_s[0] as four
+// 8x8 blocks, 256 floats, which is exactly the 16-row x tile and fits
 // inside the 32-row one.
-shared float x_s[TILE_M * STEP_K];
-shared float w_s[STEP_K * TILE_N];
+//
+// K-STEP DOUBLE BUFFER (candidate 2): both tiles are duplicated
+// (8 KiB at 32 rows, under the 32 KiB device limit). Step s stages
+// into buffer s%2 and its FMA section reads buffer s%2; the next
+// step's staging targets the other buffer, so the per-step trailing
+// barrier is removed: a lane can run ahead into the next stage+barrier
+// while other lanes are still in their FMA section, and the next
+// step's global loads issue without waiting for the slowest lane's
+// FMA. No value is held live across the FMA section, so the register
+// budget is unchanged from the shipped kernel. Staged values and the
+// per-output ascending-k accumulation order are unchanged.
+shared float x_s[2][TILE_M * STEP_K];
+shared float w_s[2][STEP_K * TILE_N];
 
 void main() {
   uint lid = gl_LocalInvocationID.x;
@@ -159,49 +170,46 @@ void main() {
           scale = float(scales.values[scale_row + chunk]);
           bias = float(biases.values[bias_row + chunk]);
         }
-        // Prefetch registers for step 0; each FMA section prefetches the
-        // next step's globals before the trailing barrier (the barrier is
-        // a hard scheduler boundary, so these loads cannot sink past it
-        // and their latency hides under other lanes' FMA drain).
-        uint step_k_base = chunk * CHUNK_K;
-        uint x_words[X_LOADS];
-        for (uint j = 0u; j < X_LOADS; ++j) {
-          uint i = lid + 64u * j;
-          uint local_row = i / 8u;
-          uint row = row_base + local_row;
-          x_words[j] = row < params.matrix_m
-              ? input_x.values[
-                    x_slice + row * x_words_per_row + step_k_base / 2u +
-                    (i % 8u)]
-              : 0u;
-        }
-        uint packed = column_ok
-            ? input_w.values[w_row + step_k_base / 8u + w_part] : 0u;
         for (uint step = 0u; step < CHUNK_K / STEP_K; ++step) {
+          uint k_base = chunk * CHUNK_K + step * STEP_K;
+          uint buf = step & 1u;
           // X_LOADS half2 loads per lane cover the TILE_ROWS x 16 x tile.
+          uint x_words[X_LOADS];
+          for (uint j = 0u; j < X_LOADS; ++j) {
+            uint i = lid + 64u * j;
+            uint local_row = i / 8u;
+            uint row = row_base + local_row;
+            x_words[j] = row < params.matrix_m
+                ? input_x.values[
+                      x_slice + row * x_words_per_row + k_base / 2u +
+                      (i % 8u)]
+                : 0u;
+          }
           for (uint j = 0u; j < X_LOADS; ++j) {
             uint i = lid + 64u * j;
             uint local_row = i / 8u;
             vec2 pair = unpackHalf2x16(x_words[j]);
-            x_s[local_row * STEP_K + 2u * (i % 8u)] = pair.x;
-            x_s[local_row * STEP_K + 2u * (i % 8u) + 1u] = pair.y;
+            x_s[buf][local_row * STEP_K + 2u * (i % 8u)] = pair.x;
+            x_s[buf][local_row * STEP_K + 2u * (i % 8u) + 1u] = pair.y;
           }
           // One packed word per lane covers the 16x32 weight tile.
+          uint packed = column_ok
+              ? input_w.values[w_row + k_base / 8u + w_part] : 0u;
           uint w_base = 8u * w_part * TILE_N + w_column_local;
-          w_s[w_base + 0u * TILE_N] = scale * float(packed & 0xFu) + bias;
-          w_s[w_base + 1u * TILE_N] =
+          w_s[buf][w_base + 0u * TILE_N] = scale * float(packed & 0xFu) + bias;
+          w_s[buf][w_base + 1u * TILE_N] =
               scale * float((packed >> 4u) & 0xFu) + bias;
-          w_s[w_base + 2u * TILE_N] =
+          w_s[buf][w_base + 2u * TILE_N] =
               scale * float((packed >> 8u) & 0xFu) + bias;
-          w_s[w_base + 3u * TILE_N] =
+          w_s[buf][w_base + 3u * TILE_N] =
               scale * float((packed >> 12u) & 0xFu) + bias;
-          w_s[w_base + 4u * TILE_N] =
+          w_s[buf][w_base + 4u * TILE_N] =
               scale * float((packed >> 16u) & 0xFu) + bias;
-          w_s[w_base + 5u * TILE_N] =
+          w_s[buf][w_base + 5u * TILE_N] =
               scale * float((packed >> 20u) & 0xFu) + bias;
-          w_s[w_base + 6u * TILE_N] =
+          w_s[buf][w_base + 6u * TILE_N] =
               scale * float((packed >> 24u) & 0xFu) + bias;
-          w_s[w_base + 7u * TILE_N] = scale * float(packed >> 28u) + bias;
+          w_s[buf][w_base + 7u * TILE_N] = scale * float(packed >> 28u) + bias;
           barrier();
 
           for (uint ks = 0u; ks < STEP_K / MAT; ++ks) {
@@ -210,13 +218,13 @@ void main() {
             coopmat<float, gl_ScopeSubgroup, MAT, MAT, gl_MatrixUseB> mat_b[4];
             for (uint rb = 0u; rb < SUBGROUP_ROW_BLOCKS; ++rb) {
               coopMatLoad(
-                  mat_a[rb], x_s,
+                  mat_a[rb], x_s[buf],
                   (sub_rb + rb) * MAT * STEP_K + ks * MAT, STEP_K,
                   gl_CooperativeMatrixLayoutRowMajor);
             }
             for (uint cb = 0u; cb < 4u; ++cb) {
               coopMatLoad(
-                  mat_b[cb], w_s, ks * MAT * TILE_N + cb * MAT, TILE_N,
+                  mat_b[cb], w_s[buf], ks * MAT * TILE_N + cb * MAT, TILE_N,
                   gl_CooperativeMatrixLayoutRowMajor);
             }
             for (uint rb = 0u; rb < SUBGROUP_ROW_BLOCKS; ++rb) {
@@ -226,25 +234,10 @@ void main() {
               }
             }
           }
-          // Prefetch the next step's globals into registers before the
-          // trailing barrier: dependency-legal (registers only, no shared
-          // conflict), numerics untouched, register cost X_LOADS + 1 words.
-          if (step + 1u < CHUNK_K / STEP_K) {
-            step_k_base = chunk * CHUNK_K + (step + 1u) * STEP_K;
-            for (uint j = 0u; j < X_LOADS; ++j) {
-              uint i = lid + 64u * j;
-              uint local_row = i / 8u;
-              uint row = row_base + local_row;
-              x_words[j] = row < params.matrix_m
-                  ? input_x.values[
-                        x_slice + row * x_words_per_row + step_k_base / 2u +
-                        (i % 8u)]
-                  : 0u;
-            }
-            packed = column_ok
-                ? input_w.values[w_row + step_k_base / 8u + w_part] : 0u;
-          }
-          barrier();
+          // No trailing barrier: the next step stages the OTHER buffer, so
+          // its writes cannot race this step's FMA reads of buf. The next
+          // iteration's barrier orders those reads before the writes that
+          // reuse buf two steps later.
         }
       }
 
@@ -254,7 +247,7 @@ void main() {
         if (sub_rb == (rb & ~(SUBGROUP_ROW_BLOCKS - 1u))) {
           for (uint cb = 0u; cb < 4u; ++cb) {
             coopMatStore(
-                acc[rb & (SUBGROUP_ROW_BLOCKS - 1u)][cb], x_s,
+                acc[rb & (SUBGROUP_ROW_BLOCKS - 1u)][cb], x_s[0],
                 cb * MAT * MAT, MAT,
                 gl_CooperativeMatrixLayoutRowMajor);
           }
@@ -266,7 +259,7 @@ void main() {
             uint row = row_base + rb * MAT + r;
             if (row < params.matrix_m) {
               output_data.values[out_slice + row * params.matrix_n + column] =
-                  float16_t(x_s[(w_column_local / 8u) * MAT * MAT +
+                  float16_t(x_s[0][(w_column_local / 8u) * MAT * MAT +
                                 r * MAT + (w_column_local % 8u)]);
             }
           }
