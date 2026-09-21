@@ -108,6 +108,15 @@ layout(push_constant) uniform Params {
 shared float x_s[TILE_M * STEP_K];
 shared float w_s[STEP_K * TILE_N];
 
+// Lane-constant shared-store offsets, computed once: x_s row/col and the
+// w_s column base depend only on the lane id. Hoisted so the k loop does
+// not reissue this integer math every 16-wide step (the AGX scheduler
+// cannot lift it across the staging barriers; ~90 of 107 integer ops per
+// step in the shipped ISA are these recomputes, see
+// receipts/2026-09-12-agx-qmm-codegen).
+uint xs_off[X_LOADS];
+uint w_base;
+
 void main() {
   uint lid = gl_LocalInvocationID.x;
   uint sub = gl_SubgroupID;
@@ -124,6 +133,11 @@ void main() {
   uint x_words_per_row = params.matrix_k / 2u;
   uint w_column_local = lid % 32u;
   uint w_part = lid / 32u;
+  w_base = 8u * w_part * TILE_N + w_column_local;
+  for (uint j = 0u; j < X_LOADS; ++j) {
+    uint i = lid + 64u * j;
+    xs_off[j] = (i / 8u) * STEP_K + 2u * (i % 8u);
+  }
 
   for (uint b = 0u; b < batch; ++b) {
   uint w_slice = params.rhs_offset + b * w_batch_words;
@@ -143,6 +157,17 @@ void main() {
       uint scale_row = scale_slice + column * groups_per_row;
       uint bias_row = bias_slice + column * groups_per_row;
 
+      // Per-lane global x addresses: only k_base/2 varies inside the k
+      // loops, so the lane-constant part is computed once per tile.
+      uint x_addr_base[X_LOADS];
+      bool x_ok[X_LOADS];
+      for (uint j = 0u; j < X_LOADS; ++j) {
+        uint i = lid + 64u * j;
+        uint row = row_base + i / 8u;
+        x_ok[j] = row < params.matrix_m;
+        x_addr_base[j] = x_slice + row * x_words_per_row + (i % 8u);
+      }
+
       coopmat<float, gl_ScopeSubgroup, MAT, MAT, gl_MatrixUseAccumulator>
           acc[SUBGROUP_ROW_BLOCKS][4];
       for (uint rb = 0u; rb < SUBGROUP_ROW_BLOCKS; ++rb) {
@@ -160,30 +185,22 @@ void main() {
           bias = float(biases.values[bias_row + chunk]);
         }
         for (uint step = 0u; step < CHUNK_K / STEP_K; ++step) {
-          uint k_base = chunk * CHUNK_K + step * STEP_K;
-          // X_LOADS half2 loads per lane cover the TILE_ROWS x 16 x tile.
+          uint k_half = (chunk * CHUNK_K + step * STEP_K) / 2u;
+          uint k_word = k_half / 4u;
           uint x_words[X_LOADS];
           for (uint j = 0u; j < X_LOADS; ++j) {
-            uint i = lid + 64u * j;
-            uint local_row = i / 8u;
-            uint row = row_base + local_row;
-            x_words[j] = row < params.matrix_m
-                ? input_x.values[
-                      x_slice + row * x_words_per_row + k_base / 2u +
-                      (i % 8u)]
+            x_words[j] = x_ok[j]
+                ? input_x.values[x_addr_base[j] + k_half]
                 : 0u;
           }
           for (uint j = 0u; j < X_LOADS; ++j) {
-            uint i = lid + 64u * j;
-            uint local_row = i / 8u;
             vec2 pair = unpackHalf2x16(x_words[j]);
-            x_s[local_row * STEP_K + 2u * (i % 8u)] = pair.x;
-            x_s[local_row * STEP_K + 2u * (i % 8u) + 1u] = pair.y;
+            x_s[xs_off[j]] = pair.x;
+            x_s[xs_off[j] + 1u] = pair.y;
           }
           // One packed word per lane covers the 16x32 weight tile.
           uint packed = column_ok
-              ? input_w.values[w_row + k_base / 8u + w_part] : 0u;
-          uint w_base = 8u * w_part * TILE_N + w_column_local;
+              ? input_w.values[w_row + k_word + w_part] : 0u;
           w_s[w_base + 0u * TILE_N] = scale * float(packed & 0xFu) + bias;
           w_s[w_base + 1u * TILE_N] =
               scale * float((packed >> 4u) & 0xFu) + bias;
