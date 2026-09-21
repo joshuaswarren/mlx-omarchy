@@ -149,9 +149,10 @@ class IdsProbeTests(unittest.TestCase):
         events = []
 
         class FakeGenResponse:
-            def __init__(self, uid, token):
+            def __init__(self, uid, token, finish_reason=None):
                 self.uid = uid
                 self.token = token
+                self.finish_reason = finish_reason
 
         class FakeBatchGenerator:
             def __init__(self):
@@ -159,7 +160,7 @@ class IdsProbeTests(unittest.TestCase):
 
             def next(self):
                 return [], [FakeGenResponse(7, 11), FakeGenResponse(7, 22),
-                            FakeGenResponse(7, 33)]
+                            FakeGenResponse(7, 33, finish_reason="length")]
 
             def remove(self, uids):
                 self.removed.extend(uids)
@@ -180,8 +181,9 @@ class IdsProbeTests(unittest.TestCase):
             d = fake.StreamingDetokenizer()
             for r in gen_responses:
                 d.add_token(r.token)
-            bg.remove([7])
-        self.assertEqual(len(events), 1, f"uid flush failed: {events}")
+        # The finished uid flushed INSIDE next_probe (finish_reason present) —
+        # no remove() call required.
+        self.assertEqual(len(events), 1, f"finish_reason flush failed: {events}")
         self.assertEqual(events[0]["ids"], [11, 22, 33])
         self.assertEqual(events[0]["event"], "generation")
         self.assertEqual(len(events[0]["ids_sha16"]), 16)

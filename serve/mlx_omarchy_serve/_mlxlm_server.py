@@ -211,17 +211,17 @@ def install_ids_probe(server_module, emit=None) -> None:
             # removes that uid (request completion).
             def next_probe(self, *_a, _orig=orig_next, **_k):
                 prompt_responses, gen_responses = _orig(self, *_a, **_k)
-                if gen_responses and not state.get("by_uid"):
-                    import sys as _s
-                    print("shim: next_probe FIRST gen_responses "
-                          f"({len(gen_responses)} items)",
-                          file=_s.stderr, flush=True)
                 for r in gen_responses or []:
                     token = getattr(r, "token", None)
                     uid = getattr(r, "uid", None)
-                    if token is not None and uid is not None:
-                        state.setdefault("by_uid", {}).setdefault(
-                            uid, []).append(int(token))
+                    if token is None or uid is None:
+                        continue
+                    state.setdefault("by_uid", {}).setdefault(
+                        uid, []).append(int(token))
+                    # The server never resets the detokenizer on this route;
+                    # flush a uid's array the moment its generation finishes.
+                    if getattr(r, "finish_reason", None) is not None:
+                        _flush_uids([uid])
                 return prompt_responses, gen_responses
             batch_cls.next = next_probe
 
