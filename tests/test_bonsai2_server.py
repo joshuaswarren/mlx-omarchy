@@ -402,6 +402,25 @@ class RequestValidationTests(unittest.TestCase):
         self.assertTrue(all(n.startswith("bonsai-2-27b-mlx-2bit-") for n in names))
 
 
+    def test_concurrent_requests_serialize_and_succeed(self):
+        """Two overlapping chat requests both complete via the mx worker."""
+        import concurrent.futures
+
+        def one(i):
+            return _request(
+                self.base,
+                "/v1/chat/completions",
+                {"messages": [{"role": "user", "content": "Hello"}], "max_tokens": 2},
+            )
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
+            results = list(pool.map(one, range(2)))
+        for status, body in results:
+            self.assertEqual(status, 200)
+            self.assertTrue(body["choices"][0]["message"]["content"])
+            self.assertEqual(body["timings"]["predicted_n"], 2)
+
+
     def test_managed_preflight_happy_path_admits_and_reserves(self):
         """Full preflight with a working atomic budget: pack facts parsed,
         estimate asked, admit_and_reserve called with owner + pending."""
@@ -436,29 +455,69 @@ class RequestValidationTests(unittest.TestCase):
             else:
                 sys.modules["mlx_omarchy_serve"] = saved
         self.assertGreater(total, 0)
-        self.assertEqual(calls["name"], "res-name")
-        self.assertGreater(calls["byte_count"], 0)
+        # The preflight estimate is the CONSERVATIVE bound: the whole
+        # safetensors payload (LM tensors + excluded tensors), not just the
+        # live LM weights.
+        from mlx_omarchy_bonsai2 import loader as _loader
+
+        facts = _loader.pack_footprint(self.tmp / "pack")
+        self.assertGreaterEqual(calls["byte_count"], facts["total_header_bytes"] + 1024)
+        self.assertGreater(calls["byte_count"], facts["live_weights_bytes"])
         self.assertEqual(calls["owner"], "pid0-abc")
         self.assertEqual(calls["state"], "pending")
 
+    def test_bind_failure_releases_reservation(self):
+        """F2: an HTTP bind failure after load must clear the reservation."""
+        import types
 
-    def test_concurrent_requests_serialize_and_succeed(self):
-        """Two overlapping chat requests both complete via the mx worker."""
-        import concurrent.futures
+        from mlx_omarchy_bonsai2 import server as server_module
 
-        def one(i):
-            return _request(
-                self.base,
-                "/v1/chat/completions",
-                {"messages": [{"role": "user", "content": "Hello"}], "max_tokens": 2},
-            )
+        events = []
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
-            results = list(pool.map(one, range(2)))
-        for status, body in results:
-            self.assertEqual(status, 200)
-            self.assertTrue(body["choices"][0]["message"]["content"])
-            self.assertEqual(body["timings"]["predicted_n"], 2)
+        def fake_atomic(name, byte_count, *, note="", owner=None, state="pending"):
+            events.append("reserve")
+            return types.SimpleNamespace(fits=True, lines=[])
+
+        fake_budget = types.SimpleNamespace(
+            estimate_required=lambda memory, context_tokens: types.SimpleNamespace(total=1024),
+            admit_and_reserve=fake_atomic,
+            set_reservation_state=lambda *a, **k: events.append("resident"),
+            clear_reservation=lambda name, **k: events.append("clear"),
+        )
+        fake_pkg = types.SimpleNamespace(budget=fake_budget)
+        saved = sys.modules.get("mlx_omarchy_serve")
+        sys.modules["mlx_omarchy_serve"] = fake_pkg
+        # Occupy the port so ThreadingHTTPServer's bind fails after load.
+        blocker = socket.socket()
+        blocker.bind(("127.0.0.1", 0))
+        blocker.listen(1)
+        occupied = blocker.getsockname()[1]
+        argv = [
+            "--model", str(self.tmp / "pack"), "--host", "127.0.0.1",
+            "--port", str(occupied), "--allow-cpu", "--managed",
+        ]
+        try:
+            with self.assertRaises(OSError):
+                server_module.serve_main(argv)
+        finally:
+            if saved is None:
+                sys.modules.pop("mlx_omarchy_serve", None)
+            else:
+                sys.modules["mlx_omarchy_serve"] = saved
+            blocker.close()
+        self.assertIn("reserve", events)
+        self.assertIn("clear", events)
+
+    def test_rejects_max_context_over_trained_positions(self):
+        """F1: --max-context above the pack's trained positions is rejected."""
+        from mlx_omarchy_bonsai2 import server as server_module
+
+        pack_dir = str(self.tmp / "pack")
+        argv = ["--model", pack_dir, "--host", "127.0.0.1", "--port", "0",
+                "--max-context", str(10 ** 9), "--allow-cpu"]
+        with self.assertRaises(SystemExit) as ctx:
+            server_module.serve_main(argv)
+        self.assertEqual(ctx.exception.code, 2)
 
 
 if __name__ == "__main__":
