@@ -34,16 +34,17 @@ standalone smaller language model.
 ## Model status for serving (2026-09-20)
 
 "Recommended" here requires a qualification pass on real hardware — a
-generation gate alone does not make a model recommended. One typed
-decision endpoint (Laya) has now passed both generation and HTTP on
-device; the chat models' HTTP path is still unqualified, and the catalog
-flags no recommendation pending the integration decision. The chat
-checkpoint that is generation-qualified, for text CLI use only:
+generation gate alone does not make a model recommended. As of the
+2026-09-20 integration, three catalog entries have passed both
+generation and HTTP on device: the Qwen3.8-27B-4bit chat checkpoint, the
+Bonsai-2-27B module backend, and the Laya typed-decision endpoint. The
+catalog still flags no recommendation pending the integration decision.
+Per-entry status:
 
 | Model | Verified online (HF API) | Serving status here |
 |---|---|---|
-| [`mlx-community/Qwen3.8-27B-4bit`](https://huggingface.co/mlx-community/Qwen3.8-27B-4bit) | 2026-09-20, Apache-2.0, ungated | **Generation-qualified, text CLI only** — revision `10c35caa`, candidate wheel `a1251aaa`, [receipt](../receipts/2026-09-20-qwen38-text-install/receipt.json). Not recommended for serving: HTTP is untested. Image input: not qualified. |
-| [`prism-ml/Ternary-Bonsai-2-27B-mlx-2bit`](https://huggingface.co/prism-ml/Ternary-Bonsai-2-27B-mlx-2bit) | 2026-09-20, Apache-2.0, ungated | Not qualified for serving — device qualification is pending and no serve-path gate has run. A dedicated `mlx_omarchy_bonsai2` module backend is in the serving tree so the pack's bundled runtime, which is remote code, is never executed; its server enforces a hard context cap and reports the pack's LICENSE/NOTICE with the required attribution. Historical coherent decode on this pack: ~1.44 tok/s ([v0.7.0 recert receipt](../receipts/2026-09-18-v070-pretag-recert-t6001-test-host.md)). |
+| [`mlx-community/Qwen3.8-27B-4bit`](https://huggingface.co/mlx-community/Qwen3.8-27B-4bit) | 2026-09-20, Apache-2.0, ungated | **Qualified: text CLI and HTTP on device (t6001-test-host)** — revision `10c35caa`. Text CLI: [install receipt](../receipts/2026-09-20-qwen38-text-install/receipt.json). HTTP: mlx-lm shim path, [raw qualification receipt](../receipts/2026-09-20-qwen38-http-mlxlm-t6001-test-host-raw-qualification.md). Image input: not qualified. Recommendation flag stays off pending the integration decision. |
+| [`prism-ml/Ternary-Bonsai-2-27B-mlx-2bit`](https://huggingface.co/prism-ml/Ternary-Bonsai-2-27B-mlx-2bit) | 2026-09-20, Apache-2.0, ungated | **Qualified: generation and HTTP on device (t6001-test-host)** via the dedicated `mlx_omarchy_bonsai2` module backend ([receipt](https://github.com/joshuaswarren/ane-linux-experiments/commit/2e4b78f)). The pack's bundled runtime, which is remote code, is never executed; the server enforces a hard context cap and reports the pack's LICENSE/NOTICE with the required attribution. Historical coherent decode on this pack: ~1.44 tok/s ([v0.7.0 recert receipt](../receipts/2026-09-18-v070-pretag-recert-t6001-test-host.md)). |
 | [`empero-ai/Qwen3.8-35B-A3B-Distill`](https://huggingface.co/empero-ai/Qwen3.8-35B-A3B-Distill) | 2026-09-20, Apache-2.0, ungated | Not qualified. No load or serve test recorded on this stack; device qualification is planned. Scripting trap for this GDN/hybrid family: `mlx_lm.generate_step` takes a 1-D `[S]` prompt tensor while direct `model()` calls take `[B,S]` — use the CLI or handle shapes explicitly. |
 | [`convaiinnovations/laya`](https://huggingface.co/convaiinnovations/laya) — served through the in-repo `mlx_omarchy_laya` conversion @ `1c5edc17` | 2026-09-20, Apache-2.0, ungated | **Typed decisions endpoint qualified on device (t6001-test-host)**: generation and HTTP both pass, 6/6 frozen numerical gates, with concurrent real co-serving against an external resident chat service ([receipt](../receipts/2026-09-20-laya-gpu-qual-t6001-test-host.md)). Managed-reservation co-serving: not exercised. Not in a release, and the catalog still recommends nothing pending the integration decision — see below. |
 
@@ -67,10 +68,9 @@ endpoints answered real requests in the same second
 ([receipt](../receipts/2026-09-20-laya-gpu-qual-t6001-test-host.md)). Scope limits
 that receipt records: co-serving evidence is the external-resident chat
 (observed through `MemAvailable`); co-serving between two managed
-reservations was not exercised, and the chat model's own HTTP path
-remains unqualified. The code ships with the release that contains it,
-and the catalog's recommendation flags stay off pending the integration
-decision.
+reservations was not exercised. The code ships with the release that
+contains it, and the catalog's recommendation flags stay off pending the
+integration decision.
 
 ## Serving catalog CLI
 
@@ -79,7 +79,12 @@ serve …` when the command-center launcher is installed. It is in this
 source tree (serving packages integrated 2026-09-20) but **not yet in a
 published release or the installer**: a release install gains it only
 when a release carries it, and old installs never poll anything. From a
-source checkout, run it with `python -m serve.mlx_omarchy_serve`.
+source checkout, run it from the repository root as
+`PYTHONPATH=serve python -m mlx_omarchy_serve` — the PYTHONPATH is
+required so the server's child processes can import the top-level
+`mlx_omarchy_*` packages; a bare `python -m mlx_omarchy_serve` fails,
+and the `serve.mlx_omarchy_serve` spelling resolves `plan`/`--help` but
+is not the validated child-launch environment.
 
 Downloads are approve-first: interactive runs require typed approval
 before anything downloads, and a memory-aware admission gate must pass
@@ -88,12 +93,12 @@ first (details below). The catalog currently flags **every entry
 target explicitly. Manual targets, exactly as `--help` defines them:
 
 ```bash
-python -m serve.mlx_omarchy_serve plan qwen3.8-27b-4bit --offline
-python -m serve.mlx_omarchy_serve serve mlx-community/Qwen3.8-27B-4bit
-python -m serve.mlx_omarchy_serve serve /path/to/local/model --context 4096
-python -m serve.mlx_omarchy_serve catalog list|status|refresh
-python -m serve.mlx_omarchy_serve reserve NAME GIB [--note TEXT]   # memory another local service owns
-python -m serve.mlx_omarchy_serve unreserve NAME
+PYTHONPATH=serve python -m mlx_omarchy_serve plan qwen3.8-27b-4bit --offline
+PYTHONPATH=serve python -m mlx_omarchy_serve serve mlx-community/Qwen3.8-27B-4bit
+PYTHONPATH=serve python -m mlx_omarchy_serve serve /path/to/local/model --context 4096
+PYTHONPATH=serve python -m mlx_omarchy_serve catalog list|status|refresh
+PYTHONPATH=serve python -m mlx_omarchy_serve reserve NAME GIB [--note TEXT]   # memory another local service owns
+PYTHONPATH=serve python -m mlx_omarchy_serve unreserve NAME
 ```
 
 `target` is a catalog id, a Hugging Face `org/name`, or a local model
@@ -105,12 +110,11 @@ warning.
 The catalog it reads seeds ten pinned entries — six Qwen3.8-27B
 quantizations (4-bit through bf16/mxfp4/nvfp4/mxfp8), the
 Qwen3.8-35B-A3B-Distill pair, Ternary-Bonsai-2-27B, and the laya-mlx
-decision model. Two entries carry qualification records:
-`qwen3.8-27b-4bit` (generation, text CLI) and `laya-mlx` (generation and
-HTTP, the decisions endpoint). Every other entry is an untested
-placeholder until it passes the same bars — generation and HTTP are
-gated separately, and the catalog flags no recommendation pending the
-integration decision.
+decision model. Three entries carry qualification records, each
+generation and HTTP: `qwen3.8-27b-4bit`, `bonsai-2-27b-mlx-2bit`, and
+`laya-mlx`. Every other entry is an untested placeholder until it passes
+the same bars — generation and HTTP are gated separately, and the
+catalog flags no recommendation pending the integration decision.
 
 Before anything downloads, a memory-aware gate budgets `MemAvailable` as
 weights (the full total for MoE; a 35B-A3B counts its full 35B) plus KV at
