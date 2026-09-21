@@ -44,6 +44,49 @@ MAX_BODY_BYTES = 8 * 1024 * 1024
 DEFAULT_MAX_TOKENS = 256
 
 
+def validate_artifact(model_dir) -> str | None:
+    """The CLI integration hook (mlx_omarchy_serve.__main__.
+
+    module_artifact_problem) calls ``getattr(importlib.import_module(
+    "mlx_omarchy_bonsai2.server"), "validate_artifact")(model_dir)``.
+    The hook must live on the server module (this file), not the
+    package __init__, because importlib gives the CLI the server
+    module directly. Returns None on a real Bonsai pack, or a short
+    error string on failure.
+
+    Implementation reuses pack_footprint (config.json schema 2 +
+    safetensors header ONLY -- ZERO tensor bytes). pack_footprint calls
+    _check_config which validates model_type, schema_version,
+    base_model_type, quantization, text_config, modules list, and
+    tensor_namespace -- those PackError diagnostics are surfaced
+    verbatim. Tokenizer presence is NOT validated here: the tokenizer
+    is required at SERVE time (transformers.AutoTokenizer.from_pretrained
+    in load_tokenizer, called from Bonsai2State.__init__ after
+    pack_footprint succeeds) and any missing/corrupt tokenizer file
+    fails there with the exact transformers error message. No
+    <pkg>.convert.checkpoint_state is needed: Bonsai packs ARE the
+    upstream artifact and require no conversion step.
+    """
+    pack = Path(model_dir)
+    if not pack.is_dir():
+        return f"{pack}: not a directory"
+    config_path = pack / "config.json"
+    if not config_path.is_file():
+        return f"{pack}: missing config.json"
+    safetensors = pack / "model.safetensors"
+    if not safetensors.is_file():
+        return f"{pack}: missing model.safetensors"
+    try:
+        from .loader import pack_footprint
+
+        facts = pack_footprint(pack)
+    except Exception as exc:
+        return f"pack validation failed: {exc}"
+    if not facts.get("live_weights_bytes"):
+        return f"{pack}: no language_model.* tensors in checkpoint"
+    return None
+
+
 def _parse_args(argv):
     p = argparse.ArgumentParser(prog="mlx-omarchy-bonsai2", description="Bonsai-2 text chat server")
     p.add_argument("--model", required=True, help="resolved pack directory")
