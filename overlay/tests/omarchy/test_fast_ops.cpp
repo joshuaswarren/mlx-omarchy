@@ -423,41 +423,63 @@ TEST_CASE("weighted bf16 RMSNorm rounds the normalized value before the weight m
   // Upstream mlx/fast.cpp evaluates rms_norm for bf16 rows as the
   // composite: normalize in f32, astype to bf16 (round 1), then
   // multiply by the bf16 weight (round 2). The Metal fused kernel
-  // matches those two-round semantics bit-for-bit. This fixture pins
-  // the same behavior for the omarchy shader on the smallest input
-  // that distinguishes the expressions.
+  // matches those two-round semantics bit-for-bit (oracle-verified).
+  // This fixture pins the same behavior for the omarchy shader on a
+  // deterministic pseudo-random bf16 row.
   if (!compute_available()) {
     return;
   }
   Stream stream = gpu_stream();
   const float eps = 1e-6f;
+  const size_t rows = 2;
   const size_t cols = 8;
-  // All-equal row: value * norm = 1 - eps/(2 v^2) = 0.9999995, which
-  // rounds to bf16 1.0. Two-round then multiplies by 1.00390625 ->
-  // 1.00390625; single-round computes
-  // bf16(0.9999995 * 1.00390625) = 1.0 — 1 ulp apart.
-  std::vector<float> x_data(cols, 1.0f);
-  std::vector<float> w_data(cols, 1.00390625f);
+  auto x_raw = pattern(rows * cols, 41);
+  auto w_raw = pattern(cols, 43);
+  // model path stores activations and weights in bf16: widen-safe
+  // rounding of the generated f32 pattern to the storage dtype
+  for (auto& v : x_raw) {
+    v = round_bf16_rne(v);
+  }
+  for (auto& v : w_raw) {
+    v = round_bf16_rne(v);
+  }
 
   array x = astype(
-      array(x_data.begin(), Shape{int(cols)}, float32), bfloat16, stream);
+      array(x_raw.begin(), Shape{int(rows), int(cols)}, float32),
+      bfloat16, stream);
   array w = astype(
-      array(w_data.begin(), Shape{int(cols)}, float32), bfloat16, stream);
+      array(w_raw.begin(), Shape{int(cols)}, float32), bfloat16, stream);
   auto got = flat(fast::rms_norm(x, w, eps, stream), stream);
 
-  double n = 1.0 / std::sqrt(1.0 + eps);
-  std::vector<float> two_round;
-  std::vector<float> single_round;
-  for (size_t i = 0; i < cols; ++i) {
-    float normalized = round_bf16_rne(float(x_data[i] * n));
-    two_round.push_back(round_bf16_rne(normalized * w_data[i]));
-    single_round.push_back(round_bf16_rne(float(x_data[i] * n) * w_data[i]));
+  // host two-round vs single-round references (double precision, RNE
+  // bf16 casts): the fixture self-checks that at least one element
+  // distinguishes the expressions.
+  std::vector<float> two_round(rows * cols);
+  std::vector<float> single_round(rows * cols);
+  size_t diverging = 0;
+  for (size_t row = 0; row < rows; ++row) {
+    double sum_sq = 0.0;
+    for (size_t c = 0; c < cols; ++c) {
+      double v = x_raw[row * cols + c];
+      sum_sq += v * v;
+    }
+    double norm = 1.0 / std::sqrt(sum_sq / double(cols) + double(eps));
+    for (size_t c = 0; c < cols; ++c) {
+      float normalized = round_bf16_rne(
+          float(double(x_raw[row * cols + c]) * norm));
+      two_round[row * cols + c] =
+          round_bf16_rne(normalized * w_raw[c]);
+      single_round[row * cols + c] =
+          round_bf16_rne(float(double(x_raw[row * cols + c]) * norm) *
+                         w_raw[c]);
+      if (two_round[row * cols + c] != single_round[row * cols + c]) {
+        ++diverging;
+      }
+    }
   }
-  // Fixture self-check: the recorded input genuinely distinguishes the
-  // expressions (both host references are valid bf16 roundings).
-  REQUIRE(two_round[0] != single_round[0]);
+  REQUIRE(diverging > 0);
 
-  for (size_t i = 0; i < cols; ++i) {
+  for (size_t i = 0; i < got.size(); ++i) {
     CHECK_EQ(got[i], two_round[i]);
   }
 }
