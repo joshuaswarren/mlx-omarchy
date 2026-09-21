@@ -136,6 +136,42 @@ def main():
 
     srv.stream_generate = stream_probe
 
+    # --- 2b. raw sampled token IDs at the detokenizer boundary ---------
+    # add_token receives the RAW sampled id before any text reasoning
+    # parsing; reset() marks a request boundary. Emitted per request.
+    from mlx_lm.tokenizer_utils import (
+        NaiveStreamingDetokenizer,
+        BPEStreamingDetokenizer,
+        SPMStreamingDetokenizer,
+        StreamingDetokenizer,
+    )
+
+    detok_state = {"ids": []}
+
+    for cls in (StreamingDetokenizer, NaiveStreamingDetokenizer,
+                BPEStreamingDetokenizer, SPMStreamingDetokenizer):
+        orig_add = getattr(cls, "add_token", None)
+        if orig_add is None:
+            continue
+
+        def add_token_probe(self, token, _orig=orig_add, _cls=cls.__name__):
+            detok_state["ids"].append(int(token))
+            _orig(self, token)
+
+        cls.add_token = add_token_probe
+
+    orig_reset = getattr(StreamingDetokenizer, "reset", None)
+
+    def reset_probe(self):
+        if detok_state["ids"]:
+            emit({"event": "detok_ids", "n": len(detok_state["ids"]),
+                  "ids_sha16": sha16(detok_state["ids"]),
+                  "ids": detok_state["ids"]})
+            detok_state["ids"] = []
+        return orig_reset(self)
+
+    StreamingDetokenizer.reset = reset_probe
+
     # --- 3. run the real server --------------------------------------
     sys.argv = ["mlx_lm.server"] + sys.argv[1:]
     from mlx_lm.server import main as server_main
