@@ -62,21 +62,21 @@ def install_detok_probe():
 
         cls.add_token = add_token_probe
 
-    def reset_probe(self):
-        if detok_state["ids"]:
-            emit({"event": "detok_ids", "n": len(detok_state["ids"]),
-                  "ids_sha16": sha16(detok_state["ids"]),
-                  "ids": detok_state["ids"]})
-            detok_state["ids"] = []
-        if hasattr(self, "_orig_reset"):
-            return self._orig_reset()
+    for cls in (StreamingDetokenizer, NaiveStreamingDetokenizer,
+                BPEStreamingDetokenizer, SPMStreamingDetokenizer):
+        if not hasattr(cls, "reset"):
+            continue
+        orig_reset = cls.reset
 
-    StreamingDetokenizer.reset = reset_probe
-    for cls in (NaiveStreamingDetokenizer, BPEStreamingDetokenizer,
-                SPMStreamingDetokenizer):
-        if hasattr(cls, "reset"):
-            cls._omlx_orig_reset = cls.reset
-            cls.reset = reset_probe
+        def reset_probe(self, _o=orig_reset):
+            if detok_state["ids"]:
+                emit({"event": "detok_ids", "n": len(detok_state["ids"]),
+                      "ids_sha16": sha16(detok_state["ids"]),
+                      "ids": detok_state["ids"]})
+                detok_state["ids"] = []
+            return _o(self)
+
+        cls.reset = reset_probe
 
 
 def make_stream_probe(orig_stream, log):
@@ -131,6 +131,11 @@ def make_stream_probe(orig_stream, log):
 
 
 def main():
+    import faulthandler
+    # If the server hangs (e.g. post-prefill stall), dump ALL thread stacks
+    # to stderr after 600s so the hang is diagnosable post-mortem from the
+    # captured server log.
+    faulthandler.dump_traceback_later(600, exit=True)
     import mlx_lm.server as srv
 
     # --- 1. cache fetch branch + arithmetic probe ---------------------
