@@ -10,6 +10,7 @@ Usage:
   privacy_check.py <base>..<head>     scan introduced commits
   privacy_check.py <head>             scan full history (new refs)
   privacy_check.py --hook             pre-push hook mode (reads stdin)
+  privacy_check.py --staged           pre-commit mode (scan staged added lines)
 
 Exit: 0 clean, 1 blocked/failure (fail-closed).
 """
@@ -92,6 +93,22 @@ def main():
     args = sys.argv[1:]
     if not args:
         die("usage: <base>..<head> | <head> | --hook")
+
+    if args[0] == "--staged":
+        repo = os.environ.get("PRIVACY_REPO")
+        if not repo or not os.path.isdir(repo):
+            die("PRIVACY_REPO not set or invalid (fail-closed)")
+        os.chdir(repo)
+        regexes = compile_patterns(repo)
+        raw = run(["git", "diff", "--cached", "-U0"])
+        added = b"\n".join(l[1:] for l in raw.split(b"\n")
+                           if l.startswith(b"+") and not l.startswith(b"+++"))
+        hits = []
+        scan(added, "staged content", regexes, hits)
+        if hits:
+            sys.exit(1)
+        print("privacy-check: staged content clean")
+        sys.exit(0)
 
     if args[0] == "--hook":
         stdin = sys.stdin.buffer.read().decode("utf-8", "replace")
