@@ -567,6 +567,23 @@ def run_leg(leg: str, args, python: str, results: dict) -> None:
             results["leg_errors"][leg] = f"model discovery failed for hint {hints.get(leg)!r}"
             log(f"[leg-failed] {leg}: {results['leg_errors'][leg]}")
             return
+        # Model load trigger: mlx_lm/oMLX bind immediately and load the
+        # weights lazily on the first request. Fire one 1-token request
+        # with a long timeout OUTSIDE the measured rounds so the load
+        # never lands inside a timed warmup/round.
+        load_trigger = chat_once(port, {"model": model_name,
+                                        "messages": [{"role": "user", "content": "hi"}],
+                                        "max_tokens": 1, "temperature": 0,
+                                        "stream": False},
+                                 max(args.load_trigger_timeout, args.timeout))
+        results.setdefault("load_triggers", {})[leg] = {
+            "wall_s": load_trigger.get("wall_s"),
+            "error": load_trigger.get("error"),
+            "completion_tokens": load_trigger.get("completion_tokens")}
+        if load_trigger.get("error"):
+            results["leg_errors"][leg] = f"load trigger failed: {load_trigger['error']}"
+            log(f"[leg-failed] {leg}: load trigger failed")
+            return
         warm = []
         for _ in range(args.warmup_rounds):
             warm.append(chat_once(port, {"model": model_name,
@@ -682,6 +699,8 @@ def main() -> None:
     ap.add_argument("--direct-legs", default="", help="comma list from d1c,d1w,d1m: no-HTTP direct decode legs (token ids recorded; numeric agreement checked)")
     ap.add_argument("--probe-server-ids", action="store_true",
                     help="run the mlxlm leg through server_ids_probe.py (raw prompt/generated ids + cache-branch trace; bench-only monkeypatch, no artifact modification)")
+    ap.add_argument("--load-trigger-timeout", type=int, default=600,
+                    help="timeout for the single model-load trigger request (weights lazy-load)")
     ap.add_argument("--outdir", default="/tmp/servebench")
     ap.add_argument("--selfcheck", action="store_true")
     args = ap.parse_args()
