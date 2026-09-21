@@ -134,6 +134,25 @@ def make_stream_probe(orig_stream, log):
     return stream_probe
 
 
+def make_batch_probe(orig_next, log):
+    """Capture the batch path at finish, including the final HTTP request."""
+    def next_probe(self, *args, **kwargs):
+        result = orig_next(self, *args, **kwargs)
+        if not hasattr(self, "_probe_token_ids"):
+            self._probe_token_ids = {}
+        for response in result[1]:
+            ids = self._probe_token_ids.setdefault(response.uid, [])
+            ids.append(int(response.token))
+            if response.finish_reason is not None:
+                log({"event": "generation", "path": "batch",
+                     "uid": response.uid, "n": len(ids), "ids": list(ids),
+                     "ids_sha16": sha16(ids),
+                     "finish_reason": response.finish_reason})
+                del self._probe_token_ids[response.uid]
+        return result
+    return next_probe
+
+
 def main():
     import faulthandler
     import mlx_lm.server as srv
@@ -217,7 +236,8 @@ def main():
     # parsing; reset() marks a request boundary. Emitted per request.
     install_detok_probe()
 
-    # generated ids: wrap stream_generate used by the server module
+    srv.BatchGenerator.next = make_batch_probe(srv.BatchGenerator.next, emit)
+
     srv.stream_generate = make_stream_probe(srv.stream_generate, emit)
 
     # --- 3. run the real server --------------------------------------
