@@ -13,12 +13,12 @@ REPO/serve source. All imports resolve through REPO/serve and tests/; no
 /tmp shadow, no hardcoded staged paths. The spawn child gets an explicit
 PYTHONPATH=str(SERVE) so it cannot inherit a shadow path.
 
-OUR packages in REPO/serve are mandatory (no skipUnless for them); a
-missing or import-broken mlx_omarchy_bonsai2 / mlx_omarchy_serve in
-REPO/serve is a regression and the test must FAIL, not skip. The
-mlx_omarchy_serve runtime budget API is an EXTERNAL dependency expected
-to be installed via wheel on the t6001-test-host production host; when missing
-from THIS host (clean checkout) the test skips with a clear reason.
+OUR packages in REPO/serve are mandatory. A missing/import-broken
+mlx_omarchy_bonsai2 or mlx_omarchy_serve in REPO/serve is a
+REGRESSION and the test must FAIL, not skip. The mlx_omarchy_serve
+runtime budget API is OUR checked-in package too -- the unified
+integration checkout carries it alongside mlx_omarchy_bonsai2.
+There is no skipUnless guard on these packages.
 
 Registry read semantics: missing file -> empty registry (clean state
 before the first launch). JSONDecodeError -> RAISE (a corrupt registry
@@ -56,20 +56,10 @@ for p in (str(SERVE), str(TESTS)):
     if str(p) not in sys.path:
         sys.path.insert(0, str(p))
 
-# EXTERNAL dependency gate: mlx_omarchy_serve (the runtime budget
-# package) is expected to be installed via the Bonsai-2 wheel on the
-# t6001-test-host production host. When this host is a clean checkout without the
-# wheel installed, the test skips with a clear reason. Both the gate
-# AND the skip reason MUST be defined at module level so collection
-# does not NameError on the success path.
-_BUDGET_AVAILABLE = False
-_BUDGET_SKIP_REASON = "mlx_omarchy_serve.budget not importable (not exercised)"
-try:
-    from mlx_omarchy_serve import budget  # noqa: F401
-    _BUDGET_AVAILABLE = True
-    _BUDGET_SKIP_REASON = ""  # defined but unused when available
-except ImportError as _exc:
-    _BUDGET_SKIP_REASON = "mlx_omarchy_serve.budget not importable: %s" % _exc
+# OUR package imports. No skipUnless -- a missing/import-broken
+# mlx_omarchy_serve in REPO/serve is a REGRESSION and the test
+# collection must FAIL loudly.
+from mlx_omarchy_serve import budget  # noqa: E402
 
 
 def _free_port():
@@ -172,7 +162,6 @@ def _spawn(python: str, pack_dir: Path, home: Path, port: int, *, allow_cpu: boo
     )
 
 
-@unittest.skipUnless(_BUDGET_AVAILABLE, _BUDGET_SKIP_REASON)
 class ReservationReleaseTests(unittest.TestCase):
     """Real serve_main subprocess + real budget API + real reservations.json."""
 
