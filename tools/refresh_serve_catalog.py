@@ -67,13 +67,18 @@ def fetch_json(url, timeout):
         return json.load(response)
 
 
-def safetensors_bytes(payload):
-    """Sum *.safetensors blob sizes; None when the payload has no blobs."""
+def safetensors_bytes(payload, only=None):
+    """Sum *.safetensors blob sizes; None when no matching blob exists.
+
+    `only` restricts the sum to exact sibling paths (multi-variant repos
+    where the served artifact is one file, e.g. laya's root variant)."""
     total = 0
     seen = False
     for sibling in payload.get("siblings") or []:
         name = sibling.get("rfilename") or ""
         size = sibling.get("size")
+        if only is not None and name not in only:
+            continue
         if name.endswith(".safetensors") and isinstance(size, int):
             total += size
             seen = True
@@ -124,7 +129,8 @@ def refresh(catalog_path, fetch, validate, api_base=DEFAULT_API_BASE, timeout=20
             report.append(f"{entry['id']}: fetch failed: {exc}")
             return EXIT_FETCH_ERROR, report
 
-        size = safetensors_bytes(pinned)
+        size = safetensors_bytes(
+            pinned, (entry.get("extension") or {}).get("availability_files"))
         if size is None:
             report.append(f"{entry['id']}: no safetensors sizes in API payload; abort")
             return EXIT_FETCH_ERROR, report

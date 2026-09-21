@@ -530,15 +530,15 @@
     },
     {
       "id": "laya-mlx",
-      "repo": "aac6fef/laya-mlx",
-      "revision": "20aed815fc6acde75733882e7ec0e3f28aeb9717",
+      "repo": "convaiinnovations/laya",
+      "revision": "1c5edc17a7acd8701df6fc341c0d179f1c62c982",
       "kind": "decisions",
       "priority": 1,
       "recommended": false,
       "license": "apache-2.0",
       "quant": null,
       "memory": {
-        "weights_bytes": 842609225,
+        "weights_bytes": 842609210,
         "kv_bytes_per_token": null,
         "peak_estimate_bytes": null
       },
@@ -551,18 +551,18 @@
       },
       "qualification": {
         "generation": {
-          "status": "untested",
-          "receipt": null,
-          "date": null
+          "status": "qualified",
+          "receipt": "receipts/2026-09-20-laya-gpu-qual-t6001-test-host.md",
+          "date": "2026-09-20"
         },
         "http": {
-          "status": "untested",
-          "receipt": null,
-          "date": null
+          "status": "qualified",
+          "receipt": "receipts/2026-09-20-laya-gpu-qual-t6001-test-host.md",
+          "date": "2026-09-20"
         }
       },
       "availability": {
-        "size_bytes": 842609225,
+        "size_bytes": 842609210,
         "refreshed_at": "2026-09-20T19:30:09Z"
       },
       "family": "laya",
@@ -570,8 +570,6 @@
         "scope": "Untested on this stack. Never executed here.",
         "pack_format": "laya-mlx",
         "not_mlx_lm_loadable": true,
-        "adapter_loadable": "Laya serving lane verified 2026-09-20 that this pack loads directly in its adapter port: 206 tensors, encoder/tokenizer files byte-identical to source root, same key set as the source checkpoint; no conversion required for the pack.",
-        "memory_reservation_gib": 1.28,
         "params": 421293830,
         "unquantized_dtype": "float16",
         "encoder_arch": "ModernBertForMaskedLM",
@@ -582,10 +580,19 @@
         "source_head_at_discovery": "1c5edc17a7acd8701df6fc341c0d179f1c62c982",
         "source_drift": "Upstream source moved past the revision recorded in the pack manifest (2026-09-20); repacking requires requalification. Lane tests cover both revisions.",
         "runtime_owner": "Runtime adaptation is owned by the Laya serving lane; this entry records metadata only.",
+        "variant": "fp16-pack",
+        "availability_files": [
+          "model.safetensors"
+        ],
+        "qualified_artifact": "mlx_omarchy_laya.convert output from THIS pinned source revision; weights sha256 891102d372688fc2a094dac56a384bc537b87c63f21f9f3dac0be2b7cbc8d86c (byte-identical to the source model.safetensors); served by mlx_omarchy_laya.server (module backend, managed HTTP decisions path).",
+        "pack_variant_note": "The aac6fef/laya-mlx pack @ 20aed815 (weights sha b9c07bf1..., alias-normalized names) remains available metadata but is NOT the qualified artifact.",
         "min_mem_gib_basis": "ceil(weights_bytes * 1.25 / 2^30); static weights floor, not a measured peak",
-        "variant": "fp16-pack"
+        "qualification_scope": "receipts/2026-09-20-laya-gpu-qual-t6001-test-host.md @ 96873ad8: t6001-test-hostmbp1-linux (M1 Max 64 GiB), fp16 GPU. Managed atomic admission 6,228,139,532 B before any weight load (param floor 842,587,660 + 2x-safety workspace 5,385,551,872 = formula(64) exactly); post-load relabel resident with param-only floor; B=64 worst-case on-device workspace audit measured 2,686,279,680 <= bound 5,385,551,872; 6/6 frozen numerical gates PASS through the managed HTTP decisions endpoint (argmax 100%, prob err <= 1.1e-3); rtmod trace shows no CPU primitive dispatches. Co-serving scope: the standing llama.cpp chat service was an EXTERNAL RESIDENT recognized via MemAvailable (its ~19 GiB already counted) while laya's own pending headroom was held; concurrent real chat + laya responses succeeded. A managed-reservation co-serving test (second budget-reserved model) was NOT exercised. recommended stays false pending integration per owner directive."
       },
-      "serve": null
+      "serve": {
+        "backend": "module",
+        "module": "mlx_omarchy_laya.server"
+      }
     }
   ]
 }
