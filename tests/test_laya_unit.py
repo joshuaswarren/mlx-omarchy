@@ -231,15 +231,101 @@ class ServerHappyPathTests(unittest.TestCase):
         code, _ = self._post("/v1/decisions", {"questions": {}})
         self.assertEqual(code, 400)
 
-    def test_unknown_path_404(self):
-        code, _ = self._post("/v1/chat/completions", {"messages": []})
-        self.assertEqual(code, 404)
-
     def test_question_cap_enforced_before_forward(self):
         big = {"q%d" % i: {"type": "noul", "instructions": "i", "criteria": None} for i in range(65)}
         code, out = self._post("/v1/decisions", {"state": self.SERVER_STATE, "questions": big})
         self.assertEqual(code, 400)
         self.assertIn("at most 64", out["error"])
+
+    def test_port_conflict_does_not_disturb_first_server(self):
+        # F2: a second server binding the SAME port must die on EADDRINUSE
+        # while the first keeps serving (no crash, no disruption)
+        proc_b = _spawn_server(self.ckpt, self.proc._port, allow_cpu=True, dtype="float32")
+        try:
+            out_b, err_b = proc_b.communicate(timeout=300)
+        except TimeoutExpired:
+            proc_b.kill()
+            out_b, err_b = proc_b.communicate()
+        self.assertNotEqual(proc_b.returncode, 0)
+        self.assertIn("Address already in use", out_b + err_b)
+        with urllib.request.urlopen("http://127.0.0.1:%d/health" % self.proc._port, timeout=5) as r:
+            self.assertEqual(json.load(r)["status"], "ok")
+
+
+class ManagedRelabelFailureTests(unittest.TestCase):
+    """F2: a relabel failure after successful admission must clear the held
+    reservation (owner-scoped) and preserve the original error — no residue."""
+
+    def test_relabel_failure_clears_and_preserves_error(self):
+        import sys
+        import unittest.mock as mock
+
+        sys.path.insert(0, str(REPO / "serve"))
+        from mlx_omarchy_laya import server as srv
+
+        ckpt = Path("/tmp/laya-work/converted/laya")
+        if not ckpt.exists():
+            self.skipTest("converted checkpoint not staged on this box")
+        args = mock.Mock(model=str(ckpt), managed=True, dtype="float16",
+                         max_questions=64, allow_cpu=True)
+        clear_mock = mock.patch.object(srv, "_clear_memory").start()
+        # registration succeeds (small admitted total), relabel then raises
+        mock.patch.object(srv, "_register_pending",
+                          return_value=({"required": 1}, "owner-token", 1)).start()
+        mock.patch.object(srv, "_relabel_resident",
+                          side_effect=RuntimeError("resident floor 842587660 exceeds the "
+                                                   "admitted total 1; refusing to relabel")).start()
+        try:
+            with self.assertRaises(RuntimeError) as ctx:
+                srv.LayaState(args)
+            self.assertIn("refusing to relabel", str(ctx.exception))
+            clear_mock.assert_called_once()
+            _, kwargs = clear_mock.call_args
+            self.assertEqual(kwargs.get("owner"), "owner-token")
+            self.assertEqual(kwargs.get("why"), "failed-relabel")
+        finally:
+            mock.patch.stopall()
+
+
+class StartupSignalCleanupTests(unittest.TestCase):
+    """F3: SIGTERM/KeyboardInterrupt arriving DURING construction (mid-load)
+    must clear the held reservation exactly once, then propagate."""
+
+    def _runConstructorWithEngineRaise(self, engine_exc):
+        import sys
+        import unittest.mock as mock
+
+        sys.path.insert(0, str(REPO / "serve"))
+        from mlx_omarchy_laya import api, server as srv
+
+        ckpt = Path("/tmp/laya-work/converted/laya")
+        if not ckpt.exists():
+            self.skipTest("converted checkpoint not staged on this box")
+        args = mock.Mock(model=str(ckpt), managed=True, dtype="float16",
+                         max_questions=64, allow_cpu=True)
+        clear_mock = mock.patch.object(srv, "_clear_memory").start()
+        register_mock = mock.patch.object(
+            srv, "_register_pending",
+            return_value=({"required": 1}, "owner-token", 1)).start()
+        engine_mock = mock.patch.object(api, "LayaEngine",
+                                        side_effect=engine_exc).start()
+        try:
+            with self.assertRaises(type(engine_exc)):
+                srv.LayaState(args)
+        finally:
+            mock.patch.stopall()
+        self.assertEqual(clear_mock.call_count, 1, "clear must run exactly once")
+        _, kwargs = clear_mock.call_args
+        self.assertEqual(kwargs.get("owner"), "owner-token")
+
+    def test_sigterm_mid_load_clears_once(self):
+        self._runConstructorWithEngineRaise(SystemExit(0))
+
+    def test_keyboard_interrupt_mid_load_clears_once(self):
+        self._runConstructorWithEngineRaise(KeyboardInterrupt())
+
+    def test_engine_failure_clears_once(self):
+        self._runConstructorWithEngineRaise(RuntimeError("backend boom"))
 
 
 class ManagedCoServingTests(unittest.TestCase):

@@ -321,18 +321,19 @@ class LayaState:
         self.reservation, self.owner, self.admitted_total = _register_pending(
             self.model_dir, self.catalog_id, self.managed, args.dtype, args.max_questions
         )
+        # ONE flat BaseException guard: engine load, relabel, or a SIGTERM /
+        # KeyboardInterrupt arriving mid-load all clear the held reservation
+        # exactly once (owner-scoped) and re-raise the original error
         try:
             self.engine = LayaEngine(args.model, dtype=dtype, require_gpu=not args.allow_cpu)
-        except Exception:
-            # a crash between admit and load must not leave a pending reservation
-            # that blocks every later chat admission
-            _clear_memory(self.catalog_id, self.managed, why="failed-startup", owner=self.owner)
+            # weights are now resident (LayaEngine evals them); relabel with the
+            # parameter-nbytes floor — the admitted total is never grown
+            self.reservation = _relabel_resident(self.model_dir, self.catalog_id, self.managed,
+                                                 self.reservation, self.owner,
+                                                 args.dtype, self.admitted_total, args.max_questions)
+        except BaseException:
+            _clear_memory(self.catalog_id, self.managed, why="startup-failed", owner=self.owner)
             raise
-        # weights are now resident (LayaEngine evals them); relabel with the
-        # parameter-nbytes floor — the admitted total is never grown
-        self.reservation = _relabel_resident(self.model_dir, self.catalog_id, self.managed,
-                                             self.reservation, self.owner,
-                                             args.dtype, self.admitted_total, args.max_questions)
 
     @staticmethod
     def engine_id_fallback(args) -> str:
@@ -450,40 +451,49 @@ def _make_handler(state: LayaState):
 
 def serve_main(argv):
     args = _parse_args(argv)
-    try:
-        state = LayaState(args)
-    except ManagedBudgetUnavailable as exc:
-        print("laya: %s" % exc, file=sys.stderr)
-        sys.exit(3)
-
+    # install BEFORE LayaState: a SIGTERM arriving mid-load must raise
+    # SystemExit so the constructor's BaseException guard clears the
+    # reservation instead of the default handler killing the process mid-load
     def _on_sigterm(signum, frame):
         raise SystemExit(0)
 
     signal.signal(signal.SIGTERM, _on_sigterm)
-    httpd = ThreadingHTTPServer((args.host, args.port), _make_handler(state))
-    print(
-        "mlx-omarchy-laya: serving %s on http://%s:%d (device=%s, dtype=%s, max_len=%d)"
-        % (
-            state.catalog_id,
-            args.host,
-            args.port,
-            state.engine.device(),
-            args.dtype,
-            state.engine.max_len,
-        ),
-        flush=True,
-    )
+    state = None
     try:
-        httpd.serve_forever()
-    except KeyboardInterrupt:
-        pass
+        # the admit -> construct -> bind -> serve span is wrapped so any
+        # failure (including EADDRINUSE at bind, after the reservation is
+        # held) clears the reservation before the process exits
+        state = LayaState(args)
+    except ManagedBudgetUnavailable as exc:
+        print("laya: %s" % exc, file=sys.stderr)
+        sys.exit(3)
+    try:
+        httpd = ThreadingHTTPServer((args.host, args.port), _make_handler(state))
+        print(
+            "mlx-omarchy-laya: serving %s on http://%s:%d (device=%s, dtype=%s, max_len=%d)"
+            % (
+                state.catalog_id,
+                args.host,
+                args.port,
+                state.engine.device(),
+                args.dtype,
+                state.engine.max_len,
+            ),
+            flush=True,
+        )
+        try:
+            httpd.serve_forever()
+        except KeyboardInterrupt:
+            pass
+        finally:
+            httpd.server_close()
     finally:
-        httpd.server_close()
         if state.reservation is not None:
-            # registry must not outlive the process: a resident reservation left
-            # behind is already inside MemAvailable (stale but harmless), a stale
-            # pending reservation would wrongly block future chat admissions.
-            # Ownership-scoped: another owner's live reservation is refused.
+            # the registry must not outlive the process: a resident entry keeps
+            # contributing its unmaterialized headroom (bytes - floor) to every
+            # future admission for as long as it exists, so a stale entry
+            # permanently shrinks what later models may admit. Ownership-scoped:
+            # another owner's live reservation is refused.
             _clear_memory(state.catalog_id, state.managed, why="shutdown", owner=state.owner)
 
 

@@ -329,21 +329,26 @@ class BundledDataTests(unittest.TestCase):
                              entry["id"])
             for scope in entry["qualification"].values():
                 self.assertIn(scope["status"], ("untested", "qualified"))
-        # Nothing has a qualified HTTP path yet; docs/serve.md is explicit.
-        qwen = next(e for e in self.entries if e["id"] == "qwen3.8-27b-4bit")
-        self.assertEqual(qwen["qualification"]["generation"]["status"], "qualified")
-        self.assertEqual(qwen["qualification"]["http"]["status"], "untested")
+        # Qualified scopes carry receipts; unqualified scopes do not.
+        # qwen3.8-27b-4bit: generation (text CLI) + narrow direct-launch
+        # HTTP (SPA screen-2). laya-mlx: generation + managed HTTP
+        # decisions endpoint (t6001-test-host). Everything else untested.
+        qualified_http = [e["id"] for e in self.entries
+                          if e["qualification"]["http"]["status"] == "qualified"]
+        self.assertEqual(sorted(qualified_http), ["laya-mlx", "qwen3.8-27b-4bit"])
         for entry in self.entries:
-            if entry["qualification"]["generation"]["status"] == "qualified":
-                self.assertIsNotNone(entry["qualification"]["generation"]["receipt"],
-                                     entry["id"])
-                self.assertIsNotNone(entry["qualification"]["generation"]["date"],
-                                     entry["id"])
-            else:
-                self.assertIsNone(entry["qualification"]["generation"]["receipt"],
-                                  entry["id"])
-                self.assertIsNone(entry["qualification"]["generation"]["date"],
-                                  entry["id"])
+            for scope in ("generation", "http"):
+                qual = entry["qualification"][scope]
+                if qual["status"] == "qualified":
+                    self.assertIsNotNone(qual["receipt"],
+                                         "%s/%s" % (entry["id"], scope))
+                    self.assertIsNotNone(qual["date"],
+                                         "%s/%s" % (entry["id"], scope))
+                else:
+                    self.assertIsNone(qual["receipt"],
+                                      "%s/%s" % (entry["id"], scope))
+                    self.assertIsNone(qual["date"],
+                                      "%s/%s" % (entry["id"], scope))
 
     def test_no_recommended_until_http_qualified(self):
         # Main, 2026-09-20: every recommendation stays false until HTTP
@@ -585,11 +590,13 @@ class RefreshWorkflowContractTests(unittest.TestCase):
         text = WORKFLOW.read_text(encoding="utf-8")
         self.assertIn("tools/serve_catalog_publish.sh", text)
         self.assertIn("tests/test_serve_catalog_refresh.py", text)
-        # The push lives in the publish script, lease-protected; the
-        # workflow itself never pushes to main.
+        # The push lives in the publish script, lease-protected against
+        # the EXPLICIT fetched SHA (never an ambient remote-tracking ref);
+        # the workflow itself never pushes to main.
         script = (REPO_ROOT / "tools" / "serve_catalog_publish.sh").read_text(
             encoding="utf-8")
-        self.assertIn('git push --force-with-lease origin "$branch"', script)
+        self.assertIn('--force-with-lease="refs/heads/$branch:$fetched_sha"', script)
+        self.assertIn('fetched_sha="$(git rev-parse FETCH_HEAD)"', script)
         self.assertNotIn("git push origin main", script)
         self.assertNotIn("git push -f origin", script)
 

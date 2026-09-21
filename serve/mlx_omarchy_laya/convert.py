@@ -209,15 +209,70 @@ def convert(source: Path, repo: str, revision: str, out: Path, catalog_id: str) 
     return manifest
 
 
+def _read_manifest(model_dir: Path) -> dict:
+    path = Path(model_dir) / "manifest.json"
+    if path.exists():
+        with open(path) as f:
+            return json.load(f)
+    return {}
+
+
+def checkpoint_state(path: Path) -> tuple:
+    """Classify a directory for the serve preflight (CLI-owner helper).
+
+    Returns (state, details) where state is one of:
+      "converted"  — a mlx_omarchy_laya.convert output: manifest.json present
+                     with every field managed admission requires
+      "raw"        — a plain upstream/HF snapshot (model.safetensors +
+                     rl_agent_config.json present, no manifest): needs
+                     `python -m mlx_omarchy_laya.convert --from-local <dir>`
+      "invalid"    — neither; details say what is missing
+    """
+    path = Path(path)
+    missing_files = [f for f in ["model.safetensors", "rl_agent_config.json",
+                                 "encoder/config.json", "tokenizer/tokenizer.json",
+                                 "tokenizer/tokenizer_config.json"] if not (path / f).exists()]
+    if missing_files:
+        return "invalid", {"missing_files": missing_files}
+    manifest = _read_manifest(path)
+    if not manifest:
+        return "raw", {"reason": "no manifest.json — run mlx_omarchy_laya.convert "
+                                 "--from-local <snapshot> --out <dir>"}
+    missing_manifest = [k for k in ("catalog_id", "source_revision", "estimated_bytes",
+                                    "weights_header.weight_bytes") if _dget(manifest, k) is None]
+    if missing_manifest:
+        return "invalid", {"missing_manifest_fields": missing_manifest}
+    return "converted", {"catalog_id": manifest["catalog_id"],
+                         "estimated_bytes": manifest["estimated_bytes"]}
+
+
+def _dget(d, dotted):
+    cur = d
+    for part in dotted.split("."):
+        if not isinstance(cur, dict) or part not in cur:
+            return None
+        cur = cur[part]
+    return cur
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(prog="python -m mlx_omarchy_laya.convert")
     p.add_argument("--variant", choices=sorted(VARIANTS), default="root")
     p.add_argument("--revision", default=PINNED_REVISION)
     p.add_argument("--from-local", type=Path, default=None,
                    help="use an already-fetched HF snapshot directory instead of downloading")
-    p.add_argument("--out", type=Path, required=True)
+    p.add_argument("--out", type=Path)
     p.add_argument("--yes", action="store_true", help="approve the network fetch")
+    p.add_argument("--check", type=Path, metavar="DIR",
+                   help="classify a directory: converted | raw (needs convert) | invalid; "
+                   "prints JSON, exit 0")
     args = p.parse_args(argv)
+    if args.check:
+        state, details = checkpoint_state(args.check)
+        print(json.dumps({"state": state, **details}))
+        return
+    if not args.out:
+        p.error("--out is required unless --check is used")
 
     subpath, catalog_id = VARIANTS[args.variant]
     if args.from_local:
