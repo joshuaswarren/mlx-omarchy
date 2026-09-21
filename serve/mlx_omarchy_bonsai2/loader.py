@@ -129,11 +129,17 @@ def pack_footprint(pack_dir):
     if not safetensors.is_file():
         _fail(f"{pack_dir}: no model.safetensors")
     header = _safetensors_header(safetensors)
-    weights = sum(n for k, (_, _, n) in header.items() if k.startswith(LM_PREFIX))
-    if not weights:
+    lm_bytes = sum(n for k, (_, _, n) in header.items() if k.startswith(LM_PREFIX))
+    total_header_bytes = sum(n for _, (_, _, n) in header.items())
+    if not lm_bytes:
         _fail("no language_model.* tensors in checkpoint")
     return {
-        "weights_bytes": weights,
+        # Conservative load-phase bound: mx.load is lazy/mmap-backed
+        # (verified empirically 2026-09-20: RSS and MemAvailable stay flat
+        # across mx.load of the 8.6 GB pack), but the conservative
+        # admission bound assumes the whole file could materialize.
+        "total_header_bytes": total_header_bytes,
+        "live_weights_bytes": lm_bytes,
         "kv_bytes_per_token": _kv_bytes_per_token(config["text_config"]),
         "max_position_embeddings": config["text_config"].get("max_position_embeddings"),
         "packed_modules": len(config["modules"]),

@@ -80,9 +80,9 @@ def _reservation_name(catalog_id: str) -> str:
     return "%s-%d-%s" % (catalog_id, os.getpid(), uuid.uuid4().hex[:8])
 
 
-def _footprint_total(budget, weights_bytes, kv_bytes_per_token, context_tokens):
+def _footprint_total(budget, total_header_bytes, kv_bytes_per_token, context_tokens):
     est = budget.estimate_required(
-        {"weights_bytes": weights_bytes, "kv_bytes_per_token": kv_bytes_per_token},
+        {"weights_bytes": total_header_bytes, "kv_bytes_per_token": kv_bytes_per_token},
         context_tokens=context_tokens,
     )
     return est.total
@@ -130,7 +130,7 @@ def _preflight_managed(args, reservation_name):
         facts = pack_footprint(args.model)
         max_context = args.max_context or facts["max_position_embeddings"]
         total = _footprint_total(
-            budget, facts["weights_bytes"], facts["kv_bytes_per_token"], max_context
+            budget, facts["total_header_bytes"], facts["kv_bytes_per_token"], max_context
         )
         admission = atomic(
             reservation_name,
@@ -196,17 +196,12 @@ def _register_reservation(args, state):
         return False
 
 
-def _release_reservation(state):
+def _release_reservation(reservation_name: str):
     budget = _budget_module()
     if budget is None:
         return
     try:
-        budget.clear_reservation(state.reservation_name, owner=state.owner)
-    except TypeError:
-        try:
-            budget.clear_reservation(state.reservation_name)
-        except Exception:
-            pass
+        budget.clear_reservation(reservation_name)
     except Exception:
         pass
 
@@ -596,41 +591,60 @@ def serve_main(argv):
         # Fail-closed BEFORE any allocation: atomic admit+reserve from the
         # pack header alone; nothing below this line loads weights.
         _preflight_managed(args, args.reservation_name)
-    state = Bonsai2State(args)
-    registered = _register_reservation(args, state)
-    httpd = ThreadingHTTPServer((args.host, args.port), _make_handler(state))
-    # GPU thread affinity: the worker loop (ALL mx evaluation) runs on the
-    # process MAIN thread — the same topology as every successful CLI
-    # forward. The HTTP server only marshals in daemon threads.
-    server_thread = threading.Thread(target=httpd.serve_forever, daemon=True)
-    server_thread.start()
-    print(
-        "mlx-omarchy-bonsai2: serving %s on http://%s:%d (device=%s, packed_modules=%d, "
-        "resident_bytes=%d, excluded_bytes=%s, max_context=%d, reservation_bytes=%s)"
-        % (
-            state.catalog_id,
-            args.host,
-            httpd.server_address[1],
-            state.device,
-            state.info["packed_modules"],
-            state.info["resident_bytes"],
-            state.info["excluded_bytes"],
-            state.max_context,
-            state.reservation_bytes,
-        ),
-        flush=True,
-    )
-    print(state.info["attribution"], flush=True)
+    state = None
+    registered = False
+    httpd = None
     try:
-        _worker_loop(state)
-    except KeyboardInterrupt:
-        pass
-    finally:
-        httpd.shutdown()
-        httpd.server_close()
-        state.job_queue.put((None, None))
+        state = Bonsai2State(args)
+        if args.max_context is not None and args.max_context > state.info["max_position_embeddings"]:
+            _release_reservation(args.reservation_name)
+            print(
+                "bonsai2: refusing to start: --max-context %d exceeds the pack's trained "
+                "max_position_embeddings %d"
+                % (args.max_context, state.info["max_position_embeddings"]),
+                file=sys.stderr,
+            )
+            sys.exit(2)
+        registered = _register_reservation(args, state)
+        httpd = ThreadingHTTPServer((args.host, args.port), _make_handler(state))
+        # GPU thread affinity: the worker loop (ALL mx evaluation) runs on the
+        # process MAIN thread — the same topology as every successful CLI
+        # forward. The HTTP server only marshals in daemon threads.
+        server_thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+        server_thread.start()
+        print(
+            "mlx-omarchy-bonsai2: serving %s on http://%s:%d (device=%s, packed_modules=%d, "
+            "resident_bytes=%d, excluded_bytes=%s, max_context=%d, reservation_bytes=%s)"
+            % (
+                state.catalog_id,
+                args.host,
+                httpd.server_address[1],
+                state.device,
+                state.info["packed_modules"],
+                state.info["resident_bytes"],
+                state.info["excluded_bytes"],
+                state.max_context,
+                state.reservation_bytes,
+            ),
+            flush=True,
+        )
+        print(state.info["attribution"], flush=True)
+        try:
+            _worker_loop(state)
+        except KeyboardInterrupt:
+            pass
+        finally:
+            httpd.shutdown()
+            httpd.server_close()
+            state.job_queue.put((None, None))
+    except Exception:
+        # Any failure after the preflight reservation (load, relabel, bind)
+        # must leave no dead reservation behind.
+        _release_reservation(args.reservation_name)
+        raise
+    else:
         if registered:
-            _release_reservation(state)
+            _release_reservation(args.reservation_name)
 
 
 if __name__ == "__main__":
