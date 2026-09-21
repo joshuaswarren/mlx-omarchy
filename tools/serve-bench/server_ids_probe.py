@@ -81,9 +81,11 @@ def install_detok_probe():
 
 def make_stream_probe(orig_stream, log):
     """Wrap a stream_generate generator so exactly ONE event is emitted per
-    generation, at the moment the finish token passes through — NOT
-    dependent on the caller closing the generator (a break with the
-    generator retained defers finally/GC emission indefinitely)."""
+    generation, flushed AT the finish token (before handing it to the
+    caller) — not deferred to generator close/GC/next reset. A caller
+    that breaks early without a finish token flushes via finally with
+    finish_reason=None. An `emitted` guard makes double emission
+    (finish + finally) impossible."""
     state = {"emitted": False}
 
     def stream_probe(*a, **k):
@@ -91,6 +93,7 @@ def make_stream_probe(orig_stream, log):
         t0 = time.perf_counter()
         t_first = None
         finish = None
+        state = {"emitted": state["emitted"]}
 
         def emit_now():
             if state["emitted"]:
@@ -112,13 +115,15 @@ def make_stream_probe(orig_stream, log):
                 if finish is not None:
                     # finish token (length cap or stop): flush NOW, before
                     # handing it to the caller — one event per request,
-                    # independent of caller break/close/GC.
+                    # independent of caller break/close/GC and of any
+                    # next request's reset.
                     emit_now()
                 yield r
                 if finish is not None:
                     return
         finally:
-            # early caller abort: flush the partial generation once
+            # early caller abort without a finish token: flush the partial
+            # generation once
             emit_now()
 
     return stream_probe

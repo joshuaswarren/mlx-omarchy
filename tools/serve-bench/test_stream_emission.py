@@ -71,4 +71,22 @@ gc.collect()
 assert len(c_events) <= 1, c_events
 print("CASE_C_OK no double emission on close/GC")
 
+# Case D (Main gate): sequential generations — each flushes at ITS OWN
+# finish; the last request's flush must not wait for any next reset.
+ev2 = []
+p2 = sip.make_stream_probe(fake_stream(128, finish_at="cap"), ev2.append)
+g1 = p2(model=None)
+for r in g1:
+    if r.finish_reason is not None:
+        break
+g1.close()
+assert len(ev2) == 1, ev2  # first generation flushed at its finish
+g2 = p2(model=None)
+for r in g2:
+    if r.finish_reason is not None:
+        break
+g2.close()
+assert len(ev2) == 2, ev2  # second generation flushed at its own finish
+print("CASE_D_OK sequential generations emit one event each, no deferral")
+
 print("EMISSION_LIFECYCLE_OK")
