@@ -282,6 +282,8 @@ class ManagedRelabelFailureTests(unittest.TestCase):
             clear_mock.assert_called_once()
             _, kwargs = clear_mock.call_args
             self.assertEqual(kwargs.get("owner"), "owner-token")
+            # MCQ-reviewed option (a): the phase-scoped guard labels the relabel
+            # refusal "failed-relabel" (distinct from failed-startup) for forensics
             self.assertEqual(kwargs.get("why"), "failed-relabel")
         finally:
             mock.patch.stopall()
@@ -291,7 +293,7 @@ class StartupSignalCleanupTests(unittest.TestCase):
     """F3: SIGTERM/KeyboardInterrupt arriving DURING construction (mid-load)
     must clear the held reservation exactly once, then propagate."""
 
-    def _runConstructorWithEngineRaise(self, engine_exc):
+    def _runConstructorWithEngineRaise(self, engine_exc, expected_why="failed-startup"):
         import sys
         import unittest.mock as mock
 
@@ -317,6 +319,7 @@ class StartupSignalCleanupTests(unittest.TestCase):
         self.assertEqual(clear_mock.call_count, 1, "clear must run exactly once")
         _, kwargs = clear_mock.call_args
         self.assertEqual(kwargs.get("owner"), "owner-token")
+        self.assertEqual(kwargs.get("why"), expected_why)
 
     def test_sigterm_mid_load_clears_once(self):
         self._runConstructorWithEngineRaise(SystemExit(0))
