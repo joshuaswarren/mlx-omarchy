@@ -136,9 +136,32 @@ is pending. Do not assume it fits merely because the package installs.
 
 ## Performance
 
-Current Qwen3.8+ performance numbers: review pending (no claim
-published here yet). The Quick start above is the verified portable
-smoke; full benchmark numbers are a follow-up.
+Qwen3.8-2B (4-bit mlx) decode and prefill measured on Apple M-series
+laptops: Apple Metal on macOS (upstream mlx 0.32.2) and the omarchy
+Vulkan backend on Asahi Linux (this repo, 0.32.3+5b18306). Protocol on
+every cell: fixed 100-prompt corpus (10 prompts per pass subset), 3
+passes, greedy (temperature 0), 32 new tokens, 2 warmup runs, and a
+512-token pure-prefill leg (single run, no generated token). Medians of
+30 measured decode runs per cell; token streams are deterministic
+within a runtime build (macOS cells byte-identical to each other, Linux
+cells byte-identical to each other; cross-OS streams are not an
+invariant -- near-tie flips under fp16 accumulation are measured, not
+assumed, and raw token identity is not a parity claim).
+
+| Hardware | OS / backend | Prefill, prompt-to-first-token (tok/s) | Pure prefill 512 (tok/s, single run) | Decode (tok/s, median) |
+|---|---|---|---|---|
+| M1, 8 GB | Omarchy / omarchy Vulkan | 17.9 | 21.5 | 18.4 |
+| M1 Max, 64 GB | Omarchy / omarchy Vulkan | 36.6 | 52.6 | 34.2 |
+| M2 Max, 96 GB | Omarchy / omarchy Vulkan | 47.2 | 75.8 | 45.0 |
+| M1, 8 GB | macOS 27.0 / upstream Metal | 101.3 | 345.4 | 49.5 |
+| M1 Max, 64 GB | macOS 27.0 / upstream Metal | 359.2 | 1019.7 | 179.5 |
+| M2 Max, 96 GB | macOS 27.0 / upstream Metal | 423.8 | 1234.7 | 220.6 |
+
+Notes: all macOS cells ran idle at the login window over pre-login
+SSH. A 27B cell is pending. Adapter evidence is captured
+per run (Vulkan loader trace on Linux naming the Apple physical device;
+mlx's own device identity on macOS); the omarchy backend refuses
+non-Apple GPUs by default.
 
 ### Historical Qwen2.5 benchmarks (not current recommendation)
 
