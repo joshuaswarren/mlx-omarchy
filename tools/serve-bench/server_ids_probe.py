@@ -20,7 +20,11 @@ import time
 
 import mlx.core as mx
 
-probes = []
+
+def emit(event):
+    # Print IMMEDIATELY: the window wrapper SIGTERMs the server at window
+    # end and buffered events would be lost with the process.
+    print("PROBE:", json.dumps(event), file=sys.stderr, flush=True)
 
 
 def sha16(ids):
@@ -68,7 +72,7 @@ def main():
         elif result.shorter is not None:
             branch = "shorter"
             detail = {"shorter_len": len(result.shorter)}
-        probes.append({"event": "fetch", "query_tokens": len(tokens),
+        emit({"event": "fetch", "query_tokens": len(tokens),
                        "branch": branch, **detail})
         return orig_fetch(self, model, tokens)
 
@@ -78,7 +82,7 @@ def main():
     orig_insert = cache_mod.LRUPromptCache.insert_cache
 
     def insert_probe(self, model, tokens, prompt_cache, *a, **k):
-        probes.append({"event": "insert", "key_tokens": len(tokens),
+        emit({"event": "insert", "key_tokens": len(tokens),
                        "cache": [type(c).__name__ for c in prompt_cache],
                        "trimmable": [c.is_trimmable() for c in prompt_cache]})
         return orig_insert(self, model, tokens, prompt_cache, *a, **k)
@@ -97,7 +101,7 @@ def main():
             if ids is None and hasattr(out, "input_ids"):
                 ids = out["input_ids"]
             if ids is not None:
-                probes.append({"event": "template", "n": len(ids),
+                emit({"event": "template", "n": len(ids),
                                "prompt_ids_sha16": sha16(ids)})
         except Exception:
             pass
@@ -115,7 +119,7 @@ def main():
                 t_first = time.perf_counter()
             ids.append(r.token)
             yield r
-        probes.append({"event": "generation", "n": len(ids),
+        emit({"event": "generation", "n": len(ids),
                        "wall_s": round(time.perf_counter() - t0, 3),
                        "ttft_s": round(t_first - t0, 4) if t_first else None,
                        "ids_sha16": sha16(ids),
