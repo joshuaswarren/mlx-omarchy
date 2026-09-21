@@ -43,6 +43,7 @@ def entry(**overrides):
             "generation": {"status": "qualified", "receipt": "receipts/x.md",
                            "date": "2026-09-20"},
             "http": {"status": "untested", "receipt": None, "date": None},
+            "managed": {"status": "untested", "receipt": None, "date": None},
         },
         "recommended": False,
         "serve": {"backend": "mlx-lm", "module": None},
@@ -118,16 +119,20 @@ class ValidateTests(unittest.TestCase):
             "unknown arch": entry(capability={"arch": ["m3"], "min_mem_gib": None}),
             "gen qualified without receipt": entry(qualification={
                 "generation": {"status": "qualified", "receipt": None, "date": "2026-09-20"},
-                "http": {"status": "untested", "receipt": None, "date": None}}),
+                "http": {"status": "untested", "receipt": None, "date": None},
+                "managed": {"status": "untested", "receipt": None, "date": None}}),
             "bad qual date": entry(qualification={
                 "generation": {"status": "qualified", "receipt": "r", "date": "09/20"},
-                "http": {"status": "untested", "receipt": None, "date": None}}),
+                "http": {"status": "untested", "receipt": None, "date": None},
+                "managed": {"status": "untested", "receipt": None, "date": None}}),
             "http untested with receipt": entry(qualification={
                 "generation": {"status": "qualified", "receipt": "r", "date": "2026-09-20"},
-                "http": {"status": "untested", "receipt": "r", "date": "2026-09-20"}}),
+                "http": {"status": "untested", "receipt": "r", "date": "2026-09-20"},
+                "managed": {"status": "untested", "receipt": None, "date": None}}),
             "recommended without gen qualification": entry(qualification={
                 "generation": {"status": "untested", "receipt": None, "date": None},
-                "http": {"status": "untested", "receipt": None, "date": None}},
+                "http": {"status": "untested", "receipt": None, "date": None},
+                "managed": {"status": "untested", "receipt": None, "date": None}},
                 recommended=True),
             "recommended non-bool": entry(recommended="yes"),
             "unknown serve backend": entry(serve={"backend": "sglang", "module": None}),
@@ -160,6 +165,51 @@ class ValidateTests(unittest.TestCase):
             extension={"kv_derivation": "2x10x2x256x2", "variant": "bf16"})))
         with self.assertRaises(catalog.CatalogError):
             catalog.validate_catalog(catalog_of(entry(extension="bf16 notes")))
+
+    def test_managed_qualification_field_validation(self):
+        cases = {
+            "managed qualified with receipt/date": entry(qualification={
+                "generation": {"status": "qualified", "receipt": "r", "date": "2026-09-20"},
+                "http": {"status": "qualified", "receipt": "r", "date": "2026-09-20"},
+                "managed": {"status": "qualified", "receipt": "mr", "date": "2026-09-20"}}),
+            "managed untested without receipt": entry(qualification={
+                "generation": {"status": "qualified", "receipt": "r", "date": "2026-09-20"},
+                "http": {"status": "qualified", "receipt": "r", "date": "2026-09-20"},
+                "managed": {"status": "untested", "receipt": None, "date": None}}),
+            "managed qualified without receipt": entry(qualification={
+                "generation": {"status": "qualified", "receipt": "r", "date": "2026-09-20"},
+                "http": {"status": "qualified", "receipt": "r", "date": "2026-09-20"},
+                "managed": {"status": "qualified", "receipt": None, "date": "2026-09-20"}}),
+            "managed qualified without date": entry(qualification={
+                "generation": {"status": "qualified", "receipt": "r", "date": "2026-09-20"},
+                "http": {"status": "qualified", "receipt": "r", "date": "2026-09-20"},
+                "managed": {"status": "qualified", "receipt": "r", "date": None}}),
+            "managed unknown status": entry(qualification={
+                "generation": {"status": "qualified", "receipt": "r", "date": "2026-09-20"},
+                "http": {"status": "qualified", "receipt": "r", "date": "2026-09-20"},
+                "managed": {"status": "n/a", "receipt": None, "date": None}}),
+            "managed untested with receipt": entry(qualification={
+                "generation": {"status": "qualified", "receipt": "r", "date": "2026-09-20"},
+                "http": {"status": "qualified", "receipt": "r", "date": "2026-09-20"},
+                "managed": {"status": "untested", "receipt": "r", "date": "2026-09-20"}}),
+            "managed extra key": entry(qualification={
+                "generation": {"status": "qualified", "receipt": "r", "date": "2026-09-20"},
+                "http": {"status": "qualified", "receipt": "r", "date": "2026-09-20"},
+                "managed": {"status": "qualified", "receipt": "r", "date": "2026-09-20",
+                            "extra": 1}}),
+            "managed missing entirely": entry(qualification={
+                "generation": {"status": "qualified", "receipt": "r", "date": "2026-09-20"},
+                "http": {"status": "qualified", "receipt": "r", "date": "2026-09-20"}}),
+        }
+        accept = {"managed qualified with receipt/date",
+                  "managed untested without receipt"}
+        for name, obj in cases.items():
+            with self.subTest(name):
+                if name in accept:
+                    catalog.validate_catalog(catalog_of(obj))
+                else:
+                    with self.assertRaises(catalog.CatalogError):
+                        catalog.validate_catalog(catalog_of(obj))
 
     def test_file_size_bound(self):
         with tempfile.TemporaryDirectory() as tmp:

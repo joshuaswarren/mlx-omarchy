@@ -44,6 +44,7 @@ def fixture_entry(**over):
         "qualification": {
             "generation": {"status": "qualified", "receipt": "r.md", "date": "2026-09-20"},
             "http": {"status": "qualified", "receipt": "http.md", "date": "2026-09-20"},
+            "managed": {"status": "qualified", "receipt": "managed.md", "date": "2026-09-20"},
         },
         "recommended": True,
         "serve": {"backend": "mlx-lm", "module": None},
@@ -60,6 +61,7 @@ def http_unqualified_entry():
                              "generation": {"status": "qualified", "receipt": "r.md",
                                             "date": "2026-09-20"},
                              "http": {"status": "untested", "receipt": None, "date": None},
+                             "managed": {"status": "untested", "receipt": None, "date": None},
                          })
 
 
@@ -149,6 +151,160 @@ class RecommendTests(CliTestBase):
             code, out, _ = self.run_cli(["recommend"])
         self.assertEqual(code, 0)
         self.assertIn("none", out)
+
+    def test_auto_pick_prefers_curated_priority_when_recommended_fits(self):
+        """When the recommended tier fits, curated priority wins regardless of
+        model size — a 96 GiB host and a 16 GiB host both get the same pick."""
+        # big-p1 is the curated priority winner at 8 GiB weights; small-p4
+        # is lower priority at 2 GiB. Both fit on the 16 GiB fixture host.
+        big_p1 = fixture_entry(
+            id="big-p1", repo="mlx-community/Big-P1",
+            priority=1,
+            memory={"weights_bytes": int(8.0 * GiB), "kv_bytes_per_token": 64 * 1024,
+                    "peak_estimate_bytes": None})
+        small_p4 = fixture_entry(
+            id="small-p4", repo="mlx-community/Small-P4",
+            priority=4,
+            memory={"weights_bytes": int(2.0 * GiB), "kv_bytes_per_token": 64 * 1024,
+                    "peak_estimate_bytes": None})
+        FIXTURE["models"] = [small_p4, big_p1]  # iterate small first
+        code, out, _ = self.run_cli(["recommend"])
+        self.assertEqual(code, 0)
+        # Curated-priority pick: the higher-priority recommended entry wins.
+        self.assertIn("pick: big-p1", out)
+        self.assertNotIn("pick: small-p4", out)
+        FIXTURE["models"] = [fixture_entry(), http_unqualified_entry()]
+
+    def test_auto_pick_priority_breaks_memory_tie(self):
+        """Same estimated total, same recommended tier; lower priority number wins."""
+        a = fixture_entry(
+            id="equal-a", repo="mlx-community/Equal-A",
+            priority=3,
+            memory={"weights_bytes": int(4.0 * GiB), "kv_bytes_per_token": 64 * 1024,
+                    "peak_estimate_bytes": None})
+        b = fixture_entry(
+            id="equal-b", repo="mlx-community/Equal-B",
+            priority=7,
+            memory={"weights_bytes": int(4.0 * GiB), "kv_bytes_per_token": 64 * 1024,
+                    "peak_estimate_bytes": None})
+        FIXTURE["models"] = [b, a]  # b iterated first
+        code, out, _ = self.run_cli(["recommend"])
+        self.assertEqual(code, 0)
+        self.assertIn("pick: equal-a", out)
+        FIXTURE["models"] = [fixture_entry(), http_unqualified_entry()]
+
+    def test_display_order_unchanged_by_pick_logic(self):
+        """The 'ranked' table order is curated; pick logic only affects
+        which entry becomes the auto-pick."""
+        big_p1 = fixture_entry(
+            id="big-p1", repo="mlx-community/Big-P1",
+            priority=1,
+            memory={"weights_bytes": int(10.0 * GiB), "kv_bytes_per_token": 64 * 1024,
+                    "peak_estimate_bytes": None})
+        small_p4 = fixture_entry(
+            id="small-p4", repo="mlx-community/Small-P4",
+            priority=4,
+            memory={"weights_bytes": int(2.0 * GiB), "kv_bytes_per_token": 64 * 1024,
+                    "peak_estimate_bytes": None})
+        FIXTURE["models"] = [big_p1, small_p4]
+        code, out, _ = self.run_cli(["recommend"])
+        self.assertEqual(code, 0)
+        # Pick is the curated-priority winner.
+        self.assertIn("pick: big-p1", out)
+        # But the table also shows big-p1 first (curated order by priority).
+        big_pos = out.index("big-p1")
+        small_pos = out.index("small-p4")
+        self.assertLess(big_pos, small_pos,
+                        "curated table order must follow priority, not memory")
+        FIXTURE["models"] = [fixture_entry(), http_unqualified_entry()]
+
+    def test_no_autopick_when_only_unrecommended_fit(self):
+        """`recommended:false` is a quarantine: with NO fitting recommended
+        entry, `fits` is EMPTY and the pick is 'none — name a target
+        explicitly'. The largest unrecommended entry must NOT auto-pick."""
+        big_unrec = fixture_entry(
+            id="big-unrec", repo="mlx-community/Big-Unrec",
+            priority=10,
+            recommended=False,
+            memory={"weights_bytes": int(8.0 * GiB), "kv_bytes_per_token": 64 * 1024,
+                    "peak_estimate_bytes": None})
+        small_unrec = fixture_entry(
+            id="small-unrec", repo="mlx-community/Small-Unrec",
+            priority=11,
+            recommended=False,
+            memory={"weights_bytes": int(2.0 * GiB), "kv_bytes_per_token": 64 * 1024,
+                    "peak_estimate_bytes": None})
+        FIXTURE["models"] = [small_unrec, big_unrec, http_unqualified_entry()]
+        code, out, _ = self.run_cli(["recommend"])
+        self.assertEqual(code, 0)
+        self.assertIn("pick: none", out)
+        self.assertNotIn("pick: big-unrec", out)
+        self.assertNotIn("pick: small-unrec", out)
+        FIXTURE["models"] = [fixture_entry(), http_unqualified_entry()]
+
+    def test_recommended_tier_wins_over_fallback(self):
+        """A fitting recommended entry must always outrank a larger
+        fitting non-recommended entry (the unrecommended one is quarantined
+        out of `fits` entirely)."""
+        big_unrec = fixture_entry(
+            id="big-unrec", repo="mlx-community/Big-Unrec",
+            priority=10,
+            recommended=False,
+            memory={"weights_bytes": int(8.0 * GiB), "kv_bytes_per_token": 64 * 1024,
+                    "peak_estimate_bytes": None})
+        rec_small = fixture_entry(
+            id="rec-small", repo="mlx-community/Rec-Small",
+            priority=2,
+            memory={"weights_bytes": int(2.0 * GiB), "kv_bytes_per_token": 64 * 1024,
+                    "peak_estimate_bytes": None})
+        FIXTURE["models"] = [big_unrec, rec_small]
+        code, out, _ = self.run_cli(["recommend"])
+        self.assertEqual(code, 0)
+        self.assertIn("pick: rec-small", out)
+        self.assertNotIn("pick: big-unrec", out)
+        FIXTURE["models"] = [fixture_entry(), http_unqualified_entry()]
+
+    def test_auto_pick_skips_managed_unqualified_entries(self):
+        """An entry with managed-route untested is NOT in auto-pick fits."""
+        ok = fixture_entry(
+            id="managed-ok", repo="mlx-community/Managed-Ok",
+            priority=2,
+            qualification={
+                "generation": {"status": "qualified", "receipt": "r", "date": "2026-09-20"},
+                "http": {"status": "qualified", "receipt": "r", "date": "2026-09-20"},
+                "managed": {"status": "qualified", "receipt": "m", "date": "2026-09-20"},
+            })
+        bad = fixture_entry(
+            id="managed-bad", repo="mlx-community/Managed-Bad",
+            priority=1,
+            qualification={
+                "generation": {"status": "qualified", "receipt": "r", "date": "2026-09-20"},
+                "http": {"status": "qualified", "receipt": "r", "date": "2026-09-20"},
+                "managed": {"status": "untested", "receipt": None, "date": None},
+            })
+        FIXTURE["models"] = [bad, ok]
+        code, out, _ = self.run_cli(["recommend"])
+        self.assertEqual(code, 0)
+        # The managed-qualified one IS auto-pickable; the untested one is not.
+        self.assertIn("managed-route unqualified", out)
+        self.assertIn("pick: managed-ok", out)
+        FIXTURE["models"] = [fixture_entry(), http_unqualified_entry()]
+
+    def test_auto_pick_includes_managed_qualified_when_http_qualified(self):
+        """Regression-style: a managed+http+gen qualified entry fits auto-pick."""
+        entry = fixture_entry(
+            id="all-three-qualified", repo="mlx-community/All3",
+            priority=3,
+            qualification={
+                "generation": {"status": "qualified", "receipt": "r", "date": "2026-09-20"},
+                "http": {"status": "qualified", "receipt": "r", "date": "2026-09-20"},
+                "managed": {"status": "qualified", "receipt": "m", "date": "2026-09-20"},
+            })
+        FIXTURE["models"] = [entry]
+        code, out, _ = self.run_cli(["recommend"])
+        self.assertEqual(code, 0)
+        self.assertIn("pick: all-three-qualified", out)
+        FIXTURE["models"] = [fixture_entry(), http_unqualified_entry()]
 
 
 class PlanTests(CliTestBase):

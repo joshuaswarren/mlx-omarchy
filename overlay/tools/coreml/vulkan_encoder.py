@@ -793,8 +793,12 @@ class AneIsland:
         payload = {}
         in_bytes = 0
         marshal_started = time.monotonic_ns()
-        for name, value in inputs.items():
-            mx.eval(value)
+        ordered_inputs = list(inputs.items())
+        # batch-eval: ONE graph walk + sync for all inputs instead of one
+        # per tensor (measured: marshal segment is ~97% mx.eval readiness
+        # wait; batching removes up to 144 redundant syncs per pass).
+        mx.eval(*[value for _, value in ordered_inputs])
+        for name, value in ordered_inputs:
             raw = np.ascontiguousarray(np.asarray(value)).tobytes()
             payload[name] = raw
             in_bytes += len(raw)

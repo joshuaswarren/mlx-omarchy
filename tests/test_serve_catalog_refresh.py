@@ -60,6 +60,7 @@ def seed_entry(entry_id="m1", repo="org/repo", revision=None, **over):
         "qualification": {
             "generation": {"status": "untested", "receipt": None, "date": None},
             "http": {"status": "untested", "receipt": None, "date": None},
+            "managed": {"status": "untested", "receipt": None, "date": None},
         },
         "serve": None,
         "availability": {"size_bytes": 1000, "refreshed_at": None},
@@ -325,7 +326,8 @@ class BundledDataTests(unittest.TestCase):
 
     def test_generation_and_http_qualification_are_separate(self):
         for entry in self.entries:
-            self.assertEqual(set(entry["qualification"]), {"generation", "http"},
+            self.assertEqual(set(entry["qualification"]),
+                             {"generation", "http", "managed"},
                              entry["id"])
             for scope in entry["qualification"].values():
                 self.assertIn(scope["status"], ("untested", "qualified"))
@@ -342,8 +344,13 @@ class BundledDataTests(unittest.TestCase):
         self.assertEqual(
             sorted(qualified_http),
             ["bonsai-2-27b-mlx-2bit", "laya-mlx", "qwen3.8-27b-4bit"])
+        qualified_managed = [e["id"] for e in self.entries
+                             if e["qualification"]["managed"]["status"] == "qualified"]
+        self.assertEqual(
+            sorted(qualified_managed),
+            ["bonsai-2-27b-mlx-2bit", "qwen3.8-27b-4bit"])
         for entry in self.entries:
-            for scope in ("generation", "http"):
+            for scope in ("generation", "http", "managed"):
                 qual = entry["qualification"][scope]
                 if qual["status"] == "qualified":
                     self.assertIsNotNone(qual["receipt"],
