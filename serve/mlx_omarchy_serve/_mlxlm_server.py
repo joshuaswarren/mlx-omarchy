@@ -191,28 +191,47 @@ def install_ids_probe(server_module, emit=None) -> None:
     # request's token array.
     batch_cls = getattr(server_module, "BatchGenerator", None)
 
-    def _flush(reason):
-        if state["ids"]:
-            import hashlib
-            emit({"event": "generation", "n": len(state["ids"]),
+    def _flush_uids(uids=None):
+        import hashlib
+        store = state.get("by_uid", {})
+        done = list(store) if not uids else [u for u in uids if u in store]
+        for uid in done:
+            ids = store.pop(uid)
+            emit({"event": "generation", "n": len(ids),
                   "ids_sha16": hashlib.sha256(
-                      json.dumps(state["ids"]).encode()).hexdigest()[:16],
-                  "ids": state["ids"]})
-            state["ids"] = []
+                      json.dumps(ids).encode()).hexdigest()[:16],
+                  "ids": ids})
 
     if batch_cls is not None and not getattr(batch_cls, "_ids_probe_flush",
                                              False):
+        orig_next = getattr(batch_cls, "next", None)
+        if orig_next is not None:
+            # Primary batched capture: gen_responses carry (.uid, .token) —
+            # accumulate per uid and emit each uid's array when the server
+            # removes that uid (request completion).
+            def next_probe(self, *_a, _orig=orig_next, **_k):
+                prompt_responses, gen_responses = _orig(self, *_a, **_k)
+                for r in gen_responses or []:
+                    token = getattr(r, "token", None)
+                    uid = getattr(r, "uid", None)
+                    if token is not None and uid is not None:
+                        state.setdefault("by_uid", {}).setdefault(
+                            uid, []).append(int(token))
+                return prompt_responses, gen_responses
+            batch_cls.next = next_probe
+
         orig_remove = getattr(batch_cls, "remove", None)
         if orig_remove is not None:
             def remove_probe(self, uids, _orig=orig_remove):
-                if uids:
-                    _flush("remove")
+                _flush_uids(list(uids) if uids else None)
                 return _orig(self, uids)
             batch_cls.remove = remove_probe
+        else:
+            orig_remove = None
         orig_close = getattr(batch_cls, "close", None)
         if orig_close is not None:
             def close_probe(self, _orig=orig_close):
-                _flush("close")
+                _flush_uids(None)
                 return _orig(self)
             batch_cls.close = close_probe
         batch_cls._ids_probe_flush = True

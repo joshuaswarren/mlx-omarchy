@@ -140,39 +140,54 @@ class IdsProbeTests(unittest.TestCase):
 
 
     def test_batched_branch_flushes_on_remove_and_close(self):
-        """Mimics the ACTUAL server branch (mlx_lm/server.py:884): the
-        batched loop calls result['detokenizer'].add_token(r.token) per
-        generated token and NEVER calls detokenizer.reset/finalize. The
-        flush must therefore fire when the server removes the finished
-        uid (BatchGenerator.remove) or closes the generator."""
+        """Mimics the ACTUAL server batched branch (mlx_lm/server.py:884):
+        BatchGenerator.next() yields gen responses carrying (.uid, .token);
+        the server calls result['detokenizer'].add_token(r.token) per token
+        and NEVER resets. The flush fires at BatchGenerator.remove(uid) —
+        keyed to the finished request's uid."""
         fake = _fake_tokenizer_utils()
         events = []
 
+        class FakeGenResponse:
+            def __init__(self, uid, token):
+                self.uid = uid
+                self.token = token
+
         class FakeBatchGenerator:
+            def __init__(self):
+                self.removed = []
+
+            def next(self):
+                return [], [FakeGenResponse(7, 11), FakeGenResponse(7, 22),
+                            FakeGenResponse(7, 33)]
+
             def remove(self, uids):
-                pass
+                self.removed.extend(uids)
 
             def close(self):
                 pass
 
         fake_mod = types.ModuleType("mlx_lm")
         fake_mod.BatchGenerator = FakeBatchGenerator
+        fake_detok = _fake_tokenizer_utils()
         with unittest.mock.patch.dict(
                 sys.modules, {"mlx_lm": fake_mod,
-                              "mlx_lm.tokenizer_utils": fake}):
+                              "mlx_lm.tokenizer_utils": fake_detok}):
             _mlxlm_server.install_ids_probe(fake_mod, emit=events.append)
+            bg = FakeBatchGenerator()
+            # Server loop: next() -> add_token per response -> remove on finish.
+            _, gen_responses = bg.next()
             d = fake.StreamingDetokenizer()
-            for t in (11, 22, 33):
-                d.add_token(t)
-            # Server finishes the request -> removes its uid.
-            FakeBatchGenerator.remove(FakeBatchGenerator(), [7])
-        self.assertEqual(len(events), 1, f"no flush on remove: {events}")
+            for r in gen_responses:
+                d.add_token(r.token)
+            bg.remove([7])
+        self.assertEqual(len(events), 1, f"uid flush failed: {events}")
         self.assertEqual(events[0]["ids"], [11, 22, 33])
         self.assertEqual(events[0]["event"], "generation")
         self.assertEqual(len(events[0]["ids_sha16"]), 16)
 
-        # A later close() with an empty buffer must not emit a second event.
-        FakeBatchGenerator.close(FakeBatchGenerator(), )
+        # close() with no pending uids must not emit a second event.
+        bg.close()
         self.assertEqual(len(events), 1)
 
 
