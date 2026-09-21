@@ -1,0 +1,288 @@
+{
+  "boundaries": [
+    {
+      "boundary": "l0_input_layernorm",
+      "freerun": {
+        "maxabs": 0.25,
+        "relL2": 0.0073218089528381824
+      },
+      "injected": {
+        "maxabs": 0.12189483642578125,
+        "relL2": 0.0026082401163876057
+      }
+    },
+    {
+      "boundary": "l0_attn_branch",
+      "freerun": {
+        "maxabs": 0.046875,
+        "relL2": 0.06070314347743988
+      },
+      "injected": {
+        "maxabs": 0.04705238342285156,
+        "relL2": 0.06025855243206024
+      }
+    },
+    {
+      "boundary": "l0_attn_sum",
+      "freerun": {
+        "maxabs": 0.046875,
+        "relL2": 0.04855453222990036
+      },
+      "injected": {
+        "maxabs": 0.04558753967285156,
+        "relL2": 0.04762279614806175
+      }
+    },
+    {
+      "boundary": "l0_post_layernorm",
+      "freerun": {
+        "maxabs": 0.6875,
+        "relL2": 0.05634409189224243
+      },
+      "injected": {
+        "maxabs": 0.6369857788085938,
+        "relL2": 0.055711403489112854
+      }
+    },
+    {
+      "boundary": "l0_mlp_out",
+      "freerun": {
+        "maxabs": 0.02001953125,
+        "relL2": 0.1303136646747589
+      },
+      "injected": {
+        "maxabs": 0.019642945379018784,
+        "relL2": 0.12956570088863373
+      }
+    },
+    {
+      "boundary": "l0_layer_out",
+      "freerun": {
+        "maxabs": 0.046875,
+        "relL2": 0.05762535706162453
+      },
+      "injected": {
+        "maxabs": 0.046790122985839844,
+        "relL2": 0.05729291960597038
+      }
+    },
+    {
+      "boundary": "l1_input_layernorm",
+      "freerun": {
+        "maxabs": 0.953125,
+        "relL2": 0.055884502828121185
+      },
+      "injected": {
+        "maxabs": 0.9542372226715088,
+        "relL2": 0.055510830134153366
+      }
+    },
+    {
+      "boundary": "l1_attn_branch",
+      "freerun": {
+        "maxabs": 0.1015625,
+        "relL2": 0.2128886729478836
+      },
+      "injected": {
+        "maxabs": 0.10240373015403748,
+        "relL2": 0.21234473586082458
+      }
+    },
+    {
+      "boundary": "l1_attn_sum",
+      "freerun": {
+        "maxabs": 0.09765625,
+        "relL2": 0.09605579078197479
+      },
+      "injected": {
+        "maxabs": 0.0968177318572998,
+        "relL2": 0.0957973301410675
+      }
+    },
+    {
+      "boundary": "l1_post_layernorm",
+      "freerun": {
+        "maxabs": 0.5,
+        "relL2": 0.1075398325920105
+      },
+      "injected": {
+        "maxabs": 0.5033121109008789,
+        "relL2": 0.10693322867155075
+      }
+    },
+    {
+      "boundary": "l1_mlp_out",
+      "freerun": {
+        "maxabs": 0.06103515625,
+        "relL2": 0.2276047021150589
+      },
+      "injected": {
+        "maxabs": 0.06171540170907974,
+        "relL2": 0.22765740752220154
+      }
+    },
+    {
+      "boundary": "l1_layer_out",
+      "freerun": {
+        "maxabs": 0.09375,
+        "relL2": 0.10810033231973648
+      },
+      "injected": {
+        "maxabs": 0.09665274620056152,
+        "relL2": 0.1082099974155426
+      }
+    },
+    {
+      "boundary": "l2_input_layernorm",
+      "freerun": {
+        "maxabs": 1.5,
+        "relL2": 0.09697453677654266
+      },
+      "injected": {
+        "maxabs": 1.5661430358886719,
+        "relL2": 0.09683800488710403
+      }
+    },
+    {
+      "boundary": "l2_attn_branch",
+      "freerun": {
+        "maxabs": 0.056640625,
+        "relL2": 0.11987030506134033
+      },
+      "injected": {
+        "maxabs": 0.0563046932220459,
+        "relL2": 0.11994129419326782
+      }
+    },
+    {
+      "boundary": "l2_attn_sum",
+      "freerun": {
+        "maxabs": 0.0703125,
+        "relL2": 0.08299630135297775
+      },
+      "injected": {
+        "maxabs": 0.06705594062805176,
+        "relL2": 0.08286426216363907
+      }
+    },
+    {
+      "boundary": "l2_post_layernorm",
+      "freerun": {
+        "maxabs": 0.5,
+        "relL2": 0.11161807924509048
+      },
+      "injected": {
+        "maxabs": 0.5129852294921875,
+        "relL2": 0.11141886562108994
+      }
+    },
+    {
+      "boundary": "l2_mlp_out",
+      "freerun": {
+        "maxabs": 0.02734375,
+        "relL2": 0.16111929714679718
+      },
+      "injected": {
+        "maxabs": 0.028704162687063217,
+        "relL2": 0.15997657179832458
+      }
+    },
+    {
+      "boundary": "l2_layer_out",
+      "freerun": {
+        "maxabs": 0.078125,
+        "relL2": 0.08220246434211731
+      },
+      "injected": {
+        "maxabs": 0.0666654109954834,
+        "relL2": 0.08156116306781769
+      }
+    },
+    {
+      "boundary": "l3_input_layernorm",
+      "freerun": {
+        "maxabs": 1.125,
+        "relL2": 0.06793985515832901
+      },
+      "injected": {
+        "maxabs": 1.1351318359375,
+        "relL2": 0.06775163859128952
+      }
+    },
+    {
+      "boundary": "l3_attn_branch",
+      "freerun": {
+        "maxabs": 0.0517578125,
+        "relL2": 0.14965416491031647
+      },
+      "injected": {
+        "maxabs": 0.05304093658924103,
+        "relL2": 0.15102040767669678
+      }
+    },
+    {
+      "boundary": "l3_attn_sum",
+      "freerun": {
+        "maxabs": 0.078125,
+        "relL2": 0.08722482621669769
+      },
+      "injected": {
+        "maxabs": 0.06552004814147949,
+        "relL2": 0.08690640330314636
+      }
+    },
+    {
+      "boundary": "l3_post_layernorm",
+      "freerun": {
+        "maxabs": 0.96875,
+        "relL2": 0.1274101883172989
+      },
+      "injected": {
+        "maxabs": 0.954622745513916,
+        "relL2": 0.12703490257263184
+      }
+    },
+    {
+      "boundary": "l3_mlp_out",
+      "freerun": {
+        "maxabs": 0.02734375,
+        "relL2": 0.20348888635635376
+      },
+      "injected": {
+        "maxabs": 0.02698911726474762,
+        "relL2": 0.2030736804008484
+      }
+    },
+    {
+      "boundary": "l3_layer_out",
+      "freerun": {
+        "maxabs": 0.0859375,
+        "relL2": 0.11265528202056885
+      },
+      "injected": {
+        "maxabs": 0.08337461948394775,
+        "relL2": 0.11226928234100342
+      }
+    }
+  ],
+  "injected_boundaries": [],
+  "embed_lookup_diff": {
+    "maxabs": 0.00048828125,
+    "relL2": 0.0062005785293877125
+  },
+  "freerun_first_gt_0.01": "l0_input_layernorm",
+  "injected_first_gt_0.01": "l0_input_layernorm",
+  "freerun_first_gt_0.1": "l0_input_layernorm",
+  "injected_first_gt_0.1": "l0_input_layernorm",
+  "freerun_first_gt_1.0": "l2_input_layernorm",
+  "injected_first_gt_1.0": "l2_input_layernorm",
+  "verdict_rule": "injected-mode divergence at a boundary = LOCAL error in that module on this backend; clean injected + diverging freerun = PROPAGATED error",
+  "dtype_fidelity_rerun": {
+    "note": "rerun with references stored natively bf16 and injected as bf16 (dtype-faithful); injected deltas IDENTICAL to the fp16-stored-reference run (l0_input_layernorm 0.121895 both) \u2014 reference-storage artifact RULED OUT; the Vulkan rms_norm difference on identical bf16 input is real",
+    "injected_firsts": {
+      "0.01": "l0_input_layernorm",
+      "0.1": "l0_input_layernorm",
+      "1.0": "l2_input_layernorm"
+    }
+  }
+}
