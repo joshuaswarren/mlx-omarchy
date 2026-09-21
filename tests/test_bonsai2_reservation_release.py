@@ -47,17 +47,11 @@ for p in (str(SERVE), str(TESTS)):
         sys.path.insert(0, str(p))
 
 
-# MLX dependency gate: budget + mlx_omarchy_bonsai2.server must both be
-# importable from the checked-in source. If they are not, this test
-# CANNOT exercise the real budget API + real serve_main -- skip with
-# a clear reason rather than fabricate a fake path.
-try:
-    import mlx_omarchy_serve  # noqa: F401
-    from mlx_omarchy_serve import budget  # noqa: F401
-    _MLX_AVAILABLE = True
-except ImportError as _exc:
-    _MLX_AVAILABLE = False
-    _MLX_SKIP_REASON = "mlx_omarchy_serve import failed: %s" % _exc
+# The integrated checkout CONTAINS mlx_omarchy_serve; the import is
+# unconditional by Main's no-skip rule -- a missing package is a hard
+# collection error, never a silent skip.
+import mlx_omarchy_serve  # noqa: F401
+from mlx_omarchy_serve import budget  # noqa: F401
 
 
 def _free_port():
@@ -145,7 +139,6 @@ def _spawn(python: str, pack_dir: Path, home: Path, port: int, *, allow_cpu: boo
     )
 
 
-@unittest.skipUnless(_MLX_AVAILABLE, _MLX_SKIP_REASON)
 class ReservationReleaseTests(unittest.TestCase):
     """Real serve_main subprocess + real budget API + real reservations.json."""
 
