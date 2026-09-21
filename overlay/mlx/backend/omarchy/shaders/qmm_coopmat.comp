@@ -159,20 +159,26 @@ void main() {
           scale = float(scales.values[scale_row + chunk]);
           bias = float(biases.values[bias_row + chunk]);
         }
+        // Prefetch registers for step 0; each FMA section prefetches the
+        // next step's globals before the trailing barrier (the barrier is
+        // a hard scheduler boundary, so these loads cannot sink past it
+        // and their latency hides under other lanes' FMA drain).
+        uint step_k_base = chunk * CHUNK_K;
+        uint x_words[X_LOADS];
+        for (uint j = 0u; j < X_LOADS; ++j) {
+          uint i = lid + 64u * j;
+          uint local_row = i / 8u;
+          uint row = row_base + local_row;
+          x_words[j] = row < params.matrix_m
+              ? input_x.values[
+                    x_slice + row * x_words_per_row + step_k_base / 2u +
+                    (i % 8u)]
+              : 0u;
+        }
+        uint packed = column_ok
+            ? input_w.values[w_row + step_k_base / 8u + w_part] : 0u;
         for (uint step = 0u; step < CHUNK_K / STEP_K; ++step) {
-          uint k_base = chunk * CHUNK_K + step * STEP_K;
           // X_LOADS half2 loads per lane cover the TILE_ROWS x 16 x tile.
-          uint x_words[X_LOADS];
-          for (uint j = 0u; j < X_LOADS; ++j) {
-            uint i = lid + 64u * j;
-            uint local_row = i / 8u;
-            uint row = row_base + local_row;
-            x_words[j] = row < params.matrix_m
-                ? input_x.values[
-                      x_slice + row * x_words_per_row + k_base / 2u +
-                      (i % 8u)]
-                : 0u;
-          }
           for (uint j = 0u; j < X_LOADS; ++j) {
             uint i = lid + 64u * j;
             uint local_row = i / 8u;
@@ -181,8 +187,6 @@ void main() {
             x_s[local_row * STEP_K + 2u * (i % 8u) + 1u] = pair.y;
           }
           // One packed word per lane covers the 16x32 weight tile.
-          uint packed = column_ok
-              ? input_w.values[w_row + k_base / 8u + w_part] : 0u;
           uint w_base = 8u * w_part * TILE_N + w_column_local;
           w_s[w_base + 0u * TILE_N] = scale * float(packed & 0xFu) + bias;
           w_s[w_base + 1u * TILE_N] =
@@ -221,6 +225,24 @@ void main() {
                     coopMatMulAdd(mat_a[rb], mat_b[cb], acc[rb][cb]);
               }
             }
+          }
+          // Prefetch the next step's globals into registers before the
+          // trailing barrier: dependency-legal (registers only, no shared
+          // conflict), numerics untouched, register cost X_LOADS + 1 words.
+          if (step + 1u < CHUNK_K / STEP_K) {
+            step_k_base = chunk * CHUNK_K + (step + 1u) * STEP_K;
+            for (uint j = 0u; j < X_LOADS; ++j) {
+              uint i = lid + 64u * j;
+              uint local_row = i / 8u;
+              uint row = row_base + local_row;
+              x_words[j] = row < params.matrix_m
+                  ? input_x.values[
+                        x_slice + row * x_words_per_row + step_k_base / 2u +
+                        (i % 8u)]
+                  : 0u;
+            }
+            packed = column_ok
+                ? input_w.values[w_row + step_k_base / 8u + w_part] : 0u;
           }
           barrier();
         }
