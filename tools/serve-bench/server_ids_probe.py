@@ -72,7 +72,7 @@ def main():
                        "branch": branch, **detail})
         return orig_fetch(self, model, tokens)
 
-    cache_mod.PromptCache.fetch_nearest_cache = fetch_probe
+    cache_mod.LRUPromptCache.fetch_nearest_cache = fetch_probe
 
     # also surface the real class mix of a live cache at insert time
     orig_insert = cache_mod.LRUPromptCache.insert_cache
@@ -83,7 +83,7 @@ def main():
                        "trimmable": [c.is_trimmable() for c in prompt_cache]})
         return orig_insert(self, model, tokens, prompt_cache, *a, **k)
 
-    cache_mod.PromptCache.insert_cache = insert_probe
+    cache_mod.LRUPromptCache.insert_cache = insert_probe
 
     # --- 2. prompt + generated token ids -----------------------------
     tok_utils = __import__("mlx_lm.tokenizer_utils",
