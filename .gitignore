@@ -18,3 +18,4 @@ local-quant-tests.log
 GATES.md
 
 .omp/
+.private-patterns
