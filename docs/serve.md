@@ -34,29 +34,39 @@ standalone smaller language model.
 ## Model status for serving (2026-09-20)
 
 "Recommended" here requires a qualification pass on real hardware — a
-generation gate alone does not make a model recommended, and no
-HTTP-serving qualification exists on this stack yet, so the catalog
-currently recommends nothing. One checkpoint is generation-qualified,
-for text CLI use only:
+generation gate alone does not make a model recommended. One typed
+decision endpoint (Laya) has now passed both generation and HTTP on
+device; the chat models' HTTP path is still unqualified, and the catalog
+flags no recommendation pending the integration decision. The chat
+checkpoint that is generation-qualified, for text CLI use only:
 
 | Model | Verified online (HF API) | Serving status here |
 |---|---|---|
 | [`mlx-community/Qwen3.8-27B-4bit`](https://huggingface.co/mlx-community/Qwen3.8-27B-4bit) | 2026-09-20, Apache-2.0, ungated | **Generation-qualified, text CLI only** — revision `10c35caa`, candidate wheel `a1251aaa`, [receipt](../receipts/2026-09-20-qwen38-text-install/receipt.json). Not recommended for serving: HTTP is untested. Image input: not qualified. |
 | [`prism-ml/Ternary-Bonsai-2-27B-mlx-2bit`](https://huggingface.co/prism-ml/Ternary-Bonsai-2-27B-mlx-2bit) | 2026-09-20, Apache-2.0, ungated | Not qualified for serving — device qualification is pending and no serve-path gate has run. A dedicated `mlx_omarchy_bonsai2` module backend is in the serving tree so the pack's bundled runtime, which is remote code, is never executed; its server enforces a hard context cap and reports the pack's LICENSE/NOTICE with the required attribution. Historical coherent decode on this pack: ~1.44 tok/s ([v0.7.0 recert receipt](../receipts/2026-09-18-v070-pretag-recert-t6001-test-host.md)). |
 | [`empero-ai/Qwen3.8-35B-A3B-Distill`](https://huggingface.co/empero-ai/Qwen3.8-35B-A3B-Distill) | 2026-09-20, Apache-2.0, ungated | Not qualified. No load or serve test recorded on this stack; device qualification is planned. Scripting trap for this GDN/hybrid family: `mlx_lm.generate_step` takes a 1-D `[S]` prompt tensor while direct `model()` calls take `[B,S]` — use the CLI or handle shapes explicitly. |
-| [`convaiinnovations/laya`](https://huggingface.co/convaiinnovations/laya) (upstream) · [`aac6fef/laya-mlx`](https://huggingface.co/aac6fef/laya-mlx) (MLX conversion) | 2026-09-20, Apache-2.0, ungated | Typed decision model, co-serving integration in progress. Not implemented in a release, no GPU qualification run — see below. |
+| [`convaiinnovations/laya`](https://huggingface.co/convaiinnovations/laya) — served through the in-repo `mlx_omarchy_laya` conversion @ `1c5edc17` | 2026-09-20, Apache-2.0, ungated | **Typed decisions endpoint qualified on device (t6001-test-host)**: generation and HTTP both pass, 6/6 frozen numerical gates, with concurrent real co-serving against an external resident chat service ([receipt](../receipts/2026-09-20-laya-gpu-qual-t6001-test-host.md)). Managed-reservation co-serving: not exercised. Not in a release, and the catalog still recommends nothing pending the integration decision — see below. |
 
-## Laya co-serving (in progress — do not rely on it)
+## Laya typed-decision serving
 
 Laya is not a chat LLM: it is a ~421M-parameter non-autoregressive typed
 decision model (choice / score / yes-no questions) with calibrated
-probabilities and an explicit escalate/abstain probability per answer.
-The plan under development serves it as a second model in the same serve
-process with its own model id and a typed decision endpoint, concurrent
-with the chat model — a shape `mlx_lm.server` does not offer. As of
-2026-09-20 this is implemented in neither a wheel nor a release, and no
-hardware qualification run has happened. This section documents direction,
-not a working feature.
+probabilities and an explicit escalate/abstain probability per answer,
+served as a second model with its own model id and its own typed
+decision endpoint — a shape `mlx_lm.server` does not offer.
+
+On 2026-09-20 the decisions endpoint passed device qualification on an
+M1 Max: 6/6 frozen numerical gates (fp16 GPU against an fp32 CPU
+fixture), managed memory admission before load, and concurrent real
+co-serving — the standing chat service stayed resident and both
+endpoints answered real requests in the same second
+([receipt](../receipts/2026-09-20-laya-gpu-qual-t6001-test-host.md)). Scope limits
+that receipt records: co-serving evidence is the external-resident chat
+(observed through `MemAvailable`); co-serving between two managed
+reservations was not exercised, and the chat model's own HTTP path
+remains unqualified. The code ships with the release that contains it,
+and the catalog's recommendation flags stay off pending the integration
+decision.
 
 ## Serving catalog CLI (pending — not released, pending acceptance)
 
@@ -90,11 +100,12 @@ downloads nothing.
 The catalog it reads seeds ten pinned entries — six Qwen3.8-27B
 quantizations (4-bit through bf16/mxfp4/nvfp4/mxfp8), the
 Qwen3.8-35B-A3B-Distill pair, Ternary-Bonsai-2-27B, and the laya-mlx
-decision model. Only `qwen3.8-27b-4bit` carries a qualification record
-(generation, text CLI); every other entry is an untested placeholder
-until it passes the same bars — and generation and HTTP are gated
-separately, so the catalog recommends nothing until an HTTP pass lands
-on real hardware.
+decision model. Two entries carry qualification records:
+`qwen3.8-27b-4bit` (generation, text CLI) and `laya-mlx` (generation and
+HTTP, the decisions endpoint). Every other entry is an untested
+placeholder until it passes the same bars — generation and HTTP are
+gated separately, and the catalog flags no recommendation pending the
+integration decision.
 
 Before anything downloads, a memory-aware gate budgets `MemAvailable` as
 weights (the full total for MoE; a 35B-A3B counts its full 35B) plus KV at
