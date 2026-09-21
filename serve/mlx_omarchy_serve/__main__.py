@@ -93,12 +93,14 @@ MODULE_CONTEXT_FLAG = {
 }
 
 MODULE_CONVERT_HINTS = {
+    # mlx_omarchy_laya.server: upstream raw snapshots need conversion
+    # (mlx_omarchy_laya.convert). mlx_omarchy_bonsai2.server is
+    # deliberately ABSENT: Bonsai packs ARE the upstream artifact — there
+    # is no conversion step, and the module's validate_artifact hook
+    # (landed 61184a21) classifies packs directly.
     "mlx_omarchy_laya.server":
         "python -m mlx_omarchy_laya.convert --out <converted-dir> "
         "--from-local <snapshot-dir> [--variant typed-decisions]",
-    "mlx_omarchy_bonsai2.server":
-        "build the pack with the mlx_omarchy_bonsai2 tooling "
-        "(serve/mlx_omarchy_bonsai2 loader/packed); see that module's docs",
 }
 
 
