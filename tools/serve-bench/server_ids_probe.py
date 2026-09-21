@@ -49,8 +49,21 @@ def main():
                 for c in entry.prompt_cache]
             branch = "longer+trim" if all(c.is_trimmable() for c in entry.prompt_cache) \
                 else "longer+NOT-trimmable"
+            # mlx-lm 0.31.3 fetch arithmetic: prefix = min(len-1, common_prefix);
+            # num_to_trim = len(longer) - prefix; kept = cache_offset - num_to_trim
+            # where cache_offset == len(longer) - 1 (last key token's KV is
+            # unwritten). kept + len(rest) == prefix — one query token short of
+            # the canonical context whenever the stored key is longer.
+            prefix = min(len(tokens) - 1, result.common_prefix)
+            num_to_trim = len(result.longer) - prefix
             detail = {"longer_len": len(result.longer),
                       "common_prefix": result.common_prefix,
+                      "prefix": prefix, "num_to_trim": num_to_trim,
+                      "kept": len(result.longer) - 1 - num_to_trim,
+                      "rest_tokens": len(tokens) - prefix,
+                      "context_total": len(result.longer) - 1 - num_to_trim
+                                       + (len(tokens) - prefix),
+                      "query_tokens": len(tokens),
                       "cache": trimmable}
         elif result.shorter is not None:
             branch = "shorter"
