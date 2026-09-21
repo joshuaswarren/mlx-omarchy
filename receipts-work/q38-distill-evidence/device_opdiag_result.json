@@ -1,0 +1,123 @@
+{
+  "stages": [
+    {
+      "stage": "embed_dequant",
+      "maxabs": 0.00048828125,
+      "relL2": 0.006200828589498997,
+      "device_dtype": "mlx.core.bfloat16"
+    },
+    {
+      "stage": "quantMM_in_proj_qkv",
+      "maxabs": 3.875,
+      "relL2": 0.04760238155722618,
+      "device_dtype": "mlx.core.bfloat16"
+    },
+    {
+      "stage": "quantMM_in_proj_z",
+      "maxabs": 1.25,
+      "relL2": 0.03741356357932091,
+      "device_dtype": "mlx.core.bfloat16"
+    },
+    {
+      "stage": "quantMM_in_proj_b",
+      "maxabs": 0.328125,
+      "relL2": 0.03506453335285187,
+      "device_dtype": "mlx.core.bfloat16"
+    },
+    {
+      "stage": "quantMM_in_proj_a",
+      "maxabs": 0.375,
+      "relL2": 0.03595397621393204,
+      "device_dtype": "mlx.core.bfloat16"
+    },
+    {
+      "stage": "conv1d_silu",
+      "maxabs": 0.0078125,
+      "relL2": 0.00020141374261584133,
+      "device_dtype": "mlx.core.bfloat16"
+    },
+    {
+      "stage": "gdn_q_prenorm",
+      "maxabs": 0.00048828125,
+      "relL2": 0.0024432027712464333,
+      "device_dtype": "mlx.core.bfloat16"
+    },
+    {
+      "stage": "gdn_k_prenorm",
+      "maxabs": 0.00390625,
+      "relL2": 0.0026688443031162024,
+      "device_dtype": "mlx.core.bfloat16"
+    },
+    {
+      "stage": "gdn_core",
+      "maxabs": 0.00390625,
+      "relL2": 0.0029485058039426804,
+      "device_dtype": "mlx.core.bfloat16"
+    },
+    {
+      "stage": "rms_norm_gated",
+      "maxabs": 0.0078125,
+      "relL2": 0.002669792389497161,
+      "device_dtype": "mlx.core.bfloat16"
+    },
+    {
+      "stage": "quantMM_out_proj",
+      "maxabs": 0.0625,
+      "relL2": 0.05239729583263397,
+      "device_dtype": "mlx.core.bfloat16"
+    },
+    {
+      "stage": "quantMM_router",
+      "maxabs": 0.71875,
+      "relL2": 0.036574725061655045,
+      "device_dtype": "mlx.core.bfloat16"
+    },
+    {
+      "stage": "moe_gather_qmm",
+      "maxabs": 0.0096435546875,
+      "relL2": 0.10624045878648758,
+      "device_dtype": "mlx.core.bfloat16"
+    }
+  ],
+  "device": "vulkan (honeykrisp), wheel 5b18306",
+  "embed_gate": {
+    "maxabs": 0.00048828125,
+    "relL2": 0.006200828589498997
+  },
+  "three_way_rms_norm": {
+    "maxabs": 0.125,
+    "relL2": 0.002731528365984559,
+    "device_vs_fp32ref": {
+      "maxabs": 0.12194061279296875,
+      "relL2": 0.0018263302044942975
+    },
+    "cpu_vs_fp32ref": {
+      "maxabs": 0.12194061279296875,
+      "relL2": 0.002608278300613165
+    },
+    "device_vs_metal": {
+      "maxabs": 0.125,
+      "relL2": 0.002731528365984559
+    },
+    "metal_vs_cpu": {
+      "maxabs": 0.0,
+      "relL2": 0.0
+    },
+    "max_element_raw": {
+      "index": 680,
+      "fp32_ref": -21.636024475097656,
+      "device_bf16": {
+        "val": -21.625,
+        "bits": "0x0"
+      },
+      "cpu_bf16": {
+        "val": -21.75,
+        "bits": "0x0"
+      },
+      "metal_bf16": {
+        "val": -21.75,
+        "bits": "0x0"
+      }
+    }
+  }
+}

@@ -2,308 +2,103 @@
   "kind": "op_level_bisect_evidence",
   "source_revision": "bcc2dbe2f21b213625df2dc1a5a690212373af07",
   "device": "16-inch M1 Max class (T6001), Linux, Vulkan (honeykrisp), wheel 5b18306",
-  "method": "dual-mode module-boundary replay layers 0-3 (freerun vs injected identical-CPU-input), bf16-faithful references, frozen gates 0.01/0.1/1.0",
+  "method": "pure per-op injection: identical CPU-recorded inputs fed to each op on both backends; bf16-faithful references; three-way rms_norm resolution with raw bits; ranked relL2 table",
   "raw_first_divergence": {
     "boundary": "l0_input_layernorm (mx.fast.rms_norm)",
-    "injected_maxabs": 0.121895,
-    "classification": "LOCAL Vulkan rms_norm kernel difference (identical bf16 input; reference-storage artifact ruled out by bf16 rerun)"
+    "classification": "LOCAL 1-ulp bf16 difference: Vulkan single-round vs CPU/Metal two-round (Metal fused is BIT-IDENTICAL to CPU composite; raw bits at max element: fp32 -21.636024 -> device -21.625 [RNE-correct nearest] vs CPU/Metal -21.75 [one grid step farther])"
   },
   "embed_lookup_gate": {
     "maxabs": 0.00048828125,
-    "relL2": 0.0062005785293877125
+    "relL2": 0.0062005785293877125,
+    "note": "QuantizedEmbedding dequant ordering"
   },
-  "per_boundary": [
+  "ranked_per_op_relL2": [
     {
-      "boundary": "l0_input_layernorm",
-      "freerun": {
-        "maxabs": 0.25,
-        "relL2": 0.0073218089528381824
-      },
-      "injected": {
-        "maxabs": 0.12189483642578125,
-        "relL2": 0.0026082401163876057
-      }
+      "stage": "moe_gather_qmm",
+      "maxabs": 0.009644,
+      "relL2": 0.10624
     },
     {
-      "boundary": "l0_attn_branch",
-      "freerun": {
-        "maxabs": 0.046875,
-        "relL2": 0.06070314347743988
-      },
-      "injected": {
-        "maxabs": 0.04705238342285156,
-        "relL2": 0.06025855243206024
-      }
+      "stage": "quantMM_out_proj",
+      "maxabs": 0.0625,
+      "relL2": 0.052397
     },
     {
-      "boundary": "l0_attn_sum",
-      "freerun": {
-        "maxabs": 0.046875,
-        "relL2": 0.04855453222990036
-      },
-      "injected": {
-        "maxabs": 0.04558753967285156,
-        "relL2": 0.04762279614806175
-      }
+      "stage": "quantMM_in_proj_qkv",
+      "maxabs": 3.875,
+      "relL2": 0.047602
     },
     {
-      "boundary": "l0_post_layernorm",
-      "freerun": {
-        "maxabs": 0.6875,
-        "relL2": 0.05634409189224243
-      },
-      "injected": {
-        "maxabs": 0.6369857788085938,
-        "relL2": 0.055711403489112854
-      }
+      "stage": "quantMM_in_proj_z",
+      "maxabs": 1.25,
+      "relL2": 0.037414
     },
     {
-      "boundary": "l0_mlp_out",
-      "freerun": {
-        "maxabs": 0.02001953125,
-        "relL2": 0.1303136646747589
-      },
-      "injected": {
-        "maxabs": 0.019642945379018784,
-        "relL2": 0.12956570088863373
-      }
+      "stage": "quantMM_router",
+      "maxabs": 0.71875,
+      "relL2": 0.036575
     },
     {
-      "boundary": "l0_layer_out",
-      "freerun": {
-        "maxabs": 0.046875,
-        "relL2": 0.05762535706162453
-      },
-      "injected": {
-        "maxabs": 0.046790122985839844,
-        "relL2": 0.05729291960597038
-      }
+      "stage": "quantMM_in_proj_a",
+      "maxabs": 0.375,
+      "relL2": 0.035954
     },
     {
-      "boundary": "l1_input_layernorm",
-      "freerun": {
-        "maxabs": 0.953125,
-        "relL2": 0.055884502828121185
-      },
-      "injected": {
-        "maxabs": 0.9542372226715088,
-        "relL2": 0.055510830134153366
-      }
+      "stage": "quantMM_in_proj_b",
+      "maxabs": 0.328125,
+      "relL2": 0.035065
     },
     {
-      "boundary": "l1_attn_branch",
-      "freerun": {
-        "maxabs": 0.1015625,
-        "relL2": 0.2128886729478836
-      },
-      "injected": {
-        "maxabs": 0.10240373015403748,
-        "relL2": 0.21234473586082458
-      }
+      "stage": "embed_dequant",
+      "maxabs": 0.000488,
+      "relL2": 0.006201
     },
     {
-      "boundary": "l1_attn_sum",
-      "freerun": {
-        "maxabs": 0.09765625,
-        "relL2": 0.09605579078197479
-      },
-      "injected": {
-        "maxabs": 0.0968177318572998,
-        "relL2": 0.0957973301410675
-      }
+      "stage": "gdn_core",
+      "maxabs": 0.003906,
+      "relL2": 0.002949
     },
     {
-      "boundary": "l1_post_layernorm",
-      "freerun": {
-        "maxabs": 0.5,
-        "relL2": 0.1075398325920105
-      },
-      "injected": {
-        "maxabs": 0.5033121109008789,
-        "relL2": 0.10693322867155075
-      }
+      "stage": "rms_norm_gated",
+      "maxabs": 0.007812,
+      "relL2": 0.00267
     },
     {
-      "boundary": "l1_mlp_out",
-      "freerun": {
-        "maxabs": 0.06103515625,
-        "relL2": 0.2276047021150589
-      },
-      "injected": {
-        "maxabs": 0.06171540170907974,
-        "relL2": 0.22765740752220154
-      }
+      "stage": "gdn_k_prenorm",
+      "maxabs": 0.003906,
+      "relL2": 0.002669
     },
     {
-      "boundary": "l1_layer_out",
-      "freerun": {
-        "maxabs": 0.09375,
-        "relL2": 0.10810033231973648
-      },
-      "injected": {
-        "maxabs": 0.09665274620056152,
-        "relL2": 0.1082099974155426
-      }
+      "stage": "gdn_q_prenorm",
+      "maxabs": 0.000488,
+      "relL2": 0.002443
     },
     {
-      "boundary": "l2_input_layernorm",
-      "freerun": {
-        "maxabs": 1.5,
-        "relL2": 0.09697453677654266
-      },
-      "injected": {
-        "maxabs": 1.5661430358886719,
-        "relL2": 0.09683800488710403
-      }
-    },
-    {
-      "boundary": "l2_attn_branch",
-      "freerun": {
-        "maxabs": 0.056640625,
-        "relL2": 0.11987030506134033
-      },
-      "injected": {
-        "maxabs": 0.0563046932220459,
-        "relL2": 0.11994129419326782
-      }
-    },
-    {
-      "boundary": "l2_attn_sum",
-      "freerun": {
-        "maxabs": 0.0703125,
-        "relL2": 0.08299630135297775
-      },
-      "injected": {
-        "maxabs": 0.06705594062805176,
-        "relL2": 0.08286426216363907
-      }
-    },
-    {
-      "boundary": "l2_post_layernorm",
-      "freerun": {
-        "maxabs": 0.5,
-        "relL2": 0.11161807924509048
-      },
-      "injected": {
-        "maxabs": 0.5129852294921875,
-        "relL2": 0.11141886562108994
-      }
-    },
-    {
-      "boundary": "l2_mlp_out",
-      "freerun": {
-        "maxabs": 0.02734375,
-        "relL2": 0.16111929714679718
-      },
-      "injected": {
-        "maxabs": 0.028704162687063217,
-        "relL2": 0.15997657179832458
-      }
-    },
-    {
-      "boundary": "l2_layer_out",
-      "freerun": {
-        "maxabs": 0.078125,
-        "relL2": 0.08220246434211731
-      },
-      "injected": {
-        "maxabs": 0.0666654109954834,
-        "relL2": 0.08156116306781769
-      }
-    },
-    {
-      "boundary": "l3_input_layernorm",
-      "freerun": {
-        "maxabs": 1.125,
-        "relL2": 0.06793985515832901
-      },
-      "injected": {
-        "maxabs": 1.1351318359375,
-        "relL2": 0.06775163859128952
-      }
-    },
-    {
-      "boundary": "l3_attn_branch",
-      "freerun": {
-        "maxabs": 0.0517578125,
-        "relL2": 0.14965416491031647
-      },
-      "injected": {
-        "maxabs": 0.05304093658924103,
-        "relL2": 0.15102040767669678
-      }
-    },
-    {
-      "boundary": "l3_attn_sum",
-      "freerun": {
-        "maxabs": 0.078125,
-        "relL2": 0.08722482621669769
-      },
-      "injected": {
-        "maxabs": 0.06552004814147949,
-        "relL2": 0.08690640330314636
-      }
-    },
-    {
-      "boundary": "l3_post_layernorm",
-      "freerun": {
-        "maxabs": 0.96875,
-        "relL2": 0.1274101883172989
-      },
-      "injected": {
-        "maxabs": 0.954622745513916,
-        "relL2": 0.12703490257263184
-      }
-    },
-    {
-      "boundary": "l3_mlp_out",
-      "freerun": {
-        "maxabs": 0.02734375,
-        "relL2": 0.20348888635635376
-      },
-      "injected": {
-        "maxabs": 0.02698911726474762,
-        "relL2": 0.2030736804008484
-      }
-    },
-    {
-      "boundary": "l3_layer_out",
-      "freerun": {
-        "maxabs": 0.0859375,
-        "relL2": 0.11265528202056885
-      },
-      "injected": {
-        "maxabs": 0.08337461948394775,
-        "relL2": 0.11226928234100342
-      }
+      "stage": "conv1d_silu",
+      "maxabs": 0.007812,
+      "relL2": 0.000201
     }
   ],
-  "firsts": {
-    "0.01": {
-      "freerun": "l0_input_layernorm",
-      "injected": "l0_input_layernorm"
-    },
-    "0.1": {
-      "freerun": "l0_input_layernorm",
-      "injected": "l0_input_layernorm"
-    },
-    "1.0": {
-      "freerun": "l2_input_layernorm",
-      "injected": "l2_input_layernorm"
+  "finding": "ALL quantized matmul ops carry 3.5-10.6% relL2 divergence (10-40x the 0.27% bf16-ulp class of conv/GDN/norm ops); moe_gather_qmm is the worst. Root cause of the layer trace growth (~6% layer-0 -> ~19% logits) is the quantMM kernel numerics (CPU quantized.cpp vs Vulkan qmm/gather_qmm shader accumulation/dequant), NOT rms_norm and NOT GDN.",
+  "rms_norm_resolution": {
+    "metal_vs_cpu": "bit-identical (two-round semantics)",
+    "device_vs_metal": "0.125 = 1 bf16 ulp (Vulkan fused single-round)",
+    "max_element_raw": {
+      "index": 680,
+      "fp32_ref": -21.636024475097656,
+      "device_bf16": {
+        "val": -21.625,
+        "bits": "0x0"
+      },
+      "cpu_bf16": {
+        "val": -21.75,
+        "bits": "0x0"
+      },
+      "metal_bf16": {
+        "val": -21.75,
+        "bits": "0x0"
+      }
     }
   },
-  "dtype_fidelity_rerun": {
-    "note": "rerun with references stored natively bf16 and injected as bf16 (dtype-faithful); injected deltas IDENTICAL to the fp16-stored-reference run (l0_input_layernorm 0.121895 both) \u2014 reference-storage artifact RULED OUT; the Vulkan rms_norm difference on identical bf16 input is real",
-    "injected_firsts": {
-      "0.01": "l0_input_layernorm",
-      "0.1": "l0_input_layernorm",
-      "1.0": "l2_input_layernorm"
-    }
-  },
-  "callers_of_rms_norm_in_model_path": [
-    "nn.RMSNorm (input/post/final norms, weighted)",
-    "GDN q/k pre-norms (weightless, 4-D)"
-  ],
-  "next_probe_proposed": "standalone rms_norm sweep (dtype x eps x shape) both backends + kernel inspection of reduction precision",
-  "claim_scope": "raw first divergence evidence; no qualification change; no tolerance proposal"
+  "claim_scope": "per-op divergence localization; no qualification change; no tolerance proposal; no performance claim"
 }
