@@ -587,14 +587,13 @@ def serve_main(argv):
         sys.exit(2)
     args.reservation_name = _reservation_name(args.model_id)
     args.owner = _owner_token(_budget_module())
-    if args.managed:
-        # Fail-closed BEFORE any allocation: atomic admit+reserve from the
-        # pack header alone; nothing below this line loads weights.
-        _preflight_managed(args, args.reservation_name)
     state = None
-    registered = False
     httpd = None
     try:
+        if args.managed:
+            # Fail-closed BEFORE any allocation: atomic admit+reserve from the
+            # pack header alone; nothing below this line loads weights.
+            _preflight_managed(args, args.reservation_name)
         state = Bonsai2State(args)
         if args.max_context is not None and args.max_context > state.info["max_position_embeddings"]:
             _release_reservation(args.reservation_name)
@@ -629,22 +628,20 @@ def serve_main(argv):
             flush=True,
         )
         print(state.info["attribution"], flush=True)
-        try:
-            _worker_loop(state)
-        except KeyboardInterrupt:
-            pass
-        finally:
+        _worker_loop(state)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        # Spans BaseException: a SIGTERM/KeyboardInterrupt during load,
+        # relabel, bind, or serve must never leak the reservation. The
+        # worker sentinel and httpd shutdown are conditional because the
+        # failure may precede either.
+        if state is not None:
+            state.job_queue.put((None, None))
+        if httpd is not None:
             httpd.shutdown()
             httpd.server_close()
-            state.job_queue.put((None, None))
-    except Exception:
-        # Any failure after the preflight reservation (load, relabel, bind)
-        # must leave no dead reservation behind.
         _release_reservation(args.reservation_name)
-        raise
-    else:
-        if registered:
-            _release_reservation(args.reservation_name)
 
 
 if __name__ == "__main__":
