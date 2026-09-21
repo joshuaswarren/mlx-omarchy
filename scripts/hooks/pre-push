@@ -1,0 +1,8 @@
+#!/bin/sh
+# pre-push hook: thin wrapper; resolves sibling privacy_check.py.
+zero=0000000000000000000000000000000000000000
+HERE=$(cd "$(dirname "$0")" && pwd)
+CHECK="$HERE/privacy_check.py"
+[ -f "$CHECK" ] || CHECK="$HERE/../privacy_check.py"
+[ -f "$CHECK" ] || { echo "privacy-check: privacy_check.py missing" >&2; exit 1; }
+exec python3 "$CHECK" --hook
