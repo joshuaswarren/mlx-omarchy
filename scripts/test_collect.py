@@ -1532,6 +1532,63 @@ class AnePortPayloadDetail(unittest.TestCase):
 class PayloadSchemaContract(unittest.TestCase):
     """build_payload and the pinned schema must agree on the key set."""
 
+    @staticmethod
+    def _schema():
+        path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                            os.pardir, "services", "community-data",
+                            "schema", "payload-v1.schema.json")
+        with open(path, "r", encoding="utf-8") as fh:
+            return json.load(fh)
+
+    @classmethod
+    def _undeclared(cls, node, schema, path="$"):
+        """Paths the payload carries that the schema says nothing about.
+        Payload objects are open since 16765c2c, so such a key is
+        accepted by the endpoint but gets no type or maxLength check:
+        silent drift. Descends only where the schema declares a shape."""
+        found = []
+        if not isinstance(schema, dict):
+            return found
+        props = schema.get("properties") or {}
+        if isinstance(node, dict):
+            if props or schema.get("additionalProperties") is False:
+                found += [f"{path}.{key}" for key in node if key not in props]
+            for key, value in node.items():
+                if key in props:
+                    found += cls._undeclared(value, props[key], f"{path}.{key}")
+        elif isinstance(node, list) and isinstance(schema.get("items"), dict):
+            for index, item in enumerate(node):
+                found += cls._undeclared(item, schema["items"],
+                                         f"{path}[{index}]")
+        return found
+
+    # Emitted by collect_quick since fb649d8d and accepted since 16765c2c
+    # opened the object, but not declared, so nothing inside them is
+    # validated. Declare them in payload-v1.schema.json and delete the
+    # entry; the second assertion in the test below enforces that.
+    KNOWN_UNDECLARED = frozenset({
+        "$.ane_port_detail.devicetree.set_base_candidate.status",
+        "$.ane_port_detail.devicetree.set_base_candidate.ane_pwrstate_cells",
+        "$.ane_port_detail.devicetree.set_base_candidate.note",
+    })
+
+    def test_nested_payload_keys_are_declared_by_schema(self):
+        """The key-set check below only sees the top level. Every key a
+        real Apple Silicon devicetree section emits must be declared at
+        its depth, or it ships with no validation at all."""
+        with tempfile.TemporaryDirectory() as tmp:
+            _build_t600x_tree(tmp)
+            devicetree = cq._ane_port_devicetree(cc.Redactor(), base=tmp)
+        quick = json.loads(json.dumps(BuildPayload.QUICK))
+        quick["ane_port"] = {"available": True, "devicetree": devicetree}
+        payload = cc.build_payload("quick", quick, {}, redactor=cc.Redactor())
+        undeclared = set(self._undeclared(payload, self._schema()))
+        self.assertEqual(undeclared - self.KNOWN_UNDECLARED, set(),
+                         "new payload keys the schema does not declare")
+        # The allowlist may only shrink: once a path is declared, drop it.
+        self.assertEqual(self.KNOWN_UNDECLARED - undeclared, set(),
+                         "allowlisted paths are now declared or no longer emitted")
+
     def test_payload_keys_equal_schema_properties(self):
         path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                             os.pardir, "services", "community-data",
@@ -1549,6 +1606,31 @@ class PayloadSchemaContract(unittest.TestCase):
         self.assertEqual(schema["properties"]["kind"]["enum"], ["quick", "deep"])
         self.assertEqual(e2e["properties"]["kind"]["enum"], ["omarchy-mac-e2e"])
         self.assertFalse(set(schema["properties"]) - set(e2e["properties"]))
+
+class HyphenAdjacentUserName(unittest.TestCase):
+    """A user name inside a hyphenated token is still the user name."""
+
+    def setUp(self):
+        self.red = cc.Redactor(hostname="omarchy", username="steve",
+                               home="/home/steve")
+
+    def test_user_name_inside_hyphenated_tokens_is_redacted(self):
+        self.assertEqual(self.red.apply("/tmp/steve-build/out"),
+                         "/tmp/[user]-build/out")
+        self.assertEqual(self.red.apply("build-steve/log"), "build-[user]/log")
+        self.assertEqual(self.red.counts.get("username"), 2)
+
+    def test_default_hostname_keeps_project_tokens(self):
+        # Omarchy's default hostname is `omarchy`; hyphen stays a boundary
+        # for the hostname rule so the project's own names survive.
+        text = "mlx-omarchy 0.32.3 via mlx-omarchy-info; omarchy-ane; host omarchy"
+        self.assertEqual(self.red.apply(text),
+                         "mlx-omarchy 0.32.3 via mlx-omarchy-info; omarchy-ane; host [host]")
+
+    def test_substrings_untouched(self):
+        self.assertEqual(self.red.apply("steven stevex user=steve"),
+                         "steven stevex user=[user]")
+
 
 class SingleNetworkModule(unittest.TestCase):
     def test_only_collect_submit_imports_urllib(self):

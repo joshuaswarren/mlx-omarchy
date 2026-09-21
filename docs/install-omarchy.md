@@ -125,7 +125,7 @@ Stock Mesa 26.1.7 Honeykrisp has four driver-side defects that this
 backend works around in its shaders (data-dependent byte extraction
 miscompiles, one-ulp float division, one-ULP `log`, and `sin`/`cos` range
 reduction above 1e5), and it does not expose `VK_KHR_cooperative_matrix`.
-The fork branch [`honeykrisp-omarchy`](https://github.com/joshuaswarren/mesa/tree/honeykrisp-omarchy)
+The fork branch [`honeykrisp-omarchy`](https://github.com/joshuaswarren/mesa-1/tree/honeykrisp-omarchy)
 fixes all four in the compiler and turns the G13 8x8x8 matrix unit on by
 default, so an unmodified wheel runs dense f32 matmul on cooperative
 matrices. Every workaround stays in the shaders for stock Mesa; the fork

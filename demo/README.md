@@ -18,31 +18,35 @@ against `SHA256SUMS`, a private venv created in
 
 ## 2. Run the chat demo
 
+The demo asks for a Hugging Face model id before it imports mlx or
+downloads anything. **Prerequisite: supply a model you have qualified on
+the demo's `mlx_lm` stack.** The demo has not been modernized to the
+current generation — `mlx-community/Qwen3.8-27B-4bit` loads through
+`mlx_vlm`, not `mlx_lm` — so this repo pins no model here; the verified
+current-generation path is documented in the top-level README Quick start.
+
 From a terminal:
+
+```bash
+mlx-omarchy-demo --model MODEL_ID
+```
+
+or pass nothing and answer the prompt:
 
 ```bash
 mlx-omarchy-demo
 ```
 
-or open the Omarchy launcher (Super + Space) and pick **MLX Chat (Apple
-GPU)**. The first run downloads `mlx-community/Qwen2.5-0.5B-Instruct-4bit`
-(about 300 MB). Then it:
+The Omarchy launcher entry **MLX Chat (Apple GPU)** opens the same demo
+on an interactive terminal, so it asks for the model id there. Then it:
 
 1. prints the mlx-omarchy version and the GPU it is running on,
 2. answers one scripted question so you can see tokens stream, with the
    measured prompt and generation tokens per second on the last line,
 3. drops into an interactive chat. Empty line or Ctrl-D exits.
 
-Expected speed on an M1 with the stock Omarchy Mesa: roughly 60 generated
-tokens per second for the 0.5B 4-bit model. macOS on the same chip is faster;
-this project is not at performance parity yet, and the numbers on the last
-line are the honest ones.
-
-Try a larger model:
-
-```bash
-mlx-omarchy-demo --model mlx-community/Qwen2.5-1.5B-Instruct-4bit
-```
+macOS on the same chip is faster; this project is not at performance
+parity yet, and the numbers on the last line are the honest ones.
 
 ## 3. Use it from your own code
 
@@ -50,7 +54,7 @@ mlx-omarchy-demo --model mlx-community/Qwen2.5-1.5B-Instruct-4bit
 
 ```bash
 mlx-omarchy -c 'import mlx.core as mx; print(mx.device_info()); print((mx.ones((4,4)) @ mx.ones((4,4))).tolist())'
-mlx-omarchy -m mlx_lm.generate --model mlx-community/Qwen2.5-0.5B-Instruct-4bit --prompt "Hello"
+mlx-omarchy -m mlx_lm.generate --model MODEL_ID --prompt "Hello"
 ```
 
 The API is upstream MLX (`import mlx.core as mx`, `mlx.nn`, `mlx_lm`), so
