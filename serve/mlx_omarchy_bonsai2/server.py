@@ -643,7 +643,6 @@ def serve_main(argv):
             flush=True,
         )
         print(state.info["attribution"], flush=True)
-<<<<<<< HEAD
         _worker_loop(state)
     except KeyboardInterrupt:
         pass
