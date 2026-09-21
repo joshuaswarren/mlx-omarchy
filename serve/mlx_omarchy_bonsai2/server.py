@@ -645,6 +645,10 @@ def serve_main(argv):
         sys.exit(2)
     args.reservation_name = _reservation_name(args.model_id)
     args.owner = _owner_token(_budget_module())
+    # Env-gated ids-probe hook (bench-only, default OFF, byte-identical
+    # otherwise). Mirrors the contract in serve.mlx_omarchy_serve._mlxlm_server.
+    from . import ids_probe as _bonsai_ids_probe
+    _bonsai_ids_probe.install_ids_probe()
     state = None
     httpd = None
     server_thread = None
