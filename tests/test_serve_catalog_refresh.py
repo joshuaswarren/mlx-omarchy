@@ -348,12 +348,17 @@ class BundledDataTests(unittest.TestCase):
     def test_no_recommended_until_http_qualified(self):
         # Main, 2026-09-20: every recommendation stays false until HTTP
         # serving is qualified on devices for that exact runtime/revision.
+        # The seed currently recommends nothing; laya-mlx is the first
+        # entry with a qualified HTTP scope and still carries no
+        # recommendation until the owner flips it at integration.
         recommended = [e for e in self.entries if e.get("recommended")]
         self.assertEqual([e["id"] for e in recommended], [])
         for entry in self.entries:
-            if entry["qualification"]["generation"]["status"] == "qualified":
+            if entry.get("recommended"):
                 self.assertEqual(entry["qualification"]["http"]["status"],
-                                 "untested", entry["id"])
+                                 "qualified", entry["id"])
+                self.assertEqual(entry["qualification"]["generation"]["status"],
+                                 "qualified", entry["id"])
 
     def test_capability_arch_uses_chip_identifiers(self):
         for entry in self.entries:
