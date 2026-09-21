@@ -153,12 +153,16 @@ void main() {
       }
 
       for (uint chunk = 0u; chunk < k_chunks; ++chunk) {
-        float scale = 0.0;
-        float bias = 0.0;
-        if (column_ok) {
-          scale = float(scales.values[scale_row + chunk]);
-          bias = float(biases.values[bias_row + chunk]);
-        }
+        // Clamp-then-load: the guard selects the INDEX (0 is always a
+        // valid element of a dispatched kernel's buffers), the loads run
+        // unconditionally so the AGX scoreboard slots never stall inside
+        // a divergent region, and the output selects preserve the exact
+        // zero semantics of the previous guarded form.
+        uint sb_idx = (column_ok ? (scale_row + chunk) : 0u);
+        float16_t scale_raw = scales.values[sb_idx];
+        float scale = column_ok ? float(scale_raw) : 0.0;
+        float16_t bias_raw = biases.values[sb_idx];
+        float bias = column_ok ? float(bias_raw) : 0.0;
         for (uint step = 0u; step < CHUNK_K / STEP_K; ++step) {
           uint k_base = chunk * CHUNK_K + step * STEP_K;
           // X_LOADS half2 loads per lane cover the TILE_ROWS x 16 x tile.
@@ -167,11 +171,12 @@ void main() {
             uint i = lid + 64u * j;
             uint local_row = i / 8u;
             uint row = row_base + local_row;
-            x_words[j] = row < params.matrix_m
-                ? input_x.values[
-                      x_slice + row * x_words_per_row + k_base / 2u +
-                      (i % 8u)]
-                : 0u;
+            bool row_ok = row < params.matrix_m;
+            uint x_idx =
+                (row_ok ? x_slice + row * x_words_per_row + (i % 8u) : 0u) +
+                k_base / 2u;
+            uint xw = input_x.values[x_idx];
+            x_words[j] = row_ok ? xw : 0u;
           }
           for (uint j = 0u; j < X_LOADS; ++j) {
             uint i = lid + 64u * j;
@@ -181,8 +186,10 @@ void main() {
             x_s[local_row * STEP_K + 2u * (i % 8u) + 1u] = pair.y;
           }
           // One packed word per lane covers the 16x32 weight tile.
-          uint packed = column_ok
-              ? input_w.values[w_row + k_base / 8u + w_part] : 0u;
+          uint w_idx =
+              (column_ok ? w_row + k_base / 8u + w_part : 0u);
+          uint packed_w = input_w.values[w_idx];
+          uint packed = column_ok ? packed_w : 0u;
           uint w_base = 8u * w_part * TILE_N + w_column_local;
           w_s[w_base + 0u * TILE_N] = scale * float(packed & 0xFu) + bias;
           w_s[w_base + 1u * TILE_N] =
