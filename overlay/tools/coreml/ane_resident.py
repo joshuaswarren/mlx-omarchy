@@ -132,6 +132,29 @@ class ResidentAneWorker:
             stderr=self._stderr,
         )
         self.worker_starts += 1
+        # F_SETPIPE_SZ: request a larger stdin pipe buffer so the
+        # parent's os.write of the full request bytearray returns sooner.
+        # The kernel may cap the request at /proc/sys/fs/pipe-max-size
+        # (typically 1 MiB on Linux). We read the cap, request that size,
+        # and verify with F_GETPIPE_SZ; on any failure path the legacy
+        # 64 KiB pipe is unchanged. Note: F_SETPIPE_SZ reduces the wakeup
+        # block probability on the parent's os.write, it does NOT make the
+        # write non-blocking - a payload larger than the buffer will still
+        # block until the worker drains.
+        try:
+            import fcntl as _fctl_pz
+            with open("/proc/sys/fs/pipe-max-size") as _pmz:
+                _pmax = int(_pmz.read().strip())
+        except (OSError, ValueError):
+            _pmax = 0
+        if _pmax > 0:
+            try:
+                _fd = self._process.stdin.fileno()
+                _fctl_pz.fcntl(_fd, _fctl_pz.F_SETPIPE_SZ, _pmax)
+                _fctl_pz.fcntl(_fd, _fctl_pz.F_GETPIPE_SZ)  # verify actual size
+            except (OSError, AttributeError, ValueError):
+                pass
+
         # In relay-bypass mode the worker prints the same bundle reports
         # and a "relay-bypass ready ..." banner; the resident's "loaded"
         # line never reaches us (it's the worker's spawn success line,
