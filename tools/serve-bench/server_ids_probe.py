@@ -114,16 +114,25 @@ def main():
 
     def stream_probe(*a, **k):
         ids, t0, t_first = [], time.perf_counter(), None
-        for r in orig_stream(*a, **k):
-            if t_first is None:
-                t_first = time.perf_counter()
-            ids.append(r.token)
-            yield r
-        emit({"event": "generation", "n": len(ids),
-                       "wall_s": round(time.perf_counter() - t0, 3),
-                       "ttft_s": round(t_first - t0, 4) if t_first else None,
-                       "ids_sha16": sha16(ids),
-                       "ids": ids})
+        finish = None
+        try:
+            for r in orig_stream(*a, **k):
+                if t_first is None:
+                    t_first = time.perf_counter()
+                ids.append(r.token)
+                finish = getattr(r, "finish_reason", None)
+                yield r
+                if finish is not None:
+                    break
+        finally:
+            # finally runs even when the caller breaks early — the
+            # server's loop breaks at finish_reason=length.
+            wall = time.perf_counter() - t0
+            emit({"event": "generation", "n": len(ids),
+                  "wall_s": round(wall, 3),
+                  "ttft_s": round(t_first - t0, 4) if t_first else None,
+                  "ids_sha16": sha16(ids), "ids": ids,
+                  "finish_reason": finish})
 
     srv.stream_generate = stream_probe
 
@@ -133,8 +142,7 @@ def main():
     try:
         server_main()
     finally:
-        for p in probes:
-            print("PROBE:", json.dumps(p), file=sys.stderr, flush=True)
+        pass
 
 
 if __name__ == "__main__":
