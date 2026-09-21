@@ -160,3 +160,82 @@ Device PASS (frozen rule above) upgrades the catalog family entry from
 unqualified to generation-qualified (recommended still requires the
 serve/http split per catalog contract). Until then the artifact stays
 unqualified and unrecommended everywhere.
+
+## Device gap follow-up (added 2026-09-20 after first device run)
+
+First device run outcome (t6001-test-host window, frozen protocol): DIVERGENCE —
+not qualified. Measured CPU-side facts at the step-2 decision point
+(forced prefix = prompt + [11751], identical token IDs both sides):
+
+- CPU quantized top-8: 11 -> 20.0, 13 -> 18.5, 318 -> 16.375 ...
+- CPU chooses 11; the device chose 13; **margin top1-vs-13 = 1.5
+  logits**. A 1.5-logit gap is NOT a razor tie: the "near-tie noise"
+  explanation is unproven until the device-side logits are captured.
+- CPU backend jitter floor (batched vs single forward): maxabs 0.0,
+  relL2 0.0 — the CPU backend is self-consistent; the flip must come
+  from accumulated cross-backend numeric difference, which is
+  unmeasured until the Vulkan half runs.
+- Bounded teacher-forced fixture (23 forced positions): 17/23 top-1
+  match, min margin 0.125. Caveat: the first 5 positions are PROMPT
+  tokens, where top-1 != forced is expected (the prompt is not the
+  model's own greedy continuation); per-continuation-position stats
+  were not persisted and the fixture should be re-run with
+  continuation-only aggregation next window.
+- CPU full position-2 logits saved:
+  step2_cpu_logits.safetensors (fp16, 248,320 values) in the artifact
+  directory; the device half must forward the SAME forced prefix and
+  report maxabs / relL2 against this vector plus its own top-8 and
+  the values for IDs 11 and 13.
+
+### Pre-declared numeric acceptance contract (DRAFT for owner approval — applies to future device tests only; the 2026-09-20 run stays FAIL)
+
+To be fixed BEFORE the next device window, by the owner:
+
+1. Identity gates (hard, no tolerance): prompt token IDs, tokenizer
+   files, shard sha256s must match the frozen vector exactly.
+2. Per-step logit comparison under identical forced prefixes: report
+   maxabs and relL2 over the full vocabulary, per generated position.
+3. Top-1 agreement rule (proposal): a generated position counts as
+   agreeing when the reference top-1 is the device top-1 OR the
+   reference margin (top1 - device_choice) is below a pre-declared
+   tie band T. Proposal: T = 2.0 logits (the measured step-2 margin
+   was 1.5; the band must be justified from accumulated-delta
+   measurements, not chosen to pass).
+4. Sequence acceptance (proposal): qualification requires every
+   position either agreeing under rule 3 or covered by the recorded
+   device-vs-reference maxabs/relL2 within bands fixed in 2 — with
+   band values pre-declared before the run and never tuned after.
+5. Any position failing both rules = DIVERGENCE; qualification is
+   granted only by explicit owner decision on the recorded trace.
+
+### Amendment (owner review, 2026-09-20, later same day)
+
+- The T = 2.0 logits tie band is WITHDRAWN: deriving the criterion
+  from the observed failure (step-2 margin 1.5) is empirical tailoring,
+  not root cause. Acceptance bands stay UNSET until the Vulkan-half
+  accumulated-delta measurements exist; they will then be proposed
+  from those measurements and approved by the owner before any
+  qualifying run.
+- The device half of the diagnostic covers ALL 23 forced positions at
+  the LOGIT level: prompt-position logits must agree CPU-vs-GPU at
+  the numeric-delta level even though prompt-token next-prediction
+  differs from the actual text metric (different metrics, same
+  numeric-agreement requirement). Alignment: position i logits
+  predict token i+1 (verified in the CPU trace).
+- First-divergent-layer bisect: the CPU trace
+  (step2_cpu_layertrace.safetensors: embed + 40 per-layer last-
+  position hidden states + final_norm + logits, fp16, frozen prefix
+  prompt + [11751]) is mirrored to the device; the device script
+  forwards the same prefix, diffs each layer output against the CPU
+  trace (maxabs + relL2), and reports the first layer exceeding the
+  measurement threshold plus per-layer deltas — localizing wrong
+  op / order / precision empirically.
+- Source precision survey (both backends accumulate in fp32; weights
+  fp16 scales + affine biases; activations stored bf16/fp16 and
+  widened to float in-kernel / in-loop): the per-op numeric shapes
+  match, so candidate divergence sources are (1) accumulation ORDER
+  in the quantized matmuls (shader tiling vs CPU sequential loop),
+  (2) cast-point placement for bf16 activations across composite ops,
+  (3) GDN composite state-update ordering, (4) SDPA reduction order.
+  The bisect decides empirically; no source claim is accepted without
+  it.
