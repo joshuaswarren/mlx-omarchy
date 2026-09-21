@@ -196,14 +196,29 @@ def _register_reservation(args, state):
         return False
 
 
-def _release_reservation(reservation_name: str):
+def _release_reservation(reservation_name: str, owner: str | None = None):
+    """Clear the per-process reservation.
+
+    The owner token is REQUIRED for any owned managed reservation: the
+    budget API refuses to clear a reservation held by another holder
+    ("owned by another holder"), so a release without the matching token
+    raises BudgetError and the entry stays on disk. Managed-mode call
+    sites always pass owner=getattr(args, "owner", None); the unowned
+    legacy path (no --managed) is preserved for backward compatibility
+    but a failed clear is logged, not silently swallowed -- a dead owner
+    entry is the bug this helper exists to prevent."""
     budget = _budget_module()
     if budget is None:
         return
     try:
-        budget.clear_reservation(reservation_name)
-    except Exception:
-        pass
+        budget.clear_reservation(reservation_name, owner=owner)
+    except Exception as exc:
+        print(
+            "bonsai2: reservation release for %r raised %s; the entry may need "
+            "manual cleanup via budget.clear_reservation(name, owner=%r)"
+            % (reservation_name, exc, owner),
+            file=sys.stderr,
+        )
 
 
 class Bonsai2State:
@@ -594,10 +609,10 @@ def serve_main(argv):
     state = None
     registered = False
     httpd = None
+    server_thread = None
     try:
         state = Bonsai2State(args)
         if args.max_context is not None and args.max_context > state.info["max_position_embeddings"]:
-            _release_reservation(args.reservation_name)
             print(
                 "bonsai2: refusing to start: --max-context %d exceeds the pack's trained "
                 "max_position_embeddings %d"
@@ -633,18 +648,28 @@ def serve_main(argv):
             _worker_loop(state)
         except KeyboardInterrupt:
             pass
-        finally:
+    finally:
+        # Single owner of release: covers clean exit, KeyboardInterrupt, any
+        # Exception during load/relabel/bind, AND SystemExit from sys.exit(2)
+        # in the max-context overflow path. finally runs on SystemExit because
+        # it derives from BaseException, not Exception.
+        # Cleanup errors are LOGGED, never silently swallowed -- a dead
+        # owner entry on disk is the very bug this finally exists to prevent,
+        # and a silent fail here would defeat the fix.
+        try:
+            _release_reservation(args.reservation_name, owner=getattr(args, "owner", None))
+        except Exception as release_exc:
+            print(
+                "bonsai2: reservation release raised %s; entry may need manual cleanup via "
+                "budget.clear_reservation(name, owner=%r)" % (release_exc, getattr(args, "owner", None)),
+                file=sys.stderr,
+            )
+        if server_thread is not None and server_thread.is_alive():
             httpd.shutdown()
+        if httpd is not None:
             httpd.server_close()
+        if state is not None:
             state.job_queue.put((None, None))
-    except Exception:
-        # Any failure after the preflight reservation (load, relabel, bind)
-        # must leave no dead reservation behind.
-        _release_reservation(args.reservation_name)
-        raise
-    else:
-        if registered:
-            _release_reservation(args.reservation_name)
 
 
 if __name__ == "__main__":
