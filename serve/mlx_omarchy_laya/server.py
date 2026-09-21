@@ -321,18 +321,24 @@ class LayaState:
         self.reservation, self.owner, self.admitted_total = _register_pending(
             self.model_dir, self.catalog_id, self.managed, args.dtype, args.max_questions
         )
-        # ONE flat BaseException guard: engine load, relabel, or a SIGTERM /
-        # KeyboardInterrupt arriving mid-load all clear the held reservation
-        # exactly once (owner-scoped) and re-raise the original error
+        # Phase-scoped BaseException guards: whichever phase fails clears the
+        # held reservation exactly once with a DISTINCT registry label
+        # (forensics: failed-startup vs failed-relabel), then re-raises the
+        # original error — including SystemExit/KeyboardInterrupt from the
+        # SIGTERM handler arriving mid-load.
         try:
             self.engine = LayaEngine(args.model, dtype=dtype, require_gpu=not args.allow_cpu)
+        except BaseException:
+            _clear_memory(self.catalog_id, self.managed, why="failed-startup", owner=self.owner)
+            raise
+        try:
             # weights are now resident (LayaEngine evals them); relabel with the
             # parameter-nbytes floor — the admitted total is never grown
             self.reservation = _relabel_resident(self.model_dir, self.catalog_id, self.managed,
                                                  self.reservation, self.owner,
                                                  args.dtype, self.admitted_total, args.max_questions)
         except BaseException:
-            _clear_memory(self.catalog_id, self.managed, why="startup-failed", owner=self.owner)
+            _clear_memory(self.catalog_id, self.managed, why="failed-relabel", owner=self.owner)
             raise
 
     @staticmethod
