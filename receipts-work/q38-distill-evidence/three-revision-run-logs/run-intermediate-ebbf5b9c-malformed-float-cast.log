@@ -1,0 +1,63 @@
+[rtmod] SUBMIT tid=3753929 cv=1 waits=0 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] COMMIT-NOOP
+[doctest] doctest version is "2.4.12"
+[doctest] run with "--help" for options
+===============================================================================
+/tmp/q38/q38-work/mlx/tests/omarchy/test_fast_ops.cpp:422:
+TEST CASE:  weighted bf16 RMSNorm rounds the normalized value before the weight multiply
+
+/tmp/q38/q38-work/mlx/tests/omarchy/test_fast_ops.cpp:483: ERROR: CHECK_EQ( got[i], two_round[i] ) is NOT correct!
+  values: CHECK_EQ( 42496, -0.0380859 )
+
+/tmp/q38/q38-work/mlx/tests/omarchy/test_fast_ops.cpp:483: ERROR: CHECK_EQ( got[i], two_round[i] ) is NOT correct!
+  values: CHECK_EQ( -9792, -0.188477 )
+
+/tmp/q38/q38-work/mlx/tests/omarchy/test_fast_ops.cpp:483: ERROR: CHECK_EQ( got[i], two_round[i] ) is NOT correct!
+  values: CHECK_EQ( 9920, 0.164062 )
+
+/tmp/q38/q38-work/mlx/tests/omarchy/test_fast_ops.cpp:483: ERROR: CHECK_EQ( got[i], two_round[i] ) is NOT correct!
+  values: CHECK_EQ( -4288, -0.417969 )
+
+/tmp/q38/q38-work/mlx/tests/omarchy/test_fast_ops.cpp:483: ERROR: CHECK_EQ( got[i], two_round[i] ) is NOT correct!
+  values: CHECK_EQ( 8576, -0.158203 )
+
+/tmp/q38/q38-work/mlx/tests/omarchy/test_fast_ops.cpp:483: ERROR: CHECK_EQ( got[i], two_round[i] ) is NOT correct!
+  values: CHECK_EQ( 15232, 1.48438 )
+
+/tmp/q38/q38-work/mlx/tests/omarchy/test_fast_ops.cpp:483: ERROR: CHECK_EQ( got[i], two_round[i] ) is NOT correct!
+  values: CHECK_EQ( -7584, 0.0393066 )
+
+/tmp/q38/q38-work/mlx/tests/omarchy/test_fast_ops.cpp:483: ERROR: CHECK_EQ( got[i], two_round[i] ) is NOT correct!
+  values: CHECK_EQ( -41472, 1.14844 )
+
+/tmp/q38/q38-work/mlx/tests/omarchy/test_fast_ops.cpp:483: ERROR: CHECK_EQ( got[i], two_round[i] ) is NOT correct!
+  values: CHECK_EQ( 43008, -0.535156 )
+
+/tmp/q38/q38-work/mlx/tests/omarchy/test_fast_ops.cpp:483: ERROR: CHECK_EQ( got[i], two_round[i] ) is NOT correct!
+  values: CHECK_EQ( -29952, 0.804688 )
+
+/tmp/q38/q38-work/mlx/tests/omarchy/test_fast_ops.cpp:483: ERROR: CHECK_EQ( got[i], two_round[i] ) is NOT correct!
+  values: CHECK_EQ( 30464, -0.957031 )
+
+/tmp/q38/q38-work/mlx/tests/omarchy/test_fast_ops.cpp:483: ERROR: CHECK_EQ( got[i], two_round[i] ) is NOT correct!
+  values: CHECK_EQ( -4256, -0.296875 )
+
+/tmp/q38/q38-work/mlx/tests/omarchy/test_fast_ops.cpp:483: ERROR: CHECK_EQ( got[i], two_round[i] ) is NOT correct!
+  values: CHECK_EQ( 2816, 0.0981445 )
+
+/tmp/q38/q38-work/mlx/tests/omarchy/test_fast_ops.cpp:483: ERROR: CHECK_EQ( got[i], two_round[i] ) is NOT correct!
+  values: CHECK_EQ( 45568, -0.335938 )
+
+/tmp/q38/q38-work/mlx/tests/omarchy/test_fast_ops.cpp:483: ERROR: CHECK_EQ( got[i], two_round[i] ) is NOT correct!
+  values: CHECK_EQ( -7616, 0.196289 )
+
+/tmp/q38/q38-work/mlx/tests/omarchy/test_fast_ops.cpp:483: ERROR: CHECK_EQ( got[i], two_round[i] ) is NOT correct!
+  values: CHECK_EQ( -13568, -0.359375 )
+
+===============================================================================
+[doctest] test cases:  1 | 0 passed |  1 failed | 35 skipped
+[doctest] assertions: 17 | 1 passed | 16 failed |
+[doctest] Status: FAILURE!
+[rtmod] COMMIT-NOOP
+[rtmod] COMMIT-NOOP

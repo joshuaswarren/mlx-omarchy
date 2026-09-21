@@ -1,0 +1,27 @@
+[rtmod] SUBMIT tid=3752783 cv=1 waits=0 sigs=2 cmds=1
+[rtmod] COMMIT-NOOP
+[rtmod] COMMIT-NOOP
+[doctest] doctest version is "2.4.12"
+[doctest] run with "--help" for options
+===============================================================================
+/tmp/q38/q38-work/mlx/tests/omarchy/test_fast_ops.cpp:422:
+TEST CASE:  weighted bf16 RMSNorm rounds the normalized value before the weight multiply
+
+/tmp/q38/q38-work/mlx/tests/omarchy/test_fast_ops.cpp:483: ERROR: CHECK_EQ( got[i], two_round[i] ) is NOT correct!
+  values: CHECK_EQ( -0.0383301, -0.0380859 )
+
+/tmp/q38/q38-work/mlx/tests/omarchy/test_fast_ops.cpp:483: ERROR: CHECK_EQ( got[i], two_round[i] ) is NOT correct!
+  values: CHECK_EQ( -0.1875, -0.188477 )
+
+/tmp/q38/q38-work/mlx/tests/omarchy/test_fast_ops.cpp:483: ERROR: CHECK_EQ( got[i], two_round[i] ) is NOT correct!
+  values: CHECK_EQ( 1.49219, 1.48438 )
+
+/tmp/q38/q38-work/mlx/tests/omarchy/test_fast_ops.cpp:483: ERROR: CHECK_EQ( got[i], two_round[i] ) is NOT correct!
+  values: CHECK_EQ( 0.0986328, 0.0981445 )
+
+===============================================================================
+[doctest] test cases:  1 |  0 passed | 1 failed | 35 skipped
+[doctest] assertions: 17 | 13 passed | 4 failed |
+[doctest] Status: FAILURE!
+[rtmod] COMMIT-NOOP
+[rtmod] COMMIT-NOOP
