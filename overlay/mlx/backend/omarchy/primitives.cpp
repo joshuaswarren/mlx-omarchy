@@ -6893,7 +6893,7 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
   const char* rb_env = std::getenv("MLX_OMARCHY_QMM_TILE_RB");
   bool rb_enabled = rb_env == nullptr || std::strcmp(rb_env, "0") != 0;
   constexpr uint32_t kQmmCoopmatSharedBytes =
-      (32u * 16u + 16u * 32u) * sizeof(float);
+      (32u * 32u + 32u * 32u) * sizeof(float);
   const auto& coopmat_caps = encoder.device().capabilities();
   bool coopmat_reachable =
       tile_path && rb_enabled && q4_g64_transpose &&
@@ -7108,7 +7108,7 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
       // The 8x8x8 fp32 cooperative matrix (shaders/qmm_coopmat.comp)
       // remains the route when the scalar-FMA kernel declines (odd n or
       // unaligned operands): a 32-column output tile per workgroup,
-      // 4 KiB shared staging at the shipped 32 rows; x is
+      // 8 KiB shared staging at the experimental 32 rows; x is
       // read as 32-bit word pairs). The materialization above stages any
       // odd-offset x view and out is a fresh offset-0 allocation, so
       // operand alignment holds by construction and coopmat_reachable

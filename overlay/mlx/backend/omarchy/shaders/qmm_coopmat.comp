@@ -7,8 +7,8 @@
 
 // Prefill Q4/group-64 f16 matmul on the G13 8x8x8 fp32 subgroup
 // cooperative matrix. A 64-lane workgroup owns a TILE_ROWS x 32 output
-// tile; each subgroup owns half the rows. It stages 16 k values at a
-// time, dequantizes each 16x32 weight tile once into shared f32, and
+// tile; each subgroup owns half the rows. It stages 32 k values at a
+// time, dequantizes each 32x32 weight tile once into shared f32, and
 // reuses it across all TILE_ROWS rows. The ascending 8-wide coopmat
 // updates preserve the previous kernel's per-output accumulation order
 // and output ids.
@@ -32,9 +32,9 @@
 // lost even at 4.1 per core (58% slower than 32 rows) and is not in the
 // tree. Numbers: receipts/2026-09-14-qmm-occupancy-tilem/.
 //
-// Both row counts keep one output's k chain identical, so they are
-// digest-identical, and TILE_ROWS = 32 compiles to byte-identical
-// SPIR-V to the pre-parameterization kernel.
+// Experimental STEP_K=32 retains ascending 8-wide K updates.
+// Numerical identity and performance still require device qualification;
+// this candidate is not a production default.
 
 #ifndef TILE_ROWS
 #define TILE_ROWS 32
@@ -49,14 +49,14 @@
 #endif
 
 // 8-row coopmat blocks in the tile, and packed x words per lane: the
-// 64-lane workgroup covers TILE_ROWS x 16 halves.
+// 64-lane workgroup covers TILE_ROWS x STEP_K halves.
 #define ROW_BLOCKS (TILE_ROWS / 8u)
-#define X_LOADS (TILE_ROWS / 8u)
+#define X_LOADS (TILE_ROWS * STEP_K / 128u)
 
 const uint TILE_M = TILE_ROWS;
 const uint TILE_N = 32u;
 const uint CHUNK_K = 64u;
-const uint STEP_K = 16u;
+const uint STEP_K = 32u;
 const uint MAT = 8u;
 
 layout(local_size_x = 64) in;
@@ -101,9 +101,9 @@ layout(push_constant) uniform Params {
   uint out_strides[4];
 } params;
 
-// 4 KiB shared at TILE_ROWS = 32, 3 KiB at 16: one TILE_ROWS x 16 x
-// tile and one 16x32 f32 weight tile. The drain reuses x_s as four 8x8
-// blocks, 256 floats, which is exactly the 16-row x tile and fits
+// 8 KiB shared at TILE_ROWS = 32, 6 KiB at 16: one TILE_ROWS x 32 x
+// tile and one 32x32 f32 weight tile. The drain reuses x_s as four 8x8
+// blocks, 256 floats, which fits in the 16-row x tile and
 // inside the 32-row one.
 shared float x_s[TILE_M * STEP_K];
 shared float w_s[STEP_K * TILE_N];
@@ -161,43 +161,46 @@ void main() {
         }
         for (uint step = 0u; step < CHUNK_K / STEP_K; ++step) {
           uint k_base = chunk * CHUNK_K + step * STEP_K;
-          // X_LOADS half2 loads per lane cover the TILE_ROWS x 16 x tile.
+          // X_LOADS half2 loads per lane cover the TILE_ROWS x STEP_K x tile.
           uint x_words[X_LOADS];
           for (uint j = 0u; j < X_LOADS; ++j) {
             uint i = lid + 64u * j;
-            uint local_row = i / 8u;
+            uint local_row = i / (STEP_K / 2u);
             uint row = row_base + local_row;
             x_words[j] = row < params.matrix_m
                 ? input_x.values[
                       x_slice + row * x_words_per_row + k_base / 2u +
-                      (i % 8u)]
+                      (i % (STEP_K / 2u))]
                 : 0u;
           }
           for (uint j = 0u; j < X_LOADS; ++j) {
             uint i = lid + 64u * j;
-            uint local_row = i / 8u;
+            uint local_row = i / (STEP_K / 2u);
             vec2 pair = unpackHalf2x16(x_words[j]);
-            x_s[local_row * STEP_K + 2u * (i % 8u)] = pair.x;
-            x_s[local_row * STEP_K + 2u * (i % 8u) + 1u] = pair.y;
+            x_s[local_row * STEP_K + 2u * (i % (STEP_K / 2u))] = pair.x;
+            x_s[local_row * STEP_K + 2u * (i % (STEP_K / 2u)) + 1u] = pair.y;
           }
-          // One packed word per lane covers the 16x32 weight tile.
-          uint packed = column_ok
-              ? input_w.values[w_row + k_base / 8u + w_part] : 0u;
-          uint w_base = 8u * w_part * TILE_N + w_column_local;
-          w_s[w_base + 0u * TILE_N] = scale * float(packed & 0xFu) + bias;
-          w_s[w_base + 1u * TILE_N] =
-              scale * float((packed >> 4u) & 0xFu) + bias;
-          w_s[w_base + 2u * TILE_N] =
-              scale * float((packed >> 8u) & 0xFu) + bias;
-          w_s[w_base + 3u * TILE_N] =
-              scale * float((packed >> 12u) & 0xFu) + bias;
-          w_s[w_base + 4u * TILE_N] =
-              scale * float((packed >> 16u) & 0xFu) + bias;
-          w_s[w_base + 5u * TILE_N] =
-              scale * float((packed >> 20u) & 0xFu) + bias;
-          w_s[w_base + 6u * TILE_N] =
-              scale * float((packed >> 24u) & 0xFu) + bias;
-          w_s[w_base + 7u * TILE_N] = scale * float(packed >> 28u) + bias;
+          // Two packed words per lane cover the 32x32 weight tile.
+          for (uint j = 0u; j < STEP_K / 16u; ++j) {
+            uint staged_part = w_part + 2u * j;
+            uint packed = column_ok
+                ? input_w.values[w_row + k_base / 8u + staged_part] : 0u;
+            uint w_base = 8u * staged_part * TILE_N + w_column_local;
+            w_s[w_base + 0u * TILE_N] = scale * float(packed & 0xFu) + bias;
+            w_s[w_base + 1u * TILE_N] =
+                scale * float((packed >> 4u) & 0xFu) + bias;
+            w_s[w_base + 2u * TILE_N] =
+                scale * float((packed >> 8u) & 0xFu) + bias;
+            w_s[w_base + 3u * TILE_N] =
+                scale * float((packed >> 12u) & 0xFu) + bias;
+            w_s[w_base + 4u * TILE_N] =
+                scale * float((packed >> 16u) & 0xFu) + bias;
+            w_s[w_base + 5u * TILE_N] =
+                scale * float((packed >> 20u) & 0xFu) + bias;
+            w_s[w_base + 6u * TILE_N] =
+                scale * float((packed >> 24u) & 0xFu) + bias;
+            w_s[w_base + 7u * TILE_N] = scale * float(packed >> 28u) + bias;
+          }
           barrier();
 
           for (uint ks = 0u; ks < STEP_K / MAT; ++ks) {
