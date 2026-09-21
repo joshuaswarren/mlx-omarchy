@@ -320,7 +320,6 @@
         },
         "memory_note": "Memory is sized for ALL 35B MoE weights (256 experts, bfloat16, 66.97 GiB of safetensors). A3B (3B active per token) is a compute figure, not a memory figure.",
         "unquantized_dtype": "bfloat16",
-        "fitment": "Admission is a per-host runtime decision from actual available memory (with context, workspace, and co-resident models), not a fleet-max assumption: the 64 GiB the T6021 qualification host cannot admit the bf16 weights; the M2 Max measured 94.25 GiB OS-usable / 80.77 GiB available on 2026-09-20, so the 84 GiB floor refuses at that measured availability and a quieter host state is required. A Q4/group-64 conversion remains the fitment path for 64 GiB-class hosts; none exists upstream (checked 2026-09-20) and producing one is a weight-download job under Main coordination.",
         "hybrid_attention": "linear_attention x3 + full_attention, interval 4",
         "min_mem_gib_basis": "ceil(weights_bytes * 1.25 / 2^30); static weights floor, not a measured peak",
         "kv_basis": "kv_bytes_per_token = 2 (K+V) x 10 full-attention layers (40/4) x 2 kv heads x 256 head_dim x 2 bytes (bf16), from the pinned config; GDN layers carry fixed recurrent state, not a growing cache; MTP excluded",
@@ -351,7 +350,46 @@
             "decision": "deferred",
             "note": "Catalog entry polish; download remains blocked on existing approval contract. No model bytes fetched."
           }
-        ]
+        ],
+        "q4g64_local_conversion": {
+          "host": "jw16mbp1-linux (T6021, 64 GiB M1 Max, Asahi Linux)",
+          "model_path": "/home/joshuawarren/models/qwen3.8-35b-a3b-distill-q4-g64",
+          "total_disk_bytes": 19095844,
+          "shard_count": 6,
+          "shard_size_bytes": {
+            "model-1-of-6.safetensors": 4039843628,
+            "model-2-of-6.safetensors": 3787377766,
+            "model-3-of-6.safetensors": 3787377966,
+            "model-4-of-6.safetensors": 3787377980,
+            "model-5-of-6.safetensors": 3787377998,
+            "model-6-of-6.safetensors": 319668088
+          },
+          "shard_sha256": {
+            "model-1-of-6.safetensors": "640d25f27ffbf25a9daa5bc8db147f23edc914e1f5303f99e381af25a0ef28af",
+            "model-2-of-6.safetensors": "fc10593d6feafc4ebc68e4d3767e94532e1a1d5374827c8f009e67b691b693ee",
+            "model-3-of-6.safetensors": "a762747f333bd1f89b8cab326b2911c1a66094668fbf908fa4a991d393341461",
+            "model-4-of-6.safetensors": "ca8a62e28c6132f1fbaf5a47c7cff8bd3e3879720897bfed1d0b6fa42615e22e",
+            "model-5-of-6.safetensors": "ef843bd297584ac2eaac01fe12e6186a0fb6ddc2d0a4adc6d7afcc8bff7e1ce1",
+            "model-6-of-6.safetensors": "413a4e3e34ad1e17c245732ad3cbba8752944a98763584caf3e032ead8fce4af"
+          },
+          "aux_sha256": {
+            "chat_template.jinja": "e84f32a23fdda27689f868aa4a1a5621f41133e51a48d7f3efcbea2839574259",
+            "config.json": "5b71f36b9f4955e5e7f2c7cdddd14dfdcd91695d58e94d6d2a375def1ddb1f06",
+            "tokenizer.json": "06b9509352d2af50381ab2247e083b80d32d5c0aba91c272ca9ff729b6a0e523"
+          },
+          "plan_basis": "mlx-omarchy/docs/plans/2026-09-20-q38-distill-device-qualification-plan.md (the plan names this host path as the conversion artifact)",
+          "converted_at": "2026-09-20 (timestamps on the disk files; conversion runid documented in the plan)"
+        },
+        "local_qualification_status": {
+          "q4g64": "ARTIFACT_PRESENT_LOCAL (on jw16) \u2014 recommended:true pending v5-equivalent managed-CLI run; bf16 upstream variant remains UNTESTED"
+        },
+        "local_variant_q4g64": {
+          "present": true,
+          "path": "/home/joshuawarren/models/qwen3.8-35b-a3b-distill-q4-g64",
+          "total_bytes": 19095844,
+          "shard_count": 6,
+          "qualification": "recommended stays false until v5-equivalent run on jw16 captures managed-route token arrays (next window request after this commit lands)"
+        }
       },
       "serve": null
     },
