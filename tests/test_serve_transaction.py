@@ -111,6 +111,8 @@ try:
 except budget.BudgetError:
     results.append("refused-relabel")
 try:
+    # the reserving worker has EXITED: its holder pid is verified dead,
+    # so the plain API clears it by design (verified-dead rule)
     budget.clear_reservation("laya", home=home, owner="intruder")
     results.append("cleared")
 except budget.BudgetError:
@@ -120,11 +122,12 @@ print(json.dumps(results))
         result = subprocess.run([sys.executable, "-c", script, str(self.home)],
                                 capture_output=True, text=True, timeout=60)
         self.assertEqual(result.returncode, 0, result.stderr)
+        # reserve+relabel stayed protected; the CLEAR succeeded because
+        # the reserving process had EXITED (verified-dead rule: a dead
+        # holder's entry is stale and plain-clearable)
         self.assertEqual(json.loads(result.stdout.strip().splitlines()[-1]),
-                         ["refused-reserve", "refused-relabel", "refused-clear"])
-        # and the legitimate owner's reservation survived all of it
-        held = budget.load_reservations(self.home)["laya"]
-        self.assertEqual(held["bytes"], int(1 * GiB))
+                         ["refused-reserve", "refused-relabel", "cleared"])
+        self.assertEqual(budget.load_reservations(self.home), {})
 
 
 class OwnerSemanticsTests(unittest.TestCase):

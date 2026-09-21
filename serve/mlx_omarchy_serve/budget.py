@@ -287,20 +287,34 @@ def set_reservation_state(name: str, state: str, home: Path | None = None,
 
 def clear_reservation(name: str, home: Path | None = None,
                       owner: str | None = None, force: bool = False) -> bool:
+    """Clear a reservation. Protection rules for an entry owned by another
+    process: a VERIFIED-DEAD holder pid allows the clear through the plain
+    API (the process cannot come back); a live holder pid refuses — pid
+    reuse means alive is only 'alive, not same-owner-confirmed', and an
+    unknown holder liveness refuses too. force (the operator maintenance
+    path) clears regardless and must never be invoked programmatically."""
     def mutate(data, _available):
         entry = data.get(name)
         if entry is None:
             return False
-        # Owner protection is fail-closed: only the owning process (or the
-        # operator via the explicit --force maintenance path) may clear.
-        if entry.get("owner") and not force and entry["owner"] != owner:
-            holder_pid = owner_pid(entry["owner"])
-            state = "dead" if not pid_alive(holder_pid) else "alive"
-            raise BudgetError(
-                f"reservation {name!r} is owned by another holder "
-                f"({entry['owner']}, {state}); use `unreserve --force` only "
-                "if that process is confirmed gone"
-            )
+        holder = entry.get("owner")
+        if holder and not force and holder != owner:
+            holder_pid = owner_pid(holder)
+            alive = pid_alive(holder_pid)
+            if alive is False:
+                pass  # verified dead: the plain API may clear it
+            elif alive is True:
+                raise BudgetError(
+                    f"reservation {name!r} is held by a LIVE process "
+                    f"({holder}, pid {holder_pid}; pid reuse not ruled out, "
+                    "not same-owner-confirmed); refusing to evict"
+                )
+            else:
+                raise BudgetError(
+                    f"reservation {name!r} is owned by another holder "
+                    f"({holder}) with unknown liveness; refusing to clear "
+                    "(use --force only if you have verified it gone)"
+                )
         del data[name]
         return True
 

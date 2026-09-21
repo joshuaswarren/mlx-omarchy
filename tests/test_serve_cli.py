@@ -704,18 +704,29 @@ class CatalogCommandTests(CliTestBase):
         self.assertEqual(code, 0)
         self.assertEqual(budget.load_reservations(self.home), {})
 
-    def test_stale_owned_reservation_needs_force(self):
-        # A dead owner's reservation must never block silently: plain
-        # unreserve refuses with the holder state, --force (the explicit
-        # operator maintenance path) clears it.
+    def test_verified_dead_holder_clears_via_plain_unreserve(self):
+        # Main: a VERIFIED-DEAD holder pid needs no --force — the process
+        # cannot come back, so the plain API clears it.
         budget.set_reservation("stale", int(1 * GiB), "dead holder", self.home,
                                owner="pid999999999-deadbeefdead")
-        with unittest.mock.patch.dict(os.environ, {}):
-            code, _, err = self.run_cli(["unreserve", "stale"])
-        self.assertEqual(code, 2)
-        self.assertIn("unreserve --force", err)
-        code, _, err = self.run_cli(["unreserve", "stale", "--force"])
+        code, _, err = self.run_cli(["unreserve", "stale"])
         self.assertEqual(code, 0, err)
+        self.assertEqual(budget.load_reservations(self.home), {})
+
+    def test_live_owned_entry_is_protected_from_plain_unreserve(self):
+        # Main: plain unreserve must PROTECT an entry held by a live
+        # process. pid reuse means alive is only 'alive, not
+        # same-owner-confirmed'; --force stays the explicit escape.
+        budget.set_reservation("running", int(1 * GiB), "live server", self.home,
+                               owner=f"pid{os.getpid()}-aaaaaaaaaaaa")
+        code, _, err = self.run_cli(["unreserve", "running"])
+        self.assertEqual(code, 2)
+        self.assertIn("LIVE process", err)
+        self.assertIn("not same-owner-confirmed", err)
+        self.assertEqual(budget.load_reservations(self.home)["running"]["bytes"],
+                         int(1 * GiB))
+        code, _, _ = self.run_cli(["unreserve", "running", "--force"])
+        self.assertEqual(code, 0)
         self.assertEqual(budget.load_reservations(self.home), {})
 
     def test_reservations_listing_marks_dead_holders(self):
@@ -729,7 +740,7 @@ class CatalogCommandTests(CliTestBase):
         # owner=None; emulate by rewriting
         code, out, _ = self.run_cli(["reservations"])
         self.assertEqual(code, 0)
-        self.assertIn("DEAD (stale; unreserve --force)", out)
+        self.assertIn("DEAD (verified; unreserve clears)", out)
         self.assertIn("manual-entry", out)
 
     def test_owner_pid_parsing(self):

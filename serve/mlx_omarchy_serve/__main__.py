@@ -976,8 +976,11 @@ def main(argv: list[str] | None = None) -> int:
             for name, r in sorted(data.items()):
                 pid = budget.owner_pid(r.get("owner"))
                 alive = budget.pid_alive(pid)
-                holder = {True: "alive", False: "DEAD (stale; unreserve --force)",
-                          None: "manual"}[alive]
+                holder = {
+                    True: "alive (not same-owner-confirmed)",
+                    False: "DEAD (verified; unreserve clears)",
+                    None: "manual/unknown liveness",
+                }[alive]
                 print(f"{name:<34} {r['state']:<9} {r['bytes'] / GiB:>7.2f} "
                       f"{str(r.get('owner') or '-'):<24} {holder}")
             return 0
