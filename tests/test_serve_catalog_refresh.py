@@ -343,12 +343,14 @@ class BundledDataTests(unittest.TestCase):
                           if e["qualification"]["http"]["status"] == "qualified"]
         self.assertEqual(
             sorted(qualified_http),
-            ["bonsai-2-27b-mlx-2bit", "laya-mlx", "qwen3.8-27b-4bit"])
+            ["bonsai-2-27b-mlx-2bit", "laya-mlx", "qwen3.8-27b-4bit",
+             "qwen3.8-35b-a3b-distill"])
         qualified_managed = [e["id"] for e in self.entries
                              if e["qualification"]["managed"]["status"] == "qualified"]
         self.assertEqual(
             sorted(qualified_managed),
-            ["bonsai-2-27b-mlx-2bit", "qwen3.8-27b-4bit"])
+            ["bonsai-2-27b-mlx-2bit", "qwen3.8-27b-4bit",
+             "qwen3.8-35b-a3b-distill"])
         for entry in self.entries:
             for scope in ("generation", "http", "managed"):
                 qual = entry["qualification"][scope]
@@ -369,12 +371,14 @@ class BundledDataTests(unittest.TestCase):
         # Main, 2026-09-21: qwen3.8-27b-4bit flipped to recommended:true —
         # gates (token identity exact v5f/v5d/v5h, managed route functional,
         # memory wording corrected) all passed.
+        # Main, 2026-09-21: qwen3.8-35b-a3b-distill Q4G64 flipped to
+        # recommended:true for >=96 GiB-class hosts (v5i managed-route
+        # functional + deterministic generation; no direct reference).
         recommended = [e for e in self.entries if e.get("recommended")]
         self.assertEqual(
-            [e["id"] for e in recommended],
-            ["qwen3.8-27b-4bit"],
-            "only qwen3.8-27b-4bit is recommended; each flip requires "
-            "Main's explicit approval with receipts")
+            sorted([e["id"] for e in recommended]),
+            ["qwen3.8-27b-4bit", "qwen3.8-35b-a3b-distill"],
+            "each flip requires Main's explicit approval with receipts")
         for entry in self.entries:
             if entry.get("recommended"):
                 self.assertEqual(entry["qualification"]["http"]["status"],

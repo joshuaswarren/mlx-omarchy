@@ -9,7 +9,7 @@
       "revision": "10c35caafbb80f7dc6a7a432cdd11af10a6d4818",
       "kind": "chat",
       "priority": 1,
-      "recommended": false,
+      "recommended": true,
       "license": "apache-2.0",
       "quant": {
         "bits": 4,
@@ -68,7 +68,8 @@
         "variant": "4bit",
         "model_architecture": "Qwen3_5ForConditionalGeneration",
         "cache_behavior": "Serve screen 2026-09-20 (SPA, the T6021 qualification host): the multimodal checkpoint's ArraysCache is non-trimmable \u2014 prefix-trim replication is unbuildable on this checkpoint; long-context KV management cannot rely on cache trimming for this entry.",
-        "http_scope": "NARROW FUNCTIONAL SCOPE ONLY (SPA screen-2 receipts c0228a44/2a661e3f + scoped raw receipt c900a96d, the T6021 qualification host, wheel 0.32.3.dev202609201440+5b18306, mlx_lm.server 0.31.3): direct-launch HTTP qualified FUNCTIONALLY \u2014 of 7 requests, the functional subset returned HTTP 200 with completion id + usage (60 prompt / 128 completion tokens) + finish=length, zero errors; rates 2.12-2.69 tok/s and TTFT 1.110-1.127 s recorded as data, NOT perf claims. Provenance fatal-checked: wheel sha16 fe51534b, libmlx c28a485f, all 3 model shards sha256-verified vs the proven a second T6021 host snapshot (corrupt shard-2 blob caught and refetched). EXPLICIT NON-CLAIMS: cross-path (HTTP vs direct) numeric equivalence FAILED/OPEN \u2014 output divergence observed and preserved, no causal attribution; generated-ID equality over HTTP unprovable without server changes (text equality recorded); NOT a qualification of the managed omarchy mlx serve CLI (pending route-fix smoke); no ANE/vision/multimodal; no perf winner. Generation qualification (text CLI) is a separate, previously valid scope. Raw JSON: ~/servebench-qa-evidence/out13 on the T6021 qualification host."
+        "http_scope": "NARROW FUNCTIONAL SCOPE ONLY (SPA screen-2 receipts c0228a44/2a661e3f + scoped raw receipt c900a96d, the T6021 qualification host, wheel 0.32.3.dev202609201440+5b18306, mlx_lm.server 0.31.3): direct-launch HTTP qualified FUNCTIONALLY \u2014 of 7 requests, the functional subset returned HTTP 200 with completion id + usage (60 prompt / 128 completion tokens) + finish=length, zero errors; rates 2.12-2.69 tok/s and TTFT 1.110-1.127 s recorded as data, NOT perf claims. Provenance fatal-checked: wheel sha16 fe51534b, libmlx c28a485f, all 3 model shards sha256-verified vs the proven a second T6021 host snapshot (corrupt shard-2 blob caught and refetched). EXPLICIT NON-CLAIMS: cross-path (HTTP vs direct) numeric equivalence FAILED/OPEN \u2014 output divergence observed and preserved, no causal attribution; generated-ID equality over HTTP unprovable without server changes (text equality recorded); NOT a qualification of the managed omarchy mlx serve CLI (pending route-fix smoke); no ANE/vision/multimodal; no perf winner. Generation qualification (text CLI) is a separate, previously valid scope. Raw JSON: ~/servebench-qa-evidence/out13 on the T6021 qualification host.",
+        "recommended_caveat": "GPU numeric-parity (CPU reference vs mlx-LM GPU output bitwise) is NOT claimed for the managed route. Qualification basis: exact token-array identity (sha16 6d30bda8e1438b76 across v5f/v5d/v5h windows), managed route functional (health 200 + pinned 60/128 request + clean restore), TTFT two-clock measured (warm first_event ~11-13s, cold first_event 24.8-31.3s), post-gen child RSS ~525MB, memory wording corrected per Main. GPU numeric-parity is owned by GPUHardwareContinuation and remains open."
       },
       "serve": {
         "backend": "mlx-lm",
@@ -270,7 +271,7 @@
       "revision": "bcc2dbe2f21b213625df2dc1a5a690212373af07",
       "kind": "chat",
       "priority": 5,
-      "recommended": false,
+      "recommended": true,
       "license": "apache-2.0",
       "quant": null,
       "memory": {
@@ -287,19 +288,19 @@
       },
       "qualification": {
         "generation": {
-          "status": "untested",
-          "receipt": null,
-          "date": null
+          "status": "qualified",
+          "receipt": "receipts/2026-09-21-35b-q4g64-v5/gates.log",
+          "date": "2026-09-21"
         },
         "http": {
-          "status": "untested",
-          "receipt": null,
-          "date": null
+          "status": "qualified",
+          "receipt": "receipts/2026-09-21-35b-q4g64-v5/gates.log",
+          "date": "2026-09-21"
         },
         "managed": {
-          "status": "untested",
-          "receipt": null,
-          "date": null
+          "status": "qualified",
+          "receipt": "receipts/2026-09-21-35b-q4g64-v5/gates.log",
+          "date": "2026-09-21"
         }
       },
       "availability": {
@@ -389,7 +390,8 @@
           "total_bytes": 19095844,
           "shard_count": 6,
           "qualification": "recommended stays false until v5-equivalent run on jw16 captures managed-route token arrays (next window request after this commit lands)"
-        }
+        },
+        "recommended_caveat": "recommended:true ONLY for >=96 GiB-class hosts (this is the local Q4G64 variant \u2014 19.1 GB weights; fits 64 GiB M1 Max + headroom for KV/workspace; the bf16 upstream variant stays UNTESTED). No direct-reference comparison available (different model from qwen3.8-27B); managed route functional + deterministic generation confirmed (2 PROBE events, identical 128-token arrays sha16 28927d3085488a11, v5i runid serving-v5i-q4g64-20260921T). GPU numeric-parity NOT claimed (owned by GPUHardwareContinuation)."
       },
       "serve": null
     },
