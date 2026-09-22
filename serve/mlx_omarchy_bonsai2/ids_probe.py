@@ -7,13 +7,10 @@ loop (for response in stream_generate(...): break on finish_reason) never
 calls detok.finalize explicitly, so the hook wraps stream_generate and
 force-finalizes the detokenizer on generator close.
 
-The bonsai2 server captures stream_generate via
-`from mlx_lm.generate import stream_generate` (a function-body from-
-import that is re-executed on every call). The from-import does
-`import mlx_lm.generate` (submodule) + `getattr(submodule, 'stream_generate')`.
-So the wrap must rebind BOTH the submodule's `.stream_generate` attr AND
-the package-level `mlx_lm.generate` attribute. The original is saved
-BEFORE rebinding to avoid infinite recursion."""
+mlx_lm 0.31.3 split mlx_lm.generate (non-streaming wrapper returning
+str) from mlx_lm.stream_generate (the generator). The bonsai2 server
+reads sys.modules['mlx_lm'].stream_generate on each call; this hook
+replaces that package attribute with the wrap."""
 from __future__ import annotations
 import hashlib
 import json
@@ -36,7 +33,6 @@ def install_ids_probe(emit=None):
             SPMStreamingDetokenizer,
             StreamingDetokenizer,
         )
-        import mlx_lm.generate as _mlx_lm_generate
         import mlx_lm as _mlx_lm_pkg
     except Exception as exc:
         print(f"shim: ids probe install failed: {exc}", file=sys.stderr,
@@ -85,18 +81,16 @@ def install_ids_probe(emit=None):
                 BPEStreamingDetokenizer, SPMStreamingDetokenizer):
         wrap(cls)
 
-    # CRITICAL: resolve stream_generate. In mlx_lm 0.31.3, mlx_lm.generate
-    # may be the function (re-exported at the package level, in which case
-    # _mlx_lm_generate has no .stream_generate attr) or a submodule. Try
-    # both forms; whichever has a callable stream_generate attr wins.
-    _original = None
-    if hasattr(_mlx_lm_generate, "stream_generate"):
-        _original = _mlx_lm_generate.stream_generate
-    elif hasattr(_mlx_lm_pkg, "generate") and hasattr(_mlx_lm_pkg.generate, "stream_generate"):
-        _original = _mlx_lm_pkg.generate.stream_generate
-    if _original is None:
-        print("shim: could not resolve stream_generate from mlx_lm.generate "
-              "or mlx_lm_pkg.generate", file=sys.stderr, flush=True)
+    # CRITICAL: In mlx_lm 0.31.3, `mlx_lm.stream_generate` is the
+    # generator and `mlx_lm.generate` is the non-streaming wrapper
+    # that returns str. The bonsai2 server reads stream_generate from
+    # sys.modules['mlx_lm'].stream_generate on each call, so rebinding
+    # the package attribute is what the wrap must do.
+    _original = getattr(_mlx_lm_pkg, "stream_generate", None)
+    if _original is None or not callable(_original):
+        print("shim: mlx_lm.stream_generate missing or non-callable "
+              "(unsupported mlx_lm shape; ids-probe wrap not installed)",
+              file=sys.stderr, flush=True)
         return None
 
     def _resolve_detok(*args, **kwargs):
@@ -129,14 +123,11 @@ def install_ids_probe(emit=None):
             if state["detok"] is not None:
                 state["detok"].finalize()
 
-    # Rebind all three sites: the generate submodule, the package
-    # attribute, and the bonsai2 server module. The bonsai2 server's
-    # function-body `from mlx_lm.generate import stream_generate` is
-    # re-executed on every call — it reads the submodule's
-    # `.stream_generate` attr, so the submodule rebind is the one that
-    # counts for the per-call capture.
-    _mlx_lm_generate.stream_generate = stream_probe
-    _mlx_lm_pkg.generate = stream_probe
+    # Rebind the package's stream_generate attr (the bonsai2 server reads
+    # sys.modules['mlx_lm'].stream_generate on each call) and the
+    # bonsai2 server module's local name. The non-streaming
+    # mlx_lm.generate is left alone.
+    _mlx_lm_pkg.stream_generate = stream_probe
     try:
         import mlx_omarchy_bonsai2.server as _bonsai_server
         _bonsai_server.stream_generate = stream_probe

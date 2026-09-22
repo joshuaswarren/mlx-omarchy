@@ -342,12 +342,16 @@ def _generate(state, prompt_ids, max_tokens, temperature, top_p):
     # Per-call stream_generate lookup via the mlx_lm package
     # attribute. In mlx_lm 0.31.3, `mlx_lm.generate` is the stream_generate
     # function (re-exported at the package level), so re-reading the
-    # package attribute on each call picks up the ids-probe env-gated
-    # wrap that install_ids_probe installs. The captured-at-import
-    # `from mlx_lm.generate import stream_generate` form was a silent
-    # miss because it bound the ORIGINAL function name before the wrap
-    # could rebind the package attribute.
-    stream_generate = sys.modules["mlx_lm"].generate
+    # In mlx_lm 0.31.3, `mlx_lm.generate` is the non-streaming wrapper
+    # that returns str, while the streaming generator is exposed as
+    # `mlx_lm.stream_generate`. Reading the package attribute on each
+    # call picks up the ids-probe env-gated wrap (which rebinds
+    # sys.modules['mlx_lm'].stream_generate after this module is
+    # imported). The captured-at-import `from mlx_lm.generate import
+    # stream_generate` form was a silent miss because it bound the
+    # ORIGINAL function name before the wrap could rebind the package
+    # attribute.
+    stream_generate = sys.modules["mlx_lm"].stream_generate
 
     kwargs = {"sampler": _sampler(temperature, top_p)}
     prompt_n = len(prompt_ids)
@@ -573,7 +577,7 @@ def _make_handler(state: Bonsai2State):
 
             Per-call stream_generate lookup (see _generate docstring)."""
             # Per-call stream_generate lookup (see _generate).
-            stream_generate = sys.modules["mlx_lm"].generate
+            stream_generate = sys.modules["mlx_lm"].stream_generate
 
             def chunk(delta, finish=None, extra=None):
                 payload = {
