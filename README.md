@@ -146,23 +146,32 @@ every cell: greedy (temperature 0), 32 new tokens, 2 warmup runs, and a
 cells use the 10-prompt x 3-pass subset of the same protocol; the
 M2 Max Linux cell is from the earlier 100-prompt-corpus battery on
 wheel 0.32.3+5b18306). Token streams are deterministic per host for a
-given build; cross-host digests legitimately differ (platform bf16
-near-tie properties reorder ulp-level argmax flips — logits agree
-within 1–2 bf16 quanta on every compared step, receipts
-2026-09-22-qwen38-correctness). Cross-OS streams were never an
-invariant and raw token identity is not a parity claim; the acceptance
-bar is logit-level equivalence plus coherent decoding.
+given build and byte-identical across hosts within a build on the fork
+driver: on the pinned Honeykrisp fork stack (`joshuaswarren/mesa-1`
+branch `honeykrisp-omarchy`, driver build `git-7faf04c065`) the M1 and
+M1 Max produce identical ordered-record digests (receipt
+2026-09-22-qwen38-correctness, section 3). On stock Mesa the M1's
+driver stack reorders ulp-level bf16 argmax flips — logits agree
+within 1–2 bf16 quanta on every compared step, so the divergence is a
+driver-stack property, not a kernel bug. Cross-OS streams were never
+an invariant and raw token identity is not a parity claim; the
+acceptance bar is logit-level equivalence plus coherent decoding.
 
 The Linux M1 and M1 Max cells are the 2026-09-22 integrated-kernel
 build (branch `publish/qwen38-kernels`, wheel
 `mlx_omarchy-0.32.3.dev202609221147+8d9aaa2` (sha256 `e330e5ea…`); fused GDN decode/prefill,
 bf16 coopmat qmm prefill, q4 gemv xpack), receipts
 2026-09-22-qwen38-integration and 2026-09-22-qwen38-correctness in
-`ane-linux-experiments`:
+`ane-linux-experiments`. The M1 Linux row is measured on the Honeykrisp
+fork driver — Omarchy installs must use the fork driver, not stock
+Mesa (build it with
+[docs/install-omarchy.md](docs/install-omarchy.md), section "Honeykrisp
+driver with the fork fixes"; the stock-Mesa M1 row measured 32.88
+pure-prefill tok/s on the same wheel):
 
 | Hardware | OS / backend | Prefill, prompt-to-first-token (tok/s) | Pure prefill 512 (tok/s, single run) | Decode (tok/s, median) |
 |---|---|---|---|---|
-| M1, 16 GB | Omarchy / omarchy Vulkan | 25.12 | 32.88 | 34.30 |
+| M1, 16 GB | Omarchy / omarchy Vulkan (Honeykrisp fork driver) | 46.4 | 120.9 | 34.27 |
 | M1 Max, 64 GB | Omarchy / omarchy Vulkan | 61.89 | 238.32 | 57.59 |
 | M2 Max, 96 GB | Omarchy / omarchy Vulkan | 47.2 | 75.8 | 45.0 |
 | M1, 16 GB | macOS 27.0 / upstream Metal | 101.3 | 345.4 | 49.5 |
@@ -174,6 +183,10 @@ SSH. A 27B cell is pending. Adapter evidence is captured
 per run (Vulkan loader trace on Linux naming the Apple physical device;
 mlx's own device identity on macOS); the omarchy backend refuses
 non-Apple GPUs by default.
+
+The fork-driver M1 leg ran with `VK_DRIVER_FILES` pointed at the fork tip
+icd (same protocol and wheel as the other cells; stock-Mesa baseline on the
+same venv: 25.11 / 32.88 / 34.30).
 
 ### Historical Qwen2.5 benchmarks (not current recommendation)
 
