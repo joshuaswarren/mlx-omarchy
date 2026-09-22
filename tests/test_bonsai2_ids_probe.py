@@ -25,13 +25,20 @@ def _fake_tokenizer_utils():
     base = type("StreamingDetokenizer", (),
                 {"add_token": add_token, "reset": reset, "finalize": finalize,
                  "__init__": lambda self: setattr(self, "seen", [])})
-    naive = type("NaiveStreamingDetokenizer", (base,), {})
-    bpe = type("BPEStreamingDetokenizer", (base,), {})
+    # Each subclass defines its OWN override of add_token/finalize in
+    # __dict__, mirroring the real mlx_lm 0.31.3 classes (NaiveStreaming
+    # Detokenizer etc. override the base methods in their own __dict__).
+    naive = type("NaiveStreamingDetokenizer", (base,),
+                 {"add_token": add_token, "reset": reset, "finalize": finalize})
+    bpe = type("BPEStreamingDetokenizer", (base,),
+               {"add_token": add_token, "reset": reset, "finalize": finalize})
+    spm = type("SPMStreamingDetokenizer", (base,),
+               {"add_token": add_token, "reset": reset, "finalize": finalize})
     mod = types.ModuleType("mlx_lm.tokenizer_utils")
     mod.StreamingDetokenizer = base
     mod.NaiveStreamingDetokenizer = naive
     mod.BPEStreamingDetokenizer = bpe
-    mod.SPMStreamingDetokenizer = None
+    mod.SPMStreamingDetokenizer = spm
     return mod
 
 
@@ -110,6 +117,27 @@ class Bonsai2IdsProbeTests(unittest.TestCase):
         self.assertEqual(len(events), 1)
         self.assertEqual(events[0]["ids"], [100, 200, 300])
         self.assertEqual(events[0]["event"], "generation")
+
+    def test_subclass_overrides_add_token_and_finalize(self):
+        # Subclasses (NaiveStreamingDetokenizer, BPEStreamingDetokenizer,
+        # SPMStreamingDetokenizer) in mlx_lm 0.31.3 override add_token
+        # and finalize in their own __dict__. The wrap must patch each
+        # subclass's override; patching only the base class leaves the
+        # override unwrapped and ids accumulate into a black hole.
+        os.environ[self.mod.PROBE_ENV] = "1"
+        events = []
+        self.mod.install_ids_probe(emit=events.append)
+        for cls in (self.fake.NaiveStreamingDetokenizer,
+                    self.fake.BPEStreamingDetokenizer):
+            d = cls()
+            d.add_token(7)
+            d.add_token(8)
+            d.finalize()
+        # One flush event per finalize() call across both subclasses.
+        self.assertEqual(len(events), 2,
+                         f"expected 2 flush events total, got {len(events)}")
+        for e in events:
+            self.assertEqual(e["ids"], [7, 8])
 
 
 if __name__ == "__main__":

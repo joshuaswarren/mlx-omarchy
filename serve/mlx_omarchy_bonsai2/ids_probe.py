@@ -50,9 +50,14 @@ def install_ids_probe(emit=None):
             state["ids"] = []
 
     def wrap(cls):
-        if cls is None or getattr(cls, "_ids_probe_installed", False):
+        # Use cls.__dict__ (not getattr, which walks MRO) to avoid the
+        # base-class install flag leaking down to subclasses that override
+        # add_token/finalize. If a subclass has its own add_token, we want
+        # to patch THAT one; the base-class patch alone does not cover the
+        # override.
+        if cls is None or "_ids_probe_installed" in cls.__dict__:
             return
-        orig_add = getattr(cls, "add_token", None)
+        orig_add = cls.__dict__.get("add_token")
         if orig_add is None:
             return
 
@@ -63,22 +68,26 @@ def install_ids_probe(emit=None):
         cls.add_token = add_token_probe
         cls._ids_probe_installed = True
 
-        orig_reset = getattr(cls, "reset", None)
+        orig_reset = cls.__dict__.get("reset")
         if orig_reset is not None:
             def reset_probe(self, _orig=orig_reset):
                 _flush()
                 return _orig(self)
             cls.reset = reset_probe
 
-        orig_finalize = getattr(cls, "finalize", None)
+        orig_finalize = cls.__dict__.get("finalize")
         if orig_finalize is not None:
             def finalize_probe(self, _orig=orig_finalize):
                 _flush()
                 return _orig(self)
             cls.finalize = finalize_probe
 
-    for cls in (StreamingDetokenizer, NaiveStreamingDetokenizer,
-                BPEStreamingDetokenizer, SPMStreamingDetokenizer):
+    # Iterate most-derived first so a subclass override of add_token/
+    # finalize is patched with its OWN unpatched bound method as the
+    # saved original. If we patched the base class first, the subclass
+    # would never get a wrap.
+    for cls in (BPEStreamingDetokenizer, SPMStreamingDetokenizer,
+                NaiveStreamingDetokenizer, StreamingDetokenizer):
         wrap(cls)
 
     # CRITICAL: In mlx_lm 0.31.3, `mlx_lm.stream_generate` is the
