@@ -157,11 +157,12 @@ driver-stack property, not a kernel bug. Cross-OS streams were never
 an invariant and raw token identity is not a parity claim; the
 acceptance bar is logit-level equivalence plus coherent decoding.
 
-The Linux M1 and M1 Max cells are the 2026-09-22 integrated-kernel
-build (branch `publish/qwen38-kernels`, wheel
-`mlx_omarchy-0.32.3.dev202609221147+8d9aaa2` (sha256 `e330e5ea…`); fused GDN decode/prefill,
+The Linux M1 and M1 Max cells are the 2026-09-22 v0.7.2 tag build
+(commit `fa103c867`, wheel
+`mlx_omarchy-0.32.3.dev202609221309+fa103c86`; fused GDN decode/prefill with the
+prefill shared-load/double-buffer rework,
 bf16 coopmat qmm prefill, q4 gemv xpack), receipts
-2026-09-22-qwen38-integration and 2026-09-22-qwen38-correctness in
+2026-09-22-release-v0.7.2 in
 `ane-linux-experiments`. The M1 Linux row is measured on the Honeykrisp
 fork driver — Omarchy installs must use the fork driver, not stock
 Mesa (build it with
@@ -171,8 +172,8 @@ pure-prefill tok/s on the same wheel):
 
 | Hardware | OS / backend | Prefill, prompt-to-first-token (tok/s) | Pure prefill 512 (tok/s, single run) | Decode (tok/s, median) |
 |---|---|---|---|---|
-| M1, 16 GB | Omarchy / omarchy Vulkan (Honeykrisp fork driver) | 46.4 | 120.9 | 34.27 |
-| M1 Max, 64 GB | Omarchy / omarchy Vulkan | 61.89 | 238.32 | 57.59 |
+| M1, 16 GB | Omarchy / omarchy Vulkan (Honeykrisp fork driver) | 46.7 | 128.7 | 34.3 |
+| M1 Max, 64 GB | Omarchy / omarchy Vulkan | 62.3 | 267.7 | 56.8 |
 | M2 Max, 96 GB | Omarchy / omarchy Vulkan | 47.2 | 75.8 | 45.0 |
 | M1, 16 GB | macOS 27.0 / upstream Metal | 101.3 | 345.4 | 49.5 |
 | M1 Max, 64 GB | macOS 27.0 / upstream Metal | 359.2 | 1019.7 | 179.5 |
