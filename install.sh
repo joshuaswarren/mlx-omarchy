@@ -161,6 +161,19 @@ python3 -m venv --clear "$VENV"
 "$VENV/bin/pip" install --quiet --no-deps "mlx-lm==$MLX_LM_VERSION"
 "$VENV/bin/pip" install --quiet "transformers[sentencepiece]==$TRANSFORMERS_VERSION" numpy protobuf pyyaml jinja2 huggingface_hub
 
+# 4b. Vendored mlx-lm serve patches. The GDN fast route is applied by
+#     default (gated-delta updates go to mx.fast.gated_delta_update in
+#     this wheel); the conv-ring patch stays OFF unless
+#     MLX_OMARCHY_CONV_RING=1. Served models pick both up from the venv,
+#     so no manual venv patching is needed after install.
+say "Applying mlx-lm serve patches (GDN fast route on; conv-ring off unless MLX_OMARCHY_CONV_RING=1)"
+curl -fsSL "https://raw.githubusercontent.com/$REPO/$VERSION/scripts/apply-mlx-lm-patches.sh" -o "$PREFIX/apply-mlx-lm-patches.sh"
+mkdir -p "$PREFIX/patches"
+for p in mlx-lm-gated-delta-fast-route.patch mlx-lm-convring.patch; do
+  curl -fsSL "https://raw.githubusercontent.com/$REPO/$VERSION/patches/$p" -o "$PREFIX/patches/$p"
+done
+MLX_OMARCHY_CONV_RING="${MLX_OMARCHY_CONV_RING:-0}" "$PREFIX/apply-mlx-lm-patches.sh" "$VENV"
+
 # 5. Demo and launchers.
 say "Installing launchers into $BIN"
 curl -fsSL "https://raw.githubusercontent.com/$REPO/$VERSION/demo/chat.py" -o "$PREFIX/chat.py"

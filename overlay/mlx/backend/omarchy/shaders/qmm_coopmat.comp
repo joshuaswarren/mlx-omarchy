@@ -4,6 +4,9 @@
 #extension GL_KHR_shader_subgroup_basic : require
 #extension GL_EXT_shader_16bit_storage : require
 #extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
+#ifdef X_BF16
+#extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
+#endif
 
 // Prefill Q4/group-64 f16 matmul on the G13 8x8x8 fp32 subgroup
 // cooperative matrix. A 64-lane workgroup owns a TILE_ROWS x 32 output
@@ -67,15 +70,64 @@ layout(set = 0, binding = 0, std430) readonly buffer InputX {
 layout(set = 0, binding = 1, std430) readonly buffer InputW {
   uint values[];
 } input_w;
+#ifdef X_BF16
+// bf16 models store scales and biases in bfloat16 (16-bit word layout,
+// widened exactly); the f16 models use float16_t storage.
+layout(set = 0, binding = 2, std430) readonly buffer Scales {
+  uint16_t values[];
+} scales;
+layout(set = 0, binding = 3, std430) readonly buffer Biases {
+  uint16_t values[];
+} biases;
+#else
 layout(set = 0, binding = 2, std430) readonly buffer Scales {
   float16_t values[];
 } scales;
 layout(set = 0, binding = 3, std430) readonly buffer Biases {
   float16_t values[];
 } biases;
+#endif
+#ifdef OUT_BF16
+layout(set = 0, binding = 4, std430) writeonly buffer Output {
+  uint16_t values[];
+} output_data;
+#else
 layout(set = 0, binding = 4, std430) writeonly buffer Output {
   float16_t values[];
 } output_data;
+#endif
+
+// bf16 x rides the same 16-bit-per-element word layout as the f16 path
+// (element 2i in the low half), so the word indexing and the even-offset
+// alignment rule are shared; only the widening differs. The drain packs
+// f32 back with the round-to-nearest-even bfloat16 store the elementwise
+// kernels use. The f16 variants are preprocessor-identical to the
+// shipped kernel: with neither define set, no new code is emitted.
+#ifdef X_BF16
+#define X_UNPACK(word)                                     \
+  vec2(                                                    \
+      uintBitsToFloat(((word) & 0xffffu) << 16u),          \
+      uintBitsToFloat((word) & 0xffff0000u))
+#else
+#define X_UNPACK(word) unpackHalf2x16(word)
+#endif
+#ifdef X_BF16
+#define SCALE_LOAD(x) uintBitsToFloat(uint(x) << 16u)
+#else
+#define SCALE_LOAD(x) float(x)
+#endif
+#ifdef OUT_BF16
+uint16_t out_store(float value) {
+  uint bits = floatBitsToUint(value);
+  if (isnan(value)) {
+    return uint16_t((bits >> 16) | 0x40u);
+  }
+  return uint16_t((bits + 0x7fffu + ((bits >> 16) & 1u)) >> 16);
+}
+#define OUT_STORE(value) out_store(value)
+#else
+#define OUT_STORE(value) float16_t(value)
+#endif
 
 layout(push_constant) uniform Params {
   uint count;
@@ -156,8 +208,8 @@ void main() {
         float scale = 0.0;
         float bias = 0.0;
         if (column_ok) {
-          scale = float(scales.values[scale_row + chunk]);
-          bias = float(biases.values[bias_row + chunk]);
+          scale = SCALE_LOAD(scales.values[scale_row + chunk]);
+          bias = SCALE_LOAD(biases.values[bias_row + chunk]);
         }
         for (uint step = 0u; step < CHUNK_K / STEP_K; ++step) {
           uint k_base = chunk * CHUNK_K + step * STEP_K;
@@ -176,7 +228,7 @@ void main() {
           for (uint j = 0u; j < X_LOADS; ++j) {
             uint i = lid + 64u * j;
             uint local_row = i / 8u;
-            vec2 pair = unpackHalf2x16(x_words[j]);
+            vec2 pair = X_UNPACK(x_words[j]);
             x_s[local_row * STEP_K + 2u * (i % 8u)] = pair.x;
             x_s[local_row * STEP_K + 2u * (i % 8u) + 1u] = pair.y;
           }
@@ -244,7 +296,7 @@ void main() {
             uint row = row_base + rb * MAT + r;
             if (row < params.matrix_m) {
               output_data.values[out_slice + row * params.matrix_n + column] =
-                  float16_t(x_s[(w_column_local / 8u) * MAT * MAT +
+                  OUT_STORE(x_s[(w_column_local / 8u) * MAT * MAT +
                                 r * MAT + (w_column_local % 8u)]);
             }
           }

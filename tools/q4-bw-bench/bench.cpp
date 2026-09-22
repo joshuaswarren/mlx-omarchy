@@ -361,12 +361,31 @@ struct Shape {
   uint32_t n[kMaxDims];
 };
 
+// Shape tables, selected by --2b. The 0.5B table is the historical
+// Qwen2.5-0.5B decode chain. The 2B table is the Qwen3.8-2B decode
+// chain per full-attention / GDN layer (hidden 2048, inter 6144,
+// head_dim 256, 8 q heads / 2 kv heads, GDN qkvz 8192):
+//   qkv      dims=3  n=(2048,512,512)  k=2048  (full attn, multi)
+//   gate_up  dims=2  n=(6144,6144)     k=2048  (full attn + GDN mlp)
+//   down     dims=1  n=(2048,)         k=6144
+//   qkvz     dims=1  n=(8192,)         k=2048  (GDN in_proj; in-model
+//            the 32-wide ba projection groups with it, same k)
 static const Shape kShapes[] = {
     {"qkv", 896, 3, {896, 128, 128}},
     {"o", 896, 1, {896, 0, 0}},
     {"gate_up", 896, 2, {4864, 4864, 0}},
     {"down", 4864, 1, {896, 0, 0}},
 };
+static const Shape kShapes2B[] = {
+    {"qkv", 2048, 3, {2048, 512, 512}},
+    {"gate_up", 2048, 2, {6144, 6144, 0}},
+    {"down", 6144, 1, {2048, 0, 0}},
+    {"qkvz", 2048, 1, {8192, 0, 0}},
+};
+static const Shape* g_shapes = kShapes;
+// --2b also switches the gap-mode compile to the production bf16 x-load
+// mix (the 2B decode chain runs QmmVecQ4*BF16, not FP16).
+static bool g_gap_bf16 = false;
 static constexpr uint32_t kNumShapes = 4;
 
 // Bytes one dispatch touches: weight words + scales + biases + x row +
@@ -913,7 +932,7 @@ static void gap_free_shape(GapShapeBufs& g) {
 static VkDescriptorSet gap_make_set(VkDescriptorPool pool,
     VkDescriptorSetLayout dsl, const GapShapeBufs& g,
     const GapShapeBufs& wsrc, uint32_t sh_idx, const Buf* x_override) {
-  const Shape& sh = kShapes[sh_idx];
+  const Shape& sh = g_shapes[sh_idx];
   VkDescriptorSetAllocateInfo dsai{};
   dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
   dsai.descriptorPool = pool;
@@ -961,8 +980,9 @@ static void run_gap_mode(const DeviceCtx& ctx, bool quick) {
   const uint32_t tokens_wide = quick ? 8 : 16;
   const uint32_t Lmax = 24;
 
-  const char* q4_defines =
-      "-DUSE_FP16=1 -DUSE_SUBGROUP=1 -DQMM_VEC_Q4_WORD=1 -DQMM_VEC_MULTI=1";
+  const char* q4_defines = g_gap_bf16
+      ? "-DUSE_BF16=1 -DUSE_SUBGROUP=1 -DQMM_VEC_Q4_WORD=1 -DQMM_VEC_MULTI=1"
+      : "-DUSE_FP16=1 -DUSE_SUBGROUP=1 -DQMM_VEC_Q4_WORD=1 -DQMM_VEC_MULTI=1";
   if (compile_shader("tools/q4-bw-bench/shaders/qmm_vec_base.comp",
           q4_defines, "/tmp/q4gap_base.spv") != 0)
     die("compile gap base");
@@ -975,9 +995,9 @@ static void run_gap_mode(const DeviceCtx& ctx, bool quick) {
   uint32_t sgroups[kNumShapes];
   uint64_t layer_bytes = 0;
   for (uint32_t s = 0; s < kNumShapes; ++s) {
-    sgroups[s] = shape_groups(kShapes[s], 8u);
-    fill_params(sparams[s], kShapes[s], sgroups[s]);
-    layer_bytes += shape_bytes(kShapes[s]);
+    sgroups[s] = shape_groups(g_shapes[s], 8u);
+    fill_params(sparams[s], g_shapes[s], sgroups[s]);
+    layer_bytes += shape_bytes(g_shapes[s]);
   }
   std::printf(
       "{\"k\":\"gap_cfg\",\"layer_bytes\":%llu,\"sets\":%u,\"bytes_all\":%llu,"
@@ -989,7 +1009,7 @@ static void run_gap_mode(const DeviceCtx& ctx, bool quick) {
   // Weight sets: Lmax independent per-layer weight footprints.
   std::vector<GapSet> sets(Lmax);
   for (uint32_t s = 0; s < kNumShapes; ++s) {
-    const Shape& sh = kShapes[s];
+    const Shape& sh = g_shapes[s];
     for (uint32_t l = 0; l < Lmax; ++l) {
       GapShapeBufs& g = sets[l].sh[s];
       g.x = gap_alloc(ctx, (uint64_t)sh.k * 2u);
@@ -1214,7 +1234,7 @@ static void run_gap_mode(const DeviceCtx& ctx, bool quick) {
     for (int r = -1; r < rounds; ++r) {
       GapSet fresh{};
       for (uint32_t s = 0; s < kNumShapes; ++s) {
-        const Shape& sh = kShapes[s];
+        const Shape& sh = g_shapes[s];
         GapShapeBufs& g = fresh.sh[s];
         g.x = gap_alloc(ctx, (uint64_t)sh.k * 2u);
         for (uint32_t d = 0; d < sh.dims; ++d)
@@ -1332,8 +1352,14 @@ static void run_gap_mode(const DeviceCtx& ctx, bool quick) {
             "/tmp/q4gap_cand_l.spv", 8u},
         {"wg128", "tools/q4-bw-bench/shaders/qmm_vec_cand_wg128.comp",
             "/tmp/q4gap_cand_w.spv", 4u},
+        {"xpack", "tools/q4-bw-bench/shaders/qmm_vec_cand_xpack.comp",
+            "/tmp/q4gap_cand_x.spv", 8u},
     };
     for (const CandSpec& c : cands) {
+      // loadfirst's explicit x-quad addressing is measurement-only for
+      // the f16 uvec4 view; it does not compile under the --2b bf16
+      // defines, so it is skipped there rather than killing the screen.
+      if (g_gap_bf16 && std::string(c.tag) == "loadfirst") continue;
       if (compile_shader(c.src, q4_defines, c.spv) != 0)
         die("compile gap cand %s", c.tag);
       Side cs;
@@ -1343,8 +1369,8 @@ static void run_gap_mode(const DeviceCtx& ctx, bool quick) {
       uint32_t cgroups[kNumShapes];
       Params cparams[kNumShapes];
       for (uint32_t s = 0; s < kNumShapes; ++s) {
-        cgroups[s] = shape_groups(kShapes[s], c.columns);
-        fill_params(cparams[s], kShapes[s], cgroups[s]);
+        cgroups[s] = shape_groups(g_shapes[s], c.columns);
+        fill_params(cparams[s], g_shapes[s], cgroups[s]);
       }
       arm_side = &cs;
       arm_groups = cgroups;
@@ -1583,7 +1609,7 @@ static void run_roof_mode(const DeviceCtx& ctx, bool quick,
   Params shape_params[kNumShapes];
   uint32_t groups_v[kNumShapes];
   for (uint32_t s = 0; s < kNumShapes; ++s) {
-    const Shape& sh = kShapes[s];
+    const Shape& sh = g_shapes[s];
     inputs[s].x = make_buf(g_vk.dev, ctx.mp, (uint64_t)sh.k * 2u, false);
     for (uint32_t d = 0; d < sh.dims; ++d) {
       inputs[s].w[d] = make_buf(g_vk.dev, ctx.mp,
@@ -1617,12 +1643,12 @@ static void run_roof_mode(const DeviceCtx& ctx, bool quick,
     SetBufs combined = inputs[s];
     for (uint32_t d = 0; d < kMaxDims; ++d)
       combined.out[d] = outs[s].out[d];
-    sets[s] = make_set(pool, base.dsl, combined, kShapes[s].dims);
+    sets[s] = make_set(pool, base.dsl, combined, g_shapes[s].dims);
   }
   CmdRes cmd = make_cmd(ctx, 2);
   const uint32_t k_repeat = 8u;
   for (uint32_t s = 0; s < kNumShapes; ++s) {
-    const Shape& sh = kShapes[s];
+    const Shape& sh = g_shapes[s];
     std::vector<uint64_t> samples;
     for (int rep = 0; rep < rounds + 1; ++rep) {
       begin(cmd);
@@ -1674,7 +1700,7 @@ static void run_roof_mode(const DeviceCtx& ctx, bool quick,
     uint64_t med = median(samples);
     double bytes = 0.0;
     for (uint32_t s = 0; s < kNumShapes; ++s)
-      bytes += (double)shape_bytes(kShapes[s]);
+      bytes += (double)shape_bytes(g_shapes[s]);
     std::printf(
         "{\"k\":\"q4layer\",\"bytes\":%.0f,\"med_wall_ns\":%llu,"
         "\"med_gb_s\":%.2f,\"us_per_layer\":%.1f,\"ms_per_token_24\":%.2f,"
@@ -1686,16 +1712,23 @@ static void run_roof_mode(const DeviceCtx& ctx, bool quick,
   }
 }
 
+static bool got_e_dump(const std::vector<uint16_t>&, uint16_t*, size_t) { return false; }
 int main(int argc, char** argv) {
   bool tree_mode = false;
   bool quick = false;
   bool gap_mode = false;
   bool roof_mode = false;
+  bool bf16_eq = false;
   for (int i = 1; i < argc; ++i) {
     if (std::string(argv[i]) == "--tree") tree_mode = true;
     if (std::string(argv[i]) == "--quick") quick = true;
+    if (std::string(argv[i]) == "--bf16eq") bf16_eq = true;
     if (std::string(argv[i]) == "--gap") gap_mode = true;
     if (std::string(argv[i]) == "--roof") roof_mode = true;
+    if (std::string(argv[i]) == "--2b") {
+      g_shapes = kShapes2B;
+      g_gap_bf16 = true;
+    }
   }
   const int reps = quick ? 7 : 21;
 
@@ -1703,8 +1736,10 @@ int main(int argc, char** argv) {
       "-DUSE_FP16=1 -DQMM_VEC_Q4_WORD=1 -DQMM_VEC_MULTI=1";
   const char* variant_defines = tree_mode
       ? q4_defines
-      : "-DUSE_FP16=1 -DUSE_SUBGROUP=1 -DQMM_VEC_Q4_WORD=1 "
-        "-DQMM_VEC_MULTI=1";
+      : bf16_eq ? "-DUSE_BF16=1 -DUSE_SUBGROUP=1 -DQMM_VEC_Q4_WORD=1 "
+                "-DQMM_VEC_MULTI=1"
+                : "-DUSE_FP16=1 -DUSE_SUBGROUP=1 -DQMM_VEC_Q4_WORD=1 "
+                "-DQMM_VEC_MULTI=1";
   struct SideSpec {
     const char* tag;
     const char* src;
@@ -1716,13 +1751,21 @@ int main(int argc, char** argv) {
           "/tmp/q4base.spv", 8u},
       {"unroll", "tools/q4-bw-bench/shaders/qmm_vec_cand_unroll.comp",
           "/tmp/q4cand_u.spv", 8u},
-      {"loadfirst", "tools/q4-bw-bench/shaders/qmm_vec_cand_loadfirst.comp",
-          "/tmp/q4cand_l.spv", 8u},
+      {bf16_eq ? "xpack" : "loadfirst",
+          bf16_eq ? "tools/q4-bw-bench/shaders/qmm_vec_cand_xpack.comp"
+                  : "tools/q4-bw-bench/shaders/qmm_vec_cand_loadfirst.comp",
+          bf16_eq ? "/tmp/q4cand_x.spv" : "/tmp/q4cand_l.spv", 8u},
       {"wg128", "tools/q4-bw-bench/shaders/qmm_vec_cand_wg128.comp",
           "/tmp/q4cand_w.spv", 4u},
+      {bf16_eq ? "xpack2" : "xpack",
+          bf16_eq ? "tools/q4-bw-bench/shaders/qmm_vec_cand_xpack2.comp"
+                  : "tools/q4-bw-bench/shaders/qmm_vec_cand_xpack.comp",
+          bf16_eq ? "/tmp/q4cand_x2.spv" : "/tmp/q4cand_x.spv", 8u},
   };
-  const int num_sides = 4;
+  const int num_sides = 5;
   for (int i = 0; i < num_sides; ++i) {
+    // loadfirst cannot compile under bf16 defines (f16-only form).
+    if (bf16_eq && std::string(specs[i].tag) == "loadfirst") continue;
     if (compile_shader(specs[i].src, variant_defines, specs[i].spv) != 0)
       die("compile %s", specs[i].tag);
   }
@@ -1757,7 +1800,7 @@ int main(int argc, char** argv) {
   Params shape_params[kNumShapes];
   uint32_t groups_v[kNumShapes][num_sides];
   for (uint32_t s = 0; s < kNumShapes; ++s) {
-    const Shape& sh = kShapes[s];
+    const Shape& sh = g_shapes[s];
     inputs[s].x = make_buf(g_vk.dev, ctx.mp, (uint64_t)sh.k * 2u, false);
     for (uint32_t d = 0; d < sh.dims; ++d) {
       inputs[s].w[d] = make_buf(g_vk.dev, ctx.mp,
@@ -1798,7 +1841,7 @@ int main(int argc, char** argv) {
         combined.out[d] = outs[s][i].out[d];
       }
       sets[s][i] =
-          make_set(pool, sides[i].dsl, combined, kShapes[s].dims);
+          make_set(pool, sides[i].dsl, combined, g_shapes[s].dims);
     }
   }
 
@@ -1810,8 +1853,29 @@ int main(int argc, char** argv) {
       "/tmp/peak_read.spv", "read", 1u << 24u, quick);
 
   // ---- Bit-exactness: identical inputs through base and each side ----
+  if (true) {
+    uint32_t s = 0; const Shape& sh = g_shapes[s];
+    std::mt19937 rng(0xABCDu);
+    {
+      void* p; g_vk.MapMemory(g_vk.dev, inputs[s].x.mem, 0, inputs[s].x.size, 0, &p);
+      uint16_t* h = (uint16_t*)p;
+      for (size_t e = 0; e < inputs[s].x.size / 2; ++e)
+        h[e] = (uint16_t)(0x3F00u | (rng() & 0xFFu));
+      g_vk.UnmapMemory(g_vk.dev, inputs[s].x.mem);
+    }
+    for (uint32_t d = 0; d < sh.dims; ++d) {
+      void* p;
+      g_vk.MapMemory(g_vk.dev, inputs[s].scales[d].mem, 0, inputs[s].scales[d].size, 0, &p);
+      std::memset(p, 0, inputs[s].scales[d].size);
+      for (size_t e = 0; e < inputs[s].scales[d].size / 2; ++e) ((uint16_t*)p)[e] = 0x3F80;
+      g_vk.UnmapMemory(g_vk.dev, inputs[s].scales[d].mem);
+      g_vk.MapMemory(g_vk.dev, inputs[s].biases[d].mem, 0, inputs[s].biases[d].size, 0, &p);
+      std::memset(p, 0, inputs[s].biases[d].size);
+      g_vk.UnmapMemory(g_vk.dev, inputs[s].biases[d].mem);
+    }
+  }
   for (uint32_t s = 0; s < kNumShapes; ++s) {
-    const Shape& sh = kShapes[s];
+    const Shape& sh = g_shapes[s];
     for (int i = 0; i < num_sides; ++i) {
       dispatch_isolated(ctx, sides[i], iso_cmd, sets[s][i],
           shape_params[s], groups_v[s][i]);
@@ -1837,13 +1901,61 @@ int main(int argc, char** argv) {
             "{\"k\":\"eq\",\"shape\":\"%s\",\"dim\":%u,\"side\":\"%s\","
             "\"elements\":%zu,\"bit_mismatches\":%u}\n",
             sh.name, d, specs[i].tag, snap.size(), mismatches);
+        if (mismatches > 0) {
+          std::printf("MM %s %s dim%u:", sh.name, specs[i].tag, d);
+          int shown = 0;
+          for (size_t e = 0; e < snap.size() && shown < 6; ++e) {
+            if (got_e_dump(snap, (uint16_t*)nullptr, e)) continue;
+          }
+          // simple dump of first 6 mismatching indices
+          g_vk.MapMemory(g_vk.dev, outs[s][i].out[d].mem, 0,
+              outs[s][i].out[d].size, 0, &p);
+          uint16_t* g2 = (uint16_t*)p;
+          for (size_t e = 0; e < snap.size() && shown < 6; ++e) {
+            if (g2[e] != snap[e]) {
+              std::printf(" [%zu] %04x vs %04x", e, g2[e], snap[e]);
+              ++shown;
+            }
+          }
+          g_vk.UnmapMemory(g_vk.dev, outs[s][i].out[d].mem);
+          std::printf("\n");
+        }
       }
     }
   }
 
+  // ---- DUMP for reference check (qkv only) ----
+  {
+    uint32_t s = 0; const Shape& sh = g_shapes[s];
+    auto dumpbuf = [&](const Buf& b, const char* nm) {
+      FILE* f = fopen(nm, "wb");
+      void* p;
+      g_vk.MapMemory(g_vk.dev, b.mem, 0, b.size, 0, &p);
+      fwrite(p, 1, b.size, f);
+      g_vk.UnmapMemory(g_vk.dev, b.mem);
+      fclose(f);
+    };
+    dumpbuf(inputs[s].x, "/tmp/q4dump_x.bin");
+    for (uint32_t d = 0; d < sh.dims; ++d) {
+      char nm[64];
+      snprintf(nm, 64, "/tmp/q4dump_w%u.bin", d);
+      dumpbuf(inputs[s].w[d], nm);
+      snprintf(nm, 64, "/tmp/q4dump_s%u.bin", d);
+      dumpbuf(inputs[s].scales[d], nm);
+      snprintf(nm, 64, "/tmp/q4dump_b%u.bin", d);
+      dumpbuf(inputs[s].biases[d], nm);
+    }
+    for (int i = 0; i < num_sides; ++i)
+      for (uint32_t d = 0; d < sh.dims; ++d) {
+        char nm[64];
+        snprintf(nm, 64, "/tmp/q4dump_o_%s_%u.bin", specs[i].tag, d);
+        dumpbuf(outs[s][i].out[d], nm);
+      }
+    std::printf("{\"k\":\"dumped\"}\n");
+  }
   // ---- Isolated per-shape timings, sides interleaved per rep ----
   for (uint32_t s = 0; s < kNumShapes; ++s) {
-    const Shape& sh = kShapes[s];
+    const Shape& sh = g_shapes[s];
     std::vector<uint64_t> med(num_sides), minv(num_sides);
     std::vector<std::vector<uint64_t>> samples(num_sides);
     std::vector<std::vector<uint64_t>> wall(num_sides);

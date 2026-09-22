@@ -64,7 +64,7 @@ uint16_t bf16_store(float value) {
   return uint16_t((bits + 0x7fffu + ((bits >> 16) & 1u)) >> 16);
 }
 
-#define DENSE_GEMV(B, O, B_OFFSET, ROW_GROUP) { \
+#define DENSE_GEMV(B, O, B_OFFSET, ROW_GROUP, MI) { \
   uint row = (ROW_GROUP) * 4u; \
   uint lane_k = gl_SubgroupInvocationID * 4u; \
   precise float accumulator0 = 0.0; \
@@ -119,10 +119,24 @@ uint16_t bf16_store(float value) {
   accumulator2 += subgroupShuffleDown(accumulator2, 1u); \
   accumulator3 += subgroupShuffleDown(accumulator3, 1u); \
   if (gl_SubgroupInvocationID == 0u) { \
-    O.values[row] = bf16_store(accumulator0); \
-    O.values[row + 1u] = bf16_store(accumulator1); \
-    O.values[row + 2u] = bf16_store(accumulator2); \
-    O.values[row + 3u] = bf16_store(accumulator3); \
+    if ((params.flags & (4096u << MI)) != 0u) { \
+      uint base = params.out_strides[MI]; \
+      uint gap = params.matrix_n; \
+      uint hd = params.matrix_m; \
+      O.values[base + (row + 0u) / hd * gap + (row + 0u) % hd] = \
+          bf16_store(accumulator0); \
+      O.values[base + (row + 1u) / hd * gap + (row + 1u) % hd] = \
+          bf16_store(accumulator1); \
+      O.values[base + (row + 2u) / hd * gap + (row + 2u) % hd] = \
+          bf16_store(accumulator2); \
+      O.values[base + (row + 3u) / hd * gap + (row + 3u) % hd] = \
+          bf16_store(accumulator3); \
+    } else { \
+      O.values[row] = bf16_store(accumulator0); \
+      O.values[row + 1u] = bf16_store(accumulator1); \
+      O.values[row + 2u] = bf16_store(accumulator2); \
+      O.values[row + 3u] = bf16_store(accumulator3); \
+    } \
   } \
 }
 
@@ -131,18 +145,20 @@ void main() {
   uint groups1 = params.shape[1] / 4u;
   uint workgroup = gl_WorkGroupID.x;
   if (workgroup < groups0) {
-    DENSE_GEMV(input_b0, output0, params.in_strides[0], workgroup)
+    DENSE_GEMV(input_b0, output0, params.in_strides[0], workgroup, 0u)
   } else if (workgroup < groups0 + groups1) {
     DENSE_GEMV(
         input_b1,
         output1,
         params.in_strides[1],
-        workgroup - groups0)
+        workgroup - groups0,
+        1u)
   } else {
     DENSE_GEMV(
         input_b2,
         output2,
         params.in_strides[2],
-        workgroup - groups0 - groups1)
+        workgroup - groups0 - groups1,
+        2u)
   }
 }

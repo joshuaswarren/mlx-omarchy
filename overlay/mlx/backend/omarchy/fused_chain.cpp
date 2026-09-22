@@ -20,6 +20,7 @@
 #include <vector>
 
 #include "mlx/backend/common/slicing.h"
+#include "mlx/backend/gpu/copy.h"
 #include "mlx/fast_primitives.h"
 #include "mlx/backend/omarchy/allocator.h"
 #include "mlx/backend/omarchy/compute.h"
@@ -693,6 +694,10 @@ struct GemvGroup {
 struct DenseGemvGroup {
   std::vector<array> nodes;
   std::optional<array> input;
+  // Planned producer-direct write of a member's output row into the
+  // values cache copy (indexed like |nodes|; empty keeps the member's
+  // own buffer).
+  std::vector<std::optional<KvDirectWindow>> sum_windows;
   enum class State : uint8_t { pending, done, failed } state{State::pending};
 };
 
@@ -793,7 +798,7 @@ const array& dense_gemv_source(const array& x) {
 // pair member's update producer: the keys member's producer is a RoPE
 // node, the values member's producer is a fused GEMV Add epilogue read
 // through a provable chain of view-only ops (Transpose/Reshape).
-enum class DirectKind : uint8_t { none, keys_rope, values_sum };
+enum class DirectKind : uint8_t { none, keys_rope, values_sum, dense_values };
 
 struct DirectPlan {
   std::optional<KvDirectWindow> window;
@@ -816,13 +821,15 @@ struct DirectGeometry {
 };
 
 // Shared layout contract of a direct-write window: |member| is a full
-// row-contiguous f16 copy of the cache, and the paste window (from the
-// member's own SliceUpdate geometry) fits inside it.
+// row-contiguous f16 or bf16 copy of the cache, and the paste window
+// (from the member's own SliceUpdate geometry) fits inside it.
 std::optional<DirectGeometry> direct_window_geometry(const array& member) {
   const auto& base = member.inputs()[0];
   const auto& upd = member.inputs()[1];
-  if (member.dtype() != float16 || base.dtype() != float16 ||
-      upd.dtype() != float16 || !base.flags().row_contiguous ||
+  if (
+      (member.dtype() != float16 && member.dtype() != bfloat16) ||
+      member.dtype() != base.dtype() || member.dtype() != upd.dtype() ||
+      !base.flags().row_contiguous ||
       base.size() != base.data_size() ||
       base.offset() % base.itemsize() != 0 || upd.size() == 0 ||
       upd.ndim() == 0 || upd.ndim() > 4) {
@@ -863,7 +870,11 @@ std::optional<DirectGeometry> direct_window_geometry(const array& member) {
 // axis. The RoPE fence (forward, scalar offset, fused-path conditions)
 // is re-checked at dispatch; aborting there unwinds to the merged pair
 // dispatch.
-DirectPlan plan_keys_window(const array& member, const array* update) {
+DirectPlan plan_keys_window(
+    const array& member,
+    const array* update,
+    const std::unordered_map<std::uintptr_t, size_t>& uses,
+    const std::unordered_map<std::uintptr_t, size_t>& view_uses) {
   DirectPlan plan;
   if (!is_op(update, typeid(fast::RoPE)) || update->inputs().size() != 2) {
     return plan;
@@ -873,6 +884,14 @@ DirectPlan plan_keys_window(const array& member, const array* update) {
     return plan;
   }
   const auto& upd = member.inputs()[1];
+  // In place only when the cache buffer's single in-tape consumer is
+  // this SliceUpdate: no other node may still need the pre-update rows.
+  // In place when every consumer of the cache buffer is a pure view
+  // (the returned keys[..., :offset] slice reads post-write bytes).
+  auto use_it = uses.find(member.inputs()[0].id());
+  auto view_it = view_uses.find(member.inputs()[0].id());
+  bool in_place = use_it != uses.end() && use_it->second > 0 &&
+      view_it != view_uses.end() && view_it->second == use_it->second;
   uint32_t matrix_stride;
   if (upd.ndim() == 4) {
     uint64_t heads = static_cast<uint64_t>(upd.shape(1));
@@ -892,7 +911,8 @@ DirectPlan plan_keys_window(const array& member, const array* update) {
       {matrix_stride, geometry->strides[upd.ndim() - 2], 1, 0},
       geometry->ndim,
       /*row_gap=*/0,
-      /*head_dim=*/0};
+      /*head_dim=*/0,
+      in_place};
   plan.kind = DirectKind::keys_rope;
   return plan;
 }
@@ -905,7 +925,10 @@ DirectPlan plan_values_window(
     const array& member,
     const array* update,
     const std::unordered_map<std::uintptr_t, size_t>& uses,
-    const std::vector<GemvGroup>& groups) {
+    const std::vector<GemvGroup>& groups,
+    const std::unordered_map<std::uintptr_t, size_t>& dense_roles,
+    std::vector<DenseGemvGroup>& dense_groups,
+    const std::unordered_map<std::uintptr_t, size_t>& view_uses) {
   DirectPlan plan;
   auto use_count = [&](const array& value) {
     auto it = uses.find(value.id());
@@ -924,23 +947,47 @@ DirectPlan plan_values_window(
     chain.push_back(node);
     node = &node->inputs()[0];
   }
-  if (!is_op(node, typeid(Add)) || use_count(*node) != 1) {
+  if (dense_roles.count(node->id()) == 0 &&
+      (!is_op(node, typeid(Add)) || use_count(*node) != 1)) {
     return plan;
   }
   const array* sum = node;
   bool found = false;
-  for (size_t gi = 0; gi < groups.size() && !found; ++gi) {
-    for (size_t mi = 0; mi < groups[gi].members.size(); ++mi) {
-      const auto& candidate = groups[gi].members[mi].epilogue;
-      if (candidate && candidate->id() == sum->id()) {
-        plan.group_index = gi;
+  // Dense-terminal: the sum is itself a dense bf16 decode GEMV group
+  // member's output row (no Add epilogue). The group stores it through
+  // the same producer-direct window contract.
+  auto dense_it = dense_roles.find(sum->id());
+  if (dense_it != dense_roles.end()) {
+    if (use_count(*sum) != 1) {
+      return plan;
+    }
+    const auto& group_nodes = dense_groups[dense_it->second].nodes;
+    for (size_t mi = 0; mi < group_nodes.size(); ++mi) {
+      if (group_nodes[mi].id() == sum->id()) {
+        plan.group_index = dense_it->second;
         plan.member_index = mi;
+        plan.kind = DirectKind::dense_values;
         found = true;
       }
     }
-  }
-  if (!found) {
-    return plan;
+    if (!found) {
+      return plan;
+    }
+  } else {
+    for (size_t gi = 0; gi < groups.size() && !found; ++gi) {
+      for (size_t mi = 0; mi < groups[gi].members.size(); ++mi) {
+        const auto& candidate = groups[gi].members[mi].epilogue;
+        if (candidate && candidate->id() == sum->id()) {
+          plan.group_index = gi;
+          plan.member_index = mi;
+          plan.kind = DirectKind::values_sum;
+          found = true;
+        }
+      }
+    }
+    if (!found) {
+      return plan;
+    }
   }
   const auto& base = member.inputs()[0];
   const auto& upd = member.inputs()[1];
@@ -1018,8 +1065,17 @@ DirectPlan plan_values_window(
        geometry->strides[3]},
       geometry->ndim,
       /*row_gap=*/geometry->strides[1],
-      /*head_dim=*/head_dim};
-  plan.kind = DirectKind::values_sum;
+      /*head_dim=*/head_dim,
+      /*in_place=*/[&] {
+        auto use_it = uses.find(base.id());
+        auto view_it = view_uses.find(base.id());
+        return use_it != uses.end() && use_it->second > 0 &&
+            view_it != view_uses.end() &&
+            view_it->second == use_it->second;
+      }()};
+  if (plan.kind == DirectKind::none) {
+    plan.kind = DirectKind::values_sum;
+  }
   return plan;
 }
 
@@ -1036,11 +1092,22 @@ EagerFusionScope::EagerFusionScope(const std::deque<array>& tape)
   eager_state = state;
   std::unordered_map<std::uintptr_t, const array*> nodes;
   std::unordered_map<std::uintptr_t, size_t> uses;
+  // Per-input count of consumers that are pure views (Slice, Transpose,
+  // Reshape). Views materialize nothing and read their input whenever
+  // the consuming graph reads them, so an array whose consumers are ALL
+  // views is safely writable in place by a later producer (the views
+  // observe the post-write bytes).
+  std::unordered_map<std::uintptr_t, size_t> view_uses;
   nodes.reserve(tape.size());
   for (const auto& node : tape) {
     nodes.emplace(node.id(), &node);
+    bool node_is_view = is_op(&node, typeid(Slice)) ||
+        is_op(&node, typeid(Transpose)) || is_op(&node, typeid(Reshape));
     for (const auto& input : node.inputs()) {
       ++uses[input.id()];
+      if (node_is_view) {
+        ++view_uses[input.id()];
+      }
     }
   }
   auto lookup = [&](const array& ref) -> const array* {
@@ -1366,15 +1433,35 @@ EagerFusionScope::EagerFusionScope(const std::deque<array>& tape)
           classifiable = false;
           break;
         }
-        plans[side] = plan_keys_window(pair.nodes[side], update);
+        plans[side] = plan_keys_window(
+                pair.nodes[side], update, uses, view_uses);
         if (plans[side].kind == DirectKind::none) {
           plans[side] = plan_values_window(
-              pair.nodes[side], update, uses, state->gemv_groups);
+              pair.nodes[side],
+              update,
+              uses,
+              state->gemv_groups,
+              state->dense_gemv_roles,
+              state->dense_gemv_groups,
+              view_uses);
         }
       }
       if (!classifiable || plans[0].kind == DirectKind::none ||
           plans[1].kind == DirectKind::none ||
           plans[0].kind == plans[1].kind) {
+        static int kv_trace = 0;
+        if (std::getenv("MLX_OMARCHY_KV_TRACE") != nullptr && kv_trace < 6) {
+          ++kv_trace;
+          std::fprintf(
+              stderr,
+              "[kv-plan] pair %zu: classifiable=%d kinds=%d,%d "
+              "dense_groups=%zu\n",
+              index,
+              static_cast<int>(classifiable),
+              static_cast<int>(plans[0].kind),
+              static_cast<int>(plans[1].kind),
+              state->dense_gemv_groups.size());
+        }
         continue;
       }
       int rope_side = plans[0].kind == DirectKind::keys_rope ? 0 : 1;
@@ -1383,9 +1470,20 @@ EagerFusionScope::EagerFusionScope(const std::deque<array>& tape)
       // Copy the values window into its GEMV member BEFORE the pair
       // moves it: an optional move leaves the source empty, and the
       // member's window must carry the arrays themselves.
-      state->gemv_groups[sum_plan.group_index]
-          .members[sum_plan.member_index]
-          .sum_window = sum_plan.window;
+      if (sum_plan.kind == DirectKind::dense_values) {
+        auto& windows =
+            state->dense_gemv_groups[sum_plan.group_index].sum_windows;
+        if (windows.size() <
+            state->dense_gemv_groups[sum_plan.group_index].nodes.size()) {
+          windows.resize(
+              state->dense_gemv_groups[sum_plan.group_index].nodes.size());
+        }
+        windows[sum_plan.member_index] = sum_plan.window;
+      } else {
+        state->gemv_groups[sum_plan.group_index]
+            .members[sum_plan.member_index]
+            .sum_window = sum_plan.window;
+      }
       pair.windows[0] = std::move(plans[rope_side].window);
       pair.windows[1] = std::move(sum_plan.window);
       state->rope_redirect_roles.emplace(
@@ -1698,8 +1796,52 @@ bool try_eval_eager_fusion(array& node, const Stream& stream) {
       dense != eager_state->dense_gemv_roles.end()) {
     auto& group = eager_state->dense_gemv_groups[dense->second];
     if (group.state == DenseGemvGroup::State::pending) {
+      // Producer-direct values windows: same contract as the quantized
+      // path. In place, the member's rows land straight in the live
+      // cache; otherwise a fresh copy is enqueued first so the rows
+      // land in order. A refusal un-plans the whole direct write and
+      // unwinds to the merged pair dispatch.
+      for (auto& window : group.sum_windows) {
+        if (!window) {
+          continue;
+        }
+        auto& w = *window;
+        if (w.node.data_shared_ptr() != nullptr ||
+            w.base.data_shared_ptr() == nullptr ||
+            (w.base.dtype() != float16 && w.base.dtype() != bfloat16) ||
+            !w.base.flags().row_contiguous ||
+            w.base.size() != w.base.data_size() ||
+            w.base.offset() % w.base.itemsize() != 0 ||
+            w.base.data_shared_ptr() == nullptr) {
+          abort_kv_direct();
+          group.sum_windows.clear();
+          break;
+        }
+        if (w.in_place) {
+          w.node.copy_shared_buffer(
+              w.base, w.base.strides(), w.base.flags(), w.base.data_size());
+        } else {
+          // Not provably exclusive: materialize a fresh cache copy and
+          // let the window scatter target it (the merged pair dispatch
+          // this replaces does exactly the same copy).
+          w.node.set_data(allocator().malloc(w.node.nbytes()));
+          copy_gpu(
+              w.base,
+              w.node,
+              w.base.flags().contiguous ? CopyType::Vector : CopyType::General,
+              stream);
+        }
+        get_command_encoder(stream).add_temporary(w.node);
+        get_command_encoder(stream).add_temporary(w.base);
+        commit_values_kv_write(w.node);
+      }
       group.state = dispatch_dense_gemv_group(
-                        group.nodes, *group.input, stream)
+                        group.nodes,
+                        *group.input,
+                        group.sum_windows.empty()
+                            ? nullptr
+                            : group.sum_windows.data(),
+                        stream)
           ? DenseGemvGroup::State::done
           : DenseGemvGroup::State::failed;
     }

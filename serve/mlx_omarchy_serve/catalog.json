@@ -256,6 +256,15 @@
         "config_sha256": "238de7c5 (config.json, per the same lane record)",
         "residency": "Vision tower tensors are excluded from the resident set and accounted separately (loader reports exact text-only resident_bytes at load); MTP is 0 layers.",
         "admission_bound": "Config max_position_embeddings is 262144, but the server enforces its own --max-context hard cap and serializes generation; on a 16 GiB host the KV rate (64 KiB/token) bounds practical context to ~8k tokens at ~4 GiB headroom.",
+        "managed_load_seconds": {
+          "host": "M1 Max 64 GiB",
+          "value": 10,
+          "timeout_seconds": 600,
+          "measured_at": "2026-09-22T00:11:18-05:00",
+          "receipt": "receipts/2026-09-22-bonsai2-managed-ready-diagnostic.md",
+          "notes": "Managed-CLI launch measured ready ~10s on an M1 Max 64 GiB host after the mlx_lm 0.31.3 split was fixed (commit 72213ae2d in catalog-2026-09-21). Prior 'NOT_READY after 5 min' was caused by the server reading mlx_lm.generate (the new non-streaming wrapper returning str) instead of mlx_lm.stream_generate. Gate reruns must use ready_timeout >= 60s."
+        },
+        "recommended_caveat": "Managed-vs-direct equivalence captured (sha16 779051f4ea712107, n=128) on an M1 Max 64 GiB host; HTTP FUNCTIONAL + managed both qualified; ready ~10s on M1 Max 64 GiB. Per-gate: managed.LoadTime<60s OK; managed.DirectMatch sha16 OK. NOT claimed: GPU numeric-parity vs a CPU reference (open scope, owned by GPUHardwareContinuation); long-context / multi-stream / durability. Memory bound: 11 GiB static weights floor + KV cache at 8 KiB/token cap; 16 GiB-class host will hit the admission cap (KV rate 64 KiB/token); recommended for >=64 GiB-class only (64 GiB M1 Max measured, 47 GiB headroom). Flip approved 2026-09-22 per gate-driven recommendation rules.",
         "attribution": "Apache-2.0 + NOTICE attribution: 'Created using Bonsai by Prism ML'; built from Qwen3.8-27B (Apache-2.0).",
         "qualification_scope": "HTTP FUNCTIONAL scope only (receipts/2026-09-20-bonsai2-http-qualification.md @ 2e4b78f in ane-linux-experiments, the T6021 qualification host M1 Max): /health 200, one real greedy /v1/chat/completions HTTP 200 (16 completion tokens, finish=length, usage+timings recorded; decode 1.74 t/s and prefill 5.1 t/s are data, not perf claims), over-cap and malformed bodies return 400, clean SIGTERM shutdown. All input hashes re-verified on device (weights sha256 130de592..., config sha256 238de7c5...). The 16-token output is the model's chain-of-thought preamble - NO coherence or quality claim. Numerical/parity qualification remains a separate scope (CPU parity receipt stands; no GPU parity claim). Single-host, single-stream, no durability claim. The dead owner-scoped reservation left in reservations.json post-exit is documented in the receipt (harmless; sweep owned by future windows) and the managed-lifecycle hardening is in progress."
       },
@@ -676,6 +685,101 @@
       "serve": {
         "backend": "module",
         "module": "mlx_omarchy_laya.server"
+      }
+    },
+    {
+      "id": "qwen3.8-2b-4bit",
+      "repo": "SiddhJagani/Qwen3.8-2B-mlx-4Bit",
+      "revision": "0867d98bfb174b042d88461c0e7c97b86b34b381",
+      "kind": "chat",
+      "priority": 10,
+      "recommended": false,
+      "license": "apache-2.0",
+      "quant": {
+        "bits": 4,
+        "group_size": 64,
+        "mode": "affine"
+      },
+      "memory": {
+        "weights_bytes": 1059404429,
+        "kv_bytes_per_token": 12288,
+        "peak_estimate_bytes": null
+      },
+      "context": {
+        "max_tokens": 262144
+      },
+      "capability": {
+        "min_mem_gib": 2,
+        "arch": null
+      },
+      "qualification": {
+        "generation": {
+          "status": "qualified",
+          "receipt": "https://github.com/joshuawarren/ane-linux-experiments/blob/main/receipts/2026-09-22-qwen38-integration/README.md",
+          "date": "2026-09-22"
+        },
+        "http": {
+          "status": "qualified",
+          "receipt": "https://github.com/joshuawarren/ane-linux-experiments/blob/main/receipts/2026-09-22-serving-integration-smoke/README.md",
+          "date": "2026-09-22"
+        },
+        "managed": {
+          "status": "untested",
+          "receipt": null,
+          "date": null
+        }
+      },
+      "availability": {
+        "size_bytes": 1059404429,
+        "refreshed_at": "2026-09-20T19:30:09Z"
+      },
+      "family": "qwen3.8-2b",
+      "extension": {
+        "scope": "Smoke/bench model. Direct-launch mlx_lm.server HTTP qualified 2026-09-22 on the integrated kernel wheel (integration/qwen38-2026-09-22 @ dc7ca4a0, mlx-lm 0.31.3 + GDN fast-route patch, conv-ring off): 30/30 streaming completions 200 OK, usage verified, output digests identical with and without the GDN patch and across both qualification hosts. Managed serve route untested.",
+        "model_type": "qwen3_5",
+        "params": null,
+        "multimodal": false,
+        "mtp": true,
+        "hybrid_attention": "linear_attention x3 + full_attention, interval 4, 24 layers",
+        "kv_basis": "kv_bytes_per_token = 2 (K+V) x 6 full-attention layers (24/4) x 2 kv heads x 256 head_dim x 2 bytes (bf16), from the pinned config; GDN layers carry fixed recurrent state, not a growing cache; MTP excluded",
+        "variant": "4bit",
+        "model_architecture": "Qwen3_5TextForCausalLM",
+        "min_mem_gib_basis": "ceil(weights_bytes * 1.25 / 2^30); static weights floor, not a measured peak",
+        "serve_bench": {
+          "protocol": "10 prompts x 3 passes, greedy, 32 new tokens, streaming, usage-verified; mlx_lm.server 0.31.3, GDN fast-route patch vs same wheel without it",
+          "measured": [
+            {
+              "host_class": "M1 Max",
+              "arm": "before",
+              "ttft_s_median": 0.89,
+              "token_rate_completion_median": 9.05
+            },
+            {
+              "host_class": "M1 Max",
+              "arm": "after-gdn",
+              "ttft_s_median": 0.59,
+              "token_rate_completion_median": 13.56
+            },
+            {
+              "host_class": "M1",
+              "arm": "before",
+              "ttft_s_median": 1.79,
+              "token_rate_completion_median": 8.29
+            },
+            {
+              "host_class": "M1",
+              "arm": "after-gdn",
+              "ttft_s_median": 1.32,
+              "token_rate_completion_median": 10.78
+            }
+          ],
+          "note": "Output digests identical before/after per host and across hosts. Server cold-start to /v1/models ready: 4 s on both hosts."
+        },
+        "client_note": "mlx_lm.server /v1/models lists every cached HF model, not the loaded one; clients must not resolve the served model via the first /v1/models id."
+      },
+      "serve": {
+        "backend": "mlx-lm",
+        "module": null
       }
     }
   ]

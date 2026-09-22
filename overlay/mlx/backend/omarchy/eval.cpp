@@ -71,7 +71,11 @@ void eval(array& arr) {
       inputs = arr.inputs();
     }
     if (!omarchy::try_eval_eager_fusion(arr, stream)) {
+      omarchy::trace::current_prim() = arr.has_primitive()
+          ? std::string_view(arr.primitive().name())
+          : std::string_view("<detached>");
       arr.primitive().eval_gpu(arr.inputs(), outputs);
+      omarchy::trace::current_prim() = std::string_view("");
     }
   }
 

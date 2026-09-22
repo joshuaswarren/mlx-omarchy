@@ -634,6 +634,11 @@ enum class ComputeKernel : uint16_t {
   // -DTILE_ROWS=16) for a grid too small to fill a wide part.
   // Appended to keep profile kernel ids stable.
   QmmPrefillCoopmatM16F16,
+  // bf16-activation twins of the coopmat pair: identical fp32 coopmat
+  // math and k chain, bf16 x widening and RNE bfloat16 drain.
+  // Appended to keep profile kernel ids stable.
+  QmmPrefillCoopmatBF16,
+  QmmPrefillCoopmatM16BF16,
   // Native-shape two-pass long-context decode SDPA (f16): pass 1 runs one
   // 32-thread workgroup per (head, block) - native Metal's
   // sdpa_vector_2pass_1 grid - and writes the fused kernel's exact f16/f32
@@ -641,6 +646,13 @@ enum class ComputeKernel : uint16_t {
   // kernel's pass-2 code unchanged. Append-only profile ids.
   SdpaDecodeNativeTwoPassP1F16,
   SdpaDecodeNativeTwoPassP2F16,
+  // Fused gated-delta-rule decode step (GDN linear attention, T=1, bf16
+  // activations, f32 state). Append-only profile id.
+  GatedDeltaDecodeBF16,
+  // Fused gated-delta-rule prefill scan (same contract, T>1, one
+  // workgroup per head scanning the token axis; state rides hf in
+  // place). Append-only profile id.
+  GatedDeltaPrefillBF16,
   Count,
 };
 

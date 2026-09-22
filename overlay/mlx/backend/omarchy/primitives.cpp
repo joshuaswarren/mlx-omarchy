@@ -6897,7 +6897,8 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
   const auto& coopmat_caps = encoder.device().capabilities();
   bool coopmat_reachable =
       tile_path && rb_enabled && q4_g64_transpose &&
-      out.dtype() == float16 && x.ndim() >= 2 && x.shape(-2) > 1 &&
+      (out.dtype() == float16 || out.dtype() == bfloat16) &&
+      x.ndim() >= 2 && x.shape(-2) > 1 &&
       coopmat_caps.cooperative_matrix_f32_8 &&
       coopmat_caps.subgroup_size == 32u && !coopmat_disabled &&
       kQmmCoopmatSharedBytes <= coopmat_caps.max_compute_shared_memory_size;
@@ -6921,7 +6922,8 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
   // rare row-contiguous view whose element offset is not 16-byte aligned;
   // the coopmat word-pair reader extends the same rule to a 2-byte
   // alignment (an even f16 element offset).
-  bool packed_q4_x = use_q4_word && out.dtype() == float16 &&
+  bool packed_q4_x = use_q4_word &&
+      (out.dtype() == float16 || out.dtype() == bfloat16) &&
       (x.ndim() < 2 || x.shape(-2) == 1);
   bool x_dense = x.flags().row_contiguous &&
       (!packed_q4_x || x.offset() % (8 * x.itemsize()) == 0) &&
@@ -7072,6 +7074,45 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
     return;
   }
   if (tile_path) {
+    // bf16-activation coopmat prefill: the pinned mlx-community Qwen3.8
+    // 4-bit snapshots are bf16-hybrid, so without this route their
+    // prefill falls to the scalar 16x16 QmmTileBF16 baseline. The
+    // f16-only FMA and register-blocked fallbacks do not apply; a
+    // driver without the fp32 cooperative matrix keeps the shipped
+    // tile path (the block below declines by not dispatching, matching
+    // the pre-route behavior bit for bit).
+    if (rb_enabled && out.dtype() == bfloat16 && transpose_ && bits_ == 4 &&
+        group_size_ == 64 && coopmat_reachable) {
+      if ((params.lhs_offset | params.output_offset) & 1u) {
+        omarchy::unsupported(tag + " coopmat operand alignment", out);
+      }
+      omarchy::capsim::require_backed(
+          encoder.device(),
+          coopmat_caps,
+          coopmat_reachable,
+          "QmmPrefillCoopmatBF16",
+          "cooperative_matrix_fp32_8x8x8",
+          encoder.device().hardware_capabilities()
+              .cooperative_matrix_f32_8);
+      uint32_t n_groups = (params.matrix_n + 31u) / 32u;
+      uint32_t coopmat_rows = coopmat_tile_rows(
+          params.matrix_m,
+          n_groups,
+          encoder.device().hardware_capabilities().device_name);
+      uint32_t m_groups =
+          (params.matrix_m + coopmat_rows - 1u) / coopmat_rows;
+      omarchy::ComputeKernel qmm_kernel = coopmat_rows == 16u
+          ? omarchy::ComputeKernel::QmmPrefillCoopmatM16BF16
+          : omarchy::ComputeKernel::QmmPrefillCoopmatBF16;
+      encoder.dispatch_compute(
+          qmm_kernel,
+          bindings,
+          params,
+          std::min(n_groups, omarchy::kMaxComputeGroupCountX),
+          std::min(m_groups, omarchy::kMaxComputeGroupCountX),
+          1u);
+      return;
+    }
     if (rb_enabled && out.dtype() == float16 && transpose_ && bits_ == 4 &&
         group_size_ == 64) {
       if (qmm_fma_reachable) {
@@ -7354,7 +7395,8 @@ bool dispatch_quantized_gemv_group(
     auto& window = *member.sum_window;
     if (!member.epilogue || window.node.data_shared_ptr() != nullptr ||
         window.base.data_shared_ptr() == nullptr ||
-        window.base.dtype() != float16 ||
+        (window.base.dtype() != float16 &&
+         window.base.dtype() != bfloat16) ||
         !window.base.flags().row_contiguous ||
         window.base.size() != window.base.data_size() ||
         window.base.offset() % window.base.itemsize() != 0 ||
@@ -7404,13 +7446,24 @@ bool dispatch_quantized_gemv_group(
       }
       if (member.sum_window) {
         auto& window = *member.sum_window;
-        window.node.set_data(allocator().malloc(window.node.nbytes()));
-        copy_gpu(
-            window.base,
-            window.node,
-            window.base.flags().contiguous ? CopyType::Vector
-                                           : CopyType::General,
-            stream);
+        if (window.in_place) {
+          // The planner proved the cache buffer's only in-tape consumer
+          // is this SliceUpdate: the epilogue writes its rows straight
+          // into the live cache and no fresh copy exists.
+          window.node.copy_shared_buffer(
+              window.base,
+              window.base.strides(),
+              window.base.flags(),
+              window.base.data_size());
+        } else {
+          window.node.set_data(allocator().malloc(window.node.nbytes()));
+          copy_gpu(
+              window.base,
+              window.node,
+              window.base.flags().contiguous ? CopyType::Vector
+                                             : CopyType::General,
+              stream);
+        }
         encoder.add_temporary(window.node);
         commit_values_kv_write(window.node);
         encoder.add_temporary(window.base);
@@ -7475,6 +7528,7 @@ bool dispatch_quantized_gemv_group(
 bool dispatch_dense_gemv_group(
     std::vector<array>& nodes,
     const array& x,
+    const std::optional<KvDirectWindow>* sum_windows,
     const Stream& stream) {
   if (nodes.size() < 2 || nodes.size() > kDenseVecMultiWeights) {
     return false;
@@ -7552,8 +7606,15 @@ bool dispatch_dense_gemv_group(
     }
   }
 
-  for (auto& node : nodes) {
-    node.set_data(allocator().malloc(node.nbytes()));
+  bool any_window = false;
+  for (size_t i = 0; i < nodes.size(); ++i) {
+    if (sum_windows && sum_windows[i]) {
+      // The caller installed the window storage (in place: the live
+      // cache; otherwise a fresh copy enqueued before this dispatch).
+      any_window = true;
+      continue;
+    }
+    nodes[i].set_data(allocator().malloc(nodes[i].nbytes()));
   }
   std::array<ComputeBinding, kDenseVecMultiBindings> bindings{};
   bindings[0] = binding(x);
@@ -7577,6 +7638,17 @@ bool dispatch_dense_gemv_group(
       encoder.device().hardware_capabilities().subgroup_size == 32u &&
           (encoder.device().hardware_capabilities().subgroup_operations &
            VK_SUBGROUP_FEATURE_SHUFFLE_RELATIVE_BIT) != 0u);
+  if (any_window) {
+    for (size_t i = 0; i < nodes.size(); ++i) {
+      if (sum_windows && sum_windows[i]) {
+        const auto& w = *sum_windows[i];
+        params.flags |= 4096u << i;
+        params.out_strides[i] = w.offset;
+        params.matrix_n = w.row_gap;
+        params.matrix_m = w.head_dim;
+      }
+    }
+  }
   encoder.dispatch_compute(
       ComputeKernel::MatmulVecMultiBF16,
       bindings,
@@ -7749,7 +7821,7 @@ bool dispatch_rope_pair(
   // Input readiness is the evaluator tape contract, exactly as for the
   // single RoPE dispatch: data_shared_ptr() can read as null for a
   // lazily-installed producer buffer at this point while the binding is
-  // still valid (measured on t6001-test-host - the null checks refused every pair
+  // still valid (measured on jw16 - the null checks refused every pair
   // while the ordinary path produced pinned digests from the same
   // arrays), so no null or input_ready probe happens here.
   if (q_in.offset() % q_in.itemsize() != 0 ||
@@ -10299,9 +10371,11 @@ bool ScaledDotProductAttention::supports_bool_mask() {
   return false;
 }
 
-// Gated delta nets (upstream 0.32.3): no fused Vulkan kernel yet. The
-// fallback flag keeps every Qwen3.6-style GDN layer on the composite
-// primitive path, which runs entirely on implemented Vulkan ops.
+// Gated delta nets (upstream 0.32.3): the fused GatedDeltaDecodeBF16 kernel
+// serves the decode shape (T=1, no mask, square heads, bf16 activations,
+// f32 state); everything else - prefill token chunks, masks, f16/f32
+// activations, ragged head layouts - keeps the composed fallback, which is
+// the arithmetic reference this kernel was equivalence-checked against.
 bool GatedDeltaUpdate::use_fallback(
     const int Hk,
     const int Dk,
@@ -10309,9 +10383,268 @@ bool GatedDeltaUpdate::use_fallback(
     const int Dv,
     const bool has_mask,
     Stream s) {
-  return true;
+  // The mask rides into the primitive (scalar per-token validity): the
+  // fused kernels apply load+skip, so a mask no longer forces the
+  // composed fallback on its own.
+  (void)has_mask;
+  return Dk != 128 || Dv != 128 || Hk != Hv;
 }
-OMARCHY_UNSUPPORTED_MULTI(GatedDeltaUpdate)
+
+void GatedDeltaUpdate::eval_gpu(
+    const std::vector<array>& inputs,
+    std::vector<array>& outputs) {
+  const std::string tag = name();
+  auto s = stream();
+  auto& encoder = omarchy::get_command_encoder(s);
+  // Shallow copies (shared buffers): rebound to dense temporaries below
+  // when a fused-path input arrives strided.
+  array q = inputs.at(0);
+  array k = inputs.at(1);
+  array v = inputs.at(2);
+  array g = inputs.at(3);
+  array beta = inputs.at(4);
+  array h0 = inputs.at(5);
+  const bool has_mask = inputs.size() > 6;
+  std::optional<array> mask_storage;
+  if (has_mask) {
+    mask_storage = inputs.at(6);
+  }
+  const array* mask = has_mask ? &*mask_storage : nullptr;
+
+  int B = q.shape(0);
+  int T = q.shape(1);
+  int Hk = q.shape(2);
+  int Dk = q.shape(3);
+  int Hv = v.shape(2);
+  int Dv = v.shape(3);
+
+  bool fused_ready = B == 1 && Hk == Hv && Dk == 128 && Dv == 128 &&
+      q.dtype() == bfloat16 && k.dtype() == bfloat16 &&
+      v.dtype() == bfloat16 && beta.dtype() == bfloat16 &&
+      h0.dtype() == float32 &&
+      outputs.at(0).dtype() == bfloat16 && outputs.at(1).dtype() == float32;
+  bool decode_shape = fused_ready && T == 1 && g.dtype() == bfloat16;
+  // compute_g produces float32 gates (exp of f32), so the fused path
+  // takes g in f32 or bf16; the shader selects by flag bit2.
+  bool g_ok = g.dtype() == bfloat16 || g.dtype() == float32;
+  fused_ready = fused_ready && g_ok;
+  // Prefill scan: same contract as the decode kernel extended over the
+  // token axis (one workgroup per head, sequential scan; state rides hf).
+  // g is [B,T,H] (scalar decay) or [B,T,H,Dk] (per-channel decay; the
+  // kernel takes a push-constant flag).
+  bool prefill_shape =
+      fused_ready && T > 1 && (g.ndim() == 3 || g.ndim() == 4) &&
+      outputs.at(0).shape() == q.shape();
+  if (decode_shape || prefill_shape) {
+    // Strided inputs (in-model callers pass v sliced from a fused qkv
+    // projection) are materialized below into dense temporaries recorded
+    // on the encoder - a plain device copy, no host sync. Requiring
+    // row_contiguous here instead silently routed every in-model call to
+    // the per-token composed fallback plus a full encoder synchronize.
+  } else {
+    fused_ready = false;
+  }
+  if (!fused_ready) {
+    if (getenv("GDN_FALLBACK_DEBUG") != nullptr) {
+      std::fprintf(
+          stderr,
+          "GDN-FALLBACK T=%d q=%d/%d k=%d v=%d beta=%d h0=%d "
+          "gsize=%d out=%d rc=%d/%d/%d/%d/%d/%d/%d outshape_eq=%d\n",
+          T,
+          int(q.dtype().size()),
+          Dk,
+          int(k.dtype().size()),
+          int(v.dtype().size()),
+          int(beta.dtype().size()),
+          int(h0.dtype().size()),
+          int(g.ndim()),
+          int(outputs.at(0).dtype().size()),
+          int(q.flags().row_contiguous),
+          int(k.flags().row_contiguous),
+          int(v.flags().row_contiguous),
+          int(g.flags().row_contiguous),
+          int(beta.flags().row_contiguous),
+          int(h0.flags().row_contiguous),
+          int(has_mask ? mask->flags().row_contiguous : 1),
+          int(outputs.at(0).shape() == q.shape()));
+    }
+    auto result = fallback_(inputs);
+    // Record-only settle: fallback nodes join the open batch, and the
+    // synchronize below submits and orders the buffer handoff (the RoPE
+    // fallback pattern).
+    settle(result);
+    encoder.synchronize("gated_delta_fallback");
+    outputs.at(0).copy_shared_buffer(result.at(0));
+    outputs.at(1).copy_shared_buffer(result.at(1));
+    return;
+  }
+
+  array& out = outputs.at(0);
+  array& hf = outputs.at(1);
+
+  // Materialize any strided fused-path input into a same-shape dense
+  // temporary (device copy recorded on this encoder, kept alive via
+  // add_temporary) and rebind the handles above.
+  if (fused_ready) {
+    bool any_strided = false;
+    for (const auto& x : inputs) {
+      // Non-row-contiguous inputs need a dense copy; so does any input
+      // with a nonzero storage offset - the strided T-slice views mlx-lm
+      // feeds the T=1 decode shape are still flagged row_contiguous, and
+      // the decode kernel reads garbage (NaN state) for offset != 0.
+      any_strided =
+          any_strided || !x.flags().row_contiguous || x.offset() != 0;
+    }
+    if (any_strided) {
+      std::vector<array> dense;
+      dense.reserve(inputs.size());
+      for (const auto& x : inputs) {
+        if (x.flags().row_contiguous) {
+          dense.push_back(x);
+        } else {
+          dense.push_back(contiguous_copy_gpu(x, s));
+          encoder.add_temporary(dense.back());
+        }
+      }
+      q = dense[0];
+      k = dense[1];
+      v = dense[2];
+      g = dense[3];
+      beta = dense[4];
+      h0 = dense[5];
+      if (has_mask) {
+        mask_storage = dense[6];
+      }
+    }
+  }
+
+  // Decode (T=1): the original single-token kernel, unchanged.
+  if (decode_shape) {
+    out.set_data(allocate_omarchy(out.nbytes()));
+    hf.set_data(allocate_omarchy(hf.nbytes()));
+    omarchy::ComputeParams params;
+    params.count = Dv;
+    params.lhs_size = checked_u32(q.data_size(), tag, out);
+    params.rhs_size = checked_u32(h0.data_size(), tag, out);
+    params.output_size = checked_u32(hf.data_size(), tag, out);
+    params.matrix_m = checked_u32(Dk, tag, out);
+    params.matrix_n = checked_u32(Dv, tag, out);
+    params.matrix_k = checked_u32(Hv, tag, out);
+    params.lhs_offset = checked_item_offset(q, q.size(), tag, out);
+    params.rhs_offset = checked_item_offset(k, k.size(), tag, out);
+    params.aux_size = checked_item_offset(v, v.size(), tag, out);
+    params.aux_offset = checked_item_offset(beta, beta.size(), tag, out);
+    params.output_offset = checked_item_offset(out, out.size(), tag, out);
+    params.shape[0] = checked_item_offset(g, g.size(), tag, out);
+    params.shape[1] = checked_item_offset(h0, h0.size(), tag, out);
+    params.shape[2] = checked_item_offset(hf, hf.size(), tag, out);
+    params.dims = static_cast<uint32_t>(T);
+    std::array<omarchy::ComputeBinding, 8> bindings{
+        binding(q),
+        binding(k),
+        binding(v),
+        binding(g),
+        binding(beta),
+        binding(h0),
+        binding(out),
+        binding(hf)};
+    encoder.dispatch_compute(
+        omarchy::ComputeKernel::GatedDeltaDecodeBF16,
+        bindings,
+        params,
+        static_cast<uint32_t>(Hv),
+        1,
+        1);
+    return;
+  }
+
+  out.set_data(allocate_omarchy(out.nbytes()));
+  hf.set_data(allocate_omarchy(hf.nbytes()));
+
+  // Chunked two-pass scan: pass 0 (one workgroup per head) computes the
+  // per-chunk initial states into a snapshot scratch; pass 1 (heads x
+  // chunks) replays the tokens chunk-parallel and writes the outputs.
+  // Chunk-parallel arithmetic is identical token-by-token to the single
+  // workgroup scan, so outputs are bit-identical to it.
+  constexpr uint32_t kGdnChunk = 64;
+  uint32_t chunks = (static_cast<uint32_t>(T) + kGdnChunk - 1) / kGdnChunk;
+  size_t snap_elems = chunks > 1
+      ? static_cast<size_t>(Hv) * Dv * Dk * (chunks - 1)
+      : 1;
+  array snapshots(Shape{static_cast<int>(snap_elems)}, float32, nullptr, {});
+  array::Flags snap_flags;
+  snap_flags.contiguous = true;
+  snap_flags.row_contiguous = true;
+  snapshots.set_data(
+      allocate_omarchy(snapshots.nbytes()),
+      snapshots.size(),
+      Strides{1},
+      snap_flags,
+      0);
+  if (chunks > 1) {
+    encoder.add_temporary(snapshots);
+  }
+
+  omarchy::ComputeParams params;
+  params.count = Dv;
+  params.lhs_size = checked_u32(q.data_size(), tag, out);
+  params.rhs_size = checked_u32(h0.data_size(), tag, out);
+  params.output_size = checked_u32(hf.data_size(), tag, out);
+  params.matrix_m = checked_u32(Dk, tag, out);
+  params.matrix_n = checked_u32(Dv, tag, out);
+  params.matrix_k = checked_u32(Hv, tag, out);
+  // Item offsets into each bound buffer (views split from wider tensors
+  // keep their base offset; the shader adds these to every index).
+  params.lhs_offset = checked_item_offset(q, q.size(), tag, out);
+  params.rhs_offset = checked_item_offset(k, k.size(), tag, out);
+  params.aux_size = checked_item_offset(v, v.size(), tag, out);
+  params.aux_offset = checked_item_offset(beta, beta.size(), tag, out);
+  params.output_offset = checked_item_offset(out, out.size(), tag, out);
+  params.shape[0] = checked_item_offset(g, g.size(), tag, out);
+  params.shape[1] = checked_item_offset(h0, h0.size(), tag, out);
+  params.shape[2] = checked_item_offset(hf, hf.size(), tag, out);
+  params.dims = static_cast<uint32_t>(T);
+  params.lhs_gap = kGdnChunk;
+  params.rhs_gap = chunks;
+  uint32_t g_flags = (g.ndim() == 4 ? 1u : 0u) | (g.dtype() == float32 ? 4u : 0u);
+  if (has_mask) {
+    params.shape[3] =
+        checked_item_offset(*mask, mask->size(), tag, out);
+    g_flags |= 2u;
+  }
+  omarchy::ComputeBinding snapshot_binding =
+      chunks > 1 ? binding(snapshots) : binding(out);
+  std::array<omarchy::ComputeBinding, 11> bindings{
+      binding(q),
+      binding(k),
+      binding(v),
+      binding(g),
+      binding(beta),
+      binding(h0),
+      binding(out),
+      binding(hf),
+      has_mask ? binding(*mask) : binding(out),
+      binding(g),
+      snapshot_binding};
+  // Pass 0: prefix scan, snapshots at chunk boundaries.
+  params.flags = g_flags;
+  encoder.dispatch_compute(
+      omarchy::ComputeKernel::GatedDeltaPrefillBF16,
+      bindings,
+      params,
+      static_cast<uint32_t>(Hv),
+      1,
+      1);
+  // Pass 1: chunk-parallel output replay.
+  params.flags = g_flags | 8u;
+  encoder.dispatch_compute(
+      omarchy::ComputeKernel::GatedDeltaPrefillBF16,
+      bindings,
+      params,
+      static_cast<uint32_t>(Hv),
+      chunks,
+      1);
+}
 
 
 namespace {
@@ -10850,7 +11183,7 @@ void rope_trig_gate(
       // satisfied: the dispatching thread deadlocked until the watchdog
       // fired and the generation thread died ('Vulkan timeline counter
       // failed to advance ... target=1', the mlx_lm.server / oMLX
-      // prefill serving hangs - receipts/2026-09-19-mlxlm-server-hang-t6001-test-host.md).
+      // prefill serving hangs - receipts/2026-09-19-mlxlm-server-hang-jw16.md).
       // synchronize() above proved the data is final, so drop the stale
       // latch and read.
       offset.detach_event();
@@ -10942,14 +11275,23 @@ void RoPE::eval_gpu(
   // store straight into the updated cache copy's window and the merged
   // pair dispatch disappears. Aborts unwind to that dispatch.
   omarchy::KvDirectWindow* kv_window =
-      (out.size() > 0 && out.dtype() == float16 && inputs.size() == 2)
+      (out.size() > 0 &&
+       (out.dtype() == float16 || out.dtype() == bfloat16) &&
+       inputs.size() == 2)
       ? omarchy::find_rope_kv_redirect(out)
       : nullptr;
   if (kv_window) {
     omarchy::KvDirectWindow& window = *kv_window;
-    if (window.node.data_shared_ptr() != nullptr ||
+    // In place, the values side has already installed the shared
+    // storage; otherwise the node must still be unallocated. Either
+    // way the rope writes its rows into the buffer the member array
+    // exposes.
+    if (
+        window.node.data_shared_ptr() !=
+            (window.in_place ? window.base.data_shared_ptr() : nullptr) ||
         window.base.data_shared_ptr() == nullptr ||
-        window.base.dtype() != float16 ||
+        window.base.dtype() != out.dtype() ||
+        (out.dtype() == bfloat16 && (kv_window->offset & 1u) != 0u) ||
         !window.base.flags().row_contiguous ||
         window.base.size() != window.base.data_size() ||
         window.base.offset() % window.base.itemsize() != 0 ||
@@ -10964,13 +11306,15 @@ void RoPE::eval_gpu(
           "[mlx-omarchy] direct KV write committed values but the keys "
           "window is not dispatchable");
     }
-    window.node.set_data(allocate_omarchy(window.node.nbytes()));
-    copy_gpu(
-        window.base,
-        window.node,
-        window.base.flags().contiguous ? CopyType::Vector
-                                       : CopyType::General,
-        s);
+    if (!window.in_place) {
+      window.node.set_data(allocate_omarchy(window.node.nbytes()));
+      copy_gpu(
+          window.base,
+          window.node,
+          window.base.flags().contiguous ? CopyType::Vector
+                                         : CopyType::General,
+          s);
+    }
     encoder.add_temporary(window.node);
     encoder.add_temporary(window.base);
   }
@@ -10986,23 +11330,19 @@ void RoPE::eval_gpu(
   int T = in.shape(-2);
   int D = in.shape(-1);
   int half_dims = dims_ / 2;
+  bool direct_bf16 = out.dtype() == bfloat16;
   bool passthrough = dims_ < D;
-  size_t mat_size = static_cast<size_t>(T) * D;
-  bool direct_bf16 = false;
-  if (out.dtype() == bfloat16) {
-    if (const char* env = std::getenv("MLX_OMARCHY_ROPE_BF16_DIRECT");
-        env != nullptr && std::strcmp(env, "0") != 0) {
-      direct_bf16 = true;
-    }
+  // The pair-granular packed bf16 word store covers a word only when
+  // both lanes are written: the passthrough row extent and the
+  // rotation half must both be even (rotation pairs straddle the
+  // half boundary otherwise).
+  if (direct_bf16 &&
+      (((passthrough && (D % 2) != 0)) || (half_dims % 2) != 0)) {
+    omarchy::unsupported(tag + " bf16 odd rotation pair", out);
   }
+  size_t mat_size = static_cast<size_t>(T) * D;
   std::optional<array> normalized;
   const array* src = &in;
-  if (out.dtype() == bfloat16 && !direct_bf16) {
-    normalized = array(in.shape(), float32, nullptr, {});
-    copy_gpu(in, *normalized, CopyType::Vector, s);
-    encoder.add_temporary(*normalized);
-    src = &*normalized;
-  }
   bool row_contiguous = src->flags().row_contiguous;
   bool head_seq_transpose = false;
   int64_t strides[3];
@@ -11059,6 +11399,10 @@ void RoPE::eval_gpu(
       static_cast<size_t>(B) * N * T * (passthrough ? D : half_dims),
       tag,
       out);
+  if (direct_bf16 && passthrough) {
+    // The pair-granular bf16 main enumerates output words: D/2 per row.
+    params.count = checked_u32(params.count / 2, tag, out);
+  }
   params.dims = checked_u32(half_dims, tag, out);
   params.flags = (forward_ ? 1u : 0u) | (traditional_ ? 2u : 0u) |
       (head_seq_transpose ? 4u : 0u) | (passthrough ? 8u : 0u);
@@ -11090,18 +11434,11 @@ void RoPE::eval_gpu(
   }
   // The no-freqs shader variants declare three bindings; the freqs slot
   // doubles the offset binding like the scalar-weight norm kernels do.
-  // The bfloat16 shader legs read the packed bf16 words directly (the
-  // proven constant-shift form, commit cf68e7d) and write float32; a
-  // uint16_t-typed block compiled from that source returned recycled
-  // memory on llvmpipe, and per-element half-word stores of a shared
+  // The bfloat16 shader legs read and store packed bf16 words with the
+  // repo's constant-shift form (commit cf68e7d): a uint16_t-typed block
+  // compiled from that source returned recycled memory on llvmpipe.
   array rope_output = out;
-  std::optional<array> f32_to_bf16;
-  if (out.dtype() == bfloat16) {
-    f32_to_bf16 = array(out.shape(), float32, nullptr, {});
-    f32_to_bf16->set_data(allocate_omarchy(f32_to_bf16->nbytes()));
-    encoder.add_temporary(*f32_to_bf16);
-    rope_output = *f32_to_bf16;
-  } else if (kv_direct) {
+  if (kv_direct) {
     rope_output = kv_window->node;
   } else {
     out.set_data(allocate_omarchy(out.nbytes()));
@@ -11111,10 +11448,6 @@ void RoPE::eval_gpu(
       binding(rope_output),
       binding(offset),
       binding(with_freqs ? inputs.at(2) : offset)};
-  // The direct bf16 bind must select by INPUT dtype: the packed-word
-  // load leg pairs a bf16 input with this call's float32 output
-  // temporary, so the output-dtype selector would pick the F32 kernel
-  // and read the bf16 buffer as float words.
   omarchy::ComputeKernel kernel;
   if (direct_bf16) {
     kernel = with_freqs ? omarchy::ComputeKernel::FastRopeFreqsBF16
@@ -11136,9 +11469,6 @@ void RoPE::eval_gpu(
       omarchy::compute_dispatch_group_count(params.count));
   if (kv_direct) {
     omarchy::commit_rope_kv_redirect(out);
-  }
-  if (f32_to_bf16) {
-    copy_gpu(*f32_to_bf16, out, CopyType::Vector, s);
   }
 }
 void ScaledDotProductAttention::eval_gpu(

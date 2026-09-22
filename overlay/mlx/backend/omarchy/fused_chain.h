@@ -141,6 +141,11 @@ struct KvDirectWindow {
   // decode only.
   uint32_t row_gap{0};
   uint32_t head_dim{0};
+  // True when the planner proved |base| has no other consumer in the
+  // tape: the producer then writes the new rows straight into |base|'s
+  // buffer (|node| shares that storage) and the fresh cache copy
+  // disappears entirely.
+  bool in_place{false};
 };
 
 // DecodeFusion: one fused decode GEMV group. Up to kQmmVecMultiWeights
@@ -177,6 +182,7 @@ bool dispatch_quantized_gemv_group(
 bool dispatch_dense_gemv_group(
     std::vector<array>& nodes,
     const array& input,
+    const std::optional<KvDirectWindow>* sum_windows,
     const Stream& stream);
 
 enum class SliceUpdatePairDispatch : uint8_t { done, not_ready, unsupported };

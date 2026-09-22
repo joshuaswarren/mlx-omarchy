@@ -160,6 +160,15 @@ inline std::unordered_map<std::string_view, std::uint64_t>& prim_counts() {
 }
 #endif
 
+
+// The MLX primitive currently being evaluated on this thread; set in
+// eval.cpp around eval_gpu so transport-level traces (copy.cpp) can
+// attribute their dispatches to the consuming primitive.
+inline std::string_view& current_prim() {
+  static thread_local std::string_view prim = "";
+  return prim;
+}
+
 } // namespace mlx::core::omarchy::trace
 
 // Global-scope C ABI (defined in eval.cpp): the C symbol must not live in

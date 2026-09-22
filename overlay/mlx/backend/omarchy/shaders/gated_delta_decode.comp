@@ -1,0 +1,116 @@
+// Copyright © 2026 Joshua Warren / mlx-omarchy contributors.
+// SPDX-License-Identifier: MIT
+//
+// Fused gated-delta-rule decode step (GatedDeltaUpdate, T=1). Replaces the
+// composed per-token op chain that Qwen3.5-style GDN linear-attention layers
+// run per decoded token: state decay, kv reduction, delta, outer-product
+// state update, and the output projection over the updated state.
+//
+// One workgroup per (batch, v-head), one thread per Dv row. The thread's row
+// of the state is read twice (kv pass, update+output pass) instead of being
+// held in registers; k and q ride shared memory. Every intermediate is
+// float32 and each row reduces sequentially over Dk in ascending order, so
+// the arithmetic matches the composed fallback's per-row sums.
+//
+// Exactness contract (bf16 arm): q/k/v are bf16 bit patterns widened exactly
+// (bf16 bits are the f32 top half); g/beta arrive f32 (the fast.cpp caller
+// promotes them to the q/k dtype; bf16 widening is exact); state and the
+// final state store stay f32; the output store rounds to bf16 RNE, the same
+// store cast.comp applies everywhere. See receipts/2026-09-21-gdn-decode-fused.
+
+#version 460
+
+#extension GL_EXT_shader_16bit_storage : require
+#ifdef QKV_BF16
+#extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
+#endif
+
+layout(local_size_x = 128, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0, std430) readonly buffer QBuf  { uint16_t v[]; } q_buf;
+layout(set = 0, binding = 1, std430) readonly buffer KBuf  { uint16_t v[]; } k_buf;
+layout(set = 0, binding = 2, std430) readonly buffer VBuf  { uint16_t v[]; } v_buf;
+layout(set = 0, binding = 3, std430) readonly buffer GBuf  { uint16_t v[]; } g_buf;
+layout(set = 0, binding = 4, std430) readonly buffer BBuf  { uint16_t v[]; } b_buf;
+layout(set = 0, binding = 5, std430) readonly buffer SIn   { float    v[]; } s_in;
+layout(set = 0, binding = 6, std430) writeonly buffer YBuf { uint16_t v[]; } y_buf;
+layout(set = 0, binding = 7, std430) buffer         SOut  { float    v[]; } s_out;
+
+layout(push_constant) uniform Params {
+  uint count;
+  uint operation;
+  uint lhs_size;
+  uint rhs_size;
+  uint reduce_size;
+  uint output_size;
+  uint lhs_offset;
+  uint rhs_offset;
+  uint output_offset;
+  uint aux_size;
+  uint aux_offset;
+  uint matrix_m;   // Dk
+  uint matrix_n;   // Dv
+  uint matrix_k;   // Hv
+  uint flags;
+  float alpha;
+  float beta_f;
+  uint dims;
+  uint shape[4];
+  uint in_strides[4];
+  uint out_strides[4];
+} params;
+
+float bf16_load(uint16_t bits) {
+  return uintBitsToFloat(uint(bits) << 16u);
+}
+
+uint16_t bf16_store(float value) {
+  uint bits = floatBitsToUint(value);
+  if ((bits & 0x7fff0000u) == 0x7f800000u) {
+    return uint16_t((bits >> 16) | 0x40u);
+  }
+  return uint16_t((bits + 0x7fffu + ((bits >> 16) & 1u)) >> 16);
+}
+
+shared float sk[128];
+shared float sq[128];
+shared float sdelta[128];
+
+void main() {
+  uint dk = params.matrix_m;
+  uint dv = params.matrix_n;
+  uint hv = params.matrix_k;
+  uint head = gl_WorkGroupID.x;
+  uint row = gl_LocalInvocationID.x;   // one dv row per thread
+
+  if (head >= hv) {
+    return;
+  }
+  for (uint i = row; i < dk; i += 128u) {
+    sk[i] = bf16_load(k_buf.v[params.rhs_offset + head * dk + i]);
+    sq[i] = bf16_load(q_buf.v[params.lhs_offset + head * dk + i]);
+  }
+  barrier();
+
+  float g = bf16_load(g_buf.v[params.shape[0] + head]);
+  float beta = bf16_load(b_buf.v[params.aux_offset + head]);
+  uint head_base = head * dv * dk;
+  uint row_base = head_base + row * dk;
+
+  float kv_acc = 0.0f;
+  for (uint i = 0u; i < dk; ++i) {
+    kv_acc += s_in.v[params.shape[1] + row_base + i] * g * sk[i];
+  }
+  float delta = (bf16_load(v_buf.v[params.aux_size + head * dv + row]) - kv_acc) * beta;
+  sdelta[row] = delta;
+  barrier();
+
+  float o_acc = 0.0f;
+  for (uint i = 0u; i < dk; ++i) {
+    float s = s_in.v[params.shape[1] + row_base + i] * g;
+    float ns = s + sdelta[row] * sk[i];
+    s_out.v[params.shape[2] + head_base + row * dk + i] = ns;
+    o_acc += ns * sq[i];
+  }
+  y_buf.v[params.output_offset + head * dv + row] = bf16_store(o_acc);
+}
