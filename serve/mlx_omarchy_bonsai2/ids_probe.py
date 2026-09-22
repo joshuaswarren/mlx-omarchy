@@ -94,34 +94,58 @@ def install_ids_probe(emit=None):
         return None
 
     def _resolve_detok(*args, **kwargs):
-        for tok in args[1:3]:
-            d = getattr(tok, "detokenizer", None) or getattr(
-                tok, "_detok", None)
-            if d is not None:
-                return d
-        return None
+        # In mlx_lm 0.31.3 stream_generate, the caller passes the raw
+        # tokenizer (PreTrainedTokenizer or TokenizerWrapper); the
+        # stream_generate body wraps it: `if not isinstance(tokenizer,
+        # TokenizerWrapper): tokenizer = TokenizerWrapper(tokenizer)` and
+        # then reads `tokenizer.detokenizer`. Match that here so the
+        # finalize-side hook fires on the same detokenizer instance.
+        try:
+            from mlx_lm.tokenizer_utils import TokenizerWrapper
+            tok = args[1] if len(args) > 1 else None
+            if tok is None:
+                return None
+            if not isinstance(tok, TokenizerWrapper):
+                tok = TokenizerWrapper(tok)
+            return getattr(tok, "detokenizer", None)
+        except Exception:
+            return None
 
     def stream_probe(*args, **kwargs):
         state["detok"] = _resolve_detok(*args, **kwargs)
+        state["_finalized"] = False
         gen = _original(*args, **kwargs)
         try:
             yielded = next(gen)
         except StopIteration:
-            if state["detok"] is not None:
-                state["detok"].finalize()
+            _probe_finalize(state)
             return
         try:
             while True:
                 try:
                     yield yielded
                 except GeneratorExit:
-                    if state["detok"] is not None:
-                        state["detok"].finalize()
+                    _probe_finalize(state)
                     raise
                 yielded = next(gen)
         except StopIteration:
-            if state["detok"] is not None:
-                state["detok"].finalize()
+            _probe_finalize(state)
+
+    def _probe_finalize(state):
+        if state.get("_finalized"):
+            return
+        state["_finalized"] = True
+        # First try the detok-side finalize (the patched StreamingDetokenizer
+        # method will _flush() ids via the emit callback). Then fall back
+        # to a direct _flush() in case the detok was not resolved or the
+        # patched finalize was never called by the underlying generator.
+        detok = state.get("detok")
+        if detok is not None:
+            try:
+                detok.finalize()
+            except Exception:
+                pass
+        _flush()
 
     # Rebind the package's stream_generate attr (the bonsai2 server reads
     # sys.modules['mlx_lm'].stream_generate on each call) and the
