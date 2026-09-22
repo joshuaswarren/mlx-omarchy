@@ -232,8 +232,8 @@
         },
         "managed": {
           "status": "qualified",
-          "receipt": "receipts/2026-09-21-qwen38-managed-route-qualification.md",
-          "date": "2026-09-21"
+          "receipt": "ane-linux-experiments:receipts/2026-09-22-bonsai2-direct-vs-managed-equivalence.md",
+          "date": "2026-09-22"
         }
       },
       "availability": {
