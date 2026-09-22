@@ -1,6 +1,6 @@
 # Community hardware data snapshot
 
-Records: 76 | dataset generated_at: 2026-09-21T03:17:00.000Z | source: https://mlx-omarchy-community-data.joshua-s-warren.workers.dev
+Records: 78 | dataset generated_at: 2026-09-22T03:17:00.000Z | source: https://mlx-omarchy-community-data.joshua-s-warren.workers.dev
 
 Mirrored by `.github/workflows/community-data.yml` from the public
 read API. Summaries only; archive blobs stay on the endpoint.
@@ -83,6 +83,8 @@ read API. Summaries only; archive blobs stay on the endpoint.
 | [c901d2bb47ba](https://mlx-omarchy-community-data.joshua-s-warren.workers.dev/v1/results/c901d2bb47ba4466c3c4733f094720fbe6b1b820d44e8543f49d1b5031a79f58) | deep | apple,t6000 | 7.1.13-3-1-ARCH | Honeykrisp | 0.32.3.dev202609190758+50eeb29 | [6](https://mlx-omarchy-community-data.joshua-s-warren.workers.dev/v1/results/c901d2bb47ba4466c3c4733f094720fbe6b1b820d44e8543f49d1b5031a79f58/archive) |
 | [5c803596fd75](https://mlx-omarchy-community-data.joshua-s-warren.workers.dev/v1/results/5c803596fd75416a012ad6f01b35236da559beaca683534b066a54d131b8e8a7) | deep | apple,t6020 | 7.1.13-3-2-ARCH | Honeykrisp | 0.32.3.dev202609190758+50eeb29 | [6](https://mlx-omarchy-community-data.joshua-s-warren.workers.dev/v1/results/5c803596fd75416a012ad6f01b35236da559beaca683534b066a54d131b8e8a7/archive) |
 | [fbc20029b7fd](https://mlx-omarchy-community-data.joshua-s-warren.workers.dev/v1/results/fbc20029b7fd044b287f75bf42631539e67a3cc89cafcea74fb97c5eef801245) | deep | apple,t6000 | 7.1.13-2-1-ARCH | - | 0.32.3.dev202609190758+50eeb29 | [0](https://mlx-omarchy-community-data.joshua-s-warren.workers.dev/v1/results/fbc20029b7fd044b287f75bf42631539e67a3cc89cafcea74fb97c5eef801245/archive) |
+| [896d5915f7cc](https://mlx-omarchy-community-data.joshua-s-warren.workers.dev/v1/results/896d5915f7cc8192943c562a4e5ad7274ed7096e275f974a299bd106c26476aa) | quick | apple,t6020 | 7.1.13-3-2-ARCH | Honeykrisp | - | [0](https://mlx-omarchy-community-data.joshua-s-warren.workers.dev/v1/results/896d5915f7cc8192943c562a4e5ad7274ed7096e275f974a299bd106c26476aa/archive) |
+| [11514d64cb5c](https://mlx-omarchy-community-data.joshua-s-warren.workers.dev/v1/results/11514d64cb5cd72e8347bba130759152f711f774e857292a78bb6320c2f4d606) | deep | Apple M3 Pro | Darwin 25.2.0 (macOS 26.2 (25C56)) | - | 0.32.1 | [6](https://mlx-omarchy-community-data.joshua-s-warren.workers.dev/v1/results/11514d64cb5cd72e8347bba130759152f711f774e857292a78bb6320c2f4d606/archive) |
 
 Query this snapshot:
 
