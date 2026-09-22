@@ -374,10 +374,14 @@ class BundledDataTests(unittest.TestCase):
         # Main, 2026-09-21: qwen3.8-35b-a3b-distill Q4G64 flipped to
         # recommended:true for >=96 GiB-class hosts (v5i managed-route
         # functional + deterministic generation; no direct reference).
+        # Main, 2026-09-22: bonsai-2-27b-mlx-2bit flipped to recommended:true
+        # for >=64 GiB-class hosts (managed-vs-direct equivalence captured
+        # sha16 779051f4ea712107, n=128, on jw16; ready ~10s).
         recommended = [e for e in self.entries if e.get("recommended")]
         self.assertEqual(
             sorted([e["id"] for e in recommended]),
-            ["qwen3.8-27b-4bit", "qwen3.8-35b-a3b-distill"],
+            ["bonsai-2-27b-mlx-2bit", "qwen3.8-27b-4bit",
+             "qwen3.8-35b-a3b-distill"],
             "each flip requires Main's explicit approval with receipts")
         for entry in self.entries:
             if entry.get("recommended"):
