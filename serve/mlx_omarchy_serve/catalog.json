@@ -363,7 +363,7 @@
         ],
         "q4g64_local_conversion": {
           "host": "M1 Max 64 GiB (Asahi Linux)",
-          "model_path": "/home/joshuawarren/models/qwen3.8-35b-a3b-distill-q4-g64",
+          "model_path": "~/models/qwen3.8-35b-a3b-distill-q4-g64",
           "total_disk_bytes": 19095844,
           "shard_count": 6,
           "shard_size_bytes": {
@@ -395,7 +395,7 @@
         },
         "local_variant_q4g64": {
           "present": true,
-          "path": "/home/joshuawarren/models/qwen3.8-35b-a3b-distill-q4-g64",
+          "path": "~/models/qwen3.8-35b-a3b-distill-q4-g64",
           "total_bytes": 19095844,
           "shard_count": 6,
           "qualification": "recommended stays false until v5-equivalent run captures managed-route token arrays (next window request after this commit lands)"
