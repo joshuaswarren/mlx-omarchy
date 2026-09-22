@@ -376,7 +376,7 @@ class BundledDataTests(unittest.TestCase):
         # functional + deterministic generation; no direct reference).
         # Main, 2026-09-22: bonsai-2-27b-mlx-2bit flipped to recommended:true
         # for >=64 GiB-class hosts (managed-vs-direct equivalence captured
-        # sha16 779051f4ea712107, n=128, on jw16; ready ~10s).
+        # sha16 779051f4ea712107, n=128, on an M1 Max 64 GiB host; ready ~10s).
         recommended = [e for e in self.entries if e.get("recommended")]
         self.assertEqual(
             sorted([e["id"] for e in recommended]),

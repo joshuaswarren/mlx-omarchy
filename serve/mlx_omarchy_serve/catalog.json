@@ -222,17 +222,17 @@
       "qualification": {
         "generation": {
           "status": "qualified",
-          "receipt": "ane-linux-experiments@2e4b78f:receipts/2026-09-20-bonsai2-http-qualification.md",
+          "receipt": "receipts/2026-09-20-bonsai2-http-qualification.md",
           "date": "2026-09-20"
         },
         "http": {
           "status": "qualified",
-          "receipt": "ane-linux-experiments@2e4b78f:receipts/2026-09-20-bonsai2-http-qualification.md",
+          "receipt": "receipts/2026-09-20-bonsai2-http-qualification.md",
           "date": "2026-09-20"
         },
         "managed": {
           "status": "qualified",
-          "receipt": "ane-linux-experiments:receipts/2026-09-22-bonsai2-direct-vs-managed-equivalence.md",
+          "receipt": "receipts/2026-09-22-bonsai2-direct-vs-managed-equivalence.md",
           "date": "2026-09-22"
         }
       },
@@ -257,10 +257,10 @@
         "config_sha256": "238de7c5 (config.json, per the same lane record)",
         "residency": "Vision tower tensors are excluded from the resident set and accounted separately (loader reports exact text-only resident_bytes at load); MTP is 0 layers.",
         "admission_bound": "Config max_position_embeddings is 262144, but the server enforces its own --max-context hard cap and serializes generation; on a 16 GiB host the KV rate (64 KiB/token) bounds practical context to ~8k tokens at ~4 GiB headroom.",
-        "managed_load_seconds": {"host": "jw16 (M1 Max 64 GiB)", "value": 10, "timeout_seconds": 600, "measured_at": "2026-09-22T00:11:18-05:00", "receipt": "ane-linux-experiments:receipts/2026-09-22-bonsai2-managed-ready-diagnostic.md", "notes": "Managed-CLI launch measured ready ~10s on jw16 after the mlx_lm 0.31.3 split was fixed (commit 72213ae2d in catalog-2026-09-21). Prior 'NOT_READY after 5 min' was caused by the server reading mlx_lm.generate (the new non-streaming wrapper returning str) instead of mlx_lm.stream_generate. Gate reruns must use ready_timeout >= 60s."},
-        "recommended_caveat": "Managed-vs-direct equivalence captured (sha16 779051f4ea712107, n=128) on jw16; HTTP FUNCTIONAL + managed both qualified; ready ~10s on M1 Max 64 GiB. Per-gate: managed.LoadTime<60s OK; managed.DirectMatch sha16 OK. NOT claimed: GPU numeric-parity vs a CPU reference (open scope, owned by GPUHardwareContinuation); long-context / multi-stream / durability. Memory bound: 11 GiB static weights floor + KV cache at 8 KiB/token cap; 16 GiB-class host will hit the admission cap (KV rate 64 KiB/token); recommended for >=64 GiB-class only (64 GiB M1 Max measured, 47 GiB headroom). Flip approved 2026-09-22 per gate-driven recommendation rules.",
+        "managed_load_seconds": {"host": "M1 Max 64 GiB", "value": 10, "timeout_seconds": 600, "measured_at": "2026-09-22T00:11:18-05:00", "receipt": "receipts/2026-09-22-bonsai2-managed-ready-diagnostic.md", "notes": "Managed-CLI launch measured ready ~10s on an M1 Max 64 GiB host after the mlx_lm 0.31.3 split was fixed (commit 72213ae2d in catalog-2026-09-21). Prior 'NOT_READY after 5 min' was caused by the server reading mlx_lm.generate (the new non-streaming wrapper returning str) instead of mlx_lm.stream_generate. Gate reruns must use ready_timeout >= 60s."},
+        "recommended_caveat": "Managed-vs-direct equivalence captured (sha16 779051f4ea712107, n=128) on an M1 Max 64 GiB host; HTTP FUNCTIONAL + managed both qualified; ready ~10s on M1 Max 64 GiB. Per-gate: managed.LoadTime<60s OK; managed.DirectMatch sha16 OK. NOT claimed: GPU numeric-parity vs a CPU reference (open scope, owned by GPUHardwareContinuation); long-context / multi-stream / durability. Memory bound: 11 GiB static weights floor + KV cache at 8 KiB/token cap; 16 GiB-class host will hit the admission cap (KV rate 64 KiB/token); recommended for >=64 GiB-class only (64 GiB M1 Max measured, 47 GiB headroom). Flip approved 2026-09-22 per gate-driven recommendation rules.",
         "attribution": "Apache-2.0 + NOTICE attribution: 'Created using Bonsai by Prism ML'; built from Qwen3.8-27B (Apache-2.0).",
-        "qualification_scope": "HTTP FUNCTIONAL scope only (receipts/2026-09-20-bonsai2-http-qualification.md @ 2e4b78f in ane-linux-experiments, the T6021 qualification host M1 Max): /health 200, one real greedy /v1/chat/completions HTTP 200 (16 completion tokens, finish=length, usage+timings recorded; decode 1.74 t/s and prefill 5.1 t/s are data, not perf claims), over-cap and malformed bodies return 400, clean SIGTERM shutdown. All input hashes re-verified on device (weights sha256 130de592..., config sha256 238de7c5...). The 16-token output is the model's chain-of-thought preamble - NO coherence or quality claim. Numerical/parity qualification remains a separate scope (CPU parity receipt stands; no GPU parity claim). Single-host, single-stream, no durability claim. The dead owner-scoped reservation left in reservations.json post-exit is documented in the receipt (harmless; sweep owned by future windows) and the managed-lifecycle hardening is in progress."
+        "qualification_scope": "HTTP FUNCTIONAL scope only (receipts/2026-09-20-bonsai2-http-qualification.md @ 2e4b78f, an M1 Max qualification host): /health 200, one real greedy /v1/chat/completions HTTP 200 (16 completion tokens, finish=length, usage+timings recorded; decode 1.74 t/s and prefill 5.1 t/s are data, not perf claims), over-cap and malformed bodies return 400, clean SIGTERM shutdown. All input hashes re-verified on device (weights sha256 130de592..., config sha256 238de7c5...). The 16-token output is the model's chain-of-thought preamble - NO coherence or quality claim. Numerical/parity qualification remains a separate scope (CPU parity receipt stands; no GPU parity claim). Single-host, single-stream, no durability claim. The dead owner-scoped reservation left in reservations.json post-exit is documented in the receipt (harmless; sweep owned by future windows) and the managed-lifecycle hardening is in progress."
       },
       "serve": {
         "backend": "module",
@@ -355,7 +355,7 @@
           }
         ],
         "q4g64_local_conversion": {
-          "host": "jw16mbp1-linux (T6021, 64 GiB M1 Max, Asahi Linux)",
+          "host": "M1 Max 64 GiB (Asahi Linux)",
           "model_path": "/home/joshuawarren/models/qwen3.8-35b-a3b-distill-q4-g64",
           "total_disk_bytes": 19095844,
           "shard_count": 6,
@@ -384,14 +384,14 @@
           "converted_at": "2026-09-20 (timestamps on the disk files; conversion runid documented in the plan)"
         },
         "local_qualification_status": {
-          "q4g64": "ARTIFACT_PRESENT_LOCAL (on jw16) \u2014 recommended:true pending v5-equivalent managed-CLI run; bf16 upstream variant remains UNTESTED"
+          "q4g64": "ARTIFACT_PRESENT_LOCAL (on an M1 Max 64 GiB host) \u2014 recommended:true pending v5-equivalent managed-CLI run; bf16 upstream variant remains UNTESTED"
         },
         "local_variant_q4g64": {
           "present": true,
           "path": "/home/joshuawarren/models/qwen3.8-35b-a3b-distill-q4-g64",
           "total_bytes": 19095844,
           "shard_count": 6,
-          "qualification": "recommended stays false until v5-equivalent run on jw16 captures managed-route token arrays (next window request after this commit lands)"
+          "qualification": "recommended stays false until v5-equivalent run captures managed-route token arrays (next window request after this commit lands)"
         },
         "recommended_caveat": "recommended:true ONLY for >=96 GiB-class hosts (this is the local Q4G64 variant \u2014 19.1 GB weights; fits 64 GiB M1 Max + headroom for KV/workspace; the bf16 upstream variant stays UNTESTED). No direct-reference comparison available (different model from qwen3.8-27B); managed route functional + deterministic generation confirmed (2 PROBE events, identical 128-token arrays sha16 28927d3085488a11, v5i runid serving-v5i-q4g64-20260921T). GPU numeric-parity NOT claimed (owned by GPUHardwareContinuation)."
       },
