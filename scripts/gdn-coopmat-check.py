@@ -41,15 +41,18 @@ outdir, t_cases, seed = sys.argv[1], json.loads(sys.argv[2]), int(sys.argv[3])
 
 def make(T):
     mx.random.seed(seed)
-    q = mx.random.normal((1, T, 16, 128)).astype(mx.bfloat16)
-    k = mx.random.normal((1, T, 16, 128)).astype(mx.bfloat16)
+    # Model-scale magnitudes (Qwen3.8 GDN): k/q ~ N(0, 1/Dk) so beta.|k|^2
+    # stays a contraction; beta, g in (0, 1) like sigmoid gates. Raw
+    # normals blow the recurrence up past f32 within a few hundred tokens.
+    q = mx.random.normal((1, T, 16, 128)).astype(mx.bfloat16) * 0.088
+    k = mx.random.normal((1, T, 16, 128)).astype(mx.bfloat16) * 0.088
     v = mx.random.normal((1, T, 16, 128)).astype(mx.bfloat16)
-    beta = mx.random.normal((1, T, 16)).astype(mx.bfloat16)
-    h0 = mx.random.normal((1, 16, 128, 128)).astype(mx.float32) * 0.5
+    beta = (mx.random.normal((1, T, 16)) * 0.5).astype(mx.bfloat16)
+    h0 = mx.random.normal((1, 16, 128, 128)).astype(mx.float32) * 0.1
     if os.environ.get("GDN_CHECK_G_BF16") == "1":
-        g = mx.random.normal((1, T, 16)).astype(mx.bfloat16)
+        g = (mx.random.normal((1, T, 16)) * 0.2).astype(mx.bfloat16) * 0.5 + 0.5
     else:
-        g = mx.random.normal((1, T, 16)).astype(mx.float32)
+        g = mx.random.normal((1, T, 16)) * 0.2 * 0.5 + 0.5
     return q, k, v, g, beta, h0
 
 for T in t_cases:
@@ -112,7 +115,7 @@ def oracle(scan_dir):
             S = S + k[t][:, None, :] * delta[:, :, None]
             o = np.zeros((16, 128), np.float32)
             for i in range(128):
-                o += S[:, :, i] * q[t][:, None, :]
+                o += S[:, :, i] * q[t][:, i][:, None]
             ys[t] = o
         y_out[T] = ys
         hf_out[T] = S
