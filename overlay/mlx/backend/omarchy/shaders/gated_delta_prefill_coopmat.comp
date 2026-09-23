@@ -196,7 +196,9 @@ void main() {
     const float beta_r0 = beta_s[sg][r0];
     const float gam_r0 = exp(gamma_s[sg][r0]);
     const float gaminv_r0 = exp(-gamma_s[sg][r0]);
-    const float dec_r0 = r0 < valid ? exp(gamC - gamma_s[sg][r0]) : 0.0;
+    // Decay from token r0 to the chunk end, log-domain difference.
+    const float dec_r0 =
+        r0 < valid ? exp(gamma_s[sg][C - 1u] - gamma_s[sg][r0]) : 0.0;
 
     // Loop 1: stage the chunk's k/q tiles (raw and row-scaled variants)
     // and accumulate KK^T, Q.K^T, (beta K).S and (gamma Q).S.
@@ -332,14 +334,17 @@ void main() {
     coopmat<float, gl_ScopeSubgroup, 8, 8, gl_MatrixUseAccumulator> delta =
         u - coopMatMulAdd(mat_a, mat_b, zero);
 
-    // QKt tri: tril(Q.K^T) scaled elementwise by exp(gamma_r - gamma_c):
-    // one shared round trip.
+    // QKt tri: tril(Q.K^T) scaled elementwise by exp(gamma_log_r - gamma_log_c):
+    // one shared round trip. The column factor differs per element (c0 vs
+    // c0+1), so read gamma_log per column.
     coopMatStore(qkt, rt_a[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
     barrier();
     float qe0 = rt_a[sg][e0];
     float qe1 = rt_a[sg][e0 + 1u];
-    rt_a[sg][e0] = (c0 <= r0) ? qe0 * gam_r0 * gaminv_r0 : 0.0;
-    rt_a[sg][e0 + 1u] = (c0 + 1u <= r0) ? qe1 * gam_r0 * gaminv_r0 : 0.0;
+    rt_a[sg][e0] = (c0 <= r0)
+        ? qe0 * exp(gamma_s[sg][r0] - gamma_s[sg][c0]) : 0.0;
+    rt_a[sg][e0 + 1u] = (c0 + 1u <= r0)
+        ? qe1 * exp(gamma_s[sg][r0] - gamma_s[sg][c0 + 1u]) : 0.0;
     barrier();
     coopMatLoad(mat_a, rt_a[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
     // delta feeds the out and state-update matmuls: operand role.
