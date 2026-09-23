@@ -639,6 +639,12 @@ enum class ComputeKernel : uint16_t {
   // Appended to keep profile kernel ids stable.
   QmmPrefillCoopmatBF16,
   QmmPrefillCoopmatM16BF16,
+  // Direct-global-load A twins of the bf16 coopmat pair: x is widened to
+  // f32 by a cast pass, so the shader coopMatLoads A tiles straight from
+  // the f32 buffer (bf16 -> f32 widening is exact, so the k chain is
+  // bit-identical) and the x_s staging disappears. Append-only ids.
+  QmmPrefillCoopmatBF16X32,
+  QmmPrefillCoopmatM16BF16X32,
   // Native-shape two-pass long-context decode SDPA (f16): pass 1 runs one
   // 32-thread workgroup per (head, block) - native Metal's
   // sdpa_vector_2pass_1 grid - and writes the fused kernel's exact f16/f32

@@ -7101,12 +7101,47 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
           encoder.device().hardware_capabilities().device_name);
       uint32_t m_groups =
           (params.matrix_m + coopmat_rows - 1u) / coopmat_rows;
+      // Direct-global-load A: widen bf16 x to f32 once (the widening is
+      // exact, so the kernel k chain is bit-identical to the staged
+      // path), then the shader coopMatLoads A tiles straight from the
+      // f32 buffer - the x_s shared tile, its per-lane staging stores
+      // and address math never run.
+      array x_f32(x_d.shape(), float32, nullptr, {});
+      array::Flags xf_flags;
+      xf_flags.contiguous = true;
+      xf_flags.row_contiguous = true;
+      xf_flags.col_contiguous = x_f32.size() <= 1;
+      x_f32.set_data(
+          allocate_omarchy(x_f32.nbytes()),
+          x_f32.size(),
+          Strides{1},
+          xf_flags,
+          0);
+      encoder.add_temporary(x_f32);
+      {
+        omarchy::ComputeParams cparams;
+        cparams.count = checked_u32(x_d.size(), tag, out);
+        cparams.lhs_offset = checked_item_offset(x_d, x_d.size(), tag, out);
+        cparams.output_offset = 0;
+        std::array<omarchy::ComputeBinding, 3> cbindings{
+            binding(x_d), binding(x_d), binding(x_f32)};
+        encoder.dispatch_compute(
+            omarchy::ComputeKernel::CastBF16F32,
+            cbindings,
+            cparams,
+            omarchy::compute_dispatch_group_count(cparams.count));
+      }
+      // The cast writes a fresh buffer: offset 0 in f32 elements, and
+      // every x offset the shader could see is even by construction.
+      params.lhs_offset = 0;
+      auto qmm_bindings = bindings;
+      qmm_bindings[0] = binding(x_f32);
       omarchy::ComputeKernel qmm_kernel = coopmat_rows == 16u
-          ? omarchy::ComputeKernel::QmmPrefillCoopmatM16BF16
-          : omarchy::ComputeKernel::QmmPrefillCoopmatBF16;
+          ? omarchy::ComputeKernel::QmmPrefillCoopmatM16BF16X32
+          : omarchy::ComputeKernel::QmmPrefillCoopmatBF16X32;
       encoder.dispatch_compute(
           qmm_kernel,
-          bindings,
+          qmm_bindings,
           params,
           std::min(n_groups, omarchy::kMaxComputeGroupCountX),
           std::min(m_groups, omarchy::kMaxComputeGroupCountX),

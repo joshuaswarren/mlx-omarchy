@@ -287,6 +287,8 @@
 #include "qmm_coopmat_m16_f16.h"
 #include "qmm_coopmat_bf16.h"
 #include "qmm_coopmat_m16_bf16.h"
+#include "qmm_coopmat_x32.h"
+#include "qmm_coopmat_m16_x32.h"
 #include "gated_delta_decode_bf16.h"
 #include "gated_delta_prefill_bf16.h"
 #include "qmm_fma_precise_f16.h"
@@ -1234,6 +1236,10 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {qmm_coopmat_bf16, qmm_coopmat_bf16_size};
     case ComputeKernel::QmmPrefillCoopmatM16BF16:
       return {qmm_coopmat_m16_bf16, qmm_coopmat_m16_bf16_size};
+    case ComputeKernel::QmmPrefillCoopmatBF16X32:
+      return {qmm_coopmat_x32, qmm_coopmat_x32_size};
+    case ComputeKernel::QmmPrefillCoopmatM16BF16X32:
+      return {qmm_coopmat_m16_x32, qmm_coopmat_m16_x32_size};
     case ComputeKernel::GatedDeltaDecodeBF16:
       return {gated_delta_decode_bf16, gated_delta_decode_bf16_size};
     case ComputeKernel::GatedDeltaPrefillBF16:
