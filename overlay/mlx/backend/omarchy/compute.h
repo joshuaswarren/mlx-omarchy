@@ -659,6 +659,12 @@ enum class ComputeKernel : uint16_t {
   // workgroup per head scanning the token axis; state rides hf in
   // place). Append-only profile id.
   GatedDeltaPrefillBF16,
+  // Chunked cooperative-matrix prefill scan (Metal gated_delta_fused_chunk
+  // shape, C=8): single pass, one 128-thread workgroup per (head, Dv/32
+  // slice), 4 simdgroups each holding an 8-row state slice as sixteen 8x8
+  // f32 coopmat tiles; square bf16 Dk=Dv=128, Hk=Hv, maskless, scalar g,
+  // coopmat device. Append-only profile id.
+  GatedDeltaPrefillCoopmatBF16,
   Count,
 };
 

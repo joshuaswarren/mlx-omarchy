@@ -10406,6 +10406,11 @@ bool ScaledDotProductAttention::supports_bool_mask() {
   return false;
 }
 
+// Shared bytes of the coopmat prefill kernel (s_state 16 KiB + tile
+// staging and round trips): the dispatch gate checks the device limit
+// before selecting it.
+inline constexpr size_t kGdnCoopmatSharedBytes = 24832;
+
 // Gated delta nets (upstream 0.32.3): the fused GatedDeltaDecodeBF16 kernel
 // serves the decode shape (T=1, no mask, square heads, bf16 activations,
 // f32 state); everything else - prefill token chunks, masks, f16/f32
@@ -10665,6 +10670,62 @@ void GatedDeltaUpdate::eval_gpu(
 
   out.set_data(allocate_omarchy(out.nbytes()));
   hf.set_data(allocate_omarchy(hf.nbytes()));
+
+  // Single-pass chunked cooperative-matrix scan (Metal
+  // gated_delta_fused_chunk shape at C=8): 128-thread workgroups over
+  // (head, Dv/32 slice), four simdgroups each holding an 8-row state
+  // slice as sixteen 8x8 f32 coopmat tiles, so the state never reaches
+  // scratch. Gated to the square bf16 maskless scalar-g shape on coopmat
+  // devices; everything else keeps the two-pass scan below. The kill
+  // switch (and A/B lever) is MLX_OMARCHY_NO_COOPMAT_GDN=1.
+  static const bool coopmat_gdn_disabled =
+      omarchy::env_flag("MLX_OMARCHY_NO_COOPMAT_GDN");
+  const auto& gdn_caps = encoder.device().capabilities();
+  const bool gdn_coopmat = fused_ready && T > 1 && !has_mask &&
+      g.ndim() == 2 && !coopmat_gdn_disabled &&
+      gdn_caps.cooperative_matrix_f32_8 && gdn_caps.subgroup_size == 32u &&
+      kGdnCoopmatSharedBytes <= gdn_caps.max_compute_shared_memory_size;
+  if (gdn_coopmat) {
+    omarchy::ComputeParams params;
+    params.count = Dv;
+    params.lhs_size = checked_u32(q.data_size(), tag, out);
+    params.rhs_size = checked_u32(h0.data_size(), tag, out);
+    params.output_size = checked_u32(hf.data_size(), tag, out);
+    params.matrix_m = checked_u32(Dk, tag, out);
+    params.matrix_n = checked_u32(Dv, tag, out);
+    params.matrix_k = checked_u32(Hv, tag, out);
+    params.lhs_offset = checked_item_offset(q, q.size(), tag, out);
+    params.rhs_offset = checked_item_offset(k, k.size(), tag, out);
+    params.aux_size = checked_item_offset(v, v.size(), tag, out);
+    params.aux_offset = checked_item_offset(beta, beta.size(), tag, out);
+    params.output_offset = checked_item_offset(out, out.size(), tag, out);
+    params.shape[0] = checked_item_offset(g, g.size(), tag, out);
+    params.shape[1] = checked_item_offset(h0, h0.size(), tag, out);
+    params.shape[2] = checked_item_offset(hf, hf.size(), tag, out);
+    params.dims = static_cast<uint32_t>(T);
+    // Scalar g only (ndim gate); bit2 selects the f32 gate load.
+    params.flags = (g.dtype() == float32 ? 4u : 0u);
+    std::array<omarchy::ComputeBinding, 11> bindings{
+        binding(q),      // 0 QBuf
+        binding(k),      // 1 KBuf
+        binding(v),      // 2 VBuf
+        binding(g),      // 3 GBuf
+        binding(beta),   // 4 BBuf
+        binding(h0),     // 5 SIn
+        binding(out),    // 6 YBuf
+        binding(hf),     // 7 SOut
+        binding(out),    // 8 MBuf - unused (maskless gate)
+        binding(g),      // 9 GBufF - unused when g is bf16
+        binding(out)};   // 10 Snap - unused (single pass)
+    encoder.dispatch_compute(
+        omarchy::ComputeKernel::GatedDeltaPrefillCoopmatBF16,
+        bindings,
+        params,
+        static_cast<uint32_t>(Hv),
+        Dv / 32,
+        1);
+    return;
+  }
 
   // Chunked two-pass scan: pass 0 (one workgroup per head) computes the
   // per-chunk initial states into a snapshot scratch; pass 1 (heads x

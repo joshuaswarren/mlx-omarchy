@@ -279,6 +279,7 @@
 #include "sdpa_decode_native_p2_f16.h"
 #include "gated_delta_decode_bf16.h"
 #include "gated_delta_prefill_bf16.h"
+#include "gated_delta_prefill_coopmat_bf16.h"
 #include "qmm_tile_bf16.h"
 #include "qmm_tile_f16.h"
 #include "qmm_tile_rb_f16.h"
@@ -1244,6 +1245,10 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {gated_delta_decode_bf16, gated_delta_decode_bf16_size};
     case ComputeKernel::GatedDeltaPrefillBF16:
       return {gated_delta_prefill_bf16, gated_delta_prefill_bf16_size};
+    case ComputeKernel::GatedDeltaPrefillCoopmatBF16:
+      return {
+          gated_delta_prefill_coopmat_bf16,
+          gated_delta_prefill_coopmat_bf16_size};
     case ComputeKernel::QmmPrefillFmaF16:
       return {qmm_fma_f16, qmm_fma_f16_size};
     case ComputeKernel::MatmulBF16Coopmat:
