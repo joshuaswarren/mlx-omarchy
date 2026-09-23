@@ -1,0 +1,20 @@
+# Route mlx-lm GDN decode (T == 1) to mx.fast.gated_delta_update_raw when
+# the wheel ships the raw-gates decode fast path: the sigmoid/exp/softplus
+# gate chain rides into the fused kernel prologue instead of an eager scan.
+# Self-guards on hasattr(gated_delta_update_raw); applies after
+# mlx-lm-gated-delta-fast-route.patch. Receipts: 2026-09-23-gdn-hostfix,
+# jw16decode lane (2026-09-23): ~+72% decode vs the eager composed route
+# on stock stacks.
+--- a/mlx_lm/models/gated_delta.py
++++ b/mlx_lm/models/gated_delta.py
+@@ -281,6 +281,10 @@
+     if not use_kernel or mx.default_device() != mx.gpu:
+         return gated_delta_ops(q, k, v, g, beta, state, mask)
+     if hasattr(mx.fast, "gated_delta_update"):
++        if q.shape[1] == 1 and hasattr(mx.fast, "gated_delta_update_raw"):
++            return mx.fast.gated_delta_update_raw(
++                q, k, v, a, b, A_log, dt_bias, state, mask
++            )
+         out, st = mx.fast.gated_delta_update(q, k, v, g, beta, state, mask)
+         return out, st
+     return gated_delta_kernel(q, k, v, g, beta, state, mask)

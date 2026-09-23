@@ -4,6 +4,10 @@
 # GDN fast route: ON by default. Routes gated-delta updates to
 # mx.fast.gated_delta_update (provided by the mlx-omarchy wheel); falls
 # back to the upstream kernel when the entry point is absent.
+# GDN raw route: ON by default. Decode steps (T == 1) additionally route
+# to mx.fast.gated_delta_update_raw when the wheel ships it, folding the
+# gate chain into the fused kernel prologue; falls back to the composed
+# fast route when the entry point is absent.
 # Conv-ring: OFF by default (decode-only experimental optimization);
 # set MLX_OMARCHY_CONV_RING=1 to enable.
 #
@@ -32,6 +36,7 @@ apply() {
 }
 
 apply mlx-lm-gated-delta-fast-route.patch
+apply mlx-lm-gated-delta-raw.patch
 if [[ "${MLX_OMARCHY_CONV_RING:-0}" == 1 ]]; then
   apply mlx-lm-convring.patch
 else
