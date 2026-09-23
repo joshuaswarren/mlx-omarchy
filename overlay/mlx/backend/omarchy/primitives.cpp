@@ -10436,15 +10436,41 @@ void GatedDeltaUpdate::eval_gpu(
   array q = inputs.at(0);
   array k = inputs.at(1);
   array v = inputs.at(2);
-  array g = inputs.at(3);
-  array beta = inputs.at(4);
-  array h0 = inputs.at(5);
-  const bool has_mask = inputs.size() > 6;
+  // Raw-gates mode: (q, k, v, a, b, A_log, dt_bias, state[, mask]); the
+  // gate chain is computed in the decode kernel's prologue.
+  // Precomputed-gates mode: (q, k, v, g, beta, state[, mask]).
+  const bool raw_gates_mode = raw_gates();
+  // Placeholder-initialized (never dereferenced in the unused mode).
+  array a_in = array(false);
+  array b_in = array(false);
+  array A_log = array(false);
+  array dt_bias = array(false);
+  array g = array(false);
+  array beta = array(false);
+  array h0 = array(false);
   std::optional<array> mask_storage;
-  if (has_mask) {
-    mask_storage = inputs.at(6);
+  const array* mask = nullptr;
+  bool has_mask = false;
+  if (raw_gates_mode) {
+    a_in = inputs.at(3);
+    b_in = inputs.at(4);
+    A_log = inputs.at(5);
+    dt_bias = inputs.at(6);
+    h0 = inputs.at(7);
+    has_mask = inputs.size() > 8;
+    if (has_mask) {
+      mask_storage = inputs.at(8);
+    }
+  } else {
+    g = inputs.at(3);
+    beta = inputs.at(4);
+    h0 = inputs.at(5);
+    has_mask = inputs.size() > 6;
+    if (has_mask) {
+      mask_storage = inputs.at(6);
+    }
   }
-  const array* mask = has_mask ? &*mask_storage : nullptr;
+  mask = has_mask ? &*mask_storage : nullptr;
 
   int B = q.shape(0);
   int T = q.shape(1);
@@ -10455,20 +10481,33 @@ void GatedDeltaUpdate::eval_gpu(
 
   bool fused_ready = B == 1 && Hk == Hv && Dk == 128 && Dv == 128 &&
       q.dtype() == bfloat16 && k.dtype() == bfloat16 &&
-      v.dtype() == bfloat16 && beta.dtype() == bfloat16 &&
-      h0.dtype() == float32 &&
+      v.dtype() == bfloat16 && h0.dtype() == float32 &&
       outputs.at(0).dtype() == bfloat16 && outputs.at(1).dtype() == float32;
-  bool decode_shape = fused_ready && T == 1 && g.dtype() == bfloat16;
+  if (raw_gates_mode) {
+    // Raw-gates contract: a/b/A_log/dt_bias bf16 (the Qwen3.8 checkpoint
+    // stores dt_bias bf16); decode only (the fast.cpp caller routes
+    // T > 1 to the precomputed-gates scan).
+    fused_ready = fused_ready && T == 1 && a_in.dtype() == bfloat16 &&
+        b_in.dtype() == bfloat16 && A_log.dtype() == bfloat16 &&
+        dt_bias.dtype() == bfloat16;
+  } else {
+    fused_ready = fused_ready && beta.dtype() == bfloat16;
+  }
+  bool decode_shape = fused_ready && T == 1 &&
+      (raw_gates_mode || g.dtype() == bfloat16);
   // compute_g produces float32 gates (exp of f32), so the fused path
-  // takes g in f32 or bf16; the shader selects by flag bit2.
-  bool g_ok = g.dtype() == bfloat16 || g.dtype() == float32;
-  fused_ready = fused_ready && g_ok;
+  // takes g in f32 or bf16; the shader selects by flag bit2. Raw-gates
+  // mode carries no precomputed g.
+  if (!raw_gates_mode) {
+    bool g_ok = g.dtype() == bfloat16 || g.dtype() == float32;
+    fused_ready = fused_ready && g_ok;
+  }
   // Prefill scan: same contract as the decode kernel extended over the
   // token axis (one workgroup per head, sequential scan; state rides hf).
   // g is [B,T,H] (scalar decay) or [B,T,H,Dk] (per-channel decay; the
   // kernel takes a push-constant flag).
-  bool prefill_shape =
-      fused_ready && T > 1 && (g.ndim() == 3 || g.ndim() == 4) &&
+  bool prefill_shape = !raw_gates_mode && fused_ready && T > 1 &&
+      (g.ndim() == 3 || g.ndim() == 4) &&
       outputs.at(0).shape() == q.shape();
   if (decode_shape || prefill_shape) {
     // Strided inputs (in-model callers pass v sliced from a fused qkv
@@ -10544,11 +10583,22 @@ void GatedDeltaUpdate::eval_gpu(
       q = dense[0];
       k = dense[1];
       v = dense[2];
-      g = dense[3];
-      beta = dense[4];
-      h0 = dense[5];
-      if (has_mask) {
-        mask_storage = dense[6];
+      if (raw_gates_mode) {
+        a_in = dense[3];
+        b_in = dense[4];
+        A_log = dense[5];
+        dt_bias = dense[6];
+        h0 = dense[7];
+        if (has_mask) {
+          mask_storage = dense[8];
+        }
+      } else {
+        g = dense[3];
+        beta = dense[4];
+        h0 = dense[5];
+        if (has_mask) {
+          mask_storage = dense[6];
+        }
       }
     }
   }
@@ -10568,21 +10618,41 @@ void GatedDeltaUpdate::eval_gpu(
     params.lhs_offset = checked_item_offset(q, q.size(), tag, out);
     params.rhs_offset = checked_item_offset(k, k.size(), tag, out);
     params.aux_size = checked_item_offset(v, v.size(), tag, out);
-    params.aux_offset = checked_item_offset(beta, beta.size(), tag, out);
     params.output_offset = checked_item_offset(out, out.size(), tag, out);
-    params.shape[0] = checked_item_offset(g, g.size(), tag, out);
     params.shape[1] = checked_item_offset(h0, h0.size(), tag, out);
     params.shape[2] = checked_item_offset(hf, hf.size(), tag, out);
     params.dims = static_cast<uint32_t>(T);
-    std::array<omarchy::ComputeBinding, 8> bindings{
-        binding(q),
-        binding(k),
-        binding(v),
-        binding(g),
-        binding(beta),
-        binding(h0),
-        binding(out),
-        binding(hf)};
+    std::array<omarchy::ComputeBinding, 10> bindings{
+        binding(q),    // 0 QBuf
+        binding(k),    // 1 KBuf
+        binding(v),    // 2 VBuf
+        binding(q),    // 3 GBuf/ABuf - overridden below (g | a)
+        binding(k),    // 4 BBuf - overridden below (beta | b)
+        binding(h0),   // 5 SIn
+        binding(out),  // 6 YBuf
+        binding(hf),   // 7 SOut
+        binding(q),    // 8 ALogBuf - overridden in raw-gates mode
+        binding(k)};   // 9 DtBuf - overridden in raw-gates mode
+    if (raw_gates_mode) {
+      // Shader slots: 3 = a, 4 = b, 5 = state in, 6 = out, 7 = state out,
+      // 8 = A_log, 9 = dt_bias. A_log/dt_bias item offsets ride
+      // in_strides[0..1]; flag bit 8 selects the raw-gates prologue.
+      params.aux_offset = checked_item_offset(b_in, b_in.size(), tag, out);
+      params.shape[0] = checked_item_offset(a_in, a_in.size(), tag, out);
+      params.in_strides[0] = checked_item_offset(A_log, A_log.size(), tag, out);
+      params.in_strides[1] =
+          checked_item_offset(dt_bias, dt_bias.size(), tag, out);
+      params.flags |= 8u;
+      bindings[3] = binding(a_in);
+      bindings[4] = binding(b_in);
+      bindings[8] = binding(A_log);
+      bindings[9] = binding(dt_bias);
+    } else {
+      params.aux_offset = checked_item_offset(beta, beta.size(), tag, out);
+      params.shape[0] = checked_item_offset(g, g.size(), tag, out);
+      bindings[3] = binding(g);
+      bindings[4] = binding(beta);
+    }
     encoder.dispatch_compute(
         omarchy::ComputeKernel::GatedDeltaDecodeBF16,
         bindings,
