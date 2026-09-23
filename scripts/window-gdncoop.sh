@@ -7,6 +7,8 @@ W=/var/tmp/gdncoop
 LOG=$W/window.log
 mkdir -p "$W"
 exec >>"$LOG" 2>&1
+WINDOW_DONE=0
+trap 'if [ "$WINDOW_DONE" = 0 ]; then echo "=== gdncoop window end ABNORMAL $(date -Is) ==="; fi' EXIT
 echo "=== gdncoop window start $(date -Is) ==="
 uptime
 
@@ -63,9 +65,9 @@ echo "DIAG_WHL=$DIAG_WHL"; echo "REL_WHL=$REL_WHL"
 rm -rf "$W/venv-diag" "$W/venv-rel"
 cp -a /var/tmp/v072-venv-fused "$W/venv-diag"
 cp -a /var/tmp/v072-venv-fused "$W/venv-rel"
-"$W/venv-diag/bin/pip" install -q --force-reinstall --no-deps "$DIAG_WHL" \
+"$W/venv-diag/bin/pip" install -q --ignore-installed --no-deps "$DIAG_WHL" \
   || { echo DIAG-VENV-INSTALL-FAIL; sudo systemctl start llm-inference; exit 1; }
-"$W/venv-rel/bin/pip" install -q --force-reinstall --no-deps "$REL_WHL" \
+"$W/venv-rel/bin/pip" install -q --ignore-installed --no-deps "$REL_WHL" \
   || { echo REL-VENV-INSTALL-FAIL; sudo systemctl start llm-inference; exit 1; }
 "$W/venv-diag/bin/python" -c "import mlx.core as mx; v = mx.__version__; print('diag wheel:', v); assert 'diag' in v, 'NOT the diag wheel'"
 "$W/venv-rel/bin/python" -c "import mlx.core as mx; print('rel wheel:', mx.__version__)"
@@ -201,4 +203,5 @@ curl -s --max-time 60 http://127.0.0.1:8002/v1/chat/completions \
   -d '{"model":"default","messages":[{"role":"user","content":"Say OK."}],"max_tokens":8}' \
   > "$W/completion.json"
 grep -oE '"(content|finish_reason)"[^,}]*' "$W/completion.json" | head -4
+WINDOW_DONE=1
 echo "=== gdncoop window end $(date -Is) ==="
