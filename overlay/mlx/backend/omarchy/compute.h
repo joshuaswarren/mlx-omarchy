@@ -665,6 +665,13 @@ enum class ComputeKernel : uint16_t {
   // f32 coopmat tiles; square bf16 Dk=Dv=128, Hk=Hv, maskless, scalar g,
   // coopmat device. Append-only profile id.
   GatedDeltaPrefillCoopmatBF16,
+  // Fused RMSNorm + SwiGLU-gate / RMSNorm + scalar-multiply epilogues
+  // for the GDN decode chain (bf16). Mode 0 replaces
+  // FastRmsNormBF16 + CastBF16F32 x2 + FusedChainF32(sigmoid,mul,mul)
+  // + CastF32BF16; mode 1 replaces FastRmsNormBF16 +
+  // ElementwiseBF16(mul). Same row reduction as fast_norm.comp.
+  // Append-only profile id.
+  FastNormGatedBF16,
   Count,
 };
 

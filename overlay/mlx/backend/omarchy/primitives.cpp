@@ -10975,6 +10975,110 @@ void RMSNorm::eval_gpu(
       std::min(params.output_size, omarchy::kMaxComputeGroupCountX));
 }
 
+bool RMSNormGated::use_fallback(Stream s) {
+  return false;
+}
+
+// Fused GDN decode chain epilogue: rms_norm + silu(gate)*normed in one
+// dispatch (mode 0). Bit-exact to the composed
+// FastRmsNormBF16 -> CastBF16F32 x2 -> FusedChainF32(sigmoid,mul,mul)
+// -> CastF32BF16 sequence because every intermediate the composed path
+// rounds to bf16 is rounded identically here; see fast_norm_gated.comp.
+void RMSNormGated::eval_gpu(
+    const std::vector<array>& inputs,
+    std::vector<array>& outputs) {
+  const std::string tag = name();
+  array& out = outputs.at(0);
+  const array& in_x = inputs.at(0);
+  const array& in_gate = inputs.at(1);
+  const array& in_w = inputs.at(2);
+  auto s = stream();
+  auto& encoder = omarchy::get_command_encoder(s);
+  std::optional<array> x_temp;
+  std::optional<array> gate_temp;
+  std::optional<array> w_temp;
+  const array& x =
+      ensure_dense(in_x, in_x.flags().row_contiguous, x_temp, encoder, s);
+  const array& gate = ensure_dense(
+      in_gate, in_gate.flags().row_contiguous, gate_temp, encoder, s);
+  const array& w =
+      ensure_dense(in_w, in_w.flags().row_contiguous, w_temp, encoder, s);
+  require_norm_input(tag, x, out, encoder);
+  require_norm_parameter(tag, w, x.shape(-1), out);
+  if (out.dtype() != bfloat16) {
+    omarchy::unsupported(tag + " output dtype", out);
+  }
+  if (gate.shape() != x.shape() || gate.dtype() != x.dtype()) {
+    omarchy::unsupported(tag + " gate shape/dtype", out);
+  }
+  size_t row_length = x.shape(-1);
+  out.set_data(allocate_omarchy(out.nbytes()));
+  if (out.size() == 0) {
+    return;
+  }
+  auto params = norm_params(x, row_length, eps_, tag, out);
+  params.operation = 0u;
+  params.rhs_offset = checked_item_offset(w, w.size(), tag, out);
+  params.output_offset = checked_item_offset(out, out.size(), tag, out);
+  params.lhs_size = checked_u32(w.size(), tag, out);
+  params.aux_offset = checked_item_offset(gate, gate.size(), tag, out);
+  std::array<omarchy::ComputeBinding, 4> bindings{
+      binding(x), binding(w), binding(gate), binding(out)};
+  encoder.dispatch_compute(
+      omarchy::ComputeKernel::FastNormGatedBF16,
+      bindings,
+      params,
+      std::min(params.output_size, omarchy::kMaxComputeGroupCountX));
+}
+
+bool RMSNormScaled::use_fallback(Stream s) {
+  return false;
+}
+
+// Fused rms_norm + scalar multiply (mode 1): replaces
+// FastRmsNormBF16 + ElementwiseBF16(mul) with the bf16-rounded scalar
+// the graph's promote cast materializes; the shader re-rounds
+// params.beta with the same RNE, so no scalar buffer is bound.
+void RMSNormScaled::eval_gpu(
+    const std::vector<array>& inputs,
+    std::vector<array>& outputs) {
+  const std::string tag = name();
+  array& out = outputs.at(0);
+  const array& in_x = inputs.at(0);
+  const array& in_w = inputs.at(1);
+  auto s = stream();
+  auto& encoder = omarchy::get_command_encoder(s);
+  std::optional<array> x_temp;
+  std::optional<array> w_temp;
+  const array& x =
+      ensure_dense(in_x, in_x.flags().row_contiguous, x_temp, encoder, s);
+  const array& w =
+      ensure_dense(in_w, in_w.flags().row_contiguous, w_temp, encoder, s);
+  require_norm_input(tag, x, out, encoder);
+  require_norm_parameter(tag, w, x.shape(-1), out);
+  if (out.dtype() != bfloat16) {
+    omarchy::unsupported(tag + " output dtype", out);
+  }
+  size_t row_length = x.shape(-1);
+  out.set_data(allocate_omarchy(out.nbytes()));
+  if (out.size() == 0) {
+    return;
+  }
+  auto params = norm_params(x, row_length, eps_, tag, out);
+  params.operation = 1u;
+  params.beta = scale_;
+  params.rhs_offset = checked_item_offset(w, w.size(), tag, out);
+  params.output_offset = checked_item_offset(out, out.size(), tag, out);
+  params.lhs_size = checked_u32(w.size(), tag, out);
+  std::array<omarchy::ComputeBinding, 4> bindings{
+      binding(x), binding(w), binding(out), binding(out)};
+  encoder.dispatch_compute(
+      omarchy::ComputeKernel::FastNormGatedBF16,
+      bindings,
+      params,
+      std::min(params.output_size, omarchy::kMaxComputeGroupCountX));
+}
+
 bool LayerNorm::use_fallback(Stream s) {
   return false;
 }
