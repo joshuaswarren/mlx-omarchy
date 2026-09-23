@@ -11,6 +11,7 @@ A/B gating and qualification, not for normal operation.
 |---|---|---|
 | `MLX_OMARCHY_KV_DIRECT` | on (`1`) | Direct decode KV window storage in fused chains. `0` composes ops; output-neutral. |
 | `MLX_OMARCHY_NO_COOPMAT` | unset (route on) | `1` disables the bf16 coopmat qmm-prefill route; output-neutral. |
+| `MLX_OMARCHY_NO_COOPMAT_GDN` | unset (route on) | `1` forces the GDN prefill T>=64 token chunks onto the two-pass scan kernel instead of the single-pass coopmat kernel (2026-09-23 install, 2.86x prefill512, receipts 2026-09-23-gdn-coopmat-install); output-neutral at the logit gate. |
 | `MLX_OMARCHY_QMM_VEC_Q4_WORD` | on | Packed q4 word path in qmm gemv (xpack). `0` reverts to scalar; may change which ulp-level near-ties flip. |
 | `MLX_OMARCHY_QMM_TILE`, `_QMM_TILE_RB`, `_QMM_COOPMAT_WG_PER_CORE` | tuned defaults | Tile/workgroup sizing overrides for qualification. |
 | `GDN_FALLBACK_DEBUG` | unset | Prints fused-eligibility inputs for the GDN prefill route when set. |
