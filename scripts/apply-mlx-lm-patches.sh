@@ -15,7 +15,17 @@
 set -euo pipefail
 
 VENV="${1:?usage: apply-mlx-lm-patches.sh /path/to/venv}"
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# In-repo the script lives at <root>/scripts/ (patches one level up);
+# installed it lives at $PREFIX root with patches/ beside it.
+PDIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [[ -d "$PDIR/patches" ]]; then
+  ROOT="$PDIR"
+elif [[ -d "$PDIR/../patches" ]]; then
+  ROOT="$(cd "$PDIR/.." && pwd)"
+else
+  echo "patches/ not found next to $PDIR" >&2
+  exit 3
+fi
 SITE="$(dirname "$(ls -d "$VENV"/lib/python3.*/site-packages/mlx_lm 2>/dev/null | head -n 1 || true)")"
 [[ -d "$SITE/mlx_lm" ]] || { echo "mlx_lm not found under $VENV" >&2; exit 3; }
 
