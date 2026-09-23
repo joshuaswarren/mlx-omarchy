@@ -13,6 +13,10 @@
       "island-select-8head": {
         "manifest.json": "121f100085927c8f7b8eb1ecfab37cca22b5461c59327c3f5c2eb1c106ebced8",
         "program-0.anec": "0879c6277cf3d89888735ea69ef96d29fb492d43eacfe42a0f154f8f0f91c8eb"
+      },
+      "parakeet-encoder-whole": {
+        "manifest.json": "08769793f8ee3299381f499bf90537d620e23635000a6dbc54b9b5c6a55a54ab",
+        "program-0.anec": "13c744231524d440b0a774155343df9ade0bbcbc37edc4b1ccf9698e580d5453"
       }
     },
     "libane": {
@@ -357,9 +361,10 @@
   "provenance": {
     "bundles": "mil-hwxc b61de468d1ca37b687d5fa371e489be16cd84ed1 recompiles; byte-identical to receipts/2026-09-14-encoder-split-plan/bundles",
     "libane": "joshuaswarren/omarchy-ane df5c553f3f60509509257f8d4d3e6ca4057609f0 libane/ane.c built without LIBANE_CONFIG_STRICT_BIND (gcc -shared -fPIC -O2 -Wall; island bundles bind some surfaces positionally, so strict refusal must stay off; per-container tile-count unit via __ane_init_shift); byte-reproducible on jw16",
-    "whole_encoder": "opt-in whole-program Parakeet encoder bundle (manifest v4, name parakeet-encoder-whole, operation whole-encoder, 13701 TDs): program-0.anec sha256 13c744231524d440b0a774155343df9ade0bbcbc37edc4b1ccf9698e580d5453 from hwx graph 020428fca545648f... via tools/hwxv2-to-anec; enabled by pointing MLX_OMARCHY_WHOLE_ENCODER_BUNDLE at the bundle directory — not a shipped wheel asset",
+    "whole_encoder": "shipped whole-program Parakeet encoder bundle (manifest v4, name parakeet-encoder-whole, operation whole-encoder, 13701 TDs): program-0.anec sha256 13c744231524d440b0a774155343df9ade0bbcbc37edc4b1ccf9698e580d5453 from hwx graph 020428fca545648f... via tools/hwxv2-to-anec; installed as a wheel asset under bundles/parakeet-encoder-whole and auto-discovered from the installed share root (MLX_OMARCHY_WHOLE_ENCODER_BUNDLE override still wins; MLX_OMARCHY_WHOLE_ENCODER=0 forces the islands)",
     "note": "runtime refuses to start when any shipped asset hash does not match",
-    "receipt": "receipts/2026-09-22-encoder-whole-program.md"
+    "receipt": "receipts/2026-09-22-encoder-whole-program.md",
+    "composed": "integrated-e2e composition: whole-program encoder (868fa7f1e/f45f5f5ea) + defer-commit knob (agent/parakeet-defer-commit eval.cpp, joint-batching excluded as measured-negative) + host-loop TDT already in base (env-gated) + soundfile audio decode (venv package)"
   },
   "schema": "mlx-omarchy.parakeet-runtime-pin.v1"
 }

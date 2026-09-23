@@ -732,6 +732,10 @@ def _discover_whole_bundle() -> Path | None:
     roots = [
         Path(__file__).resolve().parents[2] / "mlx-omarchy-parakeet" / "share" /
         "mlx-omarchy" / "parakeet-1" / "bundles",
+        # installed wheel layout: site-packages/mlx/coreml/vulkan_encoder.py
+        # -> site-packages/mlx/share/mlx-omarchy/parakeet-1/bundles
+        Path(__file__).resolve().parents[1] / "share" / "mlx-omarchy" /
+        "parakeet-1" / "bundles",
     ]
     try:
         from coreml.compiled_cache import default_cache_root
