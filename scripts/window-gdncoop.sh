@@ -65,9 +65,9 @@ echo "DIAG_WHL=$DIAG_WHL"; echo "REL_WHL=$REL_WHL"
 rm -rf "$W/venv-diag" "$W/venv-rel"
 cp -a /var/tmp/v072-venv-fused "$W/venv-diag"
 cp -a /var/tmp/v072-venv-fused "$W/venv-rel"
-"$W/venv-diag/bin/pip" install -q --ignore-installed --no-deps "$DIAG_WHL" \
+"$W/venv-diag/bin/python" -m pip install -q --ignore-installed --no-deps "$DIAG_WHL" \
   || { echo DIAG-VENV-INSTALL-FAIL; sudo systemctl start llm-inference; exit 1; }
-"$W/venv-rel/bin/pip" install -q --ignore-installed --no-deps "$REL_WHL" \
+"$W/venv-rel/bin/python" -m pip install -q --ignore-installed --no-deps "$REL_WHL" \
   || { echo REL-VENV-INSTALL-FAIL; sudo systemctl start llm-inference; exit 1; }
 "$W/venv-diag/bin/python" -c "import mlx.core as mx; v = mx.__version__; print('diag wheel:', v); assert 'diag' in v, 'NOT the diag wheel'"
 "$W/venv-rel/bin/python" -c "import mlx.core as mx; print('rel wheel:', mx.__version__)"
