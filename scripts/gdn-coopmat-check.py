@@ -29,7 +29,8 @@ import tempfile
 
 import numpy as np
 
-T_CASES = [512, 520, 7]
+T_CASES = [512, 520, 68]  # 68 = 8 full C=8 chunks + a 4-token tail (coopmat
+                          # dispatch covers T >= 64; 7 now routes to scan)
 SEED = 7
 
 CHILD = r'''

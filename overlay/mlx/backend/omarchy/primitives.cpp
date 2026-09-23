@@ -10676,13 +10676,18 @@ void GatedDeltaUpdate::eval_gpu(
   // (head, Dv/32 slice), four simdgroups each holding an 8-row state
   // slice as sixteen 8x8 f32 coopmat tiles, so the state never reaches
   // scratch. Gated to the square bf16 maskless scalar-g shape on coopmat
-  // devices; everything else keeps the two-pass scan below. The kill
-  // switch (and A/B lever) is MLX_OMARCHY_NO_COOPMAT_GDN=1.
+  // devices with T >= kGdnCoopmatMinTokens: the chunk walk has fixed
+  // per-chunk cost that loses to the scan on short prefills (ttft
+  // prompts are ~12 tokens; 512-token prefill wins ~2.8x). Metal makes
+  // the same trade with its GATED_DELTA_THRESH default. Everything else
+  // keeps the two-pass scan below. The kill switch (and A/B lever) is
+  // MLX_OMARCHY_NO_COOPMAT_GDN=1.
+  constexpr uint32_t kGdnCoopmatMinTokens = 64;
   static const bool coopmat_gdn_disabled =
       omarchy::env_flag("MLX_OMARCHY_NO_COOPMAT_GDN");
   const auto& gdn_caps = encoder.device().capabilities();
-  const bool gdn_coopmat = fused_ready && T > 1 && !has_mask &&
-      g.ndim() == 3 && !coopmat_gdn_disabled &&
+  const bool gdn_coopmat = fused_ready && T >= kGdnCoopmatMinTokens &&
+      !has_mask && g.ndim() == 3 && !coopmat_gdn_disabled &&
       gdn_caps.cooperative_matrix_f32_8 && gdn_caps.subgroup_size == 32u &&
       kGdnCoopmatSharedBytes <= gdn_caps.max_compute_shared_memory_size;
   if (gdn_coopmat) {
