@@ -34,24 +34,40 @@ git fetch /var/tmp/gdncoop/gdn-coopmat-full.bundle \
 git worktree add /var/tmp/gdncoop-wt agent/gdn-coopmat 2>/dev/null || true
 cd /var/tmp/gdncoop-wt
 git log --oneline -1
-scripts/build-wheel.sh --diagnostics >"$W/build-diag.log" 2>&1 \
-  && echo DIAG-BUILD-OK || { echo DIAG-BUILD-FAIL; tail -20 "$W/build-diag.log"; }
-scripts/build-wheel.sh >"$W/build-rel.log" 2>&1 \
-  && echo REL-BUILD-OK || { echo REL-BUILD-FAIL; tail -20 "$W/build-rel.log"; }
-ls -la dist/ 2>/dev/null
-sha256sum dist/*.whl 2>/dev/null | tee "$W/wheel-shas.txt"
-DIAG_WHL=$(ls dist/*diag*.whl 2>/dev/null | head -1)
-REL_WHL=$(ls dist/mlx_omarchy-*.whl 2>/dev/null | grep -v diag | head -1)
+mkdir -p "$W/wheels"
+DIAG_WHL=$(ls "$W/wheels"/*diag*.whl 2>/dev/null | head -1)
+if [ -z "$DIAG_WHL" ]; then
+  scripts/build-wheel.sh --diagnostics >"$W/build-diag.log" 2>&1 \
+    && echo DIAG-BUILD-OK || { echo DIAG-BUILD-FAIL; tail -20 "$W/build-diag.log"; }
+  cp dist/*.whl "$W/wheels"/ 2>/dev/null
+  DIAG_WHL=$(ls "$W/wheels"/*diag*.whl 2>/dev/null | head -1)
+else
+  echo DIAG-BUILD-SKIPPED "$DIAG_WHL"
+fi
+REL_WHL=$(ls "$W/wheels"/mlx_omarchy-*.whl 2>/dev/null | grep -v diag | head -1)
+if [ -z "$REL_WHL" ]; then
+  scripts/build-wheel.sh >"$W/build-rel.log" 2>&1 \
+    && echo REL-BUILD-OK || { echo REL-BUILD-FAIL; tail -20 "$W/build-rel.log"; }
+  cp dist/*.whl "$W/wheels"/ 2>/dev/null
+  REL_WHL=$(ls "$W/wheels"/mlx_omarchy-*.whl 2>/dev/null | grep -v diag | head -1)
+else
+  echo REL-BUILD-SKIPPED "$REL_WHL"
+fi
+ls -la "$W/wheels"/ 2>/dev/null
+sha256sum "$W/wheels"/*.whl 2>/dev/null | tee "$W/wheel-shas.txt"
 echo "DIAG_WHL=$DIAG_WHL"; echo "REL_WHL=$REL_WHL"
+[ -n "$DIAG_WHL" ] && [ -n "$REL_WHL" ] || { echo WHEELS-MISSING; sudo systemctl start llm-inference; exit 1; }
 
 # Test venvs: clones of the patched production venv (mlx-lm 0.31.3 with the
 # gated-delta fast-route patch already applied), candidate wheel forced in.
 rm -rf "$W/venv-diag" "$W/venv-rel"
 cp -a /var/tmp/v072-venv-fused "$W/venv-diag"
 cp -a /var/tmp/v072-venv-fused "$W/venv-rel"
-"$W/venv-diag/bin/pip" install -q --force-reinstall --no-deps "$DIAG_WHL"
-"$W/venv-rel/bin/pip" install -q --force-reinstall --no-deps "$REL_WHL"
-"$W/venv-diag/bin/python" -c "import mlx.core as mx; print('diag wheel:', mx.__version__)"
+"$W/venv-diag/bin/pip" install -q --force-reinstall --no-deps "$DIAG_WHL" \
+  || { echo DIAG-VENV-INSTALL-FAIL; sudo systemctl start llm-inference; exit 1; }
+"$W/venv-rel/bin/pip" install -q --force-reinstall --no-deps "$REL_WHL" \
+  || { echo REL-VENV-INSTALL-FAIL; sudo systemctl start llm-inference; exit 1; }
+"$W/venv-diag/bin/python" -c "import mlx.core as mx; v = mx.__version__; print('diag wheel:', v); assert 'diag' in v, 'NOT the diag wheel'"
 "$W/venv-rel/bin/python" -c "import mlx.core as mx; print('rel wheel:', mx.__version__)"
 
 # ---------- 2. shaderdb stats ----------

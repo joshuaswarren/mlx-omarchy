@@ -66,7 +66,8 @@ for T in t_cases:
         for name, x in (("q", q), ("k", k), ("v", v), ("beta", beta), ("h0", h0)):
             np.save(os.path.join(outdir, f"{name}{T}.npy"),
                     np.asarray(x.astype(mx.float32)))
-        np.save(os.path.join(outdir, f"g{T}.npy"), np.asarray(g).astype(np.float32))
+        np.save(os.path.join(outdir, f"g{T}.npy"),
+                np.asarray(g.astype(mx.float32)))
 print("child ok")
 '''
 
