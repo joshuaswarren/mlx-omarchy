@@ -139,9 +139,11 @@ EOF
 # ---------- 6. teacher-forced logits ----------
 GL=$W/logits_gl.py
 export MLX_OMARCHY_NO_COOPMAT_GDN=1
-"$W/venv-rel/bin/python" "$GL" "$PROMPTS" "$W/logits-scan.json" 32 >/dev/null 2>&1
+"$W/venv-rel/bin/python" "$GL" "$PROMPTS" "$W/logits-scan.json" 32 >"$W/logits-scan.log" 2>&1 \
+  || { echo LOGITS-SCAN-FAIL; tail -5 "$W/logits-scan.log"; }
 unset MLX_OMARCHY_NO_COOPMAT_GDN
-"$W/venv-rel/bin/python" "$GL" "$PROMPTS" "$W/logits-coop.json" 32 >/dev/null 2>&1
+"$W/venv-rel/bin/python" "$GL" "$PROMPTS" "$W/logits-coop.json" 32 >"$W/logits-coop.log" 2>&1 \
+  || { echo LOGITS-COOP-FAIL; tail -5 "$W/logits-coop.log"; }
 "$W/venv-rel/bin/python" "$W/logits_cmp.py" "$W/logits-scan.json" "$W/logits-coop.json" | tee "$W/logits-verdict.txt"
 
 # ---------- 7. gate + install ----------

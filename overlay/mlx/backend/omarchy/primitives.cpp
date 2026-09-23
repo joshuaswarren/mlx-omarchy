@@ -10682,7 +10682,7 @@ void GatedDeltaUpdate::eval_gpu(
       omarchy::env_flag("MLX_OMARCHY_NO_COOPMAT_GDN");
   const auto& gdn_caps = encoder.device().capabilities();
   const bool gdn_coopmat = fused_ready && T > 1 && !has_mask &&
-      g.ndim() == 2 && !coopmat_gdn_disabled &&
+      g.ndim() == 3 && !coopmat_gdn_disabled &&
       gdn_caps.cooperative_matrix_f32_8 && gdn_caps.subgroup_size == 32u &&
       kGdnCoopmatSharedBytes <= gdn_caps.max_compute_shared_memory_size;
   if (gdn_coopmat) {
@@ -10703,7 +10703,8 @@ void GatedDeltaUpdate::eval_gpu(
     params.shape[1] = checked_item_offset(h0, h0.size(), tag, out);
     params.shape[2] = checked_item_offset(hf, hf.size(), tag, out);
     params.dims = static_cast<uint32_t>(T);
-    // Scalar g only (ndim gate); bit2 selects the f32 gate load.
+    // Scalar g only: [B=1, T, Hv] (ndim gate; B==1 comes from fused_ready).
+    // Bit2 selects the f32 gate load.
     params.flags = (g.dtype() == float32 ? 4u : 0u);
     std::array<omarchy::ComputeBinding, 11> bindings{
         binding(q),      // 0 QBuf
