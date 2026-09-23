@@ -53,7 +53,11 @@ namespace mlx::core::omarchy {
 // timeline, so ordering with prior queue work is preserved.
 // Caps recorded work and pinned buffers per submission. Larger batches reduce
 // submit overhead but extend buffer lifetimes and watchdog exposure.
-inline constexpr int kBatchNodeBudget = 256;
+// 256 split a decode token's ~585-node graph into three submits with GPU
+// idle gaps between them (jwm1 decode profile, 2026-09-23); the byte budget
+// below remains the real cap for large-tensor graphs, so the node budget only
+// needs to stay above whole-decode-graph size.
+inline constexpr int kBatchNodeBudget = 4096;
 // Byte budget for the same batch: freed intermediates stay pinned in the
 // allocator quarantine until their batch submits and drains, so the open
 // batch may hold at most 1/16 of the allocator memory limit in such bytes
