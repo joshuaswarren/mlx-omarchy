@@ -665,6 +665,24 @@ enum class ComputeKernel : uint16_t {
   // f32 coopmat tiles; square bf16 Dk=Dv=128, Hk=Hv, maskless, scalar g,
   // coopmat device. Append-only profile id.
   GatedDeltaPrefillCoopmatBF16,
+  // Fused RMSNorm + SwiGLU-gate / RMSNorm + scalar-multiply epilogues
+  // for the GDN decode chain (bf16). Mode 0 replaces
+  // FastRmsNormBF16 + CastBF16F32 x2 + FusedChainF32(sigmoid,mul,mul)
+  // + CastF32BF16; mode 1 replaces FastRmsNormBF16 +
+  // ElementwiseBF16(mul). Same row reduction as fast_norm.comp.
+  // Append-only profile id.
+  FastNormGatedBF16,
+  // GDN decode conv: conv_input = concat(state, x) folded into the
+  // depthwise conv read (T == 1) with the shifted carry-out state
+  // written in-kernel. Replaces CopyGeneral x2 (concat halves) +
+  // ConvBF16 + the trailing contiguous state view. Tap body copied
+  // verbatim from conv.comp. Append-only profile id.
+  GdnConvDecodeBF16,
+  // The composition-exact bf16 decode arm at the Qwen3.8 full-attention
+  // query width (same shader source, -DSDPA_DIM=256; every f32 op and
+  // its order matches the composed path, so the route is bit-identical
+  // to the composition it replaces). Append-only profile id.
+  SdpaDecodeNativeBF16Hd256,
   Count,
 };
 

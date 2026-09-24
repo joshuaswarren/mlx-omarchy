@@ -11812,9 +11812,10 @@ void ScaledDotProductAttention::eval_gpu(
           kDecodeSubgroupFeatures;
   // The composition-exact bf16 arm uses no subgroup operations at all - its
   // per-thread work and barriers need only the 1024-thread workgroup and the
-  // 9,472 bytes of static shared the arm declares - so it gates on those
-  // alone and engages on any device that meets them, including software
-  // drivers, where its bit-identity against the composition is testable.
+  // static shared the arm declares (9,472 bytes at query width 64, 10,240 at
+  // the Qwen3.8 full-attention width 256) - so it gates on those alone and
+  // engages on any device that meets them, including software drivers, where
+  // its bit-identity against the composition is testable.
   // Perf-only shape gate: below 256 keys the arm's serial accumulation
   // loses to the composition (34.1 vs 31.2 ms/token at the short leg); at
   // and above it the arm wins (34.4 vs 34.7 at 262, 39.9 vs 43.3 at 1K).
@@ -11824,10 +11825,16 @@ void ScaledDotProductAttention::eval_gpu(
   // winning (>=262-key) regimes on the 16-wide tile boundary.
   constexpr uint32_t kDecodeBf16SharedBytes =
       (64u + 2048u + 256u) * sizeof(float);
+  constexpr uint32_t kDecodeBf16SharedBytesHd256 =
+      (256u + 2048u + 256u) * sizeof(float);
+  const uint32_t decode_bf16_shared_required = head_dim == 256
+      ? kDecodeBf16SharedBytesHd256
+      : kDecodeBf16SharedBytes;
   const bool decode_bf16_ready =
       decode_caps.max_compute_work_group_invocations >= 1024u &&
       decode_caps.max_compute_work_group_size[0] >= 1024u &&
-      decode_caps.max_compute_shared_memory_size >= kDecodeBf16SharedBytes;
+      decode_caps.max_compute_shared_memory_size >=
+          decode_bf16_shared_required;
   const bool decode_bf16_probe = q.dtype() == bfloat16;
   const bool decode_route_ready =
       decode_bf16_probe ? decode_bf16_ready : decode_subgroup_ready;
@@ -11835,7 +11842,9 @@ void ScaledDotProductAttention::eval_gpu(
       decode_route_ready && inputs.size() == 3 && !has_sinks_ &&
       !output_logsumexp_ && batch == 1 && q_len == 1 &&
       (q.dtype() == float16 || q.dtype() == bfloat16) &&
-      head_dim == 64 && v_dim == 64 && k_len > 0 &&
+      ((head_dim == 64 && v_dim == 64) ||
+          (decode_bf16_probe && head_dim == 256 && v_dim == 256)) &&
+      k_len > 0 &&
       (q.dtype() != bfloat16 ||
           (k_len >= uint32_t{256} && k_len <= uint32_t{2048})) &&
       q.strides()[3] == 1 && k.strides()[3] == 1 && v.strides()[3] == 1) {
@@ -11871,7 +11880,10 @@ void ScaledDotProductAttention::eval_gpu(
           encoder.device(),
           decode_caps,
           decode_subgroup_ready,
-          decode_bf16 ? "SdpaDecodeNativeBF16" : "SdpaDecodeNativeF16",
+          decode_bf16
+              ? (head_dim == 256 ? "SdpaDecodeNativeBF16Hd256"
+                                 : "SdpaDecodeNativeBF16")
+              : "SdpaDecodeNativeF16",
           "cooperative_matrix_fp32_8x8x8+workgroup_limits+"
           "shared_memory_limit_bytes",
           encoder.device().hardware_capabilities().cooperative_matrix_f32_8);
@@ -11915,8 +11927,11 @@ void ScaledDotProductAttention::eval_gpu(
       return;
     }
     encoder.dispatch_compute(
-        decode_bf16 ? omarchy::ComputeKernel::SdpaDecodeNativeBF16
-                    : omarchy::ComputeKernel::SdpaDecodeNativeF16,
+        decode_bf16
+            ? (head_dim == 256
+                  ? omarchy::ComputeKernel::SdpaDecodeNativeBF16Hd256
+                  : omarchy::ComputeKernel::SdpaDecodeNativeBF16)
+            : omarchy::ComputeKernel::SdpaDecodeNativeF16,
         bindings,
         params,
         params.matrix_m);
