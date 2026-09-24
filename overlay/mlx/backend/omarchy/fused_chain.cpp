@@ -1395,6 +1395,29 @@ EagerFusionScope::EagerFusionScope(const std::deque<array>& tape)
       if (x.dtype() != bfloat16 || claimed.count(x.id())) {
         continue;
       }
+      // Diagnostic scope knobs (flip localization): each excludes one
+      // group class from the norm fold.
+      if (std::getenv("MLX_OMARCHY_NORM_NOSWIGLU") != nullptr &&
+          group.swiglu_out.has_value()) {
+        continue;
+      }
+      if (std::getenv("MLX_OMARCHY_NORM_NOEPI") != nullptr) {
+        bool any_ep = false;
+        for (const auto& m : group.members) {
+          any_ep = any_ep || m.epilogue.has_value();
+        }
+        if (any_ep) {
+          continue;
+        }
+      }
+      if (std::getenv("MLX_OMARCHY_NORM_NOTRIO") != nullptr &&
+          group.members.size() == 3) {
+        continue;
+      }
+      if (std::getenv("MLX_OMARCHY_NORM_NOSINGLE") != nullptr &&
+          group.members.size() == 1) {
+        continue;
+      }
       const auto use_it = uses.find(x.id());
       if (use_it == uses.end() ||
           use_it->second != group.members.size()) {
