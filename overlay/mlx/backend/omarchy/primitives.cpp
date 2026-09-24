@@ -11079,6 +11079,97 @@ void RMSNormScaled::eval_gpu(
       std::min(params.output_size, omarchy::kMaxComputeGroupCountX));
 }
 
+bool GdnConvUpdate::use_fallback(Stream s) {
+  return false;
+}
+
+// GDN decode conv: the state++x concatenation folds into the conv read.
+// Bit-exact to CopyGeneral x2 (Concatenate) -> ConvBF16 because the
+// concatenation is value-transparent and the tap accumulation is the
+// conv.comp body verbatim; the carry-out state moves as raw bits. See
+// gdn_conv_decode.comp.
+void GdnConvUpdate::eval_gpu(
+    const std::vector<array>& inputs,
+    std::vector<array>& outputs) {
+  const std::string tag = name();
+  std::fprintf(stderr, "CCTRACE backend: eval_gpu entry");
+  auto s = stream();
+  auto& encoder = omarchy::get_command_encoder(s);
+  array in_state = inputs.at(0);
+  array in_x = inputs.at(1);
+  array in_w = inputs.at(2);
+  // Materialize any strided/offset input into a dense temporary (same
+  // trap as the GDN decode kernel: nonzero storage offsets read
+  // garbage through flat bindings).
+  bool any_strided = false;
+  for (const auto& x : inputs) {
+    any_strided = any_strided || !x.flags().row_contiguous || x.offset() != 0;
+  }
+  if (any_strided) {
+    std::fprintf(stderr, "CCTRACE backend: strided materialize");
+
+    std::vector<array> dense;
+    dense.reserve(inputs.size());
+    for (const auto& x : inputs) {
+      if (x.flags().row_contiguous) {
+        dense.push_back(x);
+      } else {
+        dense.push_back(contiguous_copy_gpu(x, s));
+        encoder.add_temporary(dense.back());
+      }
+    }
+    in_state = dense[0];
+    in_x = dense[1];
+    in_w = dense[2];
+  }
+  std::fprintf(stderr, "CCTRACE backend: fused dispatch state_off=%d x_off=%d\n",
+      (int)in_state.offset(), (int)in_x.offset());
+  array& out = outputs.at(0);
+  array& state_out = outputs.at(1);
+  if (in_x.shape(1) != 1 || in_state.shape(1) != in_w.shape(1) - 1 ||
+      in_state.shape(0) != in_x.shape(0) ||
+      in_state.shape(2) != in_x.shape(2) || in_w.shape(0) != in_x.shape(2) ||
+      in_w.shape(2) != 1 || in_state.dtype() != bfloat16 ||
+      in_x.dtype() != bfloat16 || in_w.dtype() != bfloat16 ||
+      out.dtype() != bfloat16 || state_out.dtype() != bfloat16) {
+    omarchy::unsupported(tag + " shape/dtype", out);
+  }
+  const int B = in_x.shape(0);
+  const int C = in_x.shape(2);
+  // MLX conv weight layout: [C_out, K, C_in/groups].
+  const int K = in_w.shape(1);
+  out.set_data(allocate_omarchy(out.nbytes()));
+  state_out.set_data(allocate_omarchy(state_out.nbytes()));
+  if (out.size() == 0) {
+    return;
+  }
+  omarchy::ComputeParams params;
+  params.count = checked_u32(static_cast<size_t>(B) * C, tag, out);
+  params.operation = checked_u32(K, tag, out);
+  params.lhs_size = checked_u32(K - 1, tag, out);
+  params.reduce_size = checked_u32(C, tag, out);
+  params.lhs_offset = checked_item_offset(in_state, in_state.size(), tag, out);
+  params.rhs_offset = checked_item_offset(in_x, in_x.size(), tag, out);
+  params.aux_offset = checked_item_offset(in_w, in_w.size(), tag, out);
+  params.output_offset = checked_item_offset(out, out.size(), tag, out);
+  params.in_strides[0] =
+      checked_item_offset(state_out, state_out.size(), tag, out);
+  std::array<omarchy::ComputeBinding, 5> bindings{
+      binding(in_state),
+      binding(in_x),
+      binding(in_w),
+      binding(out),
+      binding(state_out)};
+  uint32_t groups = (params.count + 255u) / 256u;
+  encoder.dispatch_compute(
+      omarchy::ComputeKernel::GdnConvDecodeBF16,
+      bindings,
+      params,
+      std::min(groups, omarchy::kMaxComputeGroupCountX),
+      1,
+      1);
+}
+
 bool LayerNorm::use_fallback(Stream s) {
   return false;
 }

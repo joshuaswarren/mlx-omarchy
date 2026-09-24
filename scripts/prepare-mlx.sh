@@ -76,6 +76,10 @@ patch --directory="$STAGING_DIR" --strip=1 --forward --fuzz=0 \
 # fast primitives (FastNormGatedBF16 backend kernel).
 patch --directory="$STAGING_DIR" --strip=1 --forward --fuzz=0 \
   < "$ROOT/patches/mlx-fast-rms-norm-gated.patch"
+# GDN decode chain: conv1d with the state concatenation folded into
+# the read (GdnConvDecodeBF16 backend kernel).
+patch --directory="$STAGING_DIR" --strip=1 --forward --fuzz=0 \
+  < "$ROOT/patches/mlx-gdn-conv-decode.patch"
 
 rm -rf "$SOURCE_DIR"
 mv "$STAGING_DIR" "$SOURCE_DIR"
