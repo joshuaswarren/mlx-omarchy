@@ -85,3 +85,28 @@ time, health polled to `"status":"ok"`, completion probe run every window (key
 read via sudo cat, never printed). No reboots, no /dev/shm usage, v072 untouched.
 Branch pushed to origin BLOCKED by the fail-closed privacy hook (24 fleet-only
 base commits carry RFC1918 test fixtures); reported to Main with options.
+
+
+## ADDENDUM — bounded iteration 2 (parent-authorized): kv-direct exclusion — final-REJECT
+
+Planner now refuses the norm prologue for ANY group containing a member with a
+kv-direct sum_window (commit `bfbf7581`): those groups run the standalone norm +
+group-reads-from-memory, kv-direct untouched. Wheel
+`mlx_omarchy-0.32.3.dev202609242003+bfbf7581` sha256 `a5bb05e6…` installed in
+/var/tmp/normfold-venv (venv import version verified). Full battery rerun
+(window 20260924T200550Z):
+
+| arm | result |
+|---|---|
+| build-equivalence (NORM=0) 3-pass | PASS — bc519c03 @ 77.28 |
+| gate 1 cand default | **FAIL — 44/320 flips, max|d_top1| 10.375 (prompt 7), byte-identical signature to the pre-fix run** |
+| remaining arms | not run (abort rule) |
+
+The identical flip signature REFUTES the kv-direct interaction hypothesis: the
+divergence source is elsewhere (suspects narrowed by elimination: the early-fired
+trio in_proj/qkv groups whose members are all window-free, i.e. the norm
+prologue's interaction with the GDN conv/gated-delta state chain or the
+fused-chain swiglu consumers under the model's real tape — NOT kv-direct, NOT the
+reduction lowering (SPIR-V-identical), NOT per-group kernel values
+(micro-proven)). Per the authorization: FINAL-REJECT, service restored + probe
+ok, lane closed. No further iterations.
