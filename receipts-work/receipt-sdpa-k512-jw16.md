@@ -134,3 +134,61 @@ main needs its own update push (parent's call).
   wiped with /dev/shm/sdpa256).
 - GitHub main tip observed from relay host: 9fb8b675 ("merge: land the SDPA
   hd256 decode arm plus its 24-commit GPU/runtime fleet lineage").
+
+---
+
+# ADDENDUM: full gate battery on the cap-fix wheel (2026-09-24, parent-directed)
+
+Candidate = wheel 0.32.3.dev202609242059+2b8bdd7f
+(sha256 0416a786bc8a3c8f64b1dd2d4a36a72e5bf8e95e22e3dceac387a62bfb7d7c51,
+built from branch tip 2b8bdd7f), candidate venv /var/tmp/sdpa-k512-venv
+(clone of v072 + forced reinstall), fold OFF via documented
+MLX_OMARCHY_FUSED_GEMV_NORM=0 — numerically the merge content, since the
+norm-fold lineage is absent from origin/main.
+
+## 1. Logits gates x3 (gold = ctl, 90 points: 10 prompts x [prefill + 8 greedy steps])
+
+- leg 1: 0 flips, max top1 diff 0.125, PASS
+- leg 2: 0 flips, max top1 diff 0.125, PASS
+- leg 3: 0 flips, max top1 diff 0.125, PASS
+- (attribution, fold ON: intermittent flip — 1/90 in one leg, 0/90 in another)
+
+The 0.125 top-1 delta is a deterministic base difference between the 06add05a
+and 2b8bdd7f trees, identical in every leg, argmax-invariant everywhere.
+
+## 2. Digests (ordered_records_sha256)
+
+- 3-pass cand (fold off) x3: bc519c03c4ef... EXACT (contract bc519c03) x3/3
+- 10-pass ctl: dbf704971617... EXACT (contract dbf70497)
+- 10-pass cand (fold off) x2: dbf704971617... EXACT x2/2
+- 3-pass ctl (discriminator leg): bc519c03c4ef... — stack-equivalence confirmed
+- 3-pass fold-ON control: cceba7527e06 — token moved; the fold, not the cap,
+  is the only token-moving difference between the lineages
+
+## 3. Ten interleaved paired 3-pass reps (ctl vs cand), decode_tok_rate medians
+
+per-rep deltas (tok/s, cand - ctl): +0.17 +0.29 -0.01 -0.05 +0.26 +0.15
++0.02 +0.00 +0.00 +0.03; mean +0.086, sd 0.122, CI95 (t9=2.262)
+[-0.001, +0.173] — NOT entirely positive: end-to-end decode is
+route-insensitive (~77 tok/s both stacks; ~13 ms/token, host-enqueue-bound at
+~280 dispatches/token), so the isolated 150 us/layer op saving does not
+propagate to token rate. Prefill-side parity: ttft 80.5 vs 80.5 tok/s,
+pure_prefill 819.4 vs 821.8 tok/s.
+
+## 4. Family row (same-window pairing)
+
+- sdpa[k=512]: ctl 505.65 -> cand 335.93 us/launch (-33.6%; original baseline
+  504.11) — the composition now runs the contract decode regime
+- sdpa[k=32]: 143.74 -> 147.83 (arm still engaged <=128, regime unchanged)
+
+## Disposition
+
+Gates PASS, digests PASS everywhere, family row moved -33.6%, paired CI not
+entirely positive (workload property, no regression: point estimate +0.086).
+Merge decision escalated to parent per the GO rule; cherry-pick
+250d556b = 066baea3 onto origin/main 9fb8b675 staged and verified
+(fast-forward, diff = cap hunk only, 7+/2- in primitives.cpp).
+
+GPU discipline: five windows total (micro, sweep, gates x2, digests, perf,
+discriminator); llm-inference restored after each (HEALTH_OK=1 + completion
+probe every time).
