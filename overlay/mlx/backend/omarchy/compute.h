@@ -27,11 +27,12 @@ inline constexpr uint32_t kComputeBindingFloor = 4;
 // that budget refuse by name instead of dispatching. The spec floor is why
 // the pre-2026-09-02 four-slot constant was portable, not a device ceiling:
 // real drivers report orders of magnitude more.
-// Nineteen slots fit the widest kernel today: the multi-weight decode
+// Twenty slots fit the widest kernel today: the multi-weight decode
 // GEMV binds x plus, per weight, packed words, scales, biases, the
-// output, an Add addend, and the Add output (kQmmVecMultiBindings).
+// output, an Add addend, and the Add output (kQmmVecMultiBindings),
+// and its RMSNorm-prologue twin adds the norm weight (binding 19).
 // The triple-index scatter needs six.
-inline constexpr uint32_t kComputeBindingBudget = 19;
+inline constexpr uint32_t kComputeBindingBudget = 20;
 // Bindings of the QmmVecQ4Multi kernels and their per-weight stride.
 inline constexpr uint32_t kQmmVecMultiWeights = 3;
 inline constexpr uint32_t kQmmVecMultiBindingsPerWeight = 6;
@@ -683,6 +684,13 @@ enum class ComputeKernel : uint16_t {
   // its order matches the composed path, so the route is bit-identical
   // to the composition it replaces). Append-only profile id.
   SdpaDecodeNativeBF16Hd256,
+  // RMSNorm-prologue twin of QmmVecQ4MultiSubgroupBF16
+  // (-DNORM_PROLOGUE=1): the group's x row is a bf16 RMSNorm output
+  // whose only readers are the group members; the one dispatch
+  // reproduces the norm in a prologue (fast_norm.comp reduction
+  // verbatim, bf16_store-rounded shared row) and no standalone norm
+  // dispatch exists. Append-only profile id.
+  QmmVecQ4MultiSubgroupBF16NormPrologue,
   Count,
 };
 

@@ -80,6 +80,9 @@ uint16_t bf16_store(float value) {
 #if defined(FP_MODE) && defined(QMM_VEC_Q4_WORD)
 #error "QMM_VEC_Q4_WORD applies to affine quantization only"
 #endif
+#if defined(NORM_PROLOGUE) && !defined(USE_BF16)
+#error "NORM_PROLOGUE rounds through the bf16_store helper; bf16 only"
+#endif
 
 const uint COLUMNS_PER_GROUP = 8u;
 const uint LANES = 32u;
@@ -135,6 +138,16 @@ layout(set = 0, binding = B + 5, std430) writeonly buffer Sum##I { \
 QMM_VEC_MULTI_WEIGHT(0, 1)
 QMM_VEC_MULTI_WEIGHT(1, 7)
 QMM_VEC_MULTI_WEIGHT(2, 13)
+#ifdef NORM_PROLOGUE
+// RMSNorm prologue weight (fold path, flags bit 15): the group's x row
+// is an RMSNorm output whose only readers are this group's members, so
+// the standalone norm dispatch is deleted and every workgroup
+// reproduces it. Addressed with fast_norm.comp's rhs_offset + index
+// form; the host passes the weight's element offset.
+layout(set = 0, binding = 19, std430) readonly buffer NormWeight {
+  STORAGE_TYPE values[];
+} norm_weight;
+#endif
 #else
 layout(set = 0, binding = 1, std430) readonly buffer InputW {
   uint values[];
@@ -186,6 +199,15 @@ layout(push_constant) uniform Params {
 
 #ifndef USE_SUBGROUP
 shared float reduce_scratch[256];
+#endif
+#ifdef NORM_PROLOGUE
+// Prologue reduction scratch and the normalized row itself, word-
+// packed exactly as a stored row reads (element pairs (2j, 2j+1) in
+// the low/high halves of word j), so the dot loads it with the same
+// uvec4 it loads from input_x. Sized for rows up to 8192; the host
+// refuses anything longer.
+shared float norm_values[256];
+shared uvec4 normed_row[1024];
 #endif
 
 // Push-constant routing: operation carries bits (2, 3, 4, 5, 6, or 8),
@@ -259,6 +281,16 @@ uint q6_at(uint e, uint c0, uint c1, uint c2) {
 #endif
 
 #ifdef QMM_VEC_Q4_WORD
+// One uvec4 of the x row: the fold path (flags bit 15) reads the
+// shared normalized row, element-relative; otherwise the input row at
+// its stored offset. Both are 16-byte aligned by dispatch.
+#ifdef NORM_PROLOGUE
+#define X_WORD_LOAD(x_base) \
+    (((params.flags & 32768u) != 0u) ? normed_row[(x_base) / 8u] \
+                                     : input_x.values[(x_base) / 8u])
+#else
+#define X_WORD_LOAD(x_base) input_x.values[(x_base) / 8u]
+#endif
 // One x quad against the low 16 bits of `packed` (nibbles low first).
 // The quad's half chain sum joins input_sum; ((p0 + p1) + p2) + p3 joins
 // dot as an fma chain: every product is exact (11-bit x times a 4-bit
@@ -314,7 +346,7 @@ uint q6_at(uint e, uint c0, uint c1, uint c2) {
 #if defined(USE_FP16) || defined(USE_BF16)
 #define Q4_WORD(word, x_base) { \
   uint word_value = (word); \
-  uvec4 x_words = input_x.values[(x_base) / 8u]; \
+  uvec4 x_words = X_WORD_LOAD(x_base); \
   Q4_QUAD(word_value, x_words.x, x_words.y) \
   Q4_QUAD(word_value >> 16u, x_words.z, x_words.w) \
 }
@@ -430,6 +462,13 @@ void main() {
   uint lane = gl_LocalInvocationID.x;
   uint column_slot = lane / LANES;
   uint lane_in_slot = lane % LANES;
+#ifdef NORM_PROLOGUE
+  // The fold's dot consumes the shared normalized row, which is
+  // element-relative; the raw row offset belongs to the prologue.
+  uint x_row_base = ((params.flags & 32768u) != 0u) ? 0u : params.lhs_offset;
+#else
+  uint x_row_base = params.lhs_offset;
+#endif
   uint n0 = params.shape[0];
   uint n1 = params.shape[1];
   uint n2 = params.shape[2];
@@ -468,6 +507,59 @@ void main() {
   }
   uint column = workgroup * COLUMNS_PER_GROUP + column_slot;
   bool column_active = column < n;
+#ifdef NORM_PROLOGUE
+  // RMSNorm prologue (fold path, flags bit 15): the standalone norm
+  // dispatch is deleted; every workgroup reproduces fast_norm.comp
+  // statement-for-statement over the raw input row (binding 0 at
+  // params.lhs_offset) - per-thread strided squares, the
+  // stride-128..1 shared tree, mean / row_length, unqualified
+  // inversesqrt - then stores the bf16_store-rounded normalized row to
+  // shared memory in stored-row word order, so the dot's x words are
+  // the exact bytes the standalone kernel would have written.
+  if ((params.flags & 32768u) != 0u) {
+    uint row_length = params.matrix_k;
+    float local_sq = 0.0;
+    for (uint index = lane; index < row_length; index += 256u) {
+      uint word32 = input_x.values[params.lhs_offset / 8u + index / 8u]
+                                   [(index % 8u) / 2u];
+      float value = uintBitsToFloat(((index & 1u) == 0u
+          ? (word32 & 0xFFFFu)
+          : (word32 >> 16u)) << 16u);
+      local_sq += value * value;
+    }
+    norm_values[lane] = local_sq;
+    barrier();
+    for (uint stride = 128u; stride > 0u; stride >>= 1u) {
+      if (lane < stride) {
+        norm_values[lane] += norm_values[lane + stride];
+      }
+      barrier();
+    }
+    float mean_square = norm_values[0] / float(row_length);
+    float norm = inversesqrt(mean_square + params.alpha);
+    barrier();
+    for (uint slot = lane; slot < row_length / 8u; slot += 256u) {
+      uint half[8];
+      for (uint e = 0u; e < 8u; ++e) {
+        uint index = slot * 8u + e;
+        uint word32 = input_x.values[params.lhs_offset / 8u + index / 8u]
+                                     [(index % 8u) / 2u];
+        float value = uintBitsToFloat(((index & 1u) == 0u
+            ? (word32 & 0xFFFFu)
+            : (word32 >> 16u)) << 16u);
+        half[e] = uint(bf16_store(
+            value * norm *
+            LOAD_VALUE(norm_weight.values[params.rhs_offset + index])));
+      }
+      normed_row[slot] = uvec4(
+          half[0] | (half[1] << 16u),
+          half[2] | (half[3] << 16u),
+          half[4] | (half[5] << 16u),
+          half[6] | (half[7] << 16u));
+    }
+    barrier();
+  }
+#endif
   precise float accumulator = 0.0;
   if ((params.flags & 65536u) != 0u) {
     float gate_rounded = 0.0;
@@ -478,7 +570,7 @@ void main() {
       uint w_base = column * words_per_row;
       uint scale_base = column * groups_per_row;
       uint bias_base = scale_base;
-      uint x_row = params.lhs_offset;
+      uint x_row = x_row_base;
       Q4_ROW(input_w0, scales0, biases0)
     }
     float gate_total;
@@ -491,7 +583,7 @@ void main() {
       uint w_base = column * words_per_row;
       uint scale_base = column * groups_per_row;
       uint bias_base = scale_base;
-      uint x_row = params.lhs_offset;
+      uint x_row = x_row_base;
       Q4_ROW(input_w1, scales1, biases1)
     }
     float up_total;
@@ -511,7 +603,7 @@ void main() {
     uint w_base = column * words_per_row;
     uint scale_base = column * groups_per_row;
     uint bias_base = scale_base;
-    uint x_row = params.lhs_offset;
+    uint x_row = x_row_base;
     if (which == 0u) {
       Q4_ROW(input_w0, scales0, biases0)
     } else if (which == 1u) {
