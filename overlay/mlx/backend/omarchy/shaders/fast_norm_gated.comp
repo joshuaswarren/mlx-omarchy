@@ -147,8 +147,14 @@ void main() {
         // silu(gate) then silu * normed, left-associated exactly like
         // the composed sigmoid -> mul -> mul chain (f32 muls commute
         // bitwise, so operand order inside each mul is free).
+        // The composed chain is bf16-typed and the interpreter rounds
+        // every node output to the storage dtype (swiglu.comp semantics,
+        // verified against the model gate): round sigmoid and the silu
+        // product to bf16 before the final multiply.
         float sigmoid_value = 1.0 / (1.0 + exp(-gate));
-        out_value = (gate * sigmoid_value) * normed;
+        float sig_b = WIDEN(STORE_VALUE(sigmoid_value));
+        float silu = WIDEN(STORE_VALUE(gate * sig_b));
+        out_value = silu * normed;
       } else {
         out_value = normed * scale;
       }
