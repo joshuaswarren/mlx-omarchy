@@ -1401,7 +1401,7 @@ EagerFusionScope::EagerFusionScope(const std::deque<array>& tape)
         continue;
       }
       const array* norm = lookup(x);
-      if (norm == nullptr || !is_op(norm, typeid(RMSNorm))) {
+      if (norm == nullptr || !is_op(norm, typeid(fast::RMSNorm))) {
         continue;
       }
       const array& in = norm->inputs()[0];
@@ -1417,7 +1417,7 @@ EagerFusionScope::EagerFusionScope(const std::deque<array>& tape)
           in,
           w,
           std::get<1>(
-              static_cast<const RMSNorm&>(norm->primitive()).state())};
+              static_cast<const fast::RMSNorm&>(norm->primitive()).state())};
       state->gemv_roles.emplace(x.id(), gi);
       claimed.insert(x.id());
     }
