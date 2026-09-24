@@ -7315,6 +7315,7 @@ bool input_ready(const array& value, const Stream& stream) {
 bool dispatch_quantized_gemv_group(
     std::vector<GemvFusionMember>& members,
     array* swiglu_out,
+    const GemvNormPrologue* prologue,
     const Stream& stream) {
   if (members.empty() || members.size() > kQmmVecMultiWeights ||
       !q4_word_enabled()) {
@@ -7334,16 +7335,34 @@ bool dispatch_quantized_gemv_group(
     return false;
   }
   const array& x = members[0].node.inputs().at(0);
+  // Buffer carrier for x: under the norm-prologue fold, x is an
+  // RMSNorm output whose buffer is never materialized; the prologue
+  // reads the norm's raw input row instead (same shape, same dtype).
+  const array& xb = prologue ? prologue->input : x;
   const Dtype dtype = members[0].node.dtype();
   if (!float_dtype_supported(dtype, caps) || x.dtype() != dtype ||
-      x.ndim() < 2 || x.shape(-2) != 1 || !input_ready(x, stream) ||
-      x.data_shared_ptr() == nullptr || !x.flags().row_contiguous ||
-      x.offset() % x.itemsize() != 0) {
+      x.ndim() < 2 || x.shape(-2) != 1 || !input_ready(xb, stream) ||
+      xb.data_shared_ptr() == nullptr || !xb.flags().row_contiguous ||
+      xb.offset() % xb.itemsize() != 0 || xb.size() != x.size() ||
+      xb.shape(-1) != x.shape(-1) || xb.dtype() != dtype) {
     return false;
   }
   const int k = x.shape(-1);
   if (k <= 0 || k % 64 != 0 || static_cast<size_t>(k) != x.size()) {
     return false;
+  }
+  if (prologue) {
+    const array& w = prologue->weight;
+    if (prologue->norm_out.id() != x.id() || dtype != bfloat16 ||
+        w.dtype() != dtype || w.size() != static_cast<size_t>(k) ||
+        w.data_shared_ptr() == nullptr ||
+        w.offset() % w.itemsize() != 0 ||
+        encoder.device().compute().binding_limit() <
+            kQmmVecMultiBindings + 1 ||
+        k < 8 || (static_cast<uint32_t>(k) / 8u) > 1024u ||
+        (xb.offset() / xb.itemsize()) % 8u != 0u) {
+      return false;
+    }
   }
   ComputeParams params;
   uint32_t total_groups = 0;
@@ -7411,12 +7430,21 @@ bool dispatch_quantized_gemv_group(
   params.matrix_m = 1u;
   params.matrix_k = static_cast<uint32_t>(k);
   params.dims = static_cast<uint32_t>(members.size());
-  uint64_t x_offset = x.offset() / x.itemsize();
+  uint64_t x_offset = xb.offset() / xb.itemsize();
   if (!compute_index_span_fits(x_offset, x.size())) {
     return false;
   }
   params.lhs_offset = static_cast<uint32_t>(x_offset);
   params.count = static_cast<uint32_t>(total_groups);
+  if (prologue) {
+    // The prologue reads the raw row at lhs_offset and normalizes with
+    // eps (fast_norm.comp's alpha) and the weight at its element
+    // offset (fast_norm.comp's rhs_offset + index form).
+    params.flags |= 32768u;
+    params.alpha = prologue->eps;
+    params.rhs_offset = static_cast<uint32_t>(
+        prologue->weight.offset() / prologue->weight.itemsize());
+  }
 
   // Producer-direct KV windows: a member's Add epilogue may store its
   // sum straight into an updated cache copy (see fused_chain.h), which
@@ -7517,8 +7545,8 @@ bool dispatch_quantized_gemv_group(
       params.matrix_m = window.head_dim;
     }
   }
-  std::array<ComputeBinding, kQmmVecMultiBindings> bindings{};
-  bindings[0] = binding(x);
+  std::array<ComputeBinding, kQmmVecMultiBindings + 1> bindings{};
+  bindings[0] = binding(xb);
   const ComputeBinding filler = binding(members[0].node);
   for (uint32_t i = 0; i < kQmmVecMultiWeights; ++i) {
     uint32_t base = 1 + i * kQmmVecMultiBindingsPerWeight;
@@ -7543,19 +7571,33 @@ bool dispatch_quantized_gemv_group(
   if (swiglu_out) {
     bindings[1 + 3] = binding(*swiglu_out);
   }
+  if (prologue) {
+    bindings[kQmmVecMultiBindings] = binding(prologue->weight);
+  }
   bool subgroup_ready = caps.subgroup_size == 32u &&
       (caps.subgroup_operations & VK_SUBGROUP_FEATURE_ARITHMETIC_BIT) != 0;
-  auto kernel = subgroup_ready
-      ? select_float_kernel(
-            dtype,
-            ComputeKernel::QmmVecQ4MultiSubgroupF32,
-            ComputeKernel::QmmVecQ4MultiSubgroupF16,
-            ComputeKernel::QmmVecQ4MultiSubgroupBF16)
-      : select_float_kernel(
-            dtype,
-            ComputeKernel::QmmVecQ4MultiF32,
-            ComputeKernel::QmmVecQ4MultiF16,
-            ComputeKernel::QmmVecQ4MultiBF16);
+  ComputeKernel kernel;
+  if (prologue) {
+    // The prologue twin exists in the bf16 subgroup flavor only;
+    // devices without the subgroup contract keep the standalone norm
+    // dispatch (the ordinary path).
+    if (!subgroup_ready || dtype != bfloat16) {
+      return false;
+    }
+    kernel = ComputeKernel::QmmVecQ4MultiSubgroupBF16NormPrologue;
+  } else {
+    kernel = subgroup_ready
+        ? select_float_kernel(
+              dtype,
+              ComputeKernel::QmmVecQ4MultiSubgroupF32,
+              ComputeKernel::QmmVecQ4MultiSubgroupF16,
+              ComputeKernel::QmmVecQ4MultiSubgroupBF16)
+        : select_float_kernel(
+              dtype,
+              ComputeKernel::QmmVecQ4MultiF32,
+              ComputeKernel::QmmVecQ4MultiF16,
+              ComputeKernel::QmmVecQ4MultiBF16);
+  }
   encoder.dispatch_compute(kernel, bindings, params, total_groups, 1u, 1u);
   return true;
 }

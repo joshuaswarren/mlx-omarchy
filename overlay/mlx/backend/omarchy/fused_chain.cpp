@@ -688,6 +688,11 @@ struct GemvGroup {
   // exactly a chain's gate and up projections. The one dispatch writes
   // silu(gate) * up into this array and no swiglu dispatch exists.
   std::optional<array> swiglu_out;
+  // RMSNorm prologue fold: set at plan time when the group's shared x
+  // is an unclaimed bf16 RMSNorm whose only readers are the members.
+  // The one dispatch reproduces the norm; the norm node's eval fires
+  // the group and no standalone norm dispatch exists.
+  std::optional<GemvNormPrologue> prologue;
   enum class State : uint8_t { pending, done, failed } state{State::pending};
 };
 
@@ -1371,6 +1376,52 @@ EagerFusionScope::EagerFusionScope(const std::deque<array>& tape)
       }
     }
   }
+  // RMSNorm prologue fold. When a planned group's shared x is an
+  // unclaimed bf16 RMSNorm node of this tape whose ONLY readers are
+  // the group members, the group's one dispatch reproduces the norm in
+  // a prologue and the standalone RMSNorm dispatch is deleted: the
+  // norm node joins the group's roles, so the group fires at the
+  // norm's eval turn. That is earlier than the first member's turn,
+  // but everything the dispatch contract checks is checked at that
+  // moment (the scheduler evaluates the norm's own raw row before the
+  // norm's eval, and a weight/scale/bias input evaluated before this
+  // eval began stays ready), and any refusal returns false for the
+  // norm node, which then evaluates ordinarily - exactly like a failed
+  // group's members do.
+  if (fused_gemv_norm_enabled()) {
+    for (size_t gi = 0; gi < state->gemv_groups.size(); ++gi) {
+      auto& group = state->gemv_groups[gi];
+      const array& x = group.members[0].node.inputs()[0];
+      if (x.dtype() != bfloat16 || claimed.count(x.id())) {
+        continue;
+      }
+      const auto use_it = uses.find(x.id());
+      if (use_it == uses.end() ||
+          use_it->second != group.members.size()) {
+        continue;
+      }
+      const array* norm = lookup(x);
+      if (norm == nullptr || !is_op(norm, typeid(RMSNorm))) {
+        continue;
+      }
+      const array& in = norm->inputs()[0];
+      const array& w = norm->inputs()[1];
+      if (lookup(w) != nullptr || in.dtype() != bfloat16 ||
+          w.dtype() != bfloat16 || in.size() != x.size() ||
+          w.size() != static_cast<size_t>(x.shape(-1)) ||
+          !in.flags().row_contiguous || (in.offset() & 7u) != 0u) {
+        continue;
+      }
+      group.prologue = GemvNormPrologue{
+          x,
+          in,
+          w,
+          std::get<1>(
+              static_cast<const RMSNorm&>(norm->primitive()).state())};
+      state->gemv_roles.emplace(x.id(), gi);
+      claimed.insert(x.id());
+    }
+  }
   std::unordered_map<std::uintptr_t, std::vector<const array*>> dense_by_x;
   std::vector<std::uintptr_t> dense_x_order;
   for (const auto& node : tape) {
@@ -1642,6 +1693,15 @@ bool fused_gemv_swiglu_enabled() {
       (std::getenv("MLX_OMARCHY_FUSED_GEMV_SWIGLU") == nullptr ||
        env_flag("MLX_OMARCHY_FUSED_GEMV_SWIGLU"));
 }
+// MLX_OMARCHY_FUSED_GEMV_NORM=0 keeps the RMSNorm prologue fold off:
+// every RMSNorm feeding a planned GEMV group dispatches standalone and
+// the group reads the normed row from memory (the
+// MLX_OMARCHY_FUSED_GEMV gate also covers it); on by default.
+bool fused_gemv_norm_enabled() {
+  return fused_gemv_enabled() &&
+      (std::getenv("MLX_OMARCHY_FUSED_GEMV_NORM") == nullptr ||
+       env_flag("MLX_OMARCHY_FUSED_GEMV_NORM"));
+}
 
 bool fused_trio_enabled() {
   return fused_chain_enabled() &&
@@ -1854,6 +1914,7 @@ bool try_eval_eager_fusion(array& node, const Stream& stream) {
       group.state = dispatch_quantized_gemv_group(
                         group.members,
                         group.swiglu_out ? &*group.swiglu_out : nullptr,
+                        group.prologue ? &*group.prologue : nullptr,
                         stream)
           ? GemvGroup::State::done
           : GemvGroup::State::failed;

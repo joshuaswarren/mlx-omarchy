@@ -163,6 +163,19 @@ struct GemvFusionMember {
   std::optional<KvDirectWindow> sum_window;
 };
 
+// Planned RMSNorm prologue for a quantized decode GEMV group (the
+// fold): the members' shared x is |norm_out|, a bf16 RMSNorm output
+// whose only readers are the group members. The one dispatch
+// reproduces the norm over |input| (the norm's raw row:
+// row-contiguous, 16-byte aligned) with |weight| (vector form) and
+// |eps|, and no standalone RMSNorm dispatch exists.
+struct GemvNormPrologue {
+  array norm_out;
+  array input;
+  array weight;
+  float eps;
+};
+
 
 // Validates the group against the kernel contract, allocates every
 // output, and records the dispatch. |swiglu_out| plans the SwiGLU
@@ -177,6 +190,7 @@ struct GemvFusionMember {
 bool dispatch_quantized_gemv_group(
     std::vector<GemvFusionMember>& members,
     array* swiglu_out,
+    const GemvNormPrologue* prologue,
     const Stream& stream);
 
 bool dispatch_dense_gemv_group(
@@ -218,6 +232,12 @@ bool fused_gemv_enabled();
 // (the gate/up GEMV group that stores silu(gate) * up directly) off
 // (the MLX_OMARCHY_FUSED_GEMV gate also covers it); on by default.
 bool fused_gemv_swiglu_enabled();
+
+// MLX_OMARCHY_FUSED_GEMV_NORM=0 keeps the RMSNorm prologue fold (the
+// group dispatch reproducing its x row's RMSNorm, deleting the
+// standalone norm dispatch) off (the MLX_OMARCHY_FUSED_GEMV gate also
+// covers it); on by default.
+bool fused_gemv_norm_enabled();
 
 // Decode trio: MLX_OMARCHY_FUSED_TRIO=0 keeps f16 RMSNorm rows, the
 // fused SwiGLU chain dispatch, and RoPE pairs on their standalone
