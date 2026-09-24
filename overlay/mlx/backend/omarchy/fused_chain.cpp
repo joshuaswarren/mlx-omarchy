@@ -1423,6 +1423,20 @@ EagerFusionScope::EagerFusionScope(const std::deque<array>& tape)
           use_it->second != group.members.size()) {
         continue;
       }
+      // A member with a kv-direct sum window writes its output rows
+      // straight into a cache copy; the norm prologue fires this group
+      // at the norm's eval turn, which reorders that write relative to
+      // the rope/slice-update chain, and the model digests exposed the
+      // combination. Keep kv-direct groups on the unfused-norm stream:
+      // the norm dispatches standalone and the group reads the normed
+      // row from memory, exactly as without the fold.
+      bool has_window = false;
+      for (const auto& m : group.members) {
+        has_window = has_window || m.sum_window.has_value();
+      }
+      if (has_window) {
+        continue;
+      }
       const array* norm = lookup(x);
       if (norm == nullptr || !is_op(norm, typeid(fast::RMSNorm))) {
         continue;
