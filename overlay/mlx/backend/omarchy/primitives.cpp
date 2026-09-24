@@ -12025,6 +12025,17 @@ void ScaledDotProductAttention::eval_gpu(
   const uint32_t decode_bf16_shared_required = head_dim == 256
       ? kDecodeBf16SharedBytesHd256
       : kDecodeBf16SharedBytes;
+  // Perf-only k window: bitwise identity holds for every k (both routes
+  // store identical words), so the boundary cannot move a token - only the
+  // wall. Width 64 keeps the measured 256..2048 window from the original
+  // qualification. Width 256 re-measured on t6001-host (Qwen3.8 decode
+  // shapes, one-call wall, 300 reps): the arm is at or above the
+  // composition from 24 keys through the 128-key tie point and loses
+  // beyond it (the single-workgroup-per-head walk loses to the
+  // composition's parallel GEMV tiles once the key stream dominates), so
+  // the arm engages from 12 keys - just under the 13-key first decode step
+  // of a 12-token prompt - through 128; larger contexts keep the
+  // composition.
   const bool decode_bf16_ready =
       decode_caps.max_compute_work_group_invocations >= 1024u &&
       decode_caps.max_compute_work_group_size[0] >= 1024u &&
@@ -12041,7 +12052,8 @@ void ScaledDotProductAttention::eval_gpu(
           (decode_bf16_probe && head_dim == 256 && v_dim == 256)) &&
       k_len > 0 &&
       (q.dtype() != bfloat16 ||
-          (k_len >= uint32_t{256} && k_len <= uint32_t{2048})) &&
+          (k_len >= (head_dim == 256 ? uint32_t{12} : uint32_t{256}) &&
+           k_len <= uint32_t{2048})) &&
       q.strides()[3] == 1 && k.strides()[3] == 1 && v.strides()[3] == 1) {
     const bool decode_bf16 = decode_bf16_probe;
     out.set_data(allocate_omarchy(out.nbytes()));
