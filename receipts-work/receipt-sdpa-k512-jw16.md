@@ -192,3 +192,13 @@ Merge decision escalated to parent per the GO rule; cherry-pick
 GPU discipline: five windows total (micro, sweep, gates x2, digests, perf,
 discriminator); llm-inference restored after each (HEALTH_OK=1 + completion
 probe every time).
+
+## FINAL DISPOSITION (2026-09-24)
+
+Main approved MERGE as a corrective. Pushed and verified:
+9fb8b675..250d556b (fast-forward update), origin/main =
+250d556bf35e78a53d751e2f2dddd78b919654c7 (cherry-pick of 066baea3, diff =
+cap hunk only, 7+/2- in primitives.cpp). Recorded exactly as: corrective,
+end-to-end neutral (CI [-0.001, +0.173], host-enqueue-bound). No end-to-end
+speedup is claimed anywhere. Service active, health ok, live completion
+probe returned content: ok.
