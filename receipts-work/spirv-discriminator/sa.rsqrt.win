@@ -1,0 +1,61 @@
+ 124: 520e00000000           pop_exec 1
+ 12a: 6800                   barrier
+ 12c: 522842020100           if       r1, 16, 1, ult
+ 132: 0e154c0600010000       iadd     r5, r6.sx, 64
+ 13a: 699d0a0214000000       lload    r7, r5l, 0, i32, x
+ 142: 6995010214000000       lload    r5, r0h, 0, i32, x
+ 14a: 2a954ae22400           fadd     r5, r5, r7
+ 150: 2995010214000000       lstore   r5, r0h, 0, i32, x
+ 158: 520e00000000           pop_exec 1
+ 15e: 6800                   barrier
+ 160: 522842820000           if       r1, 8, 1, ult
+ 166: 0e154c0602000000       iadd     r5, r6.sx, 32
+ 16e: 699d0a0214000000       lload    r7, r5l, 0, i32, x
+ 176: 6995010214000000       lload    r5, r0h, 0, i32, x
+ 17e: 2a954ae22400           fadd     r5, r5, r7
+ 184: 2995010214000000       lstore   r5, r0h, 0, i32, x
+ 18c: 520e00000000           pop_exec 1
+ 192: 6800                   barrier
+ 194: 522842420000           if       r1, 4, 1, ult
+ 19a: 0e154c0601000000       iadd     r5, r6.sx, 16
+ 1a2: 699d0a0214000000       lload    r7, r5l, 0, i32, x
+ 1aa: 6995010214000000       lload    r5, r0h, 0, i32, x
+ 1b2: 2a954ae22400           fadd     r5, r5, r7
+ 1b8: 2995010214000000       lstore   r5, r0h, 0, i32, x
+ 1c0: 520e00000000           pop_exec 1
+ 1c6: 6800                   barrier
+ 1c8: 522842220000           if       r1, 2, 1, ult
+ 1ce: 0e154c8600000000       iadd     r5, r6.sx, 8
+ 1d6: 69950a0214000000       lload    r5, r5l, 0, i32, x
+ 1de: 6999010214000000       lload    r6, r0h, 0, i32, x
+ 1e6: 2a954ca22400           fadd     r5, r6, r5
+ 1ec: 2995010214000000       lstore   r5, r0h, 0, i32, x
+ 1f4: 520e00000000           pop_exec 1
+ 1fa: 6800                   barrier
+ 1fc: 520842020000           if       r1, 0, 1, ieq
+ 202: 6995400214000004       lload    r5, u32l, 0, i32, x
+ 20a: 6999010214000000       lload    r6, r0h, 0, i32, x
+ 212: 2a954ca22400           fadd     r5, r6, r5
+ 218: 2995010214000000       lstore   r5, r0h, 0, i32, x
+ 220: 520e00000000           pop_exec 1
+ 226: 6800                   barrier
+ 228: 6995800214000000       lload    r5, 0, i32, x
+ 230: 9a998ae21900           fmul     $r6, $r5, u15
+ 236: ba959cc1284a0200       ffma     $r5, u14, $r6, r5
+ 23e: ba954ae2198c0200       ffma     $r5, r5, u15, $r6
+ 246: 821d8c02008ca008       csel     $r7, $r6, 0.0, $r6, $r5, feq
+ 24e: 82154aa2244ec004       csel     $r5, r5, r5, r7, r6, feq
+ 256: 6800                   barrier
+ 258: aa954aa21800           fadd     $r5, r5, u5
+ 25e: 0a154a92               rsqrt    r5, r5
+ 262: 7e19420a8000           mov      r6, r1
+ 268: 420800000000           if       0.0, 0.0, 1, feq
+ 26e: 522c8c821800           while    $r6, u4, 1, ult
+ 274: 0e1d48c664000000       iadd     r7, r4.sx, r6.sx
+ 27c: 8504e00e20c01000       load     r0h, du16, r7, i16, x, a
+ 284: 3800                   wait     a
+ 286: 520924010000           if       u18l, 0, 1, ine
+ 28c: 7e1da6098000           mov      r7, u19
+ 292: 420a00000000           else     0.0, 0.0, 1, feq
+ 298: 0e1da8c564000000       iadd     r7, u20.sx, r6.sx
+ 2a0: 8538ec0e20c01000       load     r7l, du22, r7, i16, x, a
