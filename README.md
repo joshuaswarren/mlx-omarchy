@@ -24,7 +24,7 @@ On Omarchy (Apple Silicon), one command installs the release wheel into a privat
 curl -fsSL https://raw.githubusercontent.com/joshuaswarren/mlx-omarchy/main/install.sh | bash
 ```
 
-Uninstall with `bash install.sh --uninstall`. Latest stable: [v0.7.2](https://github.com/joshuaswarren/mlx-omarchy/releases/tag/v0.7.2). Wheel filenames carry the build commit; pin the exact URL and check `SHA256SUMS` on the release.
+Uninstall with `bash install.sh --uninstall`. Latest stable: [v0.7.3](https://github.com/joshuaswarren/mlx-omarchy/releases/tag/v0.7.3). Wheel filenames carry the build commit; pin the exact URL and check `SHA256SUMS` on the release.
 
 Manual install (or any other Linux box):
 
@@ -55,6 +55,27 @@ value, grad = mx.value_and_grad(loss)(w)
 print(value, grad)
 ```
 
+Text generation: the qualified model is
+[`mlx-community/Qwen3.8-27B-4bit`](https://huggingface.co/mlx-community/Qwen3.8-27B-4bit)
+(metadata verified 2026-09-20: Apache-2.0, ungated; tested revision
+`10c35caafbb80f7dc6a7a432cdd11af10a6d4818`). The verified smoke ran on an
+M2 Max with candidate wheel `0.32.3.dev202609201346+a1251aaa`, `mlx-vlm`
+0.7.1 and `mlx-lm` 0.31.3 — **this candidate is not yet a published
+release**. From this checkout, in a Python 3.14 environment containing
+that wheel (installed with `--no-deps`):
+
+```bash
+python -m pip install --no-deps -r receipts/2026-09-20-qwen38-text-install/requirements.txt
+env -u MLX_DISABLE_COMPILE python -m mlx_vlm.generate \
+  --model mlx-community/Qwen3.8-27B-4bit \
+  --max-tokens 32 --prompt "Say READY."
+```
+
+The [receipt and raw output](receipts/2026-09-20-qwen38-text-install/receipt.json)
+record exit 0 and `READY.` with compilation enabled. The checkpoint
+downloads ~15 GB of weights; a 16 GB M1 has not passed this model's
+memory and generation gates.
+
 Local OpenAI-compatible serving (catalog CLI + qualification limits): [docs/serve.md](docs/serve.md). Kernel / serve-patch flags: [docs/kernel-flags.md](docs/kernel-flags.md). Serving tooling in this tree is not all in a published release yet — `docs/serve.md` marks what is qualified.
 
 ## Hardware
@@ -71,16 +92,22 @@ Apple GPU and Apple ANE are separate lanes. GPU qualification does not qualify A
 
 ## Performance
 
-Qwen3.8-2B (4-bit mlx) on Apple M-series: upstream Metal on macOS vs omarchy Vulkan on Asahi/Omarchy. Protocol: greedy, 32 new tokens, 2 warmups, 512-token pure-prefill leg; medians of measured decode runs. Linux M1/M1 Max rows are the **v0.7.2** tag build (`fa103c867`); M1 Linux requires the Honeykrisp fork driver (see install doc).
+Qwen3.8-2B (4-bit mlx) on Apple M-series: upstream Metal on macOS vs omarchy Vulkan on Asahi/Omarchy. Protocol for every cell: greedy (temperature 0), 32 new tokens, 2 warmups, 512-token pure-prefill leg; decode is the median of 30 measured runs. Rows are marked by source build — † ‡ § are **three different builds and two battery protocols**, so rows with different marks are not comparable:
 
-| Hardware | OS / backend | Prefill→first token (tok/s) | Pure prefill 512 (tok/s) | Decode median (tok/s) |
-|---|---|---|---|---|
-| M1, 16 GB | Omarchy / Vulkan (Honeykrisp fork) | 46.7 | 128.7 | 34.3 |
-| M1 Max, 64 GB | Omarchy / Vulkan | 62.3 | 267.7 | 56.8 |
-| M2 Max, 96 GB | Omarchy / Vulkan | 47.2 | 75.8 | 45.0 |
-| M1, 16 GB | macOS 27.0 / Metal | 101.3 | 345.4 | 49.5 |
-| M1 Max, 64 GB | macOS 27.0 / Metal | 359.2 | 1019.7 | 179.5 |
-| M2 Max, 96 GB | macOS 27.0 / Metal | 423.8 | 1234.7 | 220.6 |
+| Hardware | OS / backend | Build | Prefill→first token (tok/s) | Pure prefill 512 (tok/s) | Decode median (tok/s) |
+|---|---|---|---|---|---|
+| M1, 16 GB † | Omarchy / Vulkan (Honeykrisp fork driver) | v0.7.2 tag `fa103c867` | 46.7 | 128.7 | 34.3 |
+| M1 Max, 64 GB † | Omarchy / Vulkan | v0.7.2 tag `fa103c867` | 62.3 | 267.7 | 56.8 |
+| M2 Max, 96 GB ‡ | Omarchy / Vulkan | `0.32.3+5b18306` (2026-09-21) | 47.2 | 75.8 | 45.0 |
+| M1, 16 GB § | macOS 27.0 / Metal | upstream mlx 0.32.2 (2026-09-21) | 101.3 | 345.4 | 49.5 |
+| M1 Max, 64 GB § | macOS 27.0 / Metal | upstream mlx 0.32.2 (2026-09-21) | 359.2 | 1019.7 | 179.5 |
+| M2 Max, 96 GB § | macOS 27.0 / Metal | upstream mlx 0.32.2 (2026-09-21) | 423.8 | 1234.7 | 220.6 |
+
+Receipt per row:
+
+- **†** M1 / M1 Max Linux: [v0.7.2 release receipt](receipts/2026-09-22-release-v0.7.2) (mirrored at the same path in `ane-linux-experiments`) — records these exact rows on the tag build, wheel `mlx_omarchy-0.32.3.dev202609221309+fa103c86`, 10-prompt × 3-pass subset of the standing battery, ordered-record digests `ac1b2695…` identical on both hosts. The M1 row is the Honeykrisp fork-driver leg (stock Mesa measured 32.9 pure-prefill tok/s on the same wheel); Omarchy installs must use the fork driver ([docs/install-omarchy.md](docs/install-omarchy.md), "Honeykrisp driver with the fork fixes").
+- **‡** M2 Max Linux: the 2026-09-21 100-prompt-corpus battery on wheel `0.32.3+5b18306` — [public matrix](https://github.com/joshuaswarren/ane-linux-experiments#qwen38-mlx-decode-and-prefill-matrix-2026-09-21) (row "M2 Max", adapter Apple M2 Max G14C). Raw per-run receipt `qwen38-2b-m2-omarchy-firstpass.json` (label `M2Max-T6021-Omarchy-q4-2B-stable-corrected`, ordered-records digest `6f21e665…`), kept outside the repository.
+- **§** macOS rows: upstream mlx 0.32.2 Metal, idle login-window runs from the same 2026-09-21 battery. Raw per-run receipts outside the repository: `qwen38-2b-m1-macos-idle.json` (label `M1-T8103-macOS-q4-2B-idle-corrected`), `qwen38-2b-t6001-macos-firstpass.json` (label `M1Max-T6001-macOS-q4-2B-corrected`), `qwen38-2b-m2-macos-repro.json` (label `M2Max-T6021-macOS-q4-2B-corrected-repro` — the idle rerun that superseded the load-contaminated first pass). All three share ordered-records digest `301c4fc3…`: upstream Metal is deterministic across these hosts.
 
 Cross-OS token identity was never an acceptance bar; the bar is logit-level equivalence plus coherent decoding. Adapter evidence is captured per run (Vulkan loader trace naming the Apple physical device on Linux; mlx device identity on macOS). The backend refuses non-Apple GPUs by default.
 
