@@ -301,6 +301,7 @@ omarchy_shader(qmm_vec_q4_multi_subgroup_f16 shaders/qmm_vec.comp -DUSE_FP16=1 -
 omarchy_shader(qmm_vec_q4_multi_subgroup_bf16 shaders/qmm_vec.comp -DUSE_BF16=1 -DUSE_SUBGROUP=1 -DQMM_VEC_Q4_WORD=1 -DQMM_VEC_MULTI=1)
 omarchy_shader(sdpa_decode_native_f16 shaders/sdpa_decode_native.comp)
 omarchy_shader(sdpa_decode_native_bf16 shaders/sdpa_decode_native.comp -DBF16_IO=1)
+omarchy_shader(sdpa_decode_native_bf16_hd256 shaders/sdpa_decode_native.comp -DBF16_IO=1 -DSDPA_DIM=256)
 omarchy_shader(sdpa_decode_native_p1_f16 shaders/sdpa_decode_native_p1.comp)
 omarchy_shader(sdpa_decode_native_p2_f16 shaders/sdpa_decode_native_p2.comp)
 omarchy_shader(gated_delta_decode_bf16 shaders/gated_delta_decode.comp -DQKV_BF16=1)

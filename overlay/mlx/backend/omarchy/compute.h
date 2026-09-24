@@ -678,6 +678,11 @@ enum class ComputeKernel : uint16_t {
   // ConvBF16 + the trailing contiguous state view. Tap body copied
   // verbatim from conv.comp. Append-only profile id.
   GdnConvDecodeBF16,
+  // The composition-exact bf16 decode arm at the Qwen3.8 full-attention
+  // query width (same shader source, -DSDPA_DIM=256; every f32 op and
+  // its order matches the composed path, so the route is bit-identical
+  // to the composition it replaces). Append-only profile id.
+  SdpaDecodeNativeBF16Hd256,
   Count,
 };
 
