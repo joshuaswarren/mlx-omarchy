@@ -547,7 +547,7 @@ void main() {
         float value = uintBitsToFloat(((index & 1u) == 0u
             ? (word32 & 0xFFFFu)
             : (word32 >> 16u)) << 16u);
-        half[e] = uint(bf16_store(
+        hb[e] = uint(bf16_store(
             value * norm *
             LOAD_VALUE(norm_weight.values[params.rhs_offset + index])));
       }
