@@ -171,6 +171,12 @@ class MLX_API CommandEncoder {
       uint32_t group_count_x,
       uint32_t group_count_y = 1,
       uint32_t group_count_z = 1);
+  // Record one full memory dependency barrier into the open command
+  // buffer (the same barrier the dispatch paths insert). Public for
+  // primitives that must order a later-recorded dispatch against
+  // everything ahead of it explicitly (the norm-prologue fold fires a
+  // consumer group at a producer's eval turn).
+  void record_dependency_barrier();
 
   // Record a four-byte-word fill. Size and offset must be multiples of 4.
   void fill_buffer(
@@ -303,7 +309,6 @@ class MLX_API CommandEncoder {
   bool batch_needs_barrier(
       std::span<const TrackedRange> reads,
       std::span<const TrackedRange> writes) const;
-  void record_dependency_barrier();
   void reset_dependency_tracking();
   std::vector<TrackedRange> tracked_reads_;
   std::vector<TrackedRange> tracked_writes_;
