@@ -6902,8 +6902,10 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
   bool tile_path = tile_env == nullptr || std::strcmp(tile_env, "0") != 0;
   const char* rb_env = std::getenv("MLX_OMARCHY_QMM_TILE_RB");
   bool rb_enabled = rb_env == nullptr || std::strcmp(rb_env, "0") != 0;
+  // Double-buffered staging: two 32x16 x tiles (X_BF16 build) plus two
+  // 16x32 weight tiles.
   constexpr uint32_t kQmmCoopmatSharedBytes =
-      (32u * 16u + 16u * 32u) * sizeof(float);
+      2u * (32u * 16u + 16u * 32u) * sizeof(float);
   const auto& coopmat_caps = encoder.device().capabilities();
   bool coopmat_reachable =
       tile_path && rb_enabled && q4_g64_transpose &&
