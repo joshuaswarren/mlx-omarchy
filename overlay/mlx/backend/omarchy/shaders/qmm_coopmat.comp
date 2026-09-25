@@ -36,8 +36,10 @@
 #define SUBGROUP_ROW_BLOCKS 2u
 #elif TILE_ROWS == 16
 #define SUBGROUP_ROW_BLOCKS 1u
+#elif TILE_ROWS == 64
+#define SUBGROUP_ROW_BLOCKS 4u
 #else
-#error "TILE_ROWS must be 32 or 16"
+#error "TILE_ROWS must be 32 or 16 or 64"
 #endif
 
 #define ROW_BLOCKS (TILE_ROWS / 8u)

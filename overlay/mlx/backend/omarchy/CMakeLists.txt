@@ -342,6 +342,12 @@ omarchy_shader(qmm_coopmat_m16_bf16 shaders/qmm_coopmat.comp -DX_BF16=1 -DOUT_BF
 # x_s staging disappears; same fp32 coopmat k chain, RNE bfloat16 drain.
 omarchy_shader(qmm_coopmat_x32 shaders/qmm_coopmat.comp -DX_F32=1 -DOUT_BF16=1)
 omarchy_shader(qmm_coopmat_m16_x32 shaders/qmm_coopmat.comp -DX_F32=1 -DOUT_BF16=1 -DTILE_ROWS=16)
+# Wider-M twin: halves the per-FLOP weight load+dequant on big-M prefill
+# (the same packed word is re-staged once per m-tile otherwise). Same
+# per-output k chain, so same output ids.
+omarchy_shader(qmm_coopmat_m64_f16 shaders/qmm_coopmat.comp -DTILE_ROWS=64)
+omarchy_shader(qmm_coopmat_m64_bf16 shaders/qmm_coopmat.comp -DX_BF16=1 -DOUT_BF16=1 -DTILE_ROWS=64)
+omarchy_shader(qmm_coopmat_m64_x32 shaders/qmm_coopmat.comp -DX_F32=1 -DOUT_BF16=1 -DTILE_ROWS=64)
 omarchy_shader(qmm_fma_f16 shaders/qmm_fma.comp)
 omarchy_shader(qmm_fma_precise_f16 shaders/qmm_fma.comp -DPRECISE_ACCUM=1)
 omarchy_shader(matmul_fma_bf16 shaders/matmul_fma_bf16.comp)

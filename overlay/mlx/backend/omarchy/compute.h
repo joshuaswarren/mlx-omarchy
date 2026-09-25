@@ -687,6 +687,12 @@ enum class ComputeKernel : uint16_t {
   // compaction, exact survivor columns, selection, and the flagged full
   // path, one kernel selected per stage. Append-only profile id.
   QmmVecGreedyBF16,
+  // Wider-M twins of the coopmat prefill kernels (-DTILE_ROWS=64): the
+  // same per-output fp32 k chain, half the weight load+dequant per FLOP
+  // on big-M prefill. Append-only profile ids.
+  QmmPrefillCoopmatM64F16,
+  QmmPrefillCoopmatM64BF16,
+  QmmPrefillCoopmatM64BF16X32,
   Count,
 };
 

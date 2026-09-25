@@ -5886,6 +5886,13 @@ uint32_t coopmat_tile_rows(
     return 32u;
   }
   uint64_t target = static_cast<uint64_t>(cores) * per_core;
+  // Widest tile that still fills the part: 64 halves the per-FLOP weight
+  // re-stage on big-M prefill, but only while its (fewer) workgroups
+  // would not idle cores.
+  uint32_t m_groups_64 = (matrix_m + 63u) / 64u;
+  if (static_cast<uint64_t>(m_groups_64) * n_groups >= target) {
+    return 64u;
+  }
   uint32_t m_groups_32 = (matrix_m + 31u) / 32u;
   return static_cast<uint64_t>(m_groups_32) * n_groups < target ? 16u : 32u;
 }
@@ -7138,6 +7145,8 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
       qmm_bindings[0] = binding(x_f32);
       omarchy::ComputeKernel qmm_kernel = coopmat_rows == 16u
           ? omarchy::ComputeKernel::QmmPrefillCoopmatM16BF16X32
+          : coopmat_rows == 64u
+          ? omarchy::ComputeKernel::QmmPrefillCoopmatM64BF16X32
           : omarchy::ComputeKernel::QmmPrefillCoopmatBF16X32;
       encoder.dispatch_compute(
           qmm_kernel,
@@ -7227,6 +7236,8 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
                  : omarchy::ComputeKernel::QmmTileRbF16)
           : coopmat_rows == 16u
           ? omarchy::ComputeKernel::QmmPrefillCoopmatM16F16
+          : coopmat_rows == 64u
+          ? omarchy::ComputeKernel::QmmPrefillCoopmatM64F16
           : omarchy::ComputeKernel::QmmPrefillCoopmatF16;
       encoder.dispatch_compute(
           qmm_kernel,
