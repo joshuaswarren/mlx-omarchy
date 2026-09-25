@@ -7598,6 +7598,14 @@ bool dispatch_quantized_gemv_group(
               ComputeKernel::QmmVecQ4MultiF16,
               ComputeKernel::QmmVecQ4MultiBF16);
   }
+  if (prologue) {
+    // Deterministic producer writeback before the early-fired group:
+    // the prologue reads the raw row in a dispatch the fusion planner
+    // fired at the deferred norm's eval turn, ahead of the members'
+    // own turns; order it explicitly against everything recorded
+    // before it.
+    encoder.record_dependency_barrier();
+  }
   encoder.dispatch_compute(kernel, bindings, params, total_groups, 1u, 1u);
   return true;
 }
