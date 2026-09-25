@@ -34,7 +34,22 @@ past matrix_m are clamped on load and guarded on store as before.
 
 ## Gates
 
-PENDING (this file is completed at landing): 10x interleaved r1
-contracts ctl-vs-cand with paired t-CI on prefill/TTFT/decode/e2e, 0
-token flips per pass, r1 digest `486872c410629f1d` per pass, and one
-10-pass cand contract whose digest must equal the dbf704971617fdfc pin.
+10x interleaved r1 contracts ctl-vs-cand: 0 token flips per pass, r1
+digest `486872c410629f1d` per pass. 10-pass cand contract: digest equals
+the `dbf704971617fdfc` pin — bit-exactness PROVEN.
+
+Perf (paired, n=10): decode delta **-0.031 +/- 0.042 tok/s** (ratio
+0.9992, CI not positive). Pure prefill-512 A/B: cand 221.81 vs ctl
+235.34 tok/s on the contract stack; clean re-pair cand 225.7 vs ctl
+240.6.
+
+## Verdict: FALSIFIED for perf, exactness PROVEN — not landed
+
+The weight-restage hypothesis is falsified on G13G: halving the per-FLOP
+staging cost buys nothing because the wider tile's register/occupancy
+cost gives it back. Decode is a wash and prefill-512 regresses ~6%.
+**This branch stays UNMERGED** as the falsification record; the m64
+shader variants and the `coopmat_tile_rows` widening do not go to main.
+Full matrix and raw-output paths: ane-linux-experiments
+`receipts/2026-09-25-jwm1-parity5-gpu-parity-m64/` section 5 (merged to
+main at `f5a8d4b`).
