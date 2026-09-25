@@ -11,19 +11,23 @@ schedule of per-emission slots whose control state lives in DEVICE
 buffers, so a whole chunk of slots becomes one submission (one
 ``mx.eval`` per chunk instead of per emission).
 
-Per active slot (six queued dispatches):
+Per active slot (five queued dispatches):
 
 1. ``chains`` layer 0 (embedding row looked up from the device token),
-2. ``fold`` layer 0 (contract-order block fold + LUT gates + cell),
-3. ``chains`` layer 1,
-4. ``fold_proj`` layer 1 fused with the projector (h1 staged in
+2. ``chains`` layer 1 with a fold prologue: the layer-0 LSTM step
+   (contract-order block fold + LUT gates + cell) is recomputed
+   in-kernel from layer 0's block sums — bit-identical to the fold
+   kernel this replaces, since every workgroup repeats the same
+   ascending-order arithmetic,
+3. ``fold_proj`` layer 1 fused with the projector (h1 staged in
    threadgroup memory; assembles the whole decoder state and passes it
-   through untouched on inactive slots),
-5. ``window`` joint head: seven consecutive encoder frames against this
+   through untouched on inactive slots; its prologue recomputes the
+   same layer-0 step for the state copy),
+4. ``window`` joint head: seven consecutive encoder frames against this
    slot's decoder state (row 0 is the emission joint; rows past
    ``valid_frames`` zero-fill), weights streamed with the exact
    ``_JOINT_SOURCE`` element order,
-6. ``control``: in-kernel first-max argmax per row (``np.argmax``
+5. ``control``: in-kernel first-max argmax per row (``np.argmax``
    semantics: strict ``>`` on an ascending scan, smaller index wins
    ties, first NaN wins) plus the duration-head argmax, then the greedy
    TDT walk appending emissions and writing the next slot's control
@@ -149,39 +153,91 @@ _CHAINS_BODY = """
     bsum[idx] = bc;
 """
 
-_FOLD_BODY = """
+_CHAINS_L1_BODY = """
+    uint g = threadgroup_position_in_grid.x;
     uint t = thread_index_in_threadgroup.x;
-    float16_t pr[4];
+    uint idx = g * _CHANTHREADSu + t;
+    // Fold prologue: every workgroup recomputes the layer-0 LSTM step
+    // from bsum0 with the exact arithmetic (and order) of the fold
+    // kernel this prologue replaces, so h0 is bit-identical to its
+    // output.  The strided sh_a fill below reads only this thread's
+    // own sh_h0 writes, so no extra barrier is needed.
+    threadgroup float16_t sh_a[1280];
+    threadgroup float16_t sh_h0[640];
     if (!step_live) {
-        h1_out[t] = 0.0f;
-        c1_out[t] = 0.0f;
-        return;
-    }
-    uint lane = t;
-    for (uint gate = 0u; gate < 4u; ++gate) {
-        uint n = lane + gate * 640u;
-        float16_t bacc = bsum[n];
-        for (uint block = 1u; block < 10u; ++block) {
-            bacc = float16_t(bacc + bsum[block * 2560u + n]);
+        for (uint i = t; i < 640u; i += _CHANTHREADSu) {
+            sh_h0[i] = float16_t(0.0f);
         }
-        pr[gate] = float16_t(bacc + biases[0u * 2560u + n]);
+    } else {
+        for (uint lane = t; lane < 640u; lane += _CHANTHREADSu) {
+_FOLD_STEP
+            sh_h0[lane] = h0v;
+        }
     }
-    uint bi = packHalf2x16(vec2(float(pr[0]), 0.0f)) & 0xFFFFu;
-    uint bf = packHalf2x16(vec2(float(pr[1]), 0.0f)) & 0xFFFFu;
-    uint bo = packHalf2x16(vec2(float(pr[2]), 0.0f)) & 0xFFFFu;
-    uint bg = packHalf2x16(vec2(float(pr[3]), 0.0f)) & 0xFFFFu;
-    float16_t si = luts[bi];
-    float16_t sf = luts[bf];
-    float16_t so = luts[bo];
-    float16_t tg = luts[65536u + bg];
-    float16_t c0 = float16_t(cell_in[0u * 640u + lane]);
-    float16_t fprod = sf * c0;
-    float16_t c1 = exact_fma16(fprod, si, tg);
-    uint cb = packHalf2x16(vec2(float(c1), 0.0f)) & 0xFFFFu;
-    float16_t tc = luts[65536u + cb];
-    float16_t h1 = so * tc;
-    h1_out[lane] = float(h1);
-    c1_out[lane] = float(c1);
+    for (uint i = t; i < 1280u; i += _CHANTHREADSu) {
+        if (i < 640u) {
+            sh_a[i] = sh_h0[i];
+        } else {
+            sh_a[i] = float16_t(hidden_in[i]);
+        }
+    }
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    uint n = idx % 2560u;
+    uint gb = idx / 2560u;
+    uint block = gb % 10u;
+    float16_t bc = float16_t(0.0f);
+    uint k = block * 128u;
+    uint wbase = uint(_LAYER) * 3276800u + k * 2560u + n;
+    // Loads are independent of the bc chain: prefetch four weight elements
+    // ahead so the DRAM stream stays in flight.  The exact_fma16 adds keep
+    // their ascending-k order, so the result is bit-identical.
+    float16_t w0 = weights[wbase];
+    float16_t w1 = weights[wbase + 2560u];
+    float16_t w2 = weights[wbase + 5120u];
+    float16_t w3 = weights[wbase + 7680u];
+    for (uint j = 0u; j < 128u; j += 4u) {
+        float16_t w4 = weights[wbase + 10240u];
+        float16_t w5 = weights[wbase + 12800u];
+        float16_t w6 = weights[wbase + 15360u];
+        float16_t w7 = weights[wbase + 17920u];
+        bc = exact_fma16(bc, sh_a[k], w0);
+        bc = exact_fma16(bc, sh_a[k + 1u], w1);
+        bc = exact_fma16(bc, sh_a[k + 2u], w2);
+        bc = exact_fma16(bc, sh_a[k + 3u], w3);
+        w0 = w4; w1 = w5; w2 = w6; w3 = w7;
+        wbase += 10240u;
+        k += 4u;
+    }
+    bsum[idx] = bc;
+"""
+
+_FOLD_STEP = """
+    float16_t h0v; float16_t c0v;
+    {
+        float16_t pr[4];
+        for (uint gate = 0u; gate < 4u; ++gate) {
+            uint n = lane + gate * 640u;
+            float16_t bacc = bsum0[n];
+            for (uint block = 1u; block < 10u; ++block) {
+                bacc = float16_t(bacc + bsum0[block * 2560u + n]);
+            }
+            pr[gate] = float16_t(bacc + biases[0u * 2560u + n]);
+        }
+        uint bi = packHalf2x16(vec2(float(pr[0]), 0.0f)) & 0xFFFFu;
+        uint bf = packHalf2x16(vec2(float(pr[1]), 0.0f)) & 0xFFFFu;
+        uint bo = packHalf2x16(vec2(float(pr[2]), 0.0f)) & 0xFFFFu;
+        uint bg = packHalf2x16(vec2(float(pr[3]), 0.0f)) & 0xFFFFu;
+        float16_t si = luts[bi];
+        float16_t sf = luts[bf];
+        float16_t so = luts[bo];
+        float16_t tg = luts[65536u + bg];
+        float16_t cprev = float16_t(cell_in[lane]);
+        float16_t fprod = sf * cprev;
+        c0v = exact_fma16(fprod, si, tg);
+        uint cb = packHalf2x16(vec2(float(c0v), 0.0f)) & 0xFFFFu;
+        float16_t tc = luts[65536u + cb];
+        h0v = so * tc;
+    }
 """
 
 _FOLD_PROJ_BODY = """
@@ -198,6 +254,7 @@ _FOLD_PROJ_BODY = """
         pj[lane] = float(pj16_in[lane]);
         return;
     }
+_FOLD_STEP
     for (uint gate = 0u; gate < 4u; ++gate) {
         uint n = lane + gate * 640u;
         float16_t bacc = bsum[n];
@@ -220,9 +277,9 @@ _FOLD_PROJ_BODY = """
     uint cb = packHalf2x16(vec2(float(c1), 0.0f)) & 0xFFFFu;
     float16_t tc = luts[65536u + cb];
     float16_t h1 = so * tc;
-    h_state[lane] = float(h0_in[lane]);
+    h_state[lane] = float(h0v);
     h_state[640u + lane] = float(h1);
-    c_state[lane] = c0_in[lane];
+    c_state[lane] = float(c0v);
     c_state[640u + lane] = float(c1);
     sh_h1[lane] = float(h1);
     threadgroup_barrier(mem_flags::mem_threadgroup);
@@ -492,11 +549,11 @@ def _subst(template: str, **repl: str) -> str:
     return out
 
 
-def _build_chains(layer: int) -> str:
+def _build_chains_l0() -> str:
     return _subst(
         _STEP_LIVE + _CHAINS_BODY,
         _CHANTHREADS=str(_CHAIN_THREADS),
-        _LAYER=str(layer),
+        _LAYER="0",
         _C_TOKEN=str(_C_TOKEN),
         _C_RUN=str(_C_RUN),
         _C_DONE=str(_C_DONE),
@@ -504,16 +561,22 @@ def _build_chains(layer: int) -> str:
     )
 
 
-def _build_fold() -> str:
+def _build_chains_l1() -> str:
     return _subst(
-        _STEP_LIVE + _FOLD_BODY,
-        _C_RUN=str(_C_RUN), _C_DONE=str(_C_DONE), _C_SKIP=str(_C_SKIP),
+        _STEP_LIVE + _CHAINS_L1_BODY,
+        _CHANTHREADS=str(_CHAIN_THREADS),
+        _LAYER="1",
+        _FOLD_STEP=_FOLD_STEP,
+        _C_RUN=str(_C_RUN),
+        _C_DONE=str(_C_DONE),
+        _C_SKIP=str(_C_SKIP),
     )
 
 
 def _build_fold_proj() -> str:
     return _subst(
         _STEP_LIVE + _FOLD_PROJ_BODY,
+        _FOLD_STEP=_FOLD_STEP,
         _C_RUN=str(_C_RUN), _C_DONE=str(_C_DONE), _C_SKIP=str(_C_SKIP),
     )
 
@@ -596,27 +659,28 @@ def _mx():
 
 
 @cache
-def _chains_kernel(layer: int):
+def _chains_l0_kernel():
     mx = _mx()
     return mx.fast.metal_kernel(
-        name=f"parakeet_tdt_chain_chains_l{layer}",
+        name="parakeet_tdt_chain_chains_l0",
         input_names=["embedding", "weights", "hidden_in", "x_in", "ctl"],
         output_names=["bsum"],
         header=_EXACT_FMA16,
-        source=_build_chains(layer),
+        source=_build_chains_l0(),
         compile_options={"math_mode": "safe"},
     )
 
 
 @cache
-def _fold_kernel():
+def _chains_l1_kernel():
     mx = _mx()
     return mx.fast.metal_kernel(
-        name="parakeet_tdt_chain_fold_l0",
-        input_names=["bsum", "biases", "luts", "cell_in", "ctl"],
-        output_names=["h1_out", "c1_out"],
+        name="parakeet_tdt_chain_chains_l1_fused",
+        input_names=["weights", "hidden_in", "bsum0", "biases", "luts",
+                     "cell_in", "ctl"],
+        output_names=["bsum"],
         header=_EXACT_FMA16,
-        source=_build_fold(),
+        source=_build_chains_l1(),
         compile_options={"math_mode": "safe"},
     )
 
@@ -626,7 +690,7 @@ def _fold_proj_kernel():
     mx = _mx()
     return mx.fast.metal_kernel(
         name="parakeet_tdt_chain_fold_proj_l1",
-        input_names=["bsum", "biases", "luts", "cell_in", "h0_in", "c0_in",
+        input_names=["bsum", "biases", "luts", "cell_in", "bsum0",
                      "h_state_in", "c_state_in", "pj16_in", "projector",
                      "ctl"],
         output_names=["h_state", "c_state", "pj", "pj16"],
@@ -733,7 +797,7 @@ def run_tdt_chain(
             for i in range(slot, end):
                 ctl_i = ctl_rows[i]
                 sid = _sid_array(i)
-                bsum0, = _chains_kernel(0)(
+                bsum0, = _chains_l0_kernel()(
                     inputs=[packed.embedding, packed.weights, h_state,
                             h_state, ctl_i],
                     output_shapes=[(25600,)],
@@ -742,16 +806,9 @@ def run_tdt_chain(
                     threadgroup=(_CHAIN_THREADS, 1, 1),
                     stream=mx.gpu,
                 )
-                h0, c0 = _fold_kernel()(
-                    inputs=[bsum0, packed.biases, packed.luts, c_state, ctl_i],
-                    output_shapes=[(640,), (640,)],
-                    output_dtypes=[mx.float32, mx.float32],
-                    grid=(640, 1, 1), threadgroup=(640, 1, 1),
-                    stream=mx.gpu,
-                )
-                bsum1, = _chains_kernel(1)(
-                    inputs=[packed.embedding, packed.weights, h_state, h0,
-                            ctl_i],
+                bsum1, = _chains_l1_kernel()(
+                    inputs=[packed.weights, h_state, bsum0, packed.biases,
+                            packed.luts, c_state, ctl_i],
                     output_shapes=[(25600,)],
                     output_dtypes=[mx.float16],
                     grid=(_CHAIN_GROUPS * _CHAIN_THREADS, 1, 1),
@@ -759,8 +816,8 @@ def run_tdt_chain(
                     stream=mx.gpu,
                 )
                 h_s, c_s, pj, pj16 = _fold_proj_kernel()(
-                    inputs=[bsum1, packed.biases, packed.luts, c_state, h0,
-                            c0, h_state, c_state, pj16_prev,
+                    inputs=[bsum1, packed.biases, packed.luts, c_state,
+                            bsum0, h_state, c_state, pj16_prev,
                             packed.projector, ctl_i],
                     output_shapes=[(1280,), (1280,), (640,), (640,)],
                     output_dtypes=[mx.float32, mx.float32, mx.float32,
