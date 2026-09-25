@@ -110,3 +110,33 @@ fused-chain swiglu consumers under the model's real tape — NOT kv-direct, NOT 
 reduction lowering (SPIR-V-identical), NOT per-group kernel values
 (micro-proven)). Per the authorization: FINAL-REJECT, service restored + probe
 ok, lane closed. No further iterations.
+
+
+## ADDENDUM 2 — bounded iteration 3 (parent-authorized): writeback barrier — FINAL-REJECT (lane closed)
+
+SpirvDisc's discriminator (14c36fcd) refuted the lowering wall; the working
+hypothesis moved to host/tape-domain scheduling (early-fired group vs producer
+writeback). Probe used: the fix itself — a deterministic full dependency barrier
+recorded before every early-fired prologue group dispatch (commits `11293b3c`
++ `7519a92c`, `record_dependency_barrier()` made public for this). Wheel
+`mlx_omarchy-0.32.3.dev202609250003+7519a92c` sha256 `25e6757b…`. Battery
+(window 20260925T000714Z):
+
+| arm | result |
+|---|---|
+| build-equivalence (NORM=0) 3-pass | PASS — bc519c03 @ 77.31 |
+| gate 1 cand default | **FAIL — 44/320 flips, max|d_top1| 10.375 (prompt 7) — third byte-identical signature** |
+
+Three independent mitigations, one deterministic signature: baseline 44,
+kv-direct-excluded 44, writeback-barrier 44 (same prompt, same max delta). The
+divergence is a deterministic function of the fold's presence, invariant to
+lowering (SPIR-V/NIR/AGX-IR op-identical per discriminator), invariant to
+per-group values (micro 12/12 byte-identical with firing proven), and invariant
+to scheduling barriers. Eliminated definitively: Honeykrisp lowering, kernel
+arithmetic, kv-direct write ordering, dispatch writeback ordering. Remaining
+domains for any future lane: the model tape's exact planner shapes (a group
+class present in-model but absent from the micro — e.g. the GDN [qkv,z,b] trio
+whose z member feeds a reshape chain, or multi-token tape re-planning), or a
+buffer-identity/offset subtlety in the model's sliced residual rows.
+
+Per the authorization: FINAL-REJECT, lane closed, service restored + probe ok.
