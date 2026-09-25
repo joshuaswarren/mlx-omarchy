@@ -140,3 +140,26 @@ whose z member feeds a reshape chain, or multi-token tape re-planning), or a
 buffer-identity/offset subtlety in the model's sliced residual rows.
 
 Per the authorization: FINAL-REJECT, lane closed, service restored + probe ok.
+
+
+## ADDENDUM 3 — commissioned round: SwiGLU-store+chained-prologue and RMSNormGated-fed out_proj — neither reproduces; LANE TERMINAL
+
+Harness_swing.py: per token, na=RMSNorm(xin)+trio, nb=RMSNorm(xin)+gate/up pair with
+the silu(g)*u store chain (bit 15 + bit 16 + chained input — the exact commissioned
+structure), down group on the swiglu product, RMSNormGated-fed out_proj class
+(real mx.fast.rms_norm_gated binding), n2 trio, chained residual, slice-update
+state, 8 tokens. FIRING PROVEN (diag profile: 14 of 24 RMSNorm gx=1 dispatches
+removed fold-on; the folded gate/up group keeps the same signature as its plain
+trio, so the removal count is the marker). Results: swing / swing-nochain /
+swing-nogated ALL byte-identical fold-on vs fold-off across 8 tokens x 13
+observables.
+
+With this round, every in-model-reachable structure expressible outside the full
+model is proven bit-exact under the fold: trios, pairs, singles, swiglu-store
+with chained prologue, gated-norm out_proj, epilogue-sum-chained norm inputs,
+per-token replanning, in-place state. The divergence reproduces ONLY inside the
+full 24-layer model — the remaining domain is full-model planner state (planner
+interaction surface across the whole tape: rope-pair/kv-direct/swiglu matchers
+and the allocator interleaving at 24-layer scale). LANE TERMINAL at tip
+99e86ee5 + this addendum. Final disposition: FINAL-REJECT (never installed;
+v072 untouched throughout).
