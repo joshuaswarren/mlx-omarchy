@@ -6,11 +6,13 @@
 // run per decoded token: state decay, kv reduction, delta, outer-product
 // state update, and the output projection over the updated state.
 //
-// One workgroup per (batch, v-head), one thread per Dv row. The thread's row
-// of the state is read twice (kv pass, update+output pass) instead of being
-// held in registers; k and q ride shared memory. Every intermediate is
-// float32 and each row reduces sequentially over Dk in ascending order, so
-// the arithmetic matches the composed fallback's per-row sums.
+// LANES threads per Dv row, each owning a contiguous Dk/LANES slice of the
+// row's state in registers (read once, written once). A workgroup of 128
+// threads covers 128/LANES rows; a head takes LANES workgroups. The two
+// per-row dot products (kv, o) are sequential f32 chains over Dk in
+// ascending order: lane 0 sums its slice from zero, hands its total to
+// lane 1 (subgroupShuffleUp), and so on, so every partial sum is the same
+// value the one-thread-per-row form produced. k and q ride shared memory.
 //
 // Exactness contract (bf16 arm): q/k/v are bf16 bit patterns widened exactly
 // (bf16 bits are the f32 top half); g/beta arrive f32 (the fast.cpp caller
@@ -24,6 +26,15 @@
 #ifdef QKV_BF16
 #extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
 #endif
+#extension GL_KHR_shader_subgroup_basic : require
+#extension GL_KHR_shader_subgroup_shuffle_relative : require
+
+// Dk is 128 by the dispatch contract (GatedDeltaUpdate::use_fallback).
+#define DK 128u
+#define LANES 4u
+#define SLICE (DK / LANES)
+#define WG_THREADS 128u
+#define ROWS_PER_WG (WG_THREADS / LANES)
 
 layout(local_size_x = 128, local_size_y = 1, local_size_z = 1) in;
 
@@ -77,23 +88,33 @@ uint16_t bf16_store(float value) {
   return uint16_t((bits + 0x7fffu + ((bits >> 16) & 1u)) >> 16);
 }
 
-shared float sk[128];
-shared float sq[128];
-shared float sdelta[128];
+shared float sk[DK];
+shared float sq[DK];
+
+// Broadcast lane LANES-1's value to the LANES lanes of its row (two
+// uniform relative shuffles; LANES == 4).
+float row_total(float acc, uint sub) {
+  float d1 = subgroupShuffleDown(acc, 1u);
+  acc = (sub == 2u) ? d1 : acc;
+  float d2 = subgroupShuffleDown(acc, 2u);
+  return (sub < 2u) ? d2 : acc;
+}
 
 void main() {
-  uint dk = params.matrix_m;
   uint dv = params.matrix_n;
   uint hv = params.matrix_k;
-  uint head = gl_WorkGroupID.x;
-  uint row = gl_LocalInvocationID.x;   // one dv row per thread
+  uint head = gl_WorkGroupID.x / LANES;
+  uint row_block = gl_WorkGroupID.x % LANES;
+  uint tid = gl_LocalInvocationID.x;
+  uint sub = tid % LANES;                       // slice index within the row
+  uint row = row_block * ROWS_PER_WG + tid / LANES;
 
   if (head >= hv) {
     return;
   }
-  for (uint i = row; i < dk; i += 128u) {
-    sk[i] = bf16_load(k_buf.v[params.rhs_offset + head * dk + i]);
-    sq[i] = bf16_load(q_buf.v[params.lhs_offset + head * dk + i]);
+  for (uint i = tid; i < DK; i += WG_THREADS) {
+    sk[i] = bf16_load(k_buf.v[params.rhs_offset + head * DK + i]);
+    sq[i] = bf16_load(q_buf.v[params.lhs_offset + head * DK + i]);
   }
   barrier();
 
@@ -130,23 +151,46 @@ void main() {
     g = bf16_load(g_buf.v[params.shape[0] + head]);
     beta = bf16_load(b_buf.v[params.aux_offset + head]);
   }
-  uint head_base = head * dv * dk;
-  uint row_base = head_base + row * dk;
+  uint slice_base = head * dv * DK + row * DK + sub * SLICE;
 
-  float kv_acc = 0.0f;
-  for (uint i = 0u; i < dk; ++i) {
-    kv_acc += s_in.v[params.shape[1] + row_base + i] * g * sk[i];
+  float st[SLICE];
+  for (uint i = 0u; i < SLICE; ++i) {
+    st[i] = s_in.v[params.shape[1] + slice_base + i];
   }
+
+  // kv chain: lane sub continues from lane sub-1's running total.
+  float acc = 0.0f;
+  for (uint j = 0u; j < LANES; ++j) {
+    float prev = subgroupShuffleUp(acc, 1u);
+    if (sub == j) {
+      acc = (j == 0u) ? 0.0f : prev;
+      for (uint i = 0u; i < SLICE; ++i) {
+        acc += st[i] * g * sk[sub * SLICE + i];
+      }
+    }
+  }
+  float kv_acc = row_total(acc, sub);
   float delta = (bf16_load(v_buf.v[params.aux_size + head * dv + row]) - kv_acc) * beta;
-  sdelta[row] = delta;
-  barrier();
 
-  float o_acc = 0.0f;
-  for (uint i = 0u; i < dk; ++i) {
-    float s = s_in.v[params.shape[1] + row_base + i] * g;
-    float ns = s + sdelta[row] * sk[i];
-    s_out.v[params.shape[2] + head_base + row * dk + i] = ns;
-    o_acc += ns * sq[i];
+  // State update is lane-parallel; only the o dot product chains.
+  for (uint i = 0u; i < SLICE; ++i) {
+    float s = st[i] * g;
+    float ns = s + delta * sk[sub * SLICE + i];
+    st[i] = ns;
+    s_out.v[params.shape[2] + slice_base + i] = ns;
   }
-  y_buf.v[params.output_offset + head * dv + row] = bf16_store(o_acc);
+  acc = 0.0f;
+  for (uint j = 0u; j < LANES; ++j) {
+    float prev = subgroupShuffleUp(acc, 1u);
+    if (sub == j) {
+      acc = (j == 0u) ? 0.0f : prev;
+      for (uint i = 0u; i < SLICE; ++i) {
+        acc += st[i] * sq[sub * SLICE + i];
+      }
+    }
+  }
+  float o_acc = row_total(acc, sub);
+  if (sub == 0u) {
+    y_buf.v[params.output_offset + head * dv + row] = bf16_store(o_acc);
+  }
 }
