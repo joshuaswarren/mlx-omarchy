@@ -12,6 +12,9 @@
 # other head and MLX_OMARCHY_NO_GREEDY_PRUNE=1 restores the upstream step.
 # Conv-ring: OFF by default (decode-only experimental optimization);
 # set MLX_OMARCHY_CONV_RING=1 to enable.
+# Source rewrites (python, idempotent): eager swiglu so the GEMV store
+# epilogue folds, and the Qwen3-Next q/gate projection split at load
+# (T6001 459 -> 405 dispatches/token bit-exact, mlx-omarchy bfe2ddc6d).
 #
 # Idempotent: an already-applied patch is reported and skipped.
 set -euo pipefail
@@ -56,3 +59,16 @@ if [[ "${MLX_OMARCHY_CONV_RING:-0}" == 1 ]]; then
 else
   echo "conv-ring: OFF (set MLX_OMARCHY_CONV_RING=1 to enable)"
 fi
+# Layout 1 keeps the rewrite scripts beside this script; layout 2 in scripts/.
+for rewrite in patch-mlx-lm-swiglu-eager.py patch-mlx-lm-qwen3next-qgate-split.py; do
+  if [[ -f "$SCRIPT_DIR/$rewrite" ]]; then
+    "$VENV/bin/python" "$SCRIPT_DIR/$rewrite" "$VENV"
+  elif [[ -f "$ROOT/scripts/$rewrite" ]]; then
+    "$VENV/bin/python" "$ROOT/scripts/$rewrite" "$VENV"
+  else
+    echo "error: rewrite script missing: $rewrite" >&2
+    exit 5
+  fi
+done
+# Stale bytecode would shadow the rewritten modules.
+find "$SITE/mlx_lm" -name '*.pyc' -delete
