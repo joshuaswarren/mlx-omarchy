@@ -99,6 +99,22 @@ const float FINITE_MIN = -3.4028234663852886e38;
 #define SDPA_DIM 64u
 #endif
 
+// Software-pipelined global-load distance for the bf16 arm's two long
+// loops: -DSDPA_PREFETCH_P stages the next P lane/tile loads in registers
+// while the accumulation chain drains, hiding device latency behind the
+// FMA chain instead of the thread count. 0 (default) keeps the unpipelined
+// bodies, so every existing blob compiles from the same preprocessed
+// source as before. P must divide SDPA_DIM; the pipeline consumes the
+// per-key dot and the output tile walk in full P-wide blocks.
+//
+// The prefetch changes where each load is issued and nothing else: the
+// loaded values, the operand order, and the accumulation orders are
+// exactly the plain form's, so the stored f32 scores, the softmax trees
+// they feed, and the RNE bf16 outputs are bit-identical for every P.
+#ifndef SDPA_PREFETCH_P
+#define SDPA_PREFETCH_P 0u
+#endif
+
 #ifndef BF16_IO
 shared float s_outputs[SIMD * SIMD];
 shared float s_max[SIMD];
@@ -187,15 +203,44 @@ void main() {
   }
   barrier();
 
+#if SDPA_PREFETCH_P > 0
+#if (SDPA_DIM % SDPA_PREFETCH_P) != 0u
+#error "SDPA_PREFETCH_P must divide SDPA_DIM"
+#endif
+#endif
   // Scores over every key: ascending-d accumulation, matmul.comp order.
   for (uint key = thread; key < k_len; key += 1024u) {
     uint k_base = params.rhs_offset + kv_head * params.shape[1] +
         key * params.shape[2];
     float accumulator = 0.0;
+#if SDPA_PREFETCH_P > 0
+    // Pipelined form: P lane loads in flight per thread; each refill is
+    // consumed a full block later. Full blocks only (P divides SDPA_DIM),
+    // every refill index <= SDPA_DIM-1.
+    float lane_load[SDPA_PREFETCH_P];
+    for (uint j = 0u; j < SDPA_PREFETCH_P; ++j) {
+      lane_load[j] = bf16_load(
+          key_data.values[k_base + j * params.in_strides[0]]);
+    }
+    uint d = 0u;
+    for (; d + SDPA_PREFETCH_P < SDPA_DIM; d += SDPA_PREFETCH_P) {
+      for (uint j = 0u; j < SDPA_PREFETCH_P; ++j) {
+        accumulator += s_qrow[d + j] * lane_load[j];
+      }
+      for (uint j = 0u; j < SDPA_PREFETCH_P; ++j) {
+        lane_load[j] = bf16_load(key_data.values[
+            k_base + (d + SDPA_PREFETCH_P + j) * params.in_strides[0]]);
+      }
+    }
+    for (uint j = 0u; j < SDPA_PREFETCH_P; ++j) {
+      accumulator += s_qrow[d + j] * lane_load[j];
+    }
+#else
     for (uint d = 0u; d < SDPA_DIM; ++d) {
       accumulator += s_qrow[d] *
           bf16_load(key_data.values[k_base + d * params.in_strides[0]]);
     }
+#endif
     s_stream[key] = 1.0 * accumulator;
   }
   barrier();
@@ -254,6 +299,52 @@ void main() {
     uint d = thread;
     float accumulator = 0.0;
     uint key = 0u;
+#if SDPA_PREFETCH_P > 0
+    // Pipelined form over the full 16-wide tiles; the zero-padded tail
+    // tile below is shared with the plain form. The pipeline needs one
+    // full block of real keys (k_len >= 16 gives main_keys >= 16 >= P);
+    // shorter contexts take the plain walk.
+    uint main_keys = 16u * (k_len / 16u);
+    if (main_keys >= SDPA_PREFETCH_P) {
+      float tile_load[SDPA_PREFETCH_P];
+      uint v_base = params.aux_offset +
+          kv_head * params.in_strides[1] + d * params.in_strides[3];
+      for (uint j = 0u; j < SDPA_PREFETCH_P; ++j) {
+        tile_load[j] = bf16_load(
+            value_data.values[v_base + j * params.in_strides[2]]);
+      }
+      for (; key + SDPA_PREFETCH_P < main_keys;
+           key += SDPA_PREFETCH_P) {
+        for (uint j = 0u; j < SDPA_PREFETCH_P; ++j) {
+          accumulator += s_stream[key + j] * tile_load[j];
+        }
+        for (uint j = 0u; j < SDPA_PREFETCH_P; ++j) {
+          tile_load[j] = bf16_load(value_data.values[
+              v_base +
+              (key + SDPA_PREFETCH_P + j) * params.in_strides[2]]);
+        }
+      }
+      for (uint j = 0u; j < SDPA_PREFETCH_P; ++j) {
+        accumulator += s_stream[key + j] * tile_load[j];
+      }
+      key = main_keys;
+    }
+    // key == main_keys here (0 when the pipeline was skipped): the shared
+    // zero-padded tail tile below covers the residual real keys and the
+    // exact-zero padding exactly as the plain form does.
+    for (uint index = 0u; index < 16u; ++index) {
+      float prob = key < k_len ? s_stream[key] : 0.0;
+      float value16 = key < k_len ? bf16_load(
+          value_data.values[params.aux_offset +
+              kv_head * params.in_strides[1] +
+              key * params.in_strides[2] +
+              d * params.in_strides[3]]) : 0.0;
+      accumulator += prob * value16;
+      ++key;
+    }
+    output_data.values[params.output_offset + head * SDPA_DIM + d] =
+        bf16_store(1.0 * accumulator);
+#else
     for (uint tile = 0u; tile < k_len / 16u; ++tile) {
       for (uint index = 0u; index < 16u; ++index) {
         accumulator += s_stream[key] * bf16_load(
@@ -276,6 +367,7 @@ void main() {
     }
     output_data.values[params.output_offset + head * SDPA_DIM + d] =
         bf16_store(1.0 * accumulator);
+#endif
   }
   return;
 #else
