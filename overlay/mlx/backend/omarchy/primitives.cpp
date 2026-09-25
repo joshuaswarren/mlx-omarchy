@@ -5888,9 +5888,11 @@ uint32_t coopmat_tile_rows(
   uint64_t target = static_cast<uint64_t>(cores) * per_core;
   // Widest tile that still fills the part: 64 halves the per-FLOP weight
   // re-stage on big-M prefill, but only while its (fewer) workgroups
-  // would not idle cores.
+  // would not idle cores, and only past one m32 tile — below that the
+  // clamped-row MMA waste outweighs the staging saving.
   uint32_t m_groups_64 = (matrix_m + 63u) / 64u;
-  if (static_cast<uint64_t>(m_groups_64) * n_groups >= target) {
+  if (matrix_m > 32u &&
+      static_cast<uint64_t>(m_groups_64) * n_groups >= target) {
     return 64u;
   }
   uint32_t m_groups_32 = (matrix_m + 31u) / 32u;
