@@ -903,7 +903,8 @@ Device::Device(uint32_t physical_device_index) {
       std::min(
           caps_.max_per_stage_descriptor_storage_buffers,
           caps_.max_descriptor_set_storage_buffers));
-  compute_ = std::make_unique<ComputeRuntime>(device_, binding_limit);
+  compute_ = std::make_unique<ComputeRuntime>(
+      device_, binding_limit, caps_.pipeline_cache_uuid);
   completions_ = std::make_unique<CompletionDispatcher>(device_, this);
 }
 

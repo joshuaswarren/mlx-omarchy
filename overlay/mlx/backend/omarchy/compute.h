@@ -748,7 +748,10 @@ struct ComputeParams {
 
 class ComputeRuntime {
  public:
-  explicit ComputeRuntime(VkDevice device, uint32_t binding_limit);
+  explicit ComputeRuntime(
+      VkDevice device,
+      uint32_t binding_limit,
+      const std::array<uint8_t, VK_UUID_SIZE>& pipeline_cache_uuid);
   ~ComputeRuntime();
 
   ComputeRuntime(const ComputeRuntime&) = delete;
@@ -784,6 +787,17 @@ class ComputeRuntime {
   std::array<VkPipeline, static_cast<size_t>(ComputeKernel::Count)> pipelines_{};
   std::unordered_map<std::string, VkPipeline> dynamic_pipelines_;
   std::mutex mutex_;
+
+  // Persistent pipeline cache: a VkPipelineCache seeded from disk and
+  // written back on destruction. Without it every fresh process pays
+  // the driver's full pipeline compile for each custom kernel (the
+  // Parakeet mel frontend's eight kernels cost ~100 ms there per
+  // process on T6001), even though the SPIR-V binaries themselves are
+  // already content-addressed on disk.
+  VkPipelineCache pipeline_cache_{VK_NULL_HANDLE};
+  std::string cache_path_;
+  std::array<uint8_t, VK_UUID_SIZE> cache_uuid_{};
+  bool cache_dirty_{false};
 };
 
 } // namespace mlx::core::omarchy
