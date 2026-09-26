@@ -219,6 +219,12 @@ bool fused_gemv_enabled();
 // (the MLX_OMARCHY_FUSED_GEMV gate also covers it); on by default.
 bool fused_gemv_swiglu_enabled();
 
+// MLX_OMARCHY_FUSED_PRECISE_SWIGLU=0 keeps the f32-precise SwiGLU
+// cast fusion (mlx_lm qwen3_next._precise_swiglu's AsType -> FusedChain
+// -> AsType run collapsed into one SwigluPreciseBF16 dispatch) off; on
+// by default.
+bool fused_precise_swiglu_enabled();
+
 // Decode trio: MLX_OMARCHY_FUSED_TRIO=0 keeps f16 RMSNorm rows, the
 // fused SwiGLU chain dispatch, and RoPE pairs on their standalone
 // kernels and paths (the MLX_OMARCHY_FUSED_CHAIN gate also covers it).
