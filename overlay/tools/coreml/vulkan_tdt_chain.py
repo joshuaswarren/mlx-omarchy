@@ -184,6 +184,88 @@ _FOLD_BODY = """
     c1_out[lane] = float(c1);
 """
 
+# Absorbed layer-1 chains: computes the fold in its prologue so the fold
+# dispatch disappears.  Each thread fills its sh_a slots from h1 values it
+# derives locally with EXACTLY the fold kernel's arithmetic (bacc ascending
+# blocks 0..9 over bsum0, biases row 0, LUT gates, cell chain from the
+# running c_state) — per-lane independent, bit-identical order.  Workgroup
+# 0 alone publishes h0_out/c0_out (fold_proj's inputs); all other
+# workgroups compute the same values and drop them.
+_CHAINS1_FOLD_BODY = """
+    uint g = threadgroup_position_in_grid.x;
+    uint t = thread_index_in_threadgroup.x;
+    uint idx = g * _CHANTHREADSu + t;
+    int token_id = ctl[_C_TOKEN];
+    threadgroup float16_t sh_a[1280];
+    if (!step_live) {
+        bsum[idx] = float16_t(0.0f);
+        if (g == 0u && t < 640u) {
+            h0_out[t] = 0.0f;
+            c0_out[t] = 0.0f;
+        }
+        return;
+    }
+    for (uint i = t; i < 1280u; i += _CHANTHREADSu) {
+        if (i < 640u) {
+            float16_t pr[4];
+            for (uint gate = 0u; gate < 4u; ++gate) {
+                uint n = i + gate * 640u;
+                float16_t bacc = bsum0[n];
+                for (uint block = 1u; block < 10u; ++block) {
+                    bacc = float16_t(bacc + bsum0[block * 2560u + n]);
+                }
+                pr[gate] = float16_t(bacc + biases[0u * 2560u + n]);
+            }
+            uint bi = packHalf2x16(vec2(float(pr[0]), 0.0f)) & 0xFFFFu;
+            uint bf = packHalf2x16(vec2(float(pr[1]), 0.0f)) & 0xFFFFu;
+            uint bo = packHalf2x16(vec2(float(pr[2]), 0.0f)) & 0xFFFFu;
+            uint bg = packHalf2x16(vec2(float(pr[3]), 0.0f)) & 0xFFFFu;
+            float16_t si = luts[bi];
+            float16_t sf = luts[bf];
+            float16_t so = luts[bo];
+            float16_t tg = luts[65536u + bg];
+            float16_t c_in = float16_t(c_state[0u * 640u + i]);
+            float16_t fprod = sf * c_in;
+            float16_t c1 = exact_fma16(fprod, si, tg);
+            uint cb = packHalf2x16(vec2(float(c1), 0.0f)) & 0xFFFFu;
+            float16_t tc = luts[65536u + cb];
+            float16_t h1 = so * tc;
+            sh_a[i] = float16_t(float(h1));
+            if (g == 0u) {
+                h0_out[i] = float(h1);
+                c0_out[i] = float(c1);
+            }
+        } else {
+            sh_a[i] = float16_t(hidden_in[640u + (i - 640u)]);
+        }
+    }
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    uint n = idx % 2560u;
+    uint gb = idx / 2560u;
+    uint block = gb % 10u;
+    float16_t bc = float16_t(0.0f);
+    uint k = block * 128u;
+    uint wbase = uint(_LAYER) * 3276800u + k * 2560u + n;
+    float16_t w0 = weights[wbase];
+    float16_t w1 = weights[wbase + 2560u];
+    float16_t w2 = weights[wbase + 5120u];
+    float16_t w3 = weights[wbase + 7680u];
+    for (uint j = 0u; j < 128u; j += 4u) {
+        float16_t w4 = weights[wbase + 10240u];
+        float16_t w5 = weights[wbase + 12800u];
+        float16_t w6 = weights[wbase + 15360u];
+        float16_t w7 = weights[wbase + 17920u];
+        bc = exact_fma16(bc, sh_a[k], w0);
+        bc = exact_fma16(bc, sh_a[k + 1u], w1);
+        bc = exact_fma16(bc, sh_a[k + 2u], w2);
+        bc = exact_fma16(bc, sh_a[k + 3u], w3);
+        w0 = w4; w1 = w5; w2 = w6; w3 = w7;
+        wbase += 10240u;
+        k += 4u;
+    }
+    bsum1[idx] = bc;
+"""
+
 _FOLD_PROJ_BODY = """
     uint t = thread_index_in_threadgroup.x;
     uint lane = t;
@@ -234,6 +316,162 @@ _FOLD_PROJ_BODY = """
     float16_t pjv = float16_t(float16_t(acc) + projector[640u * 640u + lane]);
     pj16[lane] = pjv;
     pj[lane] = float(pjv);
+"""
+
+# Window with the fold_proj absorbed into a per-workgroup prologue: every
+# workgroup redundantly computes the full fold_proj (identical arithmetic,
+# per-lane independent gates/cell, then the projector reduction over the
+# workgroup-local sh_h1) so pj16 lives in workgroup-shared memory instead
+# of a separate dispatch's output.  Workgroup 0 alone publishes the global
+# h_state/c_state/pj/pj16 outputs (values bit-identical across workgroups).
+_WINDOW_FP_BODY = """
+    uint g = threadgroup_position_in_grid.x;
+    uint t = thread_index_in_threadgroup.x;
+    uint j = g * 256u + t;
+    threadgroup float s_val[256];
+    threadgroup uint s_idx[256];
+    threadgroup float16_t sh_relu[ROWS6];
+    threadgroup float sh_h1[640];
+    threadgroup float sh_c1[640];
+    threadgroup float16_t sh_pj16[640];
+    if (!loop_live) {
+        if (g == 0u) {
+            for (uint i = t; i < 1280u; i += 256u) {
+                h_state_out[i] = h_state_in[i];
+                c_state_out[i] = c_state_in[i];
+            }
+            for (uint i = t; i < 640u; i += 256u) {
+                pj16_out[i] = pj16_prev[i];
+                pj_out[i] = float(pj16_prev[i]);
+            }
+        }
+        return;
+    }
+    for (uint n_base = 0u; n_base < 640u; n_base += 256u) {
+        uint lane = n_base + t;
+        float16_t pr[4];
+        for (uint gate = 0u; gate < 4u; ++gate) {
+            uint n = lane + gate * 640u;
+            float16_t bacc = bsum1[n];
+            for (uint block = 1u; block < 10u; ++block) {
+                bacc = float16_t(bacc + bsum1[block * 2560u + n]);
+            }
+            pr[gate] = float16_t(bacc + biases[1u * 2560u + n]);
+        }
+        uint bi = packHalf2x16(vec2(float(pr[0]), 0.0f)) & 0xFFFFu;
+        uint bf = packHalf2x16(vec2(float(pr[1]), 0.0f)) & 0xFFFFu;
+        uint bo = packHalf2x16(vec2(float(pr[2]), 0.0f)) & 0xFFFFu;
+        uint bg = packHalf2x16(vec2(float(pr[3]), 0.0f)) & 0xFFFFu;
+        float16_t si = luts[bi];
+        float16_t sf = luts[bf];
+        float16_t so = luts[bo];
+        float16_t tg = luts[65536u + bg];
+        float16_t c0 = float16_t(c_state[1u * 640u + lane]);
+        float16_t fprod = sf * c0;
+        float16_t c1 = exact_fma16(fprod, si, tg);
+        uint cb = packHalf2x16(vec2(float(c1), 0.0f)) & 0xFFFFu;
+        float16_t tc = luts[65536u + cb];
+        float16_t h1 = so * tc;
+        sh_h1[lane] = float(h1);
+        sh_c1[lane] = float(c1);
+    }
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    for (uint n_base = 0u; n_base < 640u; n_base += 256u) {
+        uint lane = n_base + t;
+        precise float acc = 0.0f;
+        for (uint k = 0u; k < 640u; ++k) {
+            acc = acc + float(float16_t(sh_h1[k]))
+                  * float(projector[k * 640u + lane]);
+        }
+        float16_t pjv = float16_t(float16_t(acc)
+                                  + projector[640u * 640u + lane]);
+        sh_pj16[lane] = pjv;
+        if (g == 0u) {
+            pj_out[lane] = float(pjv);
+            pj16_out[lane] = pjv;
+            h_state_out[lane] = float(h0_out[lane]);
+            h_state_out[640u + lane] = sh_h1[lane];
+            c_state_out[lane] = float(c0_out[lane]);
+            c_state_out[640u + lane] = sh_c1[lane];
+        }
+    }
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    int base = ctl[_C_FRAME];
+    int valid = cfg[_G_VALID];
+    for (uint slot = 0u; slot < ROWSU; ++slot) {
+        int frame = base + int(slot);
+        for (uint i = t; i < 640u; i += 256u) {
+            if (frame < valid) {
+                float16_t rlv = float16_t(encoder[uint(frame) * 640u + i])
+                                + sh_pj16[i];
+                sh_relu[slot * 640u + i] =
+                    (rlv > float16_t(0.0f)) ? rlv : float16_t(0.0f);
+            } else {
+                sh_relu[slot * 640u + i] = float16_t(0.0f);
+            }
+        }
+    }
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+_ACC_DECLS
+    uint nrows = (ctl[_C_COUNT] == 0u) ? ROWSU : 1u;
+    if (j < 8198u) {
+        if (nrows == ROWSU) {
+            for (uint k = 0u; k < 640u; ++k) {
+                precise float w = float(joint[k * 8198u + j]);
+_ACC_UPDATES
+            }
+        } else {
+_ACC_UPDATES_1
+        }
+    }
+_AV_ARRAY
+    for (uint row = 0u; row < nrows; ++row) {
+        float v = (j < 8193u)
+                  ? float(float16_t(av[row]) + joint[640u * 8198u + j])
+                  : -3.0e38f;
+        uint ix = j;
+        s_val[t] = v; s_idx[t] = ix;
+        threadgroup_barrier(mem_flags::mem_threadgroup);
+        for (uint stride = 128u; stride >= 1u; stride >>= 1u) {
+            if (t < stride) {
+                float v2 = s_val[t + stride];
+                uint ix2 = s_idx[t + stride];
+                bool take;
+                if (v2 != v2) { take = (v != v) ? (ix2 < ix) : true; }
+                else if (v != v) { take = false; }
+                else { take = (v2 > v) || (v2 == v && ix2 < ix); }
+                if (take) { v = v2; ix = ix2; }
+                s_val[t] = v; s_idx[t] = ix;
+            }
+            threadgroup_barrier(mem_flags::mem_threadgroup);
+        }
+        if (t == 0u) {
+            pval_t[row * NGRPS + g] = v;
+            pidx_t[row * NGRPS + g] = int(ix);
+        }
+        if (g == 32u && t >= 1u && t <= 5u) {
+            s_val[256u - 8u + t] =
+                float(float16_t(av[row]) + joint[640u * 8198u + j]);
+            s_idx[256u - 8u + t] = j;
+        }
+        threadgroup_barrier(mem_flags::mem_threadgroup);
+        if (g == 32u && t == 0u) {
+            float dv = s_val[248u + 1u];
+            uint di = s_idx[248u + 1u];
+            for (uint i = 2u; i <= 5u; ++i) {
+                float v2 = s_val[248u + i];
+                uint ix2 = s_idx[248u + i];
+                bool take;
+                if (v2 != v2) { take = (dv == dv) ? false : (ix2 < di); }
+                else if (dv != dv) { take = true; }
+                else { take = (v2 > dv) || (v2 == dv && ix2 < di); }
+                if (take) { dv = v2; di = ix2; }
+            }
+            pval_d[row] = dv;
+            pidx_d[row] = int(di) - 8193;
+        }
+        threadgroup_barrier(mem_flags::mem_threadgroup);
+    }
 """
 
 _WINDOW_BODY = """
@@ -649,6 +887,84 @@ def _window_kernel():
     )
 
 
+def _build_chains1_fold() -> str:
+    return _subst(
+        _STEP_LIVE + _CHAINS1_FOLD_BODY,
+        _CHANTHREADS=str(_CHAIN_THREADS),
+        _C_TOKEN=str(_C_TOKEN),
+        _C_RUN=str(_C_RUN),
+        _C_DONE=str(_C_DONE),
+        _C_SKIP=str(_C_SKIP),
+    )
+
+
+@cache
+def _chains1_fold_kernel():
+    mx = _mx()
+    return mx.fast.metal_kernel(
+        name="parakeet_tdt_chain_chains1_fold",
+        input_names=["embedding", "weights", "hidden_in", "bsum0", "biases",
+                     "luts", "c_state", "ctl"],
+        output_names=["bsum1", "h0_out", "c0_out"],
+        header=_EXACT_FMA16,
+        source=_build_chains1_fold(),
+        compile_options={"math_mode": "safe"},
+    )
+
+
+def _build_window_fp() -> str:
+    acc_decls = "\n".join(
+        f"        precise float acc{slot} = 0.0f;" for slot in range(_WINDOW_ROWS)
+    )
+    acc_updates = "\n".join(
+        f"            acc{slot} = acc{slot}"
+        f" + float(sh_relu[{slot}u * 640u + k]) * w;"
+        for slot in range(_WINDOW_ROWS)
+    )
+    acc_updates_1 = (
+        "            for (uint k = 0u; k < 640u; ++k) {\n"
+        "                precise float w1r = float(joint[k * 8198u + j]);\n"
+        "                acc0 = acc0 + float(sh_relu[k]) * w1r;\n"
+        "            }"
+    )
+    av_array = "    float av[" + str(_WINDOW_ROWS) + "];\n" + "\n".join(
+        f"    av[{slot}] = acc{slot};" for slot in range(_WINDOW_ROWS)
+    )
+    return _subst(
+        _LOOP_LIVE + _WINDOW_FP_BODY,
+        ROWS6=str(_WINDOW_ROWS * 640),
+        ROWSU=f"{_WINDOW_ROWS}u",
+        AVN=str(_WINDOW_ROWS),
+        ROWSC=str(_WINDOW_ROWS),
+        NGRPS=str(_NGROUPS),
+        NGRPSu=f"{_NGROUPS}u",
+        _ACC_DECLS=acc_decls,
+        _ACC_UPDATES_1=acc_updates_1,
+        _ACC_UPDATES=acc_updates,
+        _AV_ARRAY=av_array,
+        _C_FRAME=str(_C_FRAME),
+        _G_VALID=str(_G_VALID),
+        _C_RUN=str(_C_RUN), _C_DONE=str(_C_DONE), _C_SKIP=str(_C_SKIP),
+        _C_COUNT=str(_C_COUNT),
+    )
+
+
+@cache
+def _window_fp_kernel():
+    mx = _mx()
+    return mx.fast.metal_kernel(
+        name="parakeet_tdt_chain_window_fp",
+        input_names=["bsum1", "biases", "luts", "c_state", "h0_out",
+                     "c0_out", "h_state_in", "pj16_prev", "projector",
+                     "encoder", "joint", "ctl", "cfg"],
+        output_names=["pval_t", "pidx_t", "pval_d", "pidx_d", "h_state_out",
+                      "c_state_out", "pj_out", "pj16_out"],
+        header=_EXACT_FMA16,
+        source=_build_window_fp(),
+        compile_options={"math_mode": "safe"},
+    )
+
+
 @cache
 def _sid_array(slot: int):
     import mlx.core as mx
@@ -742,39 +1058,28 @@ def run_tdt_chain(
                     threadgroup=(_CHAIN_THREADS, 1, 1),
                     stream=mx.gpu,
                 )
-                h0, c0 = _fold_kernel()(
-                    inputs=[bsum0, packed.biases, packed.luts, c_state, ctl_i],
-                    output_shapes=[(640,), (640,)],
-                    output_dtypes=[mx.float32, mx.float32],
-                    grid=(640, 1, 1), threadgroup=(640, 1, 1),
-                    stream=mx.gpu,
-                )
-                bsum1, = _chains_kernel(1)(
-                    inputs=[packed.embedding, packed.weights, h_state, h0,
+                bsum1, h0, c0 = _chains1_fold_kernel()(
+                    inputs=[packed.embedding, packed.weights, h_state,
+                            bsum0, packed.biases, packed.luts, c_state,
                             ctl_i],
-                    output_shapes=[(25600,)],
-                    output_dtypes=[mx.float16],
+                    output_shapes=[(25600,), (640,), (640,)],
+                    output_dtypes=[mx.float16, mx.float32, mx.float32],
                     grid=(_CHAIN_GROUPS * _CHAIN_THREADS, 1, 1),
                     threadgroup=(_CHAIN_THREADS, 1, 1),
                     stream=mx.gpu,
                 )
-                h_s, c_s, pj, pj16 = _fold_proj_kernel()(
-                    inputs=[bsum1, packed.biases, packed.luts, c_state, h0,
-                            c0, h_state, c_state, pj16_prev,
-                            packed.projector, ctl_i],
-                    output_shapes=[(1280,), (1280,), (640,), (640,)],
-                    output_dtypes=[mx.float32, mx.float32, mx.float32,
-                                   mx.float16],
-                    grid=(640, 1, 1), threadgroup=(640, 1, 1),
-                    stream=mx.gpu,
-                )
-                pval_t, pidx_t, pval_d, pidx_d = _window_kernel()(
-                    inputs=[pj16, enc_flat, packed.joint, ctl_i, cfg_dev],
+                pval_t, pidx_t, pval_d, pidx_d, h_s, c_s, pj, pj16 = \
+                    _window_fp_kernel()(
+                    inputs=[bsum1, packed.biases, packed.luts, c_state,
+                            h0, c0, h_state, pj16_prev, packed.projector,
+                            enc_flat, packed.joint, ctl_i, cfg_dev],
                     output_shapes=[(_WINDOW_ROWS * _NGROUPS,),
                                    (_WINDOW_ROWS * _NGROUPS,),
-                                   (_WINDOW_ROWS,), (_WINDOW_ROWS,)],
+                                   (_WINDOW_ROWS,), (_WINDOW_ROWS,),
+                                   (1280,), (1280,), (640,), (640,)],
                     output_dtypes=[mx.float32, mx.int32, mx.float32,
-                                   mx.int32],
+                                   mx.int32, mx.float32, mx.float32,
+                                   mx.float32, mx.float16],
                     grid=(_NGROUPS * 256, 1, 1), threadgroup=(256, 1, 1),
                     stream=mx.gpu,
                 )
