@@ -3,6 +3,14 @@
 
 #include "mlx/backend/omarchy/compute.h"
 
+#include <array>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <string>
+#include <string_view>
+#include <sys/stat.h>
+
 #include <stdexcept>
 #include <utility>
 
@@ -1376,7 +1384,59 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
 
 } // namespace
 
-ComputeRuntime::ComputeRuntime(VkDevice device, uint32_t binding_limit)
+namespace {
+
+// Disk layout of the persistent pipeline cache: the raw
+// vkGetPipelineCacheData blob prefixed by a magic and the device's
+// pipelineCacheUUID. A UUID mismatch (driver update, different GPU)
+// fails the header check and the stale file is simply rewritten.
+constexpr char kPipelineCacheMagic[] = "MLXOPC1";
+
+std::string pipeline_cache_root() {
+  if (const char* configured = std::getenv("MLX_OMARCHY_PIPELINE_CACHE")) {
+    // Empty or "0" turns the disk layer off; any other value relocates it.
+    const std::string value = configured;
+    return (value.empty() || value == "0") ? std::string{} : value;
+  }
+  if (const char* xdg = std::getenv("XDG_CACHE_HOME"); xdg != nullptr && *xdg) {
+    return std::string(xdg) + "/mlx-omarchy/pipelines";
+  }
+  if (const char* home = std::getenv("HOME"); home != nullptr && *home) {
+    return std::string(home) + "/.cache/mlx-omarchy/pipelines";
+  }
+  return {};
+}
+
+std::string uuid_hex(const std::array<uint8_t, VK_UUID_SIZE>& uuid) {
+  static const char* digits = "0123456789abcdef";
+  std::string out;
+  out.reserve(VK_UUID_SIZE * 2);
+  for (uint8_t byte : uuid) {
+    out += digits[byte >> 4];
+    out += digits[byte & 0xf];
+  }
+  return out;
+}
+
+bool make_directories(const std::string& path) {
+  for (size_t index = 1; index <= path.size(); ++index) {
+    if (index != path.size() && path[index] != '/') {
+      continue;
+    }
+    const std::string prefix = path.substr(0, index);
+    if (::mkdir(prefix.c_str(), 0700) != 0 && errno != EEXIST) {
+      return false;
+    }
+  }
+  return true;
+}
+
+} // namespace
+
+ComputeRuntime::ComputeRuntime(
+    VkDevice device,
+    uint32_t binding_limit,
+    const std::array<uint8_t, VK_UUID_SIZE>& pipeline_cache_uuid)
     : device_(device), binding_limit_(binding_limit) {
   auto& dt = vk::device_table();
   if (binding_limit_ == 0 || binding_limit_ > kComputeBindingBudget) {
@@ -1414,10 +1474,76 @@ ComputeRuntime::ComputeRuntime(VkDevice device, uint32_t binding_limit)
     descriptor_layout_ = VK_NULL_HANDLE;
     throw;
   }
+
+  // Seed the pipeline cache from disk. A miss (first run, driver
+  // update, cleared cache) costs nothing; a hit skips the driver's
+  // full pipeline compile for every custom kernel previously built on
+  // this device.
+  cache_path_ = pipeline_cache_root();
+  if (cache_path_.empty()) {
+    return;
+  }
+  cache_uuid_ = pipeline_cache_uuid;
+  cache_path_ += "/" + uuid_hex(pipeline_cache_uuid) + ".vkpc";
+  std::string blob;
+  if (std::FILE* f = std::fopen(cache_path_.c_str(), "rb")) {
+    char magic[sizeof(kPipelineCacheMagic)];
+    std::array<uint8_t, VK_UUID_SIZE> uuid{};
+    if (std::fread(magic, 1, sizeof(magic), f) == sizeof(magic) &&
+        std::memcmp(magic, kPipelineCacheMagic, sizeof(magic)) == 0 &&
+        std::fread(uuid.data(), 1, uuid.size(), f) == uuid.size() &&
+        uuid == pipeline_cache_uuid) {
+      char buffer[65536];
+      size_t got;
+      while ((got = std::fread(buffer, 1, sizeof(buffer), f)) > 0) {
+        blob += std::string_view(buffer, got);
+      }
+    }
+    std::fclose(f);
+  }
+  VkPipelineCacheCreateInfo cache_info{
+      VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO};
+  if (!blob.empty()) {
+    cache_info.pInitialData = blob.data();
+    cache_info.initialDataSize = blob.size();
+  }
+  if (dt.CreatePipelineCache(device_, &cache_info, nullptr, &pipeline_cache_) !=
+      VK_SUCCESS) {
+    pipeline_cache_ = VK_NULL_HANDLE;
+    cache_path_.clear();
+  }
 }
 
 ComputeRuntime::~ComputeRuntime() {
   auto& dt = vk::device_table();
+  if (pipeline_cache_ != VK_NULL_HANDLE) {
+    if (cache_dirty_ && !cache_path_.empty()) {
+      size_t size = 0;
+      dt.GetPipelineCacheData(device_, pipeline_cache_, &size, nullptr);
+      // Guard against a pathological cache growing without bound.
+      if (size > 0 && size <= (64u << 20)) {
+        std::string blob(size, '\0');
+        if (dt.GetPipelineCacheData(
+                device_, pipeline_cache_, &size,
+                reinterpret_cast<void*>(blob.data())) == VK_SUCCESS &&
+            !blob.empty()) {
+          const std::string tmp = cache_path_ + ".tmp";
+          if (make_directories(
+                  cache_path_.substr(0, cache_path_.find_last_of('/')))) {
+            if (std::FILE* f = std::fopen(tmp.c_str(), "wb")) {
+              std::fwrite(kPipelineCacheMagic, 1, sizeof(kPipelineCacheMagic), f);
+              std::fwrite(cache_uuid_.data(), 1, cache_uuid_.size(), f);
+              std::fwrite(blob.data(), 1, size, f);
+              std::fclose(f);
+              std::rename(tmp.c_str(), cache_path_.c_str());
+            }
+          }
+        }
+      }
+    }
+    dt.DestroyPipelineCache(device_, pipeline_cache_, nullptr);
+    pipeline_cache_ = VK_NULL_HANDLE;
+  }
   for (VkPipeline pipeline : pipelines_) {
     if (pipeline != VK_NULL_HANDLE) {
       dt.DestroyPipeline(device_, pipeline, nullptr);
@@ -1496,7 +1622,10 @@ VkPipeline ComputeRuntime::create_pipeline(std::span<const uint32_t> spirv) {
   VkPipeline pipeline{VK_NULL_HANDLE};
   try {
     VKX_CHECK(dt.CreateComputePipelines(
-        device_, VK_NULL_HANDLE, 1, &pipeline_info, nullptr, &pipeline));
+        device_, pipeline_cache_, 1, &pipeline_info, nullptr, &pipeline));
+    if (pipeline_cache_ != VK_NULL_HANDLE) {
+      cache_dirty_ = true;
+    }
   } catch (...) {
     dt.DestroyShaderModule(device_, shader, nullptr);
     throw;
