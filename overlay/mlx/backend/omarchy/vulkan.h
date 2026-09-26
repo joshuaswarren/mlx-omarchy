@@ -133,6 +133,9 @@ struct DeviceTable {
   PFN_vkDestroyDescriptorPool DestroyDescriptorPool{nullptr};
   PFN_vkAllocateDescriptorSets AllocateDescriptorSets{nullptr};
   PFN_vkUpdateDescriptorSets UpdateDescriptorSets{nullptr};
+  PFN_vkCreatePipelineCache CreatePipelineCache{nullptr};
+  PFN_vkGetPipelineCacheData GetPipelineCacheData{nullptr};
+  PFN_vkDestroyPipelineCache DestroyPipelineCache{nullptr};
   PFN_vkCreatePipelineLayout CreatePipelineLayout{nullptr};
   PFN_vkDestroyPipelineLayout DestroyPipelineLayout{nullptr};
   PFN_vkCreateComputePipelines CreateComputePipelines{nullptr};
