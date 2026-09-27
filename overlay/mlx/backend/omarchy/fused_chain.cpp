@@ -1144,7 +1144,9 @@ EagerFusionScope::EagerFusionScope(const std::deque<array>& tape)
   // Every matched swiglu run (the f32-precise cast fusion plans from
   // these after the GEMV fold has taken its share).
   struct SwigluRun {
-    const array* gate;
+    // gate is a copy: the run's gate node is read from array::inputs(),
+    // which returns a fresh vector.
+    array gate;
     const array* up;
     const array* sigmoid;
     const array* inner;
@@ -1198,7 +1200,7 @@ EagerFusionScope::EagerFusionScope(const std::deque<array>& tape)
     claimed.insert(inner->id());
     claimed.insert(tail.id());
     swiglu_runs.push_back(
-        SwigluRun{&gate, up, sigmoid, inner, &tail});
+        SwigluRun{gate, up, sigmoid, inner, &tail});
   }
   for (size_t i = 1; i < tape.size(); ++i) {
     const array& first = tape[i - 1];
@@ -1454,7 +1456,7 @@ EagerFusionScope::EagerFusionScope(const std::deque<array>& tape)
         continue;  // the GEMV epilogue fold owns this run
       }
       const array* gate_leaf = bf16_cast_leaf(
-          tape_lookup(run.gate->id()), {run.sigmoid->id(), run.inner->id()});
+          tape_lookup(run.gate.id()), {run.sigmoid->id(), run.inner->id()});
       const array* up_leaf = bf16_cast_leaf(run.up, {run.tail->id()});
       if (gate_leaf == nullptr || up_leaf == nullptr) {
         continue;
@@ -1482,9 +1484,17 @@ EagerFusionScope::EagerFusionScope(const std::deque<array>& tape)
           (run.tail->size() & 3u) != 0u) {
         continue;
       }
-      if (gate_leaf->primitive().stream() !=
+      // An eager input (mx.array from numpy) carries no primitive; its
+      // buffer is already materialized on the calling stream, so it
+      // matches by construction. Only mismatched GRAPH streams reject.
+      auto run_leaf_stream = [&](const array& leaf) -> Stream {
+        return leaf.has_primitive()
+            ? leaf.primitive().stream()
+            : run.sigmoid->primitive().stream();
+      };
+      if (run_leaf_stream(*gate_leaf) !=
               run.sigmoid->primitive().stream() ||
-          up_leaf->primitive().stream() !=
+          run_leaf_stream(*up_leaf) !=
               run.sigmoid->primitive().stream()) {
         continue;
       }
@@ -1496,7 +1506,7 @@ EagerFusionScope::EagerFusionScope(const std::deque<array>& tape)
               *out_node,
               PreciseSwigluGroup::State::pending});
       for (const array* member :
-           {tape_lookup(run.gate->id()),
+           {tape_lookup(run.gate.id()),
             run.up,
             run.sigmoid,
             run.inner,
