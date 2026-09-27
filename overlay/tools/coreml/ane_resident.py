@@ -55,6 +55,7 @@ class ResidentAneWorker:
         deadline_ms: int = 20000,
         iterations: int = 1,
         relay_bypass: bool | None = None,
+        seal_expects: Mapping[str, str] | None = None,
     ):
         if not bundles:
             raise ResidentWorkerError("a resident session needs at least one bundle")
@@ -65,6 +66,7 @@ class ResidentAneWorker:
         self.worker = Path(worker)
         self.libane = Path(libane)
         self.bundles = {name: Path(path) for name, path in bundles.items()}
+        self.seal_expects = dict(seal_expects or {})
         self.scratch = Path(scratch)
         self.deadline_ms = deadline_ms
         self.iterations = iterations
@@ -127,6 +129,8 @@ class ResidentAneWorker:
         ]
         for name, path in self.bundles.items():
             argv += ["--bundle", f"{name}={path}"]
+        for name, sha in self.seal_expects.items():
+            argv += ["--seal-expect-" + name, sha]
 
         self._stderr = self._stderr_path.open("wb")
         started = time.monotonic_ns()

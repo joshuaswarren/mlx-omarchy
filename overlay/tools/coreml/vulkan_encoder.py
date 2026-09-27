@@ -871,12 +871,13 @@ class AneIsland:
     """
 
     def __init__(self, worker: Path, libane: Path, bundles: Path, scratch: Path,
-                 deadline_ms: int = 20000):
+                 deadline_ms: int = 20000, seal_expects=None):
         self.worker = worker
         self.libane = libane
         self.bundles = bundles
         self.scratch = scratch
         self.deadline_ms = deadline_ms
+        self.seal_expects = dict(seal_expects or {})
         self.scratch.mkdir(parents=True, exist_ok=True)
         self.submissions = 0
         self.worker_starts = 0
@@ -988,6 +989,7 @@ class AneIsland:
                 bundles=bundles,
                 scratch=Path(self.scratch),
                 deadline_ms=self.deadline_ms,
+                seal_expects=self.seal_expects,
             )
             session.start()
             if self.share_session:

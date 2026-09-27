@@ -475,9 +475,15 @@ def _run_pipeline(args, pin, lock, cache_dir, fixture, audio_sha, worker,
 
     # ----------------------------------------------------------- 3. encoder
     deadline_ms = int(args.deadline_ms)
+    whole_assets = pin["assets"]["bundles"]["parakeet-encoder-whole"]
     island = encoder_module.AneIsland(
         worker, share / "libane" / "libane-strict.so",
         share / "bundles", scratch_root, deadline_ms,
+        seal_expects={
+            "manifest-sha": whole_assets["manifest.json"],
+            "program-sha": whole_assets["program-0.anec"],
+            "libane-sha": pin["assets"]["libane"]["libane-strict.so"],
+        },
     )
     source = _ensure_encoder_source(lock, pin, cache_dir)
     runner = encoder_module.EncoderRunner(

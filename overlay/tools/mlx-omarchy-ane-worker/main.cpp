@@ -205,7 +205,8 @@ int serve_resident(
     long deadline_ms,
     long iterations,
     const std::string& expect_program_sha,
-    const std::string& expect_libane_sha) {
+    const std::string& expect_libane_sha,
+    const std::string& expect_manifest_sha) {
 #ifndef MLX_OMARCHY_ANE_DEVICE
   (void)bundle_args;
   (void)libane_path;
@@ -265,6 +266,14 @@ int serve_resident(
       sealed_paths[name] = "/proc/self/fd/" + std::to_string(fd);
       std::fprintf(stderr, "[omarchy-ane] sealed %s (%zu bytes, sha256 %s)\n",
                    name.c_str(), bytes.size(), digest.c_str());
+      if (!expect_manifest_sha.empty() && name == "manifest.json" &&
+          digest != expect_manifest_sha) {
+        std::fprintf(
+            stderr,
+            "[omarchy-ane] manifest digest mismatch: expected %s, sealed %s\n",
+            expect_manifest_sha.c_str(), digest.c_str());
+        return 65;
+      }
       if (!expect_program_sha.empty() && name == "program-0.anec" &&
           digest != expect_program_sha) {
         std::fprintf(
@@ -776,6 +785,7 @@ int main(int argc, char** argv) {
   std::string libane_path;
   std::string expect_program_sha;
   std::string expect_libane_sha;
+  std::string expect_manifest_sha;
   std::map<std::string, std::string> seal_expect;
   long deadline_ms = 2000;
   long iterations = 1;
@@ -814,6 +824,8 @@ int main(int argc, char** argv) {
       expect_program_sha = value();
     } else if (flag == "--seal-expect-libane-sha") {
       expect_libane_sha = value();
+    } else if (flag == "--seal-expect-manifest-sha") {
+      expect_manifest_sha = value();
     } else if (flag == "--seal-expect") {
       auto assignment = value();
       auto sep = assignment.find('=');
@@ -876,7 +888,7 @@ int main(int argc, char** argv) {
       }
       return serve_resident(
           resident_bundles, libane_path, deadline_ms, iterations,
-          expect_program_sha, expect_libane_sha);
+          expect_program_sha, expect_libane_sha, expect_manifest_sha);
     } catch (const std::exception& error) {
       std::fprintf(stderr, "error: %s\n", error.what());
       return 1;
