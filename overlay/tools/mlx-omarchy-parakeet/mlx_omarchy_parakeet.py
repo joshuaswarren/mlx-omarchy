@@ -47,6 +47,31 @@ from coreml.reference import (  # noqa: E402
 )
 
 RECEIPT_SCHEMA = "mlx-omarchy.parakeet-download-receipt.v1"
+
+# Resident-session asset verification memo: the whole-encoder bundle and
+# libane bytes are consumed by the resident worker ONCE at its program
+# load. While the same live worker session serves later transcriptions,
+# the consumed bytes are the already-verified in-memory program, so the
+# per-run asset re-hash re-verifies nothing that is read. The memo key is
+# (resident session identity, live worker pid, pin digest): a worker
+# respawn, session identity change, or pin change re-verifies the bytes
+# before they are consumed again. A mutated bundle file is caught at the
+# next real load; it cannot affect a program already resident.
+_ASSET_VERIFY_STATE = None
+
+
+def _asset_verify_needed(resident, pin_key) -> bool:
+    """True when the bytes about to be consumed were never verified.
+
+    ``resident`` is the live resident-session identity (or None when no
+    worker is up) and ``pin_key`` is the digest of the runtime pin. The
+    memo records (resident, pin) after a verified load; a different
+    resident, a respawned worker, or a changed pin means the next bytes
+    consumed from disk were never hashed and must be re-verified.
+    """
+    return resident is None or _ASSET_VERIFY_STATE != (resident, pin_key)
+
+
 REPORT_SCHEMA = "mlx-omarchy.parakeet-transcribe.v1"
 
 
@@ -347,6 +372,7 @@ def _decode_flac(path: Path):
 
 
 def _transcribe(args) -> int:
+    global _ASSET_VERIFY_STATE
     import shutil
     import tempfile
 
@@ -357,7 +383,17 @@ def _transcribe(args) -> int:
 
     pin = _load_pin()
     _check_ane_capability()
-    _verify_assets(pin)
+    from coreml import vulkan_encoder as encoder_module
+
+    resident = encoder_module.resident_session_identity()
+    pin_key = hashlib.sha256(
+        json.dumps(pin, sort_keys=True).encode()
+    ).hexdigest()
+    if _asset_verify_needed(resident, pin_key):
+        # Fresh or respawned worker session: the bundle and libane bytes
+        # are about to be consumed for real, so verify them against the
+        # pin before the worker loads.
+        _verify_assets(pin)
     worker = _worker_path()
     share = _share_dir()
     _check_runtime_deps()
@@ -405,6 +441,11 @@ def _transcribe(args) -> int:
         finally:
             if not args.keep_scratch:
                 shutil.rmtree(scratch_root, ignore_errors=True)
+        # The pass consumed the resident program that this pin verified:
+        # record the now-live session identity so the next transcription
+        # with the same live worker skips the unchanged-bytes re-hash.
+        _ASSET_VERIFY_STATE = (
+            encoder_module.resident_session_identity(), pin_key)
     return 0 if passed else 1
 
 
