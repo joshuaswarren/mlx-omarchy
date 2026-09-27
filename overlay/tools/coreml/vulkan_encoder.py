@@ -827,22 +827,6 @@ def _shared_session_hold(identity: tuple, session) -> None:
         atexit.register(_shared_session_release)
 
 
-def resident_session_identity():
-    """Identity + live worker pid of the held resident session, else None.
-
-    Memo key for callers that verify immutable program bytes once per
-    resident session: the worker loads the pin-verified bundle at spawn
-    and serves it from memory, so identical (identity, pid) means the
-    previously verified bytes are still the bytes being consumed.
-    """
-    if _SHARED_SESSION is None:
-        return None
-    session = _SHARED_SESSION["session"]
-    if not session.alive:
-        return None
-    return (_SHARED_SESSION["identity"], session.pid)
-
-
 def _shared_session_drop(session) -> None:
     """Forget a session that died mid-pass so nothing reuses a corpse."""
     global _SHARED_SESSION

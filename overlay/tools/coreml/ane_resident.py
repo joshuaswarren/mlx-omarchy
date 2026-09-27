@@ -114,11 +114,6 @@ class ResidentAneWorker:
         """True while the worker subprocess is up (protocol-level)."""
         return self._process is not None
 
-    @property
-    def pid(self) -> int | None:
-        """Worker process pid, or None while the worker is not up."""
-        return self._process.pid if self._process is not None else None
-
     def start(self) -> None:
         if self._process is not None:
             raise ResidentWorkerError("resident session is already started")
