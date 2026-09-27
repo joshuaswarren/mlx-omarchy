@@ -776,6 +776,7 @@ int main(int argc, char** argv) {
   std::string libane_path;
   std::string expect_program_sha;
   std::string expect_libane_sha;
+  std::map<std::string, std::string> seal_expect;
   long deadline_ms = 2000;
   long iterations = 1;
   bool serve = false;
@@ -813,6 +814,14 @@ int main(int argc, char** argv) {
       expect_program_sha = value();
     } else if (flag == "--seal-expect-libane-sha") {
       expect_libane_sha = value();
+    } else if (flag == "--seal-expect") {
+      auto assignment = value();
+      auto sep = assignment.find('=');
+      if (sep == std::string::npos) {
+        std::fprintf(stderr, "--seal-expect expects NAME=SHA\n");
+        return usage();
+      }
+      seal_expect[assignment.substr(0, sep)] = assignment.substr(sep + 1);
     } else if (flag == "--deadline-ms") {
       deadline_ms = std::stol(value());
     } else if (flag == "--iterations") {
