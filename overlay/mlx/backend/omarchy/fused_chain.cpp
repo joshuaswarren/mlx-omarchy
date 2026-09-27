@@ -1418,18 +1418,16 @@ EagerFusionScope::EagerFusionScope(const std::deque<array>& tape)
         precise_consumers[input.id()].push_back(node.id());
       }
     }
-    auto sole_reader = [&](std::uintptr_t id, std::uintptr_t want) {
-      auto it = precise_consumers.find(id);
-      return it != precise_consumers.end() && it->second.size() == 1 &&
-          it->second[0] == want;
-    };
-    // An AsType node bridging bf16 storage to f32, read only by |want|;
-    // returns the bf16 source leaf.
+    // An AsType node bridging bf16 storage to f32 whose readers are
+    // exactly |want| (tape node ids); returns the bf16 source leaf.
+    // The gate cast is read by BOTH the sigmoid and the gate multiply
+    // — the same two-reader shape the GEMV fold's gate leaf has — so
+    // the reader set is matched exactly, not by count.
     auto bf16_cast_leaf = [&](const array* node,
-                              std::uintptr_t reader) -> const array* {
+                              std::vector<std::uintptr_t> want)
+        -> const array* {
       if (node == nullptr || !is_op(node, typeid(AsType)) ||
-          node->inputs().size() != 1 || node->dtype() != float32 ||
-          uses[node->id()] != 1) {
+          node->inputs().size() != 1 || node->dtype() != float32) {
         return nullptr;
       }
       const array& src = node->inputs()[0];
@@ -1437,7 +1435,14 @@ EagerFusionScope::EagerFusionScope(const std::deque<array>& tape)
           src.size() != src.data_size() || (src.offset() & 3u) != 0u) {
         return nullptr;
       }
-      if (!sole_reader(node->id(), reader)) {
+      auto it = precise_consumers.find(node->id());
+      if (it == precise_consumers.end()) {
+        return nullptr;
+      }
+      auto readers = it->second;
+      std::sort(readers.begin(), readers.end());
+      std::sort(want.begin(), want.end());
+      if (readers != want) {
         return nullptr;
       }
       return &src;
@@ -1448,9 +1453,9 @@ EagerFusionScope::EagerFusionScope(const std::deque<array>& tape)
           state->gemv_roles.count(run.tail->id())) {
         continue;  // the GEMV epilogue fold owns this run
       }
-      const array* gate_leaf =
-          bf16_cast_leaf(tape_lookup(run.gate->id()), run.sigmoid->id());
-      const array* up_leaf = bf16_cast_leaf(run.up, run.inner->id());
+      const array* gate_leaf = bf16_cast_leaf(
+          tape_lookup(run.gate->id()), {run.sigmoid->id(), run.inner->id()});
+      const array* up_leaf = bf16_cast_leaf(run.up, {run.tail->id()});
       if (gate_leaf == nullptr || up_leaf == nullptr) {
         continue;
       }
