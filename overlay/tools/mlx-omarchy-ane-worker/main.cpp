@@ -7,6 +7,14 @@
 // outputs byte-exactly when asked, release, exit. There is no server,
 // no socket, and no state between invocations.
 
+#include <sys/syscall.h>
+#include <unistd.h>
+
+#include <filesystem>
+#include <fstream>
+#include <map>
+#include <sstream>
+
 #include "mlx/backend/omarchy/ane/bundle.h"
 #include "mlx/backend/omarchy/ane/worker.h"
 
@@ -195,7 +203,9 @@ int serve_resident(
     const std::vector<std::pair<std::string, std::string>>& bundle_args,
     const std::string& libane_path,
     long deadline_ms,
-    long iterations) {
+    long iterations,
+    const std::string& expect_program_sha,
+    const std::string& expect_libane_sha) {
 #ifndef MLX_OMARCHY_ANE_DEVICE
   (void)bundle_args;
   (void)libane_path;
@@ -221,7 +231,62 @@ int serve_resident(
           entry.first.c_str());
       return 64;
     }
-    AneBundle bundle = load_bundle(entry.second);
+    // Seal the bundle: copy every file once into memfds, hash each
+    // sealed image, and hand load_bundle_snapshot the sealed paths. The
+    // consumed bytes are the sealed bytes for the life of the session;
+    // on-disk mutation after the seal cannot reach execution.
+    std::map<std::string, std::filesystem::path> sealed_paths;
+    const std::filesystem::path dir = entry.second;
+    for (const auto& entry : std::filesystem::directory_iterator(dir)) {
+      const std::string name = entry.path().filename().string();
+      std::ifstream input(entry.path(), std::ios::binary);
+      if (!input) {
+        std::fprintf(stderr, "[omarchy-ane] cannot open %s\n",
+                     entry.path().string().c_str());
+        return 65;
+      }
+      std::string bytes((std::istreambuf_iterator<char>(input)),
+                        std::istreambuf_iterator<char>());
+      const std::string digest = sha256_hex(
+          reinterpret_cast<const uint8_t*>(bytes.data()), bytes.size());
+      int fd = ::syscall(SYS_memfd_create, name.c_str(), 0);
+      if (fd < 0) {
+        std::fprintf(stderr, "[omarchy-ane] memfd_create failed for %s\n",
+                     name.c_str());
+        return 65;
+      }
+      if (::pwrite(fd, bytes.data(), bytes.size(), 0) !=
+              static_cast<ssize_t>(bytes.size()) ||
+          ::ftruncate(fd, static_cast<off_t>(bytes.size())) != 0) {
+        std::fprintf(stderr, "[omarchy-ane] cannot seal %s\n", name.c_str());
+        ::close(fd);
+        return 65;
+      }
+      sealed_paths[name] = "/proc/self/fd/" + std::to_string(fd);
+      std::fprintf(stderr, "[omarchy-ane] sealed %s (%zu bytes, sha256 %s)\n",
+                   name.c_str(), bytes.size(), digest.c_str());
+      if (!expect_program_sha.empty() && name == "program-0.anec" &&
+          digest != expect_program_sha) {
+        std::fprintf(
+            stderr,
+            "[omarchy-ane] program digest mismatch: expected %s, sealed %s\n",
+            expect_program_sha.c_str(), digest.c_str());
+        return 65;
+      }
+      if (!expect_libane_sha.empty() && name == "libane-strict.so" &&
+          digest != expect_libane_sha) {
+        std::fprintf(
+            stderr,
+            "[omarchy-ane] libane digest mismatch: expected %s, sealed %s\n",
+            expect_libane_sha.c_str(), digest.c_str());
+        return 65;
+      }
+    }
+    AneBundle bundle = load_bundle_snapshot(
+        sealed_paths.at("manifest.json"), sealed_paths);
+    // Seal libane the same way: read once, verify the digest against the
+    // pin expectation, then dlopen the sealed image so the worker never
+    // re-opens the mutable original path.
     std::printf(
         "resident bundle=%s index=%zu name=%s programs=%zu driver_abi=%llu "
         "graph=%s\n",
@@ -234,11 +299,52 @@ int serve_resident(
     bundles.push_back(std::move(bundle));
   }
 
+  // Seal libane: read the library bytes once, verify the digest against
+  // the pin expectation, and dlopen the sealed image. Later re-opens
+  // (process lifetime) consume the same verified bytes.
+  std::string sealed_libane = libane_path;
+  if (!expect_libane_sha.empty()) {
+    std::ifstream in(sealed_libane, std::ios::binary);
+    if (!in) {
+      std::fprintf(stderr, "[omarchy-ane] cannot open libane %s\n",
+                   sealed_libane.c_str());
+      return 65;
+    }
+    std::string bytes((std::istreambuf_iterator<char>(in)),
+                      std::istreambuf_iterator<char>());
+    const std::string digest = sha256_hex(
+        reinterpret_cast<const uint8_t*>(bytes.data()), bytes.size());
+    if (digest != expect_libane_sha) {
+      std::fprintf(
+          stderr,
+          "[omarchy-ane] libane digest mismatch: expected %s, sealed %s\n",
+          expect_libane_sha.c_str(), digest.c_str());
+      return 65;
+    }
+    int fd = static_cast<int>(
+        ::syscall(SYS_memfd_create, "libane-strict.so", 0));
+    if (fd < 0) {
+      std::fprintf(stderr, "[omarchy-ane] libane memfd_create failed\n");
+      return 65;
+    }
+    size_t off = 0;
+    while (off < bytes.size()) {
+      const ssize_t written =
+          ::write(fd, bytes.data() + off, bytes.size() - off);
+      if (written <= 0) {
+        std::fprintf(stderr, "[omarchy-ane] libane memfd write failed\n");
+        ::close(fd);
+        return 65;
+      }
+      off += static_cast<size_t>(written);
+    }
+    sealed_libane = "/proc/self/fd/" + std::to_string(fd);
+  }
   AneWorkerOptions options;
   options.deadline = std::chrono::milliseconds(deadline_ms);
   options.iterations = static_cast<int>(iterations);
   AneWorker worker(
-      [libane_path] { return make_libane_device(libane_path); }, options);
+      [sealed_libane] { return make_libane_device(sealed_libane); }, options);
 
   AneWorkerReport opened = worker.open(bundles, session_names);
   if (opened.status != AneWorkerStatus::Completed) {
@@ -472,7 +578,9 @@ int serve_resident_bypass(
     const std::vector<std::pair<std::string, std::string>>& bundle_args,
     const std::string& libane_path,
     long deadline_ms,
-    long iterations) {
+    long iterations,
+    const std::string& expect_program_sha,
+    const std::string& expect_libane_sha) {
 #ifndef MLX_OMARCHY_ANE_DEVICE
   (void)bundle_args;
   (void)libane_path;
@@ -511,11 +619,52 @@ int serve_resident_bypass(
     bundles.push_back(std::move(bundle));
   }
 
+  // Seal libane: read the library bytes once, verify the digest against
+  // the pin expectation, and dlopen the sealed image. Later re-opens
+  // (process lifetime) consume the same verified bytes.
+  std::string sealed_libane = libane_path;
+  if (!expect_libane_sha.empty()) {
+    std::ifstream in(sealed_libane, std::ios::binary);
+    if (!in) {
+      std::fprintf(stderr, "[omarchy-ane] cannot open libane %s\n",
+                   sealed_libane.c_str());
+      return 65;
+    }
+    std::string bytes((std::istreambuf_iterator<char>(in)),
+                      std::istreambuf_iterator<char>());
+    const std::string digest = sha256_hex(
+        reinterpret_cast<const uint8_t*>(bytes.data()), bytes.size());
+    if (digest != expect_libane_sha) {
+      std::fprintf(
+          stderr,
+          "[omarchy-ane] libane digest mismatch: expected %s, sealed %s\n",
+          expect_libane_sha.c_str(), digest.c_str());
+      return 65;
+    }
+    int fd = static_cast<int>(
+        ::syscall(SYS_memfd_create, "libane-strict.so", 0));
+    if (fd < 0) {
+      std::fprintf(stderr, "[omarchy-ane] libane memfd_create failed\n");
+      return 65;
+    }
+    size_t off = 0;
+    while (off < bytes.size()) {
+      const ssize_t written =
+          ::write(fd, bytes.data() + off, bytes.size() - off);
+      if (written <= 0) {
+        std::fprintf(stderr, "[omarchy-ane] libane memfd write failed\n");
+        ::close(fd);
+        return 65;
+      }
+      off += static_cast<size_t>(written);
+    }
+    sealed_libane = "/proc/self/fd/" + std::to_string(fd);
+  }
   AneWorkerOptions options;
   options.deadline = std::chrono::milliseconds(deadline_ms);
   options.iterations = static_cast<int>(iterations);
   AneWorker worker(
-      [libane_path] { return make_libane_device(libane_path); }, options);
+      [sealed_libane] { return make_libane_device(sealed_libane); }, options);
 
   AneWorkerReport opened = worker.open(bundles, session_names);
   if (opened.status != AneWorkerStatus::Completed) {
@@ -617,6 +766,8 @@ int serve_resident_bypass(
 int main(int argc, char** argv) {
   std::string bundle_dir;
   std::string libane_path;
+  std::string expect_program_sha;
+  std::string expect_libane_sha;
   long deadline_ms = 2000;
   long iterations = 1;
   bool serve = false;
@@ -650,6 +801,10 @@ int main(int argc, char** argv) {
       }
     } else if (flag == "--libane") {
       libane_path = value();
+    } else if (flag == "--seal-expect-program-sha") {
+      expect_program_sha = value();
+    } else if (flag == "--seal-expect-libane-sha") {
+      expect_libane_sha = value();
     } else if (flag == "--deadline-ms") {
       deadline_ms = std::stol(value());
     } else if (flag == "--iterations") {
@@ -699,10 +854,12 @@ int main(int argc, char** argv) {
     try {
       if (relay_bypass) {
         return serve_resident_bypass(
-            resident_bundles, libane_path, deadline_ms, iterations);
+            resident_bundles, libane_path, deadline_ms, iterations,
+            expect_program_sha, expect_libane_sha);
       }
       return serve_resident(
-          resident_bundles, libane_path, deadline_ms, iterations);
+          resident_bundles, libane_path, deadline_ms, iterations,
+          expect_program_sha, expect_libane_sha);
     } catch (const std::exception& error) {
       std::fprintf(stderr, "error: %s\n", error.what());
       return 1;
