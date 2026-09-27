@@ -282,8 +282,16 @@ int serve_resident(
         return 65;
       }
     }
+    // The manifest is consumed from its own sealed image; only the
+    // payload files (not the manifest itself) go into the payload map.
+    std::map<std::string, std::filesystem::path> payload_map;
+    for (const auto& [name, path] : sealed_paths) {
+      if (name != "manifest.json") {
+        payload_map.emplace(name, path);
+      }
+    }
     AneBundle bundle = load_bundle_snapshot(
-        sealed_paths.at("manifest.json"), sealed_paths);
+        sealed_paths.at("manifest.json"), payload_map);
     // Seal libane the same way: read once, verify the digest against the
     // pin expectation, then dlopen the sealed image so the worker never
     // re-opens the mutable original path.
