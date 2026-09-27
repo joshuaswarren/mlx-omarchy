@@ -307,7 +307,6 @@
 #include "matmul_rb_f16.h"
 #include "swiglu_f16.h"
 #include "swiglu_bf16.h"
-#include "swiglu_precise_bf16.h"
 #include "fast_trio_norm_f16.h"
 #include "fast_trio_rope_pair_f16.h"
 #include "fast_trio_swiglu_f16.h"
@@ -1294,8 +1293,6 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {swiglu_f16, swiglu_f16_size};
     case ComputeKernel::SwigluBF16:
       return {swiglu_bf16, swiglu_bf16_size};
-    case ComputeKernel::SwigluPreciseBF16:
-      return {swiglu_precise_bf16, swiglu_precise_bf16_size};
     case ComputeKernel::FastTrioNormF16:
       return {fast_trio_norm_f16, fast_trio_norm_f16_size};
     case ComputeKernel::FastTrioRopePairF16:

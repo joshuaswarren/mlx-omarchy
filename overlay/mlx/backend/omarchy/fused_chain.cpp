@@ -671,21 +671,6 @@ struct EagerRole {
   EagerStep step;
 };
 
-// A planned f32-precise SwiGLU run: mlx_lm qwen3_next._precise_swiglu
-// under MLX_DISABLE_COMPILE=1 builds AsType -> AsType -> Sigmoid ->
-// Mul -> Mul -> AsType with f32 middles and 16-bit ends. The tape scan
-// claims all six nodes around an existing swiglu-shaped group and one
-// SwigluPreciseBF16 dispatch computes the whole composition on the
-// bf16 leaves (exact widening, the same f32 op order, one final RNE
-// narrow — bit for bit the eager composition). Any contract failure
-// un-plans every member onto the ordinary per-node path.
-struct PreciseSwigluGroup {
-  array gate;
-  array up;
-  array out;
-  enum class State : uint8_t { pending, done, failed } state{State::pending};
-};
-
 // A planned decode RoPE pair (query, key): pending until the first
 // member evaluates, then done (one FastTrioRopePairF16 dispatch wrote both
 // outputs) or failed (both nodes take the ordinary RoPE path).
@@ -749,8 +734,6 @@ struct EagerFusionState {
   std::unordered_map<std::uintptr_t, size_t> reshape_redirect_roles;
   std::unordered_map<std::uintptr_t, size_t> rope_pair_roles;
   std::vector<RopePair> rope_pairs;
-  std::unordered_map<std::uintptr_t, size_t> precise_swiglu_roles;
-  std::vector<PreciseSwigluGroup> precise_swiglu_groups;
 };
 
 thread_local EagerFusionState* eager_state = nullptr;
@@ -1141,18 +1124,6 @@ EagerFusionScope::EagerFusionScope(const std::deque<array>& tape)
     array out;
   };
   std::vector<SwigluPlan> swiglu_plans;
-  // Every matched swiglu run (the f32-precise cast fusion plans from
-  // these after the GEMV fold has taken its share).
-  struct SwigluRun {
-    // gate is a copy: the run's gate node is read from array::inputs(),
-    // which returns a fresh vector.
-    array gate;
-    const array* up;
-    const array* sigmoid;
-    const array* inner;
-    const array* tail;
-  };
-  std::vector<SwigluRun> swiglu_runs;
   std::unordered_set<std::uintptr_t> claimed;
   for (const auto& tail : tape) {
     if (!is_op(&tail, typeid(Multiply)) || tail.inputs().size() != 2 ||
@@ -1199,8 +1170,6 @@ EagerFusionScope::EagerFusionScope(const std::deque<array>& tape)
     claimed.insert(sigmoid->id());
     claimed.insert(inner->id());
     claimed.insert(tail.id());
-    swiglu_runs.push_back(
-        SwigluRun{gate, up, sigmoid, inner, &tail});
   }
   for (size_t i = 1; i < tape.size(); ++i) {
     const array& first = tape[i - 1];
@@ -1399,121 +1368,6 @@ EagerFusionScope::EagerFusionScope(const std::deque<array>& tape)
           state->gemv_roles.emplace(id, gi);
         }
         break;
-      }
-    }
-  }
-  // The f32-precise form of the runs above: gate/up leaves and the
-  // output are AsType nodes bridging bfloat16 storage (mlx_lm
-  // qwen3_next._precise_swiglu under MLX_DISABLE_COMPILE=1). Claim the
-  // three casts along with the swiglu run; one SwigluPreciseBF16
-  // dispatch on the bf16 leaves reproduces the composition bit for bit
-  // (exact widening, same f32 op order, single final RNE narrow).
-  if (fused_precise_swiglu_enabled() && !swiglu_runs.empty()) {
-    auto tape_lookup = [&](std::uintptr_t id) -> const array* {
-      auto it = nodes.find(id);
-      return it == nodes.end() ? nullptr : it->second;
-    };
-    std::unordered_map<std::uintptr_t, std::vector<std::uintptr_t>>
-        precise_consumers;
-    for (const auto& node : tape) {
-      for (const auto& input : node.inputs()) {
-        precise_consumers[input.id()].push_back(node.id());
-      }
-    }
-    // An AsType node bridging bf16 storage to f32 whose readers are
-    // exactly |want| (tape node ids); returns the bf16 source leaf.
-    // The gate cast is read by BOTH the sigmoid and the gate multiply
-    // — the same two-reader shape the GEMV fold's gate leaf has — so
-    // the reader set is matched exactly, not by count.
-    auto bf16_cast_leaf = [&](const array* node,
-                              std::vector<std::uintptr_t> want)
-        -> const array* {
-      if (node == nullptr || !is_op(node, typeid(AsType)) ||
-          node->inputs().size() != 1 || node->dtype() != float32) {
-        return nullptr;
-      }
-      const array& src = node->inputs()[0];
-      if (src.dtype() != bfloat16 || !src.flags().row_contiguous ||
-          src.size() != src.data_size() || (src.offset() & 3u) != 0u) {
-        return nullptr;
-      }
-      auto it = precise_consumers.find(node->id());
-      if (it == precise_consumers.end()) {
-        return nullptr;
-      }
-      auto readers = it->second;
-      std::sort(readers.begin(), readers.end());
-      std::sort(want.begin(), want.end());
-      if (readers != want) {
-        return nullptr;
-      }
-      return &src;
-    };
-    for (const auto& run : swiglu_runs) {
-      if (state->gemv_roles.count(run.sigmoid->id()) ||
-          state->gemv_roles.count(run.inner->id()) ||
-          state->gemv_roles.count(run.tail->id())) {
-        continue;  // the GEMV epilogue fold owns this run
-      }
-      const array* gate_leaf = bf16_cast_leaf(
-          tape_lookup(run.gate.id()), {run.sigmoid->id(), run.inner->id()});
-      const array* up_leaf = bf16_cast_leaf(run.up, {run.tail->id()});
-      if (gate_leaf == nullptr || up_leaf == nullptr) {
-        continue;
-      }
-      // Output side: the run's tail must feed exactly one unclaimed
-      // AsType back to bfloat16 on the same stream.
-      auto tail_readers = precise_consumers.find(run.tail->id());
-      if (tail_readers == precise_consumers.end() ||
-          tail_readers->second.size() != 1) {
-        continue;
-      }
-      const array* out_node = tape_lookup(tail_readers->second[0]);
-      if (out_node == nullptr || !is_op(out_node, typeid(AsType)) ||
-          out_node->inputs().size() != 1 ||
-          out_node->dtype() != bfloat16 ||
-          out_node->primitive().stream() != run.tail->primitive().stream() ||
-          claimed.count(out_node->id())) {
-        continue;
-      }
-      // Exact-shape, no-broadcast, four-aligned runs only; anything
-      // else keeps the ordinary per-node path.
-      const auto& shape = gate_leaf->shape();
-      if (up_leaf->shape() != shape || run.tail->shape() != shape ||
-          out_node->shape() != shape || run.tail->size() == 0 ||
-          (run.tail->size() & 3u) != 0u) {
-        continue;
-      }
-      // An eager input (mx.array from numpy) carries no primitive; its
-      // buffer is already materialized on the calling stream, so it
-      // matches by construction. Only mismatched GRAPH streams reject.
-      auto run_leaf_stream = [&](const array& leaf) -> Stream {
-        return leaf.has_primitive()
-            ? leaf.primitive().stream()
-            : run.sigmoid->primitive().stream();
-      };
-      if (run_leaf_stream(*gate_leaf) !=
-              run.sigmoid->primitive().stream() ||
-          run_leaf_stream(*up_leaf) !=
-              run.sigmoid->primitive().stream()) {
-        continue;
-      }
-      const size_t index = state->precise_swiglu_groups.size();
-      state->precise_swiglu_groups.push_back(
-          PreciseSwigluGroup{
-              *gate_leaf,
-              *up_leaf,
-              *out_node,
-              PreciseSwigluGroup::State::pending});
-      for (const array* member :
-           {tape_lookup(run.gate.id()),
-            run.up,
-            run.sigmoid,
-            run.inner,
-            run.tail,
-            out_node}) {
-        state->precise_swiglu_roles.emplace(member->id(), index);
-        claimed.insert(member->id());
       }
     }
   }
@@ -1789,14 +1643,6 @@ bool fused_gemv_swiglu_enabled() {
        env_flag("MLX_OMARCHY_FUSED_GEMV_SWIGLU"));
 }
 
-// MLX_OMARCHY_FUSED_PRECISE_SWIGLU=0 keeps the f32-precise SwiGLU cast
-// fusion off; on by default.
-bool fused_precise_swiglu_enabled() {
-  return fused_chain_enabled() &&
-      (std::getenv("MLX_OMARCHY_FUSED_PRECISE_SWIGLU") == nullptr ||
-       env_flag("MLX_OMARCHY_FUSED_PRECISE_SWIGLU"));
-}
-
 bool fused_trio_enabled() {
   return fused_chain_enabled() &&
       (std::getenv("MLX_OMARCHY_FUSED_TRIO") == nullptr ||
@@ -2013,44 +1859,6 @@ bool try_eval_eager_fusion(array& node, const Stream& stream) {
           : GemvGroup::State::failed;
     }
     return group.state == GemvGroup::State::done;
-  }
-  if (auto precise = eager_state->precise_swiglu_roles.find(node.id());
-      precise != eager_state->precise_swiglu_roles.end()) {
-    auto& group = eager_state->precise_swiglu_groups[precise->second];
-    if (group.state == PreciseSwigluGroup::State::pending) {
-      // Runtime re-check of everything the plan could not prove
-      // statically; any miss un-plans the whole run onto the ordinary
-      // per-node path.
-      bool ok = group.gate.size() == group.up.size() &&
-          group.gate.size() == group.out.size() &&
-          group.gate.size() != 0u && (group.gate.size() & 3u) == 0u &&
-          group.gate.flags().row_contiguous &&
-          group.up.flags().row_contiguous &&
-          group.gate.offset() % 4 == 0 && group.up.offset() % 4 == 0 &&
-          group.gate.status() != array::Status::evaluated &&
-          group.out.status() != array::Status::evaluated;
-      if (ok) {
-        group.out.set_data(allocator().malloc(group.out.nbytes()));
-        ComputeParams params;
-        params.count = static_cast<uint32_t>(group.gate.size());
-        params.operation = static_cast<uint32_t>(group.gate.offset());
-        params.lhs_size = static_cast<uint32_t>(group.up.offset());
-        std::array<ComputeBinding, 3> bindings{
-            chain_binding(group.gate),
-            chain_binding(group.up),
-            chain_binding(group.out)};
-        get_command_encoder(stream)
-            .dispatch_compute(
-                ComputeKernel::SwigluPreciseBF16,
-                bindings,
-                params,
-                compute_dispatch_group_count(params.count / 4u));
-        group.state = PreciseSwigluGroup::State::done;
-      } else {
-        group.state = PreciseSwigluGroup::State::failed;
-      }
-    }
-    return group.state == PreciseSwigluGroup::State::done;
   }
   auto role_it = eager_state->roles.find(node.id());
   if (role_it == eager_state->roles.end()) {

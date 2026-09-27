@@ -694,12 +694,6 @@ enum class ComputeKernel : uint16_t {
   // alignment. Appended to keep profile kernel ids stable.
   UnaryVecF16,
   UnaryVecBF16,
-  // Four-wide f32-precise SwiGLU on 16-bit storage
-  // (shaders/swiglu_precise_bf16.comp): the AsType -> Sigmoid -> Mul ->
-  // Mul -> AsType f32 composition with no intermediate storage
-  // narrowing, one dispatch for the whole run. Appended to keep
-  // profile kernel ids stable.
-  SwigluPreciseBF16,
   Count,
 };
 
