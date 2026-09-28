@@ -36,8 +36,13 @@
 #define SUBGROUP_ROW_BLOCKS 2u
 #elif TILE_ROWS == 16
 #define SUBGROUP_ROW_BLOCKS 1u
+#elif TILE_ROWS == 64
+// Each of the two subgroups owns 32 rows (4 row blocks) x 32 columns:
+// the staged 16x32 weight tile is shared by twice as many outputs, and
+// the k chain of every output is unchanged.
+#define SUBGROUP_ROW_BLOCKS 4u
 #else
-#error "TILE_ROWS must be 32 or 16"
+#error "TILE_ROWS must be 64, 32 or 16"
 #endif
 
 #define ROW_BLOCKS (TILE_ROWS / 8u)

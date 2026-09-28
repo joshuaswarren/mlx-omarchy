@@ -5891,7 +5891,8 @@ uint32_t coopmat_workgroups_per_core() {
 uint32_t coopmat_tile_rows(
     uint32_t matrix_m,
     uint32_t n_groups,
-    const std::string& device_name) {
+    const std::string& device_name,
+    bool allow_rows64 = false) {
   if (matrix_m <= 16u) {
     return 16u;
   }
@@ -5902,7 +5903,22 @@ uint32_t coopmat_tile_rows(
   }
   uint64_t target = static_cast<uint64_t>(cores) * per_core;
   uint32_t m_groups_32 = (matrix_m + 31u) / 32u;
-  return static_cast<uint64_t>(m_groups_32) * n_groups < target ? 16u : 32u;
+  if (static_cast<uint64_t>(m_groups_32) * n_groups < target) {
+    return 16u;
+  }
+  // MLX_OMARCHY_QMM_COOPMAT_ROWS=64 (default off, A/B): the 64-row tile
+  // shares one staged weight tile across twice the outputs. Taken only
+  // when the 64-row grid still fills the part.
+  static const bool rows64 = [] {
+    const char* env = std::getenv("MLX_OMARCHY_QMM_COOPMAT_ROWS");
+    return env != nullptr && std::string(env) == "64";
+  }();
+  uint32_t m_groups_64 = (matrix_m + 63u) / 64u;
+  if (allow_rows64 && rows64 && matrix_m >= 128u &&
+      static_cast<uint64_t>(m_groups_64) * n_groups >= target) {
+    return 64u;
+  }
+  return 32u;
 }
 
 } // namespace
@@ -7113,7 +7129,8 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
       uint32_t coopmat_rows = coopmat_tile_rows(
           params.matrix_m,
           n_groups,
-          encoder.device().hardware_capabilities().device_name);
+          encoder.device().hardware_capabilities().device_name,
+          /* allow_rows64 = */ true);
       uint32_t m_groups =
           (params.matrix_m + coopmat_rows - 1u) / coopmat_rows;
       // Direct-global-load A: widen bf16 x to f32 once (the widening is
@@ -7153,7 +7170,9 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
       qmm_bindings[0] = binding(x_f32);
       omarchy::ComputeKernel qmm_kernel = coopmat_rows == 16u
           ? omarchy::ComputeKernel::QmmPrefillCoopmatM16BF16X32
-          : omarchy::ComputeKernel::QmmPrefillCoopmatBF16X32;
+          : (coopmat_rows == 64u
+                 ? omarchy::ComputeKernel::QmmPrefillCoopmatM64BF16X32
+                 : omarchy::ComputeKernel::QmmPrefillCoopmatBF16X32);
       encoder.dispatch_compute(
           qmm_kernel,
           qmm_bindings,
