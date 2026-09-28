@@ -50,7 +50,18 @@
 const uint TILE_M = TILE_ROWS;
 const uint TILE_N = 32u;
 const uint CHUNK_K = 64u;
+// STEP_K_VAL widens the k step (32 or 64) to halve/quarter the per-step
+// barrier pairs; each lane then dequantizes STEP_K/16 packed words. The
+// per-output k chain is unchanged (same 8-wide mma order), only the
+// staging granularity moves. Direct-load builds only.
+#ifdef STEP_K_VAL
+#ifdef X_BF16
+#error "STEP_K_VAL applies to the direct-load (X_F32 / f16) builds"
+#endif
+const uint STEP_K = STEP_K_VAL;
+#else
 const uint STEP_K = 16u;
+#endif
 const uint MAT = 8u;
 
 layout(local_size_x = 64) in;
@@ -220,24 +231,28 @@ void main() {
         }
         for (uint step = 0u; step < CHUNK_K / STEP_K; ++step) {
           uint k_base = chunk * CHUNK_K + step * STEP_K;
-          // One packed word per lane covers the 16x32 weight tile.
-          uint packed = column_ok
-              ? input_w.values[w_row + k_base / 8u + w_part] : 0u;
-          uint w_base = 8u * w_part * TILE_N + w_column_local;
-          w_s[w_base + 0u * TILE_N] = scale * float(packed & 0xFu) + bias;
-          w_s[w_base + 1u * TILE_N] =
-              scale * float((packed >> 4u) & 0xFu) + bias;
-          w_s[w_base + 2u * TILE_N] =
-              scale * float((packed >> 8u) & 0xFu) + bias;
-          w_s[w_base + 3u * TILE_N] =
-              scale * float((packed >> 12u) & 0xFu) + bias;
-          w_s[w_base + 4u * TILE_N] =
-              scale * float((packed >> 16u) & 0xFu) + bias;
-          w_s[w_base + 5u * TILE_N] =
-              scale * float((packed >> 20u) & 0xFu) + bias;
-          w_s[w_base + 6u * TILE_N] =
-              scale * float((packed >> 24u) & 0xFu) + bias;
-          w_s[w_base + 7u * TILE_N] = scale * float(packed >> 28u) + bias;
+          // STEP_K/16 packed words per lane cover the STEP_Kx32 weight tile
+          // (one word at the shipped STEP_K=16: word == w_part).
+          for (uint wi = 0u; wi < STEP_K / 16u; ++wi) {
+            uint word = w_part + 2u * wi;
+            uint packed = column_ok
+                ? input_w.values[w_row + k_base / 8u + word] : 0u;
+            uint w_base = 8u * word * TILE_N + w_column_local;
+            w_s[w_base + 0u * TILE_N] = scale * float(packed & 0xFu) + bias;
+            w_s[w_base + 1u * TILE_N] =
+                scale * float((packed >> 4u) & 0xFu) + bias;
+            w_s[w_base + 2u * TILE_N] =
+                scale * float((packed >> 8u) & 0xFu) + bias;
+            w_s[w_base + 3u * TILE_N] =
+                scale * float((packed >> 12u) & 0xFu) + bias;
+            w_s[w_base + 4u * TILE_N] =
+                scale * float((packed >> 16u) & 0xFu) + bias;
+            w_s[w_base + 5u * TILE_N] =
+                scale * float((packed >> 20u) & 0xFu) + bias;
+            w_s[w_base + 6u * TILE_N] =
+                scale * float((packed >> 24u) & 0xFu) + bias;
+            w_s[w_base + 7u * TILE_N] = scale * float(packed >> 28u) + bias;
+          }
 #ifdef X_BF16
           // X_LOADS half2 loads per lane cover the TILE_ROWS x 16 x tile.
           uint x_words[TILE_M / 8u];

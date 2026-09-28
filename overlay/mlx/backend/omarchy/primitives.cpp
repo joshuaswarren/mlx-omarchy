@@ -7168,11 +7168,25 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
       params.lhs_offset = 0;
       auto qmm_bindings = bindings;
       qmm_bindings[0] = binding(x_f32);
+      // MLX_OMARCHY_QMM_COOPMAT_STEPK=32|64 (default off, A/B): the
+      // 32-row tile with a wider k step, halving/quartering barrier pairs.
+      static const uint32_t step_k = [] {
+        const char* env = std::getenv("MLX_OMARCHY_QMM_COOPMAT_STEPK");
+        if (env == nullptr) {
+          return 16u;
+        }
+        std::string v(env);
+        return v == "32" ? 32u : (v == "64" ? 64u : 16u);
+      }();
       omarchy::ComputeKernel qmm_kernel = coopmat_rows == 16u
           ? omarchy::ComputeKernel::QmmPrefillCoopmatM16BF16X32
           : (coopmat_rows == 64u
                  ? omarchy::ComputeKernel::QmmPrefillCoopmatM64BF16X32
-                 : omarchy::ComputeKernel::QmmPrefillCoopmatBF16X32);
+                 : (step_k == 32u
+                        ? omarchy::ComputeKernel::QmmPrefillCoopmatK32BF16X32
+                        : (step_k == 64u
+                               ? omarchy::ComputeKernel::QmmPrefillCoopmatK64BF16X32
+                               : omarchy::ComputeKernel::QmmPrefillCoopmatBF16X32)));
       encoder.dispatch_compute(
           qmm_kernel,
           qmm_bindings,
