@@ -48,7 +48,15 @@ const uint CHUNK_K = 64u;
 const uint STEP_K = 16u;
 const uint MAT = 8u;
 
+#ifdef KSPLIT
+// Split-K: two 64-thread halves each run half of the K chunks on their own
+// shared staging; the partial accumulators are added through shared memory
+// at the end. NOT bit-identical to the single ascending-k chain (the fp32
+// summation order differs); only TILE_ROWS=16 with the direct-load A path.
+layout(local_size_x = 128) in;
+#else
 layout(local_size_x = 64) in;
+#endif
 
 #ifdef X_BF16
 layout(set = 0, binding = 0, std430) readonly buffer InputX {
@@ -150,11 +158,29 @@ layout(push_constant) uniform Params {
 #ifdef X_BF16
 shared float x_s[TILE_M * STEP_K];
 #endif
+#ifdef KSPLIT
+shared float w_s[2u * STEP_K * TILE_N];
+shared float part_s[8 * 64];
+#else
 shared float w_s[STEP_K * TILE_N];
+#endif
 
 void main() {
+#ifdef KSPLIT
+  const uint khalf = gl_LocalInvocationID.x >> 6u;
+  uint lid = gl_LocalInvocationID.x & 63u;
+  uint sub = gl_SubgroupID & 1u;
+  const uint wofs = khalf * (STEP_K * TILE_N);
+  const uint chunk_lo = khalf * (params.matrix_k / CHUNK_K / 2u);
+  const uint chunk_hi = chunk_lo + params.matrix_k / CHUNK_K / 2u;
+#else
+  const uint khalf = 0u;
   uint lid = gl_LocalInvocationID.x;
   uint sub = gl_SubgroupID;
+  const uint wofs = 0u;
+  const uint chunk_lo = 0u;
+  const uint chunk_hi = params.matrix_k / CHUNK_K;
+#endif
   uint sub_rb = SUBGROUP_ROW_BLOCKS * sub;
   uint batch = params.shape[0];
   uint w_batch_words = params.shape[1];
@@ -213,7 +239,7 @@ void main() {
         }
       }
 
-      for (uint chunk = 0u; chunk < k_chunks; ++chunk) {
+      for (uint chunk = chunk_lo; chunk < chunk_hi; ++chunk) {
         float scale = 0.0;
         float bias = 0.0;
         if (column_ok) {
@@ -226,20 +252,20 @@ void main() {
           uint packed = column_ok
               ? input_w.values[w_row + k_base / 8u + w_part] : 0u;
           uint w_base = 8u * w_part * TILE_N + w_column_local;
-          w_s[w_base + 0u * TILE_N] = scale * float(packed & 0xFu) + bias;
-          w_s[w_base + 1u * TILE_N] =
+          w_s[wofs + w_base + 0u * TILE_N] = scale * float(packed & 0xFu) + bias;
+          w_s[wofs + w_base + 1u * TILE_N] =
               scale * float((packed >> 4u) & 0xFu) + bias;
-          w_s[w_base + 2u * TILE_N] =
+          w_s[wofs + w_base + 2u * TILE_N] =
               scale * float((packed >> 8u) & 0xFu) + bias;
-          w_s[w_base + 3u * TILE_N] =
+          w_s[wofs + w_base + 3u * TILE_N] =
               scale * float((packed >> 12u) & 0xFu) + bias;
-          w_s[w_base + 4u * TILE_N] =
+          w_s[wofs + w_base + 4u * TILE_N] =
               scale * float((packed >> 16u) & 0xFu) + bias;
-          w_s[w_base + 5u * TILE_N] =
+          w_s[wofs + w_base + 5u * TILE_N] =
               scale * float((packed >> 20u) & 0xFu) + bias;
-          w_s[w_base + 6u * TILE_N] =
+          w_s[wofs + w_base + 6u * TILE_N] =
               scale * float((packed >> 24u) & 0xFu) + bias;
-          w_s[w_base + 7u * TILE_N] = scale * float(packed >> 28u) + bias;
+          w_s[wofs + w_base + 7u * TILE_N] = scale * float(packed >> 28u) + bias;
 #ifdef X_BF16
           // X_LOADS half2 loads per lane cover the TILE_ROWS x 16 x tile.
           uint x_words[TILE_M / 8u];
@@ -297,7 +323,7 @@ void main() {
 #endif
             for (uint cb = 0u; cb < 4u; ++cb) {
               coopMatLoad(
-                  mat_b[cb], w_s, ks * MAT * TILE_N + cb * MAT, TILE_N,
+                  mat_b[cb], w_s, wofs + ks * MAT * TILE_N + cb * MAT, TILE_N,
                   gl_CooperativeMatrixLayoutRowMajor);
             }
             for (uint rb = 0u; rb < SUBGROUP_ROW_BLOCKS; ++rb) {
@@ -311,10 +337,27 @@ void main() {
         }
       }
 
+#ifdef KSPLIT
+      if (khalf == 1u) {
+        for (uint cb = 0u; cb < 4u; ++cb) {
+          coopMatStore(acc[0][cb], part_s, (sub * 4u + cb) * 64u, MAT,
+              gl_CooperativeMatrixLayoutRowMajor);
+        }
+      }
+      barrier();
+      if (khalf == 0u) {
+        for (uint cb = 0u; cb < 4u; ++cb) {
+          coopmat<float, gl_ScopeSubgroup, MAT, MAT, gl_MatrixUseAccumulator> p;
+          coopMatLoad(p, part_s, (sub * 4u + cb) * 64u, MAT,
+              gl_CooperativeMatrixLayoutRowMajor);
+          acc[0][cb] = acc[0][cb] + p;
+        }
+      }
+#endif
       // One subgroup stores each 8-row block it owns; duplicated column
       // lanes each drain their four distinct rows of that block.
       for (uint rb = 0u; rb < ROW_BLOCKS; ++rb) {
-        if (sub_rb == (rb & ~(SUBGROUP_ROW_BLOCKS - 1u))) {
+        if (khalf == 0u && sub_rb == (rb & ~(SUBGROUP_ROW_BLOCKS - 1u))) {
           for (uint cb = 0u; cb < 4u; ++cb) {
 #ifdef X_BF16
             coopMatStore(

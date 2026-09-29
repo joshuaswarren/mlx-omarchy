@@ -568,6 +568,8 @@ int main(int argc, char** argv) {
   else if (shape == "qkvz") { N = 8192; K = 2048; }
   else if (shape == "zout") { N = 2048; K = 2048; }
   else if (shape == "q4096") { N = 4096; K = 2048; }
+  if (int nn = std::atoi(arg_str(argc, argv, "--n", "0").c_str()); nn > 0) N = (uint32_t)nn;
+  if (int kk = std::atoi(arg_str(argc, argv, "--k", "0").c_str()); kk > 0) K = (uint32_t)kk;
   const std::string base_src = arg_str(argc, argv, "--base",
       "overlay/mlx/backend/omarchy/shaders/qmm_coopmat.comp");
   const std::string cand_src = arg_str(argc, argv, "--cand", base_src.c_str());

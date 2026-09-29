@@ -7263,7 +7263,16 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
       qmm_bindings[0] = binding(x_f32);
       const bool full_n = (params.matrix_n % 32u) == 0u &&
           std::getenv("MLX_OMARCHY_QMM_NO_FULLN") == nullptr;
-      omarchy::ComputeKernel qmm_kernel = coopmat_rows == 16u
+      // Split-K twin (opt-in, NOT bit-identical: the fp32 K-sum order
+      // differs): halves the per-workgroup dependent K chain of the
+      // small-M kernel on wide-N shapes. K must split into an even number
+      // of 64-chunks.
+      static const bool qmm_ksplit = omarchy::env_flag("MLX_OMARCHY_QMM_KSPLIT");
+      const bool use_ksplit = qmm_ksplit && coopmat_rows == 16u && full_n &&
+          params.matrix_n >= 4096u && (params.matrix_k % 128u) == 0u;
+      omarchy::ComputeKernel qmm_kernel = use_ksplit
+          ? omarchy::ComputeKernel::QmmPrefillCoopmatM16BF16X32KSplit
+          : coopmat_rows == 16u
           ? (full_n ? omarchy::ComputeKernel::QmmPrefillCoopmatM16BF16X32FullN
                     : omarchy::ComputeKernel::QmmPrefillCoopmatM16BF16X32)
           : (full_n ? omarchy::ComputeKernel::QmmPrefillCoopmatBF16X32FullN
