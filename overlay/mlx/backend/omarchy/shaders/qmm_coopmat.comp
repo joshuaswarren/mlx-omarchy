@@ -4,6 +4,7 @@
 #extension GL_KHR_shader_subgroup_basic : require
 #extension GL_EXT_shader_16bit_storage : require
 #extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
+#extension GL_EXT_control_flow_attributes : require
 
 // Direct-global-load qmm prefill coopmat: whenever x can feed the
 // matrix unit exactly, the A (x) tiles are coopMatLoad'ed straight
@@ -213,11 +214,46 @@ void main() {
           scale = SCALE_LOAD(scales.values[scale_row + chunk]);
           bias = SCALE_LOAD(biases.values[bias_row + chunk]);
         }
+#ifdef X_F32
+        // Chunk prefetch: issue every global load of the chunk (the four
+        // packed weight words and all A tiles) before the first dequant
+        // store or barrier so their latency overlaps instead of being paid
+        // per step. Operand values and MMA order are unchanged.
+        uint packed_pf[CHUNK_K / STEP_K];
+        coopmat<float, gl_ScopeSubgroup, MAT, MAT, gl_MatrixUseA>
+            a_pf[(CHUNK_K / STEP_K) * (STEP_K / MAT)][SUBGROUP_ROW_BLOCKS];
+        [[unroll]]
+        for (uint s = 0u; s < CHUNK_K / STEP_K; ++s) {
+          uint kb = chunk * CHUNK_K + s * STEP_K;
+          packed_pf[s] = column_ok
+              ? input_w.values[w_row + kb / 8u + w_part] : 0u;
+          [[unroll]]
+          for (uint ks = 0u; ks < STEP_K / MAT; ++ks) {
+            [[unroll]]
+            for (uint rb = 0u; rb < SUBGROUP_ROW_BLOCKS; ++rb) {
+              uint row = row_base + (sub_rb + rb) * MAT;
+              row = min(row, params.matrix_m - 1u);
+              coopMatLoad(
+                  a_pf[s * (STEP_K / MAT) + ks][rb], input_x.values,
+                  x_slice + row * params.matrix_k + kb + ks * MAT,
+                  params.matrix_k,
+                  gl_CooperativeMatrixLayoutRowMajor);
+            }
+          }
+        }
+#endif
+#ifdef X_F32
+        [[unroll]]
+#endif
         for (uint step = 0u; step < CHUNK_K / STEP_K; ++step) {
           uint k_base = chunk * CHUNK_K + step * STEP_K;
           // One packed word per lane covers the 16x32 weight tile.
+#ifdef X_F32
+          uint packed = packed_pf[step];
+#else
           uint packed = column_ok
               ? input_w.values[w_row + k_base / 8u + w_part] : 0u;
+#endif
           uint w_base = 8u * w_part * TILE_N + w_column_local;
           w_s[w_base + 0u * TILE_N] = scale * float(packed & 0xFu) + bias;
           w_s[w_base + 1u * TILE_N] =
@@ -274,6 +310,10 @@ void main() {
                   mat_a[rb], x_s,
                   (sub_rb + rb) * MAT * STEP_K + ks * MAT, STEP_K,
                   gl_CooperativeMatrixLayoutRowMajor);
+            }
+#elif defined(X_F32)
+            for (uint rb = 0u; rb < SUBGROUP_ROW_BLOCKS; ++rb) {
+              mat_a[rb] = a_pf[step * (STEP_K / MAT) + ks][rb];
             }
 #else
             for (uint rb = 0u; rb < SUBGROUP_ROW_BLOCKS; ++rb) {
