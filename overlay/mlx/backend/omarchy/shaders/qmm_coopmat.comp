@@ -46,12 +46,12 @@ const uint TILE_M = TILE_ROWS;
 const uint TILE_N = 32u;
 const uint CHUNK_K = 64u;
 #ifndef STEP_K_DEF
-#define STEP_K_DEF 16u
+#define STEP_K_DEF 16
 #endif
-#if defined(X_BF16) && STEP_K_DEF != 16u
+#if defined(X_BF16) && STEP_K_DEF != 16
 #error "STEP_K_DEF other than 16 is not supported with X_BF16"
 #endif
-const uint STEP_K = STEP_K_DEF;
+const uint STEP_K = uint(STEP_K_DEF);
 const uint MAT = 8u;
 
 layout(local_size_x = 64) in;
