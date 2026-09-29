@@ -153,6 +153,7 @@ shared float x_s[TILE_M * STEP_K];
 shared float w_s[STEP_K * TILE_N];
 
 void main() {
+  uint abl = params.flags >> 16u;  // H74 ablation bits (timing only)
   uint lid = gl_LocalInvocationID.x;
   uint sub = gl_SubgroupID;
   uint sub_rb = SUBGROUP_ROW_BLOCKS * sub;
@@ -219,6 +220,7 @@ void main() {
           uint packed = column_ok
               ? input_w.values[w_row + k_base / 8u + w_part] : 0u;
           uint w_base = 8u * w_part * TILE_N + w_column_local;
+          if ((abl & 1u) == 0u) {
           w_s[w_base + 0u * TILE_N] = scale * float(packed & 0xFu) + bias;
           w_s[w_base + 1u * TILE_N] =
               scale * float((packed >> 4u) & 0xFu) + bias;
@@ -233,6 +235,16 @@ void main() {
           w_s[w_base + 6u * TILE_N] =
               scale * float((packed >> 24u) & 0xFu) + bias;
           w_s[w_base + 7u * TILE_N] = scale * float(packed >> 28u) + bias;
+          } else {
+            w_s[w_base + 0u * TILE_N] = uintBitsToFloat(packed + 0u);
+            w_s[w_base + 1u * TILE_N] = uintBitsToFloat(packed + 1u);
+            w_s[w_base + 2u * TILE_N] = uintBitsToFloat(packed + 2u);
+            w_s[w_base + 3u * TILE_N] = uintBitsToFloat(packed + 3u);
+            w_s[w_base + 4u * TILE_N] = uintBitsToFloat(packed + 4u);
+            w_s[w_base + 5u * TILE_N] = uintBitsToFloat(packed + 5u);
+            w_s[w_base + 6u * TILE_N] = uintBitsToFloat(packed + 6u);
+            w_s[w_base + 7u * TILE_N] = uintBitsToFloat(packed + 7u);
+          }
 #ifdef X_BF16
           // X_LOADS half2 loads per lane cover the TILE_ROWS x 16 x tile.
           uint x_words[TILE_M / 8u];
@@ -254,7 +266,7 @@ void main() {
             x_s[local_row * STEP_K + 2u * (i % 8u) + 1u] = pair.y;
           }
 #endif
-          barrier();
+          if ((abl & 4u) == 0u) barrier();
 
           for (uint ks = 0u; ks < STEP_K / MAT; ++ks) {
 #ifdef X_BF16
@@ -281,6 +293,7 @@ void main() {
               // stay in bounds: clamp to the last real row.
               uint row = row_base + (sub_rb + rb) * MAT;
               row = min(row, params.matrix_m - 1u);
+              if ((abl & 8u) != 0u) row = 0u;
               coopMatLoad(
                   mat_a[rb], input_x.values,
                   x_slice + row * params.matrix_k + k_base + ks * MAT,
@@ -295,12 +308,14 @@ void main() {
             }
             for (uint rb = 0u; rb < SUBGROUP_ROW_BLOCKS; ++rb) {
               for (uint cb = 0u; cb < 4u; ++cb) {
-                acc[rb][cb] =
-                    coopMatMulAdd(mat_a[rb], mat_b[cb], acc[rb][cb]);
+                if ((abl & 2u) == 0u) {
+                  acc[rb][cb] =
+                      coopMatMulAdd(mat_a[rb], mat_b[cb], acc[rb][cb]);
+                }
               }
             }
           }
-          barrier();
+          if ((abl & 4u) == 0u) barrier();
         }
       }
 

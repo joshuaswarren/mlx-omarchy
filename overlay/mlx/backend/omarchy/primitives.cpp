@@ -7204,6 +7204,9 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
       omarchy::ComputeKernel qmm_kernel = coopmat_rows == 16u
           ? omarchy::ComputeKernel::QmmPrefillCoopmatM16BF16X32
           : omarchy::ComputeKernel::QmmPrefillCoopmatBF16X32;
+      if (const char* abl_env = std::getenv("MLX_OMARCHY_QMM_ABL")) {
+        params.flags |= static_cast<uint32_t>(std::atoi(abl_env)) << 16;
+      }
       encoder.dispatch_compute(
           qmm_kernel,
           qmm_bindings,
