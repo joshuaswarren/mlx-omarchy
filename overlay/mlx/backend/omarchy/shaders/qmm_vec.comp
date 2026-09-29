@@ -438,10 +438,10 @@ uint q6_at(uint e, uint c0, uint c1, uint c2) {
   Q4_QUAD_LOAD(a, b) \
   for (uint r = 0u; r < uint(ROWS_PER_SLOT); ++r) { \
     uint p = (P_EXPR); \
-    dot[r] += fma(x3, float((p >> 12u) & 0xfu), \
-        fma(x2, float((p >> 8u) & 0xfu), \
-            fma(x1, float((p >> 4u) & 0xfu), \
-                x0 * float(p & 0xfu)))); \
+    dot[r] += fma(x3, uintBitsToFloat(((p >> 12u) & 0xfu) | 0x3f800000u), \
+        fma(x2, uintBitsToFloat(((p >> 8u) & 0xfu) | 0x3f800000u), \
+            fma(x1, uintBitsToFloat(((p >> 4u) & 0xfu) | 0x3f800000u), \
+                x0 * uintBitsToFloat((p & 0xfu) | 0x3f800000u)))); \
   } \
 }
 #define Q4_ROWS_FINISH(w, S, B) { \
