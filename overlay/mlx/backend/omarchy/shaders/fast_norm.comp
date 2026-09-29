@@ -107,10 +107,31 @@ void main() {
 #endif
 
     float local_sq = 0.0;
+#ifndef LAYER_NORM
+    // Issue four independent loads before the four in-order updates: the
+    // per-thread accumulation chain (index = thread, +256, +512, ...) is the
+    // same sequence of operations, only the load issue moves ahead.
+    uint index = thread;
+    for (; index + 3u * threads < row_length; index += 4u * threads) {
+      float v0 = LOAD_VALUE(input_data.values[start + index]);
+      float v1 = LOAD_VALUE(input_data.values[start + index + threads]);
+      float v2 = LOAD_VALUE(input_data.values[start + index + 2u * threads]);
+      float v3 = LOAD_VALUE(input_data.values[start + index + 3u * threads]);
+      local_sq += v0 * v0;
+      local_sq += v1 * v1;
+      local_sq += v2 * v2;
+      local_sq += v3 * v3;
+    }
+    for (; index < row_length; index += threads) {
+      float value = LOAD_VALUE(input_data.values[start + index]);
+      local_sq += value * value;
+    }
+#else
     for (uint index = thread; index < row_length; index += threads) {
       float value = LOAD_VALUE(input_data.values[start + index]);
       local_sq += value * value;
     }
+#endif
     block_values[thread] = local_sq;
     barrier();
     for (uint stride = 128u; stride > 0u; stride >>= 1u) {
@@ -128,6 +149,35 @@ void main() {
 #endif
     float norm = inversesqrt(variance + eps);
 
+#ifndef LAYER_NORM
+    uint sindex = thread;
+    for (; sindex + 3u * threads < row_length; sindex += 4u * threads) {
+      float xv[4];
+      float wv[4];
+      for (uint u = 0u; u < 4u; ++u) {
+        uint idx = sindex + u * threads;
+        xv[u] = LOAD_VALUE(input_data.values[start + idx]);
+        wv[u] = (params.lhs_size == 1u)
+            ? LOAD_VALUE(weight_data.values[params.rhs_offset])
+            : LOAD_VALUE(weight_data.values[params.rhs_offset + idx]);
+      }
+      for (uint u = 0u; u < 4u; ++u) {
+        uint idx = sindex + u * threads;
+        output_data.values[params.output_offset + row * row_length + idx] =
+            STORE_VALUE(xv[u] * norm * wv[u]);
+      }
+    }
+    for (uint index = sindex; index < row_length; index += threads) {
+      float value = LOAD_VALUE(input_data.values[start + index]);
+      float weight =
+          (params.lhs_size == 1u)
+              ? LOAD_VALUE(weight_data.values[params.rhs_offset])
+              : LOAD_VALUE(weight_data.values[params.rhs_offset + index]);
+      float result = value * norm * weight;
+      output_data.values[params.output_offset + row * row_length + index] =
+          STORE_VALUE(result);
+    }
+#else
     for (uint index = thread; index < row_length; index += threads) {
       float value = LOAD_VALUE(input_data.values[start + index]);
       float weight =
@@ -146,6 +196,7 @@ void main() {
       output_data.values[params.output_offset + row * row_length + index] =
           STORE_VALUE(result);
     }
+#endif  // LAYER_NORM scale-pass split
     barrier();
   }
 }
