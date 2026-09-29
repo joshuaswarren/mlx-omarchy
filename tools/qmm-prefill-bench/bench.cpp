@@ -707,6 +707,12 @@ int main(int argc, char** argv) {
   std::memset(bufs.out.mapped, 0, (size_t)M * N * 2);
   run(cand, cand_set, cand_rows, cand_flags, 1, cand_cols);
   std::memcpy(cand_out.data(), bufs.out.mapped, cand_out.size() * 2);
+  if (int nd = std::atoi(arg_str(argc, argv, "--dump", "0").c_str()); nd > 0) {
+    std::printf("{\"k\":\"dump\",\"vals\":[");
+    for (int i = 0; i < nd; ++i)
+      std::printf("%s%u", i ? "," : "", (unsigned)cand_out[i]);
+    std::printf("]}\n");
+  }
   size_t mism = 0, first = (size_t)-1;
   for (size_t i = 0; i < base_out.size(); ++i)
     if (base_out[i] != cand_out[i]) { if (first == (size_t)-1) first = i; ++mism; }
@@ -742,10 +748,17 @@ int main(int argc, char** argv) {
   std::sort(bt.begin(), bt.end());
   std::sort(ct.begin(), ct.end());
   double flops = 2.0 * M * N * K;
+  auto fnv = [](const std::vector<uint16_t>& v) {
+    uint64_t h = 1469598103934665603ull;
+    for (uint16_t x : v) { h ^= x; h *= 1099511628211ull; }
+    return h;
+  };
   std::printf(
       "{\"k\":\"qmm\",\"shape\":\"%s\",\"m\":%u,\"n\":%u,\"kk\":%u,\"mismatch\":%zu,\"first_bad\":%lld,"
+      "\"base_sum\":\"%llx\",\"cand_sum\":\"%llx\","
       "\"base_us\":%.1f,\"cand_us\":%.1f,\"base_tflops\":%.3f,\"cand_tflops\":%.3f,\"cand_vs_base\":%.4f}\n",
-      shape.c_str(), M, N, K, mism, first == (size_t)-1 ? -1LL : (long long)first, bt[bt.size() / 2], ct[ct.size() / 2],
+      shape.c_str(), M, N, K, mism, first == (size_t)-1 ? -1LL : (long long)first,
+      (unsigned long long)fnv(base_out), (unsigned long long)fnv(cand_out), bt[bt.size() / 2], ct[ct.size() / 2],
       flops / (bt[bt.size() / 2] * 1e6), flops / (ct[ct.size() / 2] * 1e6), bt[bt.size() / 2] / ct[ct.size() / 2]);
   return 0;
 }
