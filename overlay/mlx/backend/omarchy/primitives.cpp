@@ -12527,6 +12527,76 @@ void ScaledDotProductAttention::eval_gpu(
   const uint32_t causal_offset =
       causal_fast ? static_cast<uint32_t>(k_len - q_len) : 0u;
 
+  // Fused causal flash prefill (NumericContract, default OFF): one
+  // kernel replaces the two coopmat matmuls, the materialized softmax,
+  // and every q/k/v staging copy. Its online-softmax accumulation moves
+  // logits within the kernel-flags.md contract, so the route exists only
+  // behind MLX_OMARCHY_FLASH_SDPA and every gate below is exact: the
+  // composition's bf16 coopmat conditions, causal with k_len >= q_len,
+  // no sinks or array mask, one dense row-contiguous buffer per operand
+  // (the kernel indexes pure row-major strides), v_dim == head_dim in
+  // (32, 256] and q_len % 8 == 0 (tile geometry), and even element
+  // offsets for the u32 bf16 word-pair staging loads.
+  static const bool flash_sdpa_env =
+      omarchy::env_flag("MLX_OMARCHY_FLASH_SDPA");
+  auto flash_dense = [](const array& x) {
+    return x.flags().row_contiguous && x.strides()[3] == 1 &&
+        x.strides()[2] == x.shape(3) &&
+        x.strides()[1] == x.shape(2) * x.shape(3) &&
+        x.strides()[0] == x.shape(1) * x.shape(2) * x.shape(3);
+  };
+  const uint32_t flash_q_off =
+      checked_item_offset(q, q.size(), tag, out);
+  const uint32_t flash_k_off =
+      checked_item_offset(k, k.size(), tag, out);
+  const uint32_t flash_v_off =
+      checked_item_offset(v, v.size(), tag, out);
+  const bool flash_ready =
+      flash_sdpa_env && bf16_direct && causal_fast && inputs.size() == 3 &&
+      !has_sinks_ && !output_logsumexp_ && v_dim == head_dim &&
+      head_dim > 0 && head_dim <= 256 && head_dim % 32 == 0 &&
+      q_len % 8 == 0 && flash_dense(q) && flash_dense(k) && flash_dense(v) &&
+      ((flash_q_off | flash_k_off | flash_v_off) & 1u) == 0u &&
+      sdpa_caps.max_compute_shared_memory_size >= 21504u;
+  if (flash_ready) {
+    omarchy::capsim::require_backed(
+        encoder.device(),
+        sdpa_caps,
+        bf16_direct,
+        "SdpaFlashPrefillBF16",
+        "cooperative_matrix_fp32_8x8x8",
+        encoder.device().hardware_capabilities().cooperative_matrix_f32_8);
+    out.set_data(allocate_omarchy(out.nbytes()));
+    const uint32_t flash_o_off =
+        checked_item_offset(out, out.size(), tag, out);
+    if ((flash_o_off & 1u) != 0u) {
+      omarchy::unsupported("flash sdpa output offset " + tag, out);
+    }
+    omarchy::ComputeParams params;
+    params.count = checked_u32(out.size(), tag, out);
+    params.lhs_offset = flash_q_off;
+    params.rhs_offset = flash_k_off;
+    params.aux_offset = flash_v_off;
+    params.aux_size = checked_u32(k_len, tag, out);
+    params.output_offset = flash_o_off;
+    params.matrix_m = checked_u32(heads, tag, out);
+    params.matrix_n = checked_u32(kv_heads, tag, out);
+    params.matrix_k = checked_u32(repeats, tag, out);
+    params.alpha = scale_;
+    params.dims = checked_u32(q_len, tag, out);
+    params.shape[0] = checked_u32(head_dim, tag, out);
+    std::array<omarchy::ComputeBinding, 4> bindings{
+        binding(q), binding(k), binding(v), binding(out)};
+    encoder.dispatch_compute(
+        omarchy::ComputeKernel::SdpaFlashPrefillBF16,
+        bindings,
+        params,
+        checked_u32(q_len / 8, tag, out),
+        checked_u32(heads, tag, out),
+        checked_u32(batch, tag, out));
+    return;
+  }
+
   array qs = q;
   array k32 = k;
   array v32 = v;

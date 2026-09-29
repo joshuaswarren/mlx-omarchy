@@ -350,6 +350,7 @@
 #include "conv_dw1d_bf16.h"
 #include "matmul_f32_coopmat_qk.h"
 #include "matmul_f32_coopmat_pv.h"
+#include "sdpa_flash_prefill_bf16.h"
 #include "clear_u32.h"
 #include "gather_axis_bf16.h"
 #include "gather_axis_f16.h"
@@ -1332,6 +1333,8 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {matmul_f32_coopmat_qk, matmul_f32_coopmat_qk_size};
     case ComputeKernel::MatmulF32CoopmatPvBF16:
       return {matmul_f32_coopmat_pv, matmul_f32_coopmat_pv_size};
+    case ComputeKernel::SdpaFlashPrefillBF16:
+      return {sdpa_flash_prefill_bf16, sdpa_flash_prefill_bf16_size};
     case ComputeKernel::FastTrioNormF16:
       return {fast_trio_norm_f16, fast_trio_norm_f16_size};
     case ComputeKernel::FastTrioRopePairF16:

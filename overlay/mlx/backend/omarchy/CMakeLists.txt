@@ -124,6 +124,7 @@ omarchy_shader(matmul_f32_coopmat_bf16 shaders/matmul_coopmat_bf16.comp)
 # f32-score SDPA composition builds: bf16 q/k staged exactly (q scaled by alpha), bf16 v, bf16 output.
 omarchy_shader(matmul_f32_coopmat_qk shaders/matmul_coopmat.comp -DA_BF16=1 -DB_BF16=1 -DA_SCALE=1)
 omarchy_shader(matmul_f32_coopmat_pv shaders/matmul_coopmat.comp -DB_BF16=1 -DOUT_BF16=1)
+omarchy_shader(sdpa_flash_prefill_bf16 shaders/sdpa_flash_prefill.comp)
 omarchy_shader(matmul_f16 shaders/matmul.comp -DUSE_FP16=1)
 omarchy_shader(matmul_bf16 shaders/matmul.comp -DUSE_BF16=1)
 omarchy_shader(matmul_complex64 shaders/matmul.comp -DUSE_COMPLEX64=1)

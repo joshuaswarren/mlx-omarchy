@@ -1,0 +1,273 @@
+// Copyright © 2026 Joshua Warren / mlx-omarchy contributors.
+// SPDX-License-Identifier: MIT
+//
+// Fused causal flash SDPA prefill for bfloat16 q/k/v (NumericContract,
+// env-selected, default OFF): one 32-lane workgroup owns 8 query rows of
+// one (batch, query head) and walks the keys in 64-key tiles, keeping the
+// 8 x v_dim output in lane registers. Per tile the scores are the staged
+// f32 coopMatMulAdd chain of the validated composition (exact bf16
+// widening, the single q * scale product applied at staging, 8-wide k
+// steps), then an in-register online softmax (row max / sum per 4-lane
+// row group) feeds P straight into the f32 P.V accumulator chains, so
+// the [q_len, k_len] score and probability tensors never exist. Fully
+// masked key tiles are skipped; within a tile, masked probabilities are
+// exact zeros, and a row whose mask shifts later uses the larger shift
+// (softmax is shift invariant; l and P scale identically).
+//
+// Numeric contract: online-softmax accumulation and the final O / l
+// divide replace the composition's materialized softmax, so logits move
+// within the kernel-flags.md contract (per-host determinism, argmax
+// agreement at reference near-ties) and the route is selected only by
+// MLX_OMARCHY_FLASH_SDPA. Dispatch (primitives.cpp) gates on the
+// composition's bf16 coopmat conditions plus: causal with k_len >= q_len,
+// no sinks/array mask, v_dim == head_dim in (32..256] multiples of 32,
+// q_len % 8 == 0, dense row-contiguous operands, and even element
+// offsets (the staging loads ride u32 bf16 word pairs).
+
+#version 460
+
+#extension GL_KHR_cooperative_matrix : require
+#extension GL_KHR_memory_scope_semantics : require
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
+#extension GL_KHR_shader_subgroup_basic : require
+#extension GL_KHR_shader_subgroup_shuffle : require
+
+layout(local_size_x = 32) in;
+
+layout(set = 0, binding = 0, std430) readonly buffer QBuf { uint w[]; } q_buf;
+layout(set = 0, binding = 1, std430) readonly buffer KBuf { uint w[]; } k_buf;
+layout(set = 0, binding = 2, std430) readonly buffer VBuf { uint w[]; } v_buf;
+layout(set = 0, binding = 3, std430) writeonly buffer OBuf { uint w[]; } o_buf;
+
+layout(push_constant) uniform Params {
+  uint count;
+  uint operation;
+  uint lhs_size;
+  uint rhs_size;
+  uint reduce_size;
+  uint output_size;
+  uint lhs_offset;
+  uint rhs_offset;
+  uint output_offset;
+  uint aux_size;
+  uint aux_offset;
+  uint matrix_m;   // query heads H
+  uint matrix_n;   // kv heads
+  uint matrix_k;   // repeats (H / kv heads)
+  uint flags;      // unused (0)
+  float alpha;     // softmax scale
+  float beta;
+  uint dims;       // q_len
+  uint shape[4];   // [0] = head_dim == v_dim
+  uint in_strides[4];
+  uint out_strides[4];
+  uint lhs_gap;
+  uint rhs_gap;
+} params;
+
+const uint QTILE = 8u;      // query rows per workgroup
+const uint KTILE = 64u;     // keys per tile
+const uint MAX_D = 256u;    // head_dim gate
+
+float bf16_word_lo(uint word) {
+  return uintBitsToFloat((word & 0xffffu) << 16u);
+}
+
+float bf16_word_hi(uint word) {
+  return uintBitsToFloat(word & 0xffff0000u);
+}
+
+uint bf16_pack(float lo, float hi) {
+  uint lb = floatBitsToUint(lo);
+  uint hb = floatBitsToUint(hi);
+  if ((lb & 0x7fff0000u) == 0x7f800000u) lb = (lb & 0xffff0000u) | 0x40u;
+  else lb = (lb + 0x7fffu + ((lb >> 16) & 1u)) >> 16;
+  if ((hb & 0x7fff0000u) == 0x7f800000u) hb = (hb & 0xffff0000u) | 0x40u;
+  else hb = (hb + 0x7fffu + ((hb >> 16) & 1u)) >> 16;
+  return (hb << 16) | (lb & 0xffffu);
+}
+
+// q_s: the scaled query tile, staged once. k_t: one 8-wide d step of K^T.
+// s_s: the 8 x 64 score tile, rewritten in place as P. v_s: one 32-wide
+// v-dim slice of the key tile. pv_s: drained P.V accumulator tile.
+shared float q_s[QTILE * MAX_D];
+shared float k_t[8u * KTILE];
+shared float s_s[QTILE * KTILE];
+shared float v_s[KTILE * 32u];
+shared float pv_s[QTILE * 32u];
+
+void main() {
+  const uint lane = gl_LocalInvocationID.x;
+  const uint row = lane / 4u;          // query row 0..7
+  const uint cg = lane % 4u;           // column group 0..3
+  const uint qtile = gl_WorkGroupID.x;
+  const uint head = gl_WorkGroupID.y;
+  const uint b = gl_WorkGroupID.z;
+
+  const uint H = params.matrix_m;
+  const uint KV = params.matrix_n;
+  const uint rep = params.matrix_k;
+  const uint D = params.shape[0];
+  const uint q_len = params.dims;
+  const uint k_len = params.aux_size;
+  const uint g = head / rep;
+  const uint q0 = qtile * QTILE;
+  const int off = int(k_len) - int(q_len);
+
+  const uint q_base = params.lhs_offset + (b * H + head) * q_len * D;
+  const uint k_base = params.rhs_offset + (b * KV + g) * k_len * D;
+  const uint v_base = params.aux_offset + (b * KV + g) * k_len * D;
+  const uint o_base = params.output_offset + (b * H + head) * q_len * D;
+
+  for (uint e0 = lane * 2u; e0 < QTILE * D; e0 += 64u) {
+    uint w = q_buf.w[(q_base + e0) >> 1u];
+    q_s[e0] = bf16_word_lo(w) * params.alpha;
+    q_s[e0 + 1u] = bf16_word_hi(w) * params.alpha;
+  }
+  barrier();
+
+  float m_run = -3.402823466e38;  // -FLT_MAX: exp(m_run - m_new) == 0 cleanly
+  float l_run = 0.0;
+  float o_acc[8][8];
+  const uint nch = D / 32u;
+  for (uint ch = 0u; ch < nch; ++ch) {
+    for (uint i = 0u; i < 8u; ++i) {
+      o_acc[ch][i] = 0.0;
+    }
+  }
+
+  // Tiles the causal mask skips entirely (every key past every row's
+  // reach) never stage.
+  const uint reach = q0 + QTILE - 1u + uint(off);
+  const uint k_tiles = min((k_len + KTILE - 1u) / KTILE, (reach + KTILE) / KTILE);
+
+  for (uint kt = 0u; kt < k_tiles; ++kt) {
+    const uint kj = kt * KTILE;
+    const uint ksteps = D / 8u;
+
+    coopmat<float, gl_ScopeSubgroup, 8, 8, gl_MatrixUseAccumulator> s_tile[8];
+    for (uint jb = 0u; jb < 8u; ++jb) {
+      s_tile[jb] = coopmat<float, gl_ScopeSubgroup, 8, 8,
+          gl_MatrixUseAccumulator>(0.0);
+    }
+    for (uint kk = 0u; kk < ksteps; ++kk) {
+      // Stage K^T: element (d = e0 % 8, key = e0 / 8) of the 8 x 64 patch.
+      for (uint e0 = lane * 2u; e0 < 8u * KTILE; e0 += 64u) {
+        uint gk = kj + e0 / 8u;
+        float kv0 = 0.0;
+        float kv1 = 0.0;
+        if (gk < k_len) {
+          uint w = k_buf.w[(k_base + gk * D + kk + (e0 % 8u)) >> 1u];
+          kv0 = bf16_word_lo(w);
+          kv1 = bf16_word_hi(w);
+        }
+        k_t[(e0 % 8u) * KTILE + e0 / 8u] = kv0;
+        k_t[((e0 % 8u) + 1u) * KTILE + e0 / 8u] = kv1;
+      }
+      barrier();
+      coopmat<float, gl_ScopeSubgroup, 8, 8, gl_MatrixUseA> mat_a;
+      coopmat<float, gl_ScopeSubgroup, 8, 8, gl_MatrixUseB> mat_b;
+      coopMatLoad(mat_a, q_s, kk * 8u, D,
+          gl_CooperativeMatrixLayoutRowMajor);
+      for (uint jb = 0u; jb < 8u; ++jb) {
+        coopMatLoad(mat_b, k_t, jb * 8u, KTILE,
+            gl_CooperativeMatrixLayoutRowMajor);
+        s_tile[jb] = coopMatMulAdd(mat_a, mat_b, s_tile[jb]);
+      }
+      barrier();
+    }
+
+    // Scores to shared, then the online softmax on 4-lane row groups.
+    for (uint jb = 0u; jb < 8u; ++jb) {
+      coopMatStore(s_tile[jb], s_s, jb * 8u, KTILE,
+          gl_CooperativeMatrixLayoutRowMajor);
+    }
+    barrier();
+
+    const int row_last = off + int(q0 + row);
+    float smax = -3.402823466e38;
+    for (uint i = 0u; i < 16u; ++i) {
+      uint j = cg * 16u + i;
+      if (int(kj + j) <= row_last && kj + j < k_len) {
+        smax = max(smax, s_s[row * KTILE + j]);
+      }
+    }
+    smax = max(smax, subgroupShuffleXor(smax, 1u));
+    smax = max(smax, subgroupShuffleXor(smax, 2u));
+    const float m_new = max(m_run, smax);
+    const float fac = exp(m_run - m_new);
+    float psum = 0.0;
+    for (uint i = 0u; i < 16u; ++i) {
+      uint j = cg * 16u + i;
+      float p = 0.0;
+      if (int(kj + j) <= row_last && kj + j < k_len) {
+        p = exp(s_s[row * KTILE + j] - m_new);
+      }
+      s_s[row * KTILE + j] = p;
+      psum += p;
+    }
+    psum += subgroupShuffleXor(psum, 1u);
+    psum += subgroupShuffleXor(psum, 2u);
+    l_run = l_run * fac + psum;
+    m_run = m_new;
+    for (uint ch = 0u; ch < nch; ++ch) {
+      for (uint i = 0u; i < 8u; ++i) {
+        o_acc[ch][i] *= fac;
+      }
+    }
+    barrier();
+
+    // P.V for each 32-wide v-dim chunk; P stays in s_s across chunks.
+    for (uint ch = 0u; ch < D / 32u; ++ch) {
+      for (uint e0 = lane * 2u; e0 < KTILE * 32u; e0 += 64u) {
+        uint gk = kj + e0 / 32u;
+        float vv0 = 0.0;
+        float vv1 = 0.0;
+        if (gk < k_len) {
+          uint w = v_buf.w[(v_base + gk * D + ch * 32u + (e0 % 32u)) >> 1u];
+          vv0 = bf16_word_lo(w);
+          vv1 = bf16_word_hi(w);
+        }
+        v_s[(e0 / 32u) * 32u + (e0 % 32u)] = vv0;
+        v_s[(e0 / 32u) * 32u + (e0 % 32u) + 1u] = vv1;
+      }
+      barrier();
+      coopmat<float, gl_ScopeSubgroup, 8, 8, gl_MatrixUseAccumulator> o_tile[4];
+      for (uint cb = 0u; cb < 4u; ++cb) {
+        o_tile[cb] = coopmat<float, gl_ScopeSubgroup, 8, 8,
+            gl_MatrixUseAccumulator>(0.0);
+      }
+      coopmat<float, gl_ScopeSubgroup, 8, 8, gl_MatrixUseA> mat_a;
+      coopmat<float, gl_ScopeSubgroup, 8, 8, gl_MatrixUseB> mat_b;
+      for (uint kb = 0u; kb < 8u; ++kb) {
+        coopMatLoad(mat_a, s_s, kb * 8u, KTILE,
+            gl_CooperativeMatrixLayoutRowMajor);
+        for (uint cb = 0u; cb < 4u; ++cb) {
+          coopMatLoad(mat_b, v_s, kb * 256u + cb * 8u, 32u,
+              gl_CooperativeMatrixLayoutRowMajor);
+          o_tile[cb] = coopMatMulAdd(mat_a, mat_b, o_tile[cb]);
+        }
+      }
+      for (uint cb = 0u; cb < 4u; ++cb) {
+        coopMatStore(o_tile[cb], pv_s, cb * 8u, 32u,
+            gl_CooperativeMatrixLayoutRowMajor);
+      }
+      barrier();
+      for (uint i = 0u; i < 8u; ++i) {
+        o_acc[ch][i] += pv_s[row * 32u + cg * 8u + i];
+      }
+      barrier();
+    }
+    barrier();
+  }
+
+  const float inv_l = 1.0f / l_run;
+  for (uint ch = 0u; ch < nch; ++ch) {
+    for (uint i = 0u; i < 8u; i += 2u) {
+      uint col = ch * 32u + cg * 8u + i;
+      o_buf.w[(o_base + (q0 + row) * D + col) >> 1u] =
+          bf16_pack(o_acc[ch][i] * inv_l, o_acc[ch][i + 1u] * inv_l);
+    }
+  }
+}

@@ -713,6 +713,10 @@ enum class ComputeKernel : uint16_t {
   // A_BF16/B_BF16/A_SCALE and B_BF16/OUT_BF16), bit-identical to cast + f32 matmul + cast.
   MatmulF32CoopmatQkBF16,
   MatmulF32CoopmatPvBF16,
+  // Fused causal flash SDPA prefill on bf16 q/k/v (shaders/sdpa_flash_prefill.comp):
+  // online-softmax single kernel, NumericContract route behind
+  // MLX_OMARCHY_FLASH_SDPA (default off). Append-only profile id.
+  SdpaFlashPrefillBF16,
   Count,
 };
 
