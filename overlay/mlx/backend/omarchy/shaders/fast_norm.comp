@@ -42,12 +42,34 @@ uint16_t bf16_store(float value) {
 
 layout(local_size_x = 256) in;
 
+// bf16 RMSNorm reads its input and weight through 32-bit words. A 16-bit
+// device load lands in the single r0h register and is waited on immediately
+// (measured in the AGX ISA), so eight per-thread element loads are eight
+// serialized memory round trips; 32-bit loads get distinct destination
+// registers and can be in flight together. Element values are identical.
+#if defined(USE_BF16) && !defined(LAYER_NORM)
+#define BF16_WORDS 1
+layout(set = 0, binding = 0, std430) readonly buffer Input {
+  uint values[];
+} input_data;
+layout(set = 0, binding = 1, std430) readonly buffer Weight {
+  uint values[];
+} weight_data;
+float bf16_pick(uint w, uint i) {
+  return uintBitsToFloat((i & 1u) != 0u ? (w & 0xffff0000u) : (w << 16u));
+}
+#define IN_AT(i) bf16_pick(input_data.values[(i) >> 1u], (i))
+#define W_AT(i) bf16_pick(weight_data.values[(i) >> 1u], (i))
+#else
 layout(set = 0, binding = 0, std430) readonly buffer Input {
   STORAGE_TYPE values[];
 } input_data;
 layout(set = 0, binding = 1, std430) readonly buffer Weight {
   STORAGE_TYPE values[];
 } weight_data;
+#define IN_AT(i) LOAD_VALUE(input_data.values[i])
+#define W_AT(i) LOAD_VALUE(weight_data.values[i])
+#endif
 #ifdef LAYER_NORM
 layout(set = 0, binding = 2, std430) readonly buffer Bias {
   STORAGE_TYPE values[];
@@ -108,22 +130,21 @@ void main() {
 
     float local_sq = 0.0;
 #ifndef LAYER_NORM
-    // Issue four independent loads before the four in-order updates: the
-    // per-thread accumulation chain (index = thread, +256, +512, ...) is the
-    // same sequence of operations, only the load issue moves ahead.
+    // Four independent loads ahead of four in-order updates: the per-thread
+    // chain (index = thread, +256, +512, ...) is the same operation sequence.
     uint index = thread;
     for (; index + 3u * threads < row_length; index += 4u * threads) {
-      float v0 = LOAD_VALUE(input_data.values[start + index]);
-      float v1 = LOAD_VALUE(input_data.values[start + index + threads]);
-      float v2 = LOAD_VALUE(input_data.values[start + index + 2u * threads]);
-      float v3 = LOAD_VALUE(input_data.values[start + index + 3u * threads]);
+      float v0 = IN_AT(start + index);
+      float v1 = IN_AT(start + index + threads);
+      float v2 = IN_AT(start + index + 2u * threads);
+      float v3 = IN_AT(start + index + 3u * threads);
       local_sq += v0 * v0;
       local_sq += v1 * v1;
       local_sq += v2 * v2;
       local_sq += v3 * v3;
     }
     for (; index < row_length; index += threads) {
-      float value = LOAD_VALUE(input_data.values[start + index]);
+      float value = IN_AT(start + index);
       local_sq += value * value;
     }
 #else
@@ -149,6 +170,32 @@ void main() {
 #endif
     float norm = inversesqrt(variance + eps);
 
+#ifndef LAYER_NORM
+    uint sindex = thread;
+    for (; sindex + 3u * threads < row_length; sindex += 4u * threads) {
+      float xv[4];
+      float wv[4];
+      for (uint u = 0u; u < 4u; ++u) {
+        uint idx = sindex + u * threads;
+        xv[u] = IN_AT(start + idx);
+        wv[u] = (params.lhs_size == 1u) ? W_AT(params.rhs_offset)
+                                        : W_AT(params.rhs_offset + idx);
+      }
+      for (uint u = 0u; u < 4u; ++u) {
+        uint idx = sindex + u * threads;
+        output_data.values[params.output_offset + row * row_length + idx] =
+            STORE_VALUE(xv[u] * norm * wv[u]);
+      }
+    }
+    for (uint index = sindex; index < row_length; index += threads) {
+      float value = IN_AT(start + index);
+      float weight = (params.lhs_size == 1u) ? W_AT(params.rhs_offset)
+                                             : W_AT(params.rhs_offset + index);
+      float result = value * norm * weight;
+      output_data.values[params.output_offset + row * row_length + index] =
+          STORE_VALUE(result);
+    }
+#else
     for (uint index = thread; index < row_length; index += threads) {
       float value = LOAD_VALUE(input_data.values[start + index]);
       float weight =
@@ -167,6 +214,7 @@ void main() {
       output_data.values[params.output_offset + row * row_length + index] =
           STORE_VALUE(result);
     }
+#endif  // LAYER_NORM scale-pass split
     barrier();
   }
 }
