@@ -133,38 +133,20 @@ void main() {
   uint head_base = head * dv * dk;
   uint row_base = head_base + row * dk;
 
-  // Each pass streams this thread's state row (dk floats, contiguous). The
-  // loads do not depend on the accumulator chain, so 16 are issued before the
-  // 16 in-order updates (dk is a multiple of 16; same arithmetic and order as
-  // the scalar loop, only the load issue moves).
   float kv_acc = 0.0f;
-  uint s_base = params.shape[1] + row_base;
-  for (uint i = 0u; i < dk; i += 16u) {
-    float sv[16];
-    for (uint j = 0u; j < 16u; ++j) {
-      sv[j] = s_in.v[s_base + i + j];
-    }
-    for (uint j = 0u; j < 16u; ++j) {
-      kv_acc += sv[j] * g * sk[i + j];
-    }
+  for (uint i = 0u; i < dk; ++i) {
+    kv_acc += s_in.v[params.shape[1] + row_base + i] * g * sk[i];
   }
   float delta = (bf16_load(v_buf.v[params.aux_size + head * dv + row]) - kv_acc) * beta;
   sdelta[row] = delta;
   barrier();
 
   float o_acc = 0.0f;
-  float sd = sdelta[row];
-  for (uint i = 0u; i < dk; i += 16u) {
-    float sv[16];
-    for (uint j = 0u; j < 16u; ++j) {
-      sv[j] = s_in.v[s_base + i + j];
-    }
-    for (uint j = 0u; j < 16u; ++j) {
-      float s = sv[j] * g;
-      float ns = s + sd * sk[i + j];
-      s_out.v[params.shape[2] + head_base + row * dk + i + j] = ns;
-      o_acc += ns * sq[i + j];
-    }
+  for (uint i = 0u; i < dk; ++i) {
+    float s = s_in.v[params.shape[1] + row_base + i] * g;
+    float ns = s + sdelta[row] * sk[i];
+    s_out.v[params.shape[2] + head_base + row * dk + i] = ns;
+    o_acc += ns * sq[i];
   }
   y_buf.v[params.output_offset + head * dv + row] = bf16_store(o_acc);
 }
