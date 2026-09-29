@@ -173,8 +173,11 @@ void main() {
         } else {
           sigmoid_value = 1.0 / (1.0 + exp(-gate));
         }
-        float silu = gate * sigmoid_value;
-        out_value = silu * normed;
+        // precise: keep the composed chain's association (gate * sigmoid) * normed; without it
+        // the compiler reassociates the fmul chain and flips ~1e-5 of outputs by one bf16 ulp.
+        precise float silu = gate * sigmoid_value;
+        precise float prod = silu * normed;
+        out_value = prod;
         if (expv >= 10u) {
           // Debug (experiment): write raw f32 bits of exp(-gate) (10 hi, 11 lo) or of the
           // sigmoid (12 hi, 13 lo) as the uint16 output, to compare against mx.exp / mx.sigmoid.
