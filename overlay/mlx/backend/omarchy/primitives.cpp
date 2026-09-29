@@ -11240,32 +11240,40 @@ void RMSNorm::eval_gpu(
       std::min(params.output_size, omarchy::kMaxComputeGroupCountX));
 }
 
-void omarchy::eval_norm_prologue_standalone(
+} // namespace fast
+
+namespace omarchy {
+
+void eval_norm_prologue_standalone(
     const GemvNormPrologue& norm,
     const Stream& stream) {
-  // The exact dispatch RMSNorm::eval_gpu records for this node; the
-  // plan contract pinned bf16 rows with matching lengths, so the
+  // The exact dispatch fast::RMSNorm::eval_gpu records for this node;
+  // the plan contract pinned bf16 rows with matching lengths, so the
   // ensure_dense/require helpers are compile-time-true here and the
-  // rowLength math repeats RMSNorm::eval_gpu verbatim.
+  // param math repeats it verbatim.
   array& out = const_cast<array&>(norm.node);
   const array& x = norm.input;
   const array& w = norm.weight;
   const std::string tag = "RMSNorm";
-  auto& encoder = omarchy::get_command_encoder(stream);
+  auto& encoder = get_command_encoder(stream);
   size_t row_length = x.shape(-1);
   out.set_data(allocate_omarchy(out.nbytes()));
-  auto params = norm_params(x, row_length, norm.eps, tag, out);
+  auto params = fast::norm_params(x, row_length, norm.eps, tag, out);
   params.rhs_offset = checked_item_offset(w, w.size(), tag, out);
   params.output_offset = checked_item_offset(out, out.size(), tag, out);
   params.lhs_size = checked_u32(w.size(), tag, out);
-  std::array<omarchy::ComputeBinding, 4> bindings{
+  std::array<ComputeBinding, 4> bindings{
       binding(x), binding(w), binding(w), binding(out)};
   encoder.dispatch_compute(
-      omarchy::ComputeKernel::FastRmsNormBF16,
+      ComputeKernel::FastRmsNormBF16,
       bindings,
       params,
-      std::min(params.output_size, omarchy::kMaxComputeGroupCountX));
+      std::min(params.output_size, kMaxComputeGroupCountX));
 }
+
+} // namespace omarchy
+
+namespace fast {
 
 bool RMSNormGated::use_fallback(Stream s) {
   return false;

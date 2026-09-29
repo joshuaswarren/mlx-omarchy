@@ -1442,7 +1442,7 @@ EagerFusionScope::EagerFusionScope(const std::deque<array>& tape)
       }
       const array& x = group.members[0].node.inputs()[0];
       if (!x.has_primitive() || claimed.count(x.id()) ||
-          typeid(x.primitive()) != typeid(RMSNorm) ||
+          typeid(x.primitive()) != typeid(fast::RMSNorm) ||
           x.dtype() != bfloat16 ||
           uses.find(x.id()) == uses.end() ||
           uses[x.id()] != group.members.size()) {
@@ -1484,7 +1484,7 @@ EagerFusionScope::EagerFusionScope(const std::deque<array>& tape)
         if (!only_members) {
           continue;
         }
-        auto& prim = static_cast<const RMSNorm&>(x.primitive());
+        auto& prim = static_cast<const fast::RMSNorm&>(x.primitive());
         group.norm = GemvNormPrologue{
             x, x.inputs()[0], x.inputs()[1], prim.state().second};
         state->gemv_norm_roles.emplace(x_id, gi);
