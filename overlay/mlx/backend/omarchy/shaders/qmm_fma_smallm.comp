@@ -1,0 +1,200 @@
+#version 460
+#extension GL_EXT_shader_16bit_storage : require
+
+// Scalar-FMA small-M (M <= 16) Q4/group-64 quantized matmul for bf16
+// activations, scales, biases and output. The 8x8x8 cooperative-matrix
+// kernel costs ~270 us per call at any M in 2..16 (even for 16 output
+// columns) because its K loop runs a sequential emulated-MMA chain in a
+// single workgroup per 32-column tile; this kernel leaves the matrix
+// unit: each lane owns one output column (COLS columns) and 16 rows of
+// independent f32 accumulators, weights are dequantized in registers
+// (scale*float(nibble)+bias, f32, same expression as qmm_coopmat) and x is
+// widened exactly from bf16. Per output the sum is one ascending-k f32 chain
+// (the same arithmetic the coopmat kernels produce, checked bit for bit by
+// hash against the shipped route). Rows >= matrix_m are masked (uniform per
+// warp). Requires matrix_m <= 16, matrix_k % 64 == 0 and an x base offset
+// that is a multiple of 8 elements (uvec4 loads); the host declines the
+// route otherwise. PRECISE_ACCUM keeps mul and add separate (NoContraction).
+
+#ifndef COLS
+#define COLS 1
+#endif
+#define ROWS 16
+
+const uint ROWS_U = uint(ROWS);
+const uint COLS_U = uint(COLS);
+const uint WARPS = 4u;
+const uint COLS_PER_WARP = 32u * COLS_U;
+
+layout(local_size_x = 128) in;
+
+layout(set = 0, binding = 0, std430) readonly buffer InputX4 {
+  uvec4 values4[];
+} input_x4;
+layout(set = 0, binding = 1, std430) readonly buffer InputW {
+  uint values[];
+} input_w;
+layout(set = 0, binding = 2, std430) readonly buffer Scales {
+  uint16_t values[];
+} scales;
+layout(set = 0, binding = 3, std430) readonly buffer Biases {
+  uint16_t values[];
+} biases;
+layout(set = 0, binding = 4, std430) writeonly buffer Output {
+  uint16_t values[];
+} output_data;
+
+layout(push_constant) uniform Params {
+  uint count;
+  uint operation;
+  uint lhs_size;
+  uint rhs_size;
+  uint reduce_size;
+  uint output_size;
+  uint lhs_offset;
+  uint rhs_offset;
+  uint output_offset;
+  uint aux_size;
+  uint aux_offset;
+  uint matrix_m;
+  uint matrix_n;
+  uint matrix_k;
+  uint flags;
+  float alpha;
+  float beta;
+  uint dims;
+  uint shape[4];
+  uint in_strides[4];
+  uint out_strides[4];
+} params;
+
+float bf16_to_f32(uint v) {
+  return uintBitsToFloat(v << 16u);
+}
+
+uint out_store(float value) {
+  uint bits = floatBitsToUint(value);
+  if (isnan(value)) {
+    return (bits >> 16) | 0x40u;
+  }
+  return (bits + 0x7fffu + ((bits >> 16) & 1u)) >> 16;
+}
+
+vec2 unpack_bf16x2(uint word) {
+  return vec2(
+      uintBitsToFloat((word & 0xffffu) << 16u),
+      uintBitsToFloat(word & 0xffff0000u));
+}
+
+void main() {
+  uint lid = gl_LocalInvocationID.x;
+  uint warp = lid / 32u;
+  uint lane = lid % 32u;
+  uint batch = params.shape[0];
+  uint w_batch_words = params.shape[1];
+  uint param_batch = params.shape[2];
+  uint m = params.matrix_m;
+  uint n = params.matrix_n;
+  uint k = params.matrix_k;
+  uint words_per_row = k / 8u;
+  uint groups_per_row = k / 64u;
+  uint x_vec_per_row = k / 8u;
+  uint n_blocks = (n + COLS_PER_WARP - 1u) / COLS_PER_WARP;
+
+  for (uint b = 0u; b < batch; ++b) {
+    uint w_slice = params.rhs_offset + b * w_batch_words;
+    uint scale_slice = params.aux_offset + b * param_batch;
+    uint bias_slice = params.aux_size + b * param_batch;
+    uint x_slice4 = (params.lhs_offset + b * m * k) / 8u;
+    uint out_slice = params.output_offset + b * m * n;
+    for (uint block = gl_WorkGroupID.x * WARPS + warp; block < n_blocks;
+         block += gl_NumWorkGroups.x * WARPS) {
+      uint col0 = block * COLS_PER_WARP + lane * COLS_U;
+      float acc[ROWS][COLS];
+      for (uint r = 0u; r < ROWS_U; ++r) {
+        for (uint c = 0u; c < COLS_U; ++c) {
+          acc[r][c] = 0.0;
+        }
+      }
+      for (uint g = 0u; g < groups_per_row; ++g) {
+        float scale[COLS];
+        float bias[COLS];
+        for (uint c = 0u; c < COLS_U; ++c) {
+          uint col = col0 + c;
+          scale[c] = col < n
+              ? bf16_to_f32(uint(scales.values[scale_slice + col * groups_per_row + g]))
+              : 0.0;
+          bias[c] = col < n
+              ? bf16_to_f32(uint(biases.values[bias_slice + col * groups_per_row + g]))
+              : 0.0;
+        }
+        for (uint s = 0u; s < 8u; ++s) {
+          uint kw = g * 8u + s;
+          float wv[COLS][8];
+          for (uint c = 0u; c < COLS_U; ++c) {
+            uint col = col0 + c;
+            uint packed = col < n
+                ? input_w.values[w_slice + col * words_per_row + kw]
+                : 0u;
+            wv[c][0] = scale[c] * float(packed & 0xFu) + bias[c];
+            wv[c][1] = scale[c] * float((packed >> 4u) & 0xFu) + bias[c];
+            wv[c][2] = scale[c] * float((packed >> 8u) & 0xFu) + bias[c];
+            wv[c][3] = scale[c] * float((packed >> 12u) & 0xFu) + bias[c];
+            wv[c][4] = scale[c] * float((packed >> 16u) & 0xFu) + bias[c];
+            wv[c][5] = scale[c] * float((packed >> 20u) & 0xFu) + bias[c];
+            wv[c][6] = scale[c] * float((packed >> 24u) & 0xFu) + bias[c];
+            wv[c][7] = scale[c] * float(packed >> 28u) + bias[c];
+          }
+          for (uint r = 0u; r < ROWS_U; ++r) {
+            if (r < m) {
+              uvec4 xw = input_x4.values4[x_slice4 + r * x_vec_per_row + kw];
+              vec2 xa = unpack_bf16x2(xw.x);
+              vec2 xb = unpack_bf16x2(xw.y);
+              vec2 xc = unpack_bf16x2(xw.z);
+              vec2 xd = unpack_bf16x2(xw.w);
+              for (uint c = 0u; c < COLS_U; ++c) {
+#ifdef PRECISE_ACCUM
+                precise float p0 = xa.x * wv[c][0];
+                acc[r][c] += p0;
+                precise float p1 = xa.y * wv[c][1];
+                acc[r][c] += p1;
+                precise float p2 = xb.x * wv[c][2];
+                acc[r][c] += p2;
+                precise float p3 = xb.y * wv[c][3];
+                acc[r][c] += p3;
+                precise float p4 = xc.x * wv[c][4];
+                acc[r][c] += p4;
+                precise float p5 = xc.y * wv[c][5];
+                acc[r][c] += p5;
+                precise float p6 = xd.x * wv[c][6];
+                acc[r][c] += p6;
+                precise float p7 = xd.y * wv[c][7];
+                acc[r][c] += p7;
+#else
+                acc[r][c] += xa.x * wv[c][0];
+                acc[r][c] += xa.y * wv[c][1];
+                acc[r][c] += xb.x * wv[c][2];
+                acc[r][c] += xb.y * wv[c][3];
+                acc[r][c] += xc.x * wv[c][4];
+                acc[r][c] += xc.y * wv[c][5];
+                acc[r][c] += xd.x * wv[c][6];
+                acc[r][c] += xd.y * wv[c][7];
+#endif
+              }
+            }
+          }
+        }
+      }
+      for (uint r = 0u; r < ROWS_U; ++r) {
+        if (r < m) {
+          for (uint c = 0u; c < COLS_U; ++c) {
+            uint col = col0 + c;
+            if (col < n) {
+              output_data.values[out_slice + r * n + col] = uint16_t(out_store(acc[r][c]));
+            }
+          }
+        }
+      }
+    }
+  }
+}

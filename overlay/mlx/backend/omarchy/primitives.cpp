@@ -7166,19 +7166,26 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
           encoder.device().hardware_capabilities().device_name);
       uint32_t m_groups =
           (params.matrix_m + coopmat_rows - 1u) / coopmat_rows;
-      // EXPERIMENT (H37): MLX_OMARCHY_QMM_SMALLM_STAGED=1 sends M <= 16 to
-      // the staged-A bf16 kernel (x read as bf16 words, shared x_s
-      // staging, no cast pass). Same per-output k chain, so the result
-      // should be bit-identical; used to test whether the direct A
-      // coopMatLoad sets the small-M floor.
-      static const bool smallm_staged =
-          std::getenv("MLX_OMARCHY_QMM_SMALLM_STAGED") != nullptr;
-      if (smallm_staged && params.matrix_m <= 16u) {
+      // EXPERIMENT (H38): MLX_OMARCHY_QMM_SMALLM_FMA=1 (fused) or 2
+      // (NoContraction) sends M <= 16 to the scalar-FMA small-M kernel
+      // (shaders/qmm_fma_smallm.comp): one ascending-k f32 chain per
+      // output like the coopmat route, no matrix unit, no cast pass.
+      static const int smallm_fma = []() {
+        const char* e = std::getenv("MLX_OMARCHY_QMM_SMALLM_FMA");
+        return e == nullptr ? 0 : std::atoi(e);
+      }();
+      if (smallm_fma != 0 && params.matrix_m <= 16u &&
+          (params.lhs_offset & 7u) == 0u && (params.matrix_k % 64u) == 0u) {
+        constexpr uint32_t kFmaColsPerGroup = 128u;
         encoder.dispatch_compute(
-            omarchy::ComputeKernel::QmmPrefillCoopmatM16BF16,
+            smallm_fma == 2
+                ? omarchy::ComputeKernel::QmmPrefillFmaSmallMPreciseBF16
+                : omarchy::ComputeKernel::QmmPrefillFmaSmallMBF16,
             bindings,
             params,
-            std::min(n_groups, omarchy::kMaxComputeGroupCountX),
+            std::min(
+                (params.matrix_n + kFmaColsPerGroup - 1u) / kFmaColsPerGroup,
+                omarchy::kMaxComputeGroupCountX),
             1u,
             1u);
         return;
