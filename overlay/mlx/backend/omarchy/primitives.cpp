@@ -11221,6 +11221,14 @@ void RMSNormGated::eval_gpu(
   params.output_offset = checked_item_offset(out, out.size(), tag, out);
   params.lhs_size = checked_u32(w.size(), tag, out);
   params.aux_offset = checked_item_offset(gate, gate.size(), tag, out);
+  {
+    // MLX_OMARCHY_GATED_EXPV (experiment): exp formulation selector, default 0.
+    static const uint32_t expv = [] {
+      const char* env = std::getenv("MLX_OMARCHY_GATED_EXPV");
+      return env == nullptr ? 0u : static_cast<uint32_t>(std::atoi(env));
+    }();
+    params.flags = expv;
+  }
   std::array<omarchy::ComputeBinding, 4> bindings{
       binding(x), binding(w), binding(gate), binding(out)};
   encoder.dispatch_compute(

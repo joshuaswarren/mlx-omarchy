@@ -144,6 +144,13 @@ void main() {
       if (params.operation == 0u) {
         uint gate_index = params.aux_offset + row * row_length + index;
         float gate = WIDEN(gate_data.values[gate_index]);
+        // params.flags selects the exp formulation (experiment, default 0 = shipped):
+        // 1 = gate with runtime-opaque low bits (the compiler cannot know they are zero),
+        // 2 = exp2(-g * log2e), 3 = precise exp/add chain, 4 = opaque + exp2 form.
+        uint expv = params.flags;
+        if (expv == 1u || expv == 4u) {
+          gate = uintBitsToFloat(floatBitsToUint(gate) | (params.operation >> 8u));
+        }
         // silu(gate) then silu * normed, left-associated exactly like the
         // composed sigmoid -> mul -> mul chain. mlx-lm's _precise_swiglu
         // (and this primitive's C++ fallback) run that chain in float32
@@ -152,7 +159,16 @@ void main() {
         // multiply. (An earlier revision of this file rounded sigmoid and
         // silu to bf16, which flipped ~36% of outputs by one ulp against
         // the composed path: receipts/2026-09-28-jwm1-gdn-qk-scaled.md.)
-        float sigmoid_value = 1.0 / (1.0 + exp(-gate));
+        float sigmoid_value;
+        if (expv == 2u || expv == 4u) {
+          sigmoid_value = 1.0 / (1.0 + exp2(-gate * 1.4426950408889634));
+        } else if (expv == 3u) {
+          precise float e_neg = exp(-gate);
+          precise float denom = 1.0 + e_neg;
+          sigmoid_value = 1.0 / denom;
+        } else {
+          sigmoid_value = 1.0 / (1.0 + exp(-gate));
+        }
         float silu = gate * sigmoid_value;
         out_value = silu * normed;
       } else {
