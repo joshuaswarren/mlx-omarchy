@@ -349,6 +349,7 @@ omarchy_shader(qmm_coopmat_m16_bf16 shaders/qmm_coopmat.comp -DX_BF16=1 -DOUT_BF
 omarchy_shader(qmm_coopmat_x32 shaders/qmm_coopmat.comp -DX_F32=1 -DOUT_BF16=1)
 omarchy_shader(qmm_coopmat_m16_x32 shaders/qmm_coopmat.comp -DX_F32=1 -DOUT_BF16=1 -DTILE_ROWS=16)
 omarchy_shader(qmm_coopmat_m64_x32 shaders/qmm_coopmat.comp -DX_F32=1 -DOUT_BF16=1 -DTILE_ROWS=64)
+omarchy_shader(qmm_coopmat_sg4_x32 shaders/qmm_coopmat.comp -DX_F32=1 -DOUT_BF16=1 -DTILE_ROWS=64 -DSG4=1)
 omarchy_shader(qmm_coopmat_k32_x32 shaders/qmm_coopmat.comp -DX_F32=1 -DOUT_BF16=1 -DSTEP_K_VAL=32)
 omarchy_shader(qmm_coopmat_k64_x32 shaders/qmm_coopmat.comp -DX_F32=1 -DOUT_BF16=1 -DSTEP_K_VAL=64)
 omarchy_shader(qmm_fma_f16 shaders/qmm_fma.comp)

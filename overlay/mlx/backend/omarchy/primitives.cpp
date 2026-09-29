@@ -5911,7 +5911,8 @@ uint32_t coopmat_tile_rows(
   // when the 64-row grid still fills the part.
   static const bool rows64 = [] {
     const char* env = std::getenv("MLX_OMARCHY_QMM_COOPMAT_ROWS");
-    return env != nullptr && std::string(env) == "64";
+    return env != nullptr &&
+        (std::string(env) == "64" || std::string(env) == "64sg4");
   }();
   uint32_t m_groups_64 = (matrix_m + 63u) / 64u;
   if (allow_rows64 && rows64 && matrix_m >= 128u &&
@@ -7178,10 +7179,16 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
         std::string v(env);
         return v == "32" ? 32u : (v == "64" ? 64u : 16u);
       }();
+      static const bool rows64_sg4 = [] {
+        const char* env = std::getenv("MLX_OMARCHY_QMM_COOPMAT_ROWS");
+        return env != nullptr && std::string(env) == "64sg4";
+      }();
       omarchy::ComputeKernel qmm_kernel = coopmat_rows == 16u
           ? omarchy::ComputeKernel::QmmPrefillCoopmatM16BF16X32
           : (coopmat_rows == 64u
-                 ? omarchy::ComputeKernel::QmmPrefillCoopmatM64BF16X32
+                 ? (rows64_sg4
+                        ? omarchy::ComputeKernel::QmmPrefillCoopmatSG4BF16X32
+                        : omarchy::ComputeKernel::QmmPrefillCoopmatM64BF16X32)
                  : (step_k == 32u
                         ? omarchy::ComputeKernel::QmmPrefillCoopmatK32BF16X32
                         : (step_k == 64u

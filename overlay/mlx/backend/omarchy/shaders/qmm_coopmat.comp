@@ -40,7 +40,14 @@
 // Each of the two subgroups owns 32 rows (4 row blocks) x 32 columns:
 // the staged 16x32 weight tile is shared by twice as many outputs, and
 // the k chain of every output is unchanged.
+#ifdef SG4
+// SG4: four subgroups (128 threads) each own 16 rows x 32 columns (8 accumulators, as
+// in the shipped 32-row kernel), so the workgroup tile is 64 rows with the same
+// per-thread register footprint; every output keeps its k chain.
+#define SUBGROUP_ROW_BLOCKS 2u
+#else
 #define SUBGROUP_ROW_BLOCKS 4u
+#endif
 #else
 #error "TILE_ROWS must be 64, 32 or 16"
 #endif
@@ -64,7 +71,11 @@ const uint STEP_K = 16u;
 #endif
 const uint MAT = 8u;
 
+#ifdef SG4
+layout(local_size_x = 128) in;
+#else
 layout(local_size_x = 64) in;
+#endif
 
 #ifdef X_BF16
 layout(set = 0, binding = 0, std430) readonly buffer InputX {
@@ -233,6 +244,20 @@ void main() {
           uint k_base = chunk * CHUNK_K + step * STEP_K;
           // STEP_K/16 packed words per lane cover the STEP_Kx32 weight tile
           // (one word at the shipped STEP_K=16: word == w_part).
+#ifdef SG4
+          {
+            // 128 lanes: each lane dequantizes half of one packed word (4 nibbles).
+            uint word = w_part >> 1u;
+            uint nib_base = 4u * (w_part & 1u);
+            uint packed = column_ok
+                ? input_w.values[w_row + k_base / 8u + word] : 0u;
+            for (uint n = 0u; n < 4u; ++n) {
+              uint nib = nib_base + n;
+              w_s[(8u * word + nib) * TILE_N + w_column_local] =
+                  scale * float((packed >> (4u * nib)) & 0xFu) + bias;
+            }
+          }
+#else
           for (uint wi = 0u; wi < STEP_K / 16u; ++wi) {
             uint word = w_part + 2u * wi;
             uint packed = column_ok
@@ -253,6 +278,7 @@ void main() {
                 scale * float((packed >> 24u) & 0xFu) + bias;
             w_s[w_base + 7u * TILE_N] = scale * float(packed >> 28u) + bias;
           }
+#endif
 #ifdef X_BF16
           // X_LOADS half2 loads per lane cover the TILE_ROWS x 16 x tile.
           uint x_words[TILE_M / 8u];
@@ -344,8 +370,13 @@ void main() {
         }
         barrier();
         if (column_ok) {
+#ifdef SG4
+          for (uint pass = 0u; pass < 2u; ++pass) {
+            uint r = 2u * w_part + pass;
+#else
           for (uint pass = 0u; pass < 4u; ++pass) {
             uint r = 4u * w_part + pass;
+#endif
             uint row = row_base + rb * MAT + r;
             if (row < params.matrix_m) {
 #ifdef X_BF16

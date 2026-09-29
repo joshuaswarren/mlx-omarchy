@@ -648,6 +648,7 @@ enum class ComputeKernel : uint16_t {
   QmmPrefillCoopmatBF16X32,
   QmmPrefillCoopmatM16BF16X32,
   QmmPrefillCoopmatM64BF16X32,
+  QmmPrefillCoopmatSG4BF16X32,
   QmmPrefillCoopmatK32BF16X32,
   QmmPrefillCoopmatK64BF16X32,
   // Native-shape two-pass long-context decode SDPA (f16): pass 1 runs one
