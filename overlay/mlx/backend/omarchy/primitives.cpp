@@ -10488,10 +10488,10 @@ bool ScaledDotProductAttention::supports_bool_mask() {
   return false;
 }
 
-// Shared bytes of the coopmat prefill kernel (s_state 16 KiB + tile
-// staging and round trips): the dispatch gate checks the device limit
-// before selecting it.
-inline constexpr size_t kGdnCoopmatSharedBytes = 24832;
+// Shared bytes of the coopmat prefill kernel (one subgroup's s_state
+// 4 KiB + tile staging and round trips): the dispatch gate checks the
+// device limit before selecting it.
+inline constexpr size_t kGdnCoopmatSharedBytes = 6208;
 
 // Gated delta nets (upstream 0.32.3): the fused GatedDeltaDecodeBF16 kernel
 // serves the decode shape (T=1, no mask, square heads, bf16 activations,
@@ -10758,10 +10758,11 @@ void GatedDeltaUpdate::eval_gpu(
   hf.set_data(allocate_omarchy(hf.nbytes()));
 
   // Single-pass chunked cooperative-matrix scan (Metal
-  // gated_delta_fused_chunk shape at C=8): 128-thread workgroups over
-  // (head, Dv/32 slice), four simdgroups each holding an 8-row state
-  // slice as sixteen 8x8 f32 coopmat tiles, so the state never reaches
-  // scratch. Gated to the square bf16 maskless scalar-g shape on coopmat
+  // gated_delta_fused_chunk shape at C=8): one 32-lane workgroup per
+  // (head, Dv/8 slice) holding its 8-row state slice as sixteen 8x8 f32
+  // coopmat tiles, so the state never reaches scratch; the slices share
+  // nothing, so no workgroup barrier couples them. Gated to the square
+  // bf16 maskless scalar-g shape on coopmat
   // devices with T >= kGdnCoopmatMinTokens: the chunk walk has fixed
   // per-chunk cost that loses to the scan on short prefills (ttft
   // prompts are ~12 tokens; 512-token prefill wins ~2.8x). Metal makes
@@ -10814,7 +10815,7 @@ void GatedDeltaUpdate::eval_gpu(
         bindings,
         params,
         static_cast<uint32_t>(Hv),
-        Dv / 32,
+        Dv / 8,
         1);
     return;
   }
