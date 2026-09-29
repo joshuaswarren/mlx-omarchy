@@ -14,6 +14,8 @@
 // broadcasts to every column. eps arrives in params.alpha.
 
 #version 460
+#extension GL_KHR_shader_subgroup_basic : require
+#extension GL_KHR_shader_subgroup_shuffle_relative : require
 
 #ifdef USE_FP16
 #extension GL_EXT_shader_16bit_storage : require
@@ -113,6 +115,7 @@ void main() {
     }
     block_values[thread] = local_sq;
     barrier();
+#ifdef LAYER_NORM
     for (uint stride = 128u; stride > 0u; stride >>= 1u) {
       if (thread < stride) {
         block_values[thread] += block_values[thread + stride];
@@ -121,6 +124,29 @@ void main() {
     }
     float mean_square = block_values[0] / float(row_length);
     barrier();
+#else
+    // Same pairing as the shared-memory tree (lane i += lane i + stride);
+    // strides 16..1 stay inside subgroup 0 and skip the barriers.
+    for (uint stride = 128u; stride > 16u; stride >>= 1u) {
+      if (thread < stride) {
+        block_values[thread] += block_values[thread + stride];
+      }
+      barrier();
+    }
+    if (thread < 32u) {
+      float v = block_values[thread];
+      v += subgroupShuffleDown(v, 16u);
+      v += subgroupShuffleDown(v, 8u);
+      v += subgroupShuffleDown(v, 4u);
+      v += subgroupShuffleDown(v, 2u);
+      v += subgroupShuffleDown(v, 1u);
+      if (thread == 0u) {
+        block_values[0] = v;
+      }
+    }
+    barrier();
+    float mean_square = block_values[0] / float(row_length);
+#endif
 #ifdef LAYER_NORM
     float variance = mean_square - mu * mu;
 #else
