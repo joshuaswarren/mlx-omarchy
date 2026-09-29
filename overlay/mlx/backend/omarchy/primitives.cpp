@@ -7166,6 +7166,28 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
           encoder.device().hardware_capabilities().device_name);
       uint32_t m_groups =
           (params.matrix_m + coopmat_rows - 1u) / coopmat_rows;
+      // EXPERIMENT (H40): MLX_OMARCHY_QMM_FMA_BF16=<min M> sends M >= min M
+      // to the bf16 twin of the scalar-FMA prefill kernel (qmm_fma.comp with
+      // -DBF16_IO): same ascending-k f32 chain as the coopmat route.
+      static const uint32_t fma_bf16_min_m = []() {
+        const char* e = std::getenv("MLX_OMARCHY_QMM_FMA_BF16");
+        return e == nullptr ? 0u : static_cast<uint32_t>(std::atoi(e));
+      }();
+      if (fma_bf16_min_m != 0u && params.matrix_m >= fma_bf16_min_m &&
+          (params.lhs_offset & 7u) == 0u &&
+          (params.output_offset & 1u) == 0u &&
+          (params.matrix_n & 1u) == 0u && (params.matrix_k % 64u) == 0u) {
+        encoder.dispatch_compute(
+            omarchy::ComputeKernel::QmmPrefillFmaBF16,
+            bindings,
+            params,
+            std::min((params.matrix_n + 63u) / 64u,
+                     omarchy::kMaxComputeGroupCountX),
+            std::min((params.matrix_m + 63u) / 64u,
+                     omarchy::kMaxComputeGroupCountX),
+            1u);
+        return;
+      }
       // EXPERIMENT (H38/H39): MLX_OMARCHY_QMM_SMALLM_FMA=1|2|4 (columns per
       // lane) sends M <= 16 to the scalar-FMA small-M kernel
       // (shaders/qmm_fma_smallm.comp): one ascending-k f32 chain per

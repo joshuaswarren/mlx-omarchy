@@ -40,12 +40,39 @@ layout(set = 0, binding = 0, std430) readonly buffer InputX4 {
 layout(set = 0, binding = 1, std430) readonly buffer InputW {
   uint values[];
 } input_w;
+#ifdef BF16_IO
+// bf16 activations, scales, biases and output (Qwen3.8 bf16-hybrid 4-bit):
+// widening is an exact shift, the store is RNE bfloat16, everything
+// between is the same ascending-k f32 chain.
+layout(set = 0, binding = 2, std430) readonly buffer Scales {
+  uint16_t values[];
+} scales;
+layout(set = 0, binding = 3, std430) readonly buffer Biases {
+  uint16_t values[];
+} biases;
+#define SB_LOAD(v) uintBitsToFloat(uint(v) << 16u)
+#define XLO(w) uintBitsToFloat((w) << 16u)
+#define XHI(w) uintBitsToFloat((w) & 0xffff0000u)
+uint bf16_rne(float value) {
+  uint bits = floatBitsToUint(value);
+  if (isnan(value)) {
+    return (bits >> 16) | 0x40u;
+  }
+  return (bits + 0x7fffu + ((bits >> 16) & 1u)) >> 16;
+}
+#define PACK2(a, b) (bf16_rne(a) | (bf16_rne(b) << 16u))
+#else
 layout(set = 0, binding = 2, std430) readonly buffer Scales {
   float16_t values[];
 } scales;
 layout(set = 0, binding = 3, std430) readonly buffer Biases {
   float16_t values[];
 } biases;
+#define SB_LOAD(v) float(v)
+#define XLO(w) unpackHalf2x16(w).x
+#define XHI(w) unpackHalf2x16(w).y
+#define PACK2(a, b) packHalf2x16(vec2(a, b))
+#endif
 layout(set = 0, binding = 4, std430) writeonly buffer Output {
   uint values[];
 } output_words;
@@ -114,10 +141,10 @@ void main() {
           for (uint c = 0u; c < COLS_U; ++c) {
             uint col = col0 + c;
             scale[c] = col < n
-                ? float(scales.values[scale_slice + col * groups_per_row + g])
+                ? SB_LOAD(scales.values[scale_slice + col * groups_per_row + g])
                 : 0.0;
             bias[c] = col < n
-                ? float(biases.values[bias_slice + col * groups_per_row + g])
+                ? SB_LOAD(biases.values[bias_slice + col * groups_per_row + g])
                 : 0.0;
           }
           for (uint s = 0u; s < 8u; ++s) {
@@ -143,14 +170,14 @@ void main() {
               uvec4 xw = row < m
                   ? input_x4.values4[x_slice4 + row * x_vec_per_row + xk]
                   : uvec4(0u);
-              float x0 = unpackHalf2x16(xw.x).x;
-              float x1 = unpackHalf2x16(xw.x).y;
-              float x2 = unpackHalf2x16(xw.y).x;
-              float x3 = unpackHalf2x16(xw.y).y;
-              float x4 = unpackHalf2x16(xw.z).x;
-              float x5 = unpackHalf2x16(xw.z).y;
-              float x6 = unpackHalf2x16(xw.w).x;
-              float x7 = unpackHalf2x16(xw.w).y;
+              float x0 = XLO(xw.x);
+              float x1 = XHI(xw.x);
+              float x2 = XLO(xw.y);
+              float x3 = XHI(xw.y);
+              float x4 = XLO(xw.z);
+              float x5 = XHI(xw.z);
+              float x6 = XLO(xw.w);
+              float x7 = XHI(xw.w);
               for (uint c = 0u; c < COLS_U; ++c) {
 #ifdef PRECISE_ACCUM
                 precise float p0 = x0 * wv[c][0];
@@ -191,7 +218,7 @@ void main() {
               if (col < n) {
                 uint index = (out_slice + row * n + col) / 2u;
                 output_words.values[index] =
-                    packHalf2x16(vec2(acc[r][2u * p], acc[r][2u * p + 1u]));
+                    PACK2(acc[r][2u * p], acc[r][2u * p + 1u]);
               }
             }
           }
