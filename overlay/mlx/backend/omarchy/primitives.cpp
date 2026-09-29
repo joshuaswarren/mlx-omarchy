@@ -12568,6 +12568,25 @@ void ScaledDotProductAttention::eval_gpu(
       out.dtype() == bfloat16 && q_len > 1 && head_dim > 0 && k_len > 0 &&
       sdpa_caps.cooperative_matrix_f32_8 && sdpa_caps.subgroup_size == 32 &&
       !sdpa_coopmat_disabled;
+  // PAIR16 (MLX_OMARCHY_SDPA_PAIR16=1, default off): the word-pair staged
+  // qk/pv blobs. Pure transport of the same staged f32 values (two bf16
+  // elements per 32-bit load); engaged only when every operand offset,
+  // inter-row gap, and batch stride the word view addresses is even,
+  // because the pair load indexes 32-bit words.
+  bool bf16_pair = false;
+  if (bf16_direct) {
+    const char* pair_env = std::getenv("MLX_OMARCHY_SDPA_PAIR16");
+    if (pair_env != nullptr && std::strcmp(pair_env, "1") == 0) {
+      auto even_layout = [](const array& a) {
+        uint64_t bits = a.offset();
+        for (int64_t st : a.strides()) {
+          bits |= static_cast<uint64_t>(st);
+        }
+        return (bits & 1ULL) == 0ULL;
+      };
+      bf16_pair = even_layout(q) && even_layout(k) && even_layout(v);
+    }
+  }
   // Causal mode with every row holding at least one key: the softmax runs
   // its causal mode and never reads a masked score, so the scores matmul
   // skips fully masked column tiles and the probs matmul stops its k walk
@@ -12635,8 +12654,10 @@ void ScaledDotProductAttention::eval_gpu(
       false,
       s,
       {causal_offset, causal_fast ? CausalSkip::Columns : CausalSkip::None},
-      bf16_direct ? omarchy::ComputeKernel::MatmulF32CoopmatQkBF16
-                  : omarchy::ComputeKernel::Count);
+      bf16_direct
+          ? (bf16_pair ? omarchy::ComputeKernel::MatmulF32CoopmatQkBF16P
+                       : omarchy::ComputeKernel::MatmulF32CoopmatQkBF16)
+          : omarchy::ComputeKernel::Count);
   encoder.add_temporary(scores);
 
   std::optional<array> masked;
@@ -12701,8 +12722,10 @@ void ScaledDotProductAttention::eval_gpu(
       false,
       s,
       {causal_offset, causal_fast ? CausalSkip::K : CausalSkip::None},
-      bf16_direct ? omarchy::ComputeKernel::MatmulF32CoopmatPvBF16
-                  : omarchy::ComputeKernel::Count);
+      bf16_direct
+          ? (bf16_pair ? omarchy::ComputeKernel::MatmulF32CoopmatPvBF16P
+                       : omarchy::ComputeKernel::MatmulF32CoopmatPvBF16)
+          : omarchy::ComputeKernel::Count);
   encoder.add_temporary(result);
   if (result.dtype() == out.dtype()) {
     commit_result(result);

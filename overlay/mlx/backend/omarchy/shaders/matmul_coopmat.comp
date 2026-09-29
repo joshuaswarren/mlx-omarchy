@@ -77,11 +77,36 @@ layout(set = 0, binding = 1, std430) readonly buffer InputB {
   uint16_t values[];
 } input_b;
 #define LOAD_B(i) uintBitsToFloat(uint(input_b.values[i]) << 16u)
+#if defined(PAIR16)
+layout(set = 0, binding = 0, std430) readonly buffer InputA2 {
+  uvec2 values2[];
+} input_a2;
+layout(set = 0, binding = 1, std430) readonly buffer InputB2 {
+  uvec2 values2[];
+} input_b2;
+#endif
 #else
 layout(set = 0, binding = 1, std430) readonly buffer InputB {
   float values[];
 } input_b;
 #define LOAD_B(i) input_b.values[i]
+#endif
+#if defined(PAIR16)
+// Word-pair staging for the 16-bit operand builds (the attention qk/pv
+// blobs): one 32-bit load covers two adjacent-in-memory bf16 elements -
+// k-adjacent for a row-major A and for a column-major B (the k index is
+// the fastest-moving address term), column-adjacent for a row-major B.
+// The staged f32 values, the k order, and every coopMatMulAdd are
+// unchanged, so the pair builds store the words the scalar builds store.
+// The dispatch only sends this variant when every operand offset, gap,
+// and batch stride it addresses is even (element parity of every word
+// address) - the load below indexes words and would misread otherwise.
+#define WIDEN16(lo) uintBitsToFloat(((lo) & 0xFFFFu) << 16u)
+#if defined(A_SCALE)
+#define WIDEN_A(lo) (uintBitsToFloat(((lo) & 0xFFFFu) << 16u) * params.alpha)
+#else
+#define WIDEN_A(lo) uintBitsToFloat(((lo) & 0xFFFFu) << 16u)
+#endif
 #endif
 layout(set = 0, binding = 2, std430) readonly buffer InputC {
   float values[];
@@ -189,6 +214,37 @@ void main() {
         uint k_base = step * MAT;
         // Stage A (32 rows x 8 k): word i = lane + 32 j covers row
         // i / 8, k offset i % 8.
+#if defined(PAIR16)
+        if (!a_colmaj) {
+          // One pass: lane covers row lane/4, k pair (lane%4)*2..+1
+          // (k is the fastest-moving address term of a row-major A).
+          uint row_local = lane / 4u;
+          uint row = row_base + row_local;
+          uint k0 = k_base + (lane % 4u) * 2u;
+          bool row_ok = row < params.matrix_m;
+          uvec2 w = uvec2(0u);
+          if (row_ok && k0 < params.matrix_k) {
+            w = input_a2.values2[
+                (a_slice + row * params.lhs_gap + k0) / 2u];
+          }
+          a_s[row_local * MAT + (lane % 4u) * 2u] =
+              (row_ok && k0 < params.matrix_k) ? WIDEN_A(w.x) : 0.0;
+          a_s[row_local * MAT + (lane % 4u) * 2u + 1u] =
+              (row_ok && k0 + 1u < params.matrix_k) ? WIDEN_A(w.y) : 0.0;
+        } else {
+          for (uint j = 0u; j < 8u; ++j) {
+            uint i = lane + 32u * j;
+            uint row_local = i / MAT;
+            uint row = row_base + row_local;
+            uint k = k_base + (i % MAT);
+            float v = 0.0;
+            if (row < params.matrix_m && k < params.matrix_k) {
+              v = LOAD_A(a_slice + k * params.lhs_gap + row);
+            }
+            a_s[row_local * MAT + (i % MAT)] = v;
+          }
+        }
+#else
         for (uint j = 0u; j < 8u; ++j) {
           uint i = lane + 32u * j;
           uint row_local = i / MAT;
@@ -202,7 +258,45 @@ void main() {
           }
           a_s[row_local * MAT + (i % MAT)] = v;
         }
+#endif
         // Stage B (8 k x 32 columns): i covers column i / 8.
+#if defined(PAIR16)
+        if (!b_colmaj) {
+          // Row-major B: adjacent columns share a word; one pass covers
+          // 8 k rows x 8 columns, four passes the 32-column patch.
+          uint k_row = lane / 4u;
+          uint k = k_base + k_row;
+          bool k_ok = k < params.matrix_k;
+          for (uint j = 0u; j < 4u; ++j) {
+            uint c0 = col_base + 8u * j + (lane % 4u) * 2u;
+            uvec2 w = uvec2(0u);
+            if (k_ok && c0 < params.matrix_n) {
+              w = input_b2.values2[
+                  (b_slice + k * params.rhs_gap + c0) / 2u];
+            }
+            b_s[k_row * TILE_N + 8u * j + (lane % 4u) * 2u] =
+                (k_ok && c0 < params.matrix_n) ? WIDEN16(w.x) : 0.0;
+            b_s[k_row * TILE_N + 8u * j + (lane % 4u) * 2u + 1u] =
+                (k_ok && c0 + 1u < params.matrix_n) ? WIDEN16(w.y) : 0.0;
+          }
+        } else {
+          // Column-major B: the k index is the fastest-moving address
+          // term, so one pass covers 8 columns x 8 k as word pairs.
+          uint col_local = lane / 4u;
+          uint col = col_base + col_local;
+          uint k0 = k_base + (lane % 4u) * 2u;
+          bool col_ok = col < params.matrix_n;
+          uvec2 w = uvec2(0u);
+          if (col_ok && k0 < params.matrix_k) {
+            w = input_b2.values2[
+                (b_slice + col * params.rhs_gap + k0) / 2u];
+          }
+          b_s[(k0 % MAT) * TILE_N + col_local] =
+              (col_ok && k0 < params.matrix_k) ? WIDEN16(w.x) : 0.0;
+          b_s[((k0 + 1u) % MAT) * TILE_N + col_local] =
+              (col_ok && k0 + 1u < params.matrix_k) ? WIDEN16(w.y) : 0.0;
+        }
+#else
         for (uint j = 0u; j < 8u; ++j) {
           uint i = lane + 32u * j;
           uint col_local = i / MAT;
@@ -216,6 +310,7 @@ void main() {
           }
           b_s[(i % MAT) * TILE_N + col_local] = v;
         }
+#endif
         barrier();
 
         coopmat<float, gl_ScopeSubgroup, MAT, MAT, gl_MatrixUseA> mat_a[4];
