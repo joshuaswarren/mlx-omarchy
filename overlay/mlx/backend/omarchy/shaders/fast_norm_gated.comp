@@ -32,6 +32,7 @@
 #define STORAGE_TYPE float16_t
 #define LOAD_VALUE(x) float(x)
 #define STORE_VALUE(f) STORAGE_TYPE(f)
+#define STORE_VALUE_RAW(u) STORAGE_TYPE(0)
 #define WIDEN(x) float(x)
 #elif defined(USE_BF16)
 #extension GL_EXT_shader_16bit_storage : require
@@ -48,10 +49,12 @@ uint16_t bf16_store(float value) {
 // Exact bf16 -> float32 widening of a stored value.
 #define WIDEN(x) (uintBitsToFloat(uint(x) << 16u))
 #define STORE_VALUE(f) bf16_store(f)
+#define STORE_VALUE_RAW(u) uint16_t(u)
 #else
 #define STORAGE_TYPE float
 #define LOAD_VALUE(x) float(x)
 #define STORE_VALUE(f) STORAGE_TYPE(f)
+#define STORE_VALUE_RAW(u) STORAGE_TYPE(0)
 #define WIDEN(x) float(x)
 #endif
 
@@ -141,6 +144,7 @@ void main() {
       // widen: round once to the storage dtype, then widen exactly.
       float normed = WIDEN(STORE_VALUE(result));
       float out_value;
+      bool continue_dbg = false;
       if (params.operation == 0u) {
         uint gate_index = params.aux_offset + row * row_length + index;
         float gate = WIDEN(gate_data.values[gate_index]);
@@ -171,11 +175,24 @@ void main() {
         }
         float silu = gate * sigmoid_value;
         out_value = silu * normed;
+        if (expv >= 10u) {
+          // Debug (experiment): write raw f32 bits of exp(-gate) (10 hi, 11 lo) or of the
+          // sigmoid (12 hi, 13 lo) as the uint16 output, to compare against mx.exp / mx.sigmoid.
+          float e_dbg = exp(-gate);
+          float s_dbg = 1.0 / (1.0 + e_dbg);
+          uint bits_dbg = floatBitsToUint(expv <= 11u ? e_dbg : s_dbg);
+          uint half_dbg = ((expv & 1u) == 0u) ? (bits_dbg >> 16u) : (bits_dbg & 0xffffu);
+          output_data.values[params.output_offset + row * row_length + index] =
+              STORE_VALUE_RAW(half_dbg);
+          continue_dbg = true;
+        }
       } else {
         out_value = normed * scale;
       }
+      if (!continue_dbg) {
       output_data.values[params.output_offset + row * row_length + index] =
           STORE_VALUE(out_value);
+      }
     }
     barrier();
   }
