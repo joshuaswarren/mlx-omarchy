@@ -99,6 +99,14 @@ uint16_t bf16_store(float value) {
 #ifndef SLOTS_PER_GROUP
 #define SLOTS_PER_GROUP 8
 #endif
+// Q4_WV2 stages the packed-word weights through a uvec2 word-pair view:
+// one 8-byte load covers the two consecutive words a fast-tile step
+// consumes, and the scalar tile selects its word from the pair. Pure
+// transport - every staged word, chain, and epilogue is unchanged - so
+// results are bit-identical to the scalar build. The view needs the word
+// base 8-byte aligned; the dispatch only engages this variant when
+// rhs_offset and the batch slice words are even (every model q4 weight is
+// a standalone 8-byte-aligned allocation, and the bitcheck gates the rest).
 #if ROWS_PER_SLOT != 1 && \
     (!defined(USE_SUBGROUP) || !(defined(USE_FP16) || defined(USE_BF16)))
 #error "ROWS_PER_SLOT > 1 needs USE_SUBGROUP and a packed x view"
@@ -162,9 +170,15 @@ QMM_VEC_MULTI_WEIGHT(1, 7)
 QMM_VEC_MULTI_WEIGHT(2, 13)
 QMM_VEC_MULTI_WEIGHT(3, 19)
 #else
+#ifdef Q4_WV2
+layout(set = 0, binding = 1, std430) readonly buffer InputW {
+  uvec2 values[];
+} input_w;
+#else
 layout(set = 0, binding = 1, std430) readonly buffer InputW {
   uint values[];
 } input_w;
+#endif
 #ifdef FP_MODE
 // Scale bytes addressed through the word view; no bias term.
 layout(set = 0, binding = 2, std430) readonly buffer ScaleBias {
@@ -412,6 +426,30 @@ uint q6_at(uint e, uint c0, uint c1, uint c2) {
 // no runtime-count inner loop sits between the loads and the math.
 // Expects w_base, scale_base, bias_base, x_row, words_per_row, n and
 // lane_in_slot in scope and accumulates into `accumulator`.
+#if defined(Q4_WV2)
+#define Q4_ROW(W, S, B) { \
+  if (params.matrix_k % 512u == 0u && n % 8u == 0u) { \
+    for (uint w = lane_in_slot * 2u; w < words_per_row; \
+         w += LANES * 2u) { \
+      precise float dot = 0.0; \
+      precise float input_sum = 0.0; \
+      uvec2 pair = W.values[(w_base + w) >> 1u]; \
+      Q4_WORD(pair.x, x_row + w * 8u) \
+      Q4_WORD(pair.y, x_row + w * 8u + 8u) \
+      Q4_BLOCK_FINISH(w, S, B) \
+    } \
+  } else { \
+    for (uint w = lane_in_slot; w < words_per_row; w += LANES) { \
+      precise float dot = 0.0; \
+      precise float input_sum = 0.0; \
+      uvec2 pair = W.values[(w_base + w) >> 1u]; \
+      uint word_value = ((w) & 1u) != 0u ? pair.y : pair.x; \
+      Q4_WORD(word_value, x_row + w * 8u) \
+      Q4_BLOCK_FINISH(w, S, B) \
+    } \
+  } \
+}
+#else
 #define Q4_ROW(W, S, B) { \
   if (params.matrix_k % 512u == 0u && n % 8u == 0u) { \
     for (uint w = lane_in_slot * 2u; w < words_per_row; \
@@ -431,6 +469,7 @@ uint q6_at(uint e, uint c0, uint c1, uint c2) {
     } \
   } \
 }
+#endif
 #if ROWS_PER_SLOT > 1
 // Multi-row form of Q4_ROW: ROWS_PER_SLOT rows starting at `column`
 // (rows past n are clamped to row n - 1 and their results discarded, so
@@ -461,6 +500,50 @@ uint q6_at(uint e, uint c0, uint c1, uint c2) {
     acc[r] += fma(scale, dot[r], bias_term); \
   } \
 }
+#if defined(Q4_WV2)
+#define Q4_ROWS(W, S, B) { \
+  uint row_base[ROWS_PER_SLOT]; \
+  for (uint r = 0u; r < uint(ROWS_PER_SLOT); ++r) { \
+    row_base[r] = min(column + r, n - 1u); \
+  } \
+  if (params.matrix_k % 512u == 0u && n % 8u == 0u) { \
+    for (uint w = lane_in_slot * 2u; w < words_per_row; \
+         w += LANES * 2u) { \
+      precise float dot[ROWS_PER_SLOT]; \
+      precise float input_sum = 0.0; \
+      uvec2 wp[ROWS_PER_SLOT]; \
+      for (uint r = 0u; r < uint(ROWS_PER_SLOT); ++r) { \
+        dot[r] = 0.0; \
+        wp[r] = \
+            W.values[(w_base + row_base[r] * words_per_row + w) >> 1u]; \
+      } \
+      uvec4 xa = input_x.values[(x_row + w * 8u) / 8u]; \
+      uvec4 xb = input_x.values[(x_row + w * 8u + 8u) / 8u]; \
+      Q4_QUAD_ROWS(wp[r].x, xa.x, xa.y) \
+      Q4_QUAD_ROWS(wp[r].x >> 16u, xa.z, xa.w) \
+      Q4_QUAD_ROWS(wp[r].y, xb.x, xb.y) \
+      Q4_QUAD_ROWS(wp[r].y >> 16u, xb.z, xb.w) \
+      Q4_ROWS_FINISH(w, S, B) \
+    } \
+  } else { \
+    for (uint w = lane_in_slot; w < words_per_row; w += LANES) { \
+      precise float dot[ROWS_PER_SLOT]; \
+      precise float input_sum = 0.0; \
+      uint wa[ROWS_PER_SLOT]; \
+      for (uint r = 0u; r < uint(ROWS_PER_SLOT); ++r) { \
+        dot[r] = 0.0; \
+        uvec2 pair = \
+            W.values[(w_base + row_base[r] * words_per_row + w) >> 1u]; \
+        wa[r] = ((w) & 1u) != 0u ? pair.y : pair.x; \
+      } \
+      uvec4 xa = input_x.values[(x_row + w * 8u) / 8u]; \
+      Q4_QUAD_ROWS(wa[r], xa.x, xa.y) \
+      Q4_QUAD_ROWS(wa[r] >> 16u, xa.z, xa.w) \
+      Q4_ROWS_FINISH(w, S, B) \
+    } \
+  } \
+}
+#else
 #define Q4_ROWS(W, S, B) { \
   uint row_base[ROWS_PER_SLOT]; \
   for (uint r = 0u; r < uint(ROWS_PER_SLOT); ++r) { \
@@ -502,6 +585,7 @@ uint q6_at(uint e, uint c0, uint c1, uint c2) {
     } \
   } \
 }
+#endif
 #endif
 #endif
 

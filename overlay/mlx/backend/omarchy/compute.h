@@ -568,6 +568,9 @@ enum class ComputeKernel : uint16_t {
   QmmVecQ4WordSubgroupF32,
   QmmVecQ4WordSubgroupF16,
   QmmVecQ4WordSubgroupBF16,
+  // Q4 word-pair (uvec2) weight staging, bf16 subgroup column. Appended
+  // so existing GPU-profile kernel ids stay stable.
+  QmmVecQ4WordSubgroupBF16V2,
   // Prefill register block for the transposed affine 4-bit/group-64 f16
   // path. Appended so existing GPU-profile kernel ids stay stable.
   QmmTileRbF16,
