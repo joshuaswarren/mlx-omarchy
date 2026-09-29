@@ -7226,6 +7226,22 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
           encoder.device().hardware_capabilities().device_name);
       uint32_t m_groups =
           (params.matrix_m + coopmat_rows - 1u) / coopmat_rows;
+      // Experiment (env, default off): small-M staged-A kernel, no widening
+      // pass (one dispatch fewer per call); x is read as bf16 word pairs
+      // and widened exactly through shared memory, so the k chain is the
+      // same.
+      static const bool m16_staged =
+          omarchy::env_flag("MLX_OMARCHY_QMM_M16_STAGED");
+      if (m16_staged && coopmat_rows == 16u) {
+        encoder.dispatch_compute(
+            omarchy::ComputeKernel::QmmPrefillCoopmatM16BF16,
+            bindings,
+            params,
+            std::min(n_groups, omarchy::kMaxComputeGroupCountX),
+            std::min(m_groups, omarchy::kMaxComputeGroupCountX),
+            1u);
+        return;
+      }
       // Direct-global-load A: widen bf16 x to f32 once (the widening is
       // exact, so the kernel k chain is bit-identical to the staged
       // path), then the shader coopMatLoads A tiles straight from the
