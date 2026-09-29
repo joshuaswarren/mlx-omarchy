@@ -28,6 +28,11 @@ const uint COLS_PER_WARP = 32u * COLS_U;
 
 layout(local_size_x = 128) in;
 
+// One 64-wide K group of x for all 16 rows, widened to f32 once per
+// workgroup (bf16 -> f32 is exact): every lane then reads x as broadcast
+// vec4 shared loads with no per-lane unpack.
+shared vec4 x_s[ROWS * 16];
+
 layout(set = 0, binding = 0, std430) readonly buffer InputX4 {
   uvec4 values4[];
 } input_x4;
@@ -99,7 +104,9 @@ void main() {
   uint words_per_row = k / 8u;
   uint groups_per_row = k / 64u;
   uint x_vec_per_row = k / 8u;
-  uint n_blocks = (n + COLS_PER_WARP - 1u) / COLS_PER_WARP;
+  uint n_tiles = (n + WARPS * COLS_PER_WARP - 1u) / (WARPS * COLS_PER_WARP);
+  uint stage_row = lid / 8u;
+  uint stage_s = lid % 8u;
 
   for (uint b = 0u; b < batch; ++b) {
     uint w_slice = params.rhs_offset + b * w_batch_words;
@@ -107,9 +114,9 @@ void main() {
     uint bias_slice = params.aux_size + b * param_batch;
     uint x_slice4 = (params.lhs_offset + b * m * k) / 8u;
     uint out_slice = params.output_offset + b * m * n;
-    for (uint block = gl_WorkGroupID.x * WARPS + warp; block < n_blocks;
-         block += gl_NumWorkGroups.x * WARPS) {
-      uint col0 = block * COLS_PER_WARP + lane * COLS_U;
+    for (uint tile = gl_WorkGroupID.x; tile < n_tiles;
+         tile += gl_NumWorkGroups.x) {
+      uint col0 = (tile * WARPS + warp) * COLS_PER_WARP + lane * COLS_U;
       float acc[ROWS][COLS];
       for (uint r = 0u; r < ROWS_U; ++r) {
         for (uint c = 0u; c < COLS_U; ++c) {
@@ -117,6 +124,15 @@ void main() {
         }
       }
       for (uint g = 0u; g < groups_per_row; ++g) {
+        // Cooperative stage: thread lid owns (row lid / 8, uvec4 lid % 8).
+        uvec4 xw = stage_row < m
+            ? input_x4.values4[x_slice4 + stage_row * x_vec_per_row + g * 8u + stage_s]
+            : uvec4(0u);
+        x_s[stage_row * 16u + stage_s * 2u] =
+            vec4(unpack_bf16x2(xw.x), unpack_bf16x2(xw.y));
+        x_s[stage_row * 16u + stage_s * 2u + 1u] =
+            vec4(unpack_bf16x2(xw.z), unpack_bf16x2(xw.w));
+        barrier();
         float scale[COLS];
         float bias[COLS];
         for (uint c = 0u; c < COLS_U; ++c) {
@@ -147,43 +163,22 @@ void main() {
           }
           for (uint r = 0u; r < ROWS_U; ++r) {
             if (r < m) {
-              uvec4 xw = input_x4.values4[x_slice4 + r * x_vec_per_row + kw];
-              vec2 xa = unpack_bf16x2(xw.x);
-              vec2 xb = unpack_bf16x2(xw.y);
-              vec2 xc = unpack_bf16x2(xw.z);
-              vec2 xd = unpack_bf16x2(xw.w);
+              vec4 xa = x_s[r * 16u + s * 2u];
+              vec4 xb = x_s[r * 16u + s * 2u + 1u];
               for (uint c = 0u; c < COLS_U; ++c) {
-#ifdef PRECISE_ACCUM
-                precise float p0 = xa.x * wv[c][0];
-                acc[r][c] += p0;
-                precise float p1 = xa.y * wv[c][1];
-                acc[r][c] += p1;
-                precise float p2 = xb.x * wv[c][2];
-                acc[r][c] += p2;
-                precise float p3 = xb.y * wv[c][3];
-                acc[r][c] += p3;
-                precise float p4 = xc.x * wv[c][4];
-                acc[r][c] += p4;
-                precise float p5 = xc.y * wv[c][5];
-                acc[r][c] += p5;
-                precise float p6 = xd.x * wv[c][6];
-                acc[r][c] += p6;
-                precise float p7 = xd.y * wv[c][7];
-                acc[r][c] += p7;
-#else
                 acc[r][c] += xa.x * wv[c][0];
                 acc[r][c] += xa.y * wv[c][1];
-                acc[r][c] += xb.x * wv[c][2];
-                acc[r][c] += xb.y * wv[c][3];
-                acc[r][c] += xc.x * wv[c][4];
-                acc[r][c] += xc.y * wv[c][5];
-                acc[r][c] += xd.x * wv[c][6];
-                acc[r][c] += xd.y * wv[c][7];
-#endif
+                acc[r][c] += xa.z * wv[c][2];
+                acc[r][c] += xa.w * wv[c][3];
+                acc[r][c] += xb.x * wv[c][4];
+                acc[r][c] += xb.y * wv[c][5];
+                acc[r][c] += xb.z * wv[c][6];
+                acc[r][c] += xb.w * wv[c][7];
               }
             }
           }
         }
+        barrier();
       }
       for (uint r = 0u; r < ROWS_U; ++r) {
         if (r < m) {

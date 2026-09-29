@@ -7166,25 +7166,28 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
           encoder.device().hardware_capabilities().device_name);
       uint32_t m_groups =
           (params.matrix_m + coopmat_rows - 1u) / coopmat_rows;
-      // EXPERIMENT (H38): MLX_OMARCHY_QMM_SMALLM_FMA=1 (fused) or 2
-      // (NoContraction) sends M <= 16 to the scalar-FMA small-M kernel
+      // EXPERIMENT (H38/H39): MLX_OMARCHY_QMM_SMALLM_FMA=1|2|4 (columns per
+      // lane) sends M <= 16 to the scalar-FMA small-M kernel
       // (shaders/qmm_fma_smallm.comp): one ascending-k f32 chain per
       // output like the coopmat route, no matrix unit, no cast pass.
       static const int smallm_fma = []() {
         const char* e = std::getenv("MLX_OMARCHY_QMM_SMALLM_FMA");
         return e == nullptr ? 0 : std::atoi(e);
       }();
-      if (smallm_fma != 0 && params.matrix_m <= 16u &&
-          (params.lhs_offset & 7u) == 0u && (params.matrix_k % 64u) == 0u) {
-        constexpr uint32_t kFmaColsPerGroup = 128u;
+      if ((smallm_fma == 1 || smallm_fma == 2 || smallm_fma == 4) &&
+          params.matrix_m <= 16u && (params.lhs_offset & 7u) == 0u &&
+          (params.matrix_k % 64u) == 0u) {
+        const uint32_t cols_per_group = 128u * static_cast<uint32_t>(smallm_fma);
         encoder.dispatch_compute(
-            smallm_fma == 2
-                ? omarchy::ComputeKernel::QmmPrefillFmaSmallMPreciseBF16
-                : omarchy::ComputeKernel::QmmPrefillFmaSmallMBF16,
+            smallm_fma == 4
+                ? omarchy::ComputeKernel::QmmPrefillFmaSmallMC4BF16
+                : smallm_fma == 2
+                    ? omarchy::ComputeKernel::QmmPrefillFmaSmallMC2BF16
+                    : omarchy::ComputeKernel::QmmPrefillFmaSmallMBF16,
             bindings,
             params,
             std::min(
-                (params.matrix_n + kFmaColsPerGroup - 1u) / kFmaColsPerGroup,
+                (params.matrix_n + cols_per_group - 1u) / cols_per_group,
                 omarchy::kMaxComputeGroupCountX),
             1u,
             1u);

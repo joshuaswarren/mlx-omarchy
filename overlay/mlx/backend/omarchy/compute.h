@@ -709,7 +709,8 @@ enum class ComputeKernel : uint16_t {
   // Small-M (M <= 16) scalar-FMA Q4 qmm for bf16 io (shaders/qmm_fma_smallm.comp);
   // fused and NoContraction accumulate variants. Append-only ids.
   QmmPrefillFmaSmallMBF16,
-  QmmPrefillFmaSmallMPreciseBF16,
+  QmmPrefillFmaSmallMC2BF16,
+  QmmPrefillFmaSmallMC4BF16,
   Count,
 };
 
