@@ -12533,17 +12533,18 @@ void ScaledDotProductAttention::eval_gpu(
   // logits within the kernel-flags.md contract, so the route exists only
   // behind MLX_OMARCHY_FLASH_SDPA and every gate below is exact: the
   // composition's bf16 coopmat conditions, causal with k_len >= q_len,
-  // no sinks or array mask, one dense row-contiguous buffer per operand
-  // (the kernel indexes pure row-major strides), v_dim == head_dim in
-  // (32, 256] and q_len % 8 == 0 (tile geometry), and even element
-  // offsets for the u32 bf16 word-pair staging loads.
+  // no sinks or array mask, v_dim == head_dim == 256 (the in-model
+  // width), q_len % 8 == 0 (tile geometry), innermost strides of 1 with
+  // even outer strides and element offsets for the u32 bf16 word-pair
+  // staging loads (strided transpose views ride their own strides), and
+  // 29 KB of shared memory for the tile stages plus the output
+  // accumulator.
   static const bool flash_sdpa_env =
       omarchy::env_flag("MLX_OMARCHY_FLASH_SDPA");
-  auto flash_dense = [](const array& x) {
-    return x.flags().row_contiguous && x.strides()[3] == 1 &&
-        x.strides()[2] == x.shape(3) &&
-        x.strides()[1] == x.shape(2) * x.shape(3) &&
-        x.strides()[0] == x.shape(1) * x.shape(2) * x.shape(3);
+  auto flash_words = [](const array& x) {
+    const auto& st = x.strides();
+    return st[3] == 1 && st[2] > 0 && st[1] > 0 && st[0] > 0 &&
+        ((st[0] | st[1] | st[2]) & 1u) == 0u;
   };
   const uint32_t flash_q_off =
       checked_item_offset(q, q.size(), tag, out);
@@ -12554,10 +12555,10 @@ void ScaledDotProductAttention::eval_gpu(
   const bool flash_ready =
       flash_sdpa_env && bf16_direct && causal_fast && inputs.size() == 3 &&
       !has_sinks_ && !output_logsumexp_ && v_dim == head_dim &&
-      head_dim > 0 && head_dim <= 256 && head_dim % 32 == 0 &&
-      q_len % 8 == 0 && flash_dense(q) && flash_dense(k) && flash_dense(v) &&
+      head_dim == 256 && q_len % 8 == 0 && flash_words(q) &&
+      flash_words(k) && flash_words(v) &&
       ((flash_q_off | flash_k_off | flash_v_off) & 1u) == 0u &&
-      sdpa_caps.max_compute_shared_memory_size >= 21504u;
+      sdpa_caps.max_compute_shared_memory_size >= 29696u;
   if (flash_ready) {
     omarchy::capsim::require_backed(
         encoder.device(),
@@ -12585,6 +12586,15 @@ void ScaledDotProductAttention::eval_gpu(
     params.alpha = scale_;
     params.dims = checked_u32(q_len, tag, out);
     params.shape[0] = checked_u32(head_dim, tag, out);
+    params.shape[1] = checked_u32(v.strides()[0], tag, out);
+    params.shape[2] = checked_u32(v.strides()[1], tag, out);
+    params.shape[3] = checked_u32(v.strides()[2], tag, out);
+    params.in_strides[0] = checked_u32(q.strides()[0], tag, out);
+    params.in_strides[1] = checked_u32(q.strides()[1], tag, out);
+    params.in_strides[2] = checked_u32(q.strides()[2], tag, out);
+    params.out_strides[0] = checked_u32(k.strides()[0], tag, out);
+    params.out_strides[1] = checked_u32(k.strides()[1], tag, out);
+    params.out_strides[2] = checked_u32(k.strides()[2], tag, out);
     std::array<omarchy::ComputeBinding, 4> bindings{
         binding(q), binding(k), binding(v), binding(out)};
     encoder.dispatch_compute(

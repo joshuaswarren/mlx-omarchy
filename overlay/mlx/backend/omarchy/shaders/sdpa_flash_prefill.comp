@@ -3,16 +3,21 @@
 //
 // Fused causal flash SDPA prefill for bfloat16 q/k/v (NumericContract,
 // env-selected, default OFF): one 32-lane workgroup owns 8 query rows of
-// one (batch, query head) and walks the keys in 64-key tiles, keeping the
-// 8 x v_dim output in lane registers. Per tile the scores are the staged
-// f32 coopMatMulAdd chain of the validated composition (exact bf16
-// widening, the single q * scale product applied at staging, 8-wide k
-// steps), then an in-register online softmax (row max / sum per 4-lane
-// row group) feeds P straight into the f32 P.V accumulator chains, so
-// the [q_len, k_len] score and probability tensors never exist. Fully
-// masked key tiles are skipped; within a tile, masked probabilities are
-// exact zeros, and a row whose mask shifts later uses the larger shift
-// (softmax is shift invariant; l and P scale identically).
+// one (batch, query head) and walks the keys in 64-key tiles. Scores are
+// the staged f32 coopMatMulAdd chain of the validated composition (exact
+// bf16 widening, the single q * scale product applied at staging,
+// ascending-k steps); an in-register online softmax (row max / sum per
+// 4-lane row group) feeds P straight into the f32 P.V coopmat chains with
+// a per-tile running-max rescale, so the [q_len, k_len] score and
+// probability tensors never exist. The 8 x v_dim output accumulates in
+// SHARED memory, not lane registers: the register-resident accumulator
+// measured 227 GPRs (shaderdb, r8) and starved occupancy 11.5x below the
+// composition; the shared accumulator sits ~29 KB total and leaves the
+// GPR file to the coopmat tiles and staging.
+//
+// Fully masked key tiles are skipped; within a tile, masked probabilities
+// are exact zeros, and a row whose mask shifts later uses the larger
+// shift (softmax is shift invariant; l and P scale identically).
 //
 // Numeric contract: online-softmax accumulation and the final O / l
 // divide replace the composition's materialized softmax, so logits move
@@ -20,9 +25,10 @@
 // agreement at reference near-ties) and the route is selected only by
 // MLX_OMARCHY_FLASH_SDPA. Dispatch (primitives.cpp) gates on the
 // composition's bf16 coopmat conditions plus: causal with k_len >= q_len,
-// no sinks/array mask, v_dim == head_dim in (32..256] multiples of 32,
-// q_len % 8 == 0, dense row-contiguous operands, and even element
-// offsets (the staging loads ride u32 bf16 word pairs).
+// no sinks/array mask, v_dim == head_dim == 256 (the in-model width;
+// q_len % 8 == 0), innermost strides of 1 with even outer strides for the
+// u32 bf16 word-pair staging loads (strided q/k/v views ride their own
+// strides), and even element offsets.
 
 #version 460
 
@@ -59,9 +65,9 @@ layout(push_constant) uniform Params {
   float alpha;     // softmax scale
   float beta;
   uint dims;       // q_len
-  uint shape[4];   // [0] = head_dim == v_dim
-  uint in_strides[4];
-  uint out_strides[4];
+  uint shape[4];   // [0] = head_dim == v_dim, [1..3] = v strides (b, head, len)
+  uint in_strides[4];   // q strides (b, head, len, 1)
+  uint out_strides[4];  // k strides (b, kv head, len, 1)
   uint lhs_gap;
   uint rhs_gap;
 } params;
@@ -91,11 +97,13 @@ uint bf16_pack(float lo, float hi) {
 // q_s: the scaled query tile, staged once. k_t: one 8-wide d step of K^T.
 // s_s: the 8 x 64 score tile, rewritten in place as P. v_s: one 32-wide
 // v-dim slice of the key tile. pv_s: drained P.V accumulator tile.
+// o_s: the 8 x D output accumulator (shared; see header).
 shared float q_s[QTILE * MAX_D];
 shared float k_t[8u * KTILE];
 shared float s_s[QTILE * KTILE];
 shared float v_s[KTILE * 32u];
 shared float pv_s[QTILE * 32u];
+shared float o_s[QTILE * MAX_D];
 
 void main() {
   const uint lane = gl_LocalInvocationID.x;
@@ -115,27 +123,29 @@ void main() {
   const uint q0 = qtile * QTILE;
   const int off = int(k_len) - int(q_len);
 
-  const uint q_base = params.lhs_offset + (b * H + head) * q_len * D;
-  const uint k_base = params.rhs_offset + (b * KV + g) * k_len * D;
-  const uint v_base = params.aux_offset + (b * KV + g) * k_len * D;
+  const uint q_base = params.lhs_offset + b * params.in_strides[0] +
+      head * params.in_strides[1];
+  const uint k_base = params.rhs_offset + b * params.out_strides[0] +
+      g * params.out_strides[1];
+  const uint v_base = params.aux_offset + b * params.shape[1] +
+      g * params.shape[2];
   const uint o_base = params.output_offset + (b * H + head) * q_len * D;
 
   for (uint e0 = lane * 2u; e0 < QTILE * D; e0 += 64u) {
-    uint w = q_buf.w[(q_base + e0) >> 1u];
+    uint r = e0 / D;
+    uint d = e0 % D;
+    uint w = q_buf.w[(q_base + (q0 + r) * params.in_strides[2] + d) >> 1u];
     q_s[e0] = bf16_word_lo(w) * params.alpha;
     q_s[e0 + 1u] = bf16_word_hi(w) * params.alpha;
+  }
+  for (uint e0 = lane * 2u; e0 < QTILE * D; e0 += 64u) {
+    o_s[e0] = 0.0;
   }
   barrier();
 
   float m_run = -3.402823466e38;  // -FLT_MAX: exp(m_run - m_new) == 0 cleanly
   float l_run = 0.0;
-  float o_acc[8][8];
   const uint nch = D / 32u;
-  for (uint ch = 0u; ch < nch; ++ch) {
-    for (uint i = 0u; i < 8u; ++i) {
-      o_acc[ch][i] = 0.0;
-    }
-  }
 
   // Tiles the causal mask skips entirely (every key past every row's
   // reach) never stage.
@@ -158,7 +168,7 @@ void main() {
         float kv0 = 0.0;
         float kv1 = 0.0;
         if (gk < k_len) {
-          uint w = k_buf.w[(k_base + gk * D + kk + (e0 % 8u)) >> 1u];
+          uint w = k_buf.w[(k_base + gk * params.out_strides[2] + kk + (e0 % 8u)) >> 1u];
           kv0 = bf16_word_lo(w);
           kv1 = bf16_word_hi(w);
         }
@@ -211,21 +221,20 @@ void main() {
     psum += subgroupShuffleXor(psum, 2u);
     l_run = l_run * fac + psum;
     m_run = m_new;
-    for (uint ch = 0u; ch < nch; ++ch) {
-      for (uint i = 0u; i < 8u; ++i) {
-        o_acc[ch][i] *= fac;
-      }
+    for (uint e0 = lane * 2u; e0 < QTILE * D; e0 += 64u) {
+      o_s[e0] *= fac;
+      o_s[e0 + 1u] *= fac;
     }
     barrier();
 
     // P.V for each 32-wide v-dim chunk; P stays in s_s across chunks.
-    for (uint ch = 0u; ch < D / 32u; ++ch) {
+    for (uint ch = 0u; ch < nch; ++ch) {
       for (uint e0 = lane * 2u; e0 < KTILE * 32u; e0 += 64u) {
         uint gk = kj + e0 / 32u;
         float vv0 = 0.0;
         float vv1 = 0.0;
         if (gk < k_len) {
-          uint w = v_buf.w[(v_base + gk * D + ch * 32u + (e0 % 32u)) >> 1u];
+          uint w = v_buf.w[(v_base + gk * params.shape[3] + ch * 32u + (e0 % 32u)) >> 1u];
           vv0 = bf16_word_lo(w);
           vv1 = bf16_word_hi(w);
         }
@@ -254,8 +263,9 @@ void main() {
             gl_CooperativeMatrixLayoutRowMajor);
       }
       barrier();
+      const uint ocol0 = ch * 32u + cg * 8u;
       for (uint i = 0u; i < 8u; ++i) {
-        o_acc[ch][i] += pv_s[row * 32u + cg * 8u + i];
+        o_s[row * D + ocol0 + i] += pv_s[row * 32u + cg * 8u + i];
       }
       barrier();
     }
@@ -267,7 +277,7 @@ void main() {
     for (uint i = 0u; i < 8u; i += 2u) {
       uint col = ch * 32u + cg * 8u + i;
       o_buf.w[(o_base + (q0 + row) * D + col) >> 1u] =
-          bf16_pack(o_acc[ch][i] * inv_l, o_acc[ch][i + 1u] * inv_l);
+          bf16_pack(o_s[row * D + col] * inv_l, o_s[row * D + col + 1u] * inv_l);
     }
   }
 }
