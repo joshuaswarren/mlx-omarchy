@@ -7169,6 +7169,15 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
           VK_SUBGROUP_FEATURE_ARITHMETIC_BIT) != 0));
     // Eligibility was computed before dense normalization because the packed
     // f16 input view also requires a 16-byte-aligned x row.
+    // Q4_WV2 (MLX_OMARCHY_Q4_WV2=1, default off): the uvec2 word-pair
+    // weight view. Only the bf16 subgroup column ships the variant; the
+    // word base must be 8-byte aligned (rhs_offset and every batch slice
+    // even), otherwise the deployed kernel runs unchanged.
+    const char* wv2_env = std::getenv("MLX_OMARCHY_Q4_WV2");
+    bool use_wv2 = wv2_env != nullptr && std::strcmp(wv2_env, "1") == 0 &&
+        use_q4_word && out.dtype() == bfloat16 &&
+        (params.rhs_offset & 1u) == 0u &&
+        (params.shape[1] & 1u) == 0u;
     auto vec_kernel = subgroup_ready
         ? select_float_kernel(
               out.dtype(),
@@ -7178,7 +7187,9 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
               use_q4_word
                   ? omarchy::ComputeKernel::QmmVecQ4WordSubgroupF16
                   : omarchy::ComputeKernel::QmmVecSubgroupF16,
-              use_q4_word
+              use_wv2
+                  ? omarchy::ComputeKernel::QmmVecQ4WordSubgroupBF16V2
+                  : use_q4_word
                   ? omarchy::ComputeKernel::QmmVecQ4WordSubgroupBF16
                   : omarchy::ComputeKernel::QmmVecSubgroupBF16)
         : select_float_kernel(
