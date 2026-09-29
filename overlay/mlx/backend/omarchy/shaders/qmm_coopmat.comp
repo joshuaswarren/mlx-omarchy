@@ -45,13 +45,7 @@
 const uint TILE_M = TILE_ROWS;
 const uint TILE_N = 32u;
 const uint CHUNK_K = 64u;
-#ifndef STEP_K_DEF
-#define STEP_K_DEF 16u
-#endif
-#if defined(X_BF16) && STEP_K_DEF != 16u
-#error "STEP_K_DEF other than 16 is not supported with X_BF16"
-#endif
-const uint STEP_K = STEP_K_DEF;
+const uint STEP_K = 16u;
 const uint MAT = 8u;
 
 layout(local_size_x = 64) in;
@@ -221,13 +215,10 @@ void main() {
         }
         for (uint step = 0u; step < CHUNK_K / STEP_K; ++step) {
           uint k_base = chunk * CHUNK_K + step * STEP_K;
-          // STEP_K / 16 packed words per lane cover the STEP_K x 32 weight
-          // tile (one word per lane at STEP_K == 16).
-          for (uint j = 0u; j < STEP_K / 16u; ++j) {
-          uint wp = w_part + 2u * j;
+          // One packed word per lane covers the 16x32 weight tile.
           uint packed = column_ok
-              ? input_w.values[w_row + k_base / 8u + wp] : 0u;
-          uint w_base = 8u * wp * TILE_N + w_column_local;
+              ? input_w.values[w_row + k_base / 8u + w_part] : 0u;
+          uint w_base = 8u * w_part * TILE_N + w_column_local;
           w_s[w_base + 0u * TILE_N] = scale * float(packed & 0xFu) + bias;
           w_s[w_base + 1u * TILE_N] =
               scale * float((packed >> 4u) & 0xFu) + bias;
@@ -242,7 +233,6 @@ void main() {
           w_s[w_base + 6u * TILE_N] =
               scale * float((packed >> 24u) & 0xFu) + bias;
           w_s[w_base + 7u * TILE_N] = scale * float(packed >> 28u) + bias;
-          }
 #ifdef X_BF16
           // X_LOADS half2 loads per lane cover the TILE_ROWS x 16 x tile.
           uint x_words[TILE_M / 8u];
