@@ -7166,6 +7166,23 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
           encoder.device().hardware_capabilities().device_name);
       uint32_t m_groups =
           (params.matrix_m + coopmat_rows - 1u) / coopmat_rows;
+      // EXPERIMENT (H37): MLX_OMARCHY_QMM_SMALLM_STAGED=1 sends M <= 16 to
+      // the staged-A bf16 kernel (x read as bf16 words, shared x_s
+      // staging, no cast pass). Same per-output k chain, so the result
+      // should be bit-identical; used to test whether the direct A
+      // coopMatLoad sets the small-M floor.
+      static const bool smallm_staged =
+          std::getenv("MLX_OMARCHY_QMM_SMALLM_STAGED") != nullptr;
+      if (smallm_staged && params.matrix_m <= 16u) {
+        encoder.dispatch_compute(
+            omarchy::ComputeKernel::QmmPrefillCoopmatM16BF16,
+            bindings,
+            params,
+            std::min(n_groups, omarchy::kMaxComputeGroupCountX),
+            1u,
+            1u);
+        return;
+      }
       // Direct-global-load A: widen bf16 x to f32 once (the widening is
       // exact, so the kernel k chain is bit-identical to the staged
       // path), then the shader coopMatLoads A tiles straight from the
