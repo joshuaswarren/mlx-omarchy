@@ -7108,8 +7108,16 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
   // Gemv group count: COLUMNS_PER_GROUP output columns per workgroup,
   // matching the lane split in shaders/qmm_vec.comp.
   constexpr uint32_t kGemvColumnsPerGroup = 8u;
-  auto n_groups_qmm_vec = (params.matrix_n + kGemvColumnsPerGroup - 1u) /
-      kGemvColumnsPerGroup;
+  constexpr uint32_t kGemvColumnsPerGroupRows8 = 32u;
+  // Eight-rows-per-slot A/B (MLX_OMARCHY_GEMV_ROWS8): bf16 q4 word
+  // only; default off keeps the shipped 8-column tiling byte for byte.
+  bool gemv_rows8 = use_q4_word && out.dtype() == bfloat16 &&
+      std::getenv("MLX_OMARCHY_GEMV_ROWS8") != nullptr &&
+      std::strcmp(std::getenv("MLX_OMARCHY_GEMV_ROWS8"), "0") != 0;
+  uint32_t gemv_columns = gemv_rows8 ? kGemvColumnsPerGroupRows8
+                                     : kGemvColumnsPerGroup;
+  auto n_groups_qmm_vec = (params.matrix_n + gemv_columns - 1u) /
+      gemv_columns;
   if (params.matrix_m == 1u) {
     const auto& caps = encoder.device().capabilities();
     bool subgroup_ready =
@@ -7126,26 +7134,27 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
           VK_SUBGROUP_FEATURE_ARITHMETIC_BIT) != 0));
     // Eligibility was computed before dense normalization because the packed
     // f16 input view also requires a 16-byte-aligned x row.
-    auto vec_kernel = subgroup_ready
+    auto vec_kernel = !subgroup_ready
         ? select_float_kernel(
-              out.dtype(),
-              use_q4_word
-                  ? omarchy::ComputeKernel::QmmVecQ4WordSubgroupF32
-                  : omarchy::ComputeKernel::QmmVecSubgroupF32,
-              use_q4_word
-                  ? omarchy::ComputeKernel::QmmVecQ4WordSubgroupF16
-                  : omarchy::ComputeKernel::QmmVecSubgroupF16,
-              use_q4_word
-                  ? omarchy::ComputeKernel::QmmVecQ4WordSubgroupBF16
-                  : omarchy::ComputeKernel::QmmVecSubgroupBF16)
-        : select_float_kernel(
               out.dtype(),
               use_q4_word ? omarchy::ComputeKernel::QmmVecQ4WordF32
                           : omarchy::ComputeKernel::QmmVecF32,
               use_q4_word ? omarchy::ComputeKernel::QmmVecQ4WordF16
                           : omarchy::ComputeKernel::QmmVecF16,
               use_q4_word ? omarchy::ComputeKernel::QmmVecQ4WordBF16
-                          : omarchy::ComputeKernel::QmmVecBF16);
+                          : omarchy::ComputeKernel::QmmVecBF16)
+        : (gemv_rows8 ? omarchy::ComputeKernel::QmmVecQ4WordSubgroupBF16Rows8
+                      : select_float_kernel(
+                            out.dtype(),
+                            use_q4_word
+                                ? omarchy::ComputeKernel::QmmVecQ4WordSubgroupF32
+                                : omarchy::ComputeKernel::QmmVecSubgroupF32,
+                            use_q4_word
+                                ? omarchy::ComputeKernel::QmmVecQ4WordSubgroupF16
+                                : omarchy::ComputeKernel::QmmVecSubgroupF16,
+                            use_q4_word
+                                ? omarchy::ComputeKernel::QmmVecQ4WordSubgroupBF16
+                                : omarchy::ComputeKernel::QmmVecSubgroupBF16));
     encoder.dispatch_compute(
         vec_kernel,
         bindings,
@@ -7425,6 +7434,12 @@ bool dispatch_quantized_gemv_group(
   }
   auto& encoder = get_command_encoder(stream);
   const auto& caps = encoder.device().capabilities();
+  // Eight-rows-per-slot A/B (MLX_OMARCHY_GEMV_ROWS8): bf16 multi only;
+  // default off keeps the shipped 8-column tiling byte for byte.
+  bool gemv_rows8 = members[0].node.dtype() == bfloat16 &&
+      std::getenv("MLX_OMARCHY_GEMV_ROWS8") != nullptr &&
+      std::strcmp(std::getenv("MLX_OMARCHY_GEMV_ROWS8"), "0") != 0;
+  const uint32_t gemv_columns = gemv_rows8 ? 32u : 8u;
   if (encoder.device().compute().binding_limit() <
       kQmmVecMultiBindings + (norm ? 1u : 0u)) {
     return false;
@@ -7495,7 +7510,8 @@ bool dispatch_quantized_gemv_group(
       params.flags |= 256u << i;
     }
     params.shape[i] = static_cast<uint32_t>(n);
-    total_groups += (static_cast<uint32_t>(n) + 7u) / 8u;
+    total_groups += (static_cast<uint32_t>(n) + gemv_columns - 1u) /
+        gemv_columns;
   }
   if (swiglu_out &&
       (params.shape[0] != params.shape[1] || swiglu_out->dtype() != dtype ||
@@ -7505,7 +7521,7 @@ bool dispatch_quantized_gemv_group(
   if (swiglu_out) {
     // Paired epilogue: every workgroup computes the same column slice
     // of both weights, so the gate count is weight 0's alone.
-    total_groups = (params.shape[0] + 7u) / 8u;
+    total_groups = (params.shape[0] + gemv_columns - 1u) / gemv_columns;
     params.flags |= 65536u;
   }
   if (total_groups > kMaxComputeGroupCountX) {
@@ -7668,11 +7684,13 @@ bool dispatch_quantized_gemv_group(
     kernel = ComputeKernel::QmmVecQ4MultiSubgroupBF16NormPrologue;
   } else {
     kernel = subgroup_ready
-        ? select_float_kernel(
-              dtype,
-              ComputeKernel::QmmVecQ4MultiSubgroupF32,
-              ComputeKernel::QmmVecQ4MultiSubgroupF16,
-              ComputeKernel::QmmVecQ4MultiSubgroupBF16)
+        ? (gemv_rows8
+              ? ComputeKernel::QmmVecQ4MultiSubgroupBF16Rows8
+              : select_float_kernel(
+                    dtype,
+                    ComputeKernel::QmmVecQ4MultiSubgroupF32,
+                    ComputeKernel::QmmVecQ4MultiSubgroupF16,
+                    ComputeKernel::QmmVecQ4MultiSubgroupBF16))
         : select_float_kernel(
               dtype,
               ComputeKernel::QmmVecQ4MultiF32,

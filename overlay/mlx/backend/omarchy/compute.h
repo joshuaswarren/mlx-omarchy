@@ -715,14 +715,19 @@ enum class ComputeKernel : uint16_t {
   // A_BF16/B_BF16/A_SCALE and B_BF16/OUT_BF16), bit-identical to cast + f32 matmul + cast.
   MatmulF32CoopmatQkBF16,
   MatmulF32CoopmatPvBF16,
- // QmmVecQ4MultiSubgroupBF16 with the RMSNorm prologue folded in
- // (QMM_VEC_NORM_PROLOGUE): the group computes the bf16 normed row of
- // its shared x in shared memory and runs the unchanged Q4 word chain
- // on it, deleting the standalone FastRmsNorm dispatch. Append-only
- // profile id.
- QmmVecQ4MultiSubgroupBF16NormPrologue,
+  // QmmVecQ4MultiSubgroupBF16 with the RMSNorm prologue folded in
+  // (QMM_VEC_NORM_PROLOGUE): the group computes the bf16 normed row of
+  // its shared x in shared memory and runs the unchanged Q4 word chain
+  // on it, deleting the standalone FastRmsNorm dispatch. Append-only
+  // profile id.
+  QmmVecQ4MultiSubgroupBF16NormPrologue,
+  // Eight-rows-per-slot bf16 word/multi variants (ROWS_PER_SLOT=8,
+  // 32 columns per workgroup; MLX_OMARCHY_GEMV_ROWS8). Append-only
+  // profile id.
+  QmmVecQ4WordSubgroupBF16Rows8,
+  QmmVecQ4MultiSubgroupBF16Rows8,
   Count,
-};
+ };
 
 struct ComputeBinding {
   VkBuffer buffer;
