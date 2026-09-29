@@ -148,9 +148,23 @@ void main() {
           (params.lhs_size == 1u)
               ? LOAD_VALUE(weight_data.values[params.rhs_offset])
               : LOAD_VALUE(weight_data.values[params.rhs_offset + index]);
-      // precise: keep the source association (value * norm) * weight (experiment H21).
-      precise float vn = value * norm;
-      precise float result = vn * weight;
+      // H23: explicit association of the norm product, all precise.
+      // flags bits 8-9: 0 = (value*norm)*weight, 1 = value*(norm*weight), 2 = (value*weight)*norm.
+      uint assoc = (params.flags >> 8u) & 3u;
+      float result;
+      if (assoc == 1u) {
+        precise float nw = norm * weight;
+        precise float r1 = value * nw;
+        result = r1;
+      } else if (assoc == 2u) {
+        precise float vw = value * weight;
+        precise float r2 = vw * norm;
+        result = r2;
+      } else {
+        precise float vn = value * norm;
+        precise float r0 = vn * weight;
+        result = r0;
+      }
       // The normed value the composed path stores and its consumers
       // widen: round once to the storage dtype, then widen exactly.
       float normed = WIDEN(STORE_VALUE(result));
@@ -162,7 +176,7 @@ void main() {
         // params.flags selects the exp formulation (experiment, default 0 = shipped):
         // 1 = gate with runtime-opaque low bits (the compiler cannot know they are zero),
         // 2 = exp2(-g * log2e), 3 = precise exp/add chain, 4 = opaque + exp2 form.
-        uint expv = params.flags;
+        uint expv = params.flags & 0xffu;
         if (expv == 1u || expv == 4u) {
           gate = uintBitsToFloat(floatBitsToUint(gate) | (params.operation >> 8u));
         }
