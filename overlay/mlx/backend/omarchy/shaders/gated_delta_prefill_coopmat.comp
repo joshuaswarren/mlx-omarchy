@@ -7,10 +7,7 @@
 // (head, Dv/32 slice) walks every chunk sequentially; its four simdgroups
 // each own one 8-row x Dk state slice held as sixteen 8x8 f32 cooperative
 // matrix tiles, so no thread ever owns a full state row and the 1096 B
-// scratch spill of the per-thread scan kernel cannot occur. Every shared
-// tile is indexed per simdgroup ([sg] slices only), so the chunk barriers
-// are subgroup-scoped: a workgroup barrier here only serializes the four
-// independent simdgroups against each other.
+// scratch spill of the per-thread scan kernel cannot occur.
 //
 // Per chunk (C=8 tokens), with gamma_log = inclusive prefix sum of
 // log(max(g, 1e-6)) over the chunk and gamma_j = exp(gamma_log_j):
@@ -163,7 +160,7 @@ void main() {
   // Identity tile (constant across the kernel).
   rt_a[sg][e0] = (r0 == c0) ? 1.0 : 0.0;
   rt_a[sg][e0 + 1u] = (r0 == c0 + 1u) ? 1.0 : 0.0;
-  subgroupBarrier();
+  barrier();
   coopmat<float, gl_ScopeSubgroup, 8, 8, gl_MatrixUseAccumulator> eye;
   coopMatLoad(eye, rt_a[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
   coopmat<float, gl_ScopeSubgroup, 8, 8, gl_MatrixUseAccumulator> zero =
@@ -196,7 +193,7 @@ void main() {
           ? bf16_load(b_buf.v[b_off + (t0 + lane) * hv + head])
           : 0.0f;
     }
-    subgroupBarrier();
+    barrier();
 
     const float gamC = exp(gamma_s[sg][C - 1u]);
     const float beta_r0 = beta_s[sg][r0];
@@ -239,7 +236,7 @@ void main() {
       q_s[sg][e0 + 1u] = qv1;
       qg_s[sg][e0] = qv0 * gam_r0;
       qg_s[sg][e0 + 1u] = qv1 * gam_r0;
-      subgroupBarrier();
+      barrier();
       coopMatLoad(mat_a, k_s[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
       coopMatLoad(mat_b, k_s[sg], 0, 8, gl_CooperativeMatrixLayoutColumnMajor);
       kkt = coopMatMulAdd(mat_a, mat_b, kkt);
@@ -250,54 +247,54 @@ void main() {
       m2 = coopMatMulAdd(mat_a, mat_b2, m2);
       coopMatLoad(mat_a, qg_s[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
       tmp = coopMatMulAdd(mat_a, mat_b2, tmp);
-      subgroupBarrier();
+      barrier();
     }
 
     // N = strict_lower(diag(beta) . KK^T) * Gamma: one shared round trip.
     coopMatStore(kkt, rt_a[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
-    subgroupBarrier();
+    barrier();
     float n0 = rt_a[sg][e0];
     float n1 = rt_a[sg][e0 + 1u];
     rt_a[sg][e0] = (c0 < r0)
         ? n0 * beta_r0 * exp(gamma_s[sg][r0] - gamma_s[sg][c0]) : 0.0;
     rt_a[sg][e0 + 1u] = (c0 + 1u < r0)
         ? n1 * beta_r0 * exp(gamma_s[sg][r0] - gamma_s[sg][c0 + 1u]) : 0.0;
-    subgroupBarrier();
+    barrier();
     coopMatLoad(mat_a, rt_a[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
     coopMatLoad(mat_b, rt_a[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
-    subgroupBarrier();
+    barrier();
 
     // Tinv = (I - N)(I + N^2 + N^4 + N^6), the exact (I+N)^-1 for
     // strictly-lower-triangular N (N^8 = 0 at C = 8).
     coopmat<float, gl_ScopeSubgroup, 8, 8, gl_MatrixUseAccumulator> a1 =
         coopMatMulAdd(mat_a, mat_b, zero);
     coopMatStore(a1, rt_b[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
-    subgroupBarrier();
+    barrier();
     coopMatLoad(mat_a2, rt_b[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
     coopMatLoad(mat_b2, rt_b[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
-    subgroupBarrier();
+    barrier();
     coopmat<float, gl_ScopeSubgroup, 8, 8, gl_MatrixUseAccumulator> a2 =
         coopMatMulAdd(mat_a2, mat_b2, zero);
     coopMatStore(a2, rt_b[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
-    subgroupBarrier();
+    barrier();
     // N^6 = N^2 . N^4: mat_a2 keeps N^2, only the B operand takes N^4.
     coopMatLoad(mat_b2, rt_b[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
-    subgroupBarrier();
+    barrier();
     coopmat<float, gl_ScopeSubgroup, 8, 8, gl_MatrixUseAccumulator> a3 =
         coopMatMulAdd(mat_a2, mat_b2, zero);
     coopmat<float, gl_ScopeSubgroup, 8, 8, gl_MatrixUseAccumulator> msum =
         eye + a1 + a2 + a3;
     coopMatStore(msum, rt_b[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
-    subgroupBarrier();
+    barrier();
     coopMatLoad(mat_b, rt_b[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
-    subgroupBarrier();
+    barrier();
     coopmat<float, gl_ScopeSubgroup, 8, 8, gl_MatrixUseAccumulator> tinv =
         msum - coopMatMulAdd(mat_a, mat_b, zero);
     // Tinv feeds operand roles twice (U and WS chains): one round trip.
     coopMatStore(tinv, rt_b[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
-    subgroupBarrier();
+    barrier();
     coopMatLoad(mat_a2, rt_b[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
-    subgroupBarrier();
+    barrier();
 
     // diag(beta) V rows, then delta = Tinv . (diag(beta) V - M2) with
     // M2 = (diag(gamma beta) K) . S: one shared round trip for the
@@ -312,13 +309,13 @@ void main() {
     }
     v_s[sg][e0] = vv0 * beta_r0;
     v_s[sg][e0 + 1u] = vv1 * beta_r0;
-    subgroupBarrier();
+    barrier();
     coopmat<float, gl_ScopeSubgroup, 8, 8, gl_MatrixUseAccumulator> bv;
     coopMatLoad(bv, v_s[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
     coopMatStore(bv - m2, rt_b[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
-    subgroupBarrier();
+    barrier();
     coopMatLoad(mat_b, rt_b[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
-    subgroupBarrier();
+    barrier();
     coopmat<float, gl_ScopeSubgroup, 8, 8, gl_MatrixUseAccumulator> delta =
         coopMatMulAdd(mat_a2, mat_b, zero);
 
@@ -326,31 +323,31 @@ void main() {
     // one shared round trip. The column factor differs per element (c0 vs
     // c0+1), so read gamma_log per column.
     coopMatStore(qkt, rt_a[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
-    subgroupBarrier();
+    barrier();
     float qe0 = rt_a[sg][e0];
     float qe1 = rt_a[sg][e0 + 1u];
     rt_a[sg][e0] = (c0 <= r0)
         ? qe0 * exp(gamma_s[sg][r0] - gamma_s[sg][c0]) : 0.0;
     rt_a[sg][e0 + 1u] = (c0 + 1u <= r0)
         ? qe1 * exp(gamma_s[sg][r0] - gamma_s[sg][c0 + 1u]) : 0.0;
-    subgroupBarrier();
+    barrier();
     coopMatLoad(mat_a, rt_a[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
     // delta feeds the out and state-update matmuls: operand role.
     coopMatStore(delta, rt_b[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
-    subgroupBarrier();
+    barrier();
     coopMatLoad(mat_b2, rt_b[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
-    subgroupBarrier();
+    barrier();
 
     // y rows: out = QKt_tri . delta + (gamma Q).S
     coopmat<float, gl_ScopeSubgroup, 8, 8, gl_MatrixUseAccumulator> out_t =
         coopMatMulAdd(mat_a, mat_b2, tmp);
     coopMatStore(out_t, rt_a[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
-    subgroupBarrier();
+    barrier();
     if (r0 < valid) {
       y_buf.w[(((t0 + r0) * hv + head) * params.matrix_n + dv0 + c0) >> 1u] =
           bf16_pack(rt_a[sg][e0], rt_a[sg][e0 + 1u]);
     }
-    subgroupBarrier();
+    barrier();
 
     // State update: S = gamma_C . S + (K . diag(exp(gamma_C - gamma)))^T . delta.
     for (uint kk = 0u; kk < KSTEPS; ++kk) {
@@ -364,16 +361,16 @@ void main() {
       }
       kgc_s[sg][e0] = kv0 * dec_r0;
       kgc_s[sg][e0 + 1u] = kv1 * dec_r0;
-      subgroupBarrier();
+      barrier();
       coopMatLoad(mat_a, kgc_s[sg], 0, 8, gl_CooperativeMatrixLayoutColumnMajor);
       coopmat<float, gl_ScopeSubgroup, 8, 8, gl_MatrixUseAccumulator> kd =
           coopMatMulAdd(mat_a, mat_b2, zero);
       coopMatStore(kd, rt_b[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
-      subgroupBarrier();
+      barrier();
       s_state[sg][kk * 64u + e0] = s_state[sg][kk * 64u + e0] * gamC + rt_b[sg][e0];
       s_state[sg][kk * 64u + e0 + 1u] =
           s_state[sg][kk * 64u + e0 + 1u] * gamC + rt_b[sg][e0 + 1u];
-      subgroupBarrier();
+      barrier();
     }
   }
 
