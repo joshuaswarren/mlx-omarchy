@@ -139,7 +139,9 @@ void main() {
           (params.lhs_size == 1u)
               ? LOAD_VALUE(weight_data.values[params.rhs_offset])
               : LOAD_VALUE(weight_data.values[params.rhs_offset + index]);
-      float result = value * norm * weight;
+      // precise: keep the source association (value * norm) * weight (experiment H21).
+      precise float vn = value * norm;
+      precise float result = vn * weight;
       // The normed value the composed path stores and its consumers
       // widen: round once to the storage dtype, then widen exactly.
       float normed = WIDEN(STORE_VALUE(result));
@@ -178,7 +180,10 @@ void main() {
         precise float silu = gate * sigmoid_value;
         precise float prod = silu * normed;
         out_value = prod;
-        if (expv >= 10u) {
+        if (expv == 14u) {
+          out_value = normed;   // debug: the normed value itself (already bf16-representable)
+        }
+        if (expv >= 10u && expv <= 13u) {
           // Debug (experiment): write raw f32 bits of exp(-gate) (10 hi, 11 lo) or of the
           // sigmoid (12 hi, 13 lo) as the uint16 output, to compare against mx.exp / mx.sigmoid.
           float e_dbg = exp(-gate);
