@@ -129,6 +129,16 @@ shared float rt_a[4][64];               // round trip A (kkt, qkt, du, out)
 shared float rt_b[4][64];               // round trip B (m2, neumann, tinvv, ws, delta, kd)
 shared float gamma_s[4][8];             // log-domain prefix sums
 shared float beta_s[4][8];
+// Double buffering (Jw16PrefillGap3): shadows for the loop-1 k/q staging and
+// parity buffers for the state-update staging/product. Staged values and
+// arithmetic are unchanged; only the barrier cadence drops (one per k step).
+shared float k_s2[4][64];
+shared float kg_s2[4][64];
+shared float q_s2[4][64];
+shared float qg_s2[4][64];
+shared float kgc_s2[4][64];
+shared float kd_s[4][64];               // state-update products, parity 0
+shared float kd_s2[4][64];              // state-update products, parity 1
 
 coopmat<float, gl_ScopeSubgroup, 8, 8, gl_MatrixUseA> mat_a;
 coopmat<float, gl_ScopeSubgroup, 8, 8, gl_MatrixUseB> mat_b;
@@ -205,6 +215,9 @@ void main() {
 
     // Loop 1: stage the chunk's k/q tiles (raw and row-scaled variants)
     // and accumulate KK^T, Q.K^T, (gamma beta K).S and (gamma Q).S.
+    // Double buffered (Jw16PrefillGap3): kk+1 stages into the shadow parity
+    // while kk computes from the primary; one barrier per k step instead of
+    // two. Staged values, load order, and every coopMatMulAdd are unchanged.
     coopmat<float, gl_ScopeSubgroup, 8, 8, gl_MatrixUseAccumulator> kkt =
         coopmat<float, gl_ScopeSubgroup, 8, 8, gl_MatrixUseAccumulator>(0.0);
     coopmat<float, gl_ScopeSubgroup, 8, 8, gl_MatrixUseAccumulator> qkt =
@@ -213,9 +226,9 @@ void main() {
         coopmat<float, gl_ScopeSubgroup, 8, 8, gl_MatrixUseAccumulator>(0.0);
     coopmat<float, gl_ScopeSubgroup, 8, 8, gl_MatrixUseAccumulator> tmp =
         coopmat<float, gl_ScopeSubgroup, 8, 8, gl_MatrixUseAccumulator>(0.0);
-    for (uint kk = 0u; kk < KSTEPS; ++kk) {
-      uint kbase = k_off + (t0 + r0) * hv * DK + head * DK + kk * 8u + c0;
-      uint qbase = q_off + (t0 + r0) * hv * DK + head * DK + kk * 8u + c0;
+    {
+      uint kbase = k_off + (t0 + r0) * hv * DK + head * DK + c0;
+      uint qbase = q_off + (t0 + r0) * hv * DK + head * DK + c0;
       float kv0 = 0.0;
       float kv1 = 0.0;
       float qv0 = 0.0;
@@ -236,7 +249,33 @@ void main() {
       q_s[sg][e0 + 1u] = qv1;
       qg_s[sg][e0] = qv0 * gam_r0;
       qg_s[sg][e0 + 1u] = qv1 * gam_r0;
-      barrier();
+    }
+    barrier();
+    for (uint kk = 0u; kk < KSTEPS; ++kk) {
+      if (kk + 1u < KSTEPS) {
+        uint kbase = k_off + (t0 + r0) * hv * DK + head * DK + (kk + 1u) * 8u + c0;
+        uint qbase = q_off + (t0 + r0) * hv * DK + head * DK + (kk + 1u) * 8u + c0;
+        float kv0 = 0.0;
+        float kv1 = 0.0;
+        float qv0 = 0.0;
+        float qv1 = 0.0;
+        if (r0 < valid) {
+          uint kw = k_buf.w[kbase >> 1u];
+          kv0 = bf16_word_lo(kw);
+          kv1 = bf16_word_hi(kw);
+          uint qw = q_buf.w[qbase >> 1u];
+          qv0 = bf16_word_lo(qw);
+          qv1 = bf16_word_hi(qw);
+        }
+        k_s2[sg][e0] = kv0;
+        k_s2[sg][e0 + 1u] = kv1;
+        kg_s2[sg][e0] = kv0 * bg_r0;
+        kg_s2[sg][e0 + 1u] = kv1 * bg_r0;
+        q_s2[sg][e0] = qv0;
+        q_s2[sg][e0 + 1u] = qv1;
+        qg_s2[sg][e0] = qv0 * gam_r0;
+        qg_s2[sg][e0 + 1u] = qv1 * gam_r0;
+      }
       coopMatLoad(mat_a, k_s[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
       coopMatLoad(mat_b, k_s[sg], 0, 8, gl_CooperativeMatrixLayoutColumnMajor);
       kkt = coopMatMulAdd(mat_a, mat_b, kkt);
@@ -248,6 +287,15 @@ void main() {
       coopMatLoad(mat_a, qg_s[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
       tmp = coopMatMulAdd(mat_a, mat_b2, tmp);
       barrier();
+      // Rotate: the just-staged shadow becomes the primary for kk+1.
+      k_s[sg][e0] = k_s2[sg][e0];
+      k_s[sg][e0 + 1u] = k_s2[sg][e0 + 1u];
+      kg_s[sg][e0] = kg_s2[sg][e0];
+      kg_s[sg][e0 + 1u] = kg_s2[sg][e0 + 1u];
+      q_s[sg][e0] = q_s2[sg][e0];
+      q_s[sg][e0 + 1u] = q_s2[sg][e0 + 1u];
+      qg_s[sg][e0] = qg_s2[sg][e0];
+      qg_s[sg][e0 + 1u] = qg_s2[sg][e0 + 1u];
     }
 
     // N = strict_lower(diag(beta) . KK^T) * Gamma: one shared round trip.
@@ -350,8 +398,12 @@ void main() {
     barrier();
 
     // State update: S = gamma_C . S + (K . diag(exp(gamma_C - gamma)))^T . delta.
-    for (uint kk = 0u; kk < KSTEPS; ++kk) {
-      uint kbase = k_off + (t0 + r0) * hv * DK + head * DK + kk * 8u + c0;
+    // Pipelined by one (Jw16PrefillGap3): kk+1 stages into the shadow while
+    // kk's product computes; the kk-1 state row updates from the parity-0
+    // product after the next barrier. Staged values, product order, and the
+    // per-row update arithmetic are unchanged; barriers drop 3 -> 1 per step.
+    {
+      uint kbase = k_off + (t0 + r0) * hv * DK + head * DK + c0;
       float kv0 = 0.0;
       float kv1 = 0.0;
       if (r0 < valid) {
@@ -361,17 +413,52 @@ void main() {
       }
       kgc_s[sg][e0] = kv0 * dec_r0;
       kgc_s[sg][e0 + 1u] = kv1 * dec_r0;
-      barrier();
+    }
+    barrier();
+    {
       coopMatLoad(mat_a, kgc_s[sg], 0, 8, gl_CooperativeMatrixLayoutColumnMajor);
       coopmat<float, gl_ScopeSubgroup, 8, 8, gl_MatrixUseAccumulator> kd =
           coopMatMulAdd(mat_a, mat_b2, zero);
       coopMatStore(kd, rt_b[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
-      barrier();
-      s_state[sg][kk * 64u + e0] = s_state[sg][kk * 64u + e0] * gamC + rt_b[sg][e0];
-      s_state[sg][kk * 64u + e0 + 1u] =
-          s_state[sg][kk * 64u + e0 + 1u] * gamC + rt_b[sg][e0 + 1u];
-      barrier();
     }
+    for (uint kk = 1u; kk < KSTEPS; ++kk) {
+      uint kbase = k_off + (t0 + r0) * hv * DK + head * DK + kk * 8u + c0;
+      float kv0 = 0.0;
+      float kv1 = 0.0;
+      if (r0 < valid) {
+        uint kw = k_buf.w[kbase >> 1u];
+        kv0 = bf16_word_lo(kw);
+        kv1 = bf16_word_hi(kw);
+      }
+      kgc_s2[sg][e0] = kv0 * dec_r0;
+      kgc_s2[sg][e0 + 1u] = kv1 * dec_r0;
+      barrier();
+      coopMatLoad(mat_a, kgc_s2[sg], 0, 8, gl_CooperativeMatrixLayoutColumnMajor);
+      coopmat<float, gl_ScopeSubgroup, 8, 8, gl_MatrixUseAccumulator> kd =
+          coopMatMulAdd(mat_a, mat_b2, zero);
+      if ((kk & 1u) != 0u) {
+        coopMatStore(kd, kd_s2[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
+      } else {
+        coopMatStore(kd, rt_b[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
+      }
+      // Row kk-1 reads the product stored one barrier ago (opposite parity).
+      if ((kk & 1u) != 0u) {
+        s_state[sg][(kk - 1u) * 64u + e0] =
+            s_state[sg][(kk - 1u) * 64u + e0] * gamC + rt_b[sg][e0];
+        s_state[sg][(kk - 1u) * 64u + e0 + 1u] =
+            s_state[sg][(kk - 1u) * 64u + e0 + 1u] * gamC + rt_b[sg][e0 + 1u];
+      } else {
+        s_state[sg][(kk - 1u) * 64u + e0] =
+            s_state[sg][(kk - 1u) * 64u + e0] * gamC + kd_s2[sg][e0];
+        s_state[sg][(kk - 1u) * 64u + e0 + 1u] =
+            s_state[sg][(kk - 1u) * 64u + e0 + 1u] * gamC + kd_s2[sg][e0 + 1u];
+      }
+    }
+    barrier();
+    s_state[sg][(KSTEPS - 1u) * 64u + e0] =
+        s_state[sg][(KSTEPS - 1u) * 64u + e0] * gamC + kd_s2[sg][e0];
+    s_state[sg][(KSTEPS - 1u) * 64u + e0 + 1u] =
+        s_state[sg][(KSTEPS - 1u) * 64u + e0 + 1u] * gamC + kd_s2[sg][e0 + 1u];
   }
 
   // Terminal state slice: hf[(head*Dv + dv0 + c)*Dk + kk*8 + r]; the
