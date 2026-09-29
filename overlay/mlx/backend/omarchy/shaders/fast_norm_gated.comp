@@ -58,6 +58,15 @@ uint16_t bf16_store(float value) {
 #define WIDEN(x) float(x)
 #endif
 
+#ifdef GATED_ONLY
+// Gated-only build: no runtime mode branch (experiment H22).
+#define IS_SCALED (false)
+#define IS_GATED (true)
+#else
+#define IS_SCALED (params.operation == 1u)
+#define IS_GATED (params.operation == 0u)
+#endif
+
 layout(local_size_x = 256) in;
 
 layout(set = 0, binding = 0, std430) readonly buffer Input {
@@ -104,7 +113,7 @@ void main() {
   // Mode-1 scalar: round the f32 scale to the storage dtype exactly as
   // the composed promote cast does, then widen.
   float scale = 0.0;
-  if (params.operation == 1u) {
+  if (IS_SCALED) {
 #ifdef USE_BF16
     scale = WIDEN(bf16_store(params.beta));
 #else
@@ -147,7 +156,7 @@ void main() {
       float normed = WIDEN(STORE_VALUE(result));
       float out_value;
       bool continue_dbg = false;
-      if (params.operation == 0u) {
+      if (IS_GATED) {
         uint gate_index = params.aux_offset + row * row_length + index;
         float gate = WIDEN(gate_data.values[gate_index]);
         // params.flags selects the exp formulation (experiment, default 0 = shipped):
