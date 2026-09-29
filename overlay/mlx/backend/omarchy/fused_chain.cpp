@@ -731,6 +731,11 @@ struct GemvGroup {
   // exactly a chain's gate and up projections. The one dispatch writes
   // silu(gate) * up into this array and no swiglu dispatch exists.
   std::optional<array> swiglu_out;
+  // RMSNorm-prologue fold: set at plan time when the shared x is a
+  // fast RMSNorm output whose only consumers are the members. The one
+  // dispatch computes the normed row itself and the standalone norm
+  // dispatch never exists.
+  std::optional<GemvNormPrologue> norm;
   enum class State : uint8_t { pending, done, failed } state{State::pending};
 };
 
@@ -769,6 +774,8 @@ struct EagerFusionState {
   std::unordered_map<std::uintptr_t, FusedChain> chains;
   std::unordered_map<std::uintptr_t, size_t> gemv_roles;
   std::vector<GemvGroup> gemv_groups;
+  // fast RMSNorm nodes absorbed into a group's prologue: id -> group.
+  std::unordered_map<std::uintptr_t, size_t> gemv_norm_roles;
   std::unordered_map<std::uintptr_t, size_t> dense_gemv_roles;
   std::vector<DenseGemvGroup> dense_gemv_groups;
   std::unordered_map<std::uintptr_t, size_t> slice_update_roles;
@@ -1414,6 +1421,77 @@ EagerFusionScope::EagerFusionScope(const std::deque<array>& tape)
       }
     }
   }
+  // RMSNorm-prologue fold. When a planned group's shared x is a fast
+  // RMSNorm output whose ONLY consumers are the group's members, the
+  // dispatch binds the norm's input row and weight instead, computes
+  // the bf16 normed row per workgroup (the standalone kernel's exact
+  // reduction), and the standalone norm dispatch never exists. The
+  // group still fires at its first member's eval turn — the stream
+  // keeps today's order minus the deleted dispatch. The bf16-only
+  // contract is the kernel variant's; the f32 norm rows stay on the
+  // standalone kernel.
+  if (fused_gemv_norm_enabled()) {
+    // Consumer census for the candidate norms: every consumer of x
+    // must be one member of the one group (each member reads x once,
+    // so uses[x] == members is implied but checked separately).
+    std::unordered_map<std::uintptr_t, size_t> candidate_norms;
+    for (size_t gi = 0; gi < state->gemv_groups.size(); ++gi) {
+      const auto& group = state->gemv_groups[gi];
+      if (group.norm) {
+        continue;
+      }
+      const array& x = group.members[0].node.inputs()[0];
+      if (!x.has_primitive() || claimed.count(x.id()) ||
+          typeid(x.primitive()) != typeid(RMSNorm) ||
+          x.dtype() != bfloat16 ||
+          uses.find(x.id()) == uses.end() ||
+          uses[x.id()] != group.members.size()) {
+        continue;
+      }
+      const array& norm_in = x.inputs()[0];
+      const array& norm_w = x.inputs()[1];
+      if (norm_in.dtype() != bfloat16 || norm_w.dtype() != bfloat16 ||
+          !norm_in.flags().row_contiguous || !norm_w.flags().row_contiguous ||
+          norm_in.size() != x.size() || norm_w.size() != x.size() ||
+          norm_in.size() != static_cast<size_t>(norm_in.shape(-1)) ||
+          norm_in.primitive().stream() != group.members[0].node.primitive().stream()) {
+        continue;
+      }
+      candidate_norms.emplace(x.id(), gi);
+    }
+    if (!candidate_norms.empty()) {
+      std::unordered_map<std::uintptr_t, std::vector<std::uintptr_t>>
+          norm_consumers;
+      for (const auto& node : tape) {
+        for (const auto& input : node.inputs()) {
+          if (candidate_norms.count(input.id())) {
+            norm_consumers[input.id()].push_back(node.id());
+          }
+        }
+      }
+      for (const auto& [x_id, gi] : candidate_norms) {
+        auto& group = state->gemv_groups[gi];
+        const array& x = group.members[0].node.inputs()[0];
+        const auto& consumers = norm_consumers[x_id];
+        bool only_members = consumers.size() == group.members.size();
+        for (const auto& member : group.members) {
+          only_members = only_members &&
+              std::find(
+                  consumers.begin(),
+                  consumers.end(),
+                  member.node.id()) != consumers.end();
+        }
+        if (!only_members) {
+          continue;
+        }
+        auto& prim = static_cast<const RMSNorm&>(x.primitive());
+        group.norm = GemvNormPrologue{
+            x, x.inputs()[0], x.inputs()[1], prim.state().second};
+        state->gemv_norm_roles.emplace(x_id, gi);
+        claimed.insert(x_id);
+      }
+    }
+  }
   std::unordered_map<std::uintptr_t, std::vector<const array*>> dense_by_x;
   std::vector<std::uintptr_t> dense_x_order;
   for (const auto& node : tape) {
@@ -1686,6 +1764,12 @@ bool fused_gemv_swiglu_enabled() {
        env_flag("MLX_OMARCHY_FUSED_GEMV_SWIGLU"));
 }
 
+bool fused_gemv_norm_enabled() {
+  return fused_gemv_enabled() &&
+      (std::getenv("MLX_OMARCHY_FUSED_GEMV_NORM") == nullptr ||
+       env_flag("MLX_OMARCHY_FUSED_GEMV_NORM"));
+}
+
 bool fused_trio_enabled() {
   return fused_chain_enabled() &&
       (std::getenv("MLX_OMARCHY_FUSED_TRIO") == nullptr ||
@@ -1894,14 +1978,29 @@ bool try_eval_eager_fusion(array& node, const Stream& stream) {
       gemv != eager_state->gemv_roles.end()) {
     auto& group = eager_state->gemv_groups[gemv->second];
     if (group.state == GemvGroup::State::pending) {
-      group.state = dispatch_quantized_gemv_group(
-                        group.members,
-                        group.swiglu_out ? &*group.swiglu_out : nullptr,
-                        stream)
-          ? GemvGroup::State::done
-          : GemvGroup::State::failed;
+      bool fired = dispatch_quantized_gemv_group(
+          group.members,
+          group.swiglu_out ? &*group.swiglu_out : nullptr,
+          group.norm ? &*group.norm : nullptr,
+          stream);
+      if (!fired && group.norm) {
+        // The norm's own eval turn was absorbed, so nothing materialized
+        // its output; the members falling back below need it. Restore
+        // exactly the dispatch the fold deleted.
+        eval_norm_prologue_standalone(*group.norm, stream);
+      }
+      group.state = fired ? GemvGroup::State::done
+                          : GemvGroup::State::failed;
     }
     return group.state == GemvGroup::State::done;
+  }
+  if (auto norm_role = eager_state->gemv_norm_roles.find(node.id());
+      norm_role != eager_state->gemv_norm_roles.end()) {
+    // Absorbed into the group's prologue. The group fires at its first
+    // member (still ahead in tape order); if that dispatch refuses, the
+    // gemv branch materializes this output before the members fall
+    // back. Either way this node records no work of its own.
+    return true;
   }
   auto role_it = eager_state->roles.find(node.id());
   if (role_it == eager_state->roles.end()) {

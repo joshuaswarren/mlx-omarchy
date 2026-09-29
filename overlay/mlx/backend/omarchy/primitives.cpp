@@ -7401,6 +7401,7 @@ bool input_ready(const array& value, const Stream& stream) {
 bool dispatch_quantized_gemv_group(
     std::vector<GemvFusionMember>& members,
     array* swiglu_out,
+    const GemvNormPrologue* norm,
     const Stream& stream) {
   if (members.empty() || members.size() > kQmmVecMultiWeights ||
       !q4_word_enabled()) {
@@ -7414,12 +7415,22 @@ bool dispatch_quantized_gemv_group(
        members[0].node.dtype() == float32)) {
     return false;
   }
-  auto& encoder = get_command_encoder(stream);
-  const auto& caps = encoder.device().capabilities();
-  if (encoder.device().compute().binding_limit() < kQmmVecMultiBindings) {
+  // RMSNorm prologue: bf16 only (the variant kernel is the bf16
+  // subgroup column), subgroup path required, and the shared normed
+  // row is a fixed 4096-element reservation.
+  if (norm &&
+      (members[0].node.dtype() != bfloat16 ||
+       norm->input.dtype() != bfloat16 || norm->weight.dtype() != bfloat16)) {
     return false;
   }
-  const array& x = members[0].node.inputs().at(0);
+  auto& encoder = get_command_encoder(stream);
+  const auto& caps = encoder.device().capabilities();
+  if (encoder.device().compute().binding_limit() <
+      kQmmVecMultiBindings + (norm ? 1u : 0u)) {
+    return false;
+  }
+  const array& norm_out = members[0].node.inputs().at(0);
+  const array& x = norm ? norm->input : norm_out;
   const Dtype dtype = members[0].node.dtype();
   if (!float_dtype_supported(dtype, caps) || x.dtype() != dtype ||
       x.ndim() < 2 || x.shape(-2) != 1 || !input_ready(x, stream) ||
@@ -7428,14 +7439,22 @@ bool dispatch_quantized_gemv_group(
     return false;
   }
   const int k = x.shape(-1);
-  if (k <= 0 || k % 64 != 0 || static_cast<size_t>(k) != x.size()) {
+  if (k <= 0 || k % 64 != 0 || static_cast<size_t>(k) != x.size() ||
+      (norm && static_cast<size_t>(k) > 4096u)) {
     return false;
+  }
+  if (norm) {
+    uint64_t w_offset = norm->weight.offset() / norm->weight.itemsize();
+    if (!compute_index_span_fits(w_offset, norm->weight.size()) ||
+        !input_ready(norm->weight, stream)) {
+      return false;
+    }
   }
   ComputeParams params;
   uint32_t total_groups = 0;
   for (size_t i = 0; i < members.size(); ++i) {
     const array& node = members[i].node;
-    if (node.inputs().size() != 4 || node.inputs()[0].id() != x.id() ||
+    if (node.inputs().size() != 4 || node.inputs()[0].id() != norm_out.id() ||
         node.dtype() != dtype || node.primitive().stream() != stream ||
         typeid(node.primitive()) != typeid(QuantizedMatmul)) {
       return false;
@@ -7603,7 +7622,7 @@ bool dispatch_quantized_gemv_group(
       params.matrix_m = window.head_dim;
     }
   }
-  std::array<ComputeBinding, kQmmVecMultiBindings> bindings{};
+  std::array<ComputeBinding, kQmmVecMultiBindings + 1> bindings{};
   bindings[0] = binding(x);
   const ComputeBinding filler = binding(members[0].node);
   for (uint32_t i = 0; i < kQmmVecMultiWeights; ++i) {
@@ -7629,20 +7648,45 @@ bool dispatch_quantized_gemv_group(
   if (swiglu_out) {
     bindings[1 + 3] = binding(*swiglu_out);
   }
+  if (norm) {
+    bindings[kQmmVecMultiBindings] = binding(norm->weight);
+    params.aux_offset =
+        static_cast<uint32_t>(norm->weight.offset() / norm->weight.itemsize());
+    params.alpha = norm->eps;
+    params.flags |= 131072u;
+  }
   bool subgroup_ready = caps.subgroup_size == 32u &&
       (caps.subgroup_operations & VK_SUBGROUP_FEATURE_ARITHMETIC_BIT) != 0;
-  auto kernel = subgroup_ready
-      ? select_float_kernel(
-            dtype,
-            ComputeKernel::QmmVecQ4MultiSubgroupF32,
-            ComputeKernel::QmmVecQ4MultiSubgroupF16,
-            ComputeKernel::QmmVecQ4MultiSubgroupBF16)
-      : select_float_kernel(
-            dtype,
-            ComputeKernel::QmmVecQ4MultiF32,
-            ComputeKernel::QmmVecQ4MultiF16,
-            ComputeKernel::QmmVecQ4MultiBF16);
-  encoder.dispatch_compute(kernel, bindings, params, total_groups, 1u, 1u);
+  ComputeKernel kernel;
+  if (norm) {
+    // The prologue is only worth its redundant per-workgroup reduction
+    // on the subgroup column; anything else falls back to the unfused
+    // plan (the caller materializes the norm standalone).
+    if (!subgroup_ready) {
+      return false;
+    }
+    kernel = ComputeKernel::QmmVecQ4MultiSubgroupBF16NormPrologue;
+  } else {
+    kernel = subgroup_ready
+        ? select_float_kernel(
+              dtype,
+              ComputeKernel::QmmVecQ4MultiSubgroupF32,
+              ComputeKernel::QmmVecQ4MultiSubgroupF16,
+              ComputeKernel::QmmVecQ4MultiSubgroupBF16)
+        : select_float_kernel(
+              dtype,
+              ComputeKernel::QmmVecQ4MultiF32,
+              ComputeKernel::QmmVecQ4MultiF16,
+              ComputeKernel::QmmVecQ4MultiBF16);
+  }
+  encoder.dispatch_compute(
+      kernel,
+      std::span<const ComputeBinding>(
+          bindings.data(), kQmmVecMultiBindings + (norm ? 1u : 0u)),
+      params,
+      total_groups,
+      1u,
+      1u);
   return true;
 }
 
@@ -11191,6 +11235,33 @@ void RMSNorm::eval_gpu(
   }
   encoder.dispatch_compute(
       kernel,
+      bindings,
+      params,
+      std::min(params.output_size, omarchy::kMaxComputeGroupCountX));
+}
+
+void omarchy::eval_norm_prologue_standalone(
+    const GemvNormPrologue& norm,
+    const Stream& stream) {
+  // The exact dispatch RMSNorm::eval_gpu records for this node; the
+  // plan contract pinned bf16 rows with matching lengths, so the
+  // ensure_dense/require helpers are compile-time-true here and the
+  // rowLength math repeats RMSNorm::eval_gpu verbatim.
+  array& out = const_cast<array&>(norm.node);
+  const array& x = norm.input;
+  const array& w = norm.weight;
+  const std::string tag = "RMSNorm";
+  auto& encoder = omarchy::get_command_encoder(stream);
+  size_t row_length = x.shape(-1);
+  out.set_data(allocate_omarchy(out.nbytes()));
+  auto params = norm_params(x, row_length, norm.eps, tag, out);
+  params.rhs_offset = checked_item_offset(w, w.size(), tag, out);
+  params.output_offset = checked_item_offset(out, out.size(), tag, out);
+  params.lhs_size = checked_u32(w.size(), tag, out);
+  std::array<omarchy::ComputeBinding, 4> bindings{
+      binding(x), binding(w), binding(w), binding(out)};
+  encoder.dispatch_compute(
+      omarchy::ComputeKernel::FastRmsNormBF16,
       bindings,
       params,
       std::min(params.output_size, omarchy::kMaxComputeGroupCountX));

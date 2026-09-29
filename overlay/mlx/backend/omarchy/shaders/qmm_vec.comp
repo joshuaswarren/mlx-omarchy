@@ -86,6 +86,11 @@ uint16_t bf16_store(float value) {
     defined(QMM_VEC_MULTI))
 #error "QMM_VEC_GREEDY builds on the bf16 subgroup Q4 word column"
 #endif
+#if defined(QMM_VEC_NORM_PROLOGUE) && (!defined(USE_BF16) || \
+    !defined(USE_SUBGROUP) || !defined(QMM_VEC_MULTI) || \
+    ROWS_PER_SLOT != 2 || SLOTS_PER_GROUP != 4)
+#error "QMM_VEC_NORM_PROLOGUE builds on the 2-row bf16 subgroup multi column"
+#endif
 
 // Decode geometry: SLOTS_PER_GROUP 32-lane slots per workgroup, each slot
 // owning ROWS_PER_SLOT consecutive output rows (native qmv_fast keeps four
@@ -111,7 +116,23 @@ const uint LANES = 32u;
 
 layout(local_size_x = SLOTS_PER_GROUP * 32) in;
 
-#if (defined(USE_FP16) || defined(USE_BF16)) && defined(QMM_VEC_Q4_WORD)
+#ifdef QMM_VEC_NORM_PROLOGUE
+// Norm-prologue variant: binding 0 is the PRE-norm row (the folded
+// RMSNorm's input) in the scalar bf16 view, binding 25 the norm weight;
+// binding 0's packed uvec4 view is not used because the Q4 chain below
+// reads the normed row from shared memory instead.
+layout(set = 0, binding = 0, std430) readonly buffer InputX {
+  STORAGE_TYPE values[];
+} input_x;
+layout(set = 0, binding = 25, std430) readonly buffer NormWeight {
+  STORAGE_TYPE values[];
+} norm_weight;
+// The normed row (rounded to bf16 exactly as the standalone kernel
+// stores it) plus the standalone kernel's 256-slot reduction tree.
+// Dispatch refuses K > 4096, so the reservation is bounded.
+shared uint16_t norm_row_shared[4096];
+shared float norm_tree[256];
+#elif (defined(USE_FP16) || defined(USE_BF16)) && defined(QMM_VEC_Q4_WORD)
 // Decode x rows are 16-byte aligned by dispatch. Reading eight packed halves
 // at once keeps native's half arithmetic while avoiding eight scalar loads.
 layout(set = 0, binding = 0, std430) readonly buffer InputX {
@@ -365,9 +386,26 @@ uint q6_at(uint e, uint c0, uint c1, uint c2) {
 }
 // One packed weight word and its eight x values.
 #if defined(USE_FP16) || defined(USE_BF16)
+#ifdef QMM_VEC_NORM_PROLOGUE
+// The normed row is filled in shared memory as stored bf16 (low half
+// first, as the standalone kernel writes it), so the quad read packs
+// two stored halves per uint word exactly like the buffer view.
+#define Q4_X_QUAD(base) \
+    uvec4( \
+        uint(norm_row_shared[base]) | \
+            (uint(norm_row_shared[(base) + 1u]) << 16u), \
+        uint(norm_row_shared[(base) + 2u]) | \
+            (uint(norm_row_shared[(base) + 3u]) << 16u), \
+        uint(norm_row_shared[(base) + 4u]) | \
+            (uint(norm_row_shared[(base) + 5u]) << 16u), \
+        uint(norm_row_shared[(base) + 6u]) | \
+            (uint(norm_row_shared[(base) + 7u]) << 16u))
+#else
+#define Q4_X_QUAD(base) input_x.values[(base) / 8u]
+#endif
 #define Q4_WORD(word, x_base) { \
   uint word_value = (word); \
-  uvec4 x_words = input_x.values[(x_base) / 8u]; \
+  uvec4 x_words = Q4_X_QUAD(x_base); \
   Q4_QUAD(word_value, x_words.x, x_words.y) \
   Q4_QUAD(word_value >> 16u, x_words.z, x_words.w) \
 }
@@ -472,8 +510,8 @@ uint q6_at(uint e, uint c0, uint c1, uint c2) {
         wa[r] = W.values[w_base + row_base[r] * words_per_row + w]; \
         wb[r] = W.values[w_base + row_base[r] * words_per_row + w + 1u]; \
       } \
-      uvec4 xa = input_x.values[(x_row + w * 8u) / 8u]; \
-      uvec4 xb = input_x.values[(x_row + w * 8u + 8u) / 8u]; \
+      uvec4 xa = Q4_X_QUAD(x_row + w * 8u); \
+      uvec4 xb = Q4_X_QUAD(x_row + w * 8u + 8u); \
       Q4_QUAD_ROWS(wa[r], xa.x, xa.y) \
       Q4_QUAD_ROWS(wa[r] >> 16u, xa.z, xa.w) \
       Q4_QUAD_ROWS(wb[r], xb.x, xb.y) \
@@ -485,11 +523,11 @@ uint q6_at(uint e, uint c0, uint c1, uint c2) {
       precise float dot[ROWS_PER_SLOT]; \
       precise float input_sum = 0.0; \
       uint wa[ROWS_PER_SLOT]; \
-      for (uint r = 0u; r < uint(ROWS_PER_SLOT); ++r) { \
+      for (uint r = 0; r < uint(ROWS_PER_SLOT); ++r) { \
         dot[r] = 0.0; \
         wa[r] = W.values[w_base + row_base[r] * words_per_row + w]; \
       } \
-      uvec4 xa = input_x.values[(x_row + w * 8u) / 8u]; \
+      uvec4 xa = Q4_X_QUAD(x_row + w * 8u); \
       Q4_QUAD_ROWS(wa[r], xa.x, xa.y) \
       Q4_QUAD_ROWS(wa[r] >> 16u, xa.z, xa.w) \
       Q4_ROWS_FINISH(w, S, B) \
@@ -569,6 +607,54 @@ void main() {
   uint lane = gl_LocalInvocationID.x;
   uint column_slot = lane / LANES;
   uint lane_in_slot = lane % LANES;
+#ifdef QMM_VEC_NORM_PROLOGUE
+  // RMSNorm prologue (flags bit 17): the group's shared x row arrives
+  // PRE-norm and the standalone FastRmsNorm dispatch this fold deletes
+  // would have written the bf16 normed row the Q4 chain below reads.
+  // Reproduce its arithmetic exactly. The standalone kernel is 256
+  // threads; this workgroup is 128 (4 slots x 32), so each thread keeps
+  // TWO stride-256 partial chains in two separate runtime loops — its
+  // own indices and thread t+128's — and partial[t] + partial[t+128]
+  // is then the standalone tree's first level; the remaining levels
+  // pair identically (stride 128 down to 1, one rounded fadd each).
+  if ((params.flags & 131072u) != 0u) {
+    uint row_start = params.lhs_offset;
+    uint row_length = params.matrix_k;
+    float partial_a = 0.0;
+    float partial_b = 0.0;
+    for (uint index = lane; index < row_length; index += 256u) {
+      float value = LOAD_VALUE(input_x.values[row_start + index]);
+      partial_a += value * value;
+    }
+    for (uint index = lane + 128u; index < row_length; index += 256u) {
+      float value = LOAD_VALUE(input_x.values[row_start + index]);
+      partial_b += value * value;
+    }
+    norm_tree[lane] = partial_a;
+    norm_tree[lane + 128u] = partial_b;
+    barrier();
+    for (uint stride = 128u; stride > 0u; stride >>= 1u) {
+      if (lane < stride) {
+        norm_tree[lane] += norm_tree[lane + stride];
+      }
+      barrier();
+    }
+    float mean_square = norm_tree[0] / float(row_length);
+    float norm = inversesqrt(mean_square + params.alpha);
+    // Fill the shared row with the values the standalone kernel would
+    // have stored: value * (norm * weight) rounded through the same
+    // bf16 pack. Element order is free (no chain across elements);
+    // aux_offset carries the weight's element offset (the multi path
+    // leaves it unused).
+    for (uint index = lane; index < row_length; index += 128u) {
+      float value = LOAD_VALUE(input_x.values[row_start + index]);
+      float weight =
+          LOAD_VALUE(norm_weight.values[params.aux_offset + index]);
+      norm_row_shared[index] = bf16_store(value * (norm * weight));
+    }
+    barrier();
+  }
+#endif
   uint n0 = params.shape[0];
   uint n1 = params.shape[1];
   uint n2 = params.shape[2];
@@ -605,7 +691,13 @@ void main() {
   uint w_base = 0u;
   uint s_base = 0u;
   uint b_base = 0u;
+#ifdef QMM_VEC_NORM_PROLOGUE
+  // The shared normed row is element-indexed from 0; the pre-norm
+  // row's buffer offset rode only in the prologue's loads.
+  uint x_row = 0u;
+#else
   uint x_row = params.lhs_offset;
+#endif
   precise float acc[ROWS_PER_SLOT];
   float total[ROWS_PER_SLOT];
   if ((params.flags & 65536u) != 0u) {

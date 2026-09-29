@@ -27,11 +27,13 @@ inline constexpr uint32_t kComputeBindingFloor = 4;
 // that budget refuse by name instead of dispatching. The spec floor is why
 // the pre-2026-09-02 four-slot constant was portable, not a device ceiling:
 // real drivers report orders of magnitude more.
-// Twenty-five slots fit the widest kernel today: the multi-weight decode
+// Twenty-six slots fit the widest kernel today: the multi-weight decode
 // GEMV binds x plus, per weight, packed words, scales, biases, the
-// output, an Add addend, and the Add output (kQmmVecMultiBindings).
+// output, an Add addend, and the Add output (kQmmVecMultiBindings), and
+// its RMSNorm-prologue variant binds the norm weight on top
+// (kQmmVecMultiBindings + 1).
 // The triple-index scatter needs six.
-inline constexpr uint32_t kComputeBindingBudget = 25;
+inline constexpr uint32_t kComputeBindingBudget = 26;
 // Bindings of the QmmVecQ4Multi kernels and their per-weight stride.
 // Four weights cover a GatedDeltaNet layer's qkv/z/a/b projections of one
 // normed row in one dispatch.
@@ -713,6 +715,12 @@ enum class ComputeKernel : uint16_t {
   // A_BF16/B_BF16/A_SCALE and B_BF16/OUT_BF16), bit-identical to cast + f32 matmul + cast.
   MatmulF32CoopmatQkBF16,
   MatmulF32CoopmatPvBF16,
+ // QmmVecQ4MultiSubgroupBF16 with the RMSNorm prologue folded in
+ // (QMM_VEC_NORM_PROLOGUE): the group computes the bf16 normed row of
+ // its shared x in shared memory and runs the unchanged Q4 word chain
+ // on it, deleting the standalone FastRmsNorm dispatch. Append-only
+ // profile id.
+ QmmVecQ4MultiSubgroupBF16NormPrologue,
   Count,
 };
 
