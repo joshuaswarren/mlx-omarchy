@@ -31,7 +31,13 @@
 #extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
 #endif
 
-layout(local_size_x = 128, local_size_y = 1, local_size_z = 1) in;
+// WG_ROWS threads per workgroup, one Dv row per thread; the split variant
+// (-DWG_ROWS=32) runs Dv / 32 workgroups per head (gl_WorkGroupID.y): every
+// row is independent, so each thread executes the identical per-row code.
+#ifndef WG_ROWS
+#define WG_ROWS 128
+#endif
+layout(local_size_x = WG_ROWS, local_size_y = 1, local_size_z = 1) in;
 
 layout(set = 0, binding = 0, std430) readonly buffer QBuf  { uint16_t v[]; } q_buf;
 layout(set = 0, binding = 1, std430) readonly buffer KBuf  { uint16_t v[]; } k_buf;
@@ -92,12 +98,13 @@ void main() {
   uint dv = params.matrix_n;
   uint hv = params.matrix_k;
   uint head = gl_WorkGroupID.x;
-  uint row = gl_LocalInvocationID.x;   // one dv row per thread
+  uint lrow = gl_LocalInvocationID.x;
+  uint row = gl_WorkGroupID.y * uint(WG_ROWS) + lrow;   // one dv row per thread
 
   if (head >= hv) {
     return;
   }
-  for (uint i = row; i < dk; i += 128u) {
+  for (uint i = lrow; i < dk; i += uint(WG_ROWS)) {
     sk[i] = bf16_load(k_buf.v[params.rhs_offset + head * dk + i]);
     sq[i] = bf16_load(q_buf.v[params.lhs_offset + head * dk + i]);
   }
@@ -144,13 +151,13 @@ void main() {
     kv_acc += s_in.v[params.shape[1] + row_base + i] * g * sk[i];
   }
   float delta = (bf16_load(v_buf.v[params.aux_size + head * dv + row]) - kv_acc) * beta;
-  sdelta[row] = delta;
+  sdelta[lrow] = delta;
   barrier();
 
   float o_acc = 0.0f;
   for (uint i = 0u; i < dk; ++i) {
     float s = s_in.v[params.shape[1] + row_base + i] * g;
-    float ns = s + sdelta[row] * sk[i];
+    float ns = s + sdelta[lrow] * sk[i];
     s_out.v[params.shape[2] + head_base + row * dk + i] = ns;
     o_acc += ns * sq[i];
   }

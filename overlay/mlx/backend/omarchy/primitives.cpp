@@ -10794,13 +10794,19 @@ void GatedDeltaUpdate::eval_gpu(
     // 32 Dv rows per workgroup (shader ROWS), Dv / 32 workgroups per head;
     // the legacy per-row variant runs one workgroup per head.
     bool decode_tile = gdn_decode_tile_enabled(encoder);
+    // Row-split legacy variant: same per-row code as the untiled kernel, 32
+    // rows per workgroup (more workgroups per head, more latency hiding).
+    static const bool gdn_split = omarchy::env_flag("MLX_OMARCHY_GDN_SPLIT");
+    const bool use_split = !decode_tile && gdn_split;
     encoder.dispatch_compute(
         decode_tile ? omarchy::ComputeKernel::GatedDeltaDecodeBF16
-                    : omarchy::ComputeKernel::GatedDeltaDecodeBF16Untiled,
+                    : (use_split
+                           ? omarchy::ComputeKernel::GatedDeltaDecodeBF16Split
+                           : omarchy::ComputeKernel::GatedDeltaDecodeBF16Untiled),
         bindings,
         params,
         static_cast<uint32_t>(Hv),
-        decode_tile ? static_cast<uint32_t>(Dv / 32) : 1u,
+        (decode_tile || use_split) ? static_cast<uint32_t>(Dv / 32) : 1u,
         1);
     return;
   }
