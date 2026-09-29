@@ -14,6 +14,7 @@
 // broadcasts to every column. eps arrives in params.alpha.
 
 #version 460
+#extension GL_EXT_control_flow_attributes : require
 
 #ifdef USE_FP16
 #extension GL_EXT_shader_16bit_storage : require
@@ -79,6 +80,32 @@ layout(push_constant) uniform Params {
 
 shared float block_values[256];
 
+// Decode rows (2048 wide, one 256-thread workgroup) spent 8 + 8 serial memory
+// round trips per thread in the two walks below. The walks now issue the
+// loads of 8 strided steps before the arithmetic consumes them in the
+// original order, and the arithmetic stays what Honeykrisp compiled the
+// one-step loop bodies to (AGX NIR of the shipped kernel,
+// receipts/2026-09-29-jw16-decode-gdn-lse-argmax): sum of squares
+// acc = ffma(v, v, acc), RMS output v * (norm * w). An unrolled non-exact
+// add chain would be regrouped by rank (nir_opt_reassociate) and GLSL fma()
+// is only a contractible hint there, so the squares stay one step per
+// iteration of a loop the compiler may not unroll, and the output products
+// are exact (precise, in a helper so precise does not reach norm or mean).
+float rms_out(float value, float norm, float weight) {
+  precise float scale = norm * weight;
+  precise float result = value * scale;
+  return result;
+}
+#define NORM_LOAD(j) float v##j = LOAD_VALUE(input_data.values[base + (j) * 256u]);
+#define NORM_LOAD8 NORM_LOAD(0u) NORM_LOAD(1u) NORM_LOAD(2u) NORM_LOAD(3u) \
+  NORM_LOAD(4u) NORM_LOAD(5u) NORM_LOAD(6u) NORM_LOAD(7u)
+#define NORM_W(j) float w##j = (params.lhs_size == 1u) \
+  ? LOAD_VALUE(weight_data.values[params.rhs_offset]) \
+  : LOAD_VALUE(weight_data.values[params.rhs_offset + index + (j) * 256u]);
+#define NORM_OUT(j) \
+  output_data.values[out_base + (j) * 256u] = STORE_VALUE(rms_out(v##j, norm, w##j));
+#define NORM_APPLY8(OP) OP(0u) OP(1u) OP(2u) OP(3u) OP(4u) OP(5u) OP(6u) OP(7u)
+
 void main() {
   uint thread = gl_LocalInvocationID.x;
   uint row_length = params.reduce_size;
@@ -107,7 +134,18 @@ void main() {
 #endif
 
     float local_sq = 0.0;
-    for (uint index = thread; index < row_length; index += threads) {
+    uint index = thread;
+    for (; index + 7u * 256u < row_length; index += 8u * 256u) {
+      uint base = start + index;
+      float vals[8];
+      for (uint j = 0u; j < 8u; ++j) {
+        vals[j] = LOAD_VALUE(input_data.values[base + j * 256u]);
+      }
+      [[dont_unroll]] for (uint j = 0u; j < 8u; ++j) {
+        local_sq += vals[j] * vals[j];
+      }
+    }
+    for (; index < row_length; index += threads) {
       float value = LOAD_VALUE(input_data.values[start + index]);
       local_sq += value * value;
     }
@@ -128,7 +166,17 @@ void main() {
 #endif
     float norm = inversesqrt(variance + eps);
 
-    for (uint index = thread; index < row_length; index += threads) {
+    index = thread;
+#ifndef LAYER_NORM
+    for (; index + 7u * 256u < row_length; index += 8u * 256u) {
+      uint base = start + index;
+      uint out_base = params.output_offset + row * row_length + index;
+      NORM_LOAD8
+      NORM_APPLY8(NORM_W)
+      NORM_APPLY8(NORM_OUT)
+    }
+#endif
+    for (; index < row_length; index += threads) {
       float value = LOAD_VALUE(input_data.values[start + index]);
       float weight =
           (params.lhs_size == 1u)
@@ -141,7 +189,7 @@ void main() {
               : LOAD_VALUE(bias_data.values[params.aux_offset + index]);
       float result = (value - mu) * norm * weight + bias;
 #else
-      float result = value * norm * weight;
+      float result = rms_out(value, norm, weight);
 #endif
       output_data.values[params.output_offset + row * row_length + index] =
           STORE_VALUE(result);
