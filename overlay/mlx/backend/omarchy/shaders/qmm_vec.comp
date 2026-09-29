@@ -455,6 +455,25 @@ uint q6_at(uint e, uint c0, uint c1, uint c2) {
     acc[r] += fma(scale, dot[r], bias_term); \
   } \
 }
+// Scale/bias of every row for the group of word w, loaded together with the
+// weight words so the two round trips overlap (values and arithmetic order are
+// the same as Q4_ROWS_FINISH; only the load issue moves up).
+#define Q4_ROWS_SB_LOAD(w, S, B) \
+  uint sb_group = (w) / 8u; \
+  float sb_scale[ROWS_PER_SLOT]; \
+  float sb_bias[ROWS_PER_SLOT]; \
+  for (uint r = 0u; r < uint(ROWS_PER_SLOT); ++r) { \
+    sb_scale[r] = LOAD_VALUE( \
+        S.values[s_base + row_base[r] * groups_per_row + sb_group]); \
+    sb_bias[r] = LOAD_VALUE( \
+        B.values[b_base + row_base[r] * groups_per_row + sb_group]); \
+  }
+#define Q4_ROWS_FINISH_PRE() { \
+  for (uint r = 0u; r < uint(ROWS_PER_SLOT); ++r) { \
+    precise float bias_term = input_sum * sb_bias[r]; \
+    acc[r] += fma(sb_scale[r], dot[r], bias_term); \
+  } \
+}
 #define Q4_ROWS(W, S, B) { \
   uint row_base[ROWS_PER_SLOT]; \
   for (uint r = 0u; r < uint(ROWS_PER_SLOT); ++r) { \
@@ -474,11 +493,12 @@ uint q6_at(uint e, uint c0, uint c1, uint c2) {
       } \
       uvec4 xa = input_x.values[(x_row + w * 8u) / 8u]; \
       uvec4 xb = input_x.values[(x_row + w * 8u + 8u) / 8u]; \
+      Q4_ROWS_SB_LOAD(w, S, B) \
       Q4_QUAD_ROWS(wa[r], xa.x, xa.y) \
       Q4_QUAD_ROWS(wa[r] >> 16u, xa.z, xa.w) \
       Q4_QUAD_ROWS(wb[r], xb.x, xb.y) \
       Q4_QUAD_ROWS(wb[r] >> 16u, xb.z, xb.w) \
-      Q4_ROWS_FINISH(w, S, B) \
+      Q4_ROWS_FINISH_PRE() \
     } \
   } else { \
     for (uint w = lane_in_slot; w < words_per_row; w += LANES) { \
@@ -490,9 +510,10 @@ uint q6_at(uint e, uint c0, uint c1, uint c2) {
         wa[r] = W.values[w_base + row_base[r] * words_per_row + w]; \
       } \
       uvec4 xa = input_x.values[(x_row + w * 8u) / 8u]; \
+      Q4_ROWS_SB_LOAD(w, S, B) \
       Q4_QUAD_ROWS(wa[r], xa.x, xa.y) \
       Q4_QUAD_ROWS(wa[r] >> 16u, xa.z, xa.w) \
-      Q4_ROWS_FINISH(w, S, B) \
+      Q4_ROWS_FINISH_PRE() \
     } \
   } \
 }
