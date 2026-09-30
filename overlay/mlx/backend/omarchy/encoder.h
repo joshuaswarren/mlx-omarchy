@@ -355,7 +355,7 @@ class MLX_API CommandEncoder {
   uint32_t dep_prev_signature_{0};
   uint32_t dep_have_prev_{0};
   uint64_t dep_seq_{0};
-  static bool batch_needs_barrier(
+  bool batch_needs_barrier(
       std::span<const TrackedRange> reads,
       std::span<const TrackedRange> writes) const;
   void record_dependency_barrier();

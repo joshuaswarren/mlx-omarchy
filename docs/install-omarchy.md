@@ -81,6 +81,18 @@ records digest `dbf70497`, +2.9% decode) on the dependency-tracked Honeykrisp
 driver; other SoCs should re-run their own digest gate. Skip and emit counts
 appear in the GPU profile and in the runtime-test trace counters.
 
+`MLX_OMARCHY_LEVEL_BATCH=1` (default off) replaces the per-edge barrier with
+level-batched emission: dispatch, copy, and fill nodes buffer per open batch,
+dependency levels are assigned at flush from the exact byte-range read/write
+sets (RAW, WAR, and WAW all edges; longest path), and the batch is emitted
+level by level with one full dependency barrier between levels — original
+record order within a level, so results stay bit-identical for independent
+write ranges. The census barrier structure (226.1 emitted barriers/token in
+decode) drops to the dependency depth of the graph (~42 levels/token on the
+Qwen3.8 decode stream). Semaphore/submission ordering, prefill digests, and
+the tape paths are unchanged; the tape full-barrier diagnostic overrides
+this gate.
+
 Submit batching (scheduling only; results are bit-identical): the open batch is
 submitted at 4096 nodes or at the byte budget. `MLX_OMARCHY_BATCH_NODES=<n>`
 overrides the node budget. `MLX_OMARCHY_BATCH_FIRST=<n>` submits the first batch
