@@ -172,7 +172,7 @@ class MLX_API CommandEncoder {
   bool idle() const {
     return !recording_ && wait_semaphores_.empty() &&
         signal_semaphores_.empty() && completed_handlers_.empty() &&
-        batch_buffers_.empty();
+        batch_buffers_.empty() && pending_nodes_.empty();
   }
 
   // Record a device-to-device buffer copy. Both buffers must have
@@ -331,6 +331,15 @@ class MLX_API CommandEncoder {
     VkDeviceSize end;
   };
   static bool gated_barriers();
+  // MLX_OMARCHY_LEVEL_BATCH (default OFF): buffer nodes per open batch
+  // instead of writing the command buffer at record time; submit() assigns
+  // dependency levels from the exact byte-range read/write sets (RAW, WAR
+  // and WAW all edges) and emits level by level with one full dependency
+  // barrier between levels. Original record order within a level. The
+  // submission's in-order wait and the pending semaphore lists keep
+  // cross-submission order unchanged. Superseded by the tape full-barrier
+  // diagnostic, which exists to force per-node barriers.
+  static bool level_batch();
   /* Phase-1 dependency-export (design 22b395d): per-dispatch records
    * computed from the GATED_BARRIERS tracker, stored host-side, not
    * consumed yet (the driver learns nothing until phase 2). */
@@ -346,7 +355,7 @@ class MLX_API CommandEncoder {
   uint32_t dep_prev_signature_{0};
   uint32_t dep_have_prev_{0};
   uint64_t dep_seq_{0};
-  bool batch_needs_barrier(
+  static bool batch_needs_barrier(
       std::span<const TrackedRange> reads,
       std::span<const TrackedRange> writes) const;
   void record_dependency_barrier();
@@ -354,6 +363,46 @@ class MLX_API CommandEncoder {
   std::vector<TrackedRange> tracked_reads_;
   std::vector<TrackedRange> tracked_writes_;
   bool head_synced_{false};
+
+  // Level-batched emission state (MLX_OMARCHY_LEVEL_BATCH, default off).
+  // One flat arena per kind; nodes hold [begin, end) indices into them, so
+  // a 4096-node batch costs a few bounded vectors, not per-node heap
+  // traffic. Cleared when the batch emits at submit().
+  struct PendingNode {
+    enum class Kind : uint8_t { Dispatch, Copy, Fill };
+    Kind kind{Kind::Dispatch};
+    bool tape{false};                 // in_tape_recording at record time
+    // Dispatch
+    VkPipeline pipeline{VK_NULL_HANDLE};
+    ComputeKernel profile_kernel{};
+    ComputeParams params{};
+    uint32_t gx{0};
+    uint32_t gy{0};
+    uint32_t gz{0};
+    uint32_t bindings_begin{0};
+    uint32_t bindings_end{0};
+    // Copy / Fill
+    VkBuffer xfer_src{VK_NULL_HANDLE};
+    VkBuffer xfer_dst{VK_NULL_HANDLE};
+    VkDeviceSize xfer_size{0};
+    VkDeviceSize xfer_src_off{0};
+    VkDeviceSize xfer_dst_off{0};
+    uint32_t fill_value{0};
+    // Index spans into pending_ranges_: reads then writes.
+    uint32_t reads_begin{0};
+    uint32_t reads_end{0};
+    uint32_t writes_begin{0};
+    uint32_t writes_end{0};
+  };
+  std::vector<PendingNode> pending_nodes_;
+  std::vector<ComputeBinding> pending_bindings_;
+  std::vector<TrackedRange> pending_ranges_;
+  // Level-assign and record every buffered node into the open command
+  // buffer (begins one via ensure_recording). Emits level by level with
+  // one full dependency barrier between levels; original order within a
+  // level. Clears the pending arenas.
+  void emit_level_batched();
+  void emit_pending_node(const PendingNode& node, bool level_head);
 
   Device& device_;
   VkCommandPool pool_{VK_NULL_HANDLE};

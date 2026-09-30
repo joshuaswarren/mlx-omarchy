@@ -66,6 +66,17 @@ bool CommandEncoder::gated_barriers() {
   return on;
 }
 
+bool CommandEncoder::level_batch() {
+  // MLX_OMARCHY_LEVEL_BATCH (default OFF): buffer nodes per open batch and
+  // emit them level by level at flush - one dependency barrier between
+  // dependency generations instead of one per RAW edge (Jw16LevelBatch W1:
+  // the recorded order re-opens batches ~184x/token; the DAG needs ~42).
+  // The tape full-barrier diagnostic exists to force per-node barriers, so
+  // it wins over this gate.
+  static const bool on = env_flag("MLX_OMARCHY_LEVEL_BATCH");
+  return on && !tape_full_barriers();
+}
+
 bool CommandEncoder::batch_needs_barrier(
     std::span<const TrackedRange> reads,
     std::span<const TrackedRange> writes) const {
@@ -127,6 +138,216 @@ void CommandEncoder::reset_dependency_tracking() {
   tracked_reads_.clear();
   tracked_writes_.clear();
   head_synced_ = false;
+}
+
+void CommandEncoder::emit_pending_node(
+    const PendingNode& node,
+    bool level_head) {
+  auto& dt = vk::device_table();
+  switch (node.kind) {
+    case PendingNode::Kind::Dispatch: {
+      auto& compute = device_.compute();
+      VkDescriptorSet descriptor_set = acquire_descriptor_set(compute);
+      std::array<VkDescriptorBufferInfo, kComputeBindingBudget> buffer_info{};
+      std::array<VkWriteDescriptorSet, kComputeBindingBudget> writes{};
+      size_t count = node.bindings_end - node.bindings_begin;
+      for (size_t index = 0; index < count; ++index) {
+        const auto& binding = pending_bindings_[node.bindings_begin + index];
+        buffer_info[index] = {binding.buffer, binding.offset, binding.range};
+        writes[index].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writes[index].dstSet = descriptor_set;
+        writes[index].dstBinding = index;
+        writes[index].descriptorCount = 1;
+        writes[index].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        writes[index].pBufferInfo = &buffer_info[index];
+      }
+      dt.UpdateDescriptorSets(
+          device_.handle(),
+          static_cast<uint32_t>(count),
+          writes.data(),
+          0,
+          nullptr);
+      uint64_t host_t0 = prof::get().profiling() ? prof::host_ns() : 0;
+      prof::get().before_dispatch(this, current_slot_, cmd_, level_head);
+      VkPipelineLayout pipeline_layout = compute.pipeline_layout();
+      dt.CmdBindPipeline(cmd_, VK_PIPELINE_BIND_POINT_COMPUTE, node.pipeline);
+      dt.CmdBindDescriptorSets(
+          cmd_,
+          VK_PIPELINE_BIND_POINT_COMPUTE,
+          pipeline_layout,
+          0,
+          1,
+          &descriptor_set,
+          0,
+          nullptr);
+      dt.CmdPushConstants(
+          cmd_,
+          pipeline_layout,
+          VK_SHADER_STAGE_COMPUTE_BIT,
+          0,
+          sizeof(node.params),
+          &node.params);
+      dt.CmdDispatch(cmd_, node.gx, node.gy, node.gz);
+      prof::get().after_dispatch(
+          this,
+          current_slot_,
+          cmd_,
+          node.profile_kernel,
+          node.params,
+          {pending_bindings_.data() + node.bindings_begin, count},
+          node.gx,
+          node.gy,
+          node.gz,
+          host_t0 != 0 ? prof::host_ns() - host_t0 : 0,
+          node.tape ? 1u : 0u);
+      break;
+    }
+    case PendingNode::Kind::Copy: {
+      VkBufferCopy region{};
+      region.srcOffset = node.xfer_src_off;
+      region.dstOffset = node.xfer_dst_off;
+      region.size = node.xfer_size;
+      dt.CmdCopyBuffer(cmd_, node.xfer_src, node.xfer_dst, 1, &region);
+      break;
+    }
+    case PendingNode::Kind::Fill:
+      dt.CmdFillBuffer(
+          cmd_, node.xfer_dst, node.xfer_dst_off, node.xfer_size,
+          node.fill_value);
+      break;
+  }
+}
+
+void CommandEncoder::emit_level_batched() {
+  if (pending_nodes_.empty()) {
+    return;
+  }
+  const size_t n = pending_nodes_.size();
+
+  // Longest-path levels over the exact byte-range dependencies. For node i
+  // vs every earlier node: read-vs-write overlap is a RAW edge; a write
+  // overlapping an earlier read or write is a WAR / WAW edge. Level(i) =
+  // 1 + max(level(dep)). Because every edge crosses a level boundary, one
+  // full barrier between levels orders the whole batch (identical barrier
+  // shape to the per-edge path: ALL_COMMANDS, full memory, both ways).
+  //
+  // Per-buffer frontier keeps it near-linear: a write supersedes every
+  // interval it overlaps (they are all ordered before any future dependent
+  // through this write); a read merges overlapping read intervals to their
+  // max level (a future WAR must wait for the latest consumer).
+  struct Interval {
+    VkDeviceSize start;
+    VkDeviceSize end;
+    uint32_t level;
+  };
+  struct BufFrontier {
+    std::vector<Interval> writes;
+    std::vector<Interval> reads;
+  };
+  std::unordered_map<VkBuffer, BufFrontier> frontiers;
+  std::vector<uint32_t> level(n);
+  auto max_overlapping =
+      [](std::vector<Interval>& list, const TrackedRange& range) {
+        uint32_t best = 0;
+        for (const auto& iv : list) {
+          if (iv.start < range.end && range.offset < iv.end) {
+            best = std::max(best, iv.level);
+          }
+        }
+        return best;
+      };
+  auto insert_read = [](std::vector<Interval>& list,
+                        const TrackedRange& range,
+                        uint32_t lev) {
+    VkDeviceSize start = range.offset;
+    VkDeviceSize end = range.end;
+    uint32_t merged = lev;
+    size_t kept = 0;
+    for (size_t i = 0; i < list.size(); ++i) {
+      if (list[i].start < end && start < list[i].end) {
+        start = std::min(start, list[i].start);
+        end = std::max(end, list[i].end);
+        merged = std::max(merged, list[i].level);
+      } else {
+        list[kept++] = list[i];
+      }
+    }
+    list.resize(kept);
+    list.push_back({start, end, merged});
+  };
+  auto insert_write = [](std::vector<Interval>& list,
+                         const TrackedRange& range,
+                         uint32_t lev) {
+    size_t kept = 0;
+    for (size_t i = 0; i < list.size(); ++i) {
+      if (!(list[i].start < range.end && range.offset < list[i].end)) {
+        list[kept++] = list[i];
+      }
+    }
+    list.resize(kept);
+    list.push_back({range.offset, range.end, lev});
+  };
+  for (size_t i = 0; i < n; ++i) {
+    const PendingNode& node = pending_nodes_[i];
+    uint32_t lev = 0;
+    for (uint32_t k = node.reads_begin; k < node.reads_end; ++k) {
+      const TrackedRange& r = pending_ranges_[k];
+      lev = std::max(lev, max_overlapping(frontiers[r.buffer].writes, r));
+    }
+    for (uint32_t k = node.writes_begin; k < node.writes_end; ++k) {
+      const TrackedRange& r = pending_ranges_[k];
+      BufFrontier& f = frontiers[r.buffer];
+      lev = std::max(lev, max_overlapping(f.writes, r));
+      lev = std::max(lev, max_overlapping(f.reads, r));
+    }
+    level[i] = lev + 1;
+    for (uint32_t k = node.reads_begin; k < node.reads_end; ++k) {
+      insert_read(frontiers[pending_ranges_[k].buffer].reads,
+                  pending_ranges_[k], level[i]);
+    }
+    for (uint32_t k = node.writes_begin; k < node.writes_end; ++k) {
+      insert_write(frontiers[pending_ranges_[k].buffer].writes,
+                   pending_ranges_[k], level[i]);
+    }
+  }
+
+  uint32_t max_level = 0;
+  for (uint32_t lev : level) {
+    max_level = std::max(max_level, lev);
+  }
+  // Stable buckets: original record order within a level.
+  std::vector<std::vector<uint32_t>> buckets(max_level + 1);
+  for (size_t i = 0; i < n; ++i) {
+    buckets[level[i]].push_back(i);
+  }
+
+  ensure_recording();
+  // Head barrier: identical semantics to the gated path's batch-head
+  // dependency (host writes + allocator flush visibility for the first
+  // node of a fresh command buffer).
+  record_dependency_barrier();
+  trace::counters().barriers_emitted++;
+  prof::get().on_barrier(true);
+  bool level_started = false;
+  for (uint32_t lev = 1; lev <= max_level; ++lev) {
+    if (buckets[lev].empty()) {
+      continue;
+    }
+    if (level_started) {
+      record_dependency_barrier();
+      trace::counters().barriers_emitted++;
+      prof::get().on_barrier(true);
+    }
+    bool first = true;
+    for (uint32_t i : buckets[lev]) {
+      emit_pending_node(pending_nodes_[i], first);
+      first = false;
+    }
+    level_started = true;
+  }
+  pending_nodes_.clear();
+  pending_bindings_.clear();
+  pending_ranges_.clear();
 }
 
 CommandEncoder::CommandEncoder(Device& device) : device_(device) {
@@ -246,6 +467,28 @@ void CommandEncoder::copy_buffer(
     VkDeviceSize size,
     VkDeviceSize src_offset,
     VkDeviceSize dst_offset) {
+  if (level_batch()) {
+    PendingNode node;
+    node.kind = PendingNode::Kind::Copy;
+    node.tape = in_tape_recording;
+    node.xfer_src = src;
+    node.xfer_dst = dst;
+    node.xfer_size = size;
+    node.xfer_src_off = src_offset;
+    node.xfer_dst_off = dst_offset;
+    node.reads_begin = pending_ranges_.size();
+    pending_ranges_.push_back(
+        {src, src_offset, tracked_range_end(src_offset, size)});
+    node.reads_end = pending_ranges_.size();
+    node.writes_begin = pending_ranges_.size();
+    pending_ranges_.push_back(
+        {dst, dst_offset, tracked_range_end(dst_offset, size)});
+    node.writes_end = pending_ranges_.size();
+    pending_nodes_.push_back(node);
+    node_count_++;
+    trace::counters().vk_buffer_copies++;
+    return;
+  }
   ensure_recording();
   // The tape-full diagnostic forces the heaviest dependency around the
   // copy and restarts tracking either way.
@@ -280,6 +523,24 @@ void CommandEncoder::fill_buffer(
     uint32_t value,
     VkDeviceSize size,
     VkDeviceSize offset) {
+  if (level_batch()) {
+    PendingNode node;
+    node.kind = PendingNode::Kind::Fill;
+    node.tape = in_tape_recording;
+    node.xfer_dst = dst;
+    node.xfer_size = size;
+    node.xfer_dst_off = offset;
+    node.fill_value = value;
+    node.writes_begin = pending_ranges_.size();
+    pending_ranges_.push_back(
+        {dst, offset, tracked_range_end(offset, size)});
+    node.writes_end = pending_ranges_.size();
+    node.reads_begin = node.reads_end = node.writes_begin;
+    pending_nodes_.push_back(node);
+    node_count_++;
+    trace::counters().vk_buffer_fills++;
+    return;
+  }
   ensure_recording();
   if (tape_full_barriers()) {
     record_dependency_barrier();
@@ -453,6 +714,50 @@ void CommandEncoder::dispatch_compute_pipeline(
   group_count_x = std::min(group_count_x, kMaxComputeGroupCountX);
   group_count_y = std::min(group_count_y, kMaxComputeGroupCountX);
   group_count_z = std::min(group_count_z, kMaxComputeGroupCountX);
+
+  if (level_batch()) {
+    // Buffer the node; the exact read/write split comes from the same
+    // SPIR-V reflection the gated tracker consumes. No command-buffer
+    // work happens here: submit() emits the whole batch level by level.
+    const auto access = compute.binding_access(pipeline);
+    std::array<TrackedRange, kComputeBindingBudget> ranges{};
+    for (size_t i = 0; i < bindings.size(); ++i) {
+      ranges[i] = {bindings[i].buffer,
+                   bindings[i].offset,
+                   tracked_range_end(bindings[i].offset, bindings[i].range)};
+    }
+    PendingNode node;
+    node.kind = PendingNode::Kind::Dispatch;
+    node.tape = in_tape_recording;
+    node.pipeline = pipeline;
+    node.profile_kernel = profile_kernel;
+    node.params = params;
+    node.gx = group_count_x;
+    node.gy = group_count_y;
+    node.gz = group_count_z;
+    node.reads_begin = pending_ranges_.size();
+    for (size_t i = 0; i < bindings.size(); ++i) {
+      if (((access.read_mask >> i) & 1u) != 0u) {
+        pending_ranges_.push_back(ranges[i]);
+      }
+    }
+    node.reads_end = pending_ranges_.size();
+    node.writes_begin = pending_ranges_.size();
+    for (size_t i = 0; i < bindings.size(); ++i) {
+      if (((access.write_mask >> i) & 1u) != 0u) {
+        pending_ranges_.push_back(ranges[i]);
+      }
+    }
+    node.writes_end = pending_ranges_.size();
+    node.bindings_begin = pending_bindings_.size();
+    node.bindings_end = node.bindings_begin + bindings.size();
+    pending_bindings_.insert(
+        pending_bindings_.end(), bindings.begin(), bindings.end());
+    pending_nodes_.push_back(std::move(node));
+    node_count_++;
+    trace::counters().vk_compute_dispatches++;
+    return;
+  }
 
   auto& dt = vk::device_table();
   VkDescriptorSet descriptor_set = acquire_descriptor_set(compute);
@@ -653,7 +958,7 @@ void CommandEncoder::dispatch_compute_pipeline(
 
 void CommandEncoder::commit() {
   if (!recording_ && wait_semaphores_.empty() && signal_semaphores_.empty() &&
-      completed_handlers_.empty()) {
+      completed_handlers_.empty() && pending_nodes_.empty()) {
     trace::counters().commit_calls_noop++;
     if (std::getenv("MLX_OMARCHY_TRACE_DISPATCH")) {
       fprintf(stderr, "[rtmod] COMMIT-NOOP\n");
@@ -687,8 +992,13 @@ void CommandEncoder::wait_outstanding_submissions() {
 
 void CommandEncoder::submit() {
   auto& dt = vk::device_table();
-  if (std::getenv("MLX_OMARCHY_TRACE_DISPATCH")) {
+  if (std::getenv("MLX_OMARCHY_TRACE_DISPATCH") != nullptr) {
     fprintf(stderr, "[rtmod] SUBMIT-ENTER tid=%lu\n", (unsigned long)syscall(SYS_gettid));
+  }
+  // Level-batched mode: the batch is still a host-side node list here.
+  // Assign levels and record the whole batch into a command buffer now.
+  if (level_batch()) {
+    emit_level_batched();
   }
   bool was_recording = recording_;
   uint64_t submit_t0 = prof::get().profiling() ? prof::host_ns() : 0;
@@ -875,6 +1185,9 @@ void CommandEncoder::submit() {
       batch_buffers_.clear();
       recording_ = false;
       node_count_ = 0;
+      pending_nodes_.clear();
+      pending_bindings_.clear();
+      pending_ranges_.clear();
       wait_semaphores_.clear();
       signal_semaphores_.clear();
       completed_handlers_.clear();
