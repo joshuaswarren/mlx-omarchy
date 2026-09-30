@@ -1,6 +1,9 @@
 // Copyright © 2026 Joshua Warren / mlx-omarchy contributors.
 // SPDX-License-Identifier: MIT
 
+#include <atomic>
+#include <cstdio>
+#include <cstdlib>
 #include "mlx/backend/omarchy/encoder.h"
 #include <stdexcept>
 #include <unistd.h>
@@ -66,16 +69,49 @@ bool CommandEncoder::gated_barriers() {
   return on;
 }
 
+namespace {
+// MLX_OMARCHY_BARRIER_REASON=1 (diagnostic): classify every tracker
+// decision by the first hazard found and print the totals at exit. RAW is
+// a true data dependence; WAW/WAR are either in-place updates or buffer
+// reuse by the allocator (recycled ranges), which a different allocation
+// policy could avoid.
+struct BarrierReason {
+  std::atomic<uint64_t> calls{0}, none{0}, raw{0}, waw{0}, war{0};
+  bool on{std::getenv("MLX_OMARCHY_BARRIER_REASON") != nullptr};
+  ~BarrierReason() {
+    if (on) {
+      std::fprintf(
+          stderr,
+          "[barrier-reason] calls=%llu none=%llu raw=%llu waw=%llu war=%llu\n",
+          (unsigned long long)calls.load(), (unsigned long long)none.load(),
+          (unsigned long long)raw.load(), (unsigned long long)waw.load(),
+          (unsigned long long)war.load());
+    }
+  }
+};
+BarrierReason& barrier_reason() {
+  static BarrierReason r;
+  return r;
+}
+}  // namespace
+
 bool CommandEncoder::batch_needs_barrier(
     std::span<const TrackedRange> reads,
     std::span<const TrackedRange> writes) const {
   auto overlaps = [](const TrackedRange& a, const TrackedRange& b) {
     return a.buffer == b.buffer && a.offset < b.end && b.offset < a.end;
   };
+  auto& br = barrier_reason();
+  if (br.on) {
+    br.calls++;
+  }
   // Read after write and write after write.
   for (const auto& r : reads) {
     for (const auto& w : tracked_writes_) {
       if (overlaps(r, w)) {
+        if (br.on) {
+          br.raw++;
+        }
         return true;
       }
     }
@@ -86,14 +122,23 @@ bool CommandEncoder::batch_needs_barrier(
   for (const auto& w : writes) {
     for (const auto& tw : tracked_writes_) {
       if (overlaps(w, tw)) {
+        if (br.on) {
+          br.waw++;
+        }
         return true;
       }
     }
     for (const auto& tr : tracked_reads_) {
       if (overlaps(w, tr)) {
+        if (br.on) {
+          br.war++;
+        }
         return true;
       }
     }
+  }
+  if (br.on) {
+    br.none++;
   }
   return false;
 }
