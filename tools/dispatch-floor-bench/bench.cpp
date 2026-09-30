@@ -59,7 +59,7 @@ struct VkTable {
   VT(CreateCommandPool) VT(AllocateCommandBuffers) VT(DestroyCommandPool)
   VT(BeginCommandBuffer) VT(EndCommandBuffer)
   VT(CmdBindPipeline) VT(CmdBindDescriptorSets) VT(CmdDispatch)
-  VT(CmdPushConstants) VT(CmdPipelineBarrier)
+  VT(CmdPushConstants) VT(CmdPipelineBarrier) VT(CmdFillBuffer)
   VT(CreateQueryPool) VT(CmdResetQueryPool) VT(CmdWriteTimestamp)
   VT(GetQueryPoolResults)
   VT(QueueSubmit) VT(QueueWaitIdle)
@@ -181,7 +181,7 @@ static void setup_device() {
       LOAD_DEV(DestroyCommandPool);
       LOAD_DEV(BeginCommandBuffer); LOAD_DEV(EndCommandBuffer);
       LOAD_DEV(CmdBindPipeline); LOAD_DEV(CmdBindDescriptorSets);
-      LOAD_DEV(CmdDispatch); LOAD_DEV(CmdPushConstants);
+      LOAD_DEV(CmdDispatch); LOAD_DEV(CmdPushConstants); LOAD_DEV(CmdFillBuffer);
       LOAD_DEV(CmdPipelineBarrier);
       LOAD_DEV(CreateQueryPool); LOAD_DEV(CmdResetQueryPool);
       LOAD_DEV(CmdWriteTimestamp); LOAD_DEV(GetQueryPoolResults);
@@ -249,7 +249,7 @@ static Buf make_buf(VkDeviceSize size) {
   VkBufferCreateInfo bi{};
   bi.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
   bi.size = size;
-  bi.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+  bi.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
   if (g_vk.CreateBuffer(g_vk.dev, &bi, nullptr, &b.buf) != VK_SUCCESS)
     die("CreateBuffer");
   VkMemoryRequirements req;
@@ -784,6 +784,53 @@ static int fmalat_mode(Bench& b) {
   return 0;
 }
 
+
+// H156 repro: two vkCmdFillBuffer to one buffer, with / without a full barrier between.
+static int fillwaw_mode(Bench& b) {
+  void* map = nullptr;
+  if (g_vk.MapMemory(g_vk.dev, b.out.mem, 0, VK_WHOLE_SIZE, 0, &map) != VK_SUCCESS) die("map");
+  volatile uint8_t* p = (volatile uint8_t*)map;
+  const VkDeviceSize kSize = 65536;
+  const char* names[] = {"fill_barrier_fill", "fill_fill_nobarrier", "fill_barrier_fill_barrier_fill", "fill_compute_barrier_fill"};
+  for (int variant = 0; variant < 3; ++variant) {
+    int win_second = 0, win_first = 0, mixed = 0;
+    for (int rep = 0; rep < 100; ++rep) {
+      for (VkDeviceSize i = 0; i < kSize; ++i) p[i] = 0;
+      VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
+      g_vk.BeginCommandBuffer(b.cmd, &bi);
+      auto barrier = [&]() {
+        VkMemoryBarrier mb{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
+        mb.srcAccessMask = VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT;
+        mb.dstAccessMask = mb.srcAccessMask;
+        g_vk.CmdPipelineBarrier(b.cmd, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+            VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 1, &mb, 0, nullptr, 0, nullptr);
+      };
+      g_vk.CmdFillBuffer(b.cmd, b.out.buf, 0, kSize, 0x01010101u);
+      if (variant == 0 || variant == 2) barrier();
+      g_vk.CmdFillBuffer(b.cmd, b.out.buf, 0, kSize, 0x02020202u);
+      if (variant == 2) { barrier(); g_vk.CmdFillBuffer(b.cmd, b.out.buf, 0, kSize, 0x03030303u); }
+      g_vk.EndCommandBuffer(b.cmd);
+      VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
+      si.commandBufferCount = 1;
+      si.pCommandBuffers = &b.cmd;
+      g_vk.QueueSubmit(g_vk.queue, 1, &si, VK_NULL_HANDLE);
+      g_vk.QueueWaitIdle(g_vk.queue);
+      uint8_t want = (variant == 2) ? 3 : 2;
+      bool all_want = true, all_first = true;
+      for (VkDeviceSize i = 0; i < kSize; ++i) {
+        if (p[i] != want) all_want = false;
+        if (p[i] != 1) all_first = false;
+      }
+      if (all_want) ++win_second; else if (all_first) ++win_first; else ++mixed;
+    }
+    printf("{\"k\":\"fillwaw\",\"variant\":\"%s\",\"later_wins\":%d,\"first_wins\":%d,\"other\":%d}\n",
+        names[variant], win_second, win_first, mixed);
+    fflush(stdout);
+  }
+  printf("FILLWAW_DONE\n");
+  return 0;
+}
+
 int main(int argc, char** argv) {
   vk_init();
   setup_device();
@@ -791,6 +838,7 @@ int main(int argc, char** argv) {
   setup_bench(b);
   if (argc > 1 && strcmp(argv[1], "gridbar") == 0) return gridbar_mode(b, argc > 2 ? argv[2] : "32");
   if (argc > 1 && strcmp(argv[1], "fmalat") == 0) return fmalat_mode(b);
+  if (argc > 1 && strcmp(argv[1], "fillwaw") == 0) return fillwaw_mode(b);
 
   b.empty.mod = make_module(compile_shader(kBodyEmpty, "64"));
   b.trivial.mod = make_module(compile_shader(kBodyTrivial, "64"));
