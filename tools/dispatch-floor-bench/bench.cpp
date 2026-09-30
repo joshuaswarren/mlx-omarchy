@@ -645,11 +645,113 @@ struct CaseDef {
   int barrier_mode{0};
 };
 
-int main() {
+// H136: software grid barrier floor. G workgroups of 32 threads run R
+// barriers (atomic counter + generation, thread 0 polls). out_buf: [0]
+// arrivals, [1] generation, [2] timeout flag, [3] ordering violations,
+// [16+w] per-workgroup round marker. The spin is bounded so a
+// non-co-resident grid reports a timeout instead of hanging the GPU.
+static const char* kBodyReset = R"GLSL(
+void main() {
+  if (gl_LocalInvocationIndex == 0u && gl_WorkGroupID.x == 0u) {
+    for (uint i = 0u; i < 128u; ++i) out_buf[i] = 0u;
+  }
+}
+)GLSL";
+static const char* kBodyGridBar = R"GLSL(
+void main() {
+  uint G = gl_NumWorkGroups.x;
+  uint w = gl_WorkGroupID.x;
+  bool lead = gl_LocalInvocationIndex == 0u;
+  for (uint r = 0u; r < pc.pc_val; ++r) {
+    if (lead) {
+      atomicExchange(out_buf[16u + w], r + 1u);
+      uint gen = atomicAdd(out_buf[1], 0u);
+      uint old = atomicAdd(out_buf[0], 1u);
+      if (old == G - 1u) {
+        atomicExchange(out_buf[0], 0u);
+        atomicAdd(out_buf[1], 1u);
+      } else {
+        uint spins = 0u;
+        while (atomicAdd(out_buf[1], 0u) == gen) {
+          if (++spins > 4194304u) { atomicOr(out_buf[2], 1u); break; }
+        }
+      }
+      if ((r & 63u) == 63u && w == 0u) {
+        for (uint j = 0u; j < G; ++j)
+          if (atomicAdd(out_buf[16u + j], 0u) < r + 1u)
+            atomicAdd(out_buf[3], 1u);
+      }
+    }
+    barrier();
+  }
+}
+)GLSL";
+
+static int gridbar_mode(Bench& b, const char* local) {
+  void* map = nullptr;
+  if (g_vk.MapMemory(g_vk.dev, b.out.mem, 0, VK_WHOLE_SIZE, 0, &map) !=
+      VK_SUCCESS) {
+    printf("{\"k\":\"gridbar_error\",\"msg\":\"out buffer not host visible\"}\n");
+    return 1;
+  }
+  volatile uint32_t* host = (volatile uint32_t*)map;
+  Pipe reset, bar;
+  reset.mod = make_module(compile_shader(kBodyReset, "1"));
+  reset.pipe = make_pipe(b, reset.mod);
+  bar.mod = make_module(compile_shader(kBodyGridBar, local));
+  bar.pipe = make_pipe(b, bar.mod);
+  const uint32_t Gs32[] = {1, 2, 4, 8, 16, 32, 64};
+  const uint32_t Gsbig[] = {32, 64, 96, 128, 192, 256, 384, 512};
+  bool big = strcmp(local, "32") != 0;
+  std::vector<uint32_t> Gs(big ? std::vector<uint32_t>(Gsbig, Gsbig + 8)
+                               : std::vector<uint32_t>(Gs32, Gs32 + 7));
+  printf("{\"k\":\"gridbar_local\",\"local\":%s}\n", local);
+  const uint32_t Rs[] = {1, 2001};
+  for (uint32_t G : Gs) {
+    double best[2] = {1e18, 1e18};
+    uint32_t timeouts = 0, violations = 0;
+    for (int ri = 0; ri < 2; ++ri) {
+      for (int rep = 0; rep < 5; ++rep) {
+        RecCfg z{};
+        z.pipe = &reset;
+        z.grid = 1;
+        z.n = 1;
+        run_recorded(b, z);
+        RecCfg c{};
+        c.pipe = &bar;
+        c.grid = G;
+        c.n = 1;
+        c.pushconst = true;
+        c.push_val = Rs[ri];
+        RecRes r = run_recorded(b, c);
+        if (host[2]) ++timeouts;
+        violations += host[3];
+        if (!host[2] && r.wall_us < best[ri]) best[ri] = r.wall_us;
+        printf("{\"k\":\"gridbar_rep\",\"G\":%u,\"R\":%u,\"rep\":%d,"
+               "\"wall_us\":%.1f,\"timeout\":%u,\"violations\":%u}\n",
+            G, Rs[ri], rep, r.wall_us, host[2], host[3]);
+        fflush(stdout);
+        if (host[2]) break;
+      }
+    }
+    double slope = (best[1] < 1e17 && best[0] < 1e17)
+        ? (best[1] - best[0]) / 2000.0 : -1.0;
+    printf("{\"k\":\"gridbar\",\"G\":%u,\"slope_us_per_barrier\":%.3f,"
+           "\"min_wall_R1\":%.1f,\"min_wall_R2001\":%.1f,\"timeouts\":%u,"
+           "\"violations\":%u}\n",
+        G, slope, best[0], best[1], timeouts, violations);
+    fflush(stdout);
+  }
+  printf("GRIDBAR_DONE\n");
+  return 0;
+}
+
+int main(int argc, char** argv) {
   vk_init();
   setup_device();
   Bench b;
   setup_bench(b);
+  if (argc > 1 && strcmp(argv[1], "gridbar") == 0) return gridbar_mode(b, argc > 2 ? argv[2] : "32");
 
   b.empty.mod = make_module(compile_shader(kBodyEmpty, "64"));
   b.trivial.mod = make_module(compile_shader(kBodyTrivial, "64"));
