@@ -1,0 +1,39 @@
+--- a/mlx/fast.cpp
++++ b/mlx/fast.cpp
+@@ -1210,6 +1210,19 @@
+   int Hv = v.shape(2);
+   int Dv = v.shape(3);
+ 
++  // Grouped-K models (Qwen3.5-9B: linear_num_key_heads=16,
++  // linear_num_value_heads=32) hand q/k with Hk != Hv. Expand q/k to Hv
++  // heads here so the fused kernel's square-head contract holds;
++  // otherwise use_fallback returns true and the composed per-token loop
++  // runs (~7x slower prefill measured on the M2). Mirrors the repeat the
++  // composed fallback below already performs, which becomes a no-op.
++  if (Hv != Hk) {
++    int repeat_factor = Hv / Hk;
++    q = repeat(q, repeat_factor, 2, s);
++    k = repeat(k, repeat_factor, 2, s);
++    Hk = Hv;
++  }
++
+   auto h0 = initial_state.has_value() ? astype(*initial_state, float32, s)
+                                       : zeros({B, Hv, Dv, Dk}, float32, s);
+ 
+@@ -1351,6 +1364,16 @@
+   int Dk = q.shape(3);
+   int Hv = v.shape(2);
+   int Dv = v.shape(3);
++  // Same grouped-K expansion as gated_delta_update: the fused raw-gates
++  // decode kernel requires Hk == Hv; without it the T==1 call composed
++  // the per-token loop for Qwen3.5-9B. The fallback's own repeat below
++  // becomes a no-op.
++  if (Hv != Hk) {
++    int repeat_factor = Hv / Hk;
++    q = repeat(q, repeat_factor, 2, s);
++    k = repeat(k, repeat_factor, 2, s);
++    Hk = Hv;
++  }
+   auto h0 = initial_state.has_value() ? astype(*initial_state, float32, s)
+                                       : zeros({B, Hv, Dv, Dk}, float32, s);
+   bool has_mask = mask_.has_value();

@@ -126,7 +126,7 @@ TEST_CASE("gdn fast path: Hk != Hv repeats q/k before fast dispatch") {
       bfloat16, s);
   array h0 = zeros({sh.B, sh.Hv, sh.Dv, sh.Dk}, float32, s);
 
-  // Route A: caller repeats q/k to Hv (the patch).
+  // Route A: caller repeats q/k to Hv (the old mlx-lm-patch behavior).
   array q_exp = repeat(q_raw, sh.Hv / sh.Hk, 2, s);
   array k_exp = repeat(k_raw, sh.Hv / sh.Hk, 2, s);
   q_exp.eval();
@@ -146,7 +146,10 @@ TEST_CASE("gdn fast path: Hk != Hv repeats q/k before fast dispatch") {
   uint64_t after_a = counters().vk_compute_dispatches.load();
   uint64_t dispatches_a = after_a - before_a;
 
-  // Route B: caller does NOT repeat (the unpatched regression).
+  // Route B: caller does NOT repeat (grouped-K shapes straight from the
+  // model). The backend must expand q/k itself and still take the fused
+  // path; before the backend repeat landed this composed the per-token
+  // loop (546 dispatches at T=32 on the M2).
   q_raw.eval();
   k_raw.eval();
   enc.synchronize("gdn_repeat_inputs_b");
@@ -158,31 +161,26 @@ TEST_CASE("gdn fast path: Hk != Hv repeats q/k before fast dispatch") {
   uint64_t after_b = counters().vk_compute_dispatches.load();
   uint64_t dispatches_b = after_b - before_b;
 
-  std::cout << "[gdn_fast_route_repeat] fused (Hk=Hv=" << sh.Hv
+  std::cout << "[gdn_fast_route_repeat] expanded (Hk=Hv=" << sh.Hv
             << "): " << dispatches_a << " dispatches; "
-            << "fallback (Hk=" << sh.Hk << ", Hv=" << sh.Hv
+            << "grouped-K (Hk=" << sh.Hk << ", Hv=" << sh.Hv
             << "): " << dispatches_b << " dispatches\n";
 
-  // The fused coopmat path runs in a small bounded number of dispatches
-  // (the coopmat kernel = 1, plus dtype/state materializations < 16).
-  // The composed fallback is the per-token Python loop and produces
-  // O(T * layers) dispatches worth of small ops.
+  // BOTH routes must take the fused path now: the backend expands
+  // grouped-K q/k itself. On a backend without the repeat, route B
+  // composed the per-token loop (546 dispatches at T=32 on the M2) and
+  // this assertion failed.
   CHECK_MESSAGE(
       dispatches_a <= 16,
-      "fused coopmat path should produce <=16 dispatches for the expanded "
-      "q/k; got ",
-      dispatches_a,
-      ". Either the dispatch gate (Hk==Hv && Dk==128 && Dv==128) failed "
-      "or the coopmat prefill path did not select.");
+      "expanded-q/k route should fuse (<=16 dispatches), got ",
+      dispatches_a);
   CHECK_MESSAGE(
-      dispatches_b > dispatches_a * 4,
-      "composed fallback should produce substantially more dispatches "
-      "than the fused path; got fused=",
-      dispatches_a,
-      " fallback=",
+      dispatches_b <= 16,
+      "grouped-K route should now fuse via the backend's own Hv//Hk "
+      "expansion (<=16 dispatches), got ",
       dispatches_b,
-      ". If they are close, the per-token Python loop is not running on "
-      "route B and the regression is hidden.");
+      ". If this is large, the backend repeat regressed and the per-token "
+      "composed loop is running again.");
 
   // Numerical tolerance: when both routes are allowed to compose, the
   // outputs should agree bit-exactly (both are reference math). The

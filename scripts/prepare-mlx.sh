@@ -72,6 +72,13 @@ patch --directory="$STAGING_DIR" --strip=1 --forward --fuzz=0 \
   < "$ROOT/patches/mlx-omarchy-metal-kernel.patch"
 patch --directory="$STAGING_DIR" --strip=1 --forward --fuzz=0 \
   < "$ROOT/patches/mlx-gated-delta-raw-gates.patch"
+# GDN grouped-K expansion inside the fast entry points: gated_delta_update
+# and gated_delta_update_raw repeat q/k to Hv heads themselves when the
+# model uses grouped K (Qwen3.5-9B Hk=16, Hv=32), so the fused kernels'
+# square-head contract holds and the per-token composed loop never runs.
+# Replaces the mlx-lm-side fast-route repeat patch (deleted 2026-09-30).
+patch --directory="$STAGING_DIR" --strip=1 --forward --fuzz=0 \
+  < "$ROOT/patches/mlx-gated-delta-grouped-k-repeat.patch"
 patch --directory="$STAGING_DIR" --strip=1 --forward --fuzz=0 \
   < "$ROOT/patches/mlx-version-time.patch"
 # GDN decode chain: fused RMSNorm+SwiGLU-gate and RMSNorm+scalar-mul
