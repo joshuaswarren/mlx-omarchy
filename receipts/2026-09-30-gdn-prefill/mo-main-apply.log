@@ -1,0 +1,26 @@
+patching file mlx_lm/models/gated_delta.py
+applied: mlx-lm-gated-delta-fast-route.patch
+patching file mlx_lm/models/gated_delta.py
+Hunk #1 succeeded at 278 (offset -2 lines).
+applied: mlx-lm-gated-delta-fast-route-repeat.patch
+patching file mlx_lm/models/gated_delta.py
+Hunk #1 succeeded at 290 (offset 9 lines).
+applied: mlx-lm-gated-delta-raw.patch
+patching file mlx_lm/generate.py
+applied: mlx-lm-greedy-prune.patch
+patching file mlx_lm/models/qwen3_5.py
+patching file mlx_lm/models/qwen3_next.py
+applied: mlx-lm-qwen35-qk-scaled.patch
+patching file mlx_lm/models/qwen3_5.py
+applied: mlx-lm-qwen35-gdn-conv.patch
+patching file mlx_lm/models/qwen3_5.py
+Hunk #1 succeeded at 167 (offset -4 lines).
+applied: mlx-lm-conv-silu.patch
+patching file mlx_lm/models/qwen3_next.py
+applied: mlx-lm-qwen35-gated-norm.patch
+patching file mlx_lm/generate.py
+applied: mlx-lm-ttft-early-submit.patch
+conv-ring: OFF (set MLX_OMARCHY_CONV_RING=1 to enable)
+patching file mlx_lm/models/qwen3_5.py
+Hunk #2 succeeded at 313 (offset -3 lines).
+applied: mlx-lm-last-logits.patch
