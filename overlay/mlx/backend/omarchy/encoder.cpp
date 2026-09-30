@@ -628,6 +628,33 @@ void CommandEncoder::dispatch_compute_pipeline(
     prof::get().on_barrier(true);
     barrier_recorded = true;
   }
+  {
+    // MLX_OMARCHY_DAG_DUMP=1 (diagnostic): one line per dispatch with the
+    // exact read/write ranges handed to the tracker.
+    static const bool dag_dump_on = std::getenv("MLX_OMARCHY_DAG_DUMP") != nullptr;
+    static std::atomic<uint64_t> dag_seq{0};
+    if (dag_dump_on && gated_barriers()) {
+      const auto access = compute.binding_access(pipeline);
+      std::fprintf(stderr, "[dag] %llu %p %d R:",
+          (unsigned long long)dag_seq++, (void*)pipeline, barrier_recorded ? 1 : 0);
+      for (size_t i = 0; i < bindings.size(); ++i) {
+        if (((access.read_mask >> i) & 1u) != 0u) {
+          std::fprintf(stderr, " %p@%llu-%llu", (void*)bindings[i].buffer,
+              (unsigned long long)bindings[i].offset,
+              (unsigned long long)tracked_range_end(bindings[i].offset, bindings[i].range));
+        }
+      }
+      std::fprintf(stderr, " W:");
+      for (size_t i = 0; i < bindings.size(); ++i) {
+        if (((access.write_mask >> i) & 1u) != 0u) {
+          std::fprintf(stderr, " %p@%llu-%llu", (void*)bindings[i].buffer,
+              (unsigned long long)bindings[i].offset,
+              (unsigned long long)tracked_range_end(bindings[i].offset, bindings[i].range));
+        }
+      }
+      std::fprintf(stderr, "\n");
+    }
+  }
   prof::get().before_dispatch(this, current_slot_, cmd_, barrier_recorded);
 
   VkPipelineLayout pipeline_layout = compute.pipeline_layout();
