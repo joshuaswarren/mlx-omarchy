@@ -32,6 +32,18 @@ inline VkDeviceSize tracked_range_end(VkDeviceSize offset, VkDeviceSize size) {
   return end < offset ? UINT64_MAX : end;
 }
 
+// MLX_OMARCHY_DAG_DUMP (diagnostic): one [dag] line per dispatch/copy/fill
+// node with the exact read/write ranges handed to the tracker and the
+// recorded decision.
+inline bool dag_dump_on() {
+  static const bool on = std::getenv("MLX_OMARCHY_DAG_DUMP") != nullptr;
+  return on;
+}
+inline uint64_t dag_seq_next() {
+  static std::atomic<uint64_t> seq{0};
+  return seq.fetch_add(1);
+}
+
 } // namespace
 
 bool CommandEncoder::export_dep_masks() {
@@ -78,6 +90,36 @@ namespace {
 struct BarrierReason {
   std::atomic<uint64_t> calls{0}, none{0}, raw{0}, waw{0}, war{0};
   bool on{std::getenv("MLX_OMARCHY_BARRIER_REASON") != nullptr};
+  // MLX_OMARCHY_BARRIER_PAIRS: print the first N colliding (node, tracked)
+  // range pairs so the offline replay can align against ground truth.
+  int pair_cap{[] {
+    const char* v = std::getenv("MLX_OMARCHY_BARRIER_PAIRS");
+    return v ? atoi(v) : 0;
+  }()};
+  std::atomic<uint64_t> pairs{0};
+  void print_pair(
+      const char* kind,
+      const void* nbuf,
+      unsigned long long noff,
+      unsigned long long nend,
+      const void* tbuf,
+      unsigned long long toff,
+      unsigned long long tend) {
+    if (pair_cap <= 0 ||
+        pairs.fetch_add(1) >= static_cast<uint64_t>(pair_cap)) {
+      return;
+    }
+    std::fprintf(
+        stderr,
+        "[brhit] %s node=%p@%llu-%llu tracked=%p@%llu-%llu\n",
+        kind,
+        nbuf,
+        noff,
+        nend,
+        tbuf,
+        toff,
+        tend);
+  }
   ~BarrierReason() {
     if (on) {
       std::fprintf(
@@ -111,6 +153,10 @@ bool CommandEncoder::batch_needs_barrier(
       if (overlaps(r, w)) {
         if (br.on) {
           br.raw++;
+          br.print_pair("raw", (void*)r.buffer,
+              (unsigned long long)r.offset, (unsigned long long)r.end,
+              (void*)w.buffer, (unsigned long long)w.offset,
+              (unsigned long long)w.end);
         }
         return true;
       }
@@ -124,6 +170,10 @@ bool CommandEncoder::batch_needs_barrier(
       if (overlaps(w, tw)) {
         if (br.on) {
           br.waw++;
+          br.print_pair("waw", (void*)w.buffer,
+              (unsigned long long)w.offset, (unsigned long long)w.end,
+              (void*)tw.buffer, (unsigned long long)tw.offset,
+              (unsigned long long)tw.end);
         }
         return true;
       }
@@ -132,6 +182,10 @@ bool CommandEncoder::batch_needs_barrier(
       if (overlaps(w, tr)) {
         if (br.on) {
           br.war++;
+          br.print_pair("war", (void*)w.buffer,
+              (unsigned long long)w.offset, (unsigned long long)w.end,
+              (void*)tr.buffer, (unsigned long long)tr.offset,
+              (unsigned long long)tr.end);
         }
         return true;
       }
@@ -300,13 +354,24 @@ void CommandEncoder::copy_buffer(
   if (gated_barriers()) {
     TrackedRange read{src, src_offset, tracked_range_end(src_offset, size)};
     TrackedRange write{dst, dst_offset, tracked_range_end(dst_offset, size)};
+    bool barrier_recorded = false;
     if (!head_synced_ || batch_needs_barrier({&read, 1}, {&write, 1})) {
       record_dependency_barrier();
       trace::counters().barriers_emitted++;
       prof::get().on_barrier(true);
+      barrier_recorded = true;
     } else {
       trace::counters().barriers_skipped++;
       prof::get().on_barrier(false);
+    }
+    if (dag_dump_on()) {
+      std::fprintf(stderr,
+          "[dag] %llu enc=%p pipe=copy %d R: %p@%llu-%llu"
+          " W: %p@%llu-%llu\n",
+          dag_seq_next(), (void*)this, barrier_recorded ? 1 : 0,
+          (void*)src, (unsigned long long)read.offset,
+          (unsigned long long)read.end, (void*)dst,
+          (unsigned long long)write.offset, (unsigned long long)write.end);
     }
     tracked_reads_.push_back(read);
     tracked_writes_.push_back(write);
@@ -331,13 +396,22 @@ void CommandEncoder::fill_buffer(
   }
   if (gated_barriers()) {
     TrackedRange write{dst, offset, tracked_range_end(offset, size)};
+    bool barrier_recorded = false;
     if (!head_synced_ || batch_needs_barrier({}, {&write, 1})) {
       record_dependency_barrier();
       trace::counters().barriers_emitted++;
       prof::get().on_barrier(true);
+      barrier_recorded = true;
     } else {
       trace::counters().barriers_skipped++;
       prof::get().on_barrier(false);
+    }
+    if (dag_dump_on()) {
+      std::fprintf(stderr,
+          "[dag] %llu enc=%p pipe=fill %d R: W: %p@%llu-%llu\n",
+          dag_seq_next(), (void*)this, barrier_recorded ? 1 : 0,
+          (void*)dst, (unsigned long long)write.offset,
+          (unsigned long long)write.end);
     }
     tracked_writes_.push_back(write);
   }
@@ -631,12 +705,11 @@ void CommandEncoder::dispatch_compute_pipeline(
   {
     // MLX_OMARCHY_DAG_DUMP=1 (diagnostic): one line per dispatch with the
     // exact read/write ranges handed to the tracker.
-    static const bool dag_dump_on = std::getenv("MLX_OMARCHY_DAG_DUMP") != nullptr;
-    static std::atomic<uint64_t> dag_seq{0};
-    if (dag_dump_on && gated_barriers()) {
+    if (dag_dump_on() && gated_barriers()) {
       const auto access = compute.binding_access(pipeline);
-      std::fprintf(stderr, "[dag] %llu %p %d R:",
-          (unsigned long long)dag_seq++, (void*)pipeline, barrier_recorded ? 1 : 0);
+      std::fprintf(stderr, "[dag] %llu enc=%p pipe=%p %d R:",
+          dag_seq_next(), (void*)this, (void*)pipeline,
+          barrier_recorded ? 1 : 0);
       for (size_t i = 0; i < bindings.size(); ++i) {
         if (((access.read_mask >> i) & 1u) != 0u) {
           std::fprintf(stderr, " %p@%llu-%llu", (void*)bindings[i].buffer,
