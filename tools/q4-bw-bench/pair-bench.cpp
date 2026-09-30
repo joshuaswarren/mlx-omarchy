@@ -388,6 +388,8 @@ int main(int argc, char** argv) {
     return p;
   };
   VkPipeline pipe_f = mkpipe(mod_f), pipe_r = mkpipe(mod_r);
+  VkPipeline pipe_t = VK_NULL_HANDLE;
+  if (getenv("PAIR_TOUCH")) pipe_t = mkpipe(build("/tmp/pair_touch.comp", defs));
 
   // Data.
   MB dummy = mk(1 << 20), sync = mk(4096);
@@ -413,10 +415,10 @@ int main(int argc, char** argv) {
 
   printf("{\"k\":\"stage\",\"s\":\"init_done\"}\n"); fflush(stdout);
   // Descriptor sets: fused F, reference R1, R2 per weight set.
-  VkDescriptorPoolSize ps{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, kBind * 3 * kL};
+  VkDescriptorPoolSize ps{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, kBind * 5 * kL};
   VkDescriptorPoolCreateInfo pci{};
   pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-  pci.maxSets = 3 * kL;
+  pci.maxSets = 5 * kL;
   pci.poolSizeCount = 1;
   pci.pPoolSizes = &ps;
   VkDescriptorPool pool;
@@ -444,7 +446,7 @@ int main(int argc, char** argv) {
     g_vk.UpdateDescriptorSets(g_vk.dev, kBind, wr, 0, nullptr);
     return d;
   };
-  std::vector<VkDescriptorSet> dF(kL), dR1(kL), dR2(kL);
+  std::vector<VkDescriptorSet> dF(kL), dR1(kL), dR2(kL), dTB(kL), dTC(kL);
   for (uint32_t l = 0; l < kL; ++l) {
     Set& st = sets[l];
     Bnd b[kBind];
@@ -461,6 +463,12 @@ int main(int argc, char** argv) {
     b[1] = {st.w[0].b.buf, 0}; b[2] = {st.s[0].b.buf, 0}; b[3] = {st.bi[0].b.buf, 0};
     b[4] = {st.midr.b.buf, 0};
     dR1[l] = make_set(b);
+    if (kBind > 25) {
+      b[25] = {st.w[1].b.buf, 0};
+      dTB[l] = make_set(b);
+      b[25] = {sets[(l + 8) % kL].w[1].b.buf, 0};
+      dTC[l] = make_set(b);
+    }
     for (auto& e : b) e = {dummy.b.buf, 0};
     b[0] = {st.midr.b.buf, 0};
     b[1] = {st.w[1].b.buf, 0}; b[2] = {st.s[1].b.buf, 0}; b[3] = {st.bi[1].b.buf, 0};
@@ -536,6 +544,56 @@ int main(int argc, char** argv) {
   run(false, 0, kL);
   printf("{\"k\":\"stage\",\"s\":\"ref_done\"}\n"); fflush(stdout);
   if (getenv("PAIR_REFONLY")) return 0;
+  std::vector<std::vector<uint8_t>> refmid_saved(kL), refout_saved(kL);
+  for (uint32_t l = 0; l < kL; ++l) {
+    refmid_saved[l].assign(sets[l].midr.p, sets[l].midr.p + 4096);
+    refout_saved[l].assign(sets[l].outr.p, sets[l].outr.p + 4096);
+  }
+  if (getenv("PAIR_TOUCH")) {
+    // arm 0 plain pair, 1 touch next-stage weights, 2 touch unrelated weights
+    auto tpair = [&](int arm, uint32_t n) {
+      VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
+      g_vk.BeginCommandBuffer(cmd, &bi);
+      for (uint32_t p = 0; p < n; ++p) {
+        uint32_t l = p % kL;
+        g_vk.CmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, arm ? pipe_t : pipe_r);
+        g_vk.CmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, layout, 0, 1,
+            arm == 0 ? &dR1[l] : (arm == 1 ? &dTB[l] : &dTC[l]), 0, nullptr);
+        g_vk.CmdPushConstants(cmd, layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(p1), &p1);
+        g_vk.CmdDispatch(cmd, tiles, 1, 1);
+        full_barrier();
+        g_vk.CmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, pipe_r);
+        g_vk.CmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, layout, 0, 1, &dR2[l], 0, nullptr);
+        g_vk.CmdDispatch(cmd, tiles, 1, 1);
+        full_barrier();
+      }
+      g_vk.EndCommandBuffer(cmd);
+      VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
+      si.commandBufferCount = 1;
+      si.pCommandBuffers = &cmd;
+      double t0 = now_us();
+      g_vk.QueueSubmit(g_vk.queue, 1, &si, VK_NULL_HANDLE);
+      g_vk.QueueWaitIdle(g_vk.queue);
+      return (now_us() - t0) / n;
+    };
+    // Exactness: plain result is in ref_* already; rerun touch arm 1, compare.
+    for (auto& st : sets) { memset(st.midr.p, 0, 4096); memset(st.outr.p, 0, 4096); }
+    tpair(1, kL);
+    uint32_t bad = 0;
+    for (uint32_t l = 0; l < kL; ++l)
+      bad += memcmp(sets[l].midr.p, refmid_saved[l].data(), 4096) != 0 ||
+             memcmp(sets[l].outr.p, refout_saved[l].data(), 4096) != 0;
+    printf("{\"k\":\"touch_exact\",\"sets\":%u,\"bad\":%u}\n", kL, bad);
+    const char* names[] = {"plain", "touch_next", "touch_unrelated"};
+    for (int round = 0; round < 7; ++round) {
+      for (int m = 0; m < 3; ++m)
+        printf("{\"k\":\"touch\",\"arm\":\"%s\",\"round\":%d,\"us_per_pair\":%.2f}\n",
+            names[m], round, tpair(m, 64));
+      fflush(stdout);
+    }
+    printf("TOUCH_DONE\n");
+    return 0;
+  }
   std::vector<std::vector<uint8_t>> refmid(kL), refout(kL);
   if (getenv("PAIR_FLAT")) {
     auto flat = [&](int mode, uint32_t n) {
