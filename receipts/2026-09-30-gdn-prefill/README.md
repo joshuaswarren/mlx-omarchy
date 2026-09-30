@@ -207,3 +207,26 @@ Total: 215 cases / 3,874,311 assertions, all green.
 The two queued items (A/B + residual profile) are detached jobs that
 will complete once the GPU queue clears; the venvs and the profile
 harness are pre-staged.
+
+## A/B results (script-built venvs, fresh mlx_lm 0.31.3, different stamps)
+
+OLD = live venv on M2 after Main's incident repair (mlx-omarchy stamp `+06711ad`, mlx_lm 0.31.3 patched with Main's T>1-only fix on commit 9ef622d14). NEW = my branch wheel stamp `+2a370116` (mlx_lm 0.31.3 with the mlx_lm-side repeat patch removed). Both venvs built by `scripts/apply-mlx-lm-patches.sh` on a fresh mlx_lm (output preserved at `receipts/2026-09-30-gdn-prefill/{mo-main,mo-new}-apply.log`). Same model snapshot, same prompt synthesis, same greedy seed.
+
+Qwen3.5-9B (rev 938d8919):
+- prefill T=512:  OLD 326.2 tok/s (1.57s); NEW 339.2 tok/s (1.51s); delta +3.9%
+- prefill T=2048: OLD 353.9 tok/s (5.79s); NEW 351.2 tok/s (5.83s); delta -0.8% (within noise)
+- TTFT (sys prompt + 256 tokens): OLD 0.556s; NEW 2.296s — REGRESSION
+- decode tok/s (32 greedy): OLD 10.1; NEW 1.1 — REGRESSION (9x)
+- greedy 32-token hash: OLD = NEW = `72920f6da9bcfda4` (BIT-IDENTICAL OUTPUT)
+
+Qwen3.8-27B-4bit (NEW only; OLD 27B decode skipped to fit budget):
+- prefill T=512:  302.8 tok/s (1.69s)
+- prefill T=2048: 364.2 tok/s (5.62s)
+- decode tok/s:   0.9 — REGRESSION (same 9B-path issue)
+
+INTERPRETATION:
+- The backend repeat for the prefill path is correct: prefill T=512 went 42 -> 326 tok/s (a previous direct probe; this A/B's 326 vs 339 is the post-patched baseline) and the cooperative-matrix kernel still fires.
+- The 9x decode regression is on the T==1 raw-gates fused path. Greedy is bit-identical (so the math is right) but the fused decode kernel as currently selected by my backend change is dramatically slower than the composed fallback the OLD side is using. Hypothesis: the fused raw-gates decode kernel is dispatching more dispatches per token than expected (or is taking a slow path for Hk=Hv=32 on the 9B), or my repeat is generating redundant copies that the kernel then re-loads. NEEDS DEBUGGING before landing the backend change.
+- TTFT regression: the first-token measurement includes one decode step, so it inherits the decode regression. Decode_token_1 + small prefill = ~2.3s.
+
+BLOCK on landing: the decode regression is a regression. Do NOT push to main until either (a) the fused raw-gates decode kernel perf is restored (possible cause: the repeat for raw produces a 32x Dk contiguous load the kernel wasn't built for) or (b) the raw-path repeat is opt-in / different code path.
