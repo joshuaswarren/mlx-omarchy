@@ -41,6 +41,9 @@
 #extension GL_EXT_shader_explicit_arithmetic_types_int8 : require
 #extension GL_KHR_shader_subgroup_basic : require
 #extension GL_KHR_shader_subgroup_shuffle_relative : require
+#ifdef FAST_DOT
+#extension GL_KHR_shader_subgroup_shuffle : require
+#endif
 
 // Dk is 128 by the dispatch contract (GatedDeltaUpdate::use_fallback).
 #define DK 128u
@@ -144,6 +147,19 @@ void token_step(
   // precise: the ops reference rounds each product and each add
   // separately (elementwise kernels then a sequential sum); NoContraction
   // keeps the driver from fusing these into FMAs.
+#ifdef FAST_DOT
+  // NOT bit-identical to the ascending-Dk chain (opt-in): every lane sums
+  // its own slice with fma, then the four partials are combined with two
+  // butterfly steps (all lanes get identical bits).
+  float part = 0.0f;
+  for (uint i = 0u; i < SLICE; ++i) {
+    float gi = (params.flags & 1u) != 0u ? sg[buf][k0 + i] : g;
+    part = fma(st[i] * gi, sk[buf][k0 + i], part);
+  }
+  part += subgroupShuffleXor(part, 1u);
+  part += subgroupShuffleXor(part, 2u);
+  float kv_acc = part;
+#else
   precise float acc = 0.0f;
   for (uint j = 0u; j < LANES; ++j) {
     precise float prev = subgroupShuffleUp(acc, 1u);
@@ -158,6 +174,7 @@ void token_step(
     }
   }
   precise float kv_acc = row_total(acc, sub);
+#endif
   precise float delta = (v_row - kv_acc) * beta;
   for (uint i = 0u; i < SLICE; ++i) {
     precise float gi = (params.flags & 1u) != 0u ? sg[buf][k0 + i] : g;
@@ -171,6 +188,15 @@ void token_step(
   if (compute_o) {
     // Output pass only: the prefix scan never reads o_acc, so the
     // ns*q dot is skipped there (state arithmetic is untouched).
+#ifdef FAST_DOT
+    float opart = 0.0f;
+    for (uint i = 0u; i < SLICE; ++i) {
+      opart = fma(st[i], sq[buf][k0 + i], opart);
+    }
+    opart += subgroupShuffleXor(opart, 1u);
+    opart += subgroupShuffleXor(opart, 2u);
+    o_acc = opart;
+#else
     acc = 0.0f;
     for (uint j = 0u; j < LANES; ++j) {
       precise float prev = subgroupShuffleUp(acc, 1u);
@@ -183,6 +209,7 @@ void token_step(
       }
     }
     o_acc = row_total(acc, sub);
+#endif
   }
 }
 

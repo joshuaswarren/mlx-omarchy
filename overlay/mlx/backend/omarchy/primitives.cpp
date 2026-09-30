@@ -11025,10 +11025,17 @@ void GatedDeltaUpdate::eval_gpu(
   // Pass 0: prefix scan, snapshots at chunk boundaries. A single chunk
   // has no boundary to snapshot, so pass 1 restores from h0 directly and
   // pass 0 is skipped (it wrote nothing).
+  // Opt-in, NOT bit-identical: per-lane fma partials + butterfly instead of
+  // the serial ascending-Dk chain across lanes (MLX_OMARCHY_GDN_PREFILL_FASTDOT=1).
+  static const bool gdn_prefill_fd =
+      omarchy::env_flag("MLX_OMARCHY_GDN_PREFILL_FASTDOT");
+  const omarchy::ComputeKernel gdn_prefill_kernel = gdn_prefill_fd
+      ? omarchy::ComputeKernel::GatedDeltaPrefillFastDotBF16
+      : omarchy::ComputeKernel::GatedDeltaPrefillBF16;
   if (chunks > 1) {
     params.flags = g_flags;
     encoder.dispatch_compute(
-        omarchy::ComputeKernel::GatedDeltaPrefillBF16,
+        gdn_prefill_kernel,
         bindings,
         params,
         static_cast<uint32_t>(Hv) * kGdnWorkgroupsPerHead,
@@ -11038,7 +11045,7 @@ void GatedDeltaUpdate::eval_gpu(
   // Pass 1: chunk-parallel output replay.
   params.flags = g_flags | 8u;
   encoder.dispatch_compute(
-      omarchy::ComputeKernel::GatedDeltaPrefillBF16,
+      gdn_prefill_kernel,
       bindings,
       params,
       static_cast<uint32_t>(Hv) * kGdnWorkgroupsPerHead,

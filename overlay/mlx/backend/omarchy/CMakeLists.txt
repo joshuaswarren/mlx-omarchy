@@ -340,6 +340,7 @@ omarchy_shader(gated_delta_decode_bf16 shaders/gated_delta_decode.comp -DQKV_BF1
 omarchy_shader(gated_delta_decode_perrow_bf16 shaders/gated_delta_decode_perrow.comp -DQKV_BF16=1)
 omarchy_shader(gated_delta_decode_perrow_pf_bf16 shaders/gated_delta_decode_perrow_pf.comp -DQKV_BF16=1)
 omarchy_shader(gated_delta_prefill_bf16 shaders/gated_delta_prefill.comp)
+omarchy_shader(gated_delta_prefill_fd_bf16 shaders/gated_delta_prefill.comp -DFAST_DOT=1)
 omarchy_shader(gated_delta_prefill_coopmat_bf16 shaders/gated_delta_prefill_coopmat.comp)
 # PrefillQmmTile: m-tiled quantized matmul for prefill (matrix_m > 1);
 # one workgroup dequantizes each 16 x 16 weight block into shared f32
