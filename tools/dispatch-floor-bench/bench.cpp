@@ -746,12 +746,51 @@ static int gridbar_mode(Bench& b, const char* local) {
   return 0;
 }
 
+// H155: dependent-FMA latency probe. ns per iteration = latency / clock.
+static const char* kBodyFmaLat = R"GLSL(
+void main() {
+  float c = float(gl_LocalInvocationIndex) * 1e-3 + 0.5;
+  for (uint i = 0u; i < pc.pc_val; ++i) {
+    c = fma(c, 0.9999, 0.25);
+  }
+  if (floatBitsToUint(c) == 0xdeadbeefu) out_buf[0] = floatBitsToUint(c);
+}
+)GLSL";
+
+static int fmalat_mode(Bench& b) {
+  Pipe p;
+  p.mod = make_module(compile_shader(kBodyFmaLat, "64"));
+  p.pipe = make_pipe(b, p.mod);
+  const uint32_t Ns[] = {1u << 18, 1u << 19, 1u << 20, 1u << 21};
+  double best[4] = {1e18, 1e18, 1e18, 1e18};
+  for (int rep = 0; rep < 9; ++rep) {
+    for (int i = 0; i < 4; ++i) {
+      RecCfg c{};
+      c.pipe = &p;
+      c.grid = 1;
+      c.n = 1;
+      c.pushconst = true;
+      c.push_val = Ns[i];
+      RecRes r = run_recorded(b, c);
+      if (r.wall_us < best[i]) best[i] = r.wall_us;
+      printf("{\"k\":\"fmalat_rep\",\"N\":%u,\"rep\":%d,\"wall_us\":%.1f}\n", Ns[i], rep, r.wall_us);
+    }
+  }
+  for (int i = 1; i < 4; ++i) {
+    double ns = (best[i] - best[i - 1]) * 1e3 / (double)(Ns[i] - Ns[i - 1]);
+    printf("{\"k\":\"fmalat\",\"N_lo\":%u,\"N_hi\":%u,\"ns_per_iter\":%.4f}\n", Ns[i - 1], Ns[i], ns);
+  }
+  printf("FMALAT_DONE\n");
+  return 0;
+}
+
 int main(int argc, char** argv) {
   vk_init();
   setup_device();
   Bench b;
   setup_bench(b);
   if (argc > 1 && strcmp(argv[1], "gridbar") == 0) return gridbar_mode(b, argc > 2 ? argv[2] : "32");
+  if (argc > 1 && strcmp(argv[1], "fmalat") == 0) return fmalat_mode(b);
 
   b.empty.mod = make_module(compile_shader(kBodyEmpty, "64"));
   b.trivial.mod = make_module(compile_shader(kBodyTrivial, "64"));
