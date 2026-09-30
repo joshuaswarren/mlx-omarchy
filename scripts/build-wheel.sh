@@ -91,10 +91,12 @@ with open('$PIN_PATH') as fh:
 sys.exit(0 if 'parakeet-encoder-whole' in pin.get('assets', {}).get('bundles', {}) else 1)
 "; then
     if [[ "${MLX_OMARCHY_WHOLE_BUNDLE_SKIP:-0}" == "1" ]]; then
-        echo "[bundle] MLX_OMARCHY_WHOLE_BUNDLE_SKIP=1; refusing to build without the whole bundle"
-        exit 1
-    fi
-    if [[ -z "${MLX_OMARCHY_WHOLE_BUNDLE_DIR:-}" ]]; then
+        # Documented opt-out for non-Parakeet-focused diagnostic builds:
+        # build without the staged bundle. The 458 MB bundle is not
+        # shipped, so Parakeet runs on this wheel fall back to the
+        # 705-1050 ms split-island path; the builder opted out loudly.
+        echo "[bundle] MLX_OMARCHY_WHOLE_BUNDLE_SKIP=1; building WITHOUT the staged whole bundle (Parakeet falls back to split-island on this wheel)"
+    elif [[ -z "${MLX_OMARCHY_WHOLE_BUNDLE_DIR:-}" ]]; then
         echo "[bundle] runtime pin declares parakeet-encoder-whole but MLX_OMARCHY_WHOLE_BUNDLE_DIR is unset; refusing to build a wheel that would silently fall back" >&2
         echo "[bundle] supply the bundle dir (manifest.json + program-0.anec) via MLX_OMARCHY_WHOLE_BUNDLE_DIR=/path/to/dir" >&2
         exit 1
