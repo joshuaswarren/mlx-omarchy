@@ -537,6 +537,43 @@ int main(int argc, char** argv) {
   printf("{\"k\":\"stage\",\"s\":\"ref_done\"}\n"); fflush(stdout);
   if (getenv("PAIR_REFONLY")) return 0;
   std::vector<std::vector<uint8_t>> refmid(kL), refout(kL);
+  if (getenv("PAIR_FLAT")) {
+    auto flat = [&](int mode, uint32_t n) {
+      VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
+      g_vk.BeginCommandBuffer(cmd, &bi);
+      g_vk.CmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, pipe_r);
+      g_vk.CmdPushConstants(cmd, layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(p1), &p1);
+      for (uint32_t i = 0; i < n; ++i) {
+        g_vk.CmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, layout, 0, 1, &dR1[i % kL], 0, nullptr);
+        g_vk.CmdDispatch(cmd, tiles, 1, 1);
+        if (mode == 0) full_barrier();
+        if (mode == 2) {
+          VkMemoryBarrier mb{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
+          mb.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+          mb.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+          g_vk.CmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+              VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &mb, 0, nullptr, 0, nullptr);
+        }
+      }
+      g_vk.EndCommandBuffer(cmd);
+      VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
+      si.commandBufferCount = 1;
+      si.pCommandBuffers = &cmd;
+      double t0 = now_us();
+      g_vk.QueueSubmit(g_vk.queue, 1, &si, VK_NULL_HANDLE);
+      g_vk.QueueWaitIdle(g_vk.queue);
+      return (now_us() - t0) / n;
+    };
+    const char* names[] = {"full_barrier", "no_barrier", "c2c_barrier"};
+    for (int round = 0; round < 7; ++round) {
+      for (int m = 0; m < 3; ++m)
+        printf("{\"k\":\"flat\",\"arm\":\"%s\",\"round\":%d,\"us_per_dispatch\":%.2f}\n",
+            names[m], round, flat(m, 64));
+      fflush(stdout);
+    }
+    printf("FLAT_DONE\n");
+    return 0;
+  }
   for (uint32_t l = 0; l < kL; ++l) {
     refmid[l].assign(sets[l].midr.p, sets[l].midr.p + 4096);
     refout[l].assign(sets[l].outr.p, sets[l].outr.p + 4096);
