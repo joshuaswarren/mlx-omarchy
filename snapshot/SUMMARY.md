@@ -1,6 +1,6 @@
 # Community hardware data snapshot
 
-Records: 92 | dataset generated_at: 2026-09-30T03:17:53.000Z | source: https://mlx-omarchy-community-data.joshua-s-warren.workers.dev
+Records: 95 | dataset generated_at: 2026-10-01T03:17:55.000Z | source: https://mlx-omarchy-community-data.joshua-s-warren.workers.dev
 
 Mirrored by `.github/workflows/community-data.yml` from the public
 read API. Summaries only; archive blobs stay on the endpoint.
@@ -99,6 +99,9 @@ read API. Summaries only; archive blobs stay on the endpoint.
 | [d9967a3bdfaf](https://mlx-omarchy-community-data.joshua-s-warren.workers.dev/v1/results/d9967a3bdfaff45d32fad98fc889b2347dbf368b9475f2fd09f81b647911c79d) | quick | apple,t6020 | 7.1.13-3-2-ARCH | Honeykrisp | - | [0](https://mlx-omarchy-community-data.joshua-s-warren.workers.dev/v1/results/d9967a3bdfaff45d32fad98fc889b2347dbf368b9475f2fd09f81b647911c79d/archive) |
 | [ce7148e302ba](https://mlx-omarchy-community-data.joshua-s-warren.workers.dev/v1/results/ce7148e302badb68b884b13c13186bba51327be17812f8944eea5d36809d60af) | quick | apple,t6020 | 7.1.13-3-2-ARCH | Honeykrisp | - | [0](https://mlx-omarchy-community-data.joshua-s-warren.workers.dev/v1/results/ce7148e302badb68b884b13c13186bba51327be17812f8944eea5d36809d60af/archive) |
 | [3d7d15387795](https://mlx-omarchy-community-data.joshua-s-warren.workers.dev/v1/results/3d7d15387795bce5428c293314959242dee14e238ceac15f6a8efda61e89c66f) | quick | apple,t8122 | 7.1.13-3-2-ARCH | - | - | [0](https://mlx-omarchy-community-data.joshua-s-warren.workers.dev/v1/results/3d7d15387795bce5428c293314959242dee14e238ceac15f6a8efda61e89c66f/archive) |
+| [bf6768e10158](https://mlx-omarchy-community-data.joshua-s-warren.workers.dev/v1/results/bf6768e10158fbdfdafaf58d924dcd7844af91e5296bfc51410c3ddc2b46b3db) | quick | apple,t6020 | 7.1.13-3-2-ARCH | Honeykrisp | - | [0](https://mlx-omarchy-community-data.joshua-s-warren.workers.dev/v1/results/bf6768e10158fbdfdafaf58d924dcd7844af91e5296bfc51410c3ddc2b46b3db/archive) |
+| [c919f9e2d914](https://mlx-omarchy-community-data.joshua-s-warren.workers.dev/v1/results/c919f9e2d91451d33dbe504e359737773a24153c023b83c456d0b5d4ab0d6c6d) | quick | apple,t6020 | 7.1.13-3-2-ARCH | Honeykrisp | - | [0](https://mlx-omarchy-community-data.joshua-s-warren.workers.dev/v1/results/c919f9e2d91451d33dbe504e359737773a24153c023b83c456d0b5d4ab0d6c6d/archive) |
+| [ababc7f7889e](https://mlx-omarchy-community-data.joshua-s-warren.workers.dev/v1/results/ababc7f7889edfb7c128c17d32bcf731a9877c00aaa4f469caaff1c78d9134c2) | quick | apple,t6020 | 7.1.13-3-2-ARCH | Honeykrisp | - | [0](https://mlx-omarchy-community-data.joshua-s-warren.workers.dev/v1/results/ababc7f7889edfb7c128c17d32bcf731a9877c00aaa4f469caaff1c78d9134c2/archive) |
 
 Query this snapshot:
 
