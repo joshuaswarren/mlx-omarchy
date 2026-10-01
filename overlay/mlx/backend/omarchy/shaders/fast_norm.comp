@@ -15,6 +15,11 @@
 
 #version 460
 
+#ifdef NORM_SUBTREE
+#extension GL_KHR_shader_subgroup_basic : require
+#extension GL_KHR_shader_subgroup_shuffle : require
+#endif
+
 #ifdef USE_FP16
 #extension GL_EXT_shader_16bit_storage : require
 #extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
@@ -113,6 +118,39 @@ void main() {
     }
     block_values[thread] = local_sq;
     barrier();
+#ifdef NORM_SUBTREE
+    // The same reduction tree as the loop below, split at the
+    // workgroup's 32-lane subgroups: strides 128/64/32 pair threads in
+    // different subgroups and keep the shared array + barrier; strides
+    // 16..1 act only on slots 0..31 and run in registers with
+    // subgroupShuffleXor, whose (t, t^s) read equals this tree's
+    // (t, t+s) for every t < s. Same operands at every level, same
+    // descending-stride association, no arithmetic expression changed.
+    if (thread < 128u) {
+      block_values[thread] += block_values[thread + 128u];
+    }
+    barrier();
+    if (thread < 64u) {
+      block_values[thread] += block_values[thread + 64u];
+    }
+    barrier();
+    if (thread < 32u) {
+      block_values[thread] += block_values[thread + 32u];
+    }
+    barrier();
+    float reduced = block_values[thread];
+    reduced += subgroupShuffleXor(reduced, 16u);
+    reduced += subgroupShuffleXor(reduced, 8u);
+    reduced += subgroupShuffleXor(reduced, 4u);
+    reduced += subgroupShuffleXor(reduced, 2u);
+    reduced += subgroupShuffleXor(reduced, 1u);
+    if (thread == 0u) {
+      block_values[0] = reduced;
+    }
+    barrier();
+    float mean_square = block_values[0] / float(row_length);
+    barrier();
+#else
     for (uint stride = 128u; stride > 0u; stride >>= 1u) {
       if (thread < stride) {
         block_values[thread] += block_values[thread + stride];
@@ -121,6 +159,7 @@ void main() {
     }
     float mean_square = block_values[0] / float(row_length);
     barrier();
+#endif
 #ifdef LAYER_NORM
     float variance = mean_square - mu * mu;
 #else

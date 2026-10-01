@@ -11352,6 +11352,26 @@ void RMSNorm::eval_gpu(
         omarchy::ComputeKernel::FastRmsNormF32,
         omarchy::ComputeKernel::FastRmsNormF16,
         omarchy::ComputeKernel::FastRmsNormBF16);
+    // MLX_OMARCHY_NORM_SUBTREE=1: the RMS reduction tail (strides 16..1)
+    // on subgroup shuffles instead of five shared-memory barrier rounds.
+    // The (t, t^s) shuffle read equals the shared tree's (t, t+s) for
+    // t < s, so outputs are unchanged; selection additionally needs a
+    // 32-lane subgroup with the shuffle feature, else the deployed
+    // kernel runs unchanged.
+    const char* norm_subtree_env = std::getenv("MLX_OMARCHY_NORM_SUBTREE");
+    if (norm_subtree_env != nullptr &&
+        std::strcmp(norm_subtree_env, "1") == 0) {
+      const auto& caps = encoder.device().capabilities();
+      if (caps.subgroup_size == 32u &&
+          (caps.subgroup_operations & VK_SUBGROUP_FEATURE_SHUFFLE_BIT) !=
+              0) {
+        kernel = select_float_kernel(
+            out.dtype(),
+            omarchy::ComputeKernel::FastRmsNormSubtreeF32,
+            omarchy::ComputeKernel::FastRmsNormSubtreeF16,
+            omarchy::ComputeKernel::FastRmsNormSubtreeBF16);
+      }
+    }
   }
   encoder.dispatch_compute(
       kernel,

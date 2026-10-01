@@ -759,6 +759,15 @@ enum class ComputeKernel : uint16_t {
   PartitionSmallKF32,
   PartitionSmallKF16,
   PartitionSmallKBF16,
+  // RMS fast norm with the subgroup shuffle tail (shaders/fast_norm.comp
+  // -DNORM_SUBTREE=1): cross-subgroup strides 128/64/32 keep the shared
+  // tree, strides 16..1 reproduce the same (t, t+s) pairing in registers
+  // with subgroupShuffleXor, so association and every rounding step are
+  // unchanged while four workgroup barriers per row disappear.
+  // MLX_OMARCHY_NORM_SUBTREE gates selection; append-only profile id.
+  FastRmsNormSubtreeF32,
+  FastRmsNormSubtreeF16,
+  FastRmsNormSubtreeBF16,
   Count,
 };
 
