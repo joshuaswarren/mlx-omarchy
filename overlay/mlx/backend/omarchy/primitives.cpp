@@ -10954,16 +10954,21 @@ void GatedDeltaUpdate::eval_gpu(
   // arithmetic is identical, so kernel_bits hashes must not move.
   static const bool gdn_batch_env =
       omarchy::env_flag("MLX_OMARCHY_GDN_BATCH");
+  // Shuffle-scalar lever (default off): register tiles + subgroup-shuffle
+  // dots, no shared round trips. Chunk-route numeric contract gates it.
+  static const bool gdn_shfl_env =
+      omarchy::env_flag("MLX_OMARCHY_GDN_SHFL");
   const auto& gdn_caps = encoder.device().capabilities();
   const bool gdn_coopmat = fused_ready && T >= kGdnCoopmatMinTokens &&
       !has_mask && g.ndim() == 3 && !coopmat_gdn_disabled &&
       gdn_caps.cooperative_matrix_f32_8 && gdn_caps.subgroup_size == 32u;
-  const bool gdn_batch = gdn_coopmat && gdn_batch_env &&
+  const bool gdn_shfl = gdn_coopmat && gdn_shfl_env;
+  const bool gdn_batch = gdn_coopmat && !gdn_shfl && gdn_batch_env &&
       kGdnCoopmatBatchSharedBytes <= gdn_caps.max_compute_shared_memory_size;
   const bool gdn_coopmat_base =
-      gdn_coopmat &&
+      gdn_coopmat && !gdn_shfl && !gdn_batch &&
       (kGdnCoopmatSharedBytes <= gdn_caps.max_compute_shared_memory_size);
-  if (gdn_batch || gdn_coopmat_base) {
+  if (gdn_shfl || gdn_batch || gdn_coopmat_base) {
     omarchy::ComputeParams params;
     params.count = Dv;
     params.lhs_size = checked_u32(q.data_size(), tag, out);
@@ -10997,8 +11002,11 @@ void GatedDeltaUpdate::eval_gpu(
         binding(g),      // 9 GBufF - unused when g is bf16
         binding(out)};   // 10 Snap - unused (single pass)
     encoder.dispatch_compute(
-        gdn_batch ? omarchy::ComputeKernel::GatedDeltaPrefillCoopmatBatchBF16
-                  : omarchy::ComputeKernel::GatedDeltaPrefillCoopmatBF16,
+        gdn_shfl ? omarchy::ComputeKernel::GatedDeltaPrefillShflBF16
+                 : (gdn_batch
+                        ? omarchy::ComputeKernel::
+                              GatedDeltaPrefillCoopmatBatchBF16
+                        : omarchy::ComputeKernel::GatedDeltaPrefillCoopmatBF16),
         bindings,
         params,
         static_cast<uint32_t>(Hv),

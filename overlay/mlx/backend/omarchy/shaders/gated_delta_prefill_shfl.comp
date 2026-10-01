@@ -1,0 +1,315 @@
+// Copyright © 2026 Joshua Warren / mlx-omarchy contributors.
+// SPDX-License-Identifier: MIT
+//
+// Shuffle-scalar gated-delta-rule prefill (GatedDeltaUpdate, T>1): the
+// cooperative-matrix kernel's math with every tile held as two f32
+// registers per lane and every matrix product as a subgroup-shuffle dot —
+// the register layout of Metal's gated_delta_fused_chunk (C=8) without
+// Metal. No shared memory, no barriers, no accumulator/operand round
+// trips: Vulkan cooperative matrices are not lane-addressable, which costs
+// the coopmat kernel ~100 shared round trips per chunk; here a tile is
+// lane-local (element e of a tile lives in lane e>>1, elements (2j, 2j+1)
+// per lane, row-major 8x8), so elementwise scales/masks and the Neumann
+// chain are plain register arithmetic and one 8x8x8 product is 8 steps of
+// (shuffle A row element, shuffle B, 2 FMA).
+//
+// Per-lane tile convention (matches the staging word loads of the coopmat
+// kernel): lane L holds tile elements e0 = 2L and e0+1 = 2L+1, i.e. rows
+// r0 = e0/8 in 0..3, even columns c0 = e0%8. A tile element at flat index
+// e therefore sits in lane e>>1, low/high half by e&1 — that is what makes
+// one shuffle fetch any element.
+//
+// Arithmetic is the chunk algebra of gated_delta_prefill_coopmat.comp
+// verbatim (same expressions, same decay folding, same Neumann form, same
+// bf16 widening/packing); the only degree of freedom is the accumulation
+// order inside an 8-wide dot, so the numeric contract is the chunk-route
+// contract (per-host determinism + <=2 bf16-quanta logits), with kernel_bits
+// hashes recorded either way. Selected only by MLX_OMARCHY_GDN_SHFL.
+
+#version 460
+
+#extension GL_KHR_shader_subgroup_basic : require
+#extension GL_KHR_shader_subgroup_shuffle : require
+#extension GL_KHR_shader_subgroup_arithmetic : require
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int8 : require
+
+layout(local_size_x = 32, local_size_y = 4, local_size_z = 1) in;
+
+layout(set = 0, binding = 0, std430) readonly buffer QBuf  { uint w[]; } q_buf;
+layout(set = 0, binding = 1, std430) readonly buffer KBuf  { uint w[]; } k_buf;
+layout(set = 0, binding = 2, std430) readonly buffer VBuf  { uint w[]; } v_buf;
+layout(set = 0, binding = 3, std430) readonly buffer GBuf  { uint16_t v[]; } g_buf;
+layout(set = 0, binding = 4, std430) readonly buffer BBuf  { uint16_t v[]; } b_buf;
+layout(set = 0, binding = 5, std430) readonly buffer SIn    { float    v[]; } s_in;
+layout(set = 0, binding = 6, std430) writeonly buffer YBuf { uint w[]; } y_buf;
+layout(set = 0, binding = 7, std430) buffer         SOut { float    v[]; } s_out;
+layout(set = 0, binding = 8, std430) readonly buffer MBuf  { uint8_t  v[]; } m_buf;
+layout(set = 0, binding = 9, std430) readonly buffer GBufF { float     v[]; } g_buf_f;
+layout(set = 0, binding = 10, std430) buffer         Snap   { float    v[]; } snap;
+
+layout(push_constant) uniform Params {
+  uint count;
+  uint operation;
+  uint lhs_size;
+  uint rhs_size;
+  uint reduce_size;
+  uint output_size;
+  uint lhs_offset;
+  uint rhs_offset;
+  uint output_offset;
+  uint aux_size;
+  uint aux_offset;
+  uint matrix_m;   // Dk (dispatch gate: 128)
+  uint matrix_n;   // Dv (dispatch gate: 128)
+  uint matrix_k;   // Hv
+  uint flags;      // bit2: g is f32
+  float alpha;
+  float beta_f;
+  uint dims;       // T
+  uint shape[4];   // [0]=g offset, [1]=h0 offset, [2]=hf offset
+  uint in_strides[4];
+  uint out_strides[4];
+  uint chunk;
+  uint chunks;
+} params;
+
+const uint C = 8u;       // Metal non-NAX chunk length
+const uint DK = 128u;
+const uint KSTEPS = DK / 8u;   // 16
+
+float bf16_load(uint16_t bits) {
+  return uintBitsToFloat(uint(bits) << 16u);
+}
+
+float bf16_word_lo(uint word) {
+  return uintBitsToFloat((word & 0xffffu) << 16u);
+}
+
+float bf16_word_hi(uint word) {
+  return uintBitsToFloat(word & 0xffff0000u);
+}
+
+uint bf16_pack(float lo, float hi) {
+  uint lb = floatBitsToUint(lo);
+  uint hb = floatBitsToUint(hi);
+  if ((lb & 0x7fff0000u) == 0x7f800000u) lb = (lb & 0xffff0000u) | 0x40u;
+  else lb = (lb + 0x7fffu + ((lb >> 16) & 1u)) >> 16;
+  if ((hb & 0x7fff0000u) == 0x7f800000u) hb = (hb & 0xffff0000u) | 0x40u;
+  else hb = (hb + 0x7fffu + ((hb >> 16) & 1u)) >> 16;
+  return (hb << 16) | (lb & 0xffffu);
+}
+
+// Fetch tile element e from the lane pair (lo, hi): element e lives in
+// lane e>>1, low/high half by e&1.
+float tget(float lo, float hi, uint e) {
+  vec2 p = subgroupShuffle(vec2(lo, hi), e >> 1u);
+  return ((e & 1u) != 0u) ? p.y : p.x;
+}
+
+// acc += A . B for 8x8 register tiles held as (lo, hi) pairs.
+// aT: A is accessed transposed (A[r,k] via element k*8+r).
+// bT: B is accessed transposed (B[k,c] via element c*8+k).
+// r0/c0 are the lane's own coordinates; c0 is even, so the natural-B pair
+// shares one lane.
+void tmm(inout vec2 acc, float alo, float ahi, float blo, float bhi,
+         uint r0, uint c0, bool aT, bool bT) {
+  for (uint k = 0u; k < 8u; ++k) {
+    float fa = aT ? tget(alo, ahi, k * 8u + r0)
+                  : tget(alo, ahi, r0 * 8u + k);
+    float fb0;
+    float fb1;
+    if (bT) {
+      fb0 = tget(blo, bhi, c0 * 8u + k);
+      fb1 = tget(blo, bhi, (c0 + 1u) * 8u + k);
+    } else {
+      vec2 pb = subgroupShuffle(vec2(blo, bhi), (k * 8u + c0) >> 1u);
+      fb0 = pb.x;
+      fb1 = pb.y;
+    }
+    acc.x += fa * fb0;
+    acc.y += fa * fb1;
+  }
+}
+
+void main() {
+  const uint sg = gl_SubgroupID;
+  const uint lane = gl_SubgroupInvocationID;
+  const uint head = gl_WorkGroupID.x;
+  const uint dv0 = (gl_WorkGroupID.y * 4u + sg) * 8u;
+  const uint T = params.dims;
+  const uint hv = params.matrix_k;
+  const uint e0 = lane * 2u;
+  const uint r0 = e0 / 8u;
+  const uint c0 = e0 % 8u;   // even; the pair (e0, e0+1) shares row r0
+
+  const uint q_off = params.lhs_offset;
+  const uint k_off = params.rhs_offset;
+  const uint v_off = params.aux_size;
+  const uint b_off = params.aux_offset;
+  const uint g_off = params.shape[0];
+  const uint h0_off = params.shape[1];
+  const uint hf_off = params.shape[2];
+  const bool g_f32 = (params.flags & 4u) != 0u;
+
+  // Identity tile, register-resident.
+  vec2 eye = vec2((r0 == c0) ? 1.0 : 0.0, (r0 == c0 + 1u) ? 1.0 : 0.0);
+
+  // State slice: sixteen 8x8 f32 tiles, 2 registers per lane each.
+  // tile[kk][r][c] = h0[(head*Dv + dv0 + c)*Dk + kk*8 + r]; the lane's
+  // element pair sits Dk apart in memory.
+  float st[KSTEPS][2];
+  for (uint kk = 0u; kk < KSTEPS; ++kk) {
+    uint idx = h0_off + (head * params.matrix_n + dv0 + c0) * DK + kk * 8u + r0;
+    st[kk][0] = s_in.v[idx];
+    st[kk][1] = s_in.v[idx + DK];
+  }
+
+  for (uint t0 = 0u; t0 < T; t0 += C) {
+    const uint valid = min(C, T - t0);
+
+    // gamma_log over the chunk: prefix on lanes 0..7 (lanes >= valid
+    // contribute 0, so the prefix stays at the last valid token — the
+    // partial-chunk decay target, matching the Metal kernel); every lane
+    // reads token i's prefix by shuffling from lane i.
+    float gv = 0.0;
+    if (lane < valid) {
+      float graw = g_f32
+          ? g_buf_f.v[g_off + (t0 + lane) * hv + head]
+          : bf16_load(g_buf.v[g_off + (t0 + lane) * hv + head]);
+      gv = log(max(graw, 1e-6f));
+    }
+    const float gpref = subgroupInclusiveAdd(gv);
+    const float bmine = lane < valid
+        ? bf16_load(b_buf.v[b_off + (t0 + lane) * hv + head])
+        : 0.0f;
+    const float glog_last = subgroupShuffle(gpref, C - 1u);
+    const float glog_r0 = subgroupShuffle(gpref, r0);
+    const float glog_c0 = subgroupShuffle(gpref, c0);
+    const float glog_c1 = subgroupShuffle(gpref, c0 + 1u);
+    const float beta_r0 = subgroupShuffle(bmine, r0);
+    const float gam_r0 = exp(glog_r0);
+    const float bg_r0 = beta_r0 * gam_r0;
+    const float gamC = exp(glog_last);
+    // Decay from token r0 to the chunk end, log-domain difference.
+    const float dec_r0 = r0 < valid ? exp(glog_last - glog_r0) : 0.0;
+
+    // Loop 1: KK^T, Q.K^T, (gamma beta K).S and (gamma Q).S, staged
+    // straight from global memory into registers.
+    vec2 kkt = vec2(0.0);
+    vec2 qkt = vec2(0.0);
+    vec2 m2 = vec2(0.0);
+    vec2 tmp = vec2(0.0);
+#define PA_STEP(J)                                                          \
+    {                                                                       \
+      uint kbase = k_off + (t0 + r0) * hv * DK + head * DK + (J) * 8u + c0; \
+      uint qbase = q_off + (t0 + r0) * hv * DK + head * DK + (J) * 8u + c0; \
+      float kv0 = 0.0;                                                      \
+      float kv1 = 0.0;                                                      \
+      float qv0 = 0.0;                                                      \
+      float qv1 = 0.0;                                                      \
+      if (r0 < valid) {                                                     \
+        uint kw = k_buf.w[kbase >> 1u];                                     \
+        kv0 = bf16_word_lo(kw);                                             \
+        kv1 = bf16_word_hi(kw);                                             \
+        uint qw = q_buf.w[qbase >> 1u];                                     \
+        qv0 = bf16_word_lo(qw);                                             \
+        qv1 = bf16_word_hi(qw);                                             \
+      }                                                                     \
+      float kgl0 = kv0 * bg_r0;                                             \
+      float kgl1 = kv1 * bg_r0;                                             \
+      float qgl0 = qv0 * gam_r0;                                            \
+      float qgl1 = qv1 * gam_r0;                                            \
+      tmm(kkt, kv0, kv1, kv0, kv1, r0, c0, false, true);                    \
+      tmm(qkt, qv0, qv1, kv0, kv1, r0, c0, false, true);                    \
+      tmm(m2, kgl0, kgl1, st[(J)][0], st[(J)][1], r0, c0, false, false);    \
+      tmm(tmp, qgl0, qgl1, st[(J)][0], st[(J)][1], r0, c0, false, false);   \
+    }
+    PA_STEP(0); PA_STEP(1); PA_STEP(2); PA_STEP(3);
+    PA_STEP(4); PA_STEP(5); PA_STEP(6); PA_STEP(7);
+    PA_STEP(8); PA_STEP(9); PA_STEP(10); PA_STEP(11);
+    PA_STEP(12); PA_STEP(13); PA_STEP(14); PA_STEP(15);
+#undef PA_STEP
+
+    // N = strict_lower(diag(beta) . KK^T) * Gamma.
+    float ee0 = kkt.x * ((c0 < r0) ? beta_r0 * exp(glog_r0 - glog_c0) : 0.0);
+    float ee1 = kkt.y * ((c0 + 1u < r0) ? beta_r0 * exp(glog_r0 - glog_c1) : 0.0);
+
+    // Tinv = (I - N)(I + N^2 + N^4 + N^6), the exact (I+N)^-1 for
+    // strictly-lower-triangular N (N^8 = 0 at C = 8).
+    vec2 n0 = vec2(ee0, ee1);
+    vec2 a1 = vec2(0.0);
+    tmm(a1, n0.x, n0.y, n0.x, n0.y, r0, c0, false, false);
+    vec2 a2 = vec2(0.0);
+    tmm(a2, a1.x, a1.y, a1.x, a1.y, r0, c0, false, false);
+    vec2 a3 = vec2(0.0);
+    tmm(a3, a1.x, a1.y, a2.x, a2.y, r0, c0, false, false);
+    vec2 msum = eye + a1 + a2 + a3;
+    vec2 nm = vec2(0.0);
+    tmm(nm, n0.x, n0.y, msum.x, msum.y, r0, c0, false, false);
+    vec2 tinv = msum - nm;
+
+    // delta = Tinv . (diag(beta) V - M2).
+    uint vbase = v_off + (t0 + r0) * hv * params.matrix_n + head * params.matrix_n + dv0 + c0;
+    float vv0 = 0.0;
+    float vv1 = 0.0;
+    if (r0 < valid) {
+      uint vw = v_buf.w[vbase >> 1u];
+      vv0 = bf16_word_lo(vw);
+      vv1 = bf16_word_hi(vw);
+    }
+    vec2 x = vec2(vv0 * beta_r0 - m2.x, vv1 * beta_r0 - m2.y);
+    vec2 delta = vec2(0.0);
+    tmm(delta, tinv.x, tinv.y, x.x, x.y, r0, c0, false, false);
+
+    // QKt tri: tril(Q.K^T) scaled elementwise by exp(gamma_log_r - gamma_log_c).
+    float qe0 = qkt.x * ((c0 <= r0) ? exp(glog_r0 - glog_c0) : 0.0);
+    float qe1 = qkt.y * ((c0 + 1u <= r0) ? exp(glog_r0 - glog_c1) : 0.0);
+
+    // y rows: out = QKt_tri . delta + (gamma Q).S — tmp rides the
+    // accumulator first, matching the base kernel's expression shape.
+    vec2 out_t = tmp;
+    tmm(out_t, qe0, qe1, delta.x, delta.y, r0, c0, false, false);
+    if (r0 < valid) {
+      y_buf.w[(((t0 + r0) * hv + head) * params.matrix_n + dv0 + c0) >> 1u] =
+          bf16_pack(out_t.x, out_t.y);
+    }
+
+    // State update: S = gamma_C . S + (K . diag(exp(gamma_C - gamma)))^T . delta.
+#define KD_STEP(J)                                                          \
+    {                                                                       \
+      uint kbase = k_off + (t0 + r0) * hv * DK + head * DK + (J) * 8u + c0; \
+      float kv0 = 0.0;                                                      \
+      float kv1 = 0.0;                                                      \
+      if (r0 < valid) {                                                     \
+        uint kw = k_buf.w[kbase >> 1u];                                     \
+        kv0 = bf16_word_lo(kw);                                             \
+        kv1 = bf16_word_hi(kw);                                             \
+      }                                                                     \
+      vec2 kd = vec2(0.0);                                                  \
+      tmm(kd, kv0 * dec_r0, kv1 * dec_r0, delta.x, delta.y, r0, c0, true, false); \
+      st[(J)][0] = st[(J)][0] * gamC + kd.x;                                \
+      st[(J)][1] = st[(J)][1] * gamC + kd.y;                                \
+    }
+    KD_STEP(0); KD_STEP(1); KD_STEP(2); KD_STEP(3);
+    KD_STEP(4); KD_STEP(5); KD_STEP(6); KD_STEP(7);
+    KD_STEP(8); KD_STEP(9); KD_STEP(10); KD_STEP(11);
+    KD_STEP(12); KD_STEP(13); KD_STEP(14); KD_STEP(15);
+#undef KD_STEP
+  }
+
+  // Terminal state slice: hf[(head*Dv + dv0 + c)*Dk + kk*8 + r]; the
+  // lane's element pair sits Dk apart (dv stride).
+#define ST_OUT(J)                                                           \
+    {                                                                       \
+      uint idx = hf_off + (head * params.matrix_n + dv0 + c0) * DK + (J) * 8u + r0; \
+      s_out.v[idx] = st[(J)][0];                                            \
+      s_out.v[idx + DK] = st[(J)][1];                                       \
+    }
+  ST_OUT(0); ST_OUT(1); ST_OUT(2); ST_OUT(3);
+  ST_OUT(4); ST_OUT(5); ST_OUT(6); ST_OUT(7);
+  ST_OUT(8); ST_OUT(9); ST_OUT(10); ST_OUT(11);
+  ST_OUT(12); ST_OUT(13); ST_OUT(14); ST_OUT(15);
+#undef ST_OUT
+}

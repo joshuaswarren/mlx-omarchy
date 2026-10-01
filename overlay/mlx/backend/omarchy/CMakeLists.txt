@@ -351,6 +351,9 @@ omarchy_shader(gated_delta_prefill_coopmat_bf16 shaders/gated_delta_prefill_coop
 omarchy_shader(
     gated_delta_prefill_coopmat_batch_bf16
     shaders/gated_delta_prefill_coopmat_batch.comp)
+omarchy_shader(
+    gated_delta_prefill_shfl_bf16
+    shaders/gated_delta_prefill_shfl.comp)
 # PrefillQmmTile: m-tiled quantized matmul for prefill (matrix_m > 1);
 # one workgroup dequantizes each 16 x 16 weight block into shared f32
 # once and applies it to a 16-row tile of x, amortizing the inline

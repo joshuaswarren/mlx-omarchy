@@ -682,6 +682,13 @@ enum class ComputeKernel : uint16_t {
   // chunk staging, 4-slice state-update waves). Selected only by
   // MLX_OMARCHY_GDN_BATCH. Append-only profile id.
   GatedDeltaPrefillCoopmatBatchBF16,
+  // Shuffle-scalar variant: the same chunk algebra with every tile as two
+  // f32 registers per lane and subgroup-shuffle dots — no shared memory,
+  // no barriers, no accumulator/operand round trips (the register layout
+  // of Metal's gated_delta_fused_chunk). Chunk-route numeric contract, not
+  // bit-identity, is the gate. Selected only by MLX_OMARCHY_GDN_SHFL.
+  // Append-only profile id.
+  GatedDeltaPrefillShflBF16,
   // Fused RMSNorm + SwiGLU-gate / RMSNorm + scalar-multiply epilogues
   // for the GDN decode chain (bf16). Mode 0 replaces
   // FastRmsNormBF16 + CastBF16F32 x2 + FusedChainF32(sigmoid,mul,mul)
