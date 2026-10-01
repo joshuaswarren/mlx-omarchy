@@ -12476,7 +12476,7 @@ void ScaledDotProductAttention::eval_gpu(
   // can reach both routes at every k (MLX_OMARCHY_SDPA_DECODE_NATIVE=0
   // forces the composition side); the landed row is the measured one.
   constexpr DecodeBf16Window kDecodeBf16Windows[] = {
-      {64, 256, 2048}, {128, 12, 7168}, {256, 12, 7168}};
+      {64, 256, 2048}, {128, 1, 7168}, {256, 12, 7168}};
   // Perf-only k window: bitwise identity holds for every k (both routes
   // store identical words), so the boundary cannot move a token - only the
   // wall. Width 64 keeps the measured 256..2048 window from the original
