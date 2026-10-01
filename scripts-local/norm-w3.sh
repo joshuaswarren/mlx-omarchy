@@ -5,7 +5,7 @@
 set -u
 OUT=/var/tmp/norm/gemv; mkdir -p "$OUT"
 PYS=/var/tmp/v072-venv-fused/bin/python3
-PYC=/var/tmp/norm-venv/bin/python3
+PYC=/var/tmp/norm-venv2/bin/python3
 BENCH=$HOME/bench-scripts/qwen38-mlx-bench.py
 MODEL=$(echo ~/.cache/huggingface/hub/models--SiddhJagani--Qwen3.8-2B-mlx-4Bit/snapshots/0867d98bfb174b042d88461c0e*)
 { date -u +%FT%TZ; echo "boot $(cat /proc/sys/kernel/random/boot_id)"; echo "load $(cat /proc/loadavg)"; } > "$OUT/env.txt"
