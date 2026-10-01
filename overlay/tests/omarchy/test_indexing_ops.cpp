@@ -1446,7 +1446,7 @@ TEST_CASE("wide-row small-k partition covers rows, ties, and 16-bit dtypes") {
   // INPUT words at the top-k indices, so no host narrowing can disagree.
   // 16-bit rows currently take the wide-row sort route (the selection
   // arm is gated to float32 in dispatch_sort_wide).
-  constexpr bool kSixteenBitSelects = false;
+  constexpr bool kSixteenBitSelects = true;
   std::vector<float> rows16;
   for (int r = 0; r < 2; ++r) {
     auto row = smallk_pattern(n, 303 + r);
