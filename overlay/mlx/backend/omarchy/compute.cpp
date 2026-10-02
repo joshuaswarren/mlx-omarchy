@@ -276,6 +276,12 @@
 #include "qmm_vec_q4_multi_f32.h"
 #include "qmm_vec_q4_multi_subgroup_bf16.h"
 #include "qmm_vec_q4_multi_outgate_bf16.h"
+#include "qmm_vec_q4_word_subgroup_bf16_pipe.h"
+#include "qmm_vec_q4_multi_subgroup_bf16_pipe.h"
+#include "qmm_vec_q4_multi_outgate_bf16_pipe.h"
+#include "qmm_vec_q4_word_subgroup_bf16_c16.h"
+#include "qmm_vec_q4_multi_subgroup_bf16_c16.h"
+#include "qmm_vec_q4_multi_outgate_bf16_c16.h"
 #include "qmm_vec_q4_multi_subgroup_f16.h"
 #include "qmm_vec_q4_multi_subgroup_f32.h"
 #include "sdpa_decode_native_f16.h"
@@ -1401,6 +1407,30 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {
           qmm_vec_q4_multi_outgate_bf16,
           qmm_vec_q4_multi_outgate_bf16_size};
+    case ComputeKernel::QmmVecQ4WordSubgroupBF16Pipe:
+      return {
+          qmm_vec_q4_word_subgroup_bf16_pipe,
+          qmm_vec_q4_word_subgroup_bf16_pipe_size};
+    case ComputeKernel::QmmVecQ4MultiSubgroupBF16Pipe:
+      return {
+          qmm_vec_q4_multi_subgroup_bf16_pipe,
+          qmm_vec_q4_multi_subgroup_bf16_pipe_size};
+    case ComputeKernel::QmmVecQ4MultiOutgateBF16Pipe:
+      return {
+          qmm_vec_q4_multi_outgate_bf16_pipe,
+          qmm_vec_q4_multi_outgate_bf16_pipe_size};
+    case ComputeKernel::QmmVecQ4WordSubgroupBF16C16:
+      return {
+          qmm_vec_q4_word_subgroup_bf16_c16,
+          qmm_vec_q4_word_subgroup_bf16_c16_size};
+    case ComputeKernel::QmmVecQ4MultiSubgroupBF16C16:
+      return {
+          qmm_vec_q4_multi_subgroup_bf16_c16,
+          qmm_vec_q4_multi_subgroup_bf16_c16_size};
+    case ComputeKernel::QmmVecQ4MultiOutgateBF16C16:
+      return {
+          qmm_vec_q4_multi_outgate_bf16_c16,
+          qmm_vec_q4_multi_outgate_bf16_c16_size};
     case ComputeKernel::SdpaDecodeNativeF16:
       return {sdpa_decode_native_f16, sdpa_decode_native_f16_size};
     case ComputeKernel::SdpaDecodeNativeBF16:

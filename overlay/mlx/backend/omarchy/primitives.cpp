@@ -7354,14 +7354,24 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
   //
   // Gemv group count: COLUMNS_PER_GROUP output columns per workgroup,
   // matching the lane split in shaders/qmm_vec.comp.
-  constexpr uint32_t kGemvColumnsPerGroup = 8u;
-  auto n_groups_qmm_vec = (params.matrix_n + kGemvColumnsPerGroup - 1u) /
-      kGemvColumnsPerGroup;
+  auto n_groups_qmm_vec = (params.matrix_n + 7u) / 8u;
   if (params.matrix_m == 1u) {
     const auto& caps = encoder.device().capabilities();
     bool subgroup_ready =
         caps.subgroup_size == 32u &&
         (caps.subgroup_operations & VK_SUBGROUP_FEATURE_ARITHMETIC_BIT) != 0;
+    // GemvRepack decode Q4 measurement candidates (default OFF): the
+    // pipelined weight-word prefetch and the 16-column placement
+    // (ROWS_PER_SLOT=4/SLOTS_PER_GROUP=4) exist only as bf16 subgroup
+    // twins of the word kernel; the grid follows the twin's
+    // COLUMNS_PER_GROUP.
+    static const bool q4_pipe = omarchy::env_flag("MLX_OMARCHY_Q4_PIPE");
+    static const bool q4_c16 = omarchy::env_flag("MLX_OMARCHY_Q4_C16");
+    const bool q4_cand =
+        subgroup_ready && use_q4_word && out.dtype() == bfloat16;
+    if (q4_cand && q4_c16) {
+      n_groups_qmm_vec = (params.matrix_n + 15u) / 16u;
+    }
     omarchy::capsim::require_backed(
         encoder.device(),
         caps,
@@ -7374,17 +7384,21 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
     // Eligibility was computed before dense normalization because the packed
     // f16 input view also requires a 16-byte-aligned x row.
     auto vec_kernel = subgroup_ready
-        ? select_float_kernel(
-              out.dtype(),
-              use_q4_word
-                  ? omarchy::ComputeKernel::QmmVecQ4WordSubgroupF32
-                  : omarchy::ComputeKernel::QmmVecSubgroupF32,
-              use_q4_word
-                  ? omarchy::ComputeKernel::QmmVecQ4WordSubgroupF16
-                  : omarchy::ComputeKernel::QmmVecSubgroupF16,
-              use_q4_word
-                  ? omarchy::ComputeKernel::QmmVecQ4WordSubgroupBF16
-                  : omarchy::ComputeKernel::QmmVecSubgroupBF16)
+        ? (q4_cand && q4_c16
+              ? omarchy::ComputeKernel::QmmVecQ4WordSubgroupBF16C16
+              : q4_cand && q4_pipe
+              ? omarchy::ComputeKernel::QmmVecQ4WordSubgroupBF16Pipe
+              : select_float_kernel(
+                    out.dtype(),
+                    use_q4_word
+                        ? omarchy::ComputeKernel::QmmVecQ4WordSubgroupF32
+                        : omarchy::ComputeKernel::QmmVecSubgroupF32,
+                    use_q4_word
+                        ? omarchy::ComputeKernel::QmmVecQ4WordSubgroupF16
+                        : omarchy::ComputeKernel::QmmVecSubgroupF16,
+                    use_q4_word
+                        ? omarchy::ComputeKernel::QmmVecQ4WordSubgroupBF16
+                        : omarchy::ComputeKernel::QmmVecSubgroupBF16))
         : select_float_kernel(
               out.dtype(),
               use_q4_word ? omarchy::ComputeKernel::QmmVecQ4WordF32
@@ -7671,6 +7685,14 @@ bool dispatch_quantized_gemv_group(
   const Dtype dtype = members[0].node.dtype();
   bool subgroup_ready = caps.subgroup_size == 32u &&
       (caps.subgroup_operations & VK_SUBGROUP_FEATURE_ARITHMETIC_BIT) != 0;
+  // GemvRepack decode Q4 measurement candidates (default OFF): bf16
+  // subgroup twins with the pipelined weight-word prefetch and/or the
+  // 16-column placement; the grid below must follow the twin's
+  // COLUMNS_PER_GROUP.
+  static const bool q4_pipe = omarchy::env_flag("MLX_OMARCHY_Q4_PIPE");
+  static const bool q4_c16 = omarchy::env_flag("MLX_OMARCHY_Q4_C16");
+  const bool q4_cand = dtype == bfloat16 && subgroup_ready;
+  const uint32_t gemv_cols = q4_cand && q4_c16 ? 16u : 8u;
   if (outgate != nullptr) {
     // The prologue deletes the Multiply that produced x (it was never
     // evaluated), so x's usual readiness checks do not apply: its
@@ -7748,7 +7770,7 @@ bool dispatch_quantized_gemv_group(
       params.flags |= 256u << i;
     }
     params.shape[i] = static_cast<uint32_t>(n);
-    total_groups += (static_cast<uint32_t>(n) + 7u) / 8u;
+    total_groups += (static_cast<uint32_t>(n) + gemv_cols - 1u) / gemv_cols;
   }
   if (swiglu_out &&
       (params.shape[0] != params.shape[1] || swiglu_out->dtype() != dtype ||
@@ -7758,7 +7780,7 @@ bool dispatch_quantized_gemv_group(
   if (swiglu_out) {
     // Paired epilogue: every workgroup computes the same column slice
     // of both weights, so the gate count is weight 0's alone.
-    total_groups = (params.shape[0] + 7u) / 8u;
+    total_groups = (params.shape[0] + gemv_cols - 1u) / gemv_cols;
     params.flags |= 65536u;
   }
   if (total_groups > kMaxComputeGroupCountX) {
@@ -7923,13 +7945,21 @@ bool dispatch_quantized_gemv_group(
     bindings[kQmmVecMultiBindings + 2] = binding(outgate->x);
   }
   auto kernel = outgate != nullptr
-      ? ComputeKernel::QmmVecQ4MultiOutgateBF16
+      ? (q4_cand && q4_c16
+             ? ComputeKernel::QmmVecQ4MultiOutgateBF16C16
+             : q4_cand && q4_pipe
+             ? ComputeKernel::QmmVecQ4MultiOutgateBF16Pipe
+             : ComputeKernel::QmmVecQ4MultiOutgateBF16)
       : subgroup_ready
-      ? select_float_kernel(
-            dtype,
-            ComputeKernel::QmmVecQ4MultiSubgroupF32,
-            ComputeKernel::QmmVecQ4MultiSubgroupF16,
-            ComputeKernel::QmmVecQ4MultiSubgroupBF16)
+      ? (q4_cand && q4_c16
+             ? ComputeKernel::QmmVecQ4MultiSubgroupBF16C16
+             : q4_cand && q4_pipe
+             ? ComputeKernel::QmmVecQ4MultiSubgroupBF16Pipe
+             : select_float_kernel(
+                   dtype,
+                   ComputeKernel::QmmVecQ4MultiSubgroupF32,
+                   ComputeKernel::QmmVecQ4MultiSubgroupF16,
+                   ComputeKernel::QmmVecQ4MultiSubgroupBF16))
       : select_float_kernel(
             dtype,
             ComputeKernel::QmmVecQ4MultiF32,

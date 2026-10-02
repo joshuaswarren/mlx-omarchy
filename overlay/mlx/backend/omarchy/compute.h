@@ -774,6 +774,19 @@ enum class ComputeKernel : uint16_t {
   SdpaVjpReduceF32,
   SdpaVjpReduceF16,
   SdpaVjpReduceBF16,
+  // GemvRepack decode Q4 measurement candidates (append-only profile
+  // ids; default OFF, selected per env in dispatch_quantized_gemv_group):
+  // _PIPE = software-pipelined weight-word prefetch in the Q4_ROWS fast
+  // tile (QMM_VEC_PIPE) at ROWS_PER_SLOT=1/SLOTS_PER_GROUP=8 (the AGX
+  // compiler leaves pipelined phis unhandled at RPS>1); _C16 = 16
+  // columns per workgroup via ROWS_PER_SLOT=4/SLOTS_PER_GROUP=4 (grid
+  // follows). Mutually exclusive: C16 wins when both envs are set.
+  QmmVecQ4WordSubgroupBF16Pipe,
+  QmmVecQ4MultiSubgroupBF16Pipe,
+  QmmVecQ4MultiOutgateBF16Pipe,
+  QmmVecQ4WordSubgroupBF16C16,
+  QmmVecQ4MultiSubgroupBF16C16,
+  QmmVecQ4MultiOutgateBF16C16,
   Count,
 };
 
