@@ -27,15 +27,15 @@ def edit(rel, old, new):
 
 
 def clean(name):
-    subprocess.run(["patch", "-s", "-d", str(ROOT / "b"), "-p1", "--forward", "--fuzz=0", "-i",
-                    str(OLD / f"{name}.patch")], check=True)
+    subprocess.run(["patch", "-s", "-d", str(ROOT / "b"), "-p1", "--forward", "--fuzz=0", "--no-backup-if-mismatch",
+                    "-i", str(OLD / f"{name}.patch")], check=True)
 
 
 def step(name, fn):
     shutil.rmtree(ROOT / "a", ignore_errors=True)
     shutil.copytree(ROOT / "b", ROOT / "a")
     fn()
-    d = subprocess.run(["diff", "-ruN", "-x", "__pycache__", "a/mlx_lm", "b/mlx_lm"], cwd=ROOT,
+    d = subprocess.run(["diff", "-ruN", "-x", "__pycache__", "-x", "*.orig", "-x", "*.rej", "a/mlx_lm", "b/mlx_lm"], cwd=ROOT,
                        capture_output=True, text=True)
     if not d.stdout:
         sys.exit(f"{name}: produced no change")

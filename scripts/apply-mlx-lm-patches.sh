@@ -37,6 +37,12 @@ if grep -q "^class StopSequences" "$SITE/mlx_lm/generate.py"; then
   SERIES="patches/mlx-lm-0.32"
 fi
 echo "mlx-lm patch series: $SERIES"
+if [[ ! -d "$ROOT/$SERIES" ]]; then
+  # install.sh pins mlx-lm 0.31.3 and downloads only that series; a venv later moved to the 0.32 line needs a repo
+  # checkout's copy of this script.
+  echo "error: $SERIES is not in $ROOT; run scripts/apply-mlx-lm-patches.sh from a repo checkout" >&2
+  exit 5
+fi
 if [[ "${MLX_OMARCHY_CONV_RING:-0}" == 1 && "$SERIES" != "patches" ]]; then
   echo "error: conv-ring has no mlx-lm 0.32 port (experimental, off by default); unset MLX_OMARCHY_CONV_RING" >&2
   exit 6

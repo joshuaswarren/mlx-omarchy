@@ -98,3 +98,20 @@ upstream 94cdcae decodes at 51.2 tok/s with a 3,622 ms first token; with this se
 - The rerun-idempotency of `apply-mlx-lm-patches.sh`: on a venv that already has the gated-delta patches,
   the reverse check of `fast-route` fails because `repeat` and `raw` edit the same lines. This exists on main
   for 0.31.3 too.
+
+## Review notes (round 1)
+
+- The first push of three patches (`qwen35-gdn-conv`, `conv-silu`, `last-logits`) carried `qwen3_5.py.orig`
+  sections: GNU patch wrote backups while `rebuild_series.py` applied the 0.31.3 files, and the step diff picked
+  them up. `rebuild_series.py` now passes `--no-backup-if-mismatch` and excludes `*.orig`/`*.rej`. The regenerated
+  series applies with no backup files, and the `.py` tree it produces hashes to e0623638535c7446, the same as the
+  tree the gates ran on (both exclude `_version.py`, which pip writes and no patch touches). Python never imported
+  the stray `.orig` file, so the gate results stand.
+- `gate.sh` and `bisect.sh` are kept as they ran. The `1c6d913aded2faec` line in `gate.sh` hashes the patch
+  sources, not the applied tree; e0623638535c7446 above identifies the tree. `bisect.sh` ran without `set -e`,
+  but each cumulative step is a prefix of the series the apply script (`set -euo pipefail`) applied cleanly on the
+  same host minutes earlier, and the last step's tokens equal the full series' tokens.
+- `qknorm_0313_check.sh` now runs from any checkout (`bash qknorm_0313_check.sh [BASE]`) and verifies the mlx-lm
+  0.31.3 wheel's sha256 (758cfddf...); rerun after the fix: identical trees.
+- `install.sh` pins mlx-lm 0.31.3 and downloads only that series. A venv later moved to the 0.32 line now gets a
+  clear error that names the missing series directory, and the venv stays untouched.
