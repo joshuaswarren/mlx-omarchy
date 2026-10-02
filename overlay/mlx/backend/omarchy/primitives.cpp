@@ -7669,7 +7669,9 @@ const array* q4_s2pack_pairs(const array& src) {
   if (src_mem == nullptr || !src_mem->coherent) {
     return nullptr;
   }
-  src.wait();  // one-time: the (long-finished) GPU writes behind the weights
+  // one-time: the (long-finished) GPU writes behind the weights.
+  // The event state is mutable bookkeeping; the data is untouched.
+  const_cast<array&>(src).wait();
   array packed(Shape{rows, groups / 2}, uint32, nullptr, {});
   array::Flags flags;
   flags.contiguous = true;
