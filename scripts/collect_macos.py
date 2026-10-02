@@ -211,6 +211,21 @@ _DT_KEYS = ("name", "compatible", "reg", "interrupts", "interrupt-names",
             "dapf-instance-0", "dart-id", "dart-options", "role",
             "device_type", "ranges", "#address-cells", "#size-cells")
 MAX_DT_HEX = 8192
+# Keys the payload schema types as string arrays (dt_nodes items in
+# services/community-data/schema/payload-v1.schema.json). As OSData they
+# arrive NUL-separated (M5 sends `compatible` this way), so split them
+# into strings instead of hex-encoding them.
+_DT_STRING_LISTS = ("compatible", "interrupt-names")
+# Schema maxLength for string-typed dt_nodes keys tighter than the hex
+# cap; anything longer is cut on this side and recorded in `truncated`.
+_DT_MAX_LEN = {"name": 128, "ane-type": 256, "ane-subtype": 256,
+               "ane-id": 64, "die-id": 64, "die-ane-id": 64,
+               "clock-gates": 4096, "power-gates": 4096,
+               "iommu-parent": 256, "vm-base": 64, "vm-size": 64,
+               "page-size": 64, "sids": 4096, "bypass-15": 256,
+               "instance": 64, "dapf-instance-0": 4096, "dart-id": 64,
+               "dart-options": 256, "role": 128, "device_type": 128,
+               "ranges": 4096}
 
 
 def _full_value(value, truncated, depth=0):
@@ -252,7 +267,13 @@ def _dt_entry(node, path, truncated):
         if value is None:
             continue
         out_key = "phandle" if key == "AAPL,phandle" else key
-        if isinstance(value, bytes):
+        if isinstance(value, bytes) and key in _DT_STRING_LISTS:
+            parts = [p.decode("utf-8", "replace")[:128]
+                     for p in value.split(b"\x00") if p]
+            if len(parts) > 16:
+                truncated.append("list:%s:%s" % (key, name or "?"))
+            entry[out_key] = parts[:16] or None
+        elif isinstance(value, bytes):
             if len(value) > MAX_DT_HEX:
                 truncated.append("hex:%s:%s" % (key, name or "?"))
                 value = value[:MAX_DT_HEX]
@@ -268,6 +289,11 @@ def _dt_entry(node, path, truncated):
                 entry[out_key] = kept or None
         else:
             entry[out_key] = _text(value)
+        cap = _DT_MAX_LEN.get(out_key)
+        if (cap is not None and isinstance(entry[out_key], str)
+                and len(entry[out_key]) > cap):
+            truncated.append("len:%s:%s" % (key, name or "?"))
+            entry[out_key] = entry[out_key][:cap]
     return entry
 
 

@@ -688,6 +688,75 @@ class AneProbeCodeTests(unittest.TestCase):
         self.assertEqual(len(out["ane_nodes"][0]["reg_ranges"]), 256)
         self.assertIn("reg_ranges:ane0:257", out["truncated"])
 
+    def test_m5_bytes_compatible_and_long_instance_fit_schema(self):
+        # M5 Max (macOS) shape: `compatible` and `interrupt-names` arrive
+        # as NUL-separated OSData and `instance` is a blob longer than the
+        # schema's 64-character cap. These used to ship as hex strings
+        # and an overlong instance, and the endpoint answered 422.
+        ane = {"name": b"ane0",
+               "compatible": b"ane,t8142\x00ane,t8140\x00\x00",
+               "interrupt-names": b"irq0\x00irq1\x00",
+               "instance": bytes(range(48)),  # 96 hex characters
+               "IORegistryEntryChildren": []}
+        many = {"name": b"dart-ane0",
+                "compatible": b"\x00".join(b"c%d" % i for i in range(20)),
+                "IORegistryEntryChildren": []}
+        service = {"IORegistryEntryChildren": [ane, many]}
+
+        def fake_run(argv, capture_output=None, timeout=None):
+            class P:
+                returncode = 0
+                stderr = b""
+                stdout = b""
+            p = P()
+            a = list(argv)
+            if a[:3] == ["ioreg", "-a", "-p"]:
+                p.stdout = plistlib.dumps(service)
+            elif a[:2] == ["ioreg", "-a"] and a[2] == "-rc":
+                p.stdout = plistlib.dumps([])
+            else:
+                raise AssertionError(a)
+            return p
+
+        ns = {}
+        with patch("subprocess.run", side_effect=fake_run):
+            exec(compile(cm.ANE_PROBE_CODE, "<probe>", "exec"), ns)
+        out = ns["out"]
+        nodes = {n["path"].rsplit("/", 1)[-1]: n for n in out["dt_nodes"]}
+        self.assertEqual(nodes["ane0"]["compatible"],
+                         ["ane,t8142", "ane,t8140"])
+        self.assertEqual(nodes["ane0"]["interrupt-names"], ["irq0", "irq1"])
+        self.assertEqual(nodes["ane0"]["instance"],
+                         bytes(range(48)).hex()[:64])
+        self.assertIn("len:instance:ane0", out["truncated"])
+        self.assertEqual(nodes["dart-ane0"]["compatible"],
+                         ["c%d" % i for i in range(16)])
+        self.assertIn("list:compatible:dart-ane0", out["truncated"])
+
+        schema_path = (Path(__file__).resolve().parent.parent / "services" /
+                       "community-data" / "schema" / "payload-v1.schema.json")
+        item = json.loads(schema_path.read_text())["properties"][
+            "ane_port_detail"]["properties"]["macos"]["properties"][
+            "dt_nodes"]["items"]["properties"]
+        types = {"string": str, "array": list, "null": type(None)}
+        for node in out["dt_nodes"]:
+            for key, value in node.items():
+                rule = item.get(key)
+                if rule is None:
+                    continue
+                allowed = rule["type"] if isinstance(rule["type"], list) \
+                    else [rule["type"]]
+                self.assertTrue(any(isinstance(value, types[t])
+                                    for t in allowed), (key, value))
+                if isinstance(value, str):
+                    self.assertLessEqual(len(value), rule["maxLength"], key)
+                if isinstance(value, list):
+                    self.assertLessEqual(len(value), rule["maxItems"], key)
+                    for v in value:
+                        self.assertIsInstance(v, str)
+                        self.assertLessEqual(len(v),
+                                             rule["items"]["maxLength"], key)
+
     def test_probe_ane_port_passes_new_blocks_through(self):
         payload = json.dumps({
             "available": True, "instances": [], "ane_nodes": [],
