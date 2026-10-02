@@ -86,6 +86,8 @@ describe("server-side PII scan", () => {
       "iBoot-1.198.51.100.7",
       "iBoot-999.1.2.3.4.198.51.100.7",
       "prefixiBoot-10151.140.19.700.2",
+      "iBoot-10151.192.168.1.5",
+      "iBoot-20712.198.51.100.7",
     ]) {
       expect(scanPii(JSON.stringify({ boot_chain: value }))).toHaveProperty("ipv4");
     }

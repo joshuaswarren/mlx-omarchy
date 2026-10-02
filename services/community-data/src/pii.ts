@@ -32,6 +32,12 @@ const PII_RE = new RegExp(
   "i",
 );
 const MAX_REPORTED_HITS = 50;
+// Observed collector firmware values only. Shape-based exceptions can
+// disguise an address as version components, even with a large build ID.
+const IBOOT_VERSIONS = new Set([
+  "iboot-10151.140.19.700.2",
+  "iboot-20712.1.2.0.0",
+]);
 
 // Header carrying the collector redactor's derived short host names
 // (X-MLX-Host-Aliases). Request-only: scanned against the summary,
@@ -81,8 +87,8 @@ export function scanPii(text: string, hostAliases: string[] = []): PiiKinds | nu
       // iBoot firmware uses long dotted version chains. The IPv4 regex
       // can match a four-component suffix (10151.140.19.700.2), which
       // the collector intentionally preserves. Recognize only the known
-      // five-component firmware form, with a build number outside the
-      // IPv4 octet range. Longer chains remain subject to the PII scan.
+      // firmware values above. Unrecognized versions remain subject to
+      // the PII scan until evidence establishes another safe exception.
       // Bound both search and parsing so each candidate costs at most
       // 256 characters, including on a payload full of dotted quads.
       const windowStart = Math.max(0, match.index - 128);
@@ -93,7 +99,7 @@ export function scanPii(text: string, hostAliases: string[] = []): PiiKinds | nu
           window.slice(start),
         );
         const previous = text[windowStart + start - 1];
-        if (version && Number(version[1]) > 255 &&
+        if (version && IBOOT_VERSIONS.has(version[0].toLowerCase()) &&
             (!previous || !/[\w.-]/.test(previous)) &&
             windowStart + start + version[0].length >= match.index + match[0].length) {
           continue;
