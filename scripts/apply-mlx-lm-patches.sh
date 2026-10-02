@@ -30,19 +30,30 @@ else
 fi
 SITE="$(dirname "$(ls -d "$VENV"/lib/python3.*/site-packages/mlx_lm 2>/dev/null | head -n 1 || true)")"
 [[ -d "$SITE/mlx_lm" ]] || { echo "mlx_lm not found under $VENV" >&2; exit 3; }
+# Two series: patches/ for mlx-lm 0.31.3 (every vendor lock), patches/mlx-lm-0.32/ for the 0.32 API
+# line (mlx-lm 94cdcae, the commit oMLX pins). StopSequences is the 0.32 API marker.
+SERIES="patches"
+if grep -q "^class StopSequences" "$SITE/mlx_lm/generate.py"; then
+  SERIES="patches/mlx-lm-0.32"
+fi
+echo "mlx-lm patch series: $SERIES"
+if [[ "${MLX_OMARCHY_CONV_RING:-0}" == 1 && "$SERIES" != "patches" ]]; then
+  echo "error: conv-ring has no mlx-lm 0.32 port (experimental, off by default); unset MLX_OMARCHY_CONV_RING" >&2
+  exit 6
+fi
 apply() {
   local name="$1"
-  if [[ ! -f "$ROOT/patches/$name" ]]; then
-    echo "error: patch file missing: $ROOT/patches/$name" >&2
+  if [[ ! -f "$ROOT/$SERIES/$name" ]]; then
+    echo "error: patch file missing: $ROOT/$SERIES/$name" >&2
     exit 5
   fi
   if patch --dry-run --directory="$SITE" --strip=1 --forward --fuzz=0 \
-      < "$ROOT/patches/$name" >/dev/null 2>&1; then
+      < "$ROOT/$SERIES/$name" >/dev/null 2>&1; then
     patch --directory="$SITE" --strip=1 --forward --fuzz=0 \
-      < "$ROOT/patches/$name"
+      < "$ROOT/$SERIES/$name"
     echo "applied: $name"
   elif patch --dry-run --directory="$SITE" --strip=1 --reverse \
-      < "$ROOT/patches/$name" >/dev/null 2>&1; then
+      < "$ROOT/$SERIES/$name" >/dev/null 2>&1; then
     echo "already applied: $name"
   else
     echo "patch does not apply (mlx-lm version mismatch?): $name" >&2
