@@ -14,10 +14,12 @@
 #include <cstdio>
 #include <cstring>
 #include <initializer_list>
+#include <mutex>
 #include <optional>
 #include <numeric>
 #include <string>
 #include <typeinfo>
+#include <unordered_map>
 #include <utility>
 
 #include "mlx/backend/common/binary.h"
@@ -7624,6 +7626,82 @@ bool q4_word_enabled() {
   return env == nullptr || std::strcmp(env, "1") == 0;
 }
 
+// S2PACK (decode-only multi-weight Q4 GEMV): pair-packed scale/bias
+// streams, two 16-bit values per u32, low half first. Pure byte
+// relocation — the packed kernel extracts the same 16 bits and applies
+// the same exact LOAD_VALUE widening, so scale and bias f32 values and
+// every downstream float op are bit-identical. Default OFF until gated.
+bool q4_s2pack_enabled() {
+  const char* env = std::getenv("MLX_OMARCHY_Q4_S2PACK");
+  return env != nullptr && std::strcmp(env, "1") == 0;
+}
+
+struct S2PackEntry {
+  // Holds the source array's data so its buffer cannot be recycled
+  // while the packed twin is bound.
+  std::shared_ptr<array::Data> source;
+  array packed;
+};
+
+std::mutex s2pack_mutex;
+std::unordered_map<const void*, S2PackEntry> s2pack_cache;
+
+// Pair-packed twin of a [rows, groups] 16-bit scale/bias array, packed
+// once on the host (UMA mapped buffers) and cached by source buffer.
+// nullptr = this tensor cannot be packed on this host and the caller
+// must keep the unpacked binding.
+const array* q4_s2pack_pairs(const array& src) {
+  const void* key = src.data_shared_ptr().get();
+  const int rows = src.shape(0);
+  const int groups = src.shape(1);
+  std::lock_guard<std::mutex> lk(s2pack_mutex);
+  auto it = s2pack_cache.find(key);
+  if (it != s2pack_cache.end()) {
+    if (it->second.packed.shape(0) == rows &&
+        it->second.packed.shape(1) == groups / 2) {
+      return &it->second.packed;
+    }
+    // Same buffer rebound to a different shape: repack.
+    s2pack_cache.erase(it);
+  }
+  auto* src_mem =
+      static_cast<const omarchy::VulkanBuffer*>(src.buffer().ptr());
+  if (src_mem == nullptr || !src_mem->coherent) {
+    return nullptr;
+  }
+  src.wait();  // one-time: the (long-finished) GPU writes behind the weights
+  array packed(Shape{rows, groups / 2}, uint32, nullptr, {});
+  array::Flags flags;
+  flags.contiguous = true;
+  flags.row_contiguous = true;
+  flags.col_contiguous = true;
+  packed.set_data(
+      omarchy::allocator().malloc(packed.nbytes()),
+      packed.size(),
+      Strides{groups / 2, 1},
+      flags,
+      0);
+  auto* dst_mem =
+      static_cast<omarchy::VulkanBuffer*>(packed.buffer().ptr());
+  if (dst_mem == nullptr || !dst_mem->coherent) {
+    return nullptr;  // packed dies here; its buffer frees with it
+  }
+  const uint16_t* in = src.data<uint16_t>();
+  uint32_t* out = static_cast<uint32_t*>(dst_mem->data);
+  for (int r = 0; r < rows; ++r) {
+    const uint16_t* row = in + static_cast<size_t>(r) * groups;
+    uint32_t* out_row = out + static_cast<size_t>(r) * (groups / 2);
+    for (int g = 0; g < groups / 2; ++g) {
+      out_row[g] =
+          static_cast<uint32_t>(row[2 * g]) |
+          (static_cast<uint32_t>(row[2 * g + 1]) << 16);
+    }
+  }
+  return &s2pack_cache
+      .emplace(key, S2PackEntry{src.data_shared_ptr(), std::move(packed)})
+      .first->second.packed;
+}
+
 bool float_dtype_supported(Dtype dtype, const CapabilityReport& caps) {
   if (dtype == float32) {
     return true;
@@ -7905,6 +7983,23 @@ bool dispatch_quantized_gemv_group(
       }
     }
   }
+  // S2PACK resolution: the kernel variant is per-dispatch, so one
+  // unpackable tensor falls the whole dispatch back to the unpacked
+  // kernels and buffers.
+  std::array<const array*, kQmmVecMultiWeights> packed_scales{};
+  std::array<const array*, kQmmVecMultiWeights> packed_biases{};
+  bool s2pack = q4_s2pack_enabled() && dtype == bfloat16 && subgroup_ready &&
+      (k % 128) == 0;
+  if (s2pack) {
+    for (size_t i = 0; i < members.size(); ++i) {
+      packed_scales[i] = q4_s2pack_pairs(members[i].node.inputs()[2]);
+      packed_biases[i] = q4_s2pack_pairs(members[i].node.inputs()[3]);
+      if (packed_scales[i] == nullptr || packed_biases[i] == nullptr) {
+        s2pack = false;
+        break;
+      }
+    }
+  }
   std::array<ComputeBinding, kQmmVecMultiBindings + 3> bindings{};
   bindings[0] = binding(outgate != nullptr ? outgate->x : x);
   const ComputeBinding filler = binding(members[0].node);
@@ -7913,8 +8008,10 @@ bool dispatch_quantized_gemv_group(
     if (i < members.size()) {
       const auto& member = members[i];
       bindings[base] = binding(member.node.inputs()[1]);
-      bindings[base + 1] = binding(member.node.inputs()[2]);
-      bindings[base + 2] = binding(member.node.inputs()[3]);
+      bindings[base + 1] = s2pack ? binding(*packed_scales[i])
+                                  : binding(member.node.inputs()[2]);
+      bindings[base + 2] = s2pack ? binding(*packed_biases[i])
+                                  : binding(member.node.inputs()[3]);
       bindings[base + 3] = binding(member.node);
       bindings[base + 4] =
           member.addend ? binding(*member.addend) : binding(member.node);
@@ -7937,7 +8034,10 @@ bool dispatch_quantized_gemv_group(
     bindings[kQmmVecMultiBindings + 1] = binding(outgate->gate);
     bindings[kQmmVecMultiBindings + 2] = binding(outgate->x);
   }
-  auto kernel = outgate != nullptr
+  auto kernel = s2pack
+      ? (outgate != nullptr ? ComputeKernel::QmmVecQ4MultiOutgateBF16S2Pack
+                            : ComputeKernel::QmmVecQ4MultiSubgroupBF16S2Pack)
+      : outgate != nullptr
       ? ComputeKernel::QmmVecQ4MultiOutgateBF16
       : subgroup_ready
       ? select_float_kernel(

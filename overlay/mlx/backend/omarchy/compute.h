@@ -774,6 +774,14 @@ enum class ComputeKernel : uint16_t {
   SdpaVjpReduceF32,
   SdpaVjpReduceF16,
   SdpaVjpReduceBF16,
+  // S2PACK twins of the bf16-subgroup multi-weight pair
+  // (MLX_OMARCHY_Q4_S2PACK): the scale/bias streams are pair-packed two
+  // bf16 per u32 at bind time and the shader extracts the same 16 bits
+  // through the same exact widening, so arithmetic is bit-identical.
+  // Decode-only; prefill and the other qmm_vec columns keep the original
+  // kernels. Append-only profile ids.
+  QmmVecQ4MultiSubgroupBF16S2Pack,
+  QmmVecQ4MultiOutgateBF16S2Pack,
   Count,
 };
 
