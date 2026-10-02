@@ -81,9 +81,28 @@ describe("server-side PII scan", () => {
       "iBoot-198.51.100.7",
       "iBoot-20712.1.2.0.0/8",
       "driver version: 198.51.100.7",
+      "iBoot-1.2.3.4.198.51.100.7",
+      "iBoot-999.1.2.198.51.100.7",
+      "iBoot-1.198.51.100.7",
+      "iBoot-999.1.2.3.4.198.51.100.7",
+      "prefixiBoot-10151.140.19.700.2",
     ]) {
       expect(scanPii(JSON.stringify({ boot_chain: value }))).toHaveProperty("ipv4");
     }
+  });
+
+  test("firmware recognition accepts consistent case variants", () => {
+    for (const prefix of ["iBoot", "IBOOT", "Iboot", "iboot"]) {
+      expect(scanPii(JSON.stringify({ boot_chain:
+        `${prefix}-10151.140.19.700.2` }))).toBeNull();
+    }
+  });
+
+  test("distant firmware tokens do not exempt later addresses", () => {
+    const value = "iBoot-10151.140.19.700.2 " + "x".repeat(1024) +
+      " 198.51.100.7";
+    expect(scanPii(JSON.stringify({ boot_chain: value }))).toEqual({ ipv4: 1 });
+    expect(scanPii("198.51.100.7 ".repeat(20000))).toEqual({ ipv4: 50 });
   });
 
   test("host alias inside a systemd unit path is refused", () => {

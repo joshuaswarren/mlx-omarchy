@@ -80,14 +80,22 @@ export function scanPii(text: string, hostAliases: string[] = []): PiiKinds | nu
     if (kind === "ipv4") {
       // iBoot firmware uses long dotted version chains. The IPv4 regex
       // can match a four-component suffix (10151.140.19.700.2), which
-      // the collector intentionally preserves. Exempt only a complete
-      // iBoot version token, not arbitrary version fields or addresses.
-      const start = text.lastIndexOf("iBoot-", match.index);
+      // the collector intentionally preserves. Recognize only the known
+      // five-component firmware form, with a build number outside the
+      // IPv4 octet range. Longer chains remain subject to the PII scan.
+      // Bound both search and parsing so each candidate costs at most
+      // 256 characters, including on a payload full of dotted quads.
+      const windowStart = Math.max(0, match.index - 128);
+      const window = text.slice(windowStart, match.index + 128);
+      const start = window.toLowerCase().lastIndexOf("iboot-", match.index - windowStart);
       if (start >= 0) {
-        const version = /^iBoot-\d+(?:\.\d+){4,}(?![\w./-])/i.exec(
-          text.slice(start),
+        const version = /^iBoot-(\d{1,8})(?:\.\d{1,3}){4}(?![\w./-])/i.exec(
+          window.slice(start),
         );
-        if (version && start + version[0].length >= match.index + match[0].length) {
+        const previous = text[windowStart + start - 1];
+        if (version && Number(version[1]) > 255 &&
+            (!previous || !/[\w.-]/.test(previous)) &&
+            windowStart + start + version[0].length >= match.index + match[0].length) {
           continue;
         }
       }
