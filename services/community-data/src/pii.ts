@@ -77,6 +77,21 @@ export function scanPii(text: string, hostAliases: string[] = []): PiiKinds | nu
     const groups = match.groups ?? {};
     const kind = Object.keys(groups).find((k) => groups[k] !== undefined);
     if (kind === undefined) continue;
+    if (kind === "ipv4") {
+      // iBoot firmware uses long dotted version chains. The IPv4 regex
+      // can match a four-component suffix (10151.140.19.700.2), which
+      // the collector intentionally preserves. Exempt only a complete
+      // iBoot version token, not arbitrary version fields or addresses.
+      const start = text.lastIndexOf("iBoot-", match.index);
+      if (start >= 0) {
+        const version = /^iBoot-\d+(?:\.\d+){4,}(?![\w./-])/i.exec(
+          text.slice(start),
+        );
+        if (version && start + version[0].length >= match.index + match[0].length) {
+          continue;
+        }
+      }
+    }
     kinds[kind] = (kinds[kind] ?? 0) + 1;
     hits++;
     if (hits >= MAX_REPORTED_HITS) break;
