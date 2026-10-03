@@ -15,6 +15,7 @@
 #include <array>
 #include <cctype>
 #include <cerrno>
+#include <condition_variable>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -26,6 +27,7 @@
 #include <stdexcept>
 #include <string>
 #include <system_error>
+#include <thread>
 #include <tuple>
 #include <type_traits>
 #include <utility>
@@ -467,36 +469,123 @@ AneSealedFile sealed_file_at(int directory_fd, const std::string& name) {
     throw bundle_error(
         "sealed snapshot memfd_create " + name + ": " + std::strerror(errno));
   }
+
+  // Single read pass, three consumers: the file read feeds an ordered
+  // writer (into the memfd) while the hash runs inline, so the copy
+  // overlaps the next chunk's read. The digest still describes exactly
+  // the sealed bytes: the write seal is applied after the last byte
+  // lands and F_GET_SEALS confirms it.
+  constexpr size_t kSealChunk = 4u << 20; // 4 MiB
+  constexpr int kSealSlots = 2;
+  struct SealSlot {
+    std::vector<uint8_t> buffer;
+    size_t size = 0;
+    SealSlot() { buffer.resize(kSealChunk); }
+  };
+  std::vector<SealSlot> slots(kSealSlots);
   Sha256Context context = sha256_begin();
-  std::array<uint8_t, 64 * 1024> bytes{};
+  std::exception_ptr worker_error;
+  std::mutex step_mutex;
+  std::condition_variable step_cv;
+  long long written_index = -1; // last chunk the writer finished
+  long long hashed_index = -1;  // last chunk dispatched to the writer
+  bool write_eof = false;
+
+  std::thread writer([&] {
+    long long index = 0;
+    for (;;) {
+      {
+        std::unique_lock<std::mutex> lock(step_mutex);
+        step_cv.wait(lock, [&] {
+          return hashed_index >= index || write_eof || worker_error != nullptr;
+        });
+        if (worker_error != nullptr || hashed_index < index) {
+          return; // error path or eof with no more dispatched chunks
+        }
+      }
+      SealSlot& slot = slots[size_t(index % kSealSlots)];
+      size_t done = 0;
+      while (done < slot.size) {
+        ssize_t result = ::write(
+            snapshot.get(), slot.buffer.data() + done, slot.size - done);
+        if (result < 0 && errno == EINTR) {
+          continue;
+        }
+        if (result <= 0) {
+          std::lock_guard<std::mutex> lock(step_mutex);
+          if (!worker_error) {
+            worker_error = std::make_exception_ptr(bundle_error(
+                "sealed snapshot write " + name + ": " +
+                std::strerror(errno)));
+          }
+          step_cv.notify_all();
+          return;
+        }
+        done += size_t(result);
+      }
+      {
+        std::lock_guard<std::mutex> lock(step_mutex);
+        written_index = index;
+      }
+      step_cv.notify_all();
+      ++index;
+    }
+  });
+
+  auto fail = [&](const char* what) {
+    std::lock_guard<std::mutex> lock(step_mutex);
+    if (!worker_error) {
+      worker_error = std::make_exception_ptr(
+          bundle_error(std::string("sealed snapshot ") + what + " " + name +
+                       ": " + std::strerror(errno)));
+    }
+    step_cv.notify_all();
+  };
+
+  long long read_index = 0;
   for (;;) {
-    ssize_t count = ::read(source.get(), bytes.data(), bytes.size());
-    if (count == 0) {
-      break;
+    // Two slots: before reusing slot (read_index % kSealSlots), the
+    // previous pass over it must be fully written.
+    if (read_index >= kSealSlots) {
+      std::unique_lock<std::mutex> lock(step_mutex);
+      step_cv.wait(lock, [&] {
+        return written_index >= read_index - kSealSlots ||
+            worker_error != nullptr;
+      });
+      if (worker_error != nullptr) {
+        break;
+      }
+    }
+    SealSlot& slot = slots[size_t(read_index % kSealSlots)];
+    ssize_t count = ::read(source.get(), slot.buffer.data(), slot.buffer.size());
+    if (count < 0 && errno == EINTR) {
+      continue;
     }
     if (count < 0) {
-      if (errno == EINTR) {
-        continue;
-      }
-      throw bundle_error(
-          "sealed snapshot read " + name + ": " + std::strerror(errno));
+      fail("read");
+      break;
     }
+    if (count == 0) {
+      std::lock_guard<std::mutex> lock(step_mutex);
+      write_eof = true;
+      step_cv.notify_all();
+      break;
+    }
+    slot.size = size_t(count);
     context.total += size_t(count);
-    sha256_feed(context, bytes.data(), size_t(count));
-    size_t written = 0;
-    while (written < size_t(count)) {
-      ssize_t result =
-          ::write(snapshot.get(), bytes.data() + written, size_t(count) - written);
-      if (result < 0 && errno == EINTR) {
-        continue;
-      }
-      if (result <= 0) {
-        throw bundle_error(
-            "sealed snapshot write " + name + ": " + std::strerror(errno));
-      }
-      written += size_t(result);
+    sha256_feed(context, slot.buffer.data(), slot.size);
+    {
+      std::lock_guard<std::mutex> lock(step_mutex);
+      hashed_index = read_index;
     }
+    step_cv.notify_all();
+    ++read_index;
   }
+  writer.join();
+  if (worker_error) {
+    std::rethrow_exception(worker_error);
+  }
+
   const std::string digest = sha256_pad_and_digest(context);
   const int wanted = F_SEAL_WRITE | F_SEAL_GROW | F_SEAL_SHRINK | F_SEAL_SEAL;
   if (::lseek(snapshot.get(), 0, SEEK_SET) < 0 ||
@@ -1362,6 +1451,33 @@ DigestCacheKey digest_key_for(
       ctime_ns};
 }
 
+// Fast-path eligibility (Main review, 2026-10-03): the source-fd hand-off
+// closes the check-then-use window only when the process could not modify
+// the bytes even in principle — the file AND every parent directory of the
+// canonical path are root-owned and not group/other-writable. A user-owned
+// bundle (any venv install, any $HOME) always takes the full sealed
+// snapshot.
+bool root_owned_readonly_chain(const std::filesystem::path& path) {
+  std::error_code ec;
+  const std::filesystem::path real = std::filesystem::weakly_canonical(path, ec);
+  if (ec) {
+    return false;
+  }
+  for (auto part = real; ; part = part.parent_path()) {
+    struct ::stat st {};
+    if (::stat(part.c_str(), &st) != 0) {
+      return false;
+    }
+    if (st.st_uid != 0 || (st.st_mode & 022) != 0) {
+      return false;
+    }
+    if (part.parent_path() == part) {
+      break; // reached the root directory
+    }
+  }
+  return true;
+}
+
 // True when the seal must ignore the digest sidecar and always hash.
 // OMARCHY_ANE_SEAL_VERIFY set to a truthy value (1/true/yes/on,
 // case-insensitive) forces the full sealed read+hash on every open.
@@ -1599,7 +1715,8 @@ AneBundle load_bundle_sealed(
     const std::string expected_digest = expected.at(name);
     AneSealedFile image;
     bool sealed_from_source = false;
-    if (!seal_stamp_forced_full()) {
+    if (!seal_stamp_forced_full() &&
+        root_owned_readonly_chain(dir / name)) {
       UniqueFd source(
           ::openat(directory.get(), name.c_str(), O_RDONLY | O_CLOEXEC | O_NOFOLLOW));
       if (source.get() >= 0) {

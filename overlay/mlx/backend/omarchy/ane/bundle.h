@@ -121,18 +121,23 @@ MLX_API AneSealedFile sealed_file_at(int directory_fd, const std::string& name);
 // own those descriptors and must outlive the bundle and the device session
 // that consumes them.
 //
-// Per-file shape: by default each file is snapshotted into a sealed memfd
-// (sealed_file_at, above). Warm-path exception (Jw16ParakeetWarm): when
-// the identity-keyed digest sidecar (the same store the unsealed path
-// uses, keyed by path|dev|ino|size|mtime_ns|ctime_ns) already carries this
-// exact identity's digest and it equals the pin, the read+hash+memfd pass
-// is skipped and the source descriptor is consumed directly. Any identity
-// change, a missing or stale sidecar entry, or OMARCHY_ANE_SEAL_VERIFY
-// (truthy: 1/true/yes/on) restores the full sealed snapshot; the pin
-// comparison runs in both paths. The sidecar is a mismatch detector for
-// accidental corruption or stale deploys, not an anti-tamper boundary:
-// a writer able to swap the bundle can also write the sidecar, so the
-// fast path adds no capability a same-uid writer lacked.
+// Per-file shape: the default is the sealed memfd snapshot (sealed_file_at,
+// above) — the snapshot closes the check-then-use window because the hash
+// describes exactly the immutable bytes the session reads. The snapshot's
+// read pass overlaps the memfd copy (hash inline, writer thread drains the
+// previous chunk), so the TOCTOU guarantee costs near the sha256 floor.
+// Warm-path exception (Main review, 2026-10-03): the source descriptor is
+// handed over without a snapshot ONLY when the canonical file AND every
+// parent directory are root-owned and not group/other-writable — bytes the
+// process could not modify even in principle — AND the identity-keyed
+// digest sidecar (path|dev|ino|size|mtime_ns|ctime_ns, the same store the
+// unsealed path uses) carries this exact identity's digest equal to the
+// pin. Any identity change, a missing or stale entry, or
+// OMARCHY_ANE_SEAL_VERIFY (truthy: 1/true/yes/on) restores the full sealed
+// snapshot; the pin comparison runs in both paths. The sidecar remains a
+// mismatch detector for accidental corruption or stale deploys, not an
+// anti-tamper boundary: it adds no capability the writer of a root-owned
+// read-only chain (root only) did not already have.
 MLX_API AneBundle load_bundle_sealed(
     const std::filesystem::path& dir,
     const std::map<std::string, std::string>& expected,
