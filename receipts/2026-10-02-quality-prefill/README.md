@@ -168,24 +168,35 @@ the scan pair `(48,1,1)+(48,21,1)` at 85.4 ms mean.
 
 ## Blockers and next steps (named, in-order)
 
-1. **27B mask-presence divergence (correctness, P0 for this fix):** root-cause
-   the scan path's mask handling — read `gated_delta_prefill.comp` tok
-   plumbing (`token_step`'s use of `tok` when bit2 set vs absent) and compare
-   against the composed fallback; the likely fix is backend-side. Until it
-   lands, the shipping series must NOT enable the maskless serve route on the
-   27B shape; the patch's per-model safety valve is the env switch plus the
-   pre-existing masked route.
-   **Ticket N (boot 58de8010, `n2-run-20261003.out`) narrowed it:** a
-   single-layer synthetic at the 27B GDN dims (`probes/qp_gdn_synth.py`) is
-   bit-identical maskless-vs-all-True for every T <= 63 on every route
-   (including strided fused-projection layouts) and diverges at every
-   T >= 64 — the kGdnCoopmatMinTokens boundary — on every route including
-   `MLX_OMARCHY_NO_COOPMAT=1` scan-only; wrong values are finite (no NaN).
-   27B per-layer dump (`probes/qp_layerdump.py`): divergence present at
-   layer 0 (the first GDN layer), no NaNs. So the defect is inside the
-   backend's T >= 64 GDN prefill kernels (coopmat and the chunked scan),
-   reachable purely by mask presence. Synthetic inputs must be rescaled
-   before per-token dumps (current scales explode the recurrence).
+1. **27B mask-presence divergence — ORACLE RESOLVED, direction reversed.**
+   Ticket N (boot 58de8010, `n2-run-20261003.out`) and the rescaled
+   state-level arbiter (`s2-run-20261004.out`, `probes/qp_gdn_synth2.py`)
+   show that for rep 1/3, T=64/65, NO_COOPMAT and default routes:
+   - `allvalid` arm's final STATE matches the fp64 reference to 1e-7
+     (bf16-input noise; e.g. T=65 rep=3: allvalid 8.5e-8 vs maskless 7.6e-4).
+   - `maskless` arm's STATE diverges from the reference by 1000-10000x more
+     than the masked arm.
+   The composed reference (`gated_delta_ops` in f32) matches the fp64
+   reference to 4e-7. **The MASKLESS route is the bug; the masked route
+   is correct.** The mlx-lm cache patch (which makes the serve path
+   take the maskless route) is therefore a 27B regression on top of the
+   measured perf win.
+   The backend mask handling in the scan shader and the coopmat path
+   remains suspect: the masked route agrees with the reference, but the
+   masked route's STATE hash differs from the reference at low bits
+   (bf16-noise level) — the masked route may accumulate f32 drift that
+   is benign on this prompt but could matter for longer contexts. The
+   true root cause (where mask==all-True stops being a no-op) was
+   narrowed to: present for every rep, only at T >= 64 (kGdnCoopmatMinTokens
+   boundary), on every kernel route incl. NO_COOPMAT scan-only. Probes
+   committed under `probes/`.
+   **Next-step (corrected):** extend the backend gate to permit the
+   fast coopmat kernel when the mask is provably all-true (cheap host-
+   side check: mask bytes all 0x01 — one read at primitive dispatch
+   time; failure -> fallback to scan); AND gate the mlx-lm cache patch
+   to conservative conditions (or revert and ship only the backend
+   change). The fix reduces the 27B's 6.4 s TTFT while preserving
+   outputs bit-exactly with the reference.
 2. Re-run the serve A/B with outputs verified bit-exact on 27B + 9B; only then
    treat the TTFT number as a product result.
 3. Zero-CPU gdb spot check on the 27B fixed serve (the F2 attempt raced the
