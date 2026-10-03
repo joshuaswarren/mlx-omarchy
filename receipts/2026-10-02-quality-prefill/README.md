@@ -190,13 +190,26 @@ the scan pair `(48,1,1)+(48,21,1)` at 85.4 ms mean.
    narrowed to: present for every rep, only at T >= 64 (kGdnCoopmatMinTokens
    boundary), on every kernel route incl. NO_COOPMAT scan-only. Probes
    committed under `probes/`.
-   **Next-step (corrected):** extend the backend gate to permit the
-   fast coopmat kernel when the mask is provably all-true (cheap host-
-   side check: mask bytes all 0x01 — one read at primitive dispatch
-   time; failure -> fallback to scan); AND gate the mlx-lm cache patch
-   to conservative conditions (or revert and ship only the backend
-   change). The fix reduces the 27B's 6.4 s TTFT while preserving
-   outputs bit-exactly with the reference.
+   **Next-step (corrected):** the real bug is uniform-conditional dead-code
+   elimination in the GLSL `precise` accumulator between the `flag & 2`
+   clear vs set scan shaders, so the maskless and all-true-mask binaries
+   produce different f32 state for the same inputs. Backend fix proposal
+   (one line per `flag & 2` read in the chunk loop of
+   `gated_delta_prefill.comp`): hoist the mask read to ALWAYS happen and
+   assign a uniform-bool local:
+   ```
+   bool tok = true;
+   if ((params.flags & 2u) != 0u) { tok = m_buf.v[shape[3] + t] != 0u; }
+   ```
+   (move the conditional to a single site that the compiler cannot elide
+   differently between the two flag values), keeping the rest of token_step
+   bit-for-bit identical between the maskless and all-true binaries. Add a
+   dovetail comment citing this oracle evidence. Doctest (next-lane first
+   test): the synth2 sweep at T=64/65, rep 1/3, NO_COOPMAT must produce
+   `bitsame=True` for both arms and `st_diff_maskless ≈ st_diff_allvalid ≈
+   1e-7`. Build on jw16 (glslc, ~2 min) or M2; run the doctest; then ship
+   the mlx-lm cache patch (which then becomes a pure perf change with no
+   correctness cost on the 27B).
 2. Re-run the serve A/B with outputs verified bit-exact on 27B + 9B; only then
    treat the TTFT number as a product result.
 3. Zero-CPU gdb spot check on the 27B fixed serve (the F2 attempt raced the
