@@ -518,17 +518,19 @@ struct DigestCacheKey {
   uint64_t ino;
   uint64_t size;
   uint64_t mtime_ns;
+  uint64_t ctime_ns;
 
   std::string serialize() const {
-    char hex[64];
+    char hex[96];
     std::snprintf(
         hex,
         sizeof(hex),
-        "|%llx|%llx|%llx|%llx",
+        "|%llx|%llx|%llx|%llx|%llx",
         static_cast<unsigned long long>(dev),
         static_cast<unsigned long long>(ino),
         static_cast<unsigned long long>(size),
-        static_cast<unsigned long long>(mtime_ns));
+        static_cast<unsigned long long>(mtime_ns),
+        static_cast<unsigned long long>(ctime_ns));
     return path + hex;
   }
 
@@ -1288,30 +1290,31 @@ std::map<DigestCacheKey, std::string> load_digest_cache_disk() {
     }
     std::string key = line.substr(0, sep);
     std::string digest = line.substr(sep + 1);
-    // Key layout: <path>|<dev>|<ino>|<size>|<mtime_ns> — split at the LAST
-    // four pipes; the path itself may contain anything but the digest tail
-    // and pipe count are validated structurally.
+    // Key layout: <path>|<dev>|<ino>|<size>|<mtime_ns>|<ctime_ns> — split
+    // at the LAST five pipes; the path itself may contain anything but the
+    // digest tail and pipe count are validated structurally.
     std::vector<size_t> pipes;
     for (size_t i = key.size(); i-- > 0;) {
       if (key[i] == '|') {
         pipes.push_back(i);
-        if (pipes.size() == 4) {
+        if (pipes.size() == 5) {
           break;
         }
       }
     }
-    if (pipes.size() != 4) {
+    if (pipes.size() != 5) {
       continue;
     }
     DigestCacheKey parsed;
-    parsed.path = key.substr(0, pipes[3]);
+    parsed.path = key.substr(0, pipes[4]);
     const auto field = [&](size_t n) -> uint64_t {
       return std::strtoull(key.c_str() + pipes[n] + 1, nullptr, 16);
     };
-    parsed.dev = field(3);
-    parsed.ino = field(2);
-    parsed.size = field(1);
-    parsed.mtime_ns = field(0);
+    parsed.dev = field(4);
+    parsed.ino = field(3);
+    parsed.size = field(2);
+    parsed.mtime_ns = field(1);
+    parsed.ctime_ns = field(0);
     entries.emplace(std::move(parsed), std::move(digest));
   }
   return entries;
@@ -1333,6 +1336,80 @@ void store_digest_cache_disk(
   output << serialized_key << ' ' << digest << '\n';
 }
 
+// Identity key for a currently-open file: path plus the stat tuple the
+// cache treats as content identity. Any in-place rewrite moves ctime_ns;
+// a replace moves inode; a truncate/append moves size and mtime_ns.
+DigestCacheKey digest_key_for(
+    const std::filesystem::path& path,
+    const struct ::stat& st) {
+#if defined(__APPLE__)
+  const uint64_t mtime_ns = uint64_t(st.st_mtimespec.tv_sec) * 1000000000ull +
+      uint64_t(st.st_mtimespec.tv_nsec);
+  const uint64_t ctime_ns = uint64_t(st.st_ctimespec.tv_sec) * 1000000000ull +
+      uint64_t(st.st_ctimespec.tv_nsec);
+#else
+  const uint64_t mtime_ns = uint64_t(st.st_mtim.tv_sec) * 1000000000ull +
+      uint64_t(st.st_mtim.tv_nsec);
+  const uint64_t ctime_ns = uint64_t(st.st_ctim.tv_sec) * 1000000000ull +
+      uint64_t(st.st_ctim.tv_nsec);
+#endif
+  return DigestCacheKey{
+      path.string(),
+      uint64_t(st.st_dev),
+      uint64_t(st.st_ino),
+      uint64_t(st.st_size),
+      mtime_ns,
+      ctime_ns};
+}
+
+// True when the seal must ignore the digest sidecar and always hash.
+// OMARCHY_ANE_SEAL_VERIFY set to a truthy value (1/true/yes/on,
+// case-insensitive) forces the full sealed read+hash on every open.
+bool seal_stamp_forced_full() {
+  const char* value = std::getenv("OMARCHY_ANE_SEAL_VERIFY");
+  if (value == nullptr) {
+    return false;
+  }
+  std::string lowered(value);
+  for (char& c : lowered) {
+    c = char(std::tolower(static_cast<unsigned char>(c)));
+  }
+  return lowered == "1" || lowered == "true" || lowered == "yes" ||
+      lowered == "on";
+}
+
+// Sidecar lookup without hashing: process memory first, then the disk
+// sidecar. Empty string means "no cached digest for this identity".
+std::string cached_digest_lookup(const DigestCacheKey& key) {
+  if (!digest_cache_enabled()) {
+    return {};
+  }
+  std::lock_guard<std::mutex> lock(g_digest_cache_mutex);
+  auto it = g_digest_cache.find(key);
+  if (it != g_digest_cache.end()) {
+    return it->second;
+  }
+  auto disk = load_digest_cache_disk();
+  auto dit = disk.find(key);
+  if (dit == disk.end()) {
+    return {};
+  }
+  g_digest_cache.emplace(key, dit->second);
+  return dit->second;
+}
+
+void store_cached_digest(const DigestCacheKey& key, const std::string& digest) {
+  if (!digest_cache_enabled()) {
+    return;
+  }
+  const std::string serialized = key.serialize();
+  std::lock_guard<std::mutex> lock(g_digest_cache_mutex);
+  g_digest_cache.emplace(key, digest);
+  if (auto sidecar = digest_cache_path(); !sidecar.empty()) {
+    store_digest_cache_disk(sidecar, serialized, digest);
+  }
+}
+
 // Returns the payload digest, re-hashing only when the kill-switch forces it,
 // the file identity has no cached digest, or the sidecar has no entry. The
 // returned digest is always compared against the manifest expectation by the
@@ -1342,44 +1419,14 @@ std::string sha256_file_cached(const std::filesystem::path& path) {
   if (::stat(path.c_str(), &st) != 0) {
     throw bundle_error("cannot stat file " + path.string());
   }
-#if defined(__APPLE__)
-  const uint64_t mtime_ns = uint64_t(st.st_mtimespec.tv_sec) * 1000000000ull +
-      uint64_t(st.st_mtimespec.tv_nsec);
-#else
-  const uint64_t mtime_ns = uint64_t(st.st_mtim.tv_sec) * 1000000000ull +
-      uint64_t(st.st_mtim.tv_nsec);
-#endif
-  DigestCacheKey key{
-      path.string(),
-      uint64_t(st.st_dev),
-      uint64_t(st.st_ino),
-      uint64_t(st.st_size),
-      mtime_ns};
+  DigestCacheKey key = digest_key_for(path, st);
   if (digest_cache_enabled()) {
-    std::lock_guard<std::mutex> lock(g_digest_cache_mutex);
-    auto it = g_digest_cache.find(key);
-    if (it != g_digest_cache.end()) {
-      return it->second;
-    }
-    // Not in this process: consult the sidecar (small file, only on a
-    // process's first use of a bundle). Stale entries are harmless — the
-    // digest is verified against the manifest below.
-    auto disk = load_digest_cache_disk();
-    auto dit = disk.find(key);
-    if (dit != disk.end()) {
-      g_digest_cache.emplace(key, dit->second);
-      return dit->second;
+    if (std::string cached = cached_digest_lookup(key); !cached.empty()) {
+      return cached;
     }
   }
   std::string digest = sha256_file(path);
-  if (digest_cache_enabled()) {
-    const std::string serialized = key.serialize();
-    std::lock_guard<std::mutex> lock(g_digest_cache_mutex);
-    g_digest_cache.emplace(std::move(key), digest);
-    if (auto sidecar = digest_cache_path(); !sidecar.empty()) {
-      store_digest_cache_disk(sidecar, serialized, digest);
-    }
-  }
+  store_cached_digest(key, digest);
   return digest;
 }
 
@@ -1540,8 +1587,59 @@ AneBundle load_bundle_sealed(
   // The manifest is sealed first: the parse, the directory contract, and
   // every payload decision below consume the sealed image, so a manifest
   // rewrite after this point cannot change what this session loads.
+  // stamp fast path (Jw16ParakeetWarm): when the identity-keyed digest
+  // sidecar carries a digest for this exact (dev, ino, size, mtime_ns,
+  // ctime_ns) tuple and it equals the pin, the per-process read+hash+memfd
+  // pass is skipped and the already-open source descriptor is handed to the
+  // session directly. Any identity change, a missing/stale entry, or
+  // OMARCHY_ANE_SEAL_VERIFY forces the full sealed snapshot below; the
+  // digest is still compared against the pin in both paths, so the sidecar
+  // only removes work on a verified identity, never the comparison.
+  const auto seal_one = [&](const std::string& name) {
+    const std::string expected_digest = expected.at(name);
+    AneSealedFile image;
+    bool sealed_from_source = false;
+    if (!seal_stamp_forced_full()) {
+      UniqueFd source(
+          ::openat(directory.get(), name.c_str(), O_RDONLY | O_CLOEXEC | O_NOFOLLOW));
+      if (source.get() >= 0) {
+        struct ::stat status {};
+        if (::fstat(source.get(), &status) == 0 && S_ISREG(status.st_mode)) {
+          const std::string cached = cached_digest_lookup(
+              digest_key_for(dir / name, status));
+          if (cached == expected_digest && !cached.empty()) {
+            image = AneSealedFile(source.release(), cached);
+            sealed_from_source = true;
+          }
+        }
+      }
+    }
+    if (!sealed_from_source) {
+      image = sealed_file_at(directory.get(), name);
+      struct ::stat status {};
+      if (::fstat(image.fd, &status) == 0) {
+        // Record the freshly verified digest under this identity so the
+        // next process can take the fast path. The memfd copy has the
+        // same content bytes but its own identity; key on the source.
+        UniqueFd source(
+            ::openat(directory.get(), name.c_str(), O_RDONLY | O_CLOEXEC | O_NOFOLLOW));
+        if (source.get() >= 0 && ::fstat(source.get(), &status) == 0 &&
+            S_ISREG(status.st_mode)) {
+          store_cached_digest(digest_key_for(dir / name, status), image.sha256);
+        }
+      }
+    }
+    if (image.sha256 != expected_digest) {
+      throw bundle_error(
+          "sealed " + name + " sha256 " + image.sha256 +
+          " does not match the pin " + expected_digest +
+          "; refusing to execute unverified bytes");
+    }
+    return image;
+  };
+
   const size_t manifest_slot = sealed.size();
-  sealed.push_back(sealed_file_at(directory.get(), "manifest.json"));
+  sealed.push_back(seal_one("manifest.json"));
   const std::string manifest_path =
       "/proc/self/fd/" + std::to_string(sealed[manifest_slot].fd);
   if (sealed[manifest_slot].sha256 != expected.at("manifest.json")) {
@@ -1620,14 +1718,8 @@ AneBundle load_bundle_sealed(
   std::map<std::string, std::filesystem::path> sealed_paths;
   std::map<std::filesystem::path, std::string> known_digests;
   for (const auto& payload : manifest.payloads) {
-    sealed.push_back(sealed_file_at(directory.get(), payload.path));
+    sealed.push_back(seal_one(payload.path));
     AneSealedFile& image = sealed.back();
-    if (image.sha256 != expected.at(payload.path)) {
-      throw bundle_error(
-          "sealed " + payload.path + " sha256 " + image.sha256 +
-          " does not match the pin " + expected.at(payload.path) +
-          "; refusing to execute unverified bytes");
-    }
     const std::string sealed_path = "/proc/self/fd/" + std::to_string(image.fd);
     sealed_paths.emplace(payload.path, sealed_path);
     known_digests.emplace(sealed_path, image.sha256);

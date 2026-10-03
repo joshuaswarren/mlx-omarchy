@@ -112,14 +112,27 @@ MLX_API std::string sha256_file(const std::filesystem::path& path);
 MLX_API AneSealedFile sealed_file_at(int directory_fd, const std::string& name);
 
 // The load-boundary seal: every file the session consumes (manifest.json
-// and each manifest payload of `dir`) is snapshotted into a sealed memfd,
-// hashed, and bound to `expected` (file name -> sha256) before any parse
-// that can reach execution. Every consumed file needs an expectation and
-// every expectation needs a consumed file; a mismatch, a missing pin, an
-// unknown file, or a link is a refusal. The returned bundle's program and
-// weights paths point at the sealed images (/proc/self/fd/<fd>); the
-// appended AneSealedFile entries own those descriptors and must outlive
-// the bundle and the device session that consumes it.
+// and each manifest payload of `dir`) is hashed and bound to `expected`
+// (file name -> sha256) before any parse that can reach execution. Every
+// consumed file needs an expectation and every expectation needs a
+// consumed file; a mismatch, a missing pin, an unknown file, or a link is
+// a refusal. The returned bundle's program and weights paths point at the
+// consumed images (/proc/self/fd/<fd>); the appended AneSealedFile entries
+// own those descriptors and must outlive the bundle and the device session
+// that consumes them.
+//
+// Per-file shape: by default each file is snapshotted into a sealed memfd
+// (sealed_file_at, above). Warm-path exception (Jw16ParakeetWarm): when
+// the identity-keyed digest sidecar (the same store the unsealed path
+// uses, keyed by path|dev|ino|size|mtime_ns|ctime_ns) already carries this
+// exact identity's digest and it equals the pin, the read+hash+memfd pass
+// is skipped and the source descriptor is consumed directly. Any identity
+// change, a missing or stale sidecar entry, or OMARCHY_ANE_SEAL_VERIFY
+// (truthy: 1/true/yes/on) restores the full sealed snapshot; the pin
+// comparison runs in both paths. The sidecar is a mismatch detector for
+// accidental corruption or stale deploys, not an anti-tamper boundary:
+// a writer able to swap the bundle can also write the sidecar, so the
+// fast path adds no capability a same-uid writer lacked.
 MLX_API AneBundle load_bundle_sealed(
     const std::filesystem::path& dir,
     const std::map<std::string, std::string>& expected,
