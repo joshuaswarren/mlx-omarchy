@@ -209,7 +209,16 @@ the scan pair `(48,1,1)+(48,21,1)` at 85.4 ms mean.
    `bitsame=True` for both arms and `st_diff_maskless ≈ st_diff_allvalid ≈
    1e-7`. Build on jw16 (glslc, ~2 min) or M2; run the doctest; then ship
    the mlx-lm cache patch (which then becomes a pure perf change with no
-   correctness cost on the 27B).
+   correctness cost on the 27B). **Refinement after 9B confirm (s2b):**
+   9B (rep=2) at T=64/65 NO_COOPMAT: st_diff_maskless ~ 5e-4 / 3e-4 vs
+   st_diff_allvalid ~ 1e-7 — the 9B also drifts at the primitive level.
+   The earlier 9B serve-route bit-exact digests (T~320) held only
+   because the bf16 output rounding masked the f32 state drift for
+   that specific prompt+seed. The bug is in the BACKEND (all mlx_lm GDN
+   consumers at T>=64 with the maskless path), not just the shim and
+   not just the 27B. The single-.comp edit is likely insufficient; the
+   precise fix needs a wheel build on jw16 (glslc) and the synth2
+   doctest rerun to converge on a correct mask semantics.
 2. Re-run the serve A/B with outputs verified bit-exact on 27B + 9B; only then
    treat the TTFT number as a product result.
 3. Zero-CPU gdb spot check on the 27B fixed serve (the F2 attempt raced the
