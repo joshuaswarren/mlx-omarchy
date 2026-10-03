@@ -103,8 +103,8 @@ first_piece_s = None
 while pos < T_full:
     w0 = max(0, pos - RF_ALIGNED)
     w1 = min(T_full, pos + WINDOW_ALIGNED)
-    h0 = w0 * ALIGNED_TO_HAR
-    h1 = min(T_HAR, w1 * ALIGNED_TO_HAR + 1)  # +1: reflection pad
+    h0 = min(T_HAR, max(0, w0) * ALIGNED_TO_HAR)
+    h1 = min(T_HAR, w1 * ALIGNED_TO_HAR)  # no +1: we drop the reflection pad
     t0 = time.perf_counter()
     f0c = gen.F0_conv(F0_pred[:, None, 2 * w0:2 * w1].transpose(
         0, 2, 1), mx.conv1d).transpose(0, 2, 1)
@@ -128,7 +128,7 @@ while pos < T_full:
         x_source = G.noise_res[i](x_source, s)
         xg = G.ups[i](xg.transpose(0, 2, 1), mx.conv_transpose1d).transpose(
             0, 2, 1)
-        if i == G.num_upsamples - 1:
+        if False and i == G.num_upsamples - 1:
             xg = G.reflection_pad(xg)
         xg = xg + x_source
         xs = None
@@ -138,9 +138,9 @@ while pos < T_full:
         xg = xs / G.num_kernels
     xg = mx.where(xg > 0, xg, xg * 0.01)
     xg = G.conv_post(xg.transpose(0, 2, 1), mx.conv1d).transpose(0, 2, 1)
-    spec = mx.exp(xg[:, :, : G.post_n_fft // 2 + 1])
-    phase = mx.sin(xg[:, :, G.post_n_fft // 2 + 1:])
-    win_audio = G.stft.inverse(spec, phase)  # MLXSTFT.inverse expects (B,F,T)
+    spec = mx.exp(xg[:, : G.post_n_fft // 2 + 1, :])
+    phase = mx.sin(xg[:, G.post_n_fft // 2 + 1:, :])
+    win_audio = G.stft.inverse(spec, phase)  # (B, F, T) expected
     mx.eval(win_audio)
     dt = time.perf_counter() - t0
     if first_piece_s is None:
