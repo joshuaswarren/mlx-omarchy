@@ -311,6 +311,7 @@
 #include "gated_delta_prefill_bf16.h"
 #include "gated_delta_prefill_coopmat_bf16.h"
 #include "gated_delta_prefill_coopmat_batch_bf16.h"
+#include "gated_delta_prefill_coopmat_c16_bf16.h"
 #include "fast_norm_gated_bf16.h"
 #include "fast_norm_gated_only_bf16.h"
 #include "gdn_conv_decode_bf16.h"
@@ -1321,6 +1322,10 @@ ShaderBytes shader_bytes(ComputeKernel kernel) {
       return {
           gated_delta_prefill_coopmat_batch_bf16,
           gated_delta_prefill_coopmat_batch_bf16_size};
+    case ComputeKernel::GatedDeltaPrefillCoopmatC16BF16:
+      return {
+          gated_delta_prefill_coopmat_c16_bf16,
+          gated_delta_prefill_coopmat_c16_bf16_size};
     case ComputeKernel::FastNormGatedBF16:
       return {fast_norm_gated_bf16, fast_norm_gated_bf16_size};
     case ComputeKernel::FastNormGatedOnlyBF16:

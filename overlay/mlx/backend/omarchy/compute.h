@@ -774,6 +774,12 @@ enum class ComputeKernel : uint16_t {
   SdpaVjpReduceF32,
   SdpaVjpReduceF16,
   SdpaVjpReduceBF16,
+  // Chunk-length C=16 variant of GatedDeltaPrefillCoopmatBatchBF16:
+  // block 2x2 inverse (T21 = -T22 N21 T11) over two 8x8 Neumann
+  // inversions, one dependent barrier chain per 16 tokens. Same
+  // contract; selected only by MLX_OMARCHY_GDN_C16. Append-only
+  // profile id.
+  GatedDeltaPrefillCoopmatC16BF16,
   Count,
 };
 

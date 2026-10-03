@@ -10871,6 +10871,12 @@ inline constexpr size_t kGdnCoopmatSharedBytes = 24832;
 // with the old per-step K slice removed.
 inline constexpr size_t kGdnCoopmatBatchSharedBytes = 32000;
 
+// Shared bytes of the C=16 chunk variant: C=8-batch layout with both-
+// half staging (8 KiB), a both-half wave array (8 KiB), a wide three-
+// tile round trip, the two persistent delta tiles, and the parked
+// Tinv blocks.
+inline constexpr size_t kGdnCoopmatC16SharedBytes = 52736;
+
 // Gated delta nets (upstream 0.32.3): the fused GatedDeltaDecodeBF16 kernel
 // serves the decode shape (T=1, no mask, square heads, bf16 activations,
 // f32 state); everything else - prefill token chunks, masks, f16/f32
@@ -11414,16 +11420,21 @@ void GatedDeltaUpdate::eval_gpu(
   static const bool gdn_batch_env =
       std::getenv("MLX_OMARCHY_GDN_BATCH") == nullptr ||
       omarchy::env_flag("MLX_OMARCHY_GDN_BATCH");
+  // C=16 chunk variant (contract-class): default OFF until gated;
+  // MLX_OMARCHY_GDN_C16=1 selects it over the batch kernel.
+  static const bool gdn_c16_env = omarchy::env_flag("MLX_OMARCHY_GDN_C16");
   const auto& gdn_caps = encoder.device().capabilities();
   const bool gdn_coopmat = fused_ready && T >= kGdnCoopmatMinTokens &&
       !has_mask && g.ndim() == 3 && !coopmat_gdn_disabled &&
       gdn_caps.cooperative_matrix_f32_8 && gdn_caps.subgroup_size == 32u;
   const bool gdn_batch = gdn_coopmat && gdn_batch_env &&
       kGdnCoopmatBatchSharedBytes <= gdn_caps.max_compute_shared_memory_size;
+  const bool gdn_c16 = gdn_coopmat && gdn_c16_env &&
+      kGdnCoopmatC16SharedBytes <= gdn_caps.max_compute_shared_memory_size;
   const bool gdn_coopmat_base =
       gdn_coopmat &&
       (kGdnCoopmatSharedBytes <= gdn_caps.max_compute_shared_memory_size);
-  if (gdn_batch || gdn_coopmat_base) {
+  if (gdn_c16 || gdn_batch || gdn_coopmat_base) {
     omarchy::ComputeParams params;
     params.count = Dv;
     params.lhs_size = checked_u32(q.data_size(), tag, out);
@@ -11457,8 +11468,10 @@ void GatedDeltaUpdate::eval_gpu(
         binding(g),      // 9 GBufF - unused when g is bf16
         binding(out)};   // 10 Snap - unused (single pass)
     encoder.dispatch_compute(
-        gdn_batch ? omarchy::ComputeKernel::GatedDeltaPrefillCoopmatBatchBF16
-                  : omarchy::ComputeKernel::GatedDeltaPrefillCoopmatBF16,
+        gdn_c16 ? omarchy::ComputeKernel::GatedDeltaPrefillCoopmatC16BF16
+                : (gdn_batch
+                       ? omarchy::ComputeKernel::GatedDeltaPrefillCoopmatBatchBF16
+                       : omarchy::ComputeKernel::GatedDeltaPrefillCoopmatBF16),
         bindings,
         params,
         static_cast<uint32_t>(Hv),
