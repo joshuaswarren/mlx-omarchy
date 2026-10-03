@@ -175,6 +175,17 @@ the scan pair `(48,1,1)+(48,21,1)` at 85.4 ms mean.
    lands, the shipping series must NOT enable the maskless serve route on the
    27B shape; the patch's per-model safety valve is the env switch plus the
    pre-existing masked route.
+   **Ticket N (boot 58de8010, `n2-run-20261003.out`) narrowed it:** a
+   single-layer synthetic at the 27B GDN dims (`probes/qp_gdn_synth.py`) is
+   bit-identical maskless-vs-all-True for every T <= 63 on every route
+   (including strided fused-projection layouts) and diverges at every
+   T >= 64 — the kGdnCoopmatMinTokens boundary — on every route including
+   `MLX_OMARCHY_NO_COOPMAT=1` scan-only; wrong values are finite (no NaN).
+   27B per-layer dump (`probes/qp_layerdump.py`): divergence present at
+   layer 0 (the first GDN layer), no NaNs. So the defect is inside the
+   backend's T >= 64 GDN prefill kernels (coopmat and the chunked scan),
+   reachable purely by mask presence. Synthetic inputs must be rescaled
+   before per-token dumps (current scales explode the recurrence).
 2. Re-run the serve A/B with outputs verified bit-exact on 27B + 9B; only then
    treat the TTFT number as a product result.
 3. Zero-CPU gdb spot check on the 27B fixed serve (the F2 attempt raced the
