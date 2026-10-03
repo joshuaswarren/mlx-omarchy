@@ -10871,11 +10871,12 @@ inline constexpr size_t kGdnCoopmatSharedBytes = 24832;
 // with the old per-step K slice removed.
 inline constexpr size_t kGdnCoopmatBatchSharedBytes = 32000;
 
-// Shared bytes of the C=16 chunk variant: C=8-batch layout with both-
-// half staging (8 KiB), a both-half wave array (8 KiB), a wide three-
-// tile round trip, the two persistent delta tiles, and the parked
-// Tinv blocks.
-inline constexpr size_t kGdnCoopmatC16SharedBytes = 52736;
+// Shared bytes of the C=16 chunk variant: state (16 KiB) + raw both-
+// half k/q staging (4 KiB) + a 4-slice both-half wave array (2 KiB) +
+// a 5-tile wide round trip (4 KiB) + the parked Tinv/delta tiles and
+// scratch (6 KiB) + prefix arrays. Fits the G13C 32 KiB workgroup
+// limit.
+inline constexpr size_t kGdnCoopmatC16SharedBytes = 32256;
 
 // Gated delta nets (upstream 0.32.3): the fused GatedDeltaDecodeBF16 kernel
 // serves the decode shape (T=1, no mask, square heads, bf16 activations,

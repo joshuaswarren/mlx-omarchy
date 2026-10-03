@@ -1,50 +1,41 @@
 // Copyright © 2026 Joshua Warren / mlx-omarchy contributors.
 // SPDX-License-Identifier: MIT
 //
-// Chunk-length C=16 variant of gated_delta_prefill_coopmat_batch.comp
-// (the G4 round-trip diet). Same contract, same per-element arithmetic
-// class, same f32 state: per 16-token chunk the strictly lower
-// triangular 16x16 matrix N = strict_lower(diag(beta) K.K^T . Gamma)
-// splits into 8x8 blocks [[N11, 0], [N21, N22]] (the upper-right block
-// is identically zero), so the exact inverse of I + N is
-//   Tinv = [[T11, 0], [T21, T22]],
-//   T11 = (I + N11)^-1, T22 = (I + N22)^-1, T21 = -T22 . N21 . T11,
-// and each 8x8 block inverse uses the same (I - N)(I + N^2 + N^4 + N^6)
-// polynomial as the C=8 kernel (N_block^8 = 0). delta and y inherit the
-// block structure:
-//   delta1 = T11 . U1,  delta2 = T21 . U1 + T22 . U2,
-//   y1 = tril8(Q1K1^T . G11) . delta1 + (gamma Q1) . S
+// Chunk-length C=16 variant of the GDN coopmat prefill (G4-diet class,
+// f32 state). Same contract, chunk-form rounding at C=16; gated by the
+// per-op / greedy / PPL policy (entries/Jw16GdnBlock16), not by bit
+// equality with C=8. Selected only by MLX_OMARCHY_GDN_C16 (dispatch,
+// primitives.cpp); the C=8 paths are untouched.
+//
+// Algebra (per 16-token chunk, gamma_log the inclusive prefix over the
+// chunk, exactly entries/Jw16GdnBlock16): N = strict_lower(diag(beta)
+// K.K^T . Gamma) splits into 8x8 blocks [[N11, 0], [N21, N22]] (the
+// upper-right block is identically zero), so (I+N)^-1 =
+// [[T11, 0], [T21, T22]] with T11/T22 the C=8 8x8 Neumann polynomial
+// inverses and T21 = -T22 . N21 . T11. Then
+//   delta1 = T11 . U1,  delta2 = T22 . U2 - (T22 N21 T11) . U1,
+//   y1 = tril8(Q1K1^T . G11) . delta1 + (gamma Q1) . S,
 //   y2 = (Q2K1^T . G21) . delta1 + tril8(Q2K2^T . G22) . delta2
-//        + (gamma Q2) . S
-// with U_i = diag(beta_i) V_i - (diag(gamma beta_i) K_i) . S and the
-// elementwise Gamma blocks exp(gamma_r - gamma_c) exactly as in C=8.
-// The state update decays all 16 tokens to gamma_15.
+//        + (gamma Q2) . S,
+// and the state update decays all 16 tokens to gamma_15. Partial
+// chunks (valid < 16) reproduce C=8 semantics: lanes past valid
+// contribute zero everywhere (gamma prefix freezes, beta/k/q/v read
+// zero), so N's invalid rows/columns vanish, Tinv extends by the
+// identity, and the y/state writes are masked.
 //
-// The point of C=16 is the synchronization structure, not the algebra:
-// the dependent barrier-serialized chain (N scale, two Neumann
-// inversions, the T21 chain, delta, the QK^T tri scale, out) runs once
-// per 16 tokens instead of twice, and the double-buffered staging loop
-// plus the (gamma Q).S accumulation amortize their barriers over twice
-// the tokens. The price is one extra lower-triangular tile per K.K^T /
-// Q.K^T class (3 of 4 tiles instead of 1 per 8 tokens) and the T21
-// chain. All exponents stay "later minus earlier" (<= 0) exactly as in
-// C=8: every Gamma factor rides a shared round trip, never folded into
-// operand staging, so no exp(-gamma) can overflow for any gate.
+// The point of C=16 is the synchronization structure: the dependent
+// chain (N/m2 scale, two Neumann inversions, the T21 chain, delta, the
+// QK^T tri scale, out) runs once per 16 tokens instead of twice. All
+// exponents stay "later minus earlier" (<= 0) as in C=8; row scales
+// (beta*gamma on M2, gamma on tmp) ride the same shared round trips —
+// the uniform row scale of an accumulated product is the same
+// reassociation class as C=8's post-MMA tile scales.
 //
-// Synchronization/staging mirrors the batch kernel: loop 1 double-
-// buffers both token halves per Dk step (one barrier per step), the
-// state update runs in 4-slice waves where the FMA reads only the
-// lane's own store-mapped elements, and three tiles share one wide
-// round-trip slot so their scales/masks cost one barrier each way.
-// Partial chunks (valid < 16) reproduce the C=8 semantics: lanes past
-// valid contribute zero everywhere (gamma prefix freezes, beta/k/q/v
-// read zero), so N's invalid rows/columns are zero, Tinv extends by
-// the identity, and the y/state writes are masked.
-//
-// Selected only by MLX_OMARCHY_GDN_C16 (dispatch, primitives.cpp);
-// the C=8 paths are untouched. Numeric contract: chunk-form rounding
-// at C=16, gated by the per-op / greedy / PPL policy
-// (entries/Jw16GdnBlock16), not by bit equality with C=8.
+// Shared budget fits the G13C 32 KiB workgroup limit (32256 B): raw
+// k/q staging only (single-buffered; scales applied post-MMA), the
+// state, a 4-slice both-half wave array, one 5-tile wide round trip,
+// and the parked Tinv/delta tiles. One workgroup barrier per wave and
+// two per Dk step in loop 1.
 
 #version 460
 
@@ -123,30 +114,28 @@ uint bf16_pack(float lo, float hi) {
   return (hb << 16) | (lb & 0xffffu);
 }
 
-// Shared tiles. s_state: the simdgroup's sixteen 8x8 state slices.
-// s_k/s_kg/s_q/s_qg: double-buffered chunk-step staging for both token
-// halves ([parity][sg][half * 64 + e]). kgc_all: per state-update wave,
-// four staged K slices of BOTH halves. rtw: wide round-trip slot
-// holding three 8x8 tiles (N11/N21/N22, then the scaled QK^T tiles).
-// dlt/dlt2: the two delta tiles, live across the y and state sections.
+// Shared tiles (32256 B). s_state: the simdgroup's sixteen 8x8 state
+// slices. s_k/s_q: raw chunk-step staging for both token halves
+// (scales applied post-MMA through the rtw windows). kgc_all: one
+// state-update wave, four K slices of BOTH halves. rtw: wide round
+// trip, five tiles (N11/m2_1/N21/m2_2/N22, then QK^T tiles); delta
+// lives in tiles 1/3 from the U phase onward. t11_s/t22_s: parked
+// Tinv blocks, borrowed by the tmp tiles in the QK^T window. rt_b:
+// Neumann scratch, V staging, the T21 product, and the wave kd store.
 shared float s_state[4][KSTEPS * 64];
-shared float s_k[2][4][2 * 64];
-shared float s_kg[2][4][2 * 64];
-shared float s_q[2][4][2 * 64];
-shared float s_qg[2][4][2 * 64];
-shared float kgc_all[4][2 * 4 * 64];
-shared float v_s[4][2 * 64];
-shared float rtw[4][3 * 64];
-shared float rt_b[4][64];
-shared float dlt_s[4][64];
-shared float dlt2_s[4][64];
+shared float s_k[4][2 * 64];
+shared float s_q[4][2 * 64];
+shared float kgc_all[4][2 * 64];
+shared float rtw[4][5 * 64];
 shared float t11_s[4][64];
 shared float t22_s[4][64];
-shared float t21_s[4][64];
+shared float dlt_s[4][64];
+shared float dlt2_s[4][64];
+shared float rt_b[4][64];
 shared float gamma_s[4][C];
 shared float beta_s[4][C];
 
-// Per-lane constants the staging helper reads (set once in main).
+// Per-lane staging constants (set once in main).
 uint g_sg;
 uint g_e0;
 uint g_r0;
@@ -156,10 +145,6 @@ uint g_qoff;
 uint g_hv;
 uint g_head;
 uint g_valid;
-float g_bg0;
-float g_bg1;
-float g_gam0;
-float g_gam1;
 
 coopmat<float, gl_ScopeSubgroup, 8, 8, gl_MatrixUseA> mat_a;
 coopmat<float, gl_ScopeSubgroup, 8, 8, gl_MatrixUseB> mat_b;
@@ -168,55 +153,51 @@ coopmat<float, gl_ScopeSubgroup, 8, 8, gl_MatrixUseB> mat_b2;
 coopmat<float, gl_ScopeSubgroup, 8, 8, gl_MatrixUseA> mat_a3;
 coopmat<float, gl_ScopeSubgroup, 8, 8, gl_MatrixUseAccumulator> acc;
 
-// Stage chunk-step kk's k/q tiles for both token halves (raw and
-// row-scaled variants) into parity p. Half h covers tokens
-// t0v + h*8 .. +7; its row scale rides g_bg{h} (beta*gamma) or
-// g_gam{h} (gamma). Callers barrier before loading from p.
-void stage_kq(uint t0v, uint kk, uint p) {
+// Stage chunk-step kk's raw k tiles for both token halves. Rows past
+// valid read zero. The caller barriers before loading.
+void stage_k(uint t0v, uint kk) {
   uint kbase = g_koff + (t0v + g_r0) * g_hv * DK + g_head * DK + kk * 8u + g_c0;
-  uint kbase2 = kbase + 8u * g_hv * DK;
-  uint qbase = g_qoff + (t0v + g_r0) * g_hv * DK + g_head * DK + kk * 8u + g_c0;
-  uint qbase2 = qbase + 8u * g_hv * DK;
   float kv0 = 0.0;
   float kv1 = 0.0;
   float kv20 = 0.0;
   float kv21 = 0.0;
+  if (g_r0 < g_valid) {
+    uint kw = k_buf.w[kbase >> 1u];
+    kv0 = bf16_word_lo(kw);
+    kv1 = bf16_word_hi(kw);
+  }
+  if (g_r0 + H < g_valid) {
+    uint kw2 = k_buf.w[(kbase + H * g_hv * DK) >> 1u];
+    kv20 = bf16_word_lo(kw2);
+    kv21 = bf16_word_hi(kw2);
+  }
+  s_k[g_sg][g_e0] = kv0;
+  s_k[g_sg][g_e0 + 1u] = kv1;
+  s_k[g_sg][64u + g_e0] = kv20;
+  s_k[g_sg][64u + g_e0 + 1u] = kv21;
+}
+
+// Same for q.
+void stage_q(uint t0v, uint kk) {
+  uint qbase = g_qoff + (t0v + g_r0) * g_hv * DK + g_head * DK + kk * 8u + g_c0;
   float qv0 = 0.0;
   float qv1 = 0.0;
   float qv20 = 0.0;
   float qv21 = 0.0;
   if (g_r0 < g_valid) {
-    uint kw = k_buf.w[kbase >> 1u];
-    kv0 = bf16_word_lo(kw);
-    kv1 = bf16_word_hi(kw);
     uint qw = q_buf.w[qbase >> 1u];
     qv0 = bf16_word_lo(qw);
     qv1 = bf16_word_hi(qw);
   }
-  if (g_r0 + 8u < g_valid) {
-    uint kw2 = k_buf.w[kbase2 >> 1u];
-    kv20 = bf16_word_lo(kw2);
-    kv21 = bf16_word_hi(kw2);
-    uint qw2 = q_buf.w[qbase2 >> 1u];
+  if (g_r0 + H < g_valid) {
+    uint qw2 = q_buf.w[(qbase + H * g_hv * DK) >> 1u];
     qv20 = bf16_word_lo(qw2);
     qv21 = bf16_word_hi(qw2);
   }
-  s_k[p][g_sg][g_e0] = kv0;
-  s_k[p][g_sg][g_e0 + 1u] = kv1;
-  s_k[p][g_sg][64u + g_e0] = kv20;
-  s_k[p][g_sg][64u + g_e0 + 1u] = kv21;
-  s_kg[p][g_sg][g_e0] = kv0 * g_bg0;
-  s_kg[p][g_sg][g_e0 + 1u] = kv1 * g_bg0;
-  s_kg[p][g_sg][64u + g_e0] = kv20 * g_bg1;
-  s_kg[p][g_sg][64u + g_e0 + 1u] = kv21 * g_bg1;
-  s_q[p][g_sg][g_e0] = qv0;
-  s_q[p][g_sg][g_e0 + 1u] = qv1;
-  s_q[p][g_sg][64u + g_e0] = qv20;
-  s_q[p][g_sg][64u + g_e0 + 1u] = qv21;
-  s_qg[p][g_sg][g_e0] = qv0 * g_gam0;
-  s_qg[p][g_sg][g_e0 + 1u] = qv1 * g_gam0;
-  s_qg[p][g_sg][64u + g_e0] = qv20 * g_gam1;
-  s_qg[p][g_sg][64u + g_e0 + 1u] = qv21 * g_gam1;
+  s_q[g_sg][g_e0] = qv0;
+  s_q[g_sg][g_e0 + 1u] = qv1;
+  s_q[g_sg][64u + g_e0] = qv20;
+  s_q[g_sg][64u + g_e0 + 1u] = qv21;
 }
 
 void main() {
@@ -289,10 +270,8 @@ void main() {
     const float beta1_r0 = beta_s[sg][H + r0];
     const float gam0_r0 = exp(gamma_s[sg][r0]);
     const float gam1_r0 = exp(gamma_s[sg][H + r0]);
-    g_bg0 = beta0_r0 * gam0_r0;
-    g_bg1 = beta1_r0 * gam1_r0;
-    g_gam0 = gam0_r0;
-    g_gam1 = gam1_r0;
+    const float bg0_r0 = beta0_r0 * gam0_r0;
+    const float bg1_r0 = beta1_r0 * gam1_r0;
     // Decay from token (h*8 + r0) to the chunk end, log-domain
     // difference; zero past valid so invalid rows contribute nothing.
     const float dec0_r0 =
@@ -300,9 +279,9 @@ void main() {
     const float dec1_r0 =
         r0 + H < valid ? exp(gamma_s[sg][C - 1u] - gamma_s[sg][H + r0]) : 0.0;
 
-    // Loop 1: accumulate the raw KK^T / QK^T tiles (11/21/22 pattern;
-    // the 12 tiles are identically zero), (gamma beta K).S and
-    // (gamma Q).S for both halves, with double-buffered staging.
+    // Loop 1: raw tiles. Per Dk step: stage k, barrier, K-class MMAs,
+    // stage q, barrier, Q-class MMAs. The row scales (beta*gamma on
+    // M2, gamma on tmp) are applied post-MMA in the round-trip windows.
     coopmat<float, gl_ScopeSubgroup, 8, 8, gl_MatrixUseAccumulator> kkt11 =
         coopmat<float, gl_ScopeSubgroup, 8, 8, gl_MatrixUseAccumulator>(0.0);
     coopmat<float, gl_ScopeSubgroup, 8, 8, gl_MatrixUseAccumulator> kkt21 =
@@ -323,68 +302,112 @@ void main() {
         coopmat<float, gl_ScopeSubgroup, 8, 8, gl_MatrixUseAccumulator>(0.0);
     coopmat<float, gl_ScopeSubgroup, 8, 8, gl_MatrixUseAccumulator> tmp2 =
         coopmat<float, gl_ScopeSubgroup, 8, 8, gl_MatrixUseAccumulator>(0.0);
-    stage_kq(t0, 0u, 0u);
-    barrier();
-    uint par = 0u;
     for (uint kk = 0u; kk < KSTEPS; ++kk) {
-      if (kk + 1u < KSTEPS) {
-        stage_kq(t0, kk + 1u, par ^ 1u);
-      }
-      // K1^T / K2^T as B operands (column-major views).
-      coopMatLoad(mat_b, s_k[par][sg], 0, 8, gl_CooperativeMatrixLayoutColumnMajor);
-      coopMatLoad(mat_b2, s_k[par][sg], 64u, 8, gl_CooperativeMatrixLayoutColumnMajor);
-      coopMatLoad(mat_a, s_k[par][sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
+      stage_k(t0, kk);
+      barrier();
+      coopMatLoad(mat_b, s_k[sg], 0, 8, gl_CooperativeMatrixLayoutColumnMajor);
+      coopMatLoad(mat_b2, s_k[sg], 64u, 8, gl_CooperativeMatrixLayoutColumnMajor);
+      coopMatLoad(mat_a, s_k[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
       kkt11 = coopMatMulAdd(mat_a, mat_b, kkt11);
-      coopMatLoad(mat_a, s_k[par][sg], 64u, 8, gl_CooperativeMatrixLayoutRowMajor);
+      coopMatLoad(mat_a, s_k[sg], 64u, 8, gl_CooperativeMatrixLayoutRowMajor);
       kkt21 = coopMatMulAdd(mat_a, mat_b, kkt21);
       kkt22 = coopMatMulAdd(mat_a, mat_b2, kkt22);
-      coopMatLoad(mat_a, s_q[par][sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
+      coopMatLoad(mat_b, s_state[sg], kk * 64u, 8, gl_CooperativeMatrixLayoutRowMajor);
+      coopMatLoad(mat_a, s_k[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
+      m2_1 = coopMatMulAdd(mat_a, mat_b, m2_1);
+      coopMatLoad(mat_a, s_k[sg], 64u, 8, gl_CooperativeMatrixLayoutRowMajor);
+      m2_2 = coopMatMulAdd(mat_a, mat_b, m2_2);
+      stage_q(t0, kk);
+      barrier();
+      coopMatLoad(mat_b, s_q[sg], 0, 8, gl_CooperativeMatrixLayoutColumnMajor);
+      coopMatLoad(mat_b2, s_q[sg], 64u, 8, gl_CooperativeMatrixLayoutColumnMajor);
+      coopMatLoad(mat_a, s_q[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
       qkt11 = coopMatMulAdd(mat_a, mat_b, qkt11);
-      coopMatLoad(mat_a, s_q[par][sg], 64u, 8, gl_CooperativeMatrixLayoutRowMajor);
+      coopMatLoad(mat_a, s_q[sg], 64u, 8, gl_CooperativeMatrixLayoutRowMajor);
       qkt21 = coopMatMulAdd(mat_a, mat_b, qkt21);
       qkt22 = coopMatMulAdd(mat_a, mat_b2, qkt22);
-      // (gamma beta K_h) . S and (gamma Q_h) . S: state slice as B.
       coopMatLoad(mat_b, s_state[sg], kk * 64u, 8, gl_CooperativeMatrixLayoutRowMajor);
-      coopMatLoad(mat_a, s_kg[par][sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
-      m2_1 = coopMatMulAdd(mat_a, mat_b, m2_1);
-      coopMatLoad(mat_a, s_kg[par][sg], 64u, 8, gl_CooperativeMatrixLayoutRowMajor);
-      m2_2 = coopMatMulAdd(mat_a, mat_b, m2_2);
-      coopMatLoad(mat_a, s_qg[par][sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
+      coopMatLoad(mat_a, s_q[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
       tmp1 = coopMatMulAdd(mat_a, mat_b, tmp1);
-      coopMatLoad(mat_a, s_qg[par][sg], 64u, 8, gl_CooperativeMatrixLayoutRowMajor);
+      coopMatLoad(mat_a, s_q[sg], 64u, 8, gl_CooperativeMatrixLayoutRowMajor);
       tmp2 = coopMatMulAdd(mat_a, mat_b, tmp2);
-      barrier();
-      par ^= 1u;
     }
 
-    // N tiles ride the wide slot: N11 at 0, N21 at 64, N22 at 128.
-    // One store barrier, one scale barrier for all three.
+    // N tiles and raw M2 ride the wide slot: N11 at 0, m2_1 at 64,
+    // N21 at 128, m2_2 at 192, N22 at 256. One store barrier, one
+    // scale barrier for all five (N11/N22 strict masks, N21 unmasked,
+    // M2 rows scaled by beta*gamma).
     coopMatStore(kkt11, rtw[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
-    coopMatStore(kkt21, rtw[sg], 64u, 8, gl_CooperativeMatrixLayoutRowMajor);
-    coopMatStore(kkt22, rtw[sg], 128u, 8, gl_CooperativeMatrixLayoutRowMajor);
+    coopMatStore(m2_1, rtw[sg], 64u, 8, gl_CooperativeMatrixLayoutRowMajor);
+    coopMatStore(kkt21, rtw[sg], 128u, 8, gl_CooperativeMatrixLayoutRowMajor);
+    coopMatStore(m2_2, rtw[sg], 192u, 8, gl_CooperativeMatrixLayoutRowMajor);
+    coopMatStore(kkt22, rtw[sg], 256u, 8, gl_CooperativeMatrixLayoutRowMajor);
     barrier();
     {
       float n0 = rtw[sg][e0];
       float n1 = rtw[sg][e0 + 1u];
-      // N11: strict lower, beta_0 rows, gamma within half 0.
       rtw[sg][e0] = (c0 < r0)
           ? n0 * beta0_r0 * exp(gamma_s[sg][r0] - gamma_s[sg][c0]) : 0.0;
       rtw[sg][e0 + 1u] = (c0 + 1u < r0)
           ? n1 * beta0_r0 * exp(gamma_s[sg][r0] - gamma_s[sg][c0 + 1u]) : 0.0;
-      // N21: rows 8..15, cols 0..7 — every entry strict lower, no mask.
       float m0 = rtw[sg][64u + e0];
       float m1 = rtw[sg][64u + e0 + 1u];
-      rtw[sg][64u + e0] = m0 * beta1_r0 * exp(gamma_s[sg][H + r0] - gamma_s[sg][c0]);
-      rtw[sg][64u + e0 + 1u] =
-          m1 * beta1_r0 * exp(gamma_s[sg][H + r0] - gamma_s[sg][c0 + 1u]);
-      // N22: strict lower, beta_1 rows, gamma within half 1.
-      float p0 = rtw[sg][128u + e0];
-      float p1 = rtw[sg][128u + e0 + 1u];
-      rtw[sg][128u + e0] = (c0 < r0)
+      rtw[sg][64u + e0] = m0 * bg0_r0;
+      rtw[sg][64u + e0 + 1u] = m1 * bg0_r0;
+      float t0v = rtw[sg][128u + e0];
+      float t1v = rtw[sg][128u + e0 + 1u];
+      rtw[sg][128u + e0] = t0v * beta1_r0 * exp(gamma_s[sg][H + r0] - gamma_s[sg][c0]);
+      rtw[sg][128u + e0 + 1u] =
+          t1v * beta1_r0 * exp(gamma_s[sg][H + r0] - gamma_s[sg][c0 + 1u]);
+      float u0 = rtw[sg][192u + e0];
+      float u1 = rtw[sg][192u + e0 + 1u];
+      rtw[sg][192u + e0] = u0 * bg1_r0;
+      rtw[sg][192u + e0 + 1u] = u1 * bg1_r0;
+      float p0 = rtw[sg][256u + e0];
+      float p1 = rtw[sg][256u + e0 + 1u];
+      rtw[sg][256u + e0] = (c0 < r0)
           ? p0 * beta1_r0 * exp(gamma_s[sg][H + r0] - gamma_s[sg][H + c0]) : 0.0;
-      rtw[sg][128u + e0 + 1u] = (c0 + 1u < r0)
+      rtw[sg][256u + e0 + 1u] = (c0 + 1u < r0)
           ? p1 * beta1_r0 * exp(gamma_s[sg][H + r0] - gamma_s[sg][H + c0 + 1u]) : 0.0;
     }
+    barrier();
+
+    // U tiles: U_h = diag(beta_h) V_h - M2_h. V stages through rt_b,
+    // one half at a time; U1/U2 park in dlt_s/dlt2_s until delta.
+    uint vbase = v_off + (t0 + r0) * hv * params.matrix_n + head * params.matrix_n + dv0 + c0;
+    float vv0 = 0.0;
+    float vv1 = 0.0;
+    if (r0 < valid) {
+      uint vw = v_buf.w[vbase >> 1u];
+      vv0 = bf16_word_lo(vw);
+      vv1 = bf16_word_hi(vw);
+    }
+    rt_b[sg][e0] = vv0 * beta0_r0;
+    rt_b[sg][e0 + 1u] = vv1 * beta0_r0;
+    barrier();
+    coopmat<float, gl_ScopeSubgroup, 8, 8, gl_MatrixUseAccumulator> bv1;
+    coopMatLoad(bv1, rt_b[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
+    coopmat<float, gl_ScopeSubgroup, 8, 8, gl_MatrixUseAccumulator> m2s1;
+    coopMatLoad(m2s1, rtw[sg], 64u, 8, gl_CooperativeMatrixLayoutRowMajor);
+    coopMatStore(bv1 - m2s1, dlt_s[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
+    barrier();
+
+    uint vbase2 = vbase + H * hv * params.matrix_n;
+    float vv20 = 0.0;
+    float vv21 = 0.0;
+    if (r0 + H < valid) {
+      uint vw2 = v_buf.w[vbase2 >> 1u];
+      vv20 = bf16_word_lo(vw2);
+      vv21 = bf16_word_hi(vw2);
+    }
+    rt_b[sg][e0] = vv20 * beta1_r0;
+    rt_b[sg][e0 + 1u] = vv21 * beta1_r0;
+    barrier();
+    coopmat<float, gl_ScopeSubgroup, 8, 8, gl_MatrixUseAccumulator> bv2;
+    coopMatLoad(bv2, rt_b[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
+    coopmat<float, gl_ScopeSubgroup, 8, 8, gl_MatrixUseAccumulator> m2s2;
+    coopMatLoad(m2s2, rtw[sg], 192u, 8, gl_CooperativeMatrixLayoutRowMajor);
+    coopMatStore(bv2 - m2s2, dlt2_s[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
     barrier();
 
     // T11 = (I - N11)(I + N11^2 + N11^4 + N11^6): the C=8 Neumann
@@ -419,9 +442,9 @@ void main() {
     coopMatStore(t11, t11_s[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
     barrier();
 
-    // T22: the same sequence on the rtw[128] tile, result in t22_s.
-    coopMatLoad(mat_a, rtw[sg], 128u, 8, gl_CooperativeMatrixLayoutRowMajor);
-    coopMatLoad(mat_b, rtw[sg], 128u, 8, gl_CooperativeMatrixLayoutRowMajor);
+    // T22: the same sequence on the rtw[256] tile, result in t22_s.
+    coopMatLoad(mat_a, rtw[sg], 256u, 8, gl_CooperativeMatrixLayoutRowMajor);
+    coopMatLoad(mat_b, rtw[sg], 256u, 8, gl_CooperativeMatrixLayoutRowMajor);
     coopmat<float, gl_ScopeSubgroup, 8, 8, gl_MatrixUseAccumulator> b1 =
         coopMatMulAdd(mat_a, mat_b, zero);
     coopMatStore(b1, rt_b[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
@@ -449,11 +472,10 @@ void main() {
     coopMatStore(t22, t22_s[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
     barrier();
 
-    // T21 row of Tinv: T21 = -T22 . N21 . T11. Store -T21's negation
-    // (p2 = T22 . N21 . T11) in t21_s; the sign flips at the delta2
-    // accumulation below.
+    // T21 row of Tinv: p2 = T22 . N21 . T11 = -T21 (the sign flips at
+    // the delta2 accumulation). p2 parks in rt_b.
     coopMatLoad(mat_a, t22_s[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
-    coopMatLoad(mat_b, rtw[sg], 64u, 8, gl_CooperativeMatrixLayoutRowMajor);
+    coopMatLoad(mat_b, rtw[sg], 128u, 8, gl_CooperativeMatrixLayoutRowMajor);
     coopmat<float, gl_ScopeSubgroup, 8, 8, gl_MatrixUseAccumulator> p21 =
         coopMatMulAdd(mat_a, mat_b, zero);
     coopMatStore(p21, rt_b[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
@@ -462,108 +484,95 @@ void main() {
     coopMatLoad(mat_b, t11_s[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
     coopmat<float, gl_ScopeSubgroup, 8, 8, gl_MatrixUseAccumulator> p2 =
         coopMatMulAdd(mat_a, mat_b, zero);
-    coopMatStore(p2, t21_s[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
-
-    // U tiles: U_h = diag(beta_h) V_h - M2_h, staged through v_s.
-    uint vbase = v_off + (t0 + r0) * hv * params.matrix_n + head * params.matrix_n + dv0 + c0;
-    float vv0 = 0.0;
-    float vv1 = 0.0;
-    float vv20 = 0.0;
-    float vv21 = 0.0;
-    if (r0 < valid) {
-      uint vw = v_buf.w[vbase >> 1u];
-      vv0 = bf16_word_lo(vw);
-      vv1 = bf16_word_hi(vw);
-    }
-    if (r0 + H < valid) {
-      uint vw2 = v_buf.w[(vbase + 8u * hv * params.matrix_n) >> 1u];
-      vv20 = bf16_word_lo(vw2);
-      vv21 = bf16_word_hi(vw2);
-    }
-    v_s[sg][e0] = vv0 * beta0_r0;
-    v_s[sg][e0 + 1u] = vv1 * beta0_r0;
-    v_s[sg][64u + e0] = vv20 * beta1_r0;
-    v_s[sg][64u + e0 + 1u] = vv21 * beta1_r0;
-    barrier();
-    coopmat<float, gl_ScopeSubgroup, 8, 8, gl_MatrixUseAccumulator> bv1;
-    coopMatLoad(bv1, v_s[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
-    coopmat<float, gl_ScopeSubgroup, 8, 8, gl_MatrixUseAccumulator> bv2;
-    coopMatLoad(bv2, v_s[sg], 64u, 8, gl_CooperativeMatrixLayoutRowMajor);
-    // U1 -> rtw[0], U2 -> rtw[64] (the N slots are consumed).
-    coopMatStore(bv1 - m2_1, rtw[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
-    coopMatStore(bv2 - m2_2, rtw[sg], 64u, 8, gl_CooperativeMatrixLayoutRowMajor);
+    coopMatStore(p2, rt_b[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
     barrier();
 
-    // delta1 = T11 . U1; delta2 = T22 . U2 - (T22 N21 T11) . U1.
+    // delta1 = T11 . U1 (rtw tile 1 — the dead M2 slot); delta2 =
+    // T22 . U2 - p2 . U1 (rtw tile 3). The delta tiles stay live as B
+    // operands through the y section and the state waves.
     coopMatLoad(mat_a, t11_s[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
-    coopMatLoad(mat_b, rtw[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
+    coopMatLoad(mat_b, dlt_s[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
     coopmat<float, gl_ScopeSubgroup, 8, 8, gl_MatrixUseAccumulator> delta1 =
         coopMatMulAdd(mat_a, mat_b, zero);
-    coopMatStore(delta1, dlt_s[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
+    coopMatStore(delta1, rtw[sg], 64u, 8, gl_CooperativeMatrixLayoutRowMajor);
     coopMatLoad(mat_a3, t22_s[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
-    coopMatLoad(mat_b2, rtw[sg], 64u, 8, gl_CooperativeMatrixLayoutRowMajor);
-    coopMatLoad(mat_a2, t21_s[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
+    coopMatLoad(mat_b2, dlt2_s[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
+    coopMatLoad(mat_a2, rt_b[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
     coopmat<float, gl_ScopeSubgroup, 8, 8, gl_MatrixUseAccumulator> delta2 =
         coopMatMulAdd(mat_a3, mat_b2, zero) - coopMatMulAdd(mat_a2, mat_b, zero);
-    coopMatStore(delta2, dlt2_s[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
+    coopMatStore(delta2, rtw[sg], 192u, 8, gl_CooperativeMatrixLayoutRowMajor);
     barrier();
 
-    // QK^T Gamma tiles for the y rows through the wide slot: G21 at 0
-    // (no mask), tril8(G11) at 64, tril8(G22) at 128 (inclusive tril).
+    // QK^T Gamma tiles for the y rows: G21 at 0 (no mask), tril8(G11)
+    // at 128, tril8(G22) at 256 (inclusive tril); the tmp tiles get
+    // their gamma row scale and park in the freed t11_s/t22_s.
     coopMatStore(qkt21, rtw[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
-    coopMatStore(qkt11, rtw[sg], 64u, 8, gl_CooperativeMatrixLayoutRowMajor);
-    coopMatStore(qkt22, rtw[sg], 128u, 8, gl_CooperativeMatrixLayoutRowMajor);
+    coopMatStore(qkt11, rtw[sg], 128u, 8, gl_CooperativeMatrixLayoutRowMajor);
+    coopMatStore(qkt22, rtw[sg], 256u, 8, gl_CooperativeMatrixLayoutRowMajor);
+    coopMatStore(tmp1, t11_s[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
+    coopMatStore(tmp2, t22_s[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
     barrier();
     {
       float n0 = rtw[sg][e0];
       float n1 = rtw[sg][e0 + 1u];
       rtw[sg][e0] = n0 * exp(gamma_s[sg][H + r0] - gamma_s[sg][c0]);
       rtw[sg][e0 + 1u] = n1 * exp(gamma_s[sg][H + r0] - gamma_s[sg][c0 + 1u]);
-      float m0 = rtw[sg][64u + e0];
-      float m1 = rtw[sg][64u + e0 + 1u];
-      rtw[sg][64u + e0] = (c0 <= r0)
-          ? m0 * exp(gamma_s[sg][r0] - gamma_s[sg][c0]) : 0.0;
-      rtw[sg][64u + e0 + 1u] = (c0 + 1u <= r0)
-          ? m1 * exp(gamma_s[sg][r0] - gamma_s[sg][c0 + 1u]) : 0.0;
-      float p0 = rtw[sg][128u + e0];
-      float p1 = rtw[sg][128u + e0 + 1u];
+      float m0 = rtw[sg][128u + e0];
+      float m1 = rtw[sg][128u + e0 + 1u];
       rtw[sg][128u + e0] = (c0 <= r0)
-          ? p0 * exp(gamma_s[sg][H + r0] - gamma_s[sg][H + c0]) : 0.0;
+          ? m0 * exp(gamma_s[sg][r0] - gamma_s[sg][c0]) : 0.0;
       rtw[sg][128u + e0 + 1u] = (c0 + 1u <= r0)
+          ? m1 * exp(gamma_s[sg][r0] - gamma_s[sg][c0 + 1u]) : 0.0;
+      float p0 = rtw[sg][256u + e0];
+      float p1 = rtw[sg][256u + e0 + 1u];
+      rtw[sg][256u + e0] = (c0 <= r0)
+          ? p0 * exp(gamma_s[sg][H + r0] - gamma_s[sg][H + c0]) : 0.0;
+      rtw[sg][256u + e0 + 1u] = (c0 + 1u <= r0)
           ? p1 * exp(gamma_s[sg][H + r0] - gamma_s[sg][H + c0 + 1u]) : 0.0;
+      float g0 = t11_s[sg][e0];
+      float g1 = t11_s[sg][e0 + 1u];
+      t11_s[sg][e0] = g0 * gam0_r0;
+      t11_s[sg][e0 + 1u] = g1 * gam0_r0;
+      float h0 = t22_s[sg][e0];
+      float h1 = t22_s[sg][e0 + 1u];
+      t22_s[sg][e0] = h0 * gam1_r0;
+      t22_s[sg][e0 + 1u] = h1 * gam1_r0;
     }
     barrier();
     coopMatLoad(mat_a2, rtw[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
-    coopMatLoad(mat_a, rtw[sg], 64u, 8, gl_CooperativeMatrixLayoutRowMajor);
-    coopMatLoad(mat_a3, rtw[sg], 128u, 8, gl_CooperativeMatrixLayoutRowMajor);
+    coopMatLoad(mat_a, rtw[sg], 128u, 8, gl_CooperativeMatrixLayoutRowMajor);
+    coopMatLoad(mat_a3, rtw[sg], 256u, 8, gl_CooperativeMatrixLayoutRowMajor);
+    coopMatLoad(mat_b, rtw[sg], 64u, 8, gl_CooperativeMatrixLayoutRowMajor);
+    coopMatLoad(mat_b2, rtw[sg], 192u, 8, gl_CooperativeMatrixLayoutRowMajor);
 
-    // y rows: y1 = G11.Q1K1^T . delta1 + tmp1,
-    //         y2 = G21.Q2K1^T . delta1 + G22.Q2K2^T . delta2 + tmp2.
-    coopMatLoad(mat_b, dlt_s[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
-    coopMatLoad(mat_b2, dlt2_s[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
+    // y rows: y1 = G11.Q1K1^T . delta1 + gamma.tmp1,
+    //         y2 = G21.Q2K1^T . delta1 + G22.Q2K2^T . delta2 + gamma.tmp2.
+    coopmat<float, gl_ScopeSubgroup, 8, 8, gl_MatrixUseAccumulator> tmp1s;
+    coopMatLoad(tmp1s, t11_s[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
+    coopmat<float, gl_ScopeSubgroup, 8, 8, gl_MatrixUseAccumulator> tmp2s;
+    coopMatLoad(tmp2s, t22_s[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
     coopmat<float, gl_ScopeSubgroup, 8, 8, gl_MatrixUseAccumulator> out1 =
-        coopMatMulAdd(mat_a, mat_b, tmp1);
+        coopMatMulAdd(mat_a, mat_b, tmp1s);
     coopmat<float, gl_ScopeSubgroup, 8, 8, gl_MatrixUseAccumulator> out2 =
-        coopMatMulAdd(mat_a3, mat_b2, tmp2) + coopMatMulAdd(mat_a2, mat_b, zero);
-    coopMatStore(out1, rtw[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
-    coopMatStore(out2, rtw[sg], 64u, 8, gl_CooperativeMatrixLayoutRowMajor);
+        coopMatMulAdd(mat_a3, mat_b2, tmp2s) + coopMatMulAdd(mat_a2, mat_b, zero);
+    coopMatStore(out1, t11_s[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
+    coopMatStore(out2, t22_s[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
     barrier();
     if (r0 < valid) {
       y_buf.w[(((t0 + r0) * hv + head) * params.matrix_n + dv0 + c0) >> 1u] =
-          bf16_pack(rtw[sg][e0], rtw[sg][e0 + 1u]);
+          bf16_pack(t11_s[sg][e0], t11_s[sg][e0 + 1u]);
     }
     if (r0 + H < valid) {
       y_buf.w[(((t0 + H + r0) * hv + head) * params.matrix_n + dv0 + c0) >> 1u] =
-          bf16_pack(rtw[sg][64u + e0], rtw[sg][64u + e0 + 1u]);
+          bf16_pack(t22_s[sg][e0], t22_s[sg][e0 + 1u]);
     }
     barrier();
 
     // State update in 4-slice waves: stage four K slices of BOTH
     // halves (decayed to the chunk end), then per slice the two
     // MMAs -> shared store -> FMA, reading only the lane's own
-    // store-mapped elements. delta1/delta2 stay live as B operands.
-    coopMatLoad(mat_b, dlt_s[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
-    coopMatLoad(mat_b2, dlt2_s[sg], 0, 8, gl_CooperativeMatrixLayoutRowMajor);
+    // store-mapped elements. delta1/delta2 stay live in mat_b/mat_b2
+    // (loaded from rtw 1/3 in the y section).
     for (uint wave = 0u; wave < KSTEPS / 4u; ++wave) {
       for (uint j = 0u; j < 4u; ++j) {
         uint kk = wave * 4u + j;
@@ -578,7 +587,7 @@ void main() {
           kv1 = bf16_word_hi(kw);
         }
         if (r0 + H < valid) {
-          uint kw2 = k_buf.w[(kbase + 8u * hv * DK) >> 1u];
+          uint kw2 = k_buf.w[(kbase + H * hv * DK) >> 1u];
           kv20 = bf16_word_lo(kw2);
           kv21 = bf16_word_hi(kw2);
         }
