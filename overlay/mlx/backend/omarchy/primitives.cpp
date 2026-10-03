@@ -7445,6 +7445,26 @@ void QuantizedMatmul::eval_gpu(const std::vector<array>& inputs, array& out) {
           encoder.device().hardware_capabilities().device_name);
       uint32_t m_groups =
           (params.matrix_m + coopmat_rows - 1u) / coopmat_rows;
+      // MLX_OMARCHY_QMM_BF16_STAGED=1 takes the staged-A twins
+      // (QmmPrefillCoopmatBF16 / M16BF16): no host cast pass, x read as
+      // bf16 word pairs and widened into the shared tile. The per-output
+      // k chain is identical to the X32 route (bf16 -> f32 widening is
+      // exact on both paths), so outputs are bit-identical; the A/B
+      // measures whether skipping the cast traffic wins at prefill M.
+      const char* staged_env = std::getenv("MLX_OMARCHY_QMM_BF16_STAGED");
+      if (staged_env && staged_env[0] == '1') {
+        omarchy::ComputeKernel staged_kernel = coopmat_rows == 16u
+            ? omarchy::ComputeKernel::QmmPrefillCoopmatM16BF16
+            : omarchy::ComputeKernel::QmmPrefillCoopmatBF16;
+        encoder.dispatch_compute(
+            staged_kernel,
+            bindings,
+            params,
+            std::min(n_groups, omarchy::kMaxComputeGroupCountX),
+            std::min(m_groups, omarchy::kMaxComputeGroupCountX),
+            1u);
+        return;
+      }
       // Direct-global-load A: widen bf16 x to f32 once (the widening is
       // exact, so the kernel k chain is bit-identical to the staged
       // path), then the shader coopMatLoads A tiles straight from the

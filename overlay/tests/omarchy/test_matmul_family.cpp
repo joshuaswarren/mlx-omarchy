@@ -4011,11 +4011,86 @@ TEST_CASE("qmm coopmat output is bit-identical across x offset alignment") {
        << " bound=" << bound);
   CHECK(aligned_diff <= bound);
   CHECK(odd_diff <= bound);
-  std::cout << "[qmm-offset-parity] coopmat_device=" << coopmat_device
+}
+
+// MLX_OMARCHY_QMM_BF16_STAGED=1 routes the bf16 q4/g64 prefill to the
+// staged-A twins (QmmPrefillCoopmatBF16 / M16BF16) and skips the host
+// CastBF16F32 pass. Both routes share the per-output ascending-k f32
+// chain (the bf16 -> f32 widening is exact on both paths), so the
+// outputs must be bit-identical; the env toggle exists so the A/B can
+// measure whether dropping the cast traffic wins at prefill M. Without
+// a cooperative matrix both arms take the scalar tile route and the
+// check is inert.
+TEST_CASE("qmm bf16 staged route is bit-identical to the shipped x32 route") {
+  if (!compute_available() || !float16_available()) {
+    return;
+  }
+  Stream stream = gpu_stream();
+  const auto& caps = omarchy::device(0).capabilities();
+  const bool coopmat_device =
+      caps.cooperative_matrix_f32_8 && caps.subgroup_size == 32;
+  std::cout << "[provenance] cooperative_matrix_f32_8="
+            << (caps.cooperative_matrix_f32_8 ? 1 : 0)
+            << " subgroup_size=" << caps.subgroup_size
+            << " -> staged-A repro "
+            << (coopmat_device ? "compares staged vs cast+x32"
+                               : "is inert without coopmat support")
+            << "\n";
+
+  constexpr int group_size = 64;
+  constexpr int bits = 4;
+  constexpr int m = 64;
+  constexpr int k = 896;
+  constexpr int n = 896;
+  const int words_per_row = k / (32 / bits);
+  const int groups_per_row = k / group_size;
+  std::mt19937 gen(411u);
+  std::uniform_real_distribution<float> dist(-2.0f, 2.0f);
+  std::vector<float> matrix(static_cast<size_t>(n) * k);
+  for (auto& value : matrix) {
+    value = dist(gen);
+  }
+  HostQuantizedWeights weights =
+      host_affine_quantize(matrix, n, k, group_size, bits);
+  weights.scales = round_trip(stream, weights.scales, bfloat16);
+  weights.biases = round_trip(stream, weights.biases, bfloat16);
+  array w_words(weights.words.begin(), Shape{n, words_per_row}, uint32);
+  array scales(weights.scales.begin(), Shape{n, groups_per_row}, bfloat16);
+  array biases(weights.biases.begin(), Shape{n, groups_per_row}, bfloat16);
+
+  std::vector<float> x_values(static_cast<size_t>(m) * k);
+  for (auto& value : x_values) {
+    value = host_bf16_round(dist(gen));
+  }
+  array x(x_values.begin(), Shape{m, k}, bfloat16);
+
+  QmmTileGate gate(true, true);
+  array out_default = quantized_matmul(
+      x, w_words, scales, biases, true, group_size, bits, "affine", stream);
+  const auto default_values = readback_f32(stream, out_default);
+
+  setenv("MLX_OMARCHY_QMM_BF16_STAGED", "1", 1);
+  array out_staged = quantized_matmul(
+      x, w_words, scales, biases, true, group_size, bits, "affine", stream);
+  const auto staged_values = readback_f32(stream, out_staged);
+  unsetenv("MLX_OMARCHY_QMM_BF16_STAGED");
+
+  REQUIRE_EQ(default_values.size(), staged_values.size());
+  size_t mismatched = 0;
+  size_t worst = 0;
+  for (size_t index = 0; index < default_values.size(); ++index) {
+    if (default_values[index] != staged_values[index]) {
+      ++mismatched;
+      worst = index;
+    }
+  }
+  INFO("staged-route mismatches=" << mismatched << " worst=" << worst
+       << " default=" << default_values[worst]
+       << " staged=" << staged_values[worst]);
+  CHECK_EQ(mismatched, size_t{0});
+  std::cout << "[qmm-bf16-staged] coopmat_device=" << coopmat_device
             << " m=" << m << " n=" << n << " k=" << k
-            << " mismatches=" << mismatched
-            << " aligned_diff=" << aligned_diff
-            << " odd_diff=" << odd_diff << " bound=" << bound << "\n";
+            << " mismatches=" << mismatched << "\n";
 }
 
 // ---------------------------------------------------------------------------
