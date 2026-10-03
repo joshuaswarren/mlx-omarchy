@@ -616,6 +616,67 @@ reference case at the Qwen shapes passes under the qmm tile anchor
 bound with the same max error as the tile to three digits; receipt
 `receipts/2026-09-08-qmm-prefill-coopmat.json`.
 
+### Q4 decode GEMV effective-bandwidth (2026-10-03, jw16 same-footing)
+
+`receipts/2026-10-03-decode-bandwidth/` records the same-footing
+effective-bandwidth table on jw16 booted to Linux at the current
+`b581d5c` deployed wheel (recipe:
+`scripts/qwen38-mlx-bench.py --new-tokens {64,128,256,512} --limit 1
+--warmup 1 --passes 5`, env
+`MLX_OMARCHY_NORM_APPLE=1 MLX_OMARCHY_GDN_BATCH=1 MLX_OMARCHY_GDN_F16_STATE=0`,
+gpuwin only). Same model (SiddhJagani/Qwen3.8-2B-mlx-4Bit) booted to
+macOS in `Jw16MacWin5` provides the denominator numbers; the byte
+accounting is identical on both (1,059,404,429 B = 24 layers' weights
++ scales + biases + tied embed/lm_head).
+
+| length | Linux jw16 tok/s | BW_eff GB/s | macOS window-5 tok/s | BW_eff GB/s | ratio |
+|--------|---:|---:|---:|---:|---:|
+| d64    | 108.72 | 115.2 | 179.72 | 190.4 | 0.605 |
+| d128   | 108.56 | 115.0 | 179.08 | 189.5 | 0.606 |
+| d256   | 107.50 | 113.8 | 178.72 | 189.1 | 0.602 |
+| d512   | 102.70 | 108.8 | 177.02 | 187.3 | 0.581 |
+
+Per-shape back-to-back `gemv_shapes_jw16.py` decode GB/s on the same
+stack (cache-defeating ring ≥192 MB; back-to-back instrument):
+
+| shape | us per call | MB | GB/s |
+|---|---:|---:|---:|
+| gate_up 6144x2048   |  36.4 |   7.08 | 194.2 |
+| down  2048x6144     |  38.2 |   7.08 | 185.1 |
+| qkv   4096x2048     |  30.6 |   4.72 | 154.3 |
+| qkvz  8192x2048     |  61.3 |   9.44 | 154.1 |
+| out   2048x2048     |  20.3 |   2.36 | 116.5 |
+| lm_head 248320x2048 | 1132.1 | 286.06 | 252.7 |
+
+One-token decode census on the diag wheel built from main `22cdc6da5`
+(`-DMLX_OMARCHY_GPU_PROFILING=ON`, stamp
+`0.32.4.dev202610031642+diag.22cdc6d`): 229 dispatches/token, GPU-busy
+17.7% (`QmmVecQ4MultiSubgroupBF16` 39.6% / `FastRmsNormBF16` 21.2% /
+GDN trio ~22% / tail ~5%); the wall-vs-GPU gap (~12.7 ms/token) is the
+dependent-dispatch drain decomposed by `Jw16Turnover` (2.95 us
+barriered-floor + grid-size term, driver/queue territory) and is NOT
+a kernel-side lever. The kernel-side headroom on the GEMV class is
+bounded by `Jw16GemvAlu` A-series (loads+xor floor 89%, sb transport
+10.4%, reduce 1.65%, ALU 0.67%): nothing in scope remains outside the
+standing set of refuted levers
+(`Jw16DecodeBudget` S2PACK both toolchains, `Jw16GemvRepack`
+geometry family + repack premise, `Jw16DecodeNorm` NORM_SUBTREE / Q4_WV2
+/ rows-widening, `Jw16DecodeGap2` norm-prologue fusion, `Jw16Turnover`
+T1/T2). The one untested real-kernel layout lever, the fused
+weight+scale+bias per-row single-buffer layout (FSB; per-row
+`[weights words][groups_per_row packed sb u32]` chunks), is bit-exact
+by construction but hits the mesa-1 `pack_64_4x16` lowering defect at
+pipeline creation (same defect filed in `Jw16GemvRepack` TOOLCHAIN FACT
+and `Jw16GemvAlu` W3 incident records); the in-kernel delta is
+therefore unmeasurable in the current driver state and the candidate
+is recorded as refuted, with the FSB shader (`qmm_fsb.comp`) and the
+bench arm (`--c-only-fused` opt-in) pushed on `agent/decode-bw` for the
+mesa-1 fix to test. Diagnostic line: "FSB pipeline-create repro at
+`/tmp/q4bw-fsb --gap --2b --quick --cand
+tools/q4-bw-bench/shaders/qmm_fsb.comp:8 --cand-def '-DROWS_PER_SLOT=2
+-DSLOTS_PER_GROUP=4' --cand-fused` produces 31M+ 'Unhandled ALU op
+pack_64_4x16' lines before timeout; base pipeline creates cleanly".
+
 ### Prefill glue kernels
 
 Three kernels take the f16/bf16 prefill work that ran on general
